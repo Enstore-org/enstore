@@ -566,7 +566,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# reading the keys of this dict.  so we just record the fact that this
 	# needs to get done and we will do it later
 	self.doupdate_server_dict = 1
-	self.new_intervals = t['intervals']
+	self.new_intervals = t.get('intervals', {})
 
 	# clear out the cache in the config client so we can get new info on
 	# any of the servers in case the info has changed.
