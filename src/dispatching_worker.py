@@ -37,7 +37,10 @@ class DispatchingWorker:
         self.rcv_timeout = 60.   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
         self.server_address = server_address
-        self.node_name = socket.gethostbyaddr(self.server_address[0])[0]
+        try:
+            self.node_name = socket.gethostbyaddr(self.server_address[0])[0]
+        except socket.error:
+            self.node_name = self.server_address[0]
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
         self.callback = {} #callback functions associated with above
