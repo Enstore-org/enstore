@@ -290,13 +290,13 @@ class LibraryManagerMethods:
         Trace.trace(11, "key to check %s" % (key_to_check,))  ## REMOVE !!!
         if key_to_check:
             self.continue_scan = 1
-            return rq, key_to_check
+            #return rq, key_to_check
     
         if self.volumes_at_movers.is_vol_busy(rq.ticket["fc"]["external_label"]):
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             Trace.trace(11,"VOL BUSY %s" % (rq.ticket["fc"]["external_label"],))  ## REMOVE!!!
             self.continue_scan = 1
-            return rq, None
+            return rq, key_to_check
         # otherwise we have found a volume that has read work pending
         Trace.trace(11,"process_read_request %s"%(rq.ticket,))
         # ok passed criteria. Get request by file location
@@ -315,7 +315,7 @@ class LibraryManagerMethods:
             # as having no access and send a regret: noaccess.
             self.bad_volume(suspect_v, rq.ticket)
             self.continue_scan = 1
-            return rq, None
+            return rq, key_to_check
         ############################################################
         
         # Check the presence of current_location field
@@ -348,7 +348,7 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
-        return rq, None
+        return rq, key_to_check
 
     def process_write_request(self, request):
         self.continue_scan = 0
