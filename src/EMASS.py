@@ -5,31 +5,43 @@
 #
 #
 
+#system imports
+import types
+import string
+import time
+import whrandom
+import popen2
+import string
+import sys
+import emass_log
+
+#enstore imports
 import aci
 import derrno
-
-import types
+import volume_clerk_client
+import Trace
+import e_errors
 
 status_table = (
     ("ok",	"request successful"),			                #0
     ("BAD",	"rpc failure"),			       	                #1
     ("BAD",	"aci parameter invalid "),	       	                #2
-    ("TAPE",	"volume not found of this type"),		                #3
+    ("TAPE",	"volume not found of this type"),		        #3
     ("DRIVE",   "drive not in Grau ATL "),			        #4
-    ("DRIVE",   "the requested drive is in use"),		                #5
+    ("DRIVE",   "the requested drive is in use"),		        #5
     ("TAPE",	"the robot has a physical problem with the volume"),	#6
-    ("BAD",	"an internal error in the AMU "),		                #7
+    ("BAD",	"an internal error in the AMU "),		        #7
     ("BAD",	"the DAS was unable to communicate with the AMU"),	#8
-    ("BAD",	"the robotic system is not functioning"),	                #9
+    ("BAD",	"the robotic system is not functioning"),	        #9
     ("BAD",	"the AMU was unable to communicate with the robot"),	#10
-    ("BAD",	"the DAS system is not active "),		                #11
-    ("DRIVE",   "the drive did not contain an unloaded volume"),	        #12
-    ("BAD",	"invalid registration"),			         	#13
+    ("BAD",	"the DAS system is not active "),		        #11
+    ("DRIVE",   "the drive did not contain an unloaded volume"),	#12
+    ("BAD",	"invalid registration"),			      	#13
     ("BAD",	"invalid hostname or ip address"),		        #14
-    ("BAD",	"the area name does not exist "),		                #15
-    ("BAD",	"the client is not authorized to make this request"),	        #16
-    ("BAD",	"the dynamic area became full, insertion stopped"),	        #17
-    ("DRIVE",  "the drive is currently available to another client"),	        #18
+    ("BAD",	"the area name does not exist "),		        #15
+    ("BAD",	"the client is not authorized to make this request"),   #16
+    ("BAD",	"the dynamic area became full, insertion stopped"),	#17
+    ("DRIVE",   "the drive is currently available to another client"),  #18
     ("BAD",	"the client does not exist "),			        #19
     ("BAD",	"the dynamic area does not exist"),		        #20
     ("BAD",	"no request exists with this number"),	                #21
@@ -43,12 +55,30 @@ status_table = (
     ("BAD",	"internal ACI error"),		        		#29
     ("BAD",	"for a query more data are available"),	        	#30
     ("BAD",	"things don't match together"),		        	#31
-    ("TAPE",	"volser is still in another pool"),	        	        #32
+    ("TAPE",	"volser is still in another pool"),	                #32
     ("DRIVE",   "drive in cleaning"),		        		#33
     ("BAD",	"The aci request timed out"),		        	#34
     ("DRIVE",   "the robot has a problem with handling the device"),	#35
+    ("notused", "not used"),                                            #36
+    # non aci errors:
+    ("ERROR",   "command error"),                                       #37
+    ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
+    
+Iareas = ("I01","I02","I03","I04","I05","I06","I07","I08")
+Oareas = ("E01","E02","E03","E04","E05","E06","E07","E08")
+robotArms = ("R1","R2")
+# R1 IObox
+mediaIOassign = { "ACI_8MM"     : 
+                 ["E02","E03","E04"],
+		  "ACI_DECDLT"  :
+		 ["E01"] }
 
+# R2 IObox
+#mediaIOassign = { "ACI_8MM"     : 
+#                 ["E06","E07","E08"],
+#		  "ACI_DECDLT"  :
+#		 ["E05"] }
 
 def mount(volume, drive, media_type):
     """mount(vol, drive, media type)"""
@@ -78,23 +108,44 @@ def dismount(volume, drive, media_type):
 
     return status_table[status][0], status, status_table[status][1]    
 
-def home(robot):
-    """home(robot)"""
+def robotHome(arm):
+    """home robot arm"""
+    status = aci.aci_robhome(arm)
+    if not status:
+        status = aci.aci_robstat(arm,"start")
+    return status_table[status][0], status, status_table[status][1]
 
-    retval = "badhome"
+def robotStatus():
+    """get status of robot"""
+    status = aci.aci_robstat("\0","stat")
+    return status_table[status][0], status, status_table[status][1]
 
-    if not aci.aci_robhome(robot):
-        retval = "badstart"
-        if not aci.aci_robstat(robot,"START"):
-            retval = "ok"
+def robotStart(arm):
+    """start robot arm"""
+    status = aci.aci_robstat(arm,"start")
+    return status_table[status][0], status, status_table[status][1]
 
-    return retval
+def robotHomeAndRestart(ticket, classTicket):
+    """start robot arm"""
+    arm = ticket["robotArm"]
+    status = 37
+    if arm=='R1' or arm=='Both':
+        st1,status,st2 = robotHome('R1')
+        if not status:
+            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart failed on R1')
+            st1,status3,st2 = robotStart('R1')
+    if arm=='R2' or arm=='Both':
+        st1,status2,st2 = robotHome('R2')
+        if not status2:
+	    status = status2
+            Trace.trace(e_errors.INFO, 'EMASS robotHomeAndRestart failed on R2')
+            st1,status3,st2 = robotStart('R2')
+    return status_table[status][0], status, status_table[status][1]
 
 def view(volume, media_type):
     """view(vol, media type)"""
 
     status = 0
-    
     media_code = aci.__dict__.get("ACI_"+media_type)
 
     if media_code is None:
@@ -109,6 +160,148 @@ def view(volume, media_type):
     return status_table[status][0], status, status_table[status][1],\
            v[1].coord, v[1].owner, v[1].attrib, v[1].type, v[1].volser, \
            v[1].vol_owner, v[1].use_count, v[1].crash_count
+	   
+def insert(ticket, classTicket):
+    """insert(ticket, classTicket)"""
 
+    if classTicket.has_key("mcSelf"):
+        mcSelf = classTicket["mcSelf"]
+    else:
+        status = 37
+        mcSelf.workQueueClosed = 0
+        Trace.trace(e_errors.ERROR, 'EMASS no mcSelf field found in ticket.')
+        return status_table[status][0], status, status_table[status][1]
     
+    status = 0
+    if ticket.has_key("IOarea_name") and ticket["IOarea_name"] is not None:
+        IOarea_name = ticket["IOarea_name"]
+	if IOarea_name not in Iareas:
+	    status = derrno.EINVALID
+            mcSelf.workQueueClosed = 0
+	    return status_table[status][0], status, status_table[status][1]
+        areaList = [IOarea_name]
+    else:
+        areaList = list(Iareas)
+
+    timeL1 = time.time()
+    timeCmd = ticket["timeOfCmd"]
+    time.sleep(90)  # let robot-IOarea door open and start inventory
+                    # helps for clock skew between adic2 and mc host
+
+    robot_host = "adic2.fnal.gov"
+    year, month, day, hour, minute = time.localtime(timeL1)[:5]
+    outfileName = "/tmp/adicLog%02d%02d" % (day, month)
+
+    invtNotDone = 1
+    while invtNotDone or timeL1-timeCmd>1200:   # timeout in seconds
+        #get amulog from adic2
+        Trace.trace(e_errors.INFO, 'EMASS fetching log...')
+        emass_log.fetch_log_file(robot_host, month, day, outfileName)
+
+        # examine the log - get INVT records
+        ofile = open(outfileName,'r')
+        recordCount = emass_log.n_records(outfileName)
+        Irecord = []
+        for recordPointer in range(recordCount-1,0,-1):
+            record = emass_log.get_record(ofile, recordPointer)
+	    if string.find(record[3],"INVT")>-1:
+	        if timeCmd<record[0]:  #comment out 4dbug
+	            Irecord.append(record)
+        ofile.close()
+
+        if len(Irecord) == 0:
+            status = 37
+            mcSelf.workQueueClosed = 0
+            Trace.trace(e_errors.ERROR, 'EMASS no INVT records found.')
+            return status_table[status][0], status, status_table[status][1]
+
+	ESrecord = yankList(Irecord, 3, "INVT of E")
+	EFrecord = []
+	for record in ESrecord:
+	    look4 = record[3][5:9]+" "+record[3][:4]
+	    EFrecord = EFrecord+yankList(Irecord, 3, look4)
+	if len(ESrecord) == len(EFrecord):
+	    invtNotDone = 0
+	timeL1 = time.time()
+
+    # do insert command...
+    bigVolList = []
+    for area in areaList:
+	Trace.trace(e_errors.INFO, 'EMASS InsertVol IOarea: %s' % area)
+	result = aci.aci_insert(area)   # aci insert command
+	res = result[0]
+	media_code = result[-1]
+	volser_ranges = result[1:-1]
+	###XXX this is a little ugly... but it works.
+	### we could fix up aci_typemaps to return the volser_ranges in
+	### a sublist, but life is short
+        Trace.trace(e_errors.INFO, 'EMASS aci_insert: %i %i' % (res,media_code))
+        if res:
+            status = aci.cvar.d_errno
+            if status > len(status_table):  #invalid error code
+                status = derrno.EDASINT
+	for strList in volser_ranges:
+	    pieces = string.split(strList,', ')
+	    for xxx in pieces:
+	        if len(xxx)>0:
+	            bigVolList.append(xxx)
+
+    # set library name to ticket["newlib"]
+    vcc = volume_clerk_client.VolumeClerkClient(mcSelf.csc)
+    for vol_label in bigVolList:
+        ret = vcc.new_library(vol_label,ticket["newlib"])
+	if ret['status'][0] != 'ok':
+            Trace.trace(e_errors.ERROR, 'EMASS NewLib-InsertVol failed %s' % vol_label)
+            status = 38
+	else:
+            Trace.trace(e_errors.INFO, 'EMASS NewLib-InsertVol sucessful %s' % vol_label)
+
+    return status_table[status][0], status, status_table[status][1]
+
+def eject(ticket, classTicket):
+    """eject(ticket, classTicket)"""
+
+    status = 0
+    if ticket.has_key("media_type"):
+        media_type = ticket["media_type"]
+        media_code = aci.__dict__.get("ACI_"+media_type)
+    else:
+	status = derrno.EINVALID
+	return status_table[status][0], status, status_table[status][1]
+    if media_code is None:
+        status = derrno.ENOVOLUME
+        return status_table[status][0], status, status_table[status][1]
+	
+    if ticket.has_key("IOarea_name"):
+        IOarea_name = ticket["IOarea_name"]
+	if IOarea_name not in Oareas:
+	    status = derrno.EINVALID
+	    return status_table[status][0], status, status_table[status][1]
+    else:
+        box = whrandom.randint(0,len(mediaIOassign["ACI_"+media_type])-1)
+        IOarea_name = mediaIOassign["ACI_"+media_type][box]
+    
+    if ticket.has_key("volList"):
+        volser_range = ticket["volList"]
+    else:
+	status = derrno.EINVALID
+	return status_table[status][0], status, status_table[status][1]
+
+    Trace.trace(e_errors.INFO, 'EMASS aci_eject: %s %s %i' % (IOarea_name,volser_range,media_code))
+    res = aci.aci_eject(IOarea_name, volser_range, media_code)
+    if res:
+        Trace.trace(e_errors.ERROR, 'EMASS aci_eject: %i' % res)
+        status = aci.cvar.d_errno
+        if status > len(status_table):  #invalid error code
+            status = derrno.EDASINT
+    
+    return status_table[status][0], status, status_table[status][1]
+    
+def yankList(listOfLists, listPosition, look4String):
+    """ sift through a list of lists"""
+    newRecordList = []
+    for record in listOfLists:
+	if string.find(record[listPosition],look4String)>-1:
+	    newRecordList.append(record)
+    return newRecordList
 
