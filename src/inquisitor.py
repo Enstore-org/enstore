@@ -70,6 +70,7 @@ SUFFIX = ".new"
 SERVER_KEYWORD = "server"
 TIMED_OUT_SP = "    "
 DEFAULT_SERVER_INTERVAL = "default_server_interval"
+DEFAULT_REFRESH = "60"
 
 CONFIG_S = "configuration_server"
 ALARM_S = "alarm_server"
@@ -511,7 +512,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    t = self.csc.get(key, self.alive_rcv_timeout, self.alive_retries)
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time.time(), key)
-            Trace.trace(12,"update_and_exit - ERROR, getting config dict timed out")
+            Trace.trace(12,"update_exit - ERROR, getting config dict timed out")
 	    return
 	self.htmlfile.open()
 	self.htmlfile.output_alive(t['host'], t['port'], "exiting", time.time(), key)
@@ -1089,7 +1090,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
         if refresh == -1:
-            refresh = keys.get('refresh', refresh)
+            refresh = keys.get('refresh', DEFAULT_REFRESH)
 
 	# add a suffix to the html file because we will write to this file and 
 	# maintain another copy of the file (with the user entered name) to
