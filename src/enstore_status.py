@@ -117,7 +117,7 @@ def parse_encp_line(line):
     if estatus == e_errors.sevdict[e_errors.INFO]:
 	try:
 	    [etype, erest] = string.split(erest, None, 1)
-	    [erest2, erest3] = string.splitfields(erest, ":", 1)
+	    [erest2, erest3] = string.splitfields(erest, ": ", 1)
 	    # erest2 has the file name info which we do not need, get the 
 	    # total data transfer rate from the end of erest3
 	    [erest2, tt] = string.splitfields(erest3, "(", 1)
