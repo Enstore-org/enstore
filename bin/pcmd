@@ -164,7 +164,8 @@ pconst()    { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
 # For routines that use an id, I either need to have my cwd in pnfs, or I
 #  I need to specify a (fake) path that begins with /pnfs.  Look at mounted
 #  file system and return 1st pnfs filesystem - this works for both cases
-p_pnfs()    { df | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
+#  but, I should not use the /pnfs/fs admin root mounted from localhost
+p_pnfs()    { df | grep -v localhost | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
 " -f1; }
 
 pshowid()   { if [ -z "${1-}" ] ; then p_error "showid id"; fi
@@ -180,10 +181,12 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
               filename=""
               id=$1
               while /bin/true;  do
+                #echo $filename
                 filename=`pnameof $id 2>/dev/null`/$filename
                 if [ $? -ne 0 ] ; then break; fi
                 id=`pparent $id`
               done
+              #echo $filename
               filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
               if [ -z $filename ] ; then
                 filename="NO_SUCH_FILE"
