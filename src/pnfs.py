@@ -2168,8 +2168,8 @@ class File:
 		if not self.bfid:
 			return
 		if not self.consistent():
-			if self.path != self.p_path and \
-                           self.path != get_local_pnfs_path(self.p_path):
+			if self.path != self.p_path:
+                            if self.path != get_local_pnfs_path(self.p_path):
 				raise 'DIFFERENT_PATH'
 			else:
 				raise 'INCONSISTENT'
