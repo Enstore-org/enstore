@@ -21,7 +21,4 @@ runs the web server -
 	o edit $ENSTORE_DIR/etc/enstore_log_file_search.html to change the node
 		for the cgi script to the correct one.
 
-	o edit $ENSTORE_DIR/etc/enstore_alarms.html to change the node
-		for the cgi script to the correct one.
-
 The permissions on the cgi scripts must have execute turned on.
