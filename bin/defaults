@@ -3,31 +3,40 @@
 
 # defaults first
 
-config_host=localhost
-config_port=7500
-config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
+enstore_config_host=localhost
+enstore_config_port=7500
+enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
 enstore_libraries="activelibrary.library_manager red50library.library_manager 8500library.library_manager"
 enstore_media_changers="STK.media_changer RDD.media_changer"
 enstore_movers="fd0.mover stk0.mover exa0.mover"
 
 enstore_db=$ENSTORE_DIR/etc
+enstore_start_config=0
+enstore_start_fileclerk=0
+enstore_start_volumeclerk=0
 
-if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then 
+if [ `uname -n | grep -c pcfarm4` -eq 1 ] ; then
   enstore_db=/bakken/bakken/enstore_db
   enstore_libraries=""
   enstore_media_changers=""
   enstore_movers=""
+  enstore_start_config=1
+  enstore_start_fileclerk=1
+  enstore_start_volumeclerk=1
 fi
 
 # if the user has environmental variable set, use them - or else use the defaults
 
-if [ -n "${ENSTORE_CONFIG_HOST-}" ] ; then config_host=$ENSTORE_CONFIG_HOST; fi
-if [ -n "${ENSTORE_CONFIG_PORT-}" ] ; then config_port=$ENSTORE_CONFIG_PORT; fi
-if [ -n "${ENSTORE_CONFIG_FILE-}" ] ; then config_file=$ENSTORE_CONFIG_FILE; fi
+if [ -n "${ENSTORE_CONFIG_HOST-}" ] ; then enstore_config_host=$ENSTORE_CONFIG_HOST; fi
+if [ -n "${ENSTORE_CONFIG_PORT-}" ] ; then enstore_config_port=$ENSTORE_CONFIG_PORT; fi
+if [ -n "${ENSTORE_CONFIG_FILE-}" ] ; then enstore_config_file=$ENSTORE_CONFIG_FILE; fi
 
 if [ -n "${ENSTORE_LIBRARIES-}" ]      ; then enstore_libraries=$ENSTORE_LIBRARIES; fi
 if [ -n "${ENSTORE_MEDIA_CHANGERS-}" ] ; then enstore_media_changers=$ENSTORE_MEDIA_CHANGERS; fi
 if [ -n "${ENSTORE_MOVERS-}" ]         ; then enstore_movers=$ENSTORE_MOVERS; fi
 
-if [ -n "${ENSTORE_DB-}" ]             ; then enstore_db=$ENSTORE_DB; fi
+if [ -n "${ENSTORE_DB-}" ]                 ; then enstore_db=$ENSTORE_DB; fi
+if [ -n "${ENSTORE_START_CONFIG-}" ]       ; then enstore_start_config=$ENSTORE_START_CONFIG; fi
+if [ -n "${ENSTORE_START_FILECLERK-}" ]    ; then enstore_start_fileclerk=$ENSTORE_START_CONFIG; fi
+if [ -n "${ENSTORE_START_VOLUMECLERK-}" ]  ; then enstore_start_volumeclerk=$ENSTORE_START_CONFIG; fi

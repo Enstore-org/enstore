@@ -3,8 +3,10 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-for pid in $ENSTORE_DIR/etc/`uname -n`-*_pids; do
-    if [ "$pid" = "$ENSTORE_DIR/etc/*_pids" ] ; then break; fi
+. $ENSTORE_DIR/bin/defaults
+
+for pid in $enstore_db/`uname -n`-*_pids; do
+    if [ "$pid" = "$enstore_db/`uname -n`-*_pids" ] ; then break; fi
     pidkill $pid
 done
 exit
