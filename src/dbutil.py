@@ -93,8 +93,3 @@ class timeOper(numOper):
         return value[1:]
     Trace.trace(16,'}zstrip value='+repr(value))
     return value
-
-
-
-
-
