@@ -1,8 +1,51 @@
+<HTML>
+<HEAD>
+<BODY>
+<BODY BGCOLOR=#FFFFFF >
+<FONT SIZE=+4></FONT>&nbsp;<FONT SIZE=+4></FONT>
+
+<P><A HREF="index.html"><IMG SRC="bookshelf.gif" HEIGHT=31 WIDTH=58 ALIGN=BOTTOM></A><FONT SIZE=+4></FONT>
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>SCOPE</FONT></FONT></U></I></B></CENTER>
 
 
+<p>
 
-this is not here
+Enstore is a simple system whose goal is to solve mass storage
+needs of the Fermilab community for large HEP data sets.
+
+As such it is not a general purpose mass storage system, but optimised
+to allow acess to large datsets made of many files.
+
+The special to HEP requirments supported are:
+
+1) The system supports random access of files, but also streaming, the
+sequential access of successive files on tape. The system treats robotis
+shelves as a scarce commodity
+
+
+It has been designed by a mixture
+of people with expertise in writing DA systems, and thus, writing and reading
+tapes reliably and efficiently.  Recommended software engineering
+practices are being used during it's design and development.
+
+<p>
+
+The Enstore system provides a generic interface for end users to efficiently
+use mass storage systems as easily as if they were native file systems.
+
+It is
+based on a true client-server
+model that allows hot swapping components and dynamic configuration, is
+platform independent, runs on heterogeneous environments and is easily
+extendable.  Most
+of the operations are transparent to the user.  System performance is monitored
+and fine tunable.  A great deal of care has been taken to ensure that it is
+able to prevent or to recover from a worst case scenario.  The system has
+layers around it to customize and address problems as they occur.  When
+possible, these layers are expected to use already existing components 
+(e.g. ftt, pnfs).
+
+
 
 </BODY>
 </HTML>
