@@ -1,5 +1,7 @@
 /* enroute2.c -- enstore hook to change the route on the fly
  *
+ * $Id$
+ *
  * This is meant to be a setuid command and should only be run from encp
  *
  * usage: enroute key add|del|change destination [gateway]
@@ -47,6 +49,9 @@ static char *signature = "Enstore \nSignature: \n2nst4r2 \n2etuorne ";
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#if defined( __sgi ) || defined ( __sun )
+#include <sys/sockio.h>
+#endif
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <net/route.h>
@@ -302,7 +307,11 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 			 * might allow for different interfaces to be on the
 			 * same subnet and still route as we want.
 			 */
-			rtm->rtm_index = if_nametoindex(if_name);
+		        /* 9-2-2004: Most non-Linux linux platforms do not
+			   define this function.  Also, there is no known
+			   way to detect this fact at compile time.
+			*/
+			//rtm->rtm_index = if_nametoindex(if_name);
 		}
 	}
 	else if (!strcmp(cmd, "del"))
@@ -323,7 +332,11 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 			 * might allow for different interfaces to be on the
 			 * same subnet and still route as we want.
 			 */
-			rtm->rtm_index = if_nametoindex(if_name);
+		        /* 9-2-2004: Most non-Linux linux platforms do not
+			   define this function.  Also, there is no known
+			   way to detect this fact at compile time.
+			*/
+			//rtm->rtm_index = if_nametoindex(if_name);
 		}
 	}
 	else
