@@ -137,7 +137,7 @@ class GenericDriver:
 	return None
 
     def tell( self ):
-	return self.fo.tell()
+	return self.LOC_SPEC % self.fo.tell()
 
     def read( self, size_bytes ):
 	return self.fo.read( size_bytes )
