@@ -78,7 +78,8 @@ class Restrictor:
                 if not self.ticket_match(sg_dict, flat_ticket, key, conf_key): break
                 nmatches = nmatches + 1
             if nmatches == nkeys:
-                match = 1,sg_dict[key]['function'],sg_dict[key]['args'],sg_dict[key]['action'] 
+                # use deep copy to make sure that the original set of arguments is returned
+                match = 1,sg_dict[key]['function'],copy.deepcopy(sg_dict[key]['args']),sg_dict[key]['action'] 
                 break
         return match
 
