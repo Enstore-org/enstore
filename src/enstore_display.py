@@ -2078,10 +2078,12 @@ class Display(Tkinter.Canvas):
                             status = mover.get_status()
                     except KeyError:
                         pass
-                    
-                    client = status['client']
-                    words2 = ['connect', mover.name, client]
-                    self.handle_command(string.join(words2, " "))
+
+                    if e_errors.is_ok(status):
+                        client = status['client']
+                        if client:
+                            words2 = ['connect', mover.name, client]
+                            self.handle_command(string.join(words2, " "))
 
             startup_lock.release()
                         
