@@ -64,11 +64,6 @@ class EventRelayClient:
 
     # read a message from the socket
     def read(self, fd=None):
-        import sys
-        import traceback
-        import timeofday
-        import e_errors
-        import Trace
         if not fd:
             fd = self.sock
         try:
