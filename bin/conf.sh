@@ -22,7 +22,8 @@ for key in servers.keys():
     try:
         ahost,ip,port = servers[key]
 	#print key,ahost,ip,port
-	if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="admin_clerk" or key=="logserver":
+	if  "'$host'" == "" or ahost == "'$host'" or key=="file_clerk" or key=="volume_clerk" or key=="admin_clerk" or key=="logserver"\
+                                                  or key=="inquisitor" :
             print "%s:%s:%s" % (key,ahost,port)
     except:
         pass
