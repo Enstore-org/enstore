@@ -334,6 +334,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # update any encp information from the log files
     def update_encp(self, key, time):
+        if 0: print time # quiet lint
 	# look to see if the log server LOGs are accessible to us.  if so we
 	# will need to parse them to get encp information.
 	t = self.logc.get_logfile_name()
@@ -397,8 +398,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # we do not need to report these
     def update_database(self, key, time):
+        if 0: print self, key, time # quiet lint
 	pass
     def update_backup(self, key, time):
+        if 0: print self, key, time # quiet lint
 	pass
 
     # get the keys from the inquisitor part of the config file ready for use

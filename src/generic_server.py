@@ -66,6 +66,7 @@ class GenericServer(generic_cs.GenericCS):
 	    # set both just in case
 	    self.verbose = ticket[id]
 	    verbose = ticket[id]
+            if 0: print verbose #quiet lint
 	    ticket["variable"] = "self.verbose, verbose"
 	else:
 	    verbose = ticket[id]

@@ -57,6 +57,7 @@ class GenericClient(generic_cs.GenericCS):
 
     # cover ourselves just in case our sub class does not have a send
     def send(self, work, timeout=0, retry=0):
+        if 0: print self,work,timeout,retry # quiet lint
 	pass
 
     # reset the verbosity in the server
