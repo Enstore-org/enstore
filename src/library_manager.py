@@ -1,5 +1,6 @@
 import os
 import time
+import log_client
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
@@ -345,6 +346,10 @@ if __name__ == "__main__" :
     methods =  LibraryManagerMethods()
     lm =  LibraryManager( (keys['host'], keys['port']), methods)
     lm.set_csc(csc)
+
+    # get a logger
+    logc = log_client.LoggerClient(csc, 'LIBM', 'logserver', 0)
+    lm.set_logc(logc)
 
     while 1:
         try:

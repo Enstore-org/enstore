@@ -2,6 +2,7 @@ import sys
 import time
 import pprint
 import copy
+import log_client
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from library_manager_client import LibraryManagerClient
@@ -262,6 +263,10 @@ if __name__ == "__main__" :
     ticket = csc.get("file_clerk")
     cs = FileClerk( (ticket["host"], ticket["port"]), FileClerkMethods)
     cs.set_csc(csc)
+
+    # get a logger
+    logc = log_client.LoggerClient(csc, 'FILC', 'logserver', 0)
+    cs.set_logc(logc)
 
     while 1:
         try:

@@ -19,6 +19,7 @@ import dispatching_worker
 import generic_server
 import log_client
 import string
+import log_client
 
 list = 0
 # media loader template class
@@ -210,6 +211,10 @@ if __name__ == "__main__" :
     # create a log client
     logc = log_client.LoggerClient(csc, ml_name, 'logserver', 0)
     logc.send(log_client.INFO, "Starting Media Changer. Type=%s", args[0])
+
+    # get a logger
+    logc = log_client.LoggerClient(csc, 'MEDC', 'logserver', 0)
+    mls.set_logc(logc)
 
     while 1:
         try:
