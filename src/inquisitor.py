@@ -679,6 +679,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def do_dump(self):
 	keys = self.server_d.keys()
 	keys.sort()
+	print keys
 	for skey in keys:
 	    server = self.server_d[skey]
 	    print server.name
