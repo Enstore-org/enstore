@@ -71,8 +71,6 @@ struct return_values
   int exit_status;        /*error status*/
   int errno_val;          /*errno of any errors (zero otherwise)*/
   char* msg;              /*additional error message*/
-  double read_time;       /*time spent reading data*/
-  double write_time;      /*time spent writing data*/
   int line;               /*line number where error occured*/
   char* filename;         /*filename where error occured*/
 };
@@ -95,12 +93,7 @@ static struct return_values do_read_write(int rd_fd, int wr_fd,
 static struct return_values* pack_return_values(unsigned int crc_ui,
 						int errno_val, int exit_status,
 						long long bytes, char* msg,
-						double read_time,
-						double write_time,
 						char *filename, int line);
-static double elapsed_time(struct timeval* start_time,
-			   struct timeval* end_time);
-static long long get_fsync_threshold(long long bytes, int blk_size);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count);
@@ -164,8 +157,6 @@ static struct return_values* pack_return_values(unsigned int crc_ui,
 						int exit_status,
 						long long bytes,
 						char* message,
-						double read_time,
-						double write_time,
 						char* filename, int line)
 {
   struct return_values *retval;
@@ -184,33 +175,9 @@ static struct return_values* pack_return_values(unsigned int crc_ui,
   retval->exit_status = exit_status;   /* Exit status of the thread. */
   retval->size = bytes;                /* Bytes left to transfer. */
   retval->msg = message;               /* Additional error message. */
-  retval->read_time = read_time;       /* Elapsed time spent reading. */
-  retval->write_time = write_time;     /* Elapsed time spent writing. */
   retval->line = line;             
   retval->filename = filename;
   return retval;
-}
-
-static double elapsed_time(struct timeval* start_time,
-			   struct timeval* end_time)
-{
-  double elapsed_time;  /* variable to hold the time difference */
-
-  elapsed_time = (end_time->tv_sec - start_time->tv_sec) + 
-    (end_time->tv_usec - start_time->tv_usec) / 1000000.0;
-
-  return elapsed_time;
-}
-
-static long long get_fsync_threshold(long long bytes, int blk_size)
-{
-  long long temp_value;
-
-  /* Find out what one percent of the file size is. */
-  temp_value = (long long)(bytes / (double)100.0);
-
-  /* Return the larger of the block size and 1 percent of the file size. */
-  return (temp_value > blk_size) ? temp_value : blk_size;
 }
 
 #ifdef THREADED
@@ -234,11 +201,11 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 	      struct timeval timeout, int crc_flag, unsigned int *crc_p)
 {
   /*setup local variables*/
-  struct transfer reads;   /* Information passed into read thread. */
-  struct transfer writes;  /* Information passed into write thread. */
+  struct transfer reads;
+  struct transfer writes;
   struct return_values *read_val = NULL;  /*Incase of early thread ... */
   struct return_values *write_val = NULL; /*... error set to NULL.*/
-  struct return_values *rtn_val = malloc(sizeof(struct return_values));
+  struct return_values *rtn_val = NULL;
 
   pthread_t read_tid, write_tid;
   /*int exit_status;*/
@@ -291,17 +258,16 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
     can get to the pthread_cond_wait() to detect the threads exiting.*/
   if((p_rtn = pthread_mutex_lock(&done_mutex)) != 0)
     return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-			       "mutex lock failed", 0.0, 0.0,
-			       __FILE__, __LINE__);
+			       "mutex lock failed", __FILE__, __LINE__);
 
   /* get the threads going. */
   if((p_rtn = pthread_create(&write_tid, NULL, &thread_write, &writes)) != 0)
     return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-			       "write thread creation failed", 0.0, 0.0,
+			       "write thread creation failed",
 			       __FILE__, __LINE__);
   if((p_rtn = pthread_create(&read_tid, NULL, &thread_read, &reads)) != 0)
     return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-			       "read thread creation failed", 0.0, 0.0,
+			       "read thread creation failed",
 			       __FILE__, __LINE__);
 
   /*This screewy loop of code is used to detect if a thread has terminated.
@@ -316,7 +282,7 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 
     if((p_rtn = pthread_cond_wait(&done_cond, &done_mutex)) != 0)
       return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				 "waiting for condition failed", 0.0, 0.0,
+				 "waiting for condition failed",
 				 __FILE__, __LINE__);
 
     if(read_done > 0) /*true when thread_read ends*/
@@ -324,12 +290,12 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       if((p_rtn = pthread_join(read_tid, (void**)&read_val)) != 0)
 	return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				   "joining with read thread failed",
-				   0.0, 0.0, __FILE__, __LINE__);
+				   __FILE__, __LINE__);
 
       if(read_val->exit_status)
       {
-	memcpy(rtn_val, read_val, sizeof(struct return_values));
-	/*free(&(*write_val));*/
+	rtn_val = read_val;
+	free(&(*write_val));
 	pthread_kill(write_tid, SIGKILL);
 	break; /*If an error occured, no sense continuing*/
       }
@@ -341,9 +307,9 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       if((p_rtn = pthread_join(write_tid, (void**)&write_val)) != 0)
 	return *pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				   "joining with write thread failed",
-				   0.0, 0.0, __FILE__, __LINE__);
-      memcpy(rtn_val, write_val, sizeof(struct return_values));
-      /*free(&(*read_val));*/
+				   __FILE__, __LINE__);
+      rtn_val = write_val;
+      free(&(*read_val));
       if(write_val->exit_status)
       {
 	/*pthread_kill(read_tid, SIGKILL);*/
@@ -356,10 +322,6 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   }
   pthread_mutex_unlock(&done_mutex);
 
-  /* If there were no errors up to this point, rtn_val contains the write_val
-     information. */
-  
-  /* MWZ:  This isn't relavent anymore. */
   if(rtn_val == NULL)
   {
     rtn_val = malloc(sizeof(struct return_values));
@@ -367,16 +329,7 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
     rtn_val->crc_ui = 0;
     rtn_val->errno_val = EILSEQ;
     rtn_val->size = 0;
-    rtn_val->read_time = 0.0;
-    rtn_val->write_time = 0.0;
   }
-
-  /* Make sure that this information gets returned to encp. */
-  if(read_val->read_time)
-    rtn_val->read_time = read_val->read_time;
-  if(write_val->write_time)
-    rtn_val->write_time = write_val->write_time;
-
   /* Get the pointer to the checksum. */
   *crc_p = rtn_val->crc_ui;
 
@@ -394,8 +347,7 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   free(stored);
   free(buffer);
   free(buffer_lock);
-  free(&(*read_val));
-  free(&(*write_val));
+
   return *rtn_val;
 }
 
@@ -413,16 +365,6 @@ static void* thread_read(void *info)
   unsigned int crc_ui = 0;      /* Calculated checksum. */
   fd_set fds;                   /* For use with select(2). */
   int p_rtn;                    /* Pthread return value. */
-  struct timeval start_time;    /* Start of time the thread is active. */
-  struct timeval end_time;      /* End of time the thread is active. */
-  struct timeval start_wait;    /* Begin waiting for condition variable. */
-  struct timeval end_wait;      /* Stop waiting for condition variable. */
-  double wait_time = 0.0;       /* Time waiting for condition variable. */
-  double corrected_time = 0.0;
-
-  /* Get the time that the thread started to work on reading. */
-  gettimeofday(&start_time, NULL);
-  memcpy(&end_time, &start_time, sizeof(struct timeval));
 
   while(bytes > 0)
   {
@@ -430,40 +372,27 @@ static void* thread_read(void *info)
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex lock failed", corrected_time, 0.0,
+				"mutex lock failed",
 				__FILE__, __LINE__);
     }
     if(stored[bin])
     {
-      /* Record the time that this thread goes to sleep waiting for the
-	 condition variable. */
-      gettimeofday(&start_wait, NULL);
-
       /* This bin still needs to be used by the other thread.  Put this thread
 	to sleep until the other thread is done with it. */
       if((p_rtn = pthread_cond_wait(&next_cond, &buffer_lock[bin])) != 0)
       {
 	set_done_flag(&read_done);
-	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
 	return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				  "waiting for condition failed",
-				  corrected_time, 0.0, __FILE__, __LINE__);
+				  __FILE__, __LINE__);
       }
-      
-      /* Record the time that this thread wakes up from waiting for the
-	 condition variable. */
-      gettimeofday(&end_wait, NULL);
-      /* Calculate wait time. */
-      wait_time += elapsed_time(&start_wait, &end_wait);
     }
     if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex unlock failed", corrected_time, 0.0,
+				"mutex unlock failed",
 				__FILE__, __LINE__);
     }
 
@@ -477,16 +406,14 @@ static void* thread_read(void *info)
     if (sts == -1)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, READ_ERROR, bytes, "fd read error", 
-				corrected_time, 0.0, __FILE__, __LINE__);
+      return pack_return_values(0, errno, READ_ERROR, bytes,
+				"fd read error", __FILE__, __LINE__);
     }
     if (sts == 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout", 
-				corrected_time, 0.0, __FILE__, __LINE__);
+      return pack_return_values(0, errno, TIMEOUT_ERROR, bytes,
+				"fd timeout", __FILE__, __LINE__);
     }
 
     /* Dertermine how much to read. Attempt block size read. */
@@ -498,16 +425,14 @@ static void* thread_read(void *info)
     if (sts == -1)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, errno, READ_ERROR, bytes, "fd read error",
-				corrected_time, 0.0, __FILE__, __LINE__);
+				__FILE__, __LINE__);
     }
     if (sts == 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout",
-				corrected_time, 0.0, __FILE__, __LINE__);
+				__FILE__, __LINE__);
     }
     /* Calculate the crc (if applicable). */
     switch (crc_flag)
@@ -527,20 +452,17 @@ static void* thread_read(void *info)
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex lock failed", corrected_time, 0.0, 
-				__FILE__, __LINE__);
+				"mutex lock failed", __FILE__, __LINE__);
     }
     stored[bin] = sts; /* Store the number of bytes in the bin. */
     /* If other thread sleeping, wake it up. */
     if((p_rtn = pthread_cond_signal(&next_cond)) != 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				"waiting for condition failed",
-				corrected_time, 0.0, __FILE__, __LINE__);
+				__FILE__, __LINE__);
     }
 
 #ifdef DEBUG
@@ -553,10 +475,8 @@ static void* thread_read(void *info)
     if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex unlock failed", 
-				corrected_time, 0.0, __FILE__, __LINE__);
+				"mutex unlock failed", __FILE__, __LINE__);
     }
     /* Determine where to put the data. */
     bin = (bin + 1) % ARRAY_SIZE;
@@ -564,13 +484,8 @@ static void* thread_read(void *info)
     bytes -= sts;
   }
 
-  /* Get the time that the thread finished to work on reading. */
-  gettimeofday(&end_time, NULL);
-
   set_done_flag(&read_done);
-  corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-  return pack_return_values(crc_ui, 0, 0, bytes, "",
-			    corrected_time, 0.0, NULL, 0);
+  return pack_return_values(crc_ui, 0, 0, bytes, "", 0, 0);
 }
 
 
@@ -593,88 +508,33 @@ static void* thread_write(void *info)
 #ifdef DEBUG
   char debug_print;             /* Specifies what transfer occured.  W or w */
 #endif
-  struct timeval start_time;    /* Start of time the thread is active. */
-  struct timeval end_time;      /* End of time the thread is active. */
-  struct timeval start_wait;    /* Begin waiting for condition variable. */
-  struct timeval end_wait;      /* Stop waiting for condition variable. */
-  double wait_time = 0.0;       /* Time waiting for condition variable. */
-  double corrected_time = 0.0;
-  int skipped_first_pass = 0;   /* Skips first buffer in timing rates. */
-  long long fsync_threshold = 0;/* Number of bytes to wait between fsync()s. */
-  long long last_fsync = bytes; /* Number of bytes done though last fsync(). */
-  struct stat file_info;        /* Information about the file to write to. */
-  int do_threshold = 0;         /* Holds boolean true when using fsync(). */
-
-  /* Initialize these values in case of error there difference will be zero. */
-  memset(&start_time, 0, sizeof(struct timeval));
-  memset(&end_time, 0, sizeof(struct timeval));
-
-  /* Determine if the file descriptor supports fsync(). */
-  if(fstat(wr_fd, &file_info))
-  {
-    fprintf(stderr, "fstat: %s\n", strerror(errno));
-  }
-  else
-  {
-    if(S_ISREG(file_info.st_mode))
-    {
-      /* Get the number of bytes to transfer between fsync() calls. */
-      fsync_threshold = get_fsync_threshold(bytes, block_size);
-      /* Set this boolean true. */
-      do_threshold = 1;
-    }
-  }
 
   while(bytes > 0)
   {
-    /* Throw away the first buffer in time calcultions. */
-    if(!skipped_first_pass)
-    {
-      skipped_first_pass = 1; /* Set the boolean to true. */
-
-      /* Get the time that the thread started to work on reading. */
-      gettimeofday(&start_time, NULL);
-      memcpy(&end_time, &start_time, sizeof(struct timeval));
-    }
-
     /* Determine if the lock for the buffer_lock bin, bin, is ready. */
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&write_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex lock failed", 0.0, corrected_time,
-				__FILE__, __LINE__);
+				"mutex lock failed", __FILE__, __LINE__);
     }
     if(stored[bin] == 0)
     {
-      /* Record the time that this thread goes to sleep waiting for the
-	 condition variable. */
-      gettimeofday(&start_wait, NULL);
-
       /* This bin still needs to be used by the other thread.  Put this thread
 	to sleep until the other thread is done with it. */
       if((p_rtn = pthread_cond_wait(&next_cond, &buffer_lock[bin])) != 0)
       {
 	set_done_flag(&write_done);
-	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
 	return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				  "waiting for condition failed",
-				  0.0, corrected_time, __FILE__, __LINE__);
+				  __FILE__, __LINE__);
       }
-      /* Record the time that this thread wakes up from waiting for the
-	 condition variable. */
-      gettimeofday(&end_wait, NULL);
-      /* Calculate wait time. */
-      wait_time += elapsed_time(&start_wait, &end_wait);
     }
     if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&write_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex unlock failed", 0.0, corrected_time,
-				__FILE__, __LINE__);
+				"mutex unlock failed", __FILE__, __LINE__);
     }
 
     /* Dertermine how much to write.  Attempt block size write. */
@@ -694,17 +554,14 @@ static void* thread_write(void *info)
       if (sts == -1)
       {
 	set_done_flag(&write_done);
-	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
 	return pack_return_values(0, p_rtn, WRITE_ERROR, bytes,
-				  "fd write error", 0.0, corrected_time,
-				  __FILE__, __LINE__);
+				  "fd write error", __FILE__, __LINE__);
       }
       if (sts == 0)
       {
 	set_done_flag(&write_done);
-	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
 	return pack_return_values(0, p_rtn, TIMEOUT_ERROR, bytes, "fd timeout",
-				  0.0, corrected_time, __FILE__, __LINE__);
+				  __FILE__, __LINE__);
       }
 
       /* Write out the data */
@@ -714,10 +571,8 @@ static void* thread_write(void *info)
       if (sts == -1)
       {
 	set_done_flag(&write_done);
-	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
 	return pack_return_values(0, p_rtn, WRITE_ERROR, bytes,
-				  "fd write error", 0.0, corrected_time, 
-				  __FILE__, __LINE__);
+				  "fd write error", __FILE__, __LINE__);
       }
 
       /* Calculate the crc (if applicable). */
@@ -754,57 +609,33 @@ static void* thread_write(void *info)
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&write_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex lock failed", 0.0, corrected_time, 
-				__FILE__, __LINE__);
+				"mutex lock failed", __FILE__, __LINE__);
     }
     stored[bin] = 0; /* Set the number of bytes left in buffer to zero. */
     /* If other thread sleeping, wake it up. */
     if((p_rtn = pthread_cond_signal(&next_cond)) != 0)
     {
       set_done_flag(&write_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
 				"waiting for condition failed",
-				0.0, corrected_time, __FILE__, __LINE__);
+				__FILE__, __LINE__ - 3);
     }
     /* Release the mutex lock for this bin. */
     if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
     {
       set_done_flag(&write_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
       return pack_return_values(0, p_rtn, THREAD_ERROR, bytes,
-				"mutex unlock failed", 0.0, corrected_time,
-				__FILE__, __LINE__);
+				"mutex unlock failed", __FILE__, __LINE__);
     }
-
     /* Determine where to get the data. */
     bin = (bin + 1) % ARRAY_SIZE;
     /* Determine the number of bytes left to transfer. */
     bytes -= bytes_transfered;
-
-    /* If the difference is great enough flush the write buffer.  Also,
-       flush the buffer if it is the end of the file. */
-    if(do_threshold && 
-       (((last_fsync - bytes) > fsync_threshold) || (bytes == 0)))
-    {
-      last_fsync = bytes;
-      
-      if(fsync(wr_fd))
-      {
-	fprintf(stderr, "fsync: %s\n", strerror(errno));
-      }
-    }
   }
 
-  /* Get the time that the thread finished to work on reading. */
-  gettimeofday(&end_time, NULL);
-
   set_done_flag(&write_done);
-  corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-  return pack_return_values(crc_ui, 0, 0, bytes, "",
-			    0.0, corrected_time, NULL, 0);
+  return pack_return_values(crc_ui, 0, 0, bytes, "", 0, 0);
 }
 
 #ifdef DEBUG
@@ -839,35 +670,8 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   struct profile profile_data[PROFILE_COUNT]; /* profile data array */
   long profile_count = 0;    /* Count variable for index of profile array. */
 #endif /*PROFILE*/
-  struct timeval start_time;    /* Start of time the thread is active. */
-  struct timeval end_time;      /* End of time the thread is active. */
-  double time_elapsed;          /* Difference between start and end time. */
-  long long fsync_threshold = 0;/* Number of bytes to wait between fsync()s. */
-  long long last_fsync = bytes; /* Number of bytes done though last fsync(). */
-  struct stat file_info;        /* Information about the file to write to. */
-  int do_threshold = 0;         /* Holds boolean true when using fsync(). */
-
+  
   buffer = (char *)alloca(blk_size);
-
-  /* Get the time that the thread started to work on transfering data. */
-  gettimeofday(&start_time, NULL);
-  memcpy(&end_time, &start_time, sizeof(struct timeval));
-
-  /* Determine if the file descriptor supports fsync(). */
-  if(fstat(wr_fd, &file_info))
-  {
-    fprintf(stderr, "fstat: %s\n", strerror(errno));
-  }
-  else
-  {
-    if(S_ISREG(file_info.st_mode))
-    {
-      /* Get the number of bytes to transfer between fsync() calls. */
-      fsync_threshold = get_fsync_threshold(bytes, blk_size);
-      /* Set this boolean true. */
-      do_threshold = 1;
-    }
-  }
 
   while(bytes > 0)
   {
@@ -896,17 +700,13 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 	      rd_fd+1, rd_fd, timeout.tv_sec, timeout.tv_usec,
 	      errno, strerror(errno));
       fflush(stderr);
-      time_elapsed = elapsed_time(&start_time, &end_time);
       return *pack_return_values(0, errno, READ_ERROR, bytes, "fd read error",
-				 time_elapsed, time_elapsed,
 				 __FILE__, __LINE__);
     }
     if (sts == 0)
     {
       /* timeout - treat as an EOF */
-      time_elapsed = elapsed_time(&start_time, &end_time);
       return *pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout",
-				 time_elapsed, time_elapsed,
 				 __FILE__, __LINE__);
     }
 
@@ -927,16 +727,12 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 	      rd_fd, (unsigned)buffer, (long long)bytes_to_xfer,
 	      (long long)sts, errno, strerror(errno));
       fflush(stderr);
-      time_elapsed = elapsed_time(&start_time, &end_time);
       return *pack_return_values(0, errno, READ_ERROR, bytes, "fd read error",
-				 time_elapsed, time_elapsed, 
 				 __FILE__, __LINE__);
     }
     if (sts == 0)
     { /* return/break - unexpected eof error */
-      time_elapsed = elapsed_time(&start_time, &end_time);
       return *pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout",
-				 time_elapsed, time_elapsed, 
 				 __FILE__, __LINE__);
     }
 	    
@@ -967,17 +763,13 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 		wr_fd+1, wr_fd, timeout.tv_sec, timeout.tv_usec,
 		errno, strerror(errno));
 	fflush(stderr);
-	time_elapsed = elapsed_time(&start_time, &end_time);
 	return *pack_return_values(0, errno, WRITE_ERROR, bytes,
-				   "fd write error", time_elapsed,
-				   time_elapsed, __FILE__, __LINE__);
+				   "fd write error", __FILE__, __LINE__);
       }
       if (sts == 0)
       {	/* timeout - treat as an EOF */
-	time_elapsed = elapsed_time(&start_time, &end_time);
 	return *pack_return_values(0, errno, TIMEOUT_ERROR, bytes,
-				   "fd timeout", time_elapsed, time_elapsed, 
-				   __FILE__, __LINE__);
+				   "fd timeout", __FILE__, __LINE__);
       }
       
 
@@ -998,10 +790,8 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
 		wr_fd, (unsigned)b_p, (long long)bytes_to_xfer,
 		(long long)sts, errno, strerror(errno));
 	fflush(stderr);
-	time_elapsed = elapsed_time(&start_time, &end_time);
 	return *pack_return_values(0, errno, WRITE_ERROR, bytes,
-				   "fd writeerror", time_elapsed,
-				   time_elapsed, __FILE__, __LINE__);
+				   "fd writeerror", __FILE__, __LINE__);
       }
       switch (crc_flag)
       {
@@ -1018,34 +808,14 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
       bytes_to_xfer -= sts;
       b_p += sts;
       bytes -= sts;
-    } while (bytes_to_xfer);
-
-    /* If the difference is great enough flush the write buffer.  Also,
-       flush the buffer if it is the end of the file. */
-    if(do_threshold && 
-       (((last_fsync - bytes) > fsync_threshold) || (bytes == 0)))
-    {
-      printf("adsf %lld\n", (last_fsync - bytes));
-      last_fsync = bytes;
-      
-      if(fsync(wr_fd))
-      {
-	fprintf(stderr, "fsync: %s\n", strerror(errno));
-      }
-    }
-
+    } while (bytes_to_xfer);	
   }
-
-  /* Get the time that the thread finished to work on transfering data. */
-  gettimeofday(&end_time, NULL);
-  time_elapsed = elapsed_time(&start_time, &end_time);
 
 #ifdef PROFILE
   print_profile(profile_data, profile_count);
 #endif /*PROFILE*/
 
-  return *pack_return_values(*crc_p, 0, 0, bytes, "", time_elapsed,
-			     time_elapsed,0, 0);
+  return *pack_return_values(*crc_p, 0, 0, bytes, "", 0, 0);
 }
 #endif 
 
@@ -1116,11 +886,9 @@ raise_exception2(struct return_values *rtn_val)
 
     /* note: format should be the same as in FTT.c */
     /* What does the above comment mean??? */
-    v = Py_BuildValue("(s,i,s,i,O,f,f,s,i)",
+    v = Py_BuildValue("(s,i,s,i,O,s,i)",
 		      rtn_val->msg, i, strerror(i), getpid(),
 		      PyLong_FromLongLong(rtn_val->size),
-		      PyFloat_FromDouble(rtn_val->read_time),
-		      PyFloat_FromDouble(rtn_val->write_time),
 		      rtn_val->filename, rtn_val->line);
     if (v != NULL)
     {   PyErr_SetObject(EXErrObject, v);
@@ -1182,13 +950,11 @@ EXfd_xfer(PyObject *self, PyObject *args)
     if (transfer_sts.exit_status != 0)
         return (raise_exception2(&transfer_sts));
 
-    rr = Py_BuildValue("(i,O,O,i,s,O,O,s,i)",
+    rr = Py_BuildValue("(i,O,O,i,s,s,i)",
 		       transfer_sts.exit_status, 
 		       PyLong_FromUnsignedLong(transfer_sts.crc_ui),
 		       PyLong_FromLongLong(transfer_sts.size),
 		       transfer_sts.errno_val, transfer_sts.msg,
-		       PyFloat_FromDouble(transfer_sts.read_time),
-		       PyFloat_FromDouble(transfer_sts.write_time),
 		       transfer_sts.filename, transfer_sts.line);
     return rr;
 }
