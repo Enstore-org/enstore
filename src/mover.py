@@ -496,7 +496,7 @@ def forked_write_to_hsm( self, ticket ):
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.WRITE_NOTAPE )
 	    pass
 
-        Trace.log(e_errors.INFO,"OPEN_FILE_WRITE")
+        Trace.log(e_errors.INFO,"OPEN_FILE_WRITE "+str(self.vol_info['eod_cookie']) )
         # open the hsm file for writing
         try:
 	    # if forked, our eod info is not correct (after previous write)
@@ -682,6 +682,7 @@ def forked_read_from_hsm( self, ticket ):
         bytes_sent = 0			# reset below, BUT not used afterwards!!!!!!!!!!!!!
         user_file_crc = 0		# reset below, BUT not used afterwards!!!!!!!!!!!!!
 
+        Trace.log(e_errors.INFO,"OPEN_FILE_READ "+str(ticket['fc']['location_cookie']))
         # open the hsm file for reading and read it
         try:
             Trace.trace(11, 'driver_open '+mvr_config['device'])
