@@ -81,7 +81,7 @@ while 1==1:
     print "%s %.3f %.10i %9.9s %s %s %i %.3f" % (time.strftime(tfmt,time.localtime(nt)), rate, moved, state, "'$mvr'","'$host'",'$port',nt)
     sys.stdout.flush()
     t=nt
-    time.sleep('${opt_update_delay:-10}')
+    time.sleep('${opt_update_delay:-60}')
   except errno.errorcode[errno.ETIMEDOUT]:
     rate = 0.
     moved = 0
