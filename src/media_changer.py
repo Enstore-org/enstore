@@ -487,7 +487,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	external_label = ticket['external_label']
 	media_type = ticket['media_type']
 	rt = self.retry_function(aml2.view,external_label, media_type)
-        print "RT",rt
+        Trace.trace( 11, "getVolState returned %s"%(rt,))
         if rt[5] == '\000':
             state=''
         else :
