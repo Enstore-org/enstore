@@ -72,7 +72,7 @@ class Mover :
 			self.unilateral_unbind_next()
 			return
 		self.vticket = vticket
-		print vticket
+		#print vticket
 		self.driver = eval(self.driver_name + "('" + 
 				  self.device + "','" + 
 				  vticket["eod_cookie"] + "'," + 
@@ -222,8 +222,20 @@ class Mover :
 		fticket = fc.new_bit_file(
 			file_cookie, 
 			ticket["external_label"], 0, 0)
+
+		# really only bfid is needed, but save other useful information for user too
 		ticket["bfid"] = fticket["bfid"]
-	
+		ticket["bof_space_cookie"] = fticket["bof_space_cookie"]
+		ticket["complete_crc"] = fticket["complete_crc"]
+		ticket["sanity_cookie"] = fticket["sanity_cookie"]
+		ticket["device"] = self.device
+		ticket["driver_name"] = self.driver_name
+		ticket["device_name"] = self.name
+		ticket["library_device"] = self.library_device
+		ticket["capacity_bytes"] = self.vticket["capacity_bytes"]
+		ticket["remaining_bytes"] = self.vticket["remaining_bytes"]
+		ticket["media_type"] = self.vticket["media_type"]
+		
 		# tell user
 		self.send_user_last(ticket)
 		# go around for more
