@@ -1165,29 +1165,6 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	self.trailer(table)
 	self.append(table)
 
-class EnPatrolPage(EnBaseHtmlDoc):
-
-    def __init__(self, refresh=600, system_tag=""):
-	EnBaseHtmlDoc.__init__(self, refresh=refresh, help_file="patrolHelp.html",
-			       system_tag=system_tag)
-	self.title = "ENSTORE Patrol"
-	self.script_title_gif = "en_patrol.gif"
-	self.source_server = THE_INQUISITOR
-	self.description = ""
-
-    def body(self, data):
-	table = self.table_top()
-	# the data will be of 1 of 2 forms.  either text to output if there
-	# is no url available, or the url to link to.
-	if type(data) == types.StringType:
-	    # no url, just output the string
-	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(data, size="+1"))))
-	else:
-	    # make the url
-	    table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href(data[0], data[1]))))
-	self.trailer(table)
-	self.append(table)
-
 class EnAlarmSearchPage(EnBaseHtmlDoc):
 
     def __init__(self, background, system_tag=""):
