@@ -8,7 +8,7 @@ if [ $gang = "rip" ]; then
     gangfile=/usr/local/etc/farmlets/ripe
 else
     gangfile=/usr/local/etc/farmlets/${gang}-alla
-
+fi
 
 output=${1:-/dev/tty}
 if [ `echo $output | grep -c /dev/` -eq 0 ] ; then
