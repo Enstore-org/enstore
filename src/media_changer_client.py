@@ -5,15 +5,47 @@
 #  $Id$  #
 #                                                                       #
 #########################################################################
-
-from configuration_client import configuration_client
+import pdb
+from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
+from base_defaults import default_host, default_port, BaseDefaults
+from client_defaults import ClientDefaults
 
-class MediaLoaderClient:
-    def __init__(self, configuration_client, name) :
-        self.csc = configuration_client
+class MediaLoaderClient(BaseDefaults, ClientDefaults):
+    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+        self.media_changer = ""
+        self.volume = 0
+        self.drive = 0
+        self.config_file = ""
+        self.config_list = 0
+        self.dolist = 0
+        self.doalive = 0
+        set_csc(self, csc, host, port)
         self.u = UDPClient()
-        self.media_changer = name
+
+    # define the command line options that are valid
+    def options(self):
+        return BaseDefaults.config_options(self) + \
+               BaseDefaults.list_options(self)   + \
+               ["config_list", "config_file=", "alive"] +\
+               BaseDefaults.options(self)
+
+    #  define our specific help
+    def help_line(self):
+        print BaseDefaults.help_line(self), "media_changer volume drive",
+
+    def set_mc(self, mc) :
+        self.media_changer = mc
+
+    # parse the options like normal but make sure we have a enough args
+    def parse_options(self):
+        BaseDefaults.parse_options(self)
+        # bomb out if the number of arguments is wrong
+        if len(self.args) < 1 :
+            self.print_help()
+            sys.exit(1)
+        else:
+            self.set_mc(self.args[0])
 
     # send the request to the Media Loader server and then send answer to user
     def send (self, ticket) :
@@ -27,94 +59,42 @@ class MediaLoaderClient:
                   }
         return self.send(ticket)
 
-    def unloadvol(self, external_label, drive):
+    def unloadvol(self, volume, drive):
         ticket = {'work'           : 'unloadvol',
-                  'external_label' : external_label,
+                  'external_label' : volume,
                   'drive_id'       : drive
                   }
         return self.send(ticket)
 
-    # check on alive status
-    def alive(self):
-        return self.send({'work':'alive'})
-
 if __name__ == "__main__" :
     import sys
-    import getopt
     import pprint
-    import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
 
-    # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_file = ""
-    config_list = 0
-    list = 0
-    alive = 0
+    # fill in defaults
+    mlc = MediaLoaderClient()
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
-               ,"config_list","list","verbose","alive","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-        elif opt == "--alive" :
-            alive = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options, "media_changer volume drive"
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    mlc.parse_options()
+    mlc.csc.connect()
 
-    # bomb out if we number of arguments is wron
-    if len(args) < 3 :
-        print "python ",sys.argv[0], options, "media_changer volume drive"
-        print "   do not forget the '--' in front of each option"
-        sys.exit(1)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
-
-    media_changer_type = args[0]
-    volume = args[1]
-    drive = args[2]
-
-    mlc = MediaLoaderClient(csc, media_changer_type)
-    if alive:
+    if mlc.doalive:
         ticket = mlc.alive()
-
     else:
-        ticket = mlc.unloadvol(volume, drive)
+        # bomb out if we number of arguments is wron
+        if len(mlc.args) < 3 :
+            mlc.print_help()
+            sys.exit(1)
+        else:
+            mlc.volume = mlc.args[1]
+            mlc.drive = mlc.args[2]
+
+        ticket = mlc.unloadvol(self.volume, self.drive)
         print 'unload returned:' + ticket['status']
 
     if ticket['status'] == 'ok' :
-        if list:
+        if mlc.dolist:
             pprint.pprint(ticket)
         sys.exit(0)
-
     else :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)

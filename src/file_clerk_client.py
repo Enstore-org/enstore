@@ -1,14 +1,30 @@
-from configuration_client import configuration_client
+from configuration_client import configuration_client, set_csc
+from base_defaults import default_host, default_port, BaseDefaults
+from client_defaults import ClientDefaults
 from udp_client import UDPClient
 from db import do_backup
 import callback
 import time
-class FileClerkClient :
+import string
+class FileClerkClient(BaseDefaults, ClientDefaults) :
 
-    def __init__(self, configuration_client) :
+    def __init__(self, csc=[], host=default_host(), port=default_port()) :
         # we always need to be talking to our configuration server
-        self.csc = configuration_client
+        self.config_list = 0
+        self.dolist = 0
+        self.doalive = 0
+  	self.bfid = 0
+    	self.bfids = 0
+    	self.backup=0
+        set_csc(self, csc, host, port)
         self.u = UDPClient()
+
+    # define the command line options that are valid
+    def options(self):
+        return BaseDefaults.config_options(self) + \
+      	       BaseDefaults.list_options(self)   + \
+	       ["config_list","bfids","bfid=","alive","backup"] +\
+	       BaseDefaults.options(self)
 
     def send (self, ticket) :
         # who's our file clerk server that we should send the ticket to?
@@ -104,107 +120,41 @@ class FileClerkClient :
 
         return self.send({"work" : "get_bfids"} )
 
-    def bfid_info(self,bfid):
+    def bfid_info(self):
         return self.send({"work" : "bfid_info",\
-                          "bfid" : bfid } )
-
-    # check on alive status
-    def alive(self):
-        return self.send({'work':'alive'})
-    def start_backup(self):
-    	return self.send({'work':'start_backup'})
-    def stop_backup(self):
-    	return self.send({'work':'stop_backup'})	
-
+                          "bfid" : self.bfid } )
 
 if __name__ == "__main__" :
     import sys
-    import getopt
-    import string
     import pprint
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
 
-    # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_list = 0
-    bfid = 0
-    bfids = 0
-    list = 0
-    backup=0	
-    alive = 0
+    # fill in defaults
+    fcc = FileClerkClient()
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list",
-               "bfids","bfid=","list","verbose","alive","backup","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--bfids" :
-            bfids = 1
-        elif opt == "--bfid" :
-            bfid = value
-        elif opt == "--alive" :
-            alive = 1
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-	elif opt == "--backup":
-	    backup = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    fcc.parse_options()
+    fcc.csc.connect()
 
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
-
-    fcc = FileClerkClient(csc)
-
-    if alive:
+    if fcc.doalive:
         ticket = fcc.alive()
-    elif backup:
+    elif fcc.backup:
 	ticket = fcc.start_backup()
 	do_backup("file")
 	ticket = fcc.stop_backup()
-    elif bfids :
+    elif fcc.bfids :
         ticket = fcc.get_bfids()
 
-    elif bfid :
-        ticket = fcc.bfid_info(bfid)
+    elif fcc.bfid :
+        ticket = fcc.bfid_info()
 
     if ticket['status'] == 'ok' :
-        if list:
+        if fcc.dolist:
             pprint.pprint(ticket)
         sys.exit(0)
-
     else :
         print "BAD STATUS:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
-
-
-
 
 
 

@@ -15,9 +15,11 @@ import select
 import exceptions
 import errno
 import socket
-from configuration_client import configuration_client
+from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 import pprint
+from base_defaults import default_host, default_port, BaseDefaults
+from client_defaults import ClientDefaults
 
 # Severity codes
 ERROR=0
@@ -42,9 +44,10 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
             (config_host,ca,ci) = socket.gethostbyaddr("pcfarm4.fnal.gov")
 
         csc = configuration_client(config_host,config_port)
+	csc.connect()
 
         # get a logger
-        logc = LoggerClient(csc,logname,  'logserver', 0)
+        logc = LoggerClient(logname,  'logserver', 0)
 
         # send the message
         return logc.send(INFO, 1, message)
@@ -54,17 +57,17 @@ def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
 
 
 
-class LoggerClient:
+class LoggerClient(BaseDefaults, ClientDefaults):
 
     def __init__(self,
-                 configuration_client,
-                 i_am_a,             # Abbreviated client instance name
-                                     # try to make it of capital letters
-                                     # not more than 8 characters long
-                 servername,         # log server name
-                 debug) :            # debug output
-        self.csc = configuration_client
-        self.u = UDPClient()
+                 csc = [],                  # get our own configuration client
+                 i_am_a = "LOGCLNT",        # Abbreviated client instance name
+                                            # try to make it of capital letters
+                                            # not more than 8 characters long
+                 servername = "logserver",  # log server name
+                 debug=0,                   # debug output
+                 host=default_host(),
+                 port=default_port()):
         self.i_am = i_am_a
         self.pid = os.getpid()
         self.uid = os.getuid()
@@ -73,7 +76,29 @@ class LoggerClient:
         self.logger = servername
         self.debug = debug
         self.log_priority = 7
+        self.config_list = 0
+        self.list = 0
+        self.doalive = 0
+        self.test = 0
+        self.logit1 = 0
+        set_csc(self, csc, host, port)
+        self.u = UDPClient()
 
+    # define the command line options that are valid
+    def options(self):
+        return BaseDefaults.config_options(self) + \
+               BaseDefaults.list_options(self)   + \
+               ["config_list", "config_file=", "test", "logit=", "alive"] +\
+               BaseDefaults.options(self)
+
+    # parse our own options
+    def parse_options(self):
+        BaseDefaults.parse_options(self)
+        self.debug = self.dolist
+
+    # our help stuff 
+    def help_line(self):
+        print BaseDefaults.help_line(self), "media_changer volume drive",
 
     """ send the request to the Media Loader server and then send answer
     to user.
@@ -136,69 +161,22 @@ if __name__ == "__main__" :
     import socket
     import string
 
-    # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_file = ""
-    config_list = 0
-    list = 0
-    alive = 0
-    test = 0
-    logit1 = 0
+    # fill in defaults
+    logc = LoggerClient()
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file=","config_list",
-               "test","list","logit=","verbose","alive","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--test" :
-            test = 1
-        elif opt == "--alive" :
-            alive = 1
-        elif opt == "--logit" :
-            logit1 = 1
-            logmsg = value
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options, "media_changer volume drive"
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
+    logc.parse_options()
+    logc.csc.connect()
 
-    # bomb out if we number of arguments is wron
-#    if len(args) < 3 :
-#       print "python ",sys.argv[0], options, "media_changer volume drive"
-#       print "   do not forget the '--' in front of each option"
-#       sys.exit(1)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
-
-    logc = LoggerClient(csc, 'LOGCLNT', 'logserver', list)
-
-    if alive:
+    if logc.doalive:
         ticket = logc.alive()
 
-    elif test:
+    elif logc.test:
         ticket = logc.send(ERROR, 1, "This is a test message %s %d", 'TEST', 3456)
         #ticket = logc.send(INFO, 21, "this is an INFO message")
 
-    elif logit:
-        ticket = logit(logmsg)
+    elif logc.logit:
+        ticket = logit(logc.logmsg)
 
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']

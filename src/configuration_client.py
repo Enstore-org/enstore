@@ -1,7 +1,9 @@
+import pdb
 import sys
 import time
 from udp_client import UDPClient
 import errno
+from base_defaults import default_host, default_port, BaseDefaults
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -13,13 +15,50 @@ try:
 except ImportError:
     import socket
 
-class configuration_client :
+def set_csc(self, csc=[], host=default_host(), port=default_port()):
+    if csc == []:
+        # this calls BaseDefaults.__init__ too
+        self.csc = configuration_client(host, port)
+    else:
+        self.csc = csc
+  
 
-    def __init__(self, config_host="localhost", config_port=7500):
+class configuration_client(BaseDefaults) :
+
+    def __init__(self, host=default_host(), port=default_port()):
         self.clear()
-        if config_host == "localhost" :
-            (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-        self.config_address=(config_host,config_port)
+	BaseDefaults.__init__(self, host, port)
+        self.config_list = 0
+        self.dict = 0
+        self.doload = 0
+        self.dolist = 0
+        self.doalive = 0
+       	self.config_file = ""
+
+    # define the command line options that are valid
+    def options(self):
+        return BaseDefaults.config_options(self) + \
+      	       BaseDefaults.list_options(self)   + \
+	       ["config_file=","config_list","dict","load","alive"] + \
+	       BaseDefaults.options(self)
+
+    # we cannot use the one in BaseDefaults because it assumes that the
+    # value is actually stored in self.csc
+    def parse_config_host(self, value):
+        self.config_host = value
+	self.check_host()
+
+    # we cannot use the one in BaseDefaults because it assumes that the
+    # value is actually stored in self.csc
+    def parse_config_port(self, value):
+	self.check_port(value)
+
+    # connect to the configuration client
+    def connect(self):
+	if self.config_list :
+            print "Connecting to configuration server at ",\
+	        self.config_host, self.config_port
+        self.config_address=(self.config_host,self.config_port)
         self.u = UDPClient()
 
     # get rid of all cached values - go back to server for information
@@ -91,76 +130,30 @@ class configuration_client :
 
 
 if __name__ == "__main__" :
-    import os
-    import getopt
-    import string
+    import sys
     import pprint
 
-    # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_file = ""
-    config_list = 0
-    dict = 0
-    load = 0
-    list = 0
-    alive = 0
+    # fill in defaults
+    csc = configuration_client()
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file=","config_list"\
-               ,"list","verbose","dict","load","alive","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_file" :
-            config_file = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--dict" :
-            dict = 1
-        elif opt == "--load" :
-            load = 1
-        elif opt == "--alive" :
-            alive = 1
-        elif opt == "--list" or opt == "--verbose" :
-            list = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    # bomb out if we can't find the file
-    if len(config_file) :
-        statinfo = os.stat(config_file)
-
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
+    csc.parse_options()
+    csc.connect()
     stat = "ok"
 
-    if alive:
+    if csc.doalive:
         stati = csc.alive()
-        if list:
+        if csc.dolist:
             pprint.pprint(stati)
-    elif dict:
+    elif csc.dict:
         csc.list()
-        if list:
+        if csc.dolist:
             pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
 
-    elif load:
+    elif csc.doload:
         stati= csc.load(config_file)
-        if list:
+        if csc.dolist:
             pprint.pprint(stati)
         stat=stati['status']
 

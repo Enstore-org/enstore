@@ -1,15 +1,43 @@
+import string
 import time
 import callback
 import dict_to_a
-from configuration_client import configuration_client
+from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 from db import do_backup
-class VolumeClerkClient :
+from base_defaults import default_host, default_port, BaseDefaults
+from client_defaults import ClientDefaults
 
-    def __init__(self, configuration_client) :
-        self.csc = configuration_client
+class VolumeClerkClient(BaseDefaults, ClientDefaults) :
+
+    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+        self.config_list = 0
+        self.vol = ""
+        self.vols = 0
+        self.nextvol = 0
+        self.dolist = 0
+        self.doaddvol = 0
+        self.dodelvol = 0
+        self.clrvol = 0
+        self.backup=0
+        self.doalive = 0
+        set_csc(self, csc, host, port)
         self.u = UDPClient()
 
+    # define the command line options that are valid
+    def options(self):
+        return BaseDefaults.config_options(self) + \
+      	       BaseDefaults.list_options(self)   + \
+	       ["config_list", "alive","clrvol", "backup" ] +\
+               ["vols","nextvol","vol=","addvol","delvol" ] +\
+	       BaseDefaults.options(self)
+
+    # print out our extended help
+    def print_help(self):
+        BaseDefaults.print_help(self)
+        print "   addvol arguments: library file_family media_type"\
+              +", volume_name, volume_byte_capacity remaining_capacity"
+        print "   delvol arguments: volume_name"
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket) :
@@ -210,146 +238,63 @@ class VolumeClerkClient :
 
         return self.send(ticket)
 
-
-    # check on alive status
-    def alive(self):
-        return self.send({'work':'alive'})
-    def start_backup(self):
-        return self.send({'work':'start_backup'})
-    def stop_backup(self):
-        return self.send({'work':'stop_backup'})
-
-
-
 if __name__ == "__main__" :
     import sys
-    import getopt
-    import string
     import pprint
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
 
-    # defaults
-    #config_host = "localhost"
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_port = "7500"
-    config_list = 0
-    vol = ""
-    vols = 0
-    nextvol = 0
-    list = 0
-    addvol = 0
-    delvol = 0
-    clrvol = 0
-    backup=0
-    alive = 0
+    # fill in defaults
+    vcc = VolumeClerkClient()
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list",
-               "vols","nextvol","vol=","addvol","delvol","list","verbose",
-               "clrvol","alive","backup","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    vcc.parse_options()
+    vcc.csc.connect()
 
-    for (opt,value) in optlist :
-        if opt == "--config_host" :
-            config_host = value
-        elif opt == "--config_port" :
-            config_port = value
-        elif opt == "--config_list" :
-            config_list = 1
-        elif opt == "--vols" :
-            vols = 1
-        elif opt == "--nextvol" :
-            nextvol = 1
-        elif opt == "--vol" :
-            vol = value
-        elif opt == "--addvol" :
-            addvol = 1
-        elif opt == "--delvol" :
-            delvol = 1
-        elif opt == "--clrvol" :
-            clrvol = 1
-        elif opt == "--alive" :
-            alive = 1
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-        elif opt == "--backup":
-            backup = 1
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            print "   addvol arguments: library file_family media_type"\
-                  +", volume_name, volume_byte_capacity remaining_capacity"
-            print "   delvol arguments: volume_name"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    if config_list :
-        print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
-
-    vcc = VolumeClerkClient(csc)
-
-    if alive:
+    if vcc.doalive:
         ticket = vcc.alive()
-    elif backup:
+    elif vcc.backup:
         ticket = vcc.start_backup()
         do_backup("volume")
         ticket = vcc.stop_backup()
-    elif vols :
+    elif vcc.vols :
         ticket = vcc.get_vols()
-    elif nextvol:
-        ticket = vcc.next_write_volume(args[0], #library
-                                       string.atol(args[1]), #min_remaining_byte
-                                       args[2], #file_family
+    elif vcc.nextvol:
+        ticket = vcc.next_write_volume(vcc.args[0], #library
+                                       string.atol(vcc.args[1]), #min_remaining_byte
+                                       vcc.args[2], #file_family
                                             [], #vol_veto_list
                                              1) #first_found
-
-    elif vol :
-        ticket = vcc.inquire_vol(vol)
-    elif addvol:
+    elif vcc.vol :
+        ticket = vcc.inquire_vol(vcc.vol)
+    elif vcc.doaddvol:
         # bomb out if we don't have correct number of add vol arguments
-        if len(args) < 6 :
+        if len(vcc.args) < 6 :
             print "   addvol arguments: library file_family media_type"\
                   +", volume_name, volume_byte_capacity remaining_capacity"
             sys.exit(1)
-        ticket = vcc.addvol(args[0],              # library
-                            args[1],              # file family
-                            args[2],              # media type
-                            args[3],              # name of this volume
-                            string.atol(args[4]), # cap'y of this vol (bytes)
-                            string.atol(args[5])) # rem cap'y of this volume
-    elif delvol:
+        ticket = vcc.addvol(vcc.args[0],              # library
+                            vcc.args[1],              # file family
+                            vcc.args[2],              # media type
+                            vcc.args[3],              # name of this volume
+                            string.atol(vcc.args[4]), # cap'y of vol (bytes)
+                            string.atol(vcc.args[5])) # rem cap'y of volume
+    elif vcc.dodelvol:
         # bomb out if we don't have correct number of del vol arguments
-        if len(args) < 1 :
+        if len(vcc.args) < 1 :
             print "   delvol arguments: volume_name"
             sys.exit(1)
-        ticket = vcc.delvol(args[0])              # name of this volume
-
-    elif clrvol:
+        ticket = vcc.delvol(vcc.args[0])              # name of this volume
+    elif vcc.clrvol:
         # bomb out if we don't have correct number of clr_inhibit arguments
-        if len(args) < 1 :
+        if len(vcc.args) < 1 :
             print "   clr_inhibit arguments: volume_name"
             sys.exit(1)
-        ticket = vcc.clr_system_inhibit(args[0])  # name of this volume
+        ticket = vcc.clr_system_inhibit(vcc.args[0])  # name of this volume
 
     if ticket['status'] != 'ok' :
         print "Bad status:",ticket['status']
         pprint.pprint(ticket)
         sys.exit(1)
-    elif list:
+    elif vcc.dolist:
         pprint.pprint(ticket)
         sys.exit(0)
 
