@@ -53,7 +53,7 @@ verbose="--verbose=1"
 filePath='/diska'
 VAULT=${filePath}/BackupToTape
 BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
-PNFS=${filePath}/pnfs-backup
+PNFS=${filePath}/pnfs-backup*/
 ENSTORE=${filePath}/enstore-backup
 ENSTORELOG=${filePath}/enstore-log-backup
 QUIT=$VAULT/QUIT
@@ -112,9 +112,9 @@ PNFS_FILES=$VAULT/pnfs.files
 rm -f $PNFS_FILES
 #only backup latest copy on disk, not all of them since we are running out of tape!
 find $PNFS $find_options -type f  -print | sort -r | while read f; do 
-    basename $f | cut -f1 -d.
+    echo $f | cut -f1 -d.
   done | uniq | while read g; do 
-    ls -lt $PNFS/${g}.*.Z | head -n1 |awk '{print $NF}'
+    ls -lt ${g}.*.Z | head -n1 | awk '{print $NF}'
   done > $PNFS_FILES
 
 lines=`wc -l $PNFS_FILES | awk '{print $1}'`
