@@ -672,7 +672,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def write_client(self):
         Trace.trace(8, "write_client starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.net_driver
-        if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
+        #be careful about 0-length files
+        if if self.bytes_to_write > 0 and self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
             while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
                 Trace.trace(8, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
