@@ -7,8 +7,8 @@ import tdb
 import linecache
 import __main__
 
-Quit = "Quit"
-
+Quit = "tdb.Quit"
+Help = "tdb.Help"
 
 def saver(frame, type, u) :
     if 0:
@@ -20,15 +20,10 @@ def saver(frame, type, u) :
     __main__.simple = { 't'     : threading.currentThread(),
                                'frame' : frame
                               }
+
+    # tdb.td[trhaed] = frame
     return saver
 
-def dumper():
-    #print __main__.on
-    #print __main__.simple
-    #print "dumper" , type(__main__.simple['t'])
-    #print "dumper" , __main__.simple['frame'].__members__
-    pass
-    return
 
 def install():
     sys.settrace(saver)
@@ -51,7 +46,7 @@ class Tdb(threading.Thread) :
         self.outFile.flush()
 
     def run(self) :
-        self.help()
+        self.cmd_help()
         while 1:
             try:
                 self.once()
@@ -59,49 +54,32 @@ class Tdb(threading.Thread) :
                 self.outFile.close()
                 self.inFile.close()
                 return
+            except Help :
+                self.cmd_help()
             except :
                 import traceback
                 traceback.print_exc(file=self.outFile)
-                self.help()
             
     def once(self) :
         self.outFile.write("\ntdb>>")
         self.outFile.flush()
-
         line  = string.strip(self.inFile.readline())
         toks  = string.split(line)
         if  toks :
-            if toks[0]  ==  "list" :
-                if len(toks) == 3 :
-                    self.list(toks[1],toks[2])
-                else :
-                    self.help()
-            elif toks[0] ==   "who" :
-                self.who(string.strip(line[3:]))
-            elif toks[0] ==   "whoall" :
-                self.whoall(string.strip(line[6:]))
-            elif toks[0] ==   "import" :
-                self.imprt(string.strip(line[6:]))
-            elif toks[0] == "eval" :
-                self.eval(line[4:])
-            elif toks[0] == "exec" :
-                self.exc(string.strip(line[4:]))
-            elif toks[0] == "help":
-                self.help()
-            elif toks[0] == "modules":
-                self.modules()
-            elif toks[0] == "mainwhoall":
-                self.mainwhoall()
-            elif toks[0] == "main":
-                self.main()
-            elif toks[0] ==  "quit" :
-                self.quit()
-            elif toks[0] ==  "teardown" :
-                self.teardown()
+            cmd = toks[0]
+            if  hasattr(self, "line_cmd_" + cmd) :
+                # i.e call self.line_cmd_exec ("balance of line")
+                func = getattr(self,"line_cmd_" + cmd)
+                return func(string.strip(line[len(cmd):]))
+            elif hasattr(self, "cmd_" + cmd) :
+                #help will execute self.cmd_help()"
+                func = getattr(self,"cmd_" + cmd)
+                return func(toks[1:])
             else :
-                self.help()
-                
-    def main(self) :
+                raise Help
+
+    def cmd_main(self, args) :
+        if args : raise Help
         self.writeln (__main__.simple['t'])
         self.writeln("_____________________")
         #self.writeln (__main__.simple['frame'].__members__)
@@ -116,7 +94,8 @@ class Tdb(threading.Thread) :
             self.writeln (source_desc)
             f = f.f_back
         
-    def mainwhoall(self) :
+    def cmd_mainwhoall(self, args) :
+        if args : raise Help
         self.writeln (__main__.simple['t'])
         #self.writeln (__main__.simple['frame'].__members__)
         f = __main__.simple['frame']
@@ -136,37 +115,47 @@ class Tdb(threading.Thread) :
                     )
             f = f.f_back
         
-    def list(self, filename, lineno):
-        import linecache
+    def cmd_list(self, args):
+        if len(args) is not 2 : raise Help
+        filename = args[0]
+        lineno = args[1]
         for l in  range (string.atoi(lineno), string.atoi(lineno) + 10) :
             self.writeln(linecache.getline(filename + ".py", l))
 
-    def who(self, m):
+    def cmd_who(self, args):
+        if len(args) is not 1 : raise Help
+        m = args[0]
         d = sys.modules[m].__dict__
 	for e in d.keys() :
             self.writeln(repr(e))
 
-    def whoall(self, m):
+    def cmd_whoall(self, args):
+        if len(args) is not 1 : raise Help
+        m = args[0]
         d = sys.modules[m].__dict__
 	for e in d.keys() :
             self.writeln(repr(e)  + '=' + repr(d[e]))
 
-    def imprt(self, m):
+    def cmd_import(self, args):
+        if len(args) is not 1 : raise Help
+        m = args[0]
         if 0 : print self #quiet the linter
         tdb.__dict__[m]=__import__(m)
 
-    def eval(self, e):
+    def line_cmd_eval(self, e):
         self.writeln(eval(e))
 
-    def exc(self, e):
+    def line_cmd_exec(self, e):
         if 0 : print self #linter
         exec e
 
-    def modules(self):
+    def cmd_modules(self, args):
+        if len(args) is not 0 : raise Help
 	for m in sys.modules.keys() :
             self.writeln(m)
 
-    def teardown(self):
+    def cmd_teardown(self, args) :
+        if len(args) is not 0 : raise Help
         if 0 :
             me = threading.currentThread()
             for t in threading.enumerate():
@@ -177,7 +166,8 @@ class Tdb(threading.Thread) :
             self.writeln("No yet working")
     
 
-    def help(self):
+    def cmd_help(self, args=()) :
+        if len(args) is not 0 : raise Help
         self.writeln("help")
         self.writeln("list <filename>.py <line>-- Print 10 lines from file")
         self.writeln("who <module>             -- Print names at module scope")
@@ -191,8 +181,8 @@ class Tdb(threading.Thread) :
         self.writeln("teardown                 -- teardown the whole app")
         self.writeln("quit")
     
-    def quit(self):
-        if 0 : print self # quiet the linter
+    def cmd_quit(self, args) :
+        if 0 : print self, args # quiet the linter
         raise Quit
         
 class TdbListener(threading.Thread):
@@ -243,6 +233,14 @@ if __name__ == "__main__":
     I_()
     
         
+
+
+
+
+
+
+
+
 
 
 
