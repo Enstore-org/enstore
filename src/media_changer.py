@@ -146,6 +146,7 @@ if __name__ == "__main__" :
     import getopt
     import socket
     import time
+    import timeofday
 
     # defaults
     #config_host = "localhost"
@@ -216,7 +217,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "Media Changer"+args[0]+"(re) starting")
             mc.serve_forever()
         except:
-            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+            format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\

@@ -1,5 +1,6 @@
 import sys
 import time
+import timeofday
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from file_clerk_client import FileClerkClient
@@ -525,7 +526,7 @@ if __name__ == "__main__" :
             mv = Mover(config_host,config_port)
             mv.move_forever (args[0])
         except:
-            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+            format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\

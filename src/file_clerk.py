@@ -1,5 +1,6 @@
 import sys
 import time
+import timeofday
 import pprint
 import copy
 import log_client
@@ -210,13 +211,13 @@ class FileClerkMethods(DispatchingWorker) :
          print "can not generate a bit file id!!",sys.exc_info()[0]+sys.exc_info()[1]
          sys.exit(1)
     def start_backup(self,ticket):
-	dict.start_backup()
-	self.reply_to_caller({"status" : "ok",\
-		"start_backup"  : 'yes' })
+        dict.start_backup()
+        self.reply_to_caller({"status" : "ok",\
+                "start_backup"  : 'yes' })
     def stop_backup(self,ticket):
-	dict.stop_backup()
-	self.reply_to_caller({"status" : "ok",\
-        	"stop_backup"  : 'yes' })
+        dict.stop_backup()
+        self.reply_to_caller({"status" : "ok",\
+                "stop_backup"  : 'yes' })
 
 class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
     pass
@@ -280,7 +281,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except:
-            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+            format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\

@@ -1,5 +1,6 @@
 import os
 import time
+import timeofday
 import log_client
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
@@ -114,6 +115,9 @@ def next_work_any_volume(csc) :
 
         # alas, all I know about is reading and writing
         else :
+            import pprint
+            print "assertion error in next_work_any_volume w="
+            pprint.pprint(w)
             raise "assertion error"
 
     # if the pending work queue is empty, then we're done
@@ -140,11 +144,7 @@ def next_work_this_volume(v) :
             # ok passed criteria, return read work ticket
             return w
 
-        # alas, all I know about is reading and writing
-        else :
-            raise "assertion error"
-
-    # if the pending work queue is empty, then we're done
+    # if the pending work queue for this volume is empty, then we're done
     return {"status" : "nowork"}
 
 ##############################################################
@@ -203,7 +203,11 @@ class LibraryManagerMethods(DispatchingWorker) :
 
         # alas
         else :
-            raise "assert error"
+            import pprint
+            print "assertion error in idle_mover w=, mticket="
+            pprint.pprint(w)
+            pprint.pprint(mticket)
+            raise "assertion error"
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket) :
@@ -245,13 +249,18 @@ class LibraryManagerMethods(DispatchingWorker) :
 
         # if the pending work queue is empty, then we're done
         elif  w["status"] == "nowork" :
-            format = "unbind vol mover=%s"
+            format = "unbind vol %s mover=%s"
             logticket = self.logc.send(log_client.INFO, format,
+                                       mticket["external_label"],
                                        mticket["mover"])
             self.reply_to_caller({"work" : "unbind_volume"})
 
         # alas
         else:
+            import pprint
+            print "assertion error in have_bound_volume w=, mticket="
+            pprint.pprint(w)
+            pprint.pprint(mticket)
             raise "assertion error"
 
 
@@ -390,7 +399,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO,"Library Manager"+args[0]+"(re)starting")
             lm.serve_forever()
         except:
-	    format = time.strftime("%c",time.localtime(time.time()))+" "+\
+            format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\

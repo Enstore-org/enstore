@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import timeofday
 import copy
 import callback
 import log_client
@@ -620,13 +621,13 @@ class VolumeClerkMethods(DispatchingWorker) :
         listen_socket.close()
 
     def start_backup(self,ticket):
-	dict.start_backup()
-	self.reply_to_caller({"status" : "ok",\
-		"start_backup"  : 'yes' })
+        dict.start_backup()
+        self.reply_to_caller({"status" : "ok",\
+                "start_backup"  : 'yes' })
     def stop_backup(self,ticket):
-	dict.stop_backup()
-	self.reply_to_caller({"status" : "ok",\
-        	"stop_backup"  : 'yes' })
+        dict.stop_backup()
+        self.reply_to_caller({"status" : "ok",\
+                "stop_backup"  : 'yes' })
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass
 
@@ -684,7 +685,7 @@ if __name__ == "__main__" :
             logc.send(log_client.INFO, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
-            format = time.strftime("%c",time.localtime(time.time()))+" "+\
+            format = timeofday.tod()+" "+\
                      str(sys.argv)+" "+\
                      str(sys.exc_info()[0])+" "+\
                      str(sys.exc_info()[1])+" "+\

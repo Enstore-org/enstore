@@ -1,5 +1,6 @@
 import errno
 import time
+import timeofday
 from SocketServer import UDPServer, TCPServer
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -86,11 +87,11 @@ class DispatchingWorker:
                 self.socket.sendto(repr(list), self.reply_address)
                 sent = 1
             except socket.error:
-                print time.strftime("%c",time.localtime(time.time())),\
+                print timeofday.tod(),\
                       "dispatching_worker: Nameserver not responding\n",\
                       message,"\n",address,"\n",\
                       sys.exc_info()[0],"\n", sys.exc_info()[1]
-                time.sleep(1)
+                time.sleep(10)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0 :
             print "dispatching_worker reply_with_list, post-sendto error:",\

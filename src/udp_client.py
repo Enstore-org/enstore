@@ -1,5 +1,6 @@
 import socket
 import time
+import timeofday
 import select
 import os
 import errno
@@ -67,11 +68,11 @@ class UDPClient:
                     self.socket.sendto(message, address)
                     sent = 1
                 except socket.error:
-                    print time.strftime("%c",time.localtime(time.time())),\
+                    print timeofday.tod(),\
                           "udp_client: Nameserver not responding\n",\
                           message,"\n",address,"\n",\
                           sys.exc_info()[0],"\n", sys.exc_info()[1]
-                    time.sleep(1)
+                    time.sleep(10)
             badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0 :
                 print "udp_client send, post-sendto error:", \
@@ -142,7 +143,7 @@ class UDPClient:
                 self.socket.sendto(message, address)
                 sent = 1
             except socket.error:
-                print time.strftime("%c",time.localtime(time.time())),\
+                print timeofday.tod(),\
                       "udp_client (no wait): Nameserver not responding\n",\
                       message,"\n",address,"\n",\
                       sys.exc_info()[0],"\n", sys.exc_info()[1]
