@@ -31,8 +31,8 @@ import struct, fcntl, FCNTL
 import configuration_client
 import dispatching_worker
 import generic_server
-import event_relay_client
-import monitored_server
+##import event_relay_client
+##import monitored_server
 import enstore_constants
 import interface
 import Trace
@@ -78,9 +78,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
-	self.alive_interval = monitored_server.get_alive_interval(self.csc,
-								  medch,
-								  self.mc_config)
+##	self.alive_interval = monitored_server.get_alive_interval(self.csc,
+##								  medch,
+##								  self.mc_config)
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
@@ -88,7 +88,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.robotNotAtHome = 1
         self.timeInsert = time.time()
 	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(self.name, self.alive_interval)
+##	self.erc.start_heartbeat(self.name, self.alive_interval)
         
     # retry function call
     def retry_function(self,function,*args):
