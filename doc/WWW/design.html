@@ -62,6 +62,8 @@
 <li><a href="#impexp">5 Volume Import and Export</a>
 <li><a href="#volexp">5.1 Volume Export</a>
 <li><a href="#volimp">5.2 Volume Import</a>
+<li><a href="#test_system">6 Test System</a>
+<li><a href="#ts_results">6.1 Test System Results</a>
 </ul>
 
 <p>
@@ -4214,6 +4216,118 @@ The procedure for importing a volume is:
 
 
 
+<h2><a name="test_system">
+6 Test System
+</h2>
+<p>
+<img src="test-network.gif">
+<p>
+<a href="test-network.ps">(also available in Postscript)</a>
+<p>
+<img src="test-configuration.gif">
+<p>
+<a href="test-configuration.ps">(also available in Postscript)</a>
+<p>
+
+<h2><a name="ts_results">
+6.1 Test System Results
+</h2>
+
+<h3>Test System Configuration:</h3>
+
+<ul>
+<li> EMASS Robot:
+     <table cols=2 width="50%">
+     <tr>
+     <td> 2 AITS
+     <td> (5 of 84 tapes allocated)
+     <tr>
+     <td> 1 Mammoth
+     <td> (5 of 42 tapes allocated)
+     <tr>
+     <td> 2 DLTS
+     <td> (5 of 84 tapes allocated)
+     </table>
+<li> STK Robot:
+     <table cols=2 width="50%">
+     <tr>
+     <td> 2 Redwoods
+     <td> (5 of 200 tapes allocated)
+     </table>
+<li> Disk test movers
+</ul>
+
+<h3>Preliminary Rates Measurements:</h3>
+<table cols=5 width="80%">
+<tr>
+<td> Device
+<td> Writing
+<td> Reading
+<td> Network
+<td> "Mem->tape"
+<tr>
+<td> &nbsp;
+<td> (MB/S)
+<td> (MB/S)
+<td> (Mbits/S)
+<td> (MB/S)
+<tr>
+<td> AIT
+<td> 2.7
+<td> 2.7
+<td> 94
+<td> 2.7
+<tr>
+<td> Mam
+<td> 2.8
+<td> 2.7
+<td> 94
+<td> 2.8
+<tr>
+<td> DLT
+<td> 4.9
+<td> 4.8
+<td> 94
+<td> 4.9
+<tr>
+<td> STK
+<td> 8.8
+<td> 7.5
+<td> 83
+<td> 9.8
+</table>
+
+<dl>
+<dt> Some STK details:</dt>
+  <dd>
+       <ul>
+	 <li> 1 GB file transferred
+	 <li> Mount time ~ 41 seconds
+	 <li> Seek time ~ 0 seconfs (beginning of tape)
+	 <li> Enstore queue wait time ~ 1 second
+	 <li> Transfer time ~ 116 seconds (8.8 MB/S)
+	 <li> EOF time ~ 0 seconds
+	 <li> Get stats time ~ 34 seconds
+	 <li> Effective User rate:5.7 MB/s (appending)
+       </ul
+	      </dd>
+</dl>
+
+<h3>Preliminary CPU Utilization for AIT transfers:
+<table cols=3 width="40%">
+<tr>
+<td> &nbsp;
+<td> Mover
+<td> User's ENCP
+<tr>
+<td> no crc
+<td> 5-10%
+<td> 40-60% (bug)
+<tr>
+<td> crc
+<td> 20-25%
+<td> 50-60%
+</table>
 
 
 
