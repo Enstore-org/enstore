@@ -1003,6 +1003,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         try:
                             method(request_from_lm)
                         except:
+                            exc, detail, tb = sys.exc_info()
+                            Trace.handle_error(exc, detail, tb)
                             Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
                                       (method,request_from_lm)) 
                 # if work is mover_busy of mover_error
