@@ -88,6 +88,9 @@ SUBDIRS=ftt_lib ftt_test
 all: proddir_is_set
 	for d in $(SUBDIRS); do (cd $$d; $(MAKE) install); done
 
+memdebug: proddir_is_set
+	for d in $(SUBDIRS); do (cd $$d; $(MAKE) clean install WARN=-DDEBUGMALLOC EXTRAOBJ=dmalloc/malloc.o ); done
+
 cvswebtags: FORCE
 	find ftt_lib ftt_test  -name '*.[ch]' -exec ctags -txw {} \; | \
 		grep -v '^if ' > cvswebtags
