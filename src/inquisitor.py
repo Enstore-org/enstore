@@ -681,29 +681,30 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# which have a mover in a bad state and match the criteria specified
 	# in the configuration file (currently only a node list is supported)
 	bad_movers = {}
-	for qelem in lm.wam_queue:
-	    # remove any '.fnal.gov' from the node name
-	    node = enstore_functions.strip_node(qelem['wrapper']['machine'][1])	    
-	    vc = qelem['vc']
-	    mover = self.get_server(qelem[enstore_constants.MOVER])
-	    if mover.server_status in MOVER_ERROR_STATES and \
-	       node in node_d_keys:
-		# if this is a read, we will ignore it unless the tape could
-		# be written to, i.e. not full and not read-only
-		if qelem['work'] == 'read_from_hsm':
-		    if vc['system_inhibit'][1] in VOLUME_STATES or\
-		       vc['user_inhibit'][1] in VOLUME_STATES:
-			continue
-		ff = vc.get('file_family', 
-			    volume_family.extract_file_family(vc.get('volume_family', 
-								     "")))
-		key = "%s-%s"%(node, ff)
-		if not bad_movers.has_key(key):
-		    bad_movers[key] = [[vc.get('file_family_width', None), node, ff]]
-		Trace.trace(enstore_constants.INQWORKDBG, 
-			    "CBW: found a bad mover in check %s (%s %s)"%(mover.name, 
-									  node, ff))
-		bad_movers[key].append(mover)
+	if lm.wam_queue:
+	    for qelem in lm.wam_queue:
+		# remove any '.fnal.gov' from the node name
+		node = enstore_functions.strip_node(qelem['wrapper']['machine'][1])	    
+		vc = qelem['vc']
+		mover = self.get_server(qelem[enstore_constants.MOVER])
+		if mover.server_status in MOVER_ERROR_STATES and \
+		   node in node_d_keys:
+		    # if this is a read, we will ignore it unless the tape could
+		    # be written to, i.e. not full and not read-only
+		    if qelem['work'] == 'read_from_hsm':
+			if vc['system_inhibit'][1] in VOLUME_STATES or\
+			   vc['user_inhibit'][1] in VOLUME_STATES:
+			    continue
+		    ff = vc.get('file_family', 
+				volume_family.extract_file_family(vc.get('volume_family', 
+									 "")))
+		    key = "%s-%s"%(node, ff)
+		    if not bad_movers.has_key(key):
+			bad_movers[key] = [[vc.get('file_family_width', None), node, ff]]
+		    Trace.trace(enstore_constants.INQWORKDBG, 
+				"CBW: found a bad mover in check %s (%s %s)"%(mover.name, 
+									      node, ff))
+		    bad_movers[key].append(mover)
 	# now see if the number of bad node-ff combinations 
 	# is > the file_family_width
 	bad_mover_keys = bad_movers.keys()
