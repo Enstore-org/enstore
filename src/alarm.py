@@ -157,6 +157,13 @@ class LogFileAlarm(GenericAlarm):
 
 	# assemble the real timedate
 	self.timedate = time.strptime("%s %s"%(date, t), "%Y-%m-%d %H:%M:%S")
+        # i am doing this explicitly because it seems that time.strptime will
+        # return 0 for the DST flag even if it is DST
+        self.timedate = (self.timedate[0], self.timedate[1],
+                         self.timedate[2], self.timedate[3],
+                         self.timedate[4], self.timedate[5],
+                         self.timedate[6], self.timedate[7],
+                         time.daylight)
 	self.id = str(self.timedate)
 
 	# split up the dictionary into components
