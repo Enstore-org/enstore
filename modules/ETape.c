@@ -96,6 +96,8 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
     return raise_ftt_exception("ET_OpenRead_opendev", ET_desc, "%s", fname);
 /*
 	Position to the file, if backwards then skip back forward to BOF
+	loc is absolute final locationi index (based 0);  
+	position is number of file marks to move
 */
   if ((loc == 0) && (position != 0))
   {
