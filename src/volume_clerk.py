@@ -1329,11 +1329,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if key == 'mounts':
                     # make a new dictionary entry for the old tape records
                     record['sum_mounts'] = ticket[key]
-                msg= "Volume Clerk: key %s is missing" % (detail,)
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
+                else:
+                    msg= "Volume Clerk: key %s is missing" % (detail,)
+                    ticket["status"] = (e_errors.KEYERROR, msg)
+                    Trace.log(e_errors.ERROR, msg)
+                    self.reply_to_caller(ticket)
+                    return
 
         # record our changes
         self.dict[external_label] = record  
