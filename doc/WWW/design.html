@@ -37,6 +37,8 @@ Enstore Data Storage System
 1 Overview of Enstore Architecture
 </h2>
 
+Enstore uses a client-server architecture to provide a generic interface for users
+to efficiently use mass storage systems.
 Enstore supports multiple distributed media robots,
 each of which may handle multiple media types or individual directly attached
 drives, and multiple distributed mover nodes.
@@ -48,9 +50,9 @@ replaced easily without affecting the rest of the system and
 each class of components can be easily expanded to accommodate
 the increased demand in performance or capacity.
 <p>
-Currently, the system is written in <em>python</em>, a scripting
+The system is written in <em>python</em>, a scripting
 language that has advanced object-oriented features.
-Python provides a sound environment for quick turn-around prototyping
+Python provides a sound environment for quick turn-around
 and a seamless integration/migration path to
 fully compiled languages, such as C and C++, if there is a demand
 for even better performance.
@@ -102,7 +104,8 @@ of an operation.
 <h2><a name="pnfs">
 1.1 pnfs Namespace
 </h2>
-The DESY <em>pnfs</em> package implements an <em>nfs</em> daemon and
+The DESY <a href=http://mufasa.desy.de/pnfs/Welcome.html><em>pnfs</em>
+(http://mufasa.desy.de/pnfs/Welcome.html) </a>package implements an <em>nfs</em> daemon and
 mount daemon.
 These daemons do not actually serve a file system, but, instead make a
 collection of database entries <em>look like</em> a file system,
