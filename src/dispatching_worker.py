@@ -58,28 +58,38 @@ def collect_children():
 
 class DispatchingWorker:
 
-    socket_type = socket.SOCK_DGRAM
-
-    max_packet_size = 16384
     
-    rcv_timeout = 60.   # timeout for get_request in sec.
-
-    address_family = socket.AF_INET
-
     def __init__(self, server_address):
+        self.socket_type = socket.SOCK_DGRAM
+        self.max_packet_size = 16384
+        self.rcv_timeout = 60.   # timeout for get_request in sec.
+        self.address_family = socket.AF_INET
+        
+
         self.server_address = server_address
-        self.server_fds = []    # fds that the worker/server also wants watched with select
+        self.read_fds = []    # fds that the worker/server also wants watched with select
+        self.write_fds = []   # fds that the worker/server also wants watched with select
+        self.callback = {} #callback functions associated with above
+
+        self.interval_func = None #function to call periodically
+        self.last_interval = 0
+        
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
         self.is_child = 0
-	self.socket = cleanUDP.cleanUDP (self.address_family,
+	self.server_socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
         
         # set this socket to be closed in case of an exec
-        fcntl.fcntl(self.socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
+        fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.do_collect = 1 # allow clients to override the "collect_children"
         self.server_bind()
 
+    def set_interval_func(self, func, interval):
+        self.interval_func = func
+        self.interval = interval
+        self.rcv_timeout = min(interval, self.rcv_timeout)
+        
     def fork(self):
         """Fork off a child process"""
         pid = os.fork()
@@ -99,8 +109,8 @@ class DispatchingWorker:
         May be overridden.
 
         """
-        Trace.trace(16,"server_bind add="+repr(self.server_address))
-        self.socket.bind(self.server_address)
+        Trace.trace(16,"server_bind add %s"%(self.server_address,))
+        self.server_socket.bind(self.server_address)
 
     
     def serve_forever(self):
@@ -120,6 +130,12 @@ class DispatchingWorker:
         """Handle one request, possibly blocking."""
         # request is a "(idn,number,ticket)"
         request, client_address = self.get_request()
+        now=time.time()
+
+        if self.interval_func and now-self.last_interval >= self.interval:
+            self.last_interval=now
+            self.interval_func()
+
 	if request == '':
 	    # nothing returned, must be timeout
 	    self.handle_timeout()
@@ -136,9 +152,21 @@ class DispatchingWorker:
 
 
     # a server can add an fd to the server_fds list
-    def add_select_fd(self,fd):
-        self.server_fds.append(fd)
-
+    def add_select_fd(self, fd, write=0, callback=None):
+        if write:
+            self.write_fds.append(fd)
+        else:
+            self.read_fds.append(fd)
+        self.callback[fd]=callback
+        
+    def delete_select_fd(self, fd):
+        if fd in self.write_fds:
+            self.write_fds.remove(fd)
+        if fd in self.read_fds:
+            self.read_fds.remove(fd)
+        if self.callback.has_key(fd):
+            del self.callback[fd]
+        
     def get_request(self):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
@@ -147,34 +175,51 @@ class DispatchingWorker:
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
 
-        f = self.server_fds + [self.socket]
-        r, w, x, remaining_time = cleanUDP.Select(f,[],f, self.rcv_timeout)
+        r = self.read_fds + [self.server_socket]
+        w = self.write_fds
         
-        if r:
-            # if input is ready from server process pipe, handle it first
-            for fd in self.server_fds:                   #    go through server processes
-                if fd in r:                              #        and see if there is any input
-                    msg = os.read(fd, 8)
-                    try:
-                        bytecount = string.atoi(msg)
-                    except:
-                        Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
+        rcv_timeout = self.rcv_timeout
+        if self.interval_func:
+            time_left = self.interval - (time.time()-self.last_interval)
+            if time_left<0:
+                time_left=0
+            rcv_timeout = min(rcv_timeout, time_left)
+
+        r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
+
+        if not r + w:
+            return ('',()) #timeout
+
+        #handle pending I/O operations first
+        for fd in self.read_fds + self.write_fds:
+            if fd in r+w:
+                if self.callback.has_key(fd) and self.callback[fd]:
+                    self.callback[fd](fd)
+
+        for fd in r:
+            if fd in self.read_fds and self.callback[fd]==None: #XXX this is special-case code,
+                                                    ##for old usage in media_changer
+                msg = os.read(fd, 8)
+                try:
+                    bytecount = string.atoi(msg)
+                except:
+                    Trace.trace(20,'get_request_select: bad bytecount %s' % (msg,))
+                    break
+                msg = ""
+                while len(msg)<bytecount:
+                    tmp = os.read(fd, bytecount - len(msg))
+                    if not tmp:
                         break
-                    msg = ""
-                    while len(msg)<bytecount:
-                        tmp = os.read(fd, bytecount - len(msg))
-                        if not tmp:
-                            break
-                        msg = msg+tmp
-                    request= (msg,())                    #             if so read it
-                    os.close(fd)
-                    self.server_fds.remove(fd)
-                    return request
+                    msg = msg+tmp
+                request= (msg,())                    #             if so read it
+                self.delete_select_fd(fd)
+                os.close(fd)
+                                
+                return request
             # else the input is on the udp socket
             # req is (string,address) where string has CRC
-            req = self.socket.recvfrom(self.max_packet_size, self.rcv_timeout)
+            req = self.server_socket.recvfrom(self.max_packet_size, self.rcv_timeout)
             request,inCRC = eval(req[0])
-                
             # calculate CRC
             crc = checksum.adler32(0L, request, len(request))
             if (crc != inCRC) :
@@ -184,16 +229,12 @@ class DispatchingWorker:
                 Trace.log(e_errors.INFO,
                           "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
                 request=""
-        else:
-            # on time out
-            req = ("",())
-            request = ""
+
         return (request, req[1])
 
     def handle_timeout(self):
 	# override this method for specific timeout hadling
-        if 0:
-            Trace.trace(6,"timeout handler")
+        pass
 
     def fileno(self):
         """Return socket file number.
@@ -201,8 +242,8 @@ class DispatchingWorker:
         Interface required by select().
 
         """
-        Trace.trace(16,"fileno ="+repr(self.socket.fileno()))
-        return self.socket.fileno()
+        Trace.trace(16,"fileno ="+repr(self.server_socket.fileno()))
+        return self.server_socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
@@ -325,7 +366,7 @@ class DispatchingWorker:
         Trace.trace(19,"reply_with_list number=%s id=%s"%(self.client_number,
                                                           self.current_id))
         request_dict[self.current_id] = copy.deepcopy(list)
-        self.socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
+        self.server_socket.sendto(repr(request_dict[self.current_id]), self.reply_address)
 
     # for requests that are not handled serialy reply_address, current_id, and client_number
     # number must be reset.  In the forking media changer these are in the forked child
