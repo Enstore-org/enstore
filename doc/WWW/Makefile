@@ -42,6 +42,7 @@ PIC_GIF_FILES = \
 	./enstoreSimple.gif \
 	./enstore_at_fnal.gif \
 	./enstore_at_fnal2.gif \
+	./patrol-status.gif \
 	./read.gif \
 	./test_nodes.gif \
 	./test-stand.gif \
@@ -54,6 +55,7 @@ PIC_PS_FILES = \
 	./enstoreSimple.ps \
 	./enstore_at_fnal.ps \
 	./enstore_at_fnal2.ps \
+	./patrol-status.ps \
 	./read.ps \
 	./test_nodes.ps \
 	./test-stand.ps \
