@@ -2036,7 +2036,7 @@ class Display(Tkinter.Canvas):
 
         #If the queue is kinda long, and the new command is only a transfer
         # message; the message is discarded.
-        if len(self.command_queue) > (len(self.movers) * 3) and \
+        if len(self.command_queue) > (len(self.movers)) and \
            command.split()[0] == "transfer":
             pass #Don't return, or the lock won't be released.
         else:
