@@ -177,7 +177,6 @@ def extract_backup(check_dir, container):
 	os.chdir(check_dir)
 	os.system("dropdb backup")
 	os.system("createdb backup")
-	os.system("createuser -A -D root")
 	os.system("pg_restore -d backup -v "+container)
 
 # the way to check it is to run file listing on all
