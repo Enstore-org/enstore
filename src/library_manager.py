@@ -999,7 +999,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 		    # do not dismount, rather send no work
 		    self.reply_to_caller({'work': 'nowork'})
-		    Trace.trace(13,"have_bound_volume delayed dismount %s"%w)
+		    Trace.trace(16,"have_bound_volume delayed dismount %s"%w)
 		    return
 		else:
 		    # check if dismount delay had expired
@@ -1009,7 +1009,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    else:
 			# do not dismount, rather send no work
 			self.reply_to_caller({'work': 'nowork'})
-			Trace.trace(13,"have_bound_volume delayed dismount %s"%w)
+			Trace.trace(16,"have_bound_volume delayed dismount %s"%w)
 			return
 	    except:
                 e_errors.handle_error()
