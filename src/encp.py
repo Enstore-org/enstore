@@ -1217,7 +1217,10 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                 #This is were the interface selection magic occurs.
                 host_config.setup_interface(route_ticket['mover_ip'], ip)
             except (OSError, IOError, socket.error), msg:
-                raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+                if hasattr(msg, "errno"):
+                    raise EncpError(msg.errno, str(msg), e_errors.OSERROR)
+                else:
+                    raise EncpError(None, str(msg), e_errors.OSERROR)
 
     (route_ticket['callback_addr'], listen_socket) = \
 				    get_callback_addr(encp_intf, ip=ip)
