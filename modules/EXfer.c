@@ -969,7 +969,8 @@ static int setup_mmap_io(struct transfer *info)
 /* Return 1 on error, 0 on success. */
 static int reinit_mmap_io(struct transfer *info)
 {
-  int advise_value = 0; /* Advise hints for madvise. */
+  int advise_holder = 0; /* Advise hints for madvise. */
+  size_t bytes_in_segment; 
 
   /* If the file is a local disk, use memory mapped i/o on it. 
      Only advance to the next mmap segment when the previous one is done. */
@@ -993,31 +994,60 @@ static int reinit_mmap_io(struct transfer *info)
     info->mmap_offset = 0;
     info->mmap_count += 1;
     info->mmap_left = info->mmap_len;
+
+    /* Normally, bytes_in_segment is equal to info->mmap_len, but on the
+       last loop info->mmap_len is less than (possibly equal to) what it
+       was on previous loops.  But for calculating the offset for the
+       following mmap() call, we need this "full" mmap_size value. */
+    bytes_in_segment = align_to_page(info->mmap_size);
     
     /* Create the memory mapped file. */
     errno = 0;
     if((info->mmap_ptr = mmap(NULL, info->mmap_len, PROT_WRITE | PROT_READ,
 			      MAP_SHARED, info->fd,
-			      (off_t)info->mmap_count*(off_t)info->mmap_len)) 
-       == (caddr_t)-1)
+			      (off_t)info->mmap_count*(off_t)bytes_in_segment))
+       == MAP_FAILED)
     {
       pack_return_values(info, 0, errno, FILE_ERROR,
 			 "mmap failed", 0.0, __FILE__, __LINE__);
       return 1;
     }
     
-    if(info->transfer_direction > 0) /*write*/
-      advise_value |= MADV_SEQUENTIAL;
-    else if(info->transfer_direction < 0) /*read*/
-      advise_value |= (MADV_SEQUENTIAL | MADV_WILLNEED);
-    
-    /* Advise the system on the memory mapped i/o usage pattern. */
+    /* Turn on the SEQUENTIAL advise hints.  For writes also turn on the 
+       WILLNEED hint. */
+#if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
+    advise_holder = POSIX_MADV_SEQUENTIAL;
+    if(info->transfer_direction < 0) /* If true, it is a read from disk. */
+       advise_holder |= POSIX_MADV_WILLNEED;
+#else
+    advise_holder = MADV_SEQUENTIAL;
+    if(info->transfer_direction < 0) /* If true, it is a read from disk. */
+       advise_holder |= MADV_WILLNEED;
+#endif
+
+  /* Advise the system on the memory mapped i/o usage pattern. */
     errno = 0;
-    if(madvise(info->mmap_ptr, info->mmap_len, advise_value) < 0)
+#if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
+    if(posix_madvise(info->mmap_ptr, info->mmap_len, advise_holder < 0)
+#else
+       if(madvise(info->mmap_ptr, info->mmap_len, advise_holder) < 0)
+#endif /* _POSIX_ADVISORY_INFO */
     {
-      pack_return_values(info, 0, errno, FILE_ERROR,
-			 "madvise failed", 0.0, __FILE__, __LINE__);
-      return 1;
+       if(errno != ENOSYS) /* If madvise is not implimented, don't fail. */
+       {
+	  /* Clear the memory mapped information. */
+	  if(munmap(info->mmap_ptr, info->mmap_len) < 0)
+	  {
+	     info->mmap_ptr = MAP_FAILED; /* Set this explicitly. */
+	     pack_return_values(info, 0, errno, FILE_ERROR,
+				"munmap failed", 0.0, __FILE__, __LINE__);
+	     return 1;
+	  }
+	  
+	  pack_return_values(info, 0, errno, FILE_ERROR,
+			     "madvise failed", 0.0, __FILE__, __LINE__);
+	  return 1;
+       }
     }
   }
   else if(info->mmap_offset == info->mmap_len)
