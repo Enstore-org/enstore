@@ -50,6 +50,8 @@ MB=1L<<20
 GB=1L<<30
 
 def convert_version(version):
+    if not version:
+        return version
     v1 = version.replace('-','_')
     v2 = v1.replace('_','.')
     s= v2.split('.')
