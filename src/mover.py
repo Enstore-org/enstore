@@ -1775,7 +1775,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     # read data from the tape
     def read_tape(self):
-        Trace.log(e_erros.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
+        Trace.log(e_errors.INFO, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         if self.buffer.client_crc_on:
             # calculate checksum when reading from
             # tape (see comment in setup_transfer)
