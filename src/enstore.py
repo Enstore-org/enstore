@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ###############################################################################
-# src/$RCSfile$   $$
+# src/$RCSfile$   $Revision$
 #
 # in order to add support for a new 'client', add a section to the following
 # structures -
