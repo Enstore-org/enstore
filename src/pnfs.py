@@ -7,7 +7,6 @@ import os
 import copy
 import posix
 import posixpath
-import regex
 import errno
 import stat
 import pwd
@@ -299,7 +298,9 @@ class Pnfs:
 
     # get the total path of the id
     def get_path(self):
-        x=1
+        self.x=1
+        if 0:
+            print self.x
     # get the cursor information
     def get_cursor(self):
         if self.valid == VALID and self.exists == EXISTS:
@@ -685,7 +686,7 @@ class Pnfs:
             else:
                 k = ""
                 item = "6"
-                generic_cs.enprint("unknown OS:"+repr(machtype))
+                generic_cs.enprint("unknown OS:"+repr(machtype)+" "+repr(item))
 
             # we need to find the mount point and create the volume file there
             #command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '

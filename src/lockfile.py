@@ -11,10 +11,12 @@ import struct, fcntl, FCNTL
 import Trace
 
 def _lock(f, op):
-	Trace.trace(21,'{}_lock')
+	Trace.trace(21,'{_lock')
 	dummy = fcntl.fcntl(f.fileno(), FCNTL.F_SETLKW,
 			    struct.pack('2h8l', op,
 					0, 0, 0, 0, 0, 0, 0, 0, 0))
+	Trace.trace(21,'}_lock '+repr(dummy))
+	
 def writelock(f):
 	Trace.trace(20,'{}writelock')
 	_lock(f, FCNTL.F_WRLCK)
