@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# read current crontab, remove every one ...
+
+crontab -l 2> /dev/null | grep -v "no crontab for" | grep -v "^#" > /tmp/enstore_cron
+
+for i in $*
+do
+	grep -v "\-p $i" /tmp/enstore_cron > /tmp/e_cron_tmp
+	mv -f /tmp/e_cron_tmp /tmp/enstore_cron
+	sed -e "s:\$ENSTORE_SBIN:$ENSTORE_DIR/sbin:" $ENSTORE_DIR/sbin/$i.cron >> /tmp/enstore_cron
+done
+
+crontab /tmp/enstore_cron
+rm -rf /tmp/enstore_cron
+rm -rf /tmp/e_cron_tmp
