@@ -428,7 +428,9 @@ static PyObject* ECRC(PyObject *self, PyObject *args)
 {
   unsigned char *buf;
   unsigned int crc;
+#if defined(Select_binascii) || defined(Select_numrecipes)
   unsigned short crc_s;
+#endif
   int len;
 
   /* Parse the arguments */
