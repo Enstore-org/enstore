@@ -314,6 +314,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
 	self.all = 0
         self.list_active = None
         self.add = None
+        self.dont_try_this_at_home_erase = None
         generic_client.GenericClientInterface.__init__(self)
 
     # define the command line options that are valid
@@ -325,7 +326,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                 "bfid=","deleted=","list=","backup",
                 "get-crcs=","set-crcs=",
                 "restore=", "recursive", "bfids=", "ls-active=",
-                "modify=", "add="]
+                "modify=", "add=", "dont-try-this-at-home-erase="]
             
 def do_work(intf):
     # now get a file clerk client
@@ -410,6 +411,8 @@ def do_work(intf):
         if intf.add != "None":
             d['bfid']=intf.add # bfid
         ticket = fcc.add(d)
+    elif intf.dont_try_this_at_home_erase:
+        ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
