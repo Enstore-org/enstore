@@ -278,6 +278,13 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def block_read(self, nbytes, driver, fill_buffer=1):
+
+	# SEVA FOO
+	pad = (nbytes % 512)
+	if (pad):
+	    nbytes = nbytes + (512 - pad)
+	    Trace.trace(42, "SEVA DEBUG: padded bytes to read: %s" % nbytes)
+
         if self.client_crc_on:
             # calculate checksum when reading from
             # tape (see comment in setup_transfer)
@@ -289,6 +296,7 @@ class Buffer:
         space = self._getspace()
         #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
         bytes_read = driver.read(space, 0, nbytes)
+	bytes_read -= pad # SEVA FOO
         #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
             data = space
