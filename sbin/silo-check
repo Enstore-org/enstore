@@ -63,8 +63,8 @@ done
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in NO_ACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/STK-VOLUMES.html | egrep -v ^IA
+echo "Tapes in NOACCESS or NOT_ALLOWED state"
+egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED | egrep -v ^IA
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
@@ -119,7 +119,7 @@ done
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 echo "Tapes in NO_ACCESS or NOT_ALLOWED state"
-egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/STK-VOLUMES.html | egrep -v ^IA
+egrep 'NOACCESS|NOTALLOWED' /diska/tape-inventory/VOLUMES_DEFINED
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
