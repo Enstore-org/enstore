@@ -32,12 +32,9 @@ class MediaChangerClient(generic_client.GenericClient):
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
 
-    # send the request to the Media Changer server and then send answer to user
-    #      rcv_timeout is set to 300sec, the STK mnt/dismnt time is ~35 sec.   This
-    #      should really be a function of which media changer we are talking to.
-    # If tries is set to 0, then we only try once -- which we should never do
-    # with udp.
-    def send (self, ticket, rcv_timeout=300, tries=10) :
+    # default TO is set to 0 which means that receive will try forever
+    # for legthy operations rcv_timeout will be set to 300 and tries=10
+    def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
@@ -47,7 +44,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
-	rt = self.send(ticket)
+	rt = self.send(ticket,300,10)
 	if rt['status'][0] == e_errors.OK:
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
@@ -64,7 +61,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
                   }
-	rt = self.send(ticket)
+	rt = self.send(ticket,300,10)
 	if rt['status'][0] == e_errors.OK and vcc != None:
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'unmounted', 
 				mover)
@@ -91,7 +88,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'volInfo'    : volInfo,
 		  'vcc'        : vcc
                   }
-	rt = self.send(ticket)
+	rt = self.send(ticket,300,10)
         return rt
 
     def insertvol(self, IOarea, inNewLib):
@@ -106,7 +103,7 @@ class MediaChangerClient(generic_client.GenericClient):
 	zz = raw_input('Insert volumes into I/O area. Do not mix media types.\nWhen I/O door is closed hit return:')
 	if zz == "FakeOpenIODoor":
 	    ticket["FakeIOOpen"] = 'yes'
-	rt = self.send(ticket)
+	rt = self.send(ticket,300,10)
         return rt
 
     def ejectvol(self, media_type, volumeList):
@@ -118,7 +115,7 @@ class MediaChangerClient(generic_client.GenericClient):
             Trace.log(e_errors.ERROR, "ERROR:ejectvol volumeList must be a list")
 	    rt = {'status':(e_errors.WRONGPARAMETER, 1, "volumeList must be a list")}
 	    return rt
-	rt = self.send(ticket)
+	rt = self.send(ticket,300,10)
         return rt
 
     def MaxWork(self, maxwork):
