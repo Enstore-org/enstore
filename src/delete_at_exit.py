@@ -1,13 +1,18 @@
 #!/usr/bin/env python
+
+###############################################################################
 #
 # $Id$
 #
+###############################################################################
 
+# system imports
 import os
 import sys
 import signal
 import Trace
 
+# enstore modules
 import configuration_client
 import file_clerk_client
 import enstore_functions2
