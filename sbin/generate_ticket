@@ -16,7 +16,7 @@ else
 		$REMEDY_API_DIR/bin/create_entry $1 $2 $3 $4
 	elif [ "$#" = "10" ];
 	then
-		$REMEDY_API_DIR/bin/create_entry "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+		$REMEDY_API_DIR/bin/create_entry "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10"
 	else
 		setup enstore
 		enstore alarm --raise --root_error "generate_ticket invalid parameters" --message "expected 4 or 10 parameters and found $#" --severity E&
