@@ -343,7 +343,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     #
     # This is a newer version
 
-    def __restore_file(self, bfid):
+    def __restore_file(self, bfid, file_family = None):
 
         try:
             record = self.dict[bfid]
@@ -381,7 +381,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(vol['status'][0], msg)
             return vol['status']
 
-        file_family = volume_family.extract_file_family(vol['volume_family'])
+        # find file_family
+        if not file_family: 
+            file_family = volume_family.extract_file_family(vol['volume_family'])
         record['file_family'] = file_family
         pf = pnfs.File(record)
 
@@ -400,7 +402,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record['pnfsid'] = pnfs_id
 
         # reset 'deleted' status
-        del record['file_family']
+        if record.has_key('file_family'):
+            del record['file_family']
         record['deleted'] = 'no'
         self.dict[bfid] = record
 
@@ -420,7 +423,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        ticket['status'] = self.__restore_file(bfid)
+        if ticket.has_key('file_family'):
+            ticket['status'] = self.__restore_file(bfid, ticket['file_family'])
+        else:
+            ticket['status'] = self.__restore_file(bfid)
         self.reply_to_caller(ticket)
         return
 

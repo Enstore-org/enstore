@@ -273,9 +273,12 @@ class FileClient(generic_client.GenericClient,
 	return r
 
     # rename volume and volume map
-    def restore(self, bfid):
-        r = self.send({"work"           : "restore_file2",
-                       "bfid"           : bfid } )
+    def restore(self, bfid, file_family = None):
+        ticket = {"work": "restore_file2",
+                  "bfid": bfid}
+        if file_family:
+            ticket['file_family'] = file_family
+        r = self.send(ticket)
 	return r
 
     # get volume map name for given bfid
@@ -426,7 +429,14 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
-                     option.USER_LEVEL:option.ADMIN},
+                     option.USER_LEVEL:option.ADMIN,
+                     option.EXTRA_VALUES:[{
+                         option.VALUE_NAME:"file_family",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.OPTIONAL,
+                         option.DEFAULT_VALUE:None
+                         }]
+                     },
         option.SET_CRCS:{option.HELP_STRING:"set CRC of a file",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
@@ -498,13 +508,10 @@ def do_work(intf):
 	    pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.restore:
-	try:
-	    if intf.restore_dir: dir="yes"
-	except AttributeError:
-	    dir = "no"
-	print "bfid",intf.restore
-        # ticket = fcc.restore(intf.restore, dir)
-        ticket = fcc.restore(intf.restore)
+        if intf.file_family:
+            ticket = fcc.restore(intf.restore, intf.file_family)
+        else:
+            ticket = fcc.restore(intf.restore)
     elif intf.add:
         d={}
         for s in intf.args:
