@@ -261,7 +261,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
-        Trace.trace(12,'set_deleted %s'%(ticket,))
+        Trace.log(e_errors.INFO, 'set_deleted %s'%(ticket,))
         return
 
     #### DONE
