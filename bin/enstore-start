@@ -60,14 +60,14 @@ tries=5
 output() { tty -s
            if [ $? -ne 0 ] ; then
              if [ -z "${1-}" ] ; then
-	       if test -w /dev/ttyS0; then
-                 echo " < /dev/null > /dev/ttyS0 2>&1"
+	       if test -w /dev/console; then
+                 echo " < /dev/null > /dev/console 2>&1"
                else
                  echo "< /dev/null > /dev/null 2>&1"
                fi
              else
-	       if test -w /dev/ttyS0; then
-                 echo " < /dev/null |tee /dev/ttyS0 > $1.out 2>&1"
+	       if test -w /dev/console; then
+                 echo " < /dev/null |tee /dev/console > $1.out 2>&1"
                else
                  echo " < /dev/null > $1.out 2>&1"
 	       fi

@@ -25,7 +25,7 @@ import volume_clerk_client
 CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
 
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2 = "|tee /dev/ttyS0>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
 
 
 
