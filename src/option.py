@@ -192,6 +192,7 @@ HTML_GEN_HOST = "html-gen-host"              #monitor, system
 ID = "id"                                    #pnfs
 IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
 IMPORT = "import"                            #volume
+INFO = "info"                                #pnfs
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
 LABELS = "labels"                            #volume
@@ -309,7 +310,7 @@ valid_option_list = [
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
-    ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
+    ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, IO,
     JOUHOME,
     KEEP, KEEP_DIR,
     LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,

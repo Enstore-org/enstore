@@ -857,7 +857,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-
+        
+    #For legacy perpouses.
+    pinfo = pxref
 
     #Prints out the bfid value for the specified file.
     #***LAYER 1***
@@ -1176,7 +1178,7 @@ class PnfsInterface(option.Interface):
                      option.DEFAULT_NAME:"duplicate",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
-		     option.USER_LEVEL:option.USER,
+		     option.USER_LEVEL:option.ADMIN,
                      option.EXTRA_VALUES:[{option.DEFAULT_VALUE:"",
                                            option.DEFAULT_NAME:"file",
                                            option.DEFAULT_TYPE:option.STRING,
@@ -1253,6 +1255,17 @@ class PnfsInterface(option.Interface):
                          option.USER_LEVEL:option.USER,
 			 option.VALUE_USAGE:option.REQUIRED,
 			 },
+        option.INFO:{option.HELP_STRING:"see --xref",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_NAME:"xref",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_NAME:"file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"filename",
+                     option.USER_LEVEL:option.USER,
+                     option.FORCE_SET_DEFAULT:option.FORCE,
+                },
         option.LAYER:{option.HELP_STRING:"lists the layer of the file",
                       option.DEFAULT_VALUE:option.DEFAULT,
                       option.DEFAULT_NAME:"layer",
