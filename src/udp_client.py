@@ -120,28 +120,65 @@ class UDPClient:
         tsd.reply_queue = {}
         tsd.ident = self._mkident(host, port, pid)
         tsd.send_done = {}
+        tsd.tid = tid
         if thread_support:
-            tsd.thread = threading.currentThread()
+            #There is no good way to store which thread this tsd was
+            # create for.  It used to do the following.
+            #     tsd.thread = threading.currentThread()
+            # But this turns out to be a resource leak by creating a
+            # cyclic reference.  Thus, this hack was devised to track
+            # them from the other direction; namely knowing the thread
+            # identify the tsd in the self.tsd dict that it relates to.
+            threading.currentThread().tid = tid
+            
         #Cache the tsd and return.
         self.tsd[tid] = tsd
         return tsd
 
+    def cleanup_tsd(self):
+        if thread_support:
+            for tid, tsd in self.tsd.items():
+                #Clean up resources of exited threads.
+                try:
+                    #Loop though all of the active threads searching for
+                    # the thread specific data (tsd) that it relates to.
+                    for a_thread in threading.enumerate():
+                        if not hasattr(a_thread, "tid"):
+                            #If there is no tid attribute, it hasn't used
+                            # this udp_client and thus we don't care.
+                            continue
+                        if a_thread.tid == tid:
+                            #If the thread is still active, don't cleanup.
+                            break
+                    else:
+                        #After testing all the active threads this thread
+                        # was found to be gone.
+                        for server in self.tsd[tid].send_done.keys() :
+                            try:
+                                self.send_no_wait({"work":"done_cleanup"},
+                                                  server)
+                            except:
+                                pass
+
+                        #Cleanup system resources now.
+                        self.tsd[tid].socket.close()
+                        del self.tsd[tid]
+                except:
+                    exc, msg = sys.exc_info()[:2]
+                    sys.stderr.write("%s: %s" % (str(exc), str(msg)))
+                    pass # another thread could have done the cleanup...
+             
+
     def get_tsd(self):
-        #pid = self._os.getpid()
         if thread_support:
             tid = thread.get_ident() #Obtain unique identifier.
         else:
             tid = 1
         tsd = self.tsd.get(tid)
         if not tsd:
-            if thread_support:
-                for key, value in self.tsd.items():
-                    #Clean up resources of exited threads
-                    try:
-                        if not value.thread.isAlive():
-                            del self.tsd[key]
-                    except:
-                        pass # another thread could have done the cleanup...
+            #Cleanup unused sockets and TSDs.
+            self.cleanup_tsd()
+            #Get the new socket and TSD.
             tsd = self.reinit()
         return tsd
     
@@ -150,22 +187,30 @@ class UDPClient:
         
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
-        # its dictionary - this keeps things cleaner & stops memory from growing
+        # its dictionary - this keeps things cleaner & stops memory from
+        # growing
+        
         try:
-            pid = self._os.getpid()
-            tsd = self.tsd.get(pid)
-            if not tsd:
-                return
-            for server in tsd.send_done.keys() :
+            #Cleanup all of the other thread specific data related to threads
+            # that should no longer exist.
+            self.cleanup_tsd()
+            #Since, this object should go away (in the last surviving thread)
+            # we also need to cleanup this tsd too, even though the thread
+            # is still alive.
+            tsd = self.get_tsd()
+            tid = tsd.tid
+            for server in tsd.send_done.keys():
                 try:
-                    self.send_no_wait({"work":"done_cleanup"}, server)
+                    self.send_no_wait({"work" : "done_cleanup"}, server)
                 except:
                     pass
-            try:
-                tsd.socket.close()
-            except:
-                pass
+
+            #Cleanup system resources now.
+            self.tsd[tid].socket.close()
+            del self.tsd[tid]
         except:
+            exc, msg = sys.exc_info()[:2]
+            print exc, msg
             pass
         
     def _eval_reply(self, reply): #private to send
