@@ -653,7 +653,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if len(suspect_volume['movers']) >= self.max_suspect_movers:
 	    ticket['status'] = (e_errors.NOACCESS, None)
 	    Trace.trace(13,"Number of movers for suspect volume %" %\
-			len(suspect_v['movers']))
+			len(suspect_volume['movers']))
 				
 	    # set volume as noaccess
 	    v = self.vcc.set_system_noaccess(label)
@@ -683,7 +683,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		# there was no external label: must be write
 		next_mover = idle_mover_next(self, None)
 	    Trace.trace(14,"current mover %snext mover %s"%\
-			(mticket['mover'], next_mover))
+			(ticket['mover'], next_mover))
 	    if next_mover:
 		Trace.trace(14, "will summon mover %s"%next_mover)
 		summon_mover(self,next_mover,ticket)
@@ -1143,7 +1143,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					 
     # change priority
     def change_priority(self, ticket):
-	w = pending_work.change_pri(id, pri)
+	w = pending_work.change_pri(id, ticket["priority"])
 	if w == None:
 	    self.reply_to_caller({"status" : (e_errors.NOWORK, "No such work or attempt to set wrong priority")})
 	else:
