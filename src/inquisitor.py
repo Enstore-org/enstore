@@ -103,7 +103,8 @@ def get_file_list(dir, prefix):
     # pull out the files and get their sizes
     prefix_len = len(prefix)
     for file in files:
-        if file[0:prefix_len] == prefix and (not file[-3:] == ".gz"):
+        if file[0:prefix_len] == prefix and (not file[-3:] == ".gz") and \
+	   (not file[-5:] == ".save"):
             logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
     return logfiles
 
@@ -625,7 +626,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	lib_man.wam_queue = self.lm_queues[lib_man.name]['at movers']
 	lib_man.pend_queue = self.lm_queues[lib_man.name]['pending_works']
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
-	self.check_for_stalled_queue(lib_man)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
 					     TIMED_OUT_SP, time, lib_man.name)
@@ -692,6 +692,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.suspect_vols(lib_man, now)
         self.work_queue(lib_man, now)
 	self.active_volumes(lib_man, now)
+	self.check_for_stalled_queue(lib_man)
         self.new_server_status = 1
         return
 
