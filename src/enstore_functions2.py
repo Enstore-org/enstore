@@ -6,8 +6,38 @@ import tempfile
 import types
 import pwd
 import signal
+import stat
 
 import enstore_constants
+
+RMODE = 4
+WMODE = 2
+XMODE = 1
+
+def get_mode(pmode, read_bit, write_bit, execute_bit):
+    mode = 0
+    print pmode, execute_bit
+    if pmode & execute_bit:
+        mode = XMODE
+    if pmode & write_bit:
+        mode = mode | WMODE
+    if pmode & read_bit:
+        mode = mode | RMODE
+    return mode
+
+
+# format the mode from the pnfs format to the traditional 3 chars and a
+# leading zero.
+def format_mode(pmode):
+    # other mode bits
+    omode = get_mode(pmode, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
+    # group mode bits
+    gmode = get_mode(pmode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
+    # user mode bits
+    umode = get_mode(pmode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+    # now the ISUID and ISGID bits
+    smode = get_mode(pmode, stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
+    return "%s%s%s%s"%(smode, umode, gmode, omode)
 
 # return both the user associated with the uid and the euid.
 def get_user():
