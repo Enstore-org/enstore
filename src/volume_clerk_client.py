@@ -111,7 +111,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
     # get a list of all volumes
     def get_vols(self):
         Trace.trace(20,'{get_vols R U CRAZY?')
-        import string
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
@@ -158,12 +157,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
         data_path_socket = callback.volume_server_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
+
+        volumes = []
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+\
                                     "client get_vols, reading worklist")
           if len(msg)==0:
-                break
-	  generic_cs.enprint(msg)
+              break
+          volumes.append(msg)
+        
+	generic_cs.enprint(string.join(volumes,''))
         worklist = ticket
         data_path_socket.close()
 
