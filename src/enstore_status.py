@@ -217,7 +217,7 @@ class EnstoreStatus:
 
     def format_lm_suspect_vols(self, ticket):
         Trace.trace(12,"{format_lm_suspect_vols "+repr(ticket))
-	str =       "    SUSPECT VOLUMES : "
+	str =     "\n    SUSPECT VOLUMES : "
 	spacing = "\n                      "
 	sus_vols = ticket['suspect_volumes']
 	if len(sus_vols) != 0:
@@ -235,7 +235,7 @@ class EnstoreStatus:
 	else:
 	    str = str + "NONE"
         Trace.trace(12,"}format_lm_suspect_vols ")
-	return str+"\n"
+	return str+"\n\n"
 
     # parse the library manager moverlist ticket
     def parse_lm_moverlist(self, work):
