@@ -80,7 +80,7 @@ case $1 in
 		then
 			echo ${ENSTORE_DIR}/gadfly
 		else
-			setup HTMLgen
+			setup gadfly
 			echo ${GADFLY_DIR}
 		fi
 	;;
