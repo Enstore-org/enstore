@@ -122,10 +122,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if self.is_pnfsid(pnfsFilename):
             self.id = pnfsFilename
             try:
-                pnfsFilename = self.get_path(pnfsFilename)
+                pnfsFilename = self.get_path(self.id)
             except (OSError, IOError), detail:
-                pnfsFilename = ""
-
+                #No long do just the following: pnfsFilename = ""
+                # on an exception.  Attempt to get the ".(access)(<pnfs id>)"
+                # version of the filename.
+                #This was done in response to the pnfs database being
+                # corrupted.  There was a directory that had fewer entries
+                # than valid i-nodes that belonged in that directory.  With
+                # this type of database corruption, the is_pnfs_path() test
+                # still works correctly.
+                pnfsFilename = os.path.join(self.dir, ".(access)(%s)"%self.id)
+                if not is_pnfs_path(pnfsFilename):
+                    pnfsFilename = ""
+                    
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
                            fullpath(pnfsFilename)
