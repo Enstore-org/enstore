@@ -1752,6 +1752,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         # find mover in the work_at_movers
         found = 0
+        Trace.trace(11, "work_at_movers: %s" % (self.work_at_movers.list,))
         for wt in self.work_at_movers.list:
             Trace.trace(11, "work_at_movers: mover %s id %s" % (wt['mover'], wt['unique_id']))
             if wt['mover'] == self.requestor['mover']:
