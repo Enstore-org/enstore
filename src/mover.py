@@ -510,7 +510,7 @@ def forked_write_to_hsm( self, ticket ):
 	    #traceback.print_exc()
 	    #print 'type of err_msg is',type(err_msg),'type of sys.exc_info()[1]) is',type(sys.exc_info()[1])
 	    # err_msg is <type 'instance'>
-	    if string.find(str(err_msg),'fd_xfer - read EOF unexpected') != -1:
+	    if err_msg.args[0] == 'fd_xfer - read EOF unexpected':
 		# assume encp dissappeared
 		return_or_update_and_exit( self, self.lm_origin_addr,
 					   e_errors.ENCP_GONE )
