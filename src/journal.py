@@ -78,9 +78,12 @@ class JournalDict:
 		# log the value of deleted item so that it may be
 		# recovered later on
 		v = self.dict[key]
+		if v.has_key('db_flag'):
+			del v['db_flag']
 		j = "del self.dict['%s'] # %s\n" % (key, v)
 		self.jfile.write(j)
 		self.jfile.flush()
+		self.dict[key]['db_flag'] = 'delete'
 
 	def close(self):
 #		if hasattr(self.dict, 'close'):
