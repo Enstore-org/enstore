@@ -159,7 +159,7 @@ def main():
     #This gets us 15 minutes worth of update messages, so re-subscribe
     # every 10 minutes
     last_sub = 0
-    while 1:
+    while not display.stopped:
         r, w, x = select.select([sock], [], [], 15)
         
         if sock in r: #getting responses to our mover status queries
