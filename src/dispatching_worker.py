@@ -124,7 +124,8 @@ class DispatchingWorker(udp_server.UDPServer):
             self.do_one_request()
             self.collect_children()
             count = count + 1
-            if count > 100:
+            #if count > 100:
+            if count > 20:
                 self.purge_stale_entries()
                 count = 0
                 
