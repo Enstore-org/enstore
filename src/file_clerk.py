@@ -45,6 +45,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
+        Trace.trace(10,'}new_bit_file bfid='+repr(bfid))
         return
 
      # even if there is an error - respond to caller so he can process it
