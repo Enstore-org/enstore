@@ -25,9 +25,9 @@ sendMail() {
   filename=$1
   mode=$2
   if [ "$mode" = "emergency" ] ; then
-     mailaddress="bakken@fnal.gov"
+     mailaddress=huangch@fnal.gov
   else
-     mailaddress=bakken@fnal.gov
+     mailaddress=huangch@fnal.gov
   fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
 }
@@ -61,12 +61,21 @@ quit() {
 # to ease the implementation, multiple -p are allowed, but only the
 # last one is effective
 
+# May 24, 1999 Modified again to add -d dir option
+#
+# $0 [[-setup product] | [-D VARIABLE=value] | [-p job_name] | [-d dir] ]* cmd
+#
+# job_name is used to identify the job. If ommitted, cmd is default
+# to ease the implementation, multiple -p are allowed, but only the
+# last one is effective
+
 # additional products
 
 products=
 job=
+cwd=`pwd`
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ]
 do
 	case $1 in
 	-setup)
@@ -85,10 +94,15 @@ do
 	-p)
 		job=$2
 		;;
+	-d)
+		cwd=$2
+		;;
 	esac
 	shift
 	shift
 done
+
+cd $cwd		# to working directory
 
 if [ -n "${job}" ]
 then
@@ -145,6 +159,7 @@ if [ $problem -ne 0 ] ; then
    echo "  Date       :" `date`      >>$procMail 
    echo "  Path       : $procName $* "  >>$procMail 
    echo "  ReturnCode : $problem "   >>$procMail 
+   echo "  Working dir: $cwd "   >>$procMail 
    echo "  Output and error messages ... " >>$procMail 
    echo "  -------------------- start of messages ---------------------- ">>$procMail 
    cat $procOutput >>$procMail 2>/dev/null
