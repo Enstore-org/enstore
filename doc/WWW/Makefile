@@ -27,27 +27,12 @@ DOT=`if hash dot 2>/dev/null ; then echo dot ; else echo true ; fi`
 CONVERT=`if hash convert 2>/dev/null ; then echo convert ; else echo true ; fi`
 
 WWW  = .
-WWW_NEW = ../www_new
+WWW_NEW = ../WWW_new
 BIN  = ../../bin
 SRC  = ../../src
 SRCWWW = $(WWW)
 
 ENSTORE_HOME = /usr/hppc_home/www/enstore
-
-HTML_FILES = $(WWW)/design.html $(WWW)/assumptions.html \
-	$(WWW)/detail_req.html $(WWW)/implementation.html $(WWW)/wbs2.html \
-	$(WWW)/overview.html $(WWW)/prim_req.html $(WWW)/scope.html \
-	$(WWW)/system_architecture.html $(WWW)/testing.html
-
-HOME_FILE = $(WWW)/index.html
-
-PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
-	$(WWW)/write.ps $(WWW)/enstoreSimple.ps $(WWW)/vonruden-698-enstore.ps
-
-GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
-	$(WWW)/enstore.gif $(WWW)/test-stand.gif $(WWW)/enstoreSimple.gif
-
-LOG_FILES = $(WWW)/redwoodfiber.log $(WWW)/redwoodlocal.log
 
 # Define .ps and .gif files that are generated. Not all .ps and 
 # .gif files in this directory are generated
@@ -74,15 +59,17 @@ PIC_PS_FILES = \
 	./test-stand.ps \
 	./write.ps 
 
-WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
-	$(HOME_FILE)
-
 #
 # TARGETS
 #
-all: pics warn
+all: pics www_new warn
 
 pics: PS_pics GIF_pics
+
+www_new: pics
+	@- rm -rf $(WWW_NEW)
+	mkdir $(WWW_NEW)
+	../moveAndAddButton.pl $(WWW_NEW) `justfiles`
 
 PS_pics: $(PIC_PS_FILES)
 
@@ -111,13 +98,13 @@ warn:
 #
 
 install : install_home
-	@rm -rf           $(ENSTORE_INSTALL_DIR)/doc
-	@mkdir		  $(ENSTORE_INSTALL_DIR)/doc/WWW
-	cp `justfiles`    $(ENSTORE_INSTALL_DIR)/doc/WWW
+	@rm -rf           $(ENSTORE_INSTALL_DIR)/doc/www
+	@mkdir -p	  $(ENSTORE_INSTALL_DIR)/doc/WWW
+	cp $(WWW_NEW)/*.* $(ENSTORE_INSTALL_DIR)/doc/WWW
 
-install_home : 
+install_home : www_new
 	@-if [ -d "$(ENSTORE_HOME)" -a -w "$(ENSTORE_HOME)" ]; then \
-		cp `justfiles`  $(ENSTORE_HOME); \
+		cp $(WWW_NEW)/*.*  $(ENSTORE_HOME); \
 		chmod g+w $(ENSTORE_HOME)/*; \
 	else \
 		echo "ERROR: No permissions to write to $(ENSTORE_HOME)"; \
@@ -133,6 +120,7 @@ tidy:
 clean :
 	@ $(BIN)/enstoreClean
 	@ rm -rf $(PIC_PS_FILES) $(PIC_GIF_FILES)
+	@ rm -rf $(WWW_NEW)
 
 
 
