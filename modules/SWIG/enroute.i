@@ -2,7 +2,7 @@
 
 %include "../enrouteError.h"
 
-int routeAdd(char *dest, char *gw);
-int routeDel(char *dest);
-int routeChange(char *dest, char *gw);
-char *errstr(int errno);
+extern int routeAdd(char *dest, char *gw);
+extern int routeDel(char *dest);
+extern int routeChange(char *dest, char *gw);
+extern char *errstr(int errno);
