@@ -49,11 +49,14 @@ find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
 if [ -z "${2-}" ] ; then
   if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
     LOGS=/diska/aml2-log
+    RPTS=/diska/aml2-report
   else
     LOGS=/fnal/ups/prd/www_pages/enstore/aml2log
+    RPTS=/fnal/ups/prd/www_pages/enstore/aml2rpt
   fi
 else
   LOGS=$2
+  RPTS=/junk/doesnot/exist
 fi
 
 cd $LOGS
@@ -79,6 +82,9 @@ done
 cd $HISTORY
 find . -type f -name "log*.ascii" -exec gzip {} \; 2>/dev/null
 
-
+if [ -d $RPTS ]; then 
+  cd $RPTS
+  find . -name "*.rpt" -daystart -mtime +14 -exec rm -fr {} \;
+fi
 
 cd $here
