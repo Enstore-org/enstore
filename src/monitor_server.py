@@ -13,10 +13,10 @@ import traceback
 #import pprint
 import time
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_GETFL
-    fcntl.F_SETFL = FCNTL.F_SETFL
+#if sys.version_info < (2, 2, 0):
+#    import FCNTL #FCNTL is depricated in python 2.2 and later.
+#    fcntl.F_GETFL = FCNTL.F_GETFL
+#    fcntl.F_SETFL = FCNTL.F_SETFL
 import errno
 
 # enstore imports
@@ -333,7 +333,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             
         #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
         except MonitorError:
-            print sys.exc_info()[:2]
+            Trace.log(e_errors.ERROR, "Error extablishing connection: %s"
+                      % str(sys.exc_info()[:2]))
             return
 
         if not data_sock:
