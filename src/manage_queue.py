@@ -146,6 +146,7 @@ class LM_Queue:
     # Return the next highest priority job.  get_init must be called first
     def get_next(self):
 	self.queue_ptr=self.queue_ptr+1
+        Trace.trace(12,"get_next: len %s ptr %s"%(repr(len(self.queue)),repr(self.queue_ptr)))
 	if len(self.queue) > self.queue_ptr:
 	    self.queue[self.queue_ptr]['at_the_top'] = \
 	      self.queue[self.queue_ptr]['at_the_top'] + 1
