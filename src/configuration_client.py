@@ -31,7 +31,13 @@ class ConfigurationClient(generic_client.GenericClient):
         if key=='configuration_server':
             ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
         else:
-            ret = self.get_uncached(key, timeout, retry)
+            request = {'work' : 'lookup', 'lookup' : key }
+            while 1:
+                try:
+                    ret = self.u.send(request, self.config_address, timeout, retry)
+                break
+            except socket.error:
+                self.output_socket_error("get")
         return ret
 
     # dump the configuration dictionary
