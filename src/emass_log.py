@@ -66,6 +66,7 @@ def dump_log_file(addr, month, day, output=sys.stdout, update=0):
 ###internal support functions    
 def decode(raw_msg):
     timecode = int4(raw_msg[:4])
+    if time.daylight: timecode = timecode + 3600 ## XXX guesswork!
     code1 = raw_msg[4:7]
     code2 = raw_msg[7:15]
     msg = raw_msg[15:]
