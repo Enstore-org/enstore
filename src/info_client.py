@@ -24,6 +24,7 @@ import callback
 import hostaddr
 import e_errors
 import enstore_constants
+import edb
 
 MY_NAME = enstore_constants.INFO_CLIENT     #"info_client"
 MY_SERVER = enstore_constants.INFO_SERVER   #"info_server"
@@ -48,6 +49,33 @@ def capacity_str(x,mode="GB"):
 	if neg:	## if x was negative coming in, restore the - sign  
 		x = -x
 	return "%6.2f%s"%(x,suffix)
+
+def show_volume_header():
+	print "%-16s %9s   %-41s   %-16s %-36s %-12s"%(
+		"label", "avail.", "system_inhibit", "library", "volume_family", "comment")
+
+def show_volume(v):
+	# pprint.pprint(v)
+	si0t = ''
+	si1t = ''
+	si_time = (edb.timestamp2time(v['si_time_0']), edb.timestamp2time(v['si_time_1']))
+	if si_time[0] > 0:
+		si0t = time.strftime("%m%d-%H%M",
+			time.localtime(si_time[0]))
+	if si_time[1] > 0:
+		si1t = time.strftime("%m%d-%H%M",
+			time.localtime(si_time[1]))
+	print "%-16s %9s   (%-10s %9s %-8s %9s)   %-16s %-36s"%(
+		v['label'], capacity_str(v['remaining_bytes']),
+		v['system_inhibit_0'], si0t,
+		v['system_inhibit_1'], si1t,
+		# v['user_inhibit_0'],v['user_inhibit_1'],
+		v['library'],
+		v['storage_group']+'.'+v['file_family']+'.'+v['wrapper']),
+	if v['comment']:
+		print v['comment']
+	else:
+		print
 
 class infoClient(generic_client.GenericClient):
 	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
@@ -121,7 +149,7 @@ class infoClient(generic_client.GenericClient):
 		# get a port to talk on and listen for connections
 		host, port, listen_socket = callback.get_callback()
 		listen_socket.listen(4)
-		ticket = {"work"		  : "get_vols",
+		ticket = {"work"		  : "get_vols2",
 				  "callback_addr" : (host, port),
 				  "key"		   : key,
 				  "in_state"	  : state,
@@ -165,37 +193,63 @@ class infoClient(generic_client.GenericClient):
 
 		if volumes.has_key("header"):		# full info
 			if print_list:
-				print "%-10s	 %-8s		 %-17s		  %012s	 %-012s		  %-012s"%(
-					"label","avail.", "system_inhibit",
-					"library","	volume_family", "comment")
+				show_volume_header()
+				print
 				for v in volumes["volumes"]:
-					print "%-10s"%(v['volume'],),
-					print capacity_str(v['remaining_bytes']),
-					si0t = ''
-					si1t = ''
-					if v.has_key('si_time'):
-						if v['si_time'][0] > 0:
-							si0t = time.strftime("%m%d-%H%M",
-								time.localtime(v['si_time'][0]))
-						if v['si_time'][1] > 0:
-							si1t = time.strftime("%m%d-%H%M",
-								time.localtime(v['si_time'][1]))
-					print " (%-010s %9s %08s %9s) %-012s %012s"%(
-						v['system_inhibit'][0], si0t,
-						v['system_inhibit'][1], si1t,
-						# v['user_inhibit'][0],v['user_inhibit'][1],
-						v['library'],v['volume_family']),
-					if v.has_key('comment'):
-						print v['comment']
-					else:
-						print
+					show_volume(v)
 		else:
 			vlist = ''
 			for v in volumes.get("volumes",[]):
-				vlist = vlist+v['volume']+" "
+				vlist = vlist+v['label']+" "
 			if print_list:
 				print vlist
 				
+		ticket['volumes'] = volumes.get('volumes',[])
+		return ticket
+
+	def get_pvols(self):
+		# get a port to talk on and listen for connections
+		host, port, listen_socket = callback.get_callback()
+		listen_socket.listen(4)
+		ticket = {"work"		: "get_pvols",
+			  "callback_addr"	: (host, port)}
+
+		# send the work ticket to the library manager
+		ticket = self.send(ticket, 60, 1)
+		if ticket['status'][0] != e_errors.OK:
+			return ticket
+
+		r,w,x = select.select([listen_socket], [], [], 60)
+		if not r:
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for info clerk callback"
+		
+		control_socket, address = listen_socket.accept()
+		
+		if not hostaddr.allow(address):
+			control_socket.close()
+			listen_socket.close()
+			raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+		
+		ticket = callback.read_tcp_obj(control_socket)
+
+		listen_socket.close()
+
+		if ticket["status"][0] != e_errors.OK:
+			return ticket
+
+		data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		data_path_socket.connect(ticket['info_clerk_callback_addr'])
+		ticket= callback.read_tcp_obj(data_path_socket)
+		volumes = callback.read_tcp_obj_new(data_path_socket)
+		data_path_socket.close()
+
+
+		# Work has been read - wait for final dialog with volume clerk
+		done_ticket = callback.read_tcp_obj(control_socket)
+		control_socket.close()
+		if done_ticket["status"][0] != e_errors.OK:
+			return done_ticket
+
 		ticket['volumes'] = volumes.get('volumes',[])
 		return ticket
 
@@ -385,7 +439,7 @@ class infoClient(generic_client.GenericClient):
 	def tape_list(self,external_label):
 		host, port, listen_socket = callback.get_callback()
 		listen_socket.listen(4)
-		ticket = {"work"		  : "tape_list",
+		ticket = {"work"		  : "tape_list2",
 				  "callback_addr" : (host, port),
 				  "external_label": external_label}
 		# send the work ticket to the file clerk
@@ -732,21 +786,24 @@ def do_work(intf):
 	elif intf.list:
 		ticket = ifc.tape_list(intf.list)
 		if ticket['status'][0] == e_errors.OK:
-			
-			print "	 label		   bfid	   size		location_cookie delflag original_name\n"
+			format = "%%-%ds %%-16s %%10s %%-22s %%-7s %%s"%(len(intf.list))
+			# print "%-8s %-16s %10s %-22s %-7s %s\n"%(
+			#	"label", "bfid", "size", "location_cookie", "delflag", "original_name")
+			print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
+			print
 			tape = ticket['tape_list']
 			for record in tape:
-				deleted = 'unknown'
-				if record.has_key('deleted'):
-					if record['deleted'] == 'yes':
-						deleted = 'deleted'
-					elif record['deleted'] == 'no':
-						deleted = 'active'
-
-				print "%10s %s %10i %22s %7s %s" % (intf.list,
+				if record['deleted'] == 'y':
+					deleted = 'deleted'
+				elif record['deleted'] == 'n':
+					deleted = 'active'
+				else:
+					deleted = 'unknown'
+				# print "%-8s %-16s %10i %-22s %-7s %s" % (intf.list,
+				print format % (intf.list,
 					record['bfid'], record['size'],
 					record['location_cookie'], deleted,
-					record['pnfs_name0'])
+					record['pnfs_path'])
 
 	elif intf.ls_active:
 		ticket = ifc.list_active(intf.ls_active)
@@ -839,16 +896,19 @@ def do_work(intf):
 			in_state = None 
 		ticket = ifc.get_vols(key, in_state, not_cond)
 	elif intf.pvols:
-		ticket = ifc.get_vols(print_list=0)
+		ticket = ifc.get_pvols()
 		problem_vol = {}
 		for i in ticket['volumes']:
-			if i['volume'][-8:] != '.deleted':
-				for j in [0, 1]:
-					if i['system_inhibit'][j] != 'none':
-						if problem_vol.has_key(i['system_inhibit'][j]):
-							problem_vol[i['system_inhibit'][j]].append(i)
-						else:
-							problem_vol[i['system_inhibit'][j]] = [i]
+			if i['system_inhibit_0'] != 'none':
+				if problem_vol.has_key(i['system_inhibit_0']):
+					problem_vol[i['system_inhibit_0']].append(i)
+				else:
+					problem_vol[i['system_inhibit_0']] = [i]
+			if i['system_inhibit_1'] != 'none':
+				if problem_vol.has_key(i['system_inhibit_1']):
+					problem_vol[i['system_inhibit_1']].append(i)
+				else:
+					problem_vol[i['system_inhibit_1']] = [i]
 
 		if intf.just:
 			interested = intf.args
@@ -856,25 +916,10 @@ def do_work(intf):
 			interested = problem_vol.keys()
 		for k in problem_vol.keys():
 			if k in interested:
-				output = []
 				print '====', k
 				for v in problem_vol[k]:
-					si0t = '*'
-					si1t = '*'
-					if v.has_key('si_time'):
-						if v['si_time'][0] > 0:
-							si0t = time.strftime("%m%d-%H%M",
-								   time.localtime(v['si_time'][0]))
-						if v['si_time'][1] > 0:
-							si1t = time.strftime("%m%d-%H%M",
-								   time.localtime(v['si_time'][1]))
-					output.append("%-10s %012s %9s %12s %9s"%(
-							v['volume'],
-							v['system_inhibit'][0], si0t,
-								v['system_inhibit'][1], si1t,))
-				output.sort()
-				for i in output:
-					print i
+					show_volume(v)
+				print
 	elif intf.labels:
 		ticket = ifc.get_vol_list()
 		if ticket['status'][0] == e_errors.OK:
