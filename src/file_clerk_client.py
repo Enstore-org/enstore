@@ -71,6 +71,11 @@ class FileClient(generic_client.GenericClient,
         ticket["fc"]["pnfsid"] = str(file["pnfsid"])
         ticket["fc"]["pnfs_name0"] = str(file["pnfs_name0"])
         ticket["fc"]["drive"] = str(file["drive"])
+        # handle uid and gid
+        if file.has_key("uid"):
+            ticket["fc"]["uid"] = file["uid"]
+        if file.has_key("gid"):
+            ticket["fc"]["gid"] = file["gid"]
         ticket = self.new_bit_file(ticket)
         if ticket["status"][0] == e_errors.OK:
             ticket = self.set_pnfsid(ticket)
@@ -415,13 +420,6 @@ class FileClient(generic_client.GenericClient,
 
     def erase_volume(self, vol):
         r = self.send({"work"           : "erase_volume",
-		       "external_label" : vol } )
-	return r
-
-    # restore a volume
-
-    def restore_volume(self, vol):
-        r = self.send({"work"           : "restore_volume",
 		       "external_label" : vol } )
 	return r
 

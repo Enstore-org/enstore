@@ -63,6 +63,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record["size"]             = ticket["fc"]["size"]
         record["sanity_cookie"]    = ticket["fc"]["sanity_cookie"]
         record["complete_crc"]     = ticket["fc"]["complete_crc"]
+
+	# uid and gid
+	if ticket["fc"].has_key("uid"):
+		record["uid"] = ticket["fc"]["uid"]
+	if ticket["fc"].has_key("gid"):
+		record["gid"] = ticket["fc"]["gid"]
         
         # get a new bit file id
         bfid = self.unique_bit_file_id()
@@ -477,45 +483,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     #### DONE
-    # __restore_volume(self, vol) -- restore according to volmap
-
-    def __restore_volume(self, vol):
-        Trace.log(e_errors.INFO, 'restoring files for vol %s'%(vol))
-        bfids = self.get_all_bfids(vol)
-        msg = ""
-        for bfid in bfids:
-            status = self.__restore_file(bfid)
-            if status[1]:
-                msg = msg + '\n' + status[1]
-        if msg:
-            return e_errors.ERROR, msg
-        else:
-            return e_errors.OK, None
-
-    #### DONE
-    # restore_volume -- server service
-
-    def restore_volume(self, ticket):
-        try:
-            vol = ticket["external_label"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        ticket["status"] = (e_errors.OK, None)
-        # catch any failure
-        try:
-            ticket['status'] = self.__restore_volume(vol)
-        except:
-            ticket["status"] = (e_errors.ERROR, "restore failed")
-        # and return to the caller
-        self.reply_to_caller(ticket)
-        return
-
-    #### DONE
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -775,6 +742,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record['pnfsvid'] = pnfsvid
         record['sanity_cookie'] = sanity_cookie
         record['size'] = size
+
+        # handle uid and gid
+        if ticket.has_key("uid"):
+            record["uid"] = ticket["uid"]
+        if ticket.has_key("gid"):
+            record["gid"] = ticket["gid"]
 
         # assigning it to database
         self.dict[bfid] = record
