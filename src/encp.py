@@ -96,22 +96,15 @@ class Flag:
     
 data_access_layer_requested=Flag()
 
-        
 def quit(exit_code=1):
     delete_at_exit.delete()
     os._exit(exit_code)
 
-
-def print_error(errcode,errmsg,fatal=0) :
-    
+def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
-    if fatal:
-        format = "Fatal error: "+format
-    else:
-        format = "Error: "+format
+    format = "Error: "+format
     sys.stderr.write(format)
     sys.stderr.flush()
-
     
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
@@ -148,7 +141,6 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         sys.stderr.write(msg+'\n')
         sys.stderr.flush()
     
-    
     try:
         format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f "+\
                  "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
@@ -167,8 +159,6 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         exc,msg,tb=sys.exc_info()
         sys.stderr.write("cannot log error message %s\n"%(errmsg,))
         sys.stderr.write("internal error %s %s"%(exc,msg))
-        
-
 
 client={}
   
@@ -176,7 +166,6 @@ client={}
 
 # get the configuration client and udp client and logger client
 # return some information about who we are so it can be used in the ticket
-
 
 def clients(config_host,config_port):
     # get a configuration server
@@ -303,9 +292,6 @@ def inputfile_check(input_files, bytecount=None):
     return (inputlist, file_size)
 
 
-
-##############################################################################
-
 # check the output file list for consistency
 # generate names based on input list if required
 
@@ -330,7 +316,6 @@ def outputfile_check(inputlist,output):
             print_data_access_layer_format('',output[0],0, {'status':(
                 'USERERROR','Not a directory %s'%(output[0],))})  
             quit()
-
 
     outputlist = []
 
@@ -488,12 +473,12 @@ def check_load_balance(mode, dest):
     interface_dict = config.get('interface')
     if not interface_dict:
         return
-
     interfaces = interface_dict.keys()
     if not interfaces:
         return
     Trace.log(e_errors.INFO, "probing network to select interface")
     rate_dict = multiple_interface.rates(interfaces)
+    Trace.log(e_errors.INFO, "interface rates: %s" % rate_dict)
     choose = []
     for interface in interfaces:
         weight = interface_dict[interface].get('weight', 1)
@@ -514,15 +499,21 @@ def check_load_balance(mode, dest):
         err = runon.runon(cpu)
         if err:
             Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
-
+        else:
+            Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
+            
     gw = interface_details.get('gw')
     if gw is not None:
-        err=enroute.routeDel(gw)
+        err=enroute.routeDel(dest)
         if err:
-            Trace.log(e_errors.INFO, "enroute.routeDel(%s) returns %s" % (gw, err))
+            Trace.log(e_errors.INFO, "enroute.routeDel(%s) returns %s" % (dest, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
         err=enroute.routeAdd(dest, gw)
         if err:
-            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s) returns %s" % (dest,gw, err))
+            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
 
     return interface_details
     
@@ -611,7 +602,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     status, info = pnfs_information(outputlist,write=1)
     if status[0] != e_errors.OK:
         print_data_access_layer_format('','',0,{'status':status})
-        print_error(status[0], status[1], fatal=1)
+        print_error(status[0], status[1])
         quit()
         
     junk,library,file_family,ff_wrapper,width,storage_group,pinfo,p=info
@@ -920,8 +911,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             except socket.error, msg:
                 Trace.log(e_errors.ERROR, "connect: %s %s" % (mover_addr, msg))
 
-                print_error('EPROTO',
-                            "failed to transfer: socket error %s" %(msg,), 0)
+                print_error('EPROTO',  "failed to transfer: socket error %s" %(msg,))
 
                 retry = retry - 1
                 if retry>0:
@@ -986,10 +976,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                     if not e_errors.is_retriable(done_ticket["status"][0]):
                         # exit here
                         quit()
-                    print_error('EPROTO',
-                                "failed to transfer: status=%s"%(ticket['status'],),
-                                fatal=(retry<2))
-
+                    print_error('EPROTO', "failed to transfer: status=%s"%(ticket['status'],))
                     retry = retry - 1
                     if retry>0:
                         sys.stderr.write("Retrying\n")
@@ -1059,9 +1046,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                 if not e_errors.is_retriable(done_ticket["status"][0]):
                     quit()
 
-                print_error('EPROTO',
-                            ' failed to transfer: status=%s'%(done_ticket['status'],),
-                            fatal=(retry<2))
+                print_error('EPROTO', ' failed to transfer: status=%s'%(done_ticket['status'],))
                 retry = retry - 1
                 if retry:
                     sys.stderr.write("Retrying\n")
@@ -1257,9 +1242,7 @@ def compare_location(t1,t2):
     
 #######################################################################
 # submit read_from_hsm requests
-def submit_read_requests(requests, client, tinfo, vols, verbose, 
-                         retry_flag):
-
+def submit_read_requests(requests, client, tinfo, vols, verbose, retry_flag):
 
   t2 = time.time() #--------------------------------------------Lap-Start
   rq_list = []
@@ -1355,9 +1338,7 @@ def submit_read_requests(requests, client, tinfo, vols, verbose,
                                          rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
                                          rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
                                          lmticket)
-          print_error("EPROTO",
-                      "submit_read_requests. lmget failed %s"%(lmticket["status"],),
-                      fatal=0)
+          print_error("EPROTO", "submit_read_requests. lmget failed %s"%(lmticket["status"],))
           continue
 
       Trace.trace(8,"submit_read_requests %s.library_manager at host=%s port=%s"
@@ -1374,10 +1355,8 @@ def submit_read_requests(requests, client, tinfo, vols, verbose,
                                          rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
                                          ticket)
 
-          print_error('EPROTO',
-                      'encp.read_from_hsm: from u.send to LM at %s:%s,  ticket["status"]=%s'
-                      %(lmticket['hostip'],lmticket['port'],ticket["status"]),
-                      fatal=0)          
+          print_error('EPROTO',  'encp.read_from_hsm: from u.send to LM at %s:%s,  ticket["status"]=%s'
+                      %(lmticket['hostip'],lmticket['port'],ticket["status"]))
           continue
       submitted = submitted+1
 
@@ -1479,15 +1458,10 @@ def read_hsm_files(listen_socket, submitted, requests,
                 if files_left > 0:
                     files_left = files_left - 1
 
-                print_error ('EPROTO',
-                             'failed to setup transfer, status=%s' %(ticket["status"],),
-                             fatal=0)
-
+                print_error ('EPROTO',  'failed to setup transfer, status=%s' %(ticket["status"],))
                 continue
 
-            print_error ('EPROTO',
-                         'failed to setup transfer, status=%s' %(ticket["status"],),
-                         fatal=0)
+            print_error ('EPROTO', 'failed to setup transfer, status=%s' %(ticket["status"],))
 
             if ticket['retry_cnt'] >= maxretry:
                 del(requests[j])
@@ -1519,6 +1493,7 @@ def read_hsm_files(listen_socket, submitted, requests,
         #set up any special network load-balancing voodoo
         interface=check_load_balance(mode=0, dest=mover_addr[0])
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print "interface=", interface, "data socket=", data_path_socket #REMOVE XXX CGW
         if interface:
             ip = interface.get('ip')
             if ip:
@@ -1541,7 +1516,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                 out_fd = os.open(localname,"w")
                 out_fd_closed = 0
             else:
-                out_fd = os.open(localname, os.O_CREAT|os.O_EXCL, 0)
+                out_fd = os.open(localname, os.O_CREAT|os.O_RDWR, 0)
         except:
             error = e_errors.USERERROR
             done_ticket = {'status':(error,"Can't write %s"%(localname,))}
@@ -1608,16 +1583,10 @@ def read_hsm_files(listen_socket, submitted, requests,
                         del(requests[j])
                         if files_left > 0: files_left = files_left - 1
 
-                        print_error ('EPROTO',
-                                     'Failed to transfer, status=%s' %(done_ticket["status"],),
-                                     fatal=1)
-
+                        print_error ('EPROTO',  'Failed to transfer, status=%s' %(done_ticket["status"],))
                         error=1
                         break
-                    print_error ('EPROTO',
-                                 'failed to transfer, status=%s'%(done_ticket["status"],),
-                                 fatal=1)
-                    pass
+                    print_error ('EPROTO', 'failed to transfer, status=%s'%(done_ticket["status"],))
 
                 if ticket['retry_cnt'] >= maxretry:
                     del(requests[j])
@@ -1648,7 +1617,6 @@ def read_hsm_files(listen_socket, submitted, requests,
 
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s"%(control_socket,))
-        ## CGW need a try here (can get TCP connection closed)
         try:
             done_ticket = callback.read_tcp_obj(control_socket)
             control_socket.close()
@@ -1656,8 +1624,8 @@ def read_hsm_files(listen_socket, submitted, requests,
             Trace.trace(8,"read_hsm_files final dialog recieved")
         except:
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERRROR, "recv final dialog %s %s" %(exc, msg))
-            done_ticket = {'status': ( e_errors.RETRY, "%s %s" % (exc, msg))}
+            Trace.log(e_errors.ERROR, "recv final dialog %s %s" %(exc, msg))
+            done_ticket = {'status': ( e_errors.NET_ERROR, "%s %s" % (exc, msg))}
             
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
@@ -1672,17 +1640,10 @@ def read_hsm_files(listen_socket, submitted, requests,
                 if files_left > 0:
                     files_left = files_left - 1
 
-                print_error ('EPROTO',
-                             'failed to transfer, status=%s' %(done_ticket["status"],),
-                             fatal=1)
-
+                print_error ('EPROTO', 'failed to transfer, status=%s' %(done_ticket["status"],))
                 continue
 
-
-
-            print_error ('EPROTO', 
-                         'failed to transfer, status=%s' %(done_ticket["status"],),
-                         fatal=1)
+            print_error ('EPROTO',  'failed to transfer, status=%s' %(done_ticket["status"],))
 
             if ticket['retry_cnt'] >= maxretry:
                 del(requests[j])
@@ -1716,9 +1677,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                                                requests[j]['file_size'],
                                                done_ticket)
 
-                print_error('EPROTO',
-                       "encp.read_from_hsm: CRC's mismatch: %s %s"%
-                            (mover_crc, mycrc),fatal=0)
+                print_error('EPROTO',  "encp.read_from_hsm: CRC's mismatch: %s %s"%(mover_crc, mycrc))
 
                 # no retry for this case
                 bytes = bytes+requests[j]['file_size']
@@ -1835,12 +1794,13 @@ def read_hsm_files(listen_socket, submitted, requests,
 #######################################################################
 def read_from_hsm(input_files, output,
                   verbose=0, chk_crc=0, 
-                  pri=1, delpri=0, agetime=0, delayed_dismount=None,
-                  t0=0):
+                  pri=1, delpri=0, agetime=0,
+                  delayed_dismount=None, t0=0):
     if t0==0:
         t0 = time.time()
     Trace.trace(6,"read_from_hsm input_files=%s output=%s verbose=%s  chk_crc=%s t0=%s"%
                 (input_files,output,verbose,chk_crc,t0))
+
     tinfo = {}
     tinfo["abs_start"] = t0
 
@@ -1858,7 +1818,7 @@ def read_from_hsm(input_files, output,
     ninput = len(inputlist)
     status, info = pnfs_information(inputlist,write=0)
     if status[0] != e_errors.OK:
-        print_error(status[0], status[1], fatal=1)
+        print_error(status[0], status[1])
         #XXX data_access_layer?
         quit()
 
@@ -2062,7 +2022,6 @@ def read_from_hsm(input_files, output,
         (submitted,Qd) = submit_read_requests(request_list,
                                               client, tinfo, 
                                               vols_needed.keys(),
-                                              files_left,
                                               verbose, 
                                               retry_flag)
 
@@ -2080,10 +2039,8 @@ def read_from_hsm(input_files, output,
         # It is dicey to time out, as it is probably legitimate to 
         # wait for hours....
         if submitted != 0:
-            files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
-                                                      files_left, request_list,
-                                                      tinfo, t0, chk_crc, 
-                                                      maxretry, verbose)
+            files_left, brcvd, error = read_hsm_files(listen_socket, submitted, request_list,
+                                                      tinfo, t0, chk_crc, maxretry, verbose)
             bytes = bytes + brcvd
             if verbose: print "FILES_LEFT ", files_left
             if files_left > 0:
@@ -2206,9 +2163,9 @@ class encp(interface.Interface):
         for i in range(1,len(self.args)-1):
             if p[i]!=p1:
                 if p1:
-                    print_error("USERERROR", "Not all input files are /pnfs/... files",1)
+                    print_error("USERERROR", "Not all input files are /pnfs/... files")
                 else:
-                    print_error("USERERROR", "Not all input files are unix files",1)
+                    print_error("USERERROR", "Not all input files are unix files")
                 quit()
             else:
                 self.input.append(self.args[i])
@@ -2225,8 +2182,7 @@ class encp(interface.Interface):
 
 ##############################################################################
 
-if __name__  ==  "__main__" :
-
+def main():
     t0 = time.time()
     Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
@@ -2259,14 +2215,14 @@ if __name__  ==  "__main__" :
     ## have we been called "encp unixfile unixfile" ?
     elif e.intype=="unixfile" and e.outtype=="unixfile" :
         emsg="encp copies to/from tape. It is not involved in copying %s to %s" % (e.intype, e.outtype)
-        print_error('USERERROR', emsg,1)
+        print_error('USERERROR', emsg)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
 
     ## have we been called "encp hsmfile hsmfile?
     elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
         emsg=  "encp tape to tape is not implemented. Copy file to local disk and them back to tape"
-        print_error('USERERROR', emsg, 1)
+        print_error('USERERROR', emsg)
         if data_access_layer_requested:
             print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
 
@@ -2277,3 +2233,16 @@ if __name__  ==  "__main__" :
         quit()
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
+
+if __name__ == '__main__':
+    try:
+        main()
+        quit(0)
+    except SystemExit, msg:
+        quit(1)
+    except:
+        exc, msg, tb = sys.exc_info()
+        sys.stderr.write("%s %s\n" % (exc, msg))
+        quit(1)
+        
+        
