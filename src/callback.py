@@ -3,7 +3,6 @@
 #
 # system imports
 import time
-import errno
 import sys
 
 # enstore imports
@@ -90,136 +89,49 @@ def get_data_callback():
     return get_callback_port( 7640, 7650 )
 
 def write_tcp_buf(sock,buffer,errmsg=""):
+    del errmsg # quiet the linter
     Trace.trace(16,"{write_tcp_buf")
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(3,"ECONNREFUSED...retrying (write_tcp_buf pre)")
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" write_tcp_buff pre-send error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"write_tcp_buf pre-send error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
-    sock.send(buffer)
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(0,"ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
-        generic_cs.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_buf")
+    try:
         sock.send(buffer)
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" write_tcp_buf post-send error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"write_tcp_buf post-send error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
+    except socket.error, detail:
+        Trace.trace(0,"write_tcp_buf: socket.error"+str(detail))
+        ##XXX Further sends will fail, our peer will notice incomplete message
     Trace.trace(16,"}write_tcp_buf")
 
 # send a message on a tcp socket
 def write_tcp_socket(sock,buffer,errmsg=""):
     Trace.trace(16,"{write_tcp_socket")
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(3,"ECONNREFUSED...retrying (write_tcp_socket pre)")
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" write_tcp_socket pre-send error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"write_tcp_socket pre-send error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
-    sock.send(dict_to_a.dict_to_a(buffer))
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(0,"ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_socket")
-        generic_cs.enprint("ECONNREFUSED: Redoing send. POSSIBLE ERROR write_tcp_socket")
-        sock.send(dict_to_a.dict_to_a(buffer))
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" write_tcp_socket post-send error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"write_tcp_socket post-send error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
+    write_tcp_buf(sock,dict_to_a.dict_to_a(buffer),errmsg)
     Trace.trace(16,"}write_tcp_socket")
-
+    
 # read a complete message in a  tcp socket
 def read_tcp_buf(sock,errmsg="") :
+    del errmsg # quiet the linter
     Trace.trace(16,"{read_tcp_buf")
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" read_tcp_buf pre-recv error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"read_tcp_buf pre-recv error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
     buf = sock.recv(65536*4)
-    badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    refused = 1
-    while badsock==errno.ECONNREFUSED and refused<25:
-        refused = refused+1
-        Trace.trace(0,"ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_buf")
-        generic_cs.enprint("ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_buf")
-        buf = sock.recv(65536*4)
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-    if badsock != 0 :
-        generic_cs.enprint(errmsg+" read_tcp_buf post-recv error: "+\
-              repr(errno.errorcode[badsock]))
-        Trace.trace(0,"read_tcp_buf post-recv error "+errmsg+\
-                    repr(errno.errorcode[badsock]))
     Trace.trace(16,"}read_tcp_buf len="+repr(len(buf)))
     return buf
 
+
+
 def read_tcp_socket(sock,errmsg="") :
+    del errmsg #quiet the linter
     Trace.trace(16,"{read_tcp_socket")
     workmsg = ""
-    while 1:
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        refused = 1
-        while badsock==errno.ECONNREFUSED and refused<25:
-            refused = refused+1
-            Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
-            badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            generic_cs.enprint(errmsg+\
-                               " read_tcp_socket pre-recv socketerror: "+\
-                               repr(errno.errorcode[badsock]))
-            Trace.trace(0,"read_tcp_socket pre-recv error "+errmsg+\
-                        repr(errno.errorcode[badsock]))
-        buf = sock.recv(65536*4)
-        badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        refused = 1
-        while badsock==errno.ECONNREFUSED and refused<25:
-            refused = refused+1
-            Trace.trace(0,"ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_socket")
-            generic_cs.enprint("ECONNREFUSED: Redoing recv. POSSIBLE ERROR write_tcp_socket")
-            buf = sock.recv(65536*4)
-            badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-        if badsock != 0 :
-            generic_cs.enprint(errmsg+" read_tcp_socket post-recv error: "+\
-                  repr(errno.errorcode[badsock]))
-            Trace.trace(0,"read_tcp_socket post-recv error "+errmsg+\
-                        repr(errno.errorcode[badsock]))
-        if len(buf) == 0: break
-	# temporary??? sanity check to help find intermittent bug
-	if workmsg == buf: generic_cs.enprint( "WEIRD - DUPLICATE CONTROL MESSAGE RECEIVED" )
-	else: workmsg = workmsg+buf
-        try:
-            worklist = dict_to_a.a_to_dict(workmsg)
-            return worklist
-        except SyntaxError:
-            #generic_cs.enprint("SyntaxError on translating: "+\
-            #                    repr(workmsg)+"\nretrying")
-            continue
+    depth = 0
+
+    while depth or not workmsg:
+        c = sock.recv(1)
+        if not c:
+            break
+        
+        if c=='{':
+            depth = depth+1
+        elif c=='}':
+            depth = depth-1
+
+        workmsg = workmsg + c
+
     try:
         worklist = dict_to_a.a_to_dict(workmsg)
         Trace.trace(16,"}read_tcp_socket len="+repr(len(worklist)))
@@ -228,6 +140,7 @@ def read_tcp_socket(sock,errmsg="") :
         Trace.trace(0,"read_tcp_socket Error handling message"+repr(workmsg))
         raise IOError,"Error handling message"+repr(workmsg)
 
+    
 # return a mover tcp socket
 def mover_callback_socket(ticket) :
     host, port = ticket['mover']['callback_addr']    
