@@ -29,9 +29,9 @@ if [ $USE_WGET -eq 1 ] ; then
    rm -f VOLUMES_DEFINED; wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
    rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it; fi
 else
-   echo "`date` enstore vol --vols > VOLUMES_DEFINED"
-   rm -f VOLUMES_DEFINED; enstore vol --vols > VOLUMES_DEFINED 2>/dev/null
-   rc=$?; if [ $rc -ne 0 ]; then echo "enstore vol --vols > VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it; fi
+   echo "`date` enstore info --vols > VOLUMES_DEFINED"
+   rm -f VOLUMES_DEFINED; enstore info --vols > VOLUMES_DEFINED 2>/dev/null
+   rc=$?; if [ $rc -ne 0 ]; then echo "enstore info --vols > VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it; fi
 fi
 
 # get rid of all the entries that won't work (deleted, noaccess, notallowed, headers, trailers, null...)
@@ -61,8 +61,8 @@ while [ $done -gt 0 ]; do
   tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
 
   # get up to date information on the tape to make sure we have a chance to read a file
-  echo `date` enstore vol --vol $tape
-  tinfo=`enstore vol --vol $tape`
+  echo `date` enstore info --vol $tape
+  tinfo=`enstore info --vol $tape`
   echo "$tinfo"
   if [ `echo $tinfo | egrep -c 'DELETED|NOTALLOWED|NOACCESS'` -ne 0 ]; then
     echo REJECTED $tape is DELETED/NOTALLOWED/NOACCESS
@@ -78,9 +78,9 @@ while [ $done -gt 0 ]; do
      echo `date` "enstore file --list $tape > $tape"
      rm -f $tape; enstore file --list > $tape  2>/dev/null
      rc=$?; if [ $rc -ne 0 ]; then echo "enstore file --list $tape FAILED "; exit $rc;else echo `date` got it; fi
-     echo `date` "enstore vol --vol $tape >> $tape"
-     enstore vol --vol $tape >> $tape  2>/dev/null
-     rc=$?; if [ $rc -ne 0 ]; then echo "enstore vol --vol $tape FAILED "; exit $rc;else echo `date` got it; fi
+     echo `date` "enstore info --vol $tape >> $tape"
+     enstore info --vol $tape >> $tape  2>/dev/null
+     rc=$?; if [ $rc -ne 0 ]; then echo "enstore info --vol $tape FAILED "; exit $rc;else echo `date` got it; fi
   fi
 
   # make sure this volume is still on the readable list.
@@ -158,7 +158,7 @@ while [ $done -gt 0 ]; do
 
     #List the number of active volumes.  This will give more meaningful
     # output for the administrators.
-    library=`enstore vol --vol $tape | grep library | cut -d' ' -f3`
+    library=`enstore info  --vol $tape | grep library | cut -d' ' -f3`
     library=`echo $library | tr ",'" "  " | sed "s/ //"`
     cmd="enstore lib --vols $library"
     echo $cmd
