@@ -49,24 +49,20 @@ class MoverClient(generic_client.GenericClient):
         Trace.trace(12,"}send"+repr(s))
 	return s
 
-class MoverClientInterface(interface.Interface):
+class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.mover = ""
-	self.got_server_verbose = 0
 	self.status = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # parse the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.verbose_options()+\
-	       ["status"] +\
-               self.alive_options()+self.help_options()
+        return self.client_options()+["status"]
 
     #  define our specific help
     def parameters(self):

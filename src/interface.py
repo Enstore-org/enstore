@@ -45,7 +45,6 @@ class Interface:
 
 	self.check_host()
 	self.check_port(port)
-        self.verbose = 0
 
     def charopts(self):
         return [""]

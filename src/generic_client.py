@@ -8,6 +8,20 @@ import sys
 import Trace
 import generic_cs
 import e_errors
+import interface
+
+class GenericClientInterface(interface.Interface):
+
+    def __init__(self):
+	self.verbose = 0
+	self.got_server_verbose = 0
+	self.dump = 0
+	self.alive = 0
+	interface.Interface.__init__(self)
+
+    def client_options(self):
+	return self.config_options() + self.verbose_options()+ \
+	       self.alive_options()  + self.help_options()
 
 
 class GenericClient(generic_cs.GenericCS):

@@ -171,29 +171,25 @@ class ConfigurationClient(generic_client.GenericClient):
         Trace.trace(16,'}get_movers')
 	
 
-class ConfigurationClientInterface(interface.Interface):
+class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         # fill in the defaults for the possible options
 	self.config_list = {}
        	self.config_file = ""
-        self.verbose = 0
         self.dict = 0
         self.load = 0
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
        	self.get_keys = 0
-	self.got_server_verbose = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # parse the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.verbose_options()+\
-	       ["config_file=","get_keys","dict","load"] + \
-	       self.alive_options()+self.help_options()
+        return self.client_options()+\
+	       ["config_file=","get_keys","dict","load"]
 
 if __name__ == "__main__":
     import sys

@@ -134,19 +134,17 @@ class FileClient(generic_client.GenericClient, \
         Trace.trace(10,"}bfid_info"+repr(r))
         return r
 
-class FileClerkClientInterface(interface.Interface):
+class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
         Trace.trace(10,'{fci.__init__')
         # fill in the defaults for the possible options
         self.bfids = 0
         self.bfid = 0
-        self.alive = 0
         self.backup = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
-	self.got_server_verbose = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
@@ -155,9 +153,7 @@ class FileClerkClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.config_options()+self.verbose_options()+\
-               ["bfids","bfid=","backup"] +\
-               self.alive_options()+self.help_options()
+        return self.client_options()+["bfids","bfid=","backup"]
 
 
 

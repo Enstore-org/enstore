@@ -111,29 +111,26 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_delayed_dismounts(self):
 	return getlist(self,"get_delayed_dismounts")
 
-class LibraryManagerClientInterface(interface.Interface) :
+class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self) :
         self.name = ""
         self.getwork = 0
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.getmoverlist = 0
 	self.get_susp_vols = 0
 	self.get_del_dismounts = 0
-	self.got_server_verbose = 0
 	self.get_susp_vols = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
 	# parse the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options()+self.verbose_options()+\
+        return self.client_options()+\
 	       ["getwork", "getmoverlist", "get_suspect_vols",
-	       "get_del_dismount"] +\
-	       self.alive_options()+self.help_options()
+	       "get_del_dismount"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):

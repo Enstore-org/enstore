@@ -24,7 +24,8 @@ class Inquisitor(generic_client.GenericClient):
         configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
-        ticket = self.csc.get("inquisitor")
+	self.server_name = "inquisitor"
+        ticket = self.csc.get(self.server_name)
 	try:
             self.print_id = ticket['logname']
         except:
@@ -34,7 +35,7 @@ class Inquisitor(generic_client.GenericClient):
     def send (self, ticket, rcv_timeout=0, tries=0):
         Trace.trace(12,"{send"+repr(ticket))
         # who's our inquisitor server that we should send the ticket to?
-        vticket = self.csc.get("inquisitor")
+        vticket = self.csc.get(self.server_name)
         # send user ticket and return answer back
         Trace.trace(12,"send addr="+repr((vticket['hostip'], vticket['port'])))
         s = self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries )
@@ -155,7 +156,7 @@ class Inquisitor(generic_client.GenericClient):
 	return s
 
 
-class InquisitorClientInterface(interface.Interface):
+class InquisitorClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
         Trace.trace(10,'{iqc.__init__')
@@ -164,15 +165,11 @@ class InquisitorClientInterface(interface.Interface):
 	self.timeout = 0
 	self.reset_timeout = 0
 	self.get_timeout = 0
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.timestamp = 0
 	self.max_ascii_size = 0
 	self.get_max_ascii_size = 0
-	self.verbose = 0
-	self.got_server_verbose = 0
-	self.dump = 0
 	self.refresh = 0
 	self.get_refresh = 0
 	self.max_encp_lines = 0
@@ -181,7 +178,7 @@ class InquisitorClientInterface(interface.Interface):
 	self.logfile_dir = ""
 	self.start_time = ""
 	self.stop_time = ""
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
@@ -203,15 +200,13 @@ class InquisitorClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         Trace.trace(16,"{}options")
-        return self.config_options()+self.alive_options() +\
-	       self.verbose_options() +\
+        return self.client_options() +\
                ["timeout=", "get_timeout", "reset_timeout"] +\
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size", "dump"] +\
 	       ["refresh=", "get_refresh", "max_encp_lines="] +\
 	       ["get_max_encp_lines", "plot", "logfile_dir="] +\
-	       ["start_time=", "stop_time="] +\
-               self.help_options()
+	       ["start_time=", "stop_time="]
 
 
 if __name__ == "__main__" :

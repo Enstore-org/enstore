@@ -164,29 +164,26 @@ class LoggerClient(generic_client.GenericClient):
         Trace.trace(10,'}set_verbose (client) '+repr(x))
         return x
 
-class LoggerClientInterface(interface.Interface):
+class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self):
         self.config_file = ""
         self.test = 0
         self.logit = 0
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
 	self.get_last_logfile_name = 0
-	self.got_server_verbose = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # fill in the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.verbose_options()+\
+        return self.client_options()+\
                ["config_file=", "test", "logit="] +\
-	       ["get_logfile_name", "get_last_logfile_name"] +\
-               self.alive_options()+self.help_options()
+	       ["get_logfile_name", "get_last_logfile_name"]
 
 
     """ 

@@ -68,10 +68,9 @@ class MediaChangerClient(generic_client.GenericClient):
                  }
         return self.send(ticket)
 
-class MediaChangerClientInterface(interface.Interface):
+class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         self.config_file = ""
-        self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.media_changer = ""
@@ -79,17 +78,15 @@ class MediaChangerClientInterface(interface.Interface):
         self.maxwork=-1
         self.volume = 0
         self.drive = 0
-	self.verbose = 0
-        interface.Interface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self)
 
         # parse the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.verbose_options()+\
-               ["config_file=","maxwork=","getwork"] +\
-               self.alive_options()+self.help_options()
+        return self.client_options()+\
+               ["config_file=","maxwork=","getwork"]
 
     #  define our specific help
     def parameters(self):
@@ -111,7 +108,7 @@ class MediaChangerClientInterface(interface.Interface):
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        generic_cs.enprint("        --maxwork=N        Max simultaneous operations allow (may be 0)")
+        generic_cs.enprint("        --maxwork=N        Max simultaneous operations allowed (may be 0)")
         generic_cs.enprint("        --getwork          List oprations in progress")
         
 if __name__ == "__main__" :

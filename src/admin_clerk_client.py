@@ -103,16 +103,14 @@ class AdminClerkClient(generic_client.GenericClient) :
 	   msg=msg[index+1:]
    	return msg
 
-class AdminClerkClientInterface(interface.Interface) :
+class AdminClerkClientInterface(generic_client.GenericClientInterface) :
 
     def __init__(self):
-	self.verbose=0
-	self.got_server_verbose=0
-        self.alive=0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.set_dbname()
         self.criteria={}
+        generic_client.GenericClientInterface.__init__(self)
 
         # parse the options
         self.parse_options()
@@ -122,10 +120,9 @@ class AdminClerkClientInterface(interface.Interface) :
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options() + self.verbose_options()+\
+        return self.client_options()+\
                ["dbname=", "faccess=",
-                "laccess=","declared=","capacity=","rem_bytes=",] +\
-               self.alive_options()+self.help_options()
+                "laccess=","declared=","capacity=","rem_bytes=",]
 
     # define the single character options
     def charopts(self):
