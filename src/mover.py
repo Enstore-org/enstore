@@ -493,13 +493,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vcc = None
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
-        mc_keys = self.csc.get(self.mcc.media_changer)
-        # STK robot can eject tape by either sending command directly to drive or
-        # by pushing a corresponding button
-        if mc_keys.has_key('type') and mc_keys['type'] is 'STK_MediaLoader':
-            self.can_force_eject = 1
-        else:
-            self.can_force_eject = 0
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.client_hostname = None
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
@@ -618,11 +611,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 pass
 
     ## This is the function which is responsible for updating the LM.
-    def update(self, state=None, reset_timer=None, error_source=None):
+    def update_lm(self, state=None, reset_timer=None, error_source=None):
         if state is None:
             state = self.state
         
-        Trace.trace(20,"update: %s %s" % (state_name(state), self.unique_id))
+        Trace.trace(20,"update_lm: %s %s" % (state_name(state), self.unique_id))
         inhibit = 0
         
         if not hasattr(self,'_last_state'):
@@ -634,25 +627,40 @@ class Mover(dispatching_worker.DispatchingWorker,
             inhibit = 1
 
         if reset_timer:
-            self.reset_interval_timer(self.update)
+            self.reset_interval_timer(self.update_lm)
 
         if not inhibit:
             ticket = self.format_lm_ticket(state=state, error_source=error_source)
             for lib, addr in self.libraries:
                 if state != self._last_state:
-                    Trace.trace(10, "Send %s to %s" % (ticket, addr))
-                self.udpc.send_no_wait(ticket, addr)
-
-        self._last_state = self.state
+                    Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
+                self._last_state = self.state
+                if 1: #Old version
+                    self.udpc.send_no_wait(ticket, addr)
+                else: #New version
+                    ## XXX Sasha - this is an experiment - not sure this is a good idea!
+                    request_from_lm = self.send(ticket, addr, rcv_timeout=5)
+                    status = request_from_lm.get('status')
+                    if not status or status[0] != e_errors.OK:
+                        Trace.trace(10, "update_lm: got %s" %(ticket,))
+                        continue
+                    work = request_from_lm.get('work')
+                    if not work or work=='nowork':
+                        continue
+                    func = getattr(self, work, None)
+                    if func:
+                        func(self, request_from_lm)
+                        ### XXX Try/except here?
+                        
         self.check_dismount_timer()
 
-    def _do_delayed_update(self):
+    def _do_delayed_update_lm(self):
         for x in xrange(3):
             time.sleep(1)
-            self.update()
+            self.update_lm()
         
-    def delayed_update(self):
-        self.run_in_thread('delayed_update_thread', self._do_delayed_update)
+    def delayed_update_lm(self):
+        self.run_in_thread('delayed_update_thread', self._do_delayed_update_lm)
         
     def check_dismount_timer(self):
         self.lock_state()
@@ -674,11 +682,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = IDLE
         self.mode = None
         self.vol_info = {}
-        self.update() 
+        self.update_lm() 
 
     def offline(self):
         self.state = OFFLINE
-        self.update()
+        self.update_lm()
 
     def reset(self):
         self.current_work_ticket = None
@@ -1005,7 +1013,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             ## Connecting to client failed
             if self.state is HAVE_BOUND:
                 self.dismount_time = time.time() + self.default_dismount_delay
-            self.update(reset_timer=1)
+            self.update_lm(reset_timer=1)
             return 0
 
         self.t0 = time.time()
@@ -1264,7 +1272,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
-        self.update(state=ERROR, error_source=error_source, reset_timer=1)
+        self.update_lm(state=ERROR, error_source=error_source, reset_timer=1)
 
         if broken:
             self.broken(broken)
@@ -1279,7 +1287,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.maybe_clean()
             self.idle()
             
-        self.delayed_update()
+        self.delayed_update_lm()
     
         
     def transfer_completed(self):
@@ -1298,7 +1306,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
-        self.update(reset_timer=1)
+        self.update_lm(reset_timer=1)
 
         if self.state == DRAINING:
             self.dismount_volume()
@@ -1308,8 +1316,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.maybe_clean():
                 self.state = IDLE
         if self.state == HAVE_BOUND:
-            self.update(reset_timer=1)
-        self.delayed_update()
+            self.update_lm(reset_timer=1)
+        self.delayed_update_lm()
             
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
@@ -1586,22 +1594,19 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ejected = self.tape_driver.eject()
         if ejected == -1:
-            if self.can_force_eject:
-                # try to unload tape if robot is STK. It can do this
-                Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
-            else:
-                
-                broken = "Cannot eject tape"
+            broken = "Cannot eject tape"
 
-                if self.current_volume:
-                    try:
-                        self.vcc.set_system_noaccess(self.current_volume)
-                    except:
-                        exc, msg, tb = sys.exc_info()
-                        broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
-                self.broken(broken)
-                return
-                
+            if self.current_volume:
+                try:
+                    self.vcc.set_system_noaccess(self.current_volume)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
+
+            self.broken(broken)
+##            self.error("Cannot eject tape")
+
+            return
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
