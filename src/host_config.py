@@ -9,6 +9,13 @@ be overridden with env. var. ENSTORE_CONF"""
 import os
 import sys
 import string
+import random
+import socket
+
+import Trace
+import e_errors
+import multiple_interface
+import enroute
 
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
@@ -77,4 +84,149 @@ def get_config():
         _cached_config = read_config_file(find_config_file())
     return _cached_config
 
-        
+
+
+
+def get_interfaces():
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return
+    interfaces = interface_dict.keys()
+    if not interfaces:
+        return
+
+    return interfaces
+
+def get_interface_info(interface):
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return
+
+    return interface_dict[interface]
+
+def runon_cpu(interface):
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    interface_details = interface_dict[interface]
+    cpu = interface_details.get('cpu')
+    if cpu is not None:
+        err = runon.runon(cpu)
+        if err:
+            Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
+        else:
+            Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
+
+def set_route(interface, dest):
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    interface_details = interface_dict[interface]
+    gw = interface_details.get('gw')
+    if gw is not None and dest is not None:
+        err=enroute.routeDel(dest)
+        if err:
+            Trace.log(e_errors.INFO,
+                      "enroute.routeDel(%s) returns %s" % (dest, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
+        err=enroute.routeAdd(dest, gw)
+        if err:
+            Trace.log(e_errors.INFO,
+                      "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+
+    return interface_details
+
+
+def choose_interface(dest=None):
+    interfaces = get_interfaces()
+    if not interfaces:
+        return
+    
+    choose = []
+    for interface in interfaces:
+        weight = get_interface_info(interface).get('weight', 1.0)
+        choose.append((-weight, random.random(), interface))
+    choose.sort()
+    junk1, junk2, interface = choose[0]
+    
+    runon_cpu(interface)
+    set_route(interface, dest)
+
+    return get_interface_info(interface)
+
+def get_default_interface_ip():
+    config = get_config()
+    if not config:
+        return socket.gethostbyname(socket.gethostname())
+    hostip = config.get('hostip', None)
+    if hostip:
+        return hostip
+    else:
+        return socket.gethostbyname(socket.gethostname())
+    
+    
+def check_load_balance(mode = 0, dest = None):
+    #mode should be 0 or 1 for "read" or "write"
+    config = get_config()
+    if not config:
+        return
+    interface_dict = config.get('interface')
+    if not interface_dict:
+        return
+    interfaces = interface_dict.keys()
+    if not interfaces:
+        return
+    #Trace.log(e_errors.INFO, "probing network to select interface")
+    rate_dict = multiple_interface.rates(interfaces)
+    #Trace.log(e_errors.INFO, "interface rates: %s" % (rate_dict,))
+    choose = []
+    for interface in interfaces:
+        weight = interface_dict[interface].get('weight', 1.0)
+        recv_rate, send_rate = rate_dict[interface]
+        recv_rate = recv_rate/weight
+        send_rate = send_rate/weight
+        if mode==1: #writing
+            #If rates are equal on different interfaces, randomize!
+            choose.append((send_rate, -weight, random.random(), interface))
+        else:
+            choose.append((recv_rate, -weight, random.random(), interface))
+    choose.sort()
+    rate, junk1, junk2, interface = choose[0]
+    #Trace.log(e_errors.INFO, "chose interface %s, %s rate=%s" % (
+    #    interface, {0:"recv",1:"send"}.get(mode,"?"), rate))
+    interface_details = interface_dict[interface]
+    cpu = interface_details.get('cpu')
+    if cpu is not None:
+        err = runon.runon(cpu)
+        if err:
+            Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
+        else:
+            Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
+            
+    gw = interface_details.get('gw')
+    if gw is not None and dest is not None:
+        err=enroute.routeDel(dest)
+        if err:
+            Trace.log(e_errors.INFO,
+                      "enroute.routeDel(%s) returns %s" % (dest, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeDel(%s)" % (dest,))
+        err=enroute.routeAdd(dest, gw)
+        if err:
+            Trace.log(e_errors.INFO,
+                      "enroute.routeAdd(%s,%s) returns %s" % (dest, gw, err))
+        else:
+            Trace.log(e_errors.INFO, "enroute.routeAdd(%s,%s)" % (dest, gw))
+
+    return interface_details

@@ -17,13 +17,14 @@ except ImportError:
 import rexec
 
 # enstore imports
+import Trace
 import setpath
 import e_errors
 import interface
-import Trace
 import checksum
 import cleanUDP
 import hostaddr
+import host_config
 
 UDPError = "UDP Error"
 
@@ -32,8 +33,13 @@ TRANSFER_MAX=16384
 
 # try to get a port from a range of possibilities
 def get_client() :
-    (hostname,ha,hi) = hostaddr.gethostinfo()
-    host = hi[0]
+    #(hostname,ha,hi) = hostaddr.gethostinfo()
+    #host = hi[0]
+    #Pick an interface based on the current load of the system.
+    #host = host_config.check_load_balance()['ip']
+    #host = host_config.choose_interface()['ip']
+    #Pick an interface.
+    host = host_config.get_default_interface_ip()
 
     sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, 0))
