@@ -2107,7 +2107,8 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    index = string.find(just_mover, enstore_constants.STAMP)
 		    return "%s (%s)"%(file_label[1], just_mover[0:index])
 		elif file_label[0] == enstore_constants.MPD_FILE or \
-		     file_label[0] == enstore_constants.MPD_MONTH_FILE:
+		     file_label[0] == enstore_constants.MPD_MONTH_FILE or \
+		     file_label[0] == enstore_constants.MLAT_FILE:
 		    # add the mount_label to the front
 		    if self.mount_label:
 			return "%s %s"%(self.mount_label, file_label[1])

@@ -435,10 +435,13 @@ class MpdMonthDataFile(EnPlot):
 
 class MlatGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile):
+    def write(self, outfile, ptsfile, mount_label):
+	if mount_label is None:
+	    mount_label = ""
 	self.openfile.write("set output '"+outfile+"\n"+ \
                            "set terminal postscript color solid\n"+ \
-                           "set title 'Mount Latency in Seconds "+plot_time()+"'\n"+ \
+                           "set title '%s Mount Latency in Seconds "%(mount_label,)+ \
+			    plot_time()+"'\n"+ \
                            "set xlabel 'Date'\n"+ \
                            "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
                            "set logscale y\n"+ \
@@ -468,7 +471,7 @@ class MlatDataFile(EnPlot):
 	# we must create our gnu plot command file too
 	gnucmds = MlatGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile)
+	gnucmds.write(self.psfile, self.ptsfile, self.mount_label)
 	gnucmds.close()
 
     # subtract two times and return their difference
