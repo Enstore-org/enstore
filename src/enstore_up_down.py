@@ -29,7 +29,7 @@ DEFAULT = "default"
 DEFAULTALLOWEDDOWN = [2, 15]
 mail_sent = 0
 prefix = ""
-no_output = 1
+do_output = 0
 SYSTEM = 'system'
 ALLOWED_DOWN = 'allowed_down'
 TRIES = 1
@@ -40,7 +40,7 @@ def sortit(adict):
     return keys
 
 def enprint(text):
-    if not no_output:
+    if do_output:
 	print prefix, timeofday.tod(), text
 
 def get_allowed_down_index(server, allowed_down, index):
@@ -366,7 +366,7 @@ class UpDownInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
         self.do_parse = flag
         self.restricted_opts = opts
-	self.summary = no_output
+	self.summary = do_output
 	self.html = 0
 	generic_client.GenericClientInterface.__init__(self)
 
@@ -478,13 +478,13 @@ def do_real_work():
     return (rtn, summary_d)
 
 def do_work(intf):
-    global prefix, output
+    global prefix, do_output
 
     # see if we are supposed to output well-formed html or not
     if intf.html:
 	prefix = "<LI>"
 
-    no_output = intf.summary
+    do_output = intf.summary
 
     rtn, summary_d = do_real_work()
     return (rtn)
