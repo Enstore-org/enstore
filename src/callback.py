@@ -93,7 +93,8 @@ def get_callback_port(start,end,use_multiple=0):
             port = next_port_to_try[which_interface]
             # XXX debugging stuff
             if use_multiple:
-                Trace.trace(7, "multiple interface: trying %s %s" % (host,port))
+                # This was Trace.trace, make it a log msg for debugging
+                Trace.log(e_errors.INFO, "multiple interface: trying %s %s" % (host,port))
             success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
