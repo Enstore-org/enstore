@@ -195,7 +195,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         generic_server.GenericServer.__init__(self, csc_address, name)
 
-
         self.config = self.csc.get( name )
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -966,10 +965,9 @@ if __name__ == '__main__':
     # get an interface, and parse the user input
 
     intf = MoverInterface()
-
+    mover =  Mover( (intf.config_host, intf.config_port), intf.name )
     while 1:
         try:
-            mover =  Mover( (intf.config_host, intf.config_port), intf.name )
             mover.serve_forever()
         except:
             try:
