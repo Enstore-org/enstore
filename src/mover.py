@@ -44,7 +44,9 @@ import timeofday
 import traceback
 import socket				# for init(config_host=="localhost"...)
 import binascii				# for crc
+import types				# see if library config is list
 import pprint
+import os				# os.environ
 
 #enstore modules
 import volume_clerk_client		# -.
@@ -98,8 +100,28 @@ class Mover:
                 raise "could not start mover up:" + mconfig["status"]
             self.mc_device = mconfig["mc_device"]
             self.driver_name = mconfig["driver"]
+	    if mconfig['device'][0] == '$':
+		dev_rest=mconfig['device'][string.find(mconfig['device'],'/'):]
+		if dev_rest[0] != '/':
+		    print "device '",mconfig['device'],"' configuration ERROR"
+		    sys.exit(1)
+		    pass
+		dev_env = mconfig["device"][1:string.find(mconfig['device'],'/')]
+		try:
+		    dev_env = os.environ[dev_env];
+		except:
+		    print "device '",mconfig['device'],"' configuration ERROR"
+		    sys.exit(1)
+		    pass
+		mconfig['device'] = dev_env + dev_rest
+		pass
             self.device = mconfig["device"]
-            self.library = mconfig["library"]
+	    if type(mconfig['library']) == types.ListType:
+		# just use 1st one for now
+		self.library = mconfig["library"][0]
+	    else:
+		self.library = mconfig["library"]
+		pass
             self.media_changer = mconfig["media_changer"]
 	    try:
 		self.address = (mconfig["hostip"],mconfig["port"])
@@ -163,7 +185,7 @@ class Mover:
             return
 
         # we have the volume - load it
-        self.driver.load()
+        self.driver.load( self.vticket["eod_cookie"] )
 
         # create a ticket for library manager that says we have bound volume
         self.have_bound_volume_next()
@@ -294,12 +316,12 @@ class Mover:
                                                wr_err,rd_err,\
                                                wr_access,rd_access)
         # connect to file clerk and get new bit file id
-        fc = file_clerk_client.FileClient(self.csc)
+        fcc = file_clerk_client.FileClient(self.csc)
 	ticket["work"] = "new_bit_file"
 	ticket["fc"]["bof_space_cookie"] = file_cookie
 	ticket["fc"]["sanity_cookie"] = sanity_cookie
 	ticket["fc"]["complete_crc"] = complete_crc
-	ticket = fc.new_bit_file(ticket)
+	ticket = fcc.new_bit_file(ticket)
         ticket["vc"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
@@ -539,12 +561,11 @@ class Mover:
     # create ticket that says we have bound volume x
     def have_bound_volume_next(self):
         # ticket is to be volume information plus next "command" information
-	self.next_libmgr_request = self.vticket
-        self.next_libmgr_request['work']    = "have_bound_volume"
-        self.next_libmgr_request['state']   = "idle"
-        self.next_libmgr_request['mover']   = self.name
-        self.next_libmgr_request['address'] = self.address
-
+	self.next_libmgr_request={ 'work'   : "have_bound_volume",
+				   'state'  : "idle",
+				   'mover'  : self.name,
+				   'address': self.address,
+				   'vc'     : self.vticket }
 
     # create ticket that says we need to unbind volume x
     def unilateral_unbind_next(self,ticket):
