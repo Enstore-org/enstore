@@ -95,7 +95,7 @@ check_event_relay()
        echo "`date` Checking $1 on $xnode $xport $local_host"
     fi  
     #echo udp_sendWaitReply-withTimeout.sh $xnode $xport $timeout --tries $tries
-    alv=`enstore EPS ${xnode}|grep event_relay`
+    alv=`enstore EPS ${xnode}|grep event_relay.py`
     if [ "${alv}" == "" ]; then
         echo "`date`   ...$1 on $xnode $xport $local_host NOT REACHABLE..."
         exit 1
@@ -317,9 +317,7 @@ for pass in $passes; do
 # the event_relay needs to be next
 if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep event`" != "" \) -a $enstore_start_event -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
-      if   [ ! "${opt_nocheck-}" ]\
-	&& enstore EPS ripsgi|grep event_relay >/dev/null
-        then
+      if   [ ! "${opt_nocheck-}" ] && enstore EPS ripsgi|grep event_relay.py >/dev/null; then
         echo "Event Relay already started"
       else
         echo "`date` Starting Event Relay"
@@ -335,6 +333,8 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep event`" != "" \) -a $ens
         echo $! >> $PID_DIR/`uname -n`-event_relay_pids
         echo "`EPS returnpid event_relay`" >> $PID_DIR/`uname -n`-event_relay_pids
       fi
+
+
       if [ ! "${opt_async-}" ];
       then
 	a=`enstore EPS ripsgi|grep event_relay >/dev/null`
