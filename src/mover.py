@@ -2805,14 +2805,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             exc, msg, error_source,self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
-            if (msg.find("FTT_EIO") != -1):
-                # possibly a scsi error, log low level diagnostics
-                # report error but go idle
+            if (msg.find("FTT_") != -1):
+                # log low level diagnostics
                 self.watch_syslog()
+                
+            if (msg.find("FTT_EIO") != -1):
+                # possibly a scsi error, report error but go idle
+                #self.watch_syslog()
                 ftt_eio = 1
             elif msg.find("FTT_EBLANK") != -1:
                 # possibly a scsi error, log low level diagnostics
-                self.watch_syslog()
+                #self.watch_syslog()
                 if self.stop:
                     self.offline() # stop here for investigation
                     return
