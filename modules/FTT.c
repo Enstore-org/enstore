@@ -869,6 +869,29 @@ FTT_skip_fm(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_skip_rec_doc[] = "invoke ftt_skip_rec";
+
+static PyObject*
+FTT_skip_rec(  PyObject *self
+	 , PyObject *args )
+{
+	int	skip;		/* no file marks to skip */
+	int	sts;		/* general status */
+
+    sts = PyArg_ParseTuple(args, "i", &skip );
+    if (!sts) return (NULL);
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_skip_rec device not opened"));
+
+    sts = ftt_skip_rec( g_ftt_desc_tp, skip );
+    if (sts == -1) return (raise_ftt_exception("FTT_skipfm"));
+    return (Py_BuildValue(""));
+}
+
+
+
+/*****************************************************************************
+ */
 static char FTT_locate_doc[] = "invoke ftt_locate";
 
 static PyObject*
@@ -962,6 +985,7 @@ FTT_get_stats(  PyObject *self
 		       , "file_number",  ftt_extract_stats(GG,FTT_FILE_NUMBER)
 		       , "block_number", ftt_extract_stats(GG,FTT_BLOCK_NUMBER)
 		       , "bloc_loc",     ftt_extract_stats(GG,FTT_BLOC_LOC)
+		       , "fmk",          ftt_extract_stats(GG,FTT_FMK)
 		       , "xferred_bytes",g_xferred_bytes );
     return (rr);
 }
@@ -1014,6 +1038,7 @@ static PyMethodDef FTT_Methods[] = {
     { "fd_xfer", FTT_fd_xfer, 1, FTT_fd_xfer_doc },
     { "writefm", FTT_writefm, 1, FTT_writefm_doc },
     { "skip_fm", FTT_skip_fm, 1, FTT_skip_fm_doc },
+    { "skip_rec", FTT_skip_rec, 1, FTT_skip_rec_doc },
     { "locate", FTT_locate, 1, FTT_locate_doc },
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
     { "flush", FTT_flush, 1, FTT_flush_doc },
