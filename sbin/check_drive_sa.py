@@ -18,6 +18,7 @@ def check_mover(drive, test_tape, media, f_size=250):
     import whrandom
     import array
     
+    print "GENERATING DATA"
     ran_arr = array.array('B')
     # block_size is 128K
     block_size = 128*1024
@@ -25,6 +26,7 @@ def check_mover(drive, test_tape, media, f_size=250):
         ran_arr.append(whrandom.randint(0,255))
     # mount tape
     import FTT
+    print "OPENING DEVICE"
     FTT.open(drive, 'a+' )
     #x = 120				# for now, after ??? ftt_rewind will
     x = 10				# for now, after ??? ftt_rewind will
@@ -49,12 +51,18 @@ def check_mover(drive, test_tape, media, f_size=250):
         print "Mount error",repr(status)
         return
     else:
+        print "REWINDING TAPE"
         # tape is in
         FTT.rewind()
 
     # check if correct tape has been mounted
     try:
-        label=FTT.read(80)
+        try:
+            print "READING LABEL"
+            label=FTT.read(80)
+        except:
+            print "EXPT"
+            label = ""
         if len(label)!=80:
             print "WRITING LABEL"
             hdr = "VOL1"+test_tape
@@ -65,23 +73,22 @@ def check_mover(drive, test_tape, media, f_size=250):
             FTT.writefm()
             FTT.rewind()
             label=FTT.read(80)
-        else:
-            #print "LABEL,LEN",label,len(label)
+        #print "LABEL,LEN",label,len(label)
+        typ=label[:4]
+        val=string.split(label[4:])[0]
+        #print "TYP",label[:4],"VAL",val
+        if typ != "VOL1":
+            print "WRITING LABEL"
+            hdr = "VOL1"+test_tape
+            hdr = hdr+ (79-len(hdr))*' ' + '0'
+            FTT.set_blocksize(80)
+            sts = FTT.write(hdr)
+            FTT.writefm()
+            FTT.rewind()
+            label=FTT.read(80)
             typ=label[:4]
             val=string.split(label[4:])[0]
-            #print "TYP",label[:4],"VAL",val
-            if typ != "VOL1":
-                print "WRITING LABEL"
-                hdr = "VOL1"+test_tape
-                hdr = hdr+ (79-len(hdr))*' ' + '0'
-                FTT.set_blocksize(80)
-                sts = FTT.write(hdr)
-                FTT.writefm()
-                FTT.rewind()
-                label=FTT.read(80)
-                typ=label[:4]
-                val=string.split(label[4:])[0]
-                print "TYP",label[:4],"VAL",val
+            print "TYP",label[:4],"VAL",val
         if typ == "VOL1" and val != test_tape:
             print"wrong tape is mounted %s"%(val,)
             FTT.rewind()
