@@ -8,10 +8,13 @@ import regsub
 import pprint
 import copy
 import types
+import socket
+import os
 
 # enstore imports
 import dispatching_worker
 import generic_server
+import interface
 import SocketServer
 import Trace
 import e_errors
@@ -288,19 +291,24 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(out_ticket)
 	 
 
-class ConfigurationServer(ConfigurationDict,\
-                          generic_server.GenericServer, SocketServer.UDPServer):
-    def __init__(self, server_address \
-                 ,configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"\
-                 ,list=0):
-        Trace.trace(3,"{ConfigurationServer address="+repr(server_address)+\
-                    " configfile="+repr(configfile)+" list="+repr(list))
+class ConfigurationServer(ConfigurationDict, generic_server.GenericServer, \
+                          SocketServer.UDPServer):
+
+    def __init__(self, list=0, host=interface.default_host(), \
+                 port=interface.default_port(), \
+                 configfile=interface.default_file()):
+        Trace.trace(3,"{ConfigurationServer address="+repr(host)+" "+\
+                    repr(port)+" configfile="+repr(configfile)+" list="+\
+                    repr(list))
+        if list:
+            print "Instantiating Configuration Server at ", server_address,\
+                  " using config file ",config_file
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
 
         # default socket initialization - ConfigurationDict handles requests
-        SocketServer.UDPServer.__init__(self, server_address, cd)
+        SocketServer.UDPServer.__init__(self, (host, port), cd)
 
         # now (and not before,please) load the config file user requested
         self.load_config(configfile,list)
@@ -312,64 +320,42 @@ class ConfigurationServer(ConfigurationDict,\
         if list:
             pprint.pprint(self.__dict__)
 
+class ConfigurationServerInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{csi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+	self.config_file = ""
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+
+        # bomb out if we can't find the file
+        statinfo = os.stat(self.config_file)
+
+        Trace.trace(10,'}csi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+["config_file=", "list", "verbose"] +\
+               self.help_options()
+
+
 if __name__ == "__main__":
     Trace.init("configsrvr")
     Trace.trace(1,"{called args="+repr(sys.argv))
-    import os
     import sys
-    import getopt
     import timeofday
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
 
-    # defaults
-    #config_host = "localhost"
-    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    config_host = ci[0]
-    config_port = "7500"
-    config_file = "/pnfs/enstore/.(config)(flags)/enstore.conf"
-    list = 0
+    # get the interface
+    intf = ConfigurationServerInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_file="\
-               ,"list","verbose","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist:
-        if opt == "--config_host":
-            config_host = value
-        elif opt == "--config_port":
-            config_port = value
-        elif opt == "--config_file":
-            config_file = value
-        elif opt == "--list" or opt == "--verbose":
-            list = 1
-        elif opt == "--help":
-            print "python", sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    # bomb out if can't translate host
-    ip = socket.gethostbyname(config_host)
-
-    # bomb out if port isn't numeric
-    config_port = string.atoi(config_port)
-
-    # bomb out if we can't find the file
-    statinfo = os.stat(config_file)
-
-    # instantiate, or bomb our, and then start server
-    server_address = (config_host,config_port)
-    if list:
-        print "Instantiating Configuration Server at ", server_address\
-              , " using config file ",config_file
-    cs =  ConfigurationServer( server_address, config_file, list)
+    # get a configuration server
+    cs = ConfigurationServer(intf.list, intf.config_host, intf.config_port,
+	                     intf.config_file)
 
     while 1:
         try:
@@ -383,4 +369,4 @@ if __name__ == "__main__":
                   sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
 
-    Trace.trace(1,"Configuration Clerk finished (impossible)")
+    Trace.trace(1,"Configuration Server finished (impossible)")
