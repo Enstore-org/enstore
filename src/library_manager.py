@@ -29,63 +29,7 @@ def p(*args):
 
 Trace.trace = p
 
-######################################################################
-# The following routines are for test only
-# I need them until new mover code is available
-
-movers = []    # list of movers belonging to this LM
-
-# find mover in the list
-def find_mover(mover, mover_list):
-    for mv in mover_list:
-	if (mover['address'] == mv['address']):
-	    break
-    else:
-	# mover is not in the list
-	return {}
-    return mv
-
-# add mover to the movers list
-def add_mover(name, address):
-    if not find_mover({"address":address}, movers):
-	mover = {'mover'   : name,             # mover name
-		 'address' : address,          # mover address
-		 'state'   : 'idle_mover',     # mover state
-		 'last_checked' : time.time(), # last time the mover has been updated
-		 'summon_try_cnt' : 0,         # number of summon attempts till succeeded
-		 'tr_error' : 'ok',            # transmission error
-		 'file_family':''              # last file family the mover had worked with
-		 }
-	movers.append(mover)
-	Trace.log(e_errors.INFO, "Mover added to mover list. Mover:%s. "%(mover,))
-	return mover
-    return {}
-
-# get list of assigned movers from the configuration list
-def get_movers(config_client, lm_name):
-    movers_list = config_client.get_movers(lm_name)
-    for item in movers_list:
-	if (item.has_key('mover') and
-	    item.has_key('address')):
-	    add_mover(item['mover'], item['address'])
-    if movers:
-	Trace.log(e_errors.INFO, "get_movers %s"%(movers,))
-    else:
-	Trace.log(e_errors.ERROR, "get_movers: no movers defined in the configuration for this LM")
-
-# find mover by name in the list
-def find_mover_by_name(mover):
-    for mv in movers:
-	if (mover == mv['mover']):
-	    break
-    else:
-	# mover is not in the list
-	return {}
-    return mv
-
-        
 ## Trace.trace for additional debugging info uses bits >= 11
- 
 
 ##############################################################
 class SG_FF:
@@ -838,10 +782,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	  exc, val, tb = e_errors.handle_error()
 	  sys.exit(1)
        
-	#self.work_at_movers = lm_list.LMList(self.db_dir, 
-	#				     "work_at_movers",
-	#				     "unique_id")
-	#self.work_at_movers.restore()
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
             self.lm_lock = 'unlocked'
@@ -1049,11 +989,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['volume_status'] = ((None,None),(None,None))
 
         Trace.trace(11,"MT %s" % (mticket,))
-
-
         self.volumes_at_movers.put(mticket)
-            
-        
 
     # mover is busy - update volumes_at_movers
     def mover_busy(self, mticket):
@@ -1110,21 +1046,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # if new work volume is different from mounted
             # which may happen in case of high pri. work
             # update volumes_at_movers
-            if w["vc"]["external_label"] != mt['external_label']:
-                self.volumes_at_movers.delete(mt)
+            if w["vc"]["external_label"] != mticket['external_label']:
+                self.volumes_at_movers.delete(mticket)
             # create new mover_info
             work = string.split(w['work'],'_')[0]
-            mt = {'mover': mticket['mover'],
-                  'external_label' : w["vc"]["external_label"],
-                  'current_location' : mticket['vc']['current_location'],
-                  'state' : work,
-                  'status' : (e_errors.OK, None),
-                  'volume_family': w['vc']['volume_family'],
-                  'volume_status':((None,None),(None,None))
-                  }
-            Trace.trace(11,"MT %s" % (mt,))
+            mticket['external_label'] = w["vc"]["external_label"]
+            mticket['operation'] = work
+            mticket['status'] = (e_errors.OK, None)
+            mticket['volume_family'] = w['vc']['volume_family']
+            mticket['volume_status'] = ((None,None),(None,None))
+            Trace.trace(11,"MT %s" % (mticket,))
         
-            self.volumes_at_movers.put(mt)
+            self.volumes_at_movers.put(mticket)
             
 
 
@@ -1146,13 +1079,37 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     # this will be raplaced with error handlers!!!!!!!!!!!!!!!!
-    def mover_error(self, ticket):
-        Trace.trace(11,"UNILATERAL UNBIND RQ %s"%(ticket,))
+    def mover_error(self, mticket):
+        Trace.trace(11,"MOVER ERROR RQ %s"%(mticket,))
+        self.volumes_at_movers.delete(mticket)
         # get the work ticket for the volume
-        w = self.get_work_at_movers(ticket["external_label"])
+        w = self.get_work_at_movers(mticket["external_label"])
         if w:
-            Trace.trace(13,"unilateral_unbind: work_at_movers %s"%(w,))
+            Trace.trace(13,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
+        # update suspected volume list
+	vol = self.update_suspect_vol_list(mticket['external_label'], 
+				mticket['mover'])
+        Trace.log(e_errors.INFO,"mover_error updated suspect volume list for %s"%(repr(w),))
+	if len(vol['movers']) >= self.max_suspect_movers:
+	    w['status'] = (e_errors.NOACCESS, None)
+
+	    # set volume as noaccess
+	    v = self.vcc.set_system_noaccess(w['fc']['external_label'])
+	    # set volume as read only
+	    #v = self.vcc.set_system_readonly(w['fc']['external_label'])
+	    label = w['fc']['external_label']
+
+	    #remove entry from suspect volume list
+	    self.suspect_volumes.remove(vol)
+	    Trace.trace(13,"removed from suspect volume list %s"%(vol,))
+
+	    self.send_regret(w)
+	    # send regret to all clients requested this volume and remove
+	    # requests from a queue
+	    self.flush_pending_jobs(e_errors.NOACCESS, label)
+	else:
+	    pass
 
     # what is going on
     def getwork(self,ticket):
@@ -1253,31 +1210,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	self.reply_to_caller(ticket)
 
 
-    # This method is needed only for test when new mover code is unavailable
-    # REMOVE IT
-    def summon(self, ticket):
-        if ticket["mover"] != None:
-            mv = find_mover_by_name(ticket["mover"])
-            if mv:
-                # summon this mover
-                summon_mover(self, mv, {})
-                reply = {"status" :(e_errors.OK, "will summon")}
-            else: reply = {"status" :(e_errors.UNKNOWN, "mover is not found")}
-        else:
-            reply = {"status" :(e_errors.WRONGPARAMETER, "mover must be specified")}
-        self.reply_to_caller(reply)
-
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-	self.summon = 1
         generic_server.GenericServerInterface.__init__(self)
 
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
-               ["debug", "nosummon"]
+               ["debug"]
 
     #  define our specific help
     def parameters(self):
@@ -1302,13 +1244,10 @@ if __name__ == "__main__":
 
     # get an interface
     intf = LibraryManagerInterface()
-    summon = intf.summon
 
     # get a library manager
     lm = LibraryManager(intf.name, (intf.config_host, intf.config_port))
 
-
-    get_movers(lm.csc, intf.name) ## REMOVE: this is only for test. REMOVE
 
     while 1:
         try:
