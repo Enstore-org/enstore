@@ -1,0 +1,387 @@
+<MA-config>
+   <ID>localhost_health</ID>
+   <Update>180</Update>
+   <Ncs heartbeat="300" port="19997" host="ngop.fnal.gov"/>
+   <System>
+      <ID>OSHealth</ID>
+      <Cluster>localhost</Cluster>
+      <Monitored-element>
+         <ID>cpuLoad</ID>
+         <Type>sysUsage</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="cpuLoad" retVal="float:x"/>
+         <Condition sevLevel="4" description="Average load on the node is less or equal to 8 and great than 5">
+            <State>1</State>
+            <apply>
+               <and/>
+               <reln>
+                  <leq/>
+                  <ci>x</ci>
+                  <cn>8.0</cn>
+               </reln>
+               <reln>
+                  <gt/>
+                  <ci>x</ci>
+                  <cn>5.0</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="5" description="Average load on the node is greater or equal to 8">
+            <State>1</State>
+            <apply>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>8.0</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>Memory</ID>
+         <Type>sysUsage</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="memLoad" arg="memory" retVal="int:x"/>
+         <Condition sevLevel="4" description="Memory usage is greater or equal to 80% and less 95%">
+            <Name>memory</Name>
+            <State>1</State>
+            <apply>
+               <and/>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>80</cn>
+               </reln>
+               <reln>
+                  <lt/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="5" description="Memory usage is greater or equal to 95%">
+            <State>1</State>
+            <Name>memory</Name>
+            <apply>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>Swap</ID>
+         <Type>sysUsage</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="memLoad" arg="swap" retVal="int:x"/>
+         <Condition sevLevel="4" description="Swap usage is greater or equal to 80% and less than 95%" >
+            <Name>swap</Name>
+            <State>1</State>
+            <apply>
+               <and/>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>80</cn>
+               </reln>
+               <reln>
+                  <lt/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="5" description="Swap usage is greater than 95%">
+            <Name>swap</Name>
+            <State>1</State>
+            <apply>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>/home</ID>
+         <Type>fileSystem</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="fileSystem" arg="/dev/hda1" retVal="int:x"/>
+         <Condition sevLevel="0" description="File system is not mounted">
+            <Name>/home</Name>
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="5"  description="File system is used more than 95%">
+            <Name>/home</Name>
+            <State>1</State>
+            <apply>
+               <reln>
+                  <gt/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="4" description="File system is used more than 85% and less or equal to 95%">
+            <Name>/home</Name>
+            <State>1</State>
+            <apply>
+               <and/>
+               <reln>
+                  <geq/>
+                  <ci>x</ci>
+                  <cn>85</cn>
+               </reln>
+               <reln>
+                  <lt/>
+                  <ci>x</ci>
+                  <cn>95</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>inetd</ID>
+         <Type>Daemon</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="daemonAlive" arg="inetd" retVal="int:x"/>
+         <Condition sevLevel="0" description="inetd is not running">
+            <Name>inetd</Name>
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>crond</ID>
+         <Type>Daemon</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="daemonAlive" arg="crond" retVal="int:x"/>
+         <Condition sevLevel="0" description="crond is not running">
+            <Name>crond</Name>
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition>
+	 </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>syslogd</ID>
+         <Type>Daemon</Type>
+         <Host>localhost</Host>
+         <ConditionSet>
+         <fn name="daemonAlive" arg="syslogd" retVal="int:x"/>
+         <Condition sevLevel="0" description="syslogd is not running">>
+            <Name>syslogd</Name>
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition>
+         </ConditionSet>
+      </Monitored-element>
+   </System>
+
+
+   <System>
+      <ID>Hardware</ID>
+      <Cluster>localhost</Cluster>
+      <Monitored-element>
+         <ID>fanSpeed</ID>
+         <Type>Hardware</Type>
+         <Host>localhost</Host>
+         <ConditionSet>
+         <fn name="checkSensor" arg=" Processor 1 Fan: Processor 2 Fan" retVal="int:x"/>
+         <Condition sevLevel="0" description="Speed is below min">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <leq/>
+                  <ci>x</ci>
+                  <cn>3000</cn>
+               </reln>
+            </apply>
+         </Condition>
+        <Condition sevLevel="0" description="Sensors info is not available">
+            <State>-1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>baseTemp</ID>
+         <Type>Hardware</Type>
+         <Host>localhost</Host>
+         <ConditionSet>
+         <fn name="checkSensor" arg=" Processor 1 Temp: Processor 2 Temp" retVal="int:x"/>
+         <Condition sevLevel="0" description="Temperature is above 60C">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <gt/>
+                  <ci>x</ci>
+                  <cn>60</cn>
+               </reln>
+            </apply>
+         </Condition>
+        <Condition sevLevel="0" description="Sensors info is not available">
+            <State>-1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="6" description="Temperature is above 50C">
+            <State>1</State>
+            <apply>
+               <and/>
+               <reln>
+                  <gt/>
+                  <ci>x</ci>
+                  <cn>50</cn>
+               </reln>
+               <reln>
+                  <leq/>
+                  <ci>x</ci>
+                  <cn>60</cn>
+               </reln>
+            </apply>
+         </Condition>
+         </ConditionSet>
+      </Monitored-element>
+
+      <Monitored-element>
+         <ID>timeSync</ID>
+         <Type>Hardware</Type>
+         <Host>localhost</Host>
+         <ConditionSet>
+         <fn name="timeSync" arg="" retVal="int:x"/>
+         <Condition sevLevel="0" description="Time is not syncronized ">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="0" description="Time is syncronized">
+            <State>1</State>
+            <apply>
+               <reln>  
+                  <gt/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition> 
+         <Condition sevLevel="0" description="time info is not available">
+            <State>-1</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>  
+            </apply>
+         </Condition>
+         </ConditionSet>
+      </Monitored-element>   
+
+      <Monitored-element>
+         <ID>numProcessors</ID>
+         <Type>Hardware</Type>
+         <Host>localhost</Host>
+	 <ConditionSet>
+         <fn name="chkProc" arg="/proc/cpuinfo,processor" retVal="int:x"/>
+         <Condition sevLevel="3" description="Error while trying to open cpuinfo">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>-1</cn>
+               </reln>
+            </apply>
+         </Condition>
+        <Condition sevLevel="0" description="No processor info found in cpuinfo">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>0</cn>
+               </reln>
+            </apply>
+         </Condition>
+         <Condition sevLevel="0" description="Missing one processor">
+            <State>0</State>
+            <apply>
+               <reln>
+                  <eq/>
+                  <ci>x</ci>
+                  <cn>1</cn>
+               </reln>
+            </apply>
+            <Action Type="central">
+               <ID>mail</ID>
+               <Exec name="email" argument="yanfen@fnal.gov,%event"/>
+            </Action>
+         </Condition>
+	</ConditionSet>
+       </Monitored-element>
+   </System>
+</MA-config>
+
