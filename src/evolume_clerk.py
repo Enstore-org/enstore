@@ -665,7 +665,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['wrapper'] = ticket.get('wrapper', None)
         record['blocksize'] = ticket.get('blocksize', -1)
-	record['si_time'] = (0, 0)
+	record['si_time'] = [0, 0]
 	record['comment'] = ""
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
