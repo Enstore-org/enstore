@@ -251,6 +251,7 @@ def handle_periodic_actions(display):
         #display.handle_titling()
         #display_lock.release()
         
+        time.sleep(0.03) #Without this sleep, the thread uses a lot of CPU.
 
 def handle_messages(display):
     global stop_now
