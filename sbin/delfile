@@ -46,7 +46,8 @@ else
   fi
 
   # the vol is the 1st element in the file
-  vol=`echo $a | awk '{print $1}'`
+  #vol=`echo $a | awk '{print $1}'`
+  vol=`cat $1 | sed -n 1p`
   if [ $? -ne 0 ]; then
     echo "Can not get the vol from $1"
     echo "$a"
