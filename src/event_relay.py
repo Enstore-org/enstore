@@ -12,6 +12,7 @@ import Trace
 import log_client
 import option
 import e_errors
+import cleanUDP
 
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
 heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
@@ -55,9 +56,10 @@ class Relay:
     def __init__(self, my_port=DEFAULT_PORT):
         self.clients = {} # key is (host,port), value is time connected
 	self.timeouts = {} # key is (host,port), value is num times error in send
-        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	self.send_socket.setblocking(YES)
+        ##self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ##self.send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	self.send_socket = cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         my_addr = ("", my_port)
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
@@ -179,21 +181,12 @@ class Relay:
 			self.ev_print("    sending '%s' to %s"%(msg, addr,))
                         l = self.send_socket.sendto(msg, addr)
 			self.ev_print("    sendto return = %s"%(l,))
-			rtn = self.send_socket.getsockopt(socket.SOL_SOCKET,
-							  socket.SO_ERROR)
-			self.ev_print("    getsockopt return = %s"%(rtn,))
 		    except socket.error, detail:
 			extra = "%s"%(detail,)
 			self.ev_print("    ERROR: %s"%(detail,))
-			rtn = self.send_socket.getsockopt(socket.SOL_SOCKET,
-							  socket.SO_ERROR)
-			self.ev_print("    getsockopt return = %s"%(rtn,))
 			self.handle_error(addr, msg, extra)
                     except:
 			self.ev_print("    ERROR: unknown")
-			rtn = self.send_socket.getsockopt(socket.SOL_SOCKET,
-							  socket.SO_ERROR)
-			self.ev_print("    getsockopt return = %s"%(rtn,))
 			self.handle_error(addr, msg)
 if __name__ == '__main__':
     R = Relay()
