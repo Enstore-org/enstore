@@ -1,4 +1,4 @@
- #! /bin/bash
+#! /bin/bash
 cd /fnal/ups/prd/www_pages/enstore
 
 html_file=cms_pnfs_ls.html
@@ -18,7 +18,7 @@ echo $theDate >> $tmp_file
 echo "  " >> $tmp_file
 echo "  " >> $tmp_file
 
-ls -l -F -R /pnfs/cms >> $tmp_file
+ls -l -F -R /pnfs/cms >> $tmp_file 2>/dev/null
 
 echo "</PRE></BODY></HTML>" >> $tmp_file
 mv $tmp_file $html_file
