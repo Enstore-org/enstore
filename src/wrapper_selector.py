@@ -4,11 +4,13 @@
 """
 Defines function selecting a wrapper instance
 """
-
+import imp
 
 def select_wrapper(wrapper_module):
     try:
-	exec("import "+wrapper_module)
-	return eval(wrapper_module+".Wrapper()")
+	(file, pathname, description)=imp.find_module(wrapper_module)
+	module = imp.load_module(wrapper_module, file, pathname, description)
+	wrapper = module.Wrapper()
+	return (wrapper)
     except:
 	return None
