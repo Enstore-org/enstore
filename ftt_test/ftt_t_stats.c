@@ -115,6 +115,7 @@ if (!match)
 /* get the value
    ------------- */
 stat_value = ftt_extract_stats (statbuf,i); 
+if (0 == stat_value ) { stat_value = "(null)"; }
 fprintf (stderr,"%s is %s\n",match,stat_value);
 
 return 0;
