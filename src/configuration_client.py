@@ -14,17 +14,7 @@ import udp_client
 import Trace
 import callback
 import e_errors
-
-# Import SOCKS module if it exists, else standard socket module socket
-# This is a python module that works just like the socket module, but uses the
-# SOCKS protocol to make connections through a firewall machine.
-# See http://www.w3.org/People/Connolly/support/socksForPython.html or
-# goto www.python.org and search for "import SOCKS"
-try:
-    import SOCKS
-    socket = SOCKS
-except ImportError:
-    import socket
+import socket
 
 MY_NAME = "CONFIG_CLIENT"
 MY_SERVER = "configuration_server"
