@@ -182,7 +182,7 @@ struct transfer
   
   pthread_t thread_id;    /*the thread id (if doing MT transfer)*/
 #ifdef __sgi
-  int cpu_affinity;           /*NICs are tied to CPUs on IRIX nodes*/
+  int cpu_affinity;       /*NICs are tied to CPUs on IRIX nodes*/
 #endif
   short int done;         /*is zero initially, set to one when the (transfer)
 			    thread exits and he main thread sets it to -1 when
@@ -983,6 +983,15 @@ static int reinit_mmap_io(struct transfer *info)
   if(info->mmap_ptr != MAP_FAILED &&
      info->mmap_offset == info->mmap_len)
   {
+    /* Force the data to be written out to disk. */
+    errno = 0;
+    if(msync(info->mmap_ptr, info->mmap_len, MS_SYNC) < 0)
+    {
+      pack_return_values(info, 0, errno, FILE_ERROR,
+			 "munmap failed", 0.0, __FILE__, __LINE__);
+      return 1;
+    }
+     
     /* Unmap the current mapped memory segment. */
     errno = 0;
     if(munmap(info->mmap_ptr, info->mmap_len) < 0)
@@ -1418,11 +1427,13 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
   /* If this is the very end of the file, don't just set the dirty pages
      to be written to disk, wait for them to be written out to disk. */
   if((info->bytes - bytes_to_transfer) == 0)
+  {
     sync_type = MS_SYNC;
+  }
   else
     sync_type = MS_ASYNC;
 
-  pthread_testcancel(); /* Anys syncing action will take time. */
+  pthread_testcancel(); /* Any syncing action will take time. */
 
   /* Schedule the data for sync to disk now. */
   if(msync((void*)((uintptr_t)info->mmap_ptr + (uintptr_t)info->mmap_offset),
@@ -1917,7 +1928,7 @@ static void do_read_write_threaded(struct transfer *reads,
   size_t array_size = reads->array_size;  /* Number of buffer bins. */
   size_t block_size = reads->block_size;  /* Align the buffers size. */
   size_t i;                            /* Loop counting. */
-  int p_rtn = 0;                       /* pthread* return values. */
+  int volatile p_rtn = 0;              /* pthread_*() return values. */
   pthread_t monitor_tid;               /* Thread id numbers. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
   struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
@@ -3195,6 +3206,7 @@ static void do_read_write(struct transfer *read_info,
       /* Update this nested loop's counting variables. */
       bytes_remaining -= sts;
       bytes_transfered += sts;
+      read_info->mmap_offset += sts;
       read_info->bytes -= sts;
 
 #ifdef DEBUG
@@ -3231,12 +3243,13 @@ static void do_read_write(struct transfer *read_info,
 
       if(write_info->mmap_ptr != MAP_FAILED)
       {
-	sts = mmap_write(buffer, bytes_remaining, write_info);
+	sts = mmap_write((void*)((uintptr_t)buffer + bytes_transfered),
+			 bytes_remaining, write_info);
       }
       else
       {
 	/* Does double duty in that it also does the direct io read. */
-	sts = posix_write((buffer + bytes_transfered),
+	sts = posix_write((void*)((uintptr_t)buffer + bytes_transfered),
 			  bytes_remaining, write_info);
 	if(sts < 0)
 	  return;
@@ -3265,6 +3278,7 @@ static void do_read_write(struct transfer *read_info,
       /* Handle calling select to wait on the descriptor. */
       bytes_remaining -= sts;
       bytes_transfered += sts;
+      write_info->mmap_offset += sts;
       write_info->bytes -= sts;
 
 #ifdef DEBUG
