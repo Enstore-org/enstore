@@ -382,11 +382,11 @@ class LibraryManagerMethods:
         if v["status"][0] != e_errors.OK:
             if v["status"][0] == e_errors.NOVOLUME:
                 if not self.process_for_bound_vol:
-                    if wr_en > rq.ticket["vc"]["file_family_width"]:
-                        # remove this request and send regret to the client
-                        rq.ticket['status'] = v['status']
-                        self.send_regret(rq.ticket)
-                        self.pending_work.delete(rq)
+                    #if wr_en > rq.ticket["vc"]["file_family_width"]:
+                    # remove this request and send regret to the client
+                    rq.ticket['status'] = v['status']
+                    self.send_regret(rq.ticket)
+                    self.pending_work.delete(rq)
                     rq = None
             else:
                 rq.ticket["status"] = v["status"]
