@@ -141,7 +141,7 @@ allow() { tt=$1
               if [ $p != "x" ]; then
                  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
 		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
-		    logit "Swapped out$node $tt $command $pid $rest -> $psline"
+		    logit "Swapped out $node $tt $command $pid $rest -> $psline"
 		    return 0
                  elif [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE, type 1! $node $tt $command $pid $rest"
@@ -197,6 +197,7 @@ ALLOW_BASE="
        TCP,python,:,TCP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
        TCP,netserver,TCP,:netperf,x
        TCP,ALARM_CLIENT,TCP, inet ,x
+       TCP,sh, inet ,MSG_TYPE
 "
 #       LISTEN,autorpm,:,TCP,perl /usr/sbin/autorpm
 
