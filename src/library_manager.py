@@ -368,7 +368,8 @@ def send_regret(ticket, verbose):
 	    generic_cs.enprint("REGRET SENDER EXITS", generic_cs.DEBUG, verbose)
 	except:
 	    generic_cs.enprint("send_regret "+str(sys.exc_info()[0])+\
-	    +str(sys.exc_info()[1])+repr(ticket), generic_cs.DEBUG, verbose)
+			       str(sys.exc_info()[1])+repr(ticket), 
+			       generic_cs.DEBUG, verbose)
 	    Trace.trace(0,"send_regret "+str(sys.exc_info()[0])+\
 			str(sys.exc_info()[1])+repr(ticket))
 
@@ -459,6 +460,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				if mover_index >= mover_cnt:
 				    mover_index = mover_cnt - 1
 			    if mover_cnt == 0:
+				generic_cs.enprint("handle_timeout: no movers left",
+	                                       generic_cs.DEBUG, 
+					       self.verbose)
+				Trace.trace(3,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(mv["work_ticket"], self.verbose)
@@ -496,6 +501,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				summon_mover(self,next_mover,mv["work_ticket"])
 				break
 			    else:
+				generic_cs.enprint("handle_timeout: no movers left",
+	                                       generic_cs.DEBUG, 
+					       self.verbose)
+				Trace.trace(3,"handle_timeout: no movers left")
 				mv["work_ticket"]['status'] = (e_errors.NOMOVERS, None)
 				pending_work.delete_job(mv["work_ticket"])
 				send_regret(mv["work_ticket"], self.verbose)
