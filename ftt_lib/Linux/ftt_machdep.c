@@ -160,10 +160,12 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     }
     recursing = 0;
 
+#ifdef BUFFER_MADNESS
     /* first clear all the buffering flags... */
     buf.mt_op = MTSETDRVBUFFER;
     buf.mt_count = MT_ST_BOOLEANS | 0;  /* clear all the buffering flags! */
     res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+#endif
 
     buf.mt_op = MTSETBLK;
     buf.mt_count = blocksize;

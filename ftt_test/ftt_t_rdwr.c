@@ -25,7 +25,7 @@ Include files:-
 #define srandom  srand
 #define random  rand
 #endif
-#define FTT_T_MAXDSIZE	65536
+#define FTT_T_MAXDSIZE	32768
 
 /* Prototypes
    ========== */
