@@ -65,6 +65,6 @@ cat $VOLUME_QUOTAS | sed -e 's/none: emergency/emergency/' | \
 
     /usr/bin/gnuplot $plt
     /usr/X11R6/bin/convert -rotate 90 $ps $jpg
-    /usr/X11R6/bin/convert -rotate 90 -geometry 120x120  $ps $stamp
+    /usr/X11R6/bin/convert -rotate 90 -geometry 120x120  -modulate 80 $ps $stamp
     rm -f $plt
 done

@@ -61,7 +61,7 @@ set nokey
 plot \"$busy\" using 1:2 t \"M1 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plotM1.ps $plotM1.jpg
-	 convert -geometry 120x120 $plotM1.jpg ${plotM1}_stamp.jpg
+	 convert -geometry 120x120 -modulate 80 $plotM1.jpg ${plotM1}_stamp.jpg
 
          rm -f $pltcmd
          echo "set output \"$plotM2.ps\"
@@ -79,7 +79,7 @@ set nokey
 plot \"$busy\" using 1:4 t \"M2 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plotM2.ps $plotM2.jpg
-	 convert -geometry 120x120 $plotM2.jpg ${plotM2}_stamp.jpg
+	 convert -geometry 120x120 -modulate 80 $plotM2.jpg ${plotM2}_stamp.jpg
 
          rm -f $pltcmd
          echo "set output \"$plotLTO.ps\"
@@ -97,7 +97,7 @@ set nokey
 plot \"$busy\" using 1:6 t \"LTO in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plotLTO.ps $plotLTO.jpg
-	 convert -geometry 120x120  $plotLTO.jpg ${plotLTO}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plotLTO.jpg ${plotLTO}_stamp.jpg
 
 if /bin/false; then
          rm -f $pltcmd
@@ -116,7 +116,7 @@ set nokey
 plot \"$busy\" using 1:8 t \"DLT in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plotDLT.ps $plotDLT.jpg
-	 convert -geometry 120x120  $plotDLT.jpg ${plotDLT}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plotDLT.jpg ${plotDLT}_stamp.jpg
 fi
 
 

@@ -86,7 +86,7 @@ set nokey
 plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9840.ps $plot9840.jpg
-	 convert -geometry 120x120  $plot9840.jpg ${plot9840}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plot9840.jpg ${plot9840}_stamp.jpg
 
          rm -f $pltcmd
          echo "set output \"$plot9940.ps\"
@@ -104,7 +104,7 @@ set nokey
 plot \"$busy\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
-	 convert -geometry 120x120  $plot9940.jpg ${plot9940}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plot9940.jpg ${plot9940}_stamp.jpg
 
 
         elif [ $node = $plotnode_d0 ] ; then
@@ -128,7 +128,7 @@ set nokey
 plot \"$busy_d0\" using 1:2 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
-	 convert -geometry 120x120  $plot9940.jpg ${plot9940}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plot9940.jpg ${plot9940}_stamp.jpg
 
 
         elif [ $node = $plotnode_cdf ] ; then
@@ -152,7 +152,7 @@ set nokey
 plot \"$busy_cdf\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
-	 convert -geometry 120x120  $plot9940.jpg ${plot9940}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plot9940.jpg ${plot9940}_stamp.jpg
 
 
 	 # dimitri wants dots instead of lines... 
@@ -175,7 +175,7 @@ set nokey
 plot \"$busy_cdf\" using 1:4 t \"9940 in use\" " >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plot9940.ps $plot9940.jpg
-	 convert -geometry 120x120  $plot9940.jpg ${plot9940}_stamp.jpg
+	 convert -geometry 120x120  -modulate 80 $plot9940.jpg ${plot9940}_stamp.jpg
 
 
         else

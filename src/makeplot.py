@@ -290,7 +290,7 @@ if __name__ == "__main__":
         
         os.system("convert -rotate 90  %s %s\n" % (ps_filename[group],
                                                    jpg_filename[group]))
-        os.system("convert -rotate 90 -geometry 120x120 %s %s\n"
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s\n"
                   % (ps_filename[group], jpg_stamp_filename[group]))
     
     os.remove(scaled_filename)

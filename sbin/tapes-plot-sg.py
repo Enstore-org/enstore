@@ -97,7 +97,7 @@ g.close()
 #           'gv %s.ps' % (thefile,),
 #           'convert -rotate 90 -geometry 120x120 -modulate -20 %s.ps %s_stamp.jpg' % (thefile,thefile)
 for cmd in '/usr/bin/gnuplot %s.gnuplot' % (thefile,),\
-           '/usr/X11R6/bin/convert -rotate 90 %s.ps %s.jpg' % (thefile,thefile),\
-           '/usr/X11R6/bin/convert -rotate 90 -geometry 120x120  %s.ps %s_stamp.jpg' % (thefile,thefile):
+           '/usr/X11R6/bin/convert -rotate 90 -modulate 80 %s.ps %s.jpg' % (thefile,thefile),\
+           '/usr/X11R6/bin/convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg' % (thefile,thefile):
     print cmd
     os.system(cmd)
