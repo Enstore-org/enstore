@@ -45,7 +45,7 @@ class Gdb:
                             print "EAGAIN"
                             continue
                         else:
-                            raise 
+                            raise IOError, detail
                     
                     if not s:
                         print "EOF?"
