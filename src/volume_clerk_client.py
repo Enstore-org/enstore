@@ -617,7 +617,9 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                                           option.VALUE_USAGE:option.REQUIRED,},
                                          {option.VALUE_NAME:"remaining_bytes",
                                           option.VALUE_TYPE:option.STRING,
-                                          option.VALUE_USAGE:option.OPTIONAL}
+                                          option.VALUE_USAGE:option.OPTIONAL,
+                                          option.DEFAULT_TYPE:None,
+                                          option.DEFAULT_VALUE:None,}
                                          ]},
         option.ALL:{option.HELP_STRING:"used with --restore to restore all",
                        option.DEFAULT_VALUE:option.DEFAULT,
