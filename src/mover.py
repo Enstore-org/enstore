@@ -1243,8 +1243,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            flags = fcntl.fcntl(control_socket, FCNTL.F_GETFL)
-            fcntl.fcntl(control_socket, FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
+            flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
             for retry in xrange(60):
                 try:
@@ -1256,7 +1256,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.log(e_errors.ERROR, "timeout connecting to %s" % (ticket['callback_addr'],))
                 return None, None
-            fcntl.fcntl(control_socket, FCNTL.F_SETFL, flags)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
                 callback.write_tcp_obj(control_socket, ticket)
