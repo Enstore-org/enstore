@@ -199,8 +199,8 @@ def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
     version_string = "v3_1  CVS $Revision$ "
-    file = globals().get('__file__', "")
-    if file: version_string = version_string + file
+    encp_file = globals().get('__file__', "")
+    if encp_file: version_string = version_string + encp_file
     return version_string
 
 def quit(exit_code=1):
@@ -363,7 +363,7 @@ def close_descriptors(*fds):
             
         if hasattr(fd, "close"):
 	    try:
-		apply(getattr(fd, "close"))
+		fd.close()
 	    except (OSError, IOError):
 		pass
         else:
@@ -411,13 +411,13 @@ def get_file_size(file):
             pin = pnfs.Pnfs(file)
             pin.get_file_size()
             filesize = pin.file_size
-        except (OSError, IOError), detail:
+        except (OSError, IOError):
             filesize = None #0
     else:
         try:
             statinfo = os.stat(file)
             filesize = statinfo[stat.ST_SIZE]
-        except (OSError, IOError), detail:
+        except (OSError, IOError):
             filesize = None #0
 
     #Return None for failures.
@@ -454,16 +454,16 @@ def bin(integer):
         print
 
     temp = integer
-    list = []
+    bool_list = []
         
     for i in range(32):
-        list.append(temp % 2)
+        bool_list.append(temp % 2)
         temp = (temp >> 1)
 
-    list.reverse()
+    bool_list.reverse()
 
     temp = ""
-    for i in list:
+    for i in bool_list:
         temp = temp + ("%s" % i)
 
     return temp
@@ -512,7 +512,7 @@ def get_enstore_pnfs_path(filepath):
                         e_errors.WRONGPARAMETER)
 
     #Make absolute path.
-    machine, filename, dirname, basename = fullpath(filepath)
+    unused, filename, dirname, unused = fullpath(filepath)
 
     #Determine the canonical path base.  (i.e /pnfs/fnal.gov/usr/)
     canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
@@ -539,7 +539,7 @@ def get_enstore_fs_path(filepath):
                         e_errors.WRONGPARAMETER)
 
     #Make absolute path.
-    machine, filename, dirname, basename = fullpath(filepath)
+    unused, filename, dirname, unused = fullpath(filepath)
 
     #Determine the canonical path base.
     canonical_name = string.join(socket.getfqdn().split(".")[1:], ".")
@@ -566,7 +566,7 @@ def get_enstore_canonical_path(filepath):
                         e_errors.WRONGPARAMETER)
 
     #Make absolute path.
-    machine, filename, dirname, basename = fullpath(filepath)
+    unused, filename, dirname, unused = fullpath(filepath)
 
     #Determine the canonical path base.  If the ENCP_CANONICAL_DOMAINNAME
     # overriding environmental variable is set, use that.
@@ -602,7 +602,7 @@ def e_access(path, mode):
     try:
         file_stats = os.stat(path)
         stat_mode = file_stats[stat.ST_MODE]
-    except OSError, detail:
+    except OSError:
         return 0
 
     # Need to check for each type of access permission.
@@ -1139,10 +1139,13 @@ def access_check(path, mode):
         return e_access(path, mode)
 
     # automaticall retry 6 times, one second delay each
-    for i in range(5):
+    #for i in range(5):
+    i = 0
+    while i < 6:
         if e_access(path, mode):
             return 1
         time.sleep(1)
+        i = i + 1
     return e_access(path, mode)
 
 #Make sure that the filename is valid.
@@ -1175,7 +1178,7 @@ def filesystem_check(target_filesystem, inputfile):
     except KeyboardInterrupt:
         raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg = sys.exc_info()[:2]
+        msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
         
     #os.pathconf likes its targets to exist.  If the target is not a directory,
@@ -1190,10 +1193,10 @@ def filesystem_check(target_filesystem, inputfile):
                            os.pathconf_names['PC_FILESIZEBITS'])
     except KeyboardInterrupt:
         raise sys.exc_info()
-    except KeyError, detail:
+    except KeyError:
         return
     except (OSError, IOError):
-        exc, msg = sys.exc_info()[:2]
+        msg = sys.exc_info()[1]
         msg2 = "System error obtaining maximum file size for " \
                "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
@@ -1235,7 +1238,7 @@ def wrappersize_check(target_filepath, inputfile):
     except KeyboardInterrupt:
         raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg = sys.exc_info()[:2]
+        msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     if size > wrapper_max:
@@ -1260,7 +1263,7 @@ def librarysize_check(target_filepath, inputfile):
     except KeyboardInterrupt:
         raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg = sys.exc_info()[:2]
+        msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     #Compare the max sizes allowed for these various conditions.
@@ -1345,14 +1348,14 @@ def inputfile_check(input_files, e):
 
         except KeyboardInterrupt:
             raise sys.exc_info()
-        except EncpError, detail:
-            exc, msg = sys.exc_info()[:2]
+        except EncpError:
+            msg = sys.exc_info()[1]
             size = get_file_size(inputlist[i])
             print_data_access_layer_format(inputlist[i], "", size,
                                            {'status':(msg.type, msg.strerror)})
             quit()
-        except (OSError, IOError), detail:
-            exc, msg = sys.exc_info()[:2]
+        except (OSError, IOError):
+            msg = sys.exc_info()[1]
             size = get_file_size(inputlist[i])
             error = errno.errorcode.get(getattr(msg, "errno", None),
                                         errno.errorcode[errno.ENODATA])
@@ -1372,13 +1375,13 @@ def outputfile_check(inputlist, outputlist, e):
 
     # create internal list of input unix files even if just 1 file passed in
     if type(inputlist)==types.ListType:
-        inputlist = inputlist
+        pass  #inputlist = inputlist
     else:
         inputlist = [inputlist]
 
     # create internal list of input unix files even if just 1 file passed in
     if type(outputlist)==types.ListType:
-        outputlist = outputlist
+        pass  #outputlist = outputlist
     else:
         outputlist = [outputlist]
 
@@ -1539,7 +1542,7 @@ def outputfile_check(inputlist, outputlist, e):
                 pass  #There is no error.
 
         except EncpError:
-            exc, msg = sys.exc_info()[:2]
+            msg = sys.exc_info()[1]
             size = get_file_size(inputlist[i])
             print_data_access_layer_format("", outputlist[i], size,
                                            {'status':(msg.type, msg.strerror)})
@@ -1679,7 +1682,7 @@ def get_pinfo(p):
     except (OSError, IOError), msg:
         error = getattr(msg, "error", errno.EIO)
         raise EncpError(error, None, errno.errorcode[error])
-    except (IndexError,), detail:
+    except (IndexError,):
         raise EncpError(None, "Unable to obtain bfid.", e_errors.OSERROR)
 
 def get_uinfo():
@@ -1757,8 +1760,8 @@ def get_einfo(e):
 def get_ninfo(inputfile, outputfile, e):
     
     # get fully qualified name
-    imachine, ifullname, idir, ibasename = fullpath(inputfile) #e.input[i])
-    omachine, ofullname, odir, obasename = fullpath(outputfile) #e.output[0])
+    unused, ifullname, unused, ibasename = fullpath(inputfile) #e.input[i])
+    unused, ofullname, unused, unused = fullpath(outputfile) #e.output[0])
     # Add the name if necessary.
     if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
         pass
@@ -1767,7 +1770,7 @@ def get_ninfo(inputfile, outputfile, e):
     elif (len(e.input) > 1) or \
          (len(e.input) == 1 and os.path.isdir(ofullname)):
         ofullname = os.path.join(ofullname, ibasename)
-        omachine, ofullname, odir, obasename = fullpath(ofullname)
+        unused, ofullname, unused, unused = fullpath(ofullname)
 
     return ifullname, ofullname
 
@@ -1873,7 +1876,7 @@ def open_control_socket(listen_socket, mover_timeout):
 
     Trace.message(INFO_LEVEL, "Waiting for mover to connect control socket")
 
-    read_fds,write_fds,exc_fds=select.select([listen_socket], [], [],
+    read_fds, unused, unused = select.select([listen_socket], [], [],
                                              mover_timeout)
 
     #If there are no successful connected sockets, then select timedout.
@@ -1899,7 +1902,7 @@ def open_control_socket(listen_socket, mover_timeout):
         # it is closed already...
         return control_socket, address, ticket
 
-    fds, junk, junk = select.select([control_socket], [], [], 5)
+    fds, unused, unused = select.select([control_socket], [], [], 5)
     try:
         if fds:
             ticket = callback.read_tcp_obj(control_socket)
@@ -1934,7 +1937,7 @@ def open_data_socket(mover_addr, interface_ip):
 
     try:
         data_path_socket.connect(mover_addr)
-        error = 0
+        #error = 0 #MWZ: pychecker questioned this line.  
     except socket.error, msg:
         #We have seen that on IRIX, when the connection succeds, we
         # get an EISCONN error.
@@ -1948,13 +1951,13 @@ def open_data_socket(mover_addr, interface_ip):
             raise socket.error, msg
 
     #Check if the socket is open for reading and/or writing.
-    r, w, ex = select.select([data_path_socket], [data_path_socket], [], 30)
+    r, w, unused = select.select([data_path_socket],[data_path_socket],[],30)
 
     if r or w:
         #Get the socket error condition...
         rtn = data_path_socket.getsockopt(socket.SOL_SOCKET,
                                           socket.SO_ERROR)
-        error = 0
+        #error = 0 #MWZ: pychecker questioned this line.  
     #If the select didn't return sockets ready for read or write, then the
     # connection timed out.
     else:
@@ -2003,7 +2006,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             if config and config.get('interface', None):
                 ticket, use_listen_socket = open_routing_socket(
 		    route_server, unique_id_list, encp_intf)
-        except (EncpError,), detail:
+        except (EncpError,):
             exc, msg = sys.exc_info()[:2]
             #Return the entire ticket.  Make sure it has valid data, otherwise
             # just having the 'status' field could cause problems in
@@ -2169,7 +2172,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
             if not data_path_socket:
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
 
-        except (socket.error,), detail:
+        except (socket.error,):
             exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.NET_ERROR, str(msg))
             #Trace.log(e_errors.INFO, str(msg))
@@ -2355,8 +2358,6 @@ def receive_final_dialog(control_socket):
 # is an integer of the crc value.  On error returns 0.
 def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
-    encp_crc = 0
-
     transfer_start_time = time.time() # Start time of file transfer.
 
     #Read/Write in/out the data to/from the mover and write/read it out to
@@ -2523,7 +2524,36 @@ def check_crc(done_ticket, encp_intf, fd=None):
                                                            readback_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
-                
+
+    # Check the CRC in pnfs layer 2 (set by dcache).
+    ### Note: This is commented out because encp has used zero as the initial
+    ###       seed value for the adler32 function for years.  Typically,
+    ###       one is used; not zero.  The dcache uses one, thus the values
+    ###       don't match when compared.
+    #if encp_intf.chk_crc:
+    #    # Get the pnfs layer 2 for this file.
+    #    p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
+    #    data = p.readlayer(2)
+    #
+    #    # Define the match/search once before the loop.
+    #    crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+    #
+    #    # Loop over every line in the output looking for the crc.
+    #    for line in data:
+    #        result = crc_match.search(line)
+    #        if result != None:
+    #            #Get the hex strings of the two CRCs.
+    #            hex_dcache_string = "0x" + result.group().split(":")[1]
+    #            hex_encp_string = hex(encp_crc)
+    #            #Convert hex values to upper case for comparison.
+    #            hex_dcache_string = string.lower(hex_dcache_string)
+    #            hex_encp_string = string.lower(hex_encp_string)
+    #            #Test to make sure they are the same.
+    #            if hex_dcache_string != hex_encp_string:
+    #                msg = "CRC dcache mismatch: %s != %s" % (hex_dcache_string,
+    #                                                         hex_encp_string)
+    #                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
+    #                return
 
 ############################################################################
             
@@ -2550,19 +2580,19 @@ def verify_file_size(ticket):
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
 
-    try:
-        in_stat = os.stat(ticket['infile'])
-        in_filesize = in_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
+    #try:
+    #    in_stat = os.stat(ticket['infile'])
+    #    in_filesize = in_stat[stat.ST_SIZE]
+    #except (OSError, IOError), detail:
+    #    ticket['status'] = (e_errors.OSERROR, str(detail))
+    #    return
     
-    try:
-        out_stat = os.stat(ticket['outfile'])
-        out_filesize = out_stat[stat.ST_SIZE]
-    except (OSError, IOError), detail:
-        ticket['status'] = (e_errors.OSERROR, str(detail))
-        return
+    #try:
+    #    out_stat = os.stat(ticket['outfile'])
+    #    out_filesize = out_stat[stat.ST_SIZE]
+    #except (OSError, IOError), detail:
+    #    ticket['status'] = (e_errors.OSERROR, str(detail))
+    #    return
     
     #Until pnfs supports NFS version 3 (for large file support) make sure
     # we are using the correct file_size for the pnfs side.
@@ -2578,14 +2608,14 @@ def verify_file_size(ticket):
     if pnfs_filesize == 1:
         if full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
-                  "size (%s) for file %s." \
+                  "size (%s) for large file %s." \
                   % (full_filesize, pnfs_real_size, ticket['outfile'])
             ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     #Test if the sizes are correct.
-    elif ticket['file_size'] != out_filesize:
+    elif ticket['file_size'] != full_filesize:
         msg = "Expected file size (%s) to equal actuall file size " \
               "(%s) for file %s." % \
-              (ticket['file_size'], out_filesize, ticket['outfile'])
+              (ticket['file_size'], full_filesize, ticket['outfile'])
         ticket['status'] = (e_errors.FILE_MODIFIED, msg)
     elif full_filesize != pnfs_filesize:
         msg = "Expected local file size (%s) to equal remote file " \
@@ -2645,7 +2675,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
-    verbose = encp_intf.verbose
+    #verbose = encp_intf.verbose
     
     #Before resubmitting, there are some fields that the library
     # manager and mover don't expect to receive from encp,
@@ -2697,8 +2727,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             request_dictionary = combine_dict(socket_dict, request_dictionary)
         else:
             #Determine if the control socket has some errror to report.
-            read_fd, write_fd, exc_fd = select.select([control_socket],
-                                                      [], [], 15)
+            read_fd, unused, unused = select.select([control_socket],
+                                                    [], [], 15)
             #check control socket for error.
             if read_fd:
                 socket_dict = receive_final_dialog(control_socket)
@@ -2980,11 +3010,11 @@ def calculate_rate(done_ticket, tinfo):
     MB_transfered = float(done_ticket['file_size']) / float(bytes_per_MB)
 
     #For readablilty...
-    id = done_ticket['unique_id']
+    u_id = done_ticket['unique_id']
 
     #Make these variables easier to use.
-    transfer_time = tinfo.get('%s_transfer_time' % (id,), 0)
-    overall_time = tinfo.get('%s_overall_time' % (id,), 0)
+    transfer_time = tinfo.get('%s_transfer_time' % (u_id,), 0)
+    overall_time = tinfo.get('%s_overall_time' % (u_id,), 0)
     drive_time = done_ticket['times'].get('drive_transfer_time', 0)
     #These are newer more accurate time measurements and may not always
     # be present.
@@ -3026,25 +3056,25 @@ def calculate_rate(done_ticket, tinfo):
     if e_errors.is_ok(done_ticket['status'][0]):
 
         if transfer_time != 0:
-            tinfo['%s_transfer_rate'%(id,)] = MB_transfered / transfer_time
+            tinfo['%s_transfer_rate'%(u_id,)] = MB_transfered / transfer_time
         else:
-            tinfo['%s_transfer_rate'%(id,)] = 0.0
+            tinfo['%s_transfer_rate'%(u_id,)] = 0.0
         if overall_time != 0:
-            tinfo['%s_overall_rate'%(id,)] = MB_transfered / overall_time
+            tinfo['%s_overall_rate'%(u_id,)] = MB_transfered / overall_time
         else:
-            tinfo['%s_overall_rate'%(id,)] = 0.0
+            tinfo['%s_overall_rate'%(u_id,)] = 0.0
         if network_time != 0:
-            tinfo['%s_network_rate'%(id,)] = MB_transfered / network_time
+            tinfo['%s_network_rate'%(u_id,)] = MB_transfered / network_time
         else:
-            tinfo['%s_network_rate'%(id,)] = 0.0            
+            tinfo['%s_network_rate'%(u_id,)] = 0.0            
         if drive_time != 0:
-            tinfo['%s_drive_rate'%(id,)] = MB_transfered / drive_time
+            tinfo['%s_drive_rate'%(u_id,)] = MB_transfered / drive_time
         else:
-            tinfo['%s_drive_rate'%(id,)] = 0.0
+            tinfo['%s_drive_rate'%(u_id,)] = 0.0
         if disk_time != 0:
-            tinfo['%s_disk_rate'%(id,)] = MB_transfered / disk_time
+            tinfo['%s_disk_rate'%(u_id,)] = MB_transfered / disk_time
         else:
-            tinfo['%s_disk_rate'%(id,)] = 0.0
+            tinfo['%s_disk_rate'%(u_id,)] = 0.0
             
         sg = done_ticket.get('fc', {}).get('storage_group', "")
         if not sg:
@@ -3073,12 +3103,12 @@ def calculate_rate(done_ticket, tinfo):
                         done_ticket['file_size'],
                         preposition,
                         done_ticket["fc"]["external_label"],
-                        tinfo["%s_transfer_rate"%(id,)],
-                        tinfo['%s_network_rate'%(id,)],
-                        tinfo["%s_drive_rate"%(id,)],
-                        tinfo["%s_disk_rate"%(id,)],
-                        tinfo["%s_overall_rate"%(id,)],
-                        tinfo["%s_transfer_rate"%(id,)],
+                        tinfo["%s_transfer_rate"%(u_id,)],
+                        tinfo['%s_network_rate'%(u_id,)],
+                        tinfo["%s_drive_rate"%(u_id,)],
+                        tinfo["%s_disk_rate"%(u_id,)],
+                        tinfo["%s_overall_rate"%(u_id,)],
+                        tinfo["%s_transfer_rate"%(u_id,)],
                         done_ticket["mover"]["product_id"],
                         done_ticket["mover"]["serial_num"],
                         done_ticket["mover"]["vendor_id"],
@@ -3096,11 +3126,11 @@ def calculate_rate(done_ticket, tinfo):
             'storage_group' : sg,
             'encp_ip' : done_ticket["encp_ip"],
             'unique_id' : done_ticket['unique_id'],
-            'network_rate' : tinfo["%s_transfer_rate"%(id,)],
-            'drive_rate' : tinfo["%s_drive_rate"%(id,)],
-            'disk_rate' : tinfo["%s_disk_rate"%(id,)],
-            'overall_rate' : tinfo["%s_overall_rate"%(id,)],
-            'transfer_rate' : tinfo["%s_transfer_rate"%(id,)],
+            'network_rate' : tinfo["%s_transfer_rate"%(u_id,)],
+            'drive_rate' : tinfo["%s_drive_rate"%(u_id,)],
+            'disk_rate' : tinfo["%s_disk_rate"%(u_id,)],
+            'overall_rate' : tinfo["%s_overall_rate"%(u_id,)],
+            'transfer_rate' : tinfo["%s_transfer_rate"%(u_id,)],
             }
 
         log_values = (done_ticket['work'],
@@ -3109,10 +3139,10 @@ def calculate_rate(done_ticket, tinfo):
                       done_ticket['file_size'],
                       preposition,
                       done_ticket["fc"]["external_label"],
-                      tinfo["%s_transfer_rate"%(id,)],
-                      tinfo["%s_network_rate"%(id,)],
-                      tinfo['%s_drive_rate'%(id,)],
-                      tinfo["%s_disk_rate"%(id,)],
+                      tinfo["%s_transfer_rate"%(u_id,)],
+                      tinfo["%s_network_rate"%(u_id,)],
+                      tinfo['%s_drive_rate'%(u_id,)],
+                      tinfo["%s_disk_rate"%(u_id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
@@ -3201,8 +3231,8 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     tinfo['total'] = now - tinfo['encp_start_time']
 
     #calculate MB relatated stats
-    bytes_per_MB = 1024 * 1024
-    MB_transfered = float(bytes) / float(bytes_per_MB)
+    #bytes_per_MB = 1024 * 1024
+    #MB_transfered = float(bytes) / float(bytes_per_MB)
 
     #get all the overall rates from the dictionary.
     overall_rate  = 0L
@@ -3366,7 +3396,7 @@ def set_pnfs_settings(ticket, intf_encp):
         #p=pnfs.Pnfs(ticket['outfile'])
         #t=pnfs.Tag(os.path.dirname(ticket['outfile']))
         p=pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        t=pnfs.Tag(os.path.dirname(ticket['wrapper']['pnfsFilename']))
+        #t=pnfs.Tag(os.path.dirname(ticket['wrapper']['pnfsFilename']))
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
@@ -3509,7 +3539,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
 
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input) == types.ListType:
-        e.input = e.input
+        pass  #e.input = e.input
     else:
         e.input = [e.input]
 
@@ -3531,7 +3561,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
                     {'status':(e_errors.OSERROR, str(msg))})
                 quit()
 
-            imachine, ifullname, idir, ibasename = fullpath(e.input[0])
+            unused, ifullname, unused, unused = fullpath(e.input[0])
 
         else: #The output file was given as a normal filename.
 
@@ -3713,8 +3743,6 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
     #Loop around in case the file transfer needs to be retried.
     while work_ticket.get('retry', 0) <= e.max_retry:
         
-        encp_crc = 0 #In case there is a problem, make sure this exists.
-
         Trace.message(TRANSFER_LEVEL,
                       "Waiting for mover to call back.   elapsed=%s" % \
                       (time.time() - tinfo['encp_start_time'],))
@@ -4406,13 +4434,13 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
     #print time.ctime(time.time())
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input)==types.ListType:
-        e.input = e.input
+        pass #e.input = e.input
     else:
         e.input = [e.input]
 
     # create internal list of input unix files even if just 1 file passed in
     if type(e.output)==types.ListType:
-        e.output = e.output
+        pass #e.output = e.output
     else:
         e.output = [e.output]
 
@@ -4720,7 +4748,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 #Determine the inupt filename.  If necessary, get the
                 # current filename by using the pnfs id.
                 ifilename = os.path.join(e.input[0], filename)
-                imachine, ifullname, idir, ibasename = fullpath(ifilename)
+                unused, ifullname, unused, unused = fullpath(ifilename)
 
                 p = pnfs.Pnfs(ifullname)
 
@@ -4930,7 +4958,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
             else:
-                omachine, ofullname, odir, obasename = fullpath(e.output[0])
+                unused, ofullname, unused, unused = fullpath(e.output[0])
 
             file_size = get_file_size(ifullname)
 
@@ -4982,7 +5010,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
             else:
-                omachine, ofullname, odir, obasename = fullpath(e.output[0])
+                unused, ofullname, unused, unused = fullpath(e.output[0])
 
             read_work = 'read_from_hsm'
             
@@ -5206,9 +5234,10 @@ def read_hsm_files(listen_socket, route_server, submitted,
         #if result_dict['status'][0]== e_errors.RETRY or \
         #   result_dict['status'][0]== e_errors.RESUBMITTING:
         #    continue
-        elif result_dict['status'][0]== e_errors.TOO_MANY_RESUBMITS:
-            for n in range(files_left):
-                failed_requests.append(request_ticket)
+        elif result_dict['status'][0] == e_errors.TOO_MANY_RESUBMITS:
+            n = 0
+            while n < files_left:
+                failed_requests.append(request_ticket) #Why use same ticket??
             files_left = 0
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -5266,8 +5295,8 @@ def read_hsm_files(listen_socket, route_server, submitted,
                    time.time() - tinfo['encp_start_time']))
 
         #Stall starting the count until the first byte is ready for reading.
-        read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
-                                                  [data_path_socket], 15 * 60)
+        unused, unused, unused = select.select([data_path_socket], [],
+                                               [data_path_socket], 15 * 60)
 
         Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
                   (time.time() - tinfo['encp_start_time'],))
@@ -5814,12 +5843,12 @@ class EncpInterface(option.Interface):
         option.Interface.parse_options(self)
 
         #Process these at the beginning.
-        if getattr(self, "help") and self.help:
-            ret = self.print_help()
-        if getattr(self, "usage") and self.usage:
-            ret = self.print_usage()
-        if getattr(self, "version") and self.version:
-            ret = self.print_version()
+        if hasattr(self, "help") and self.help:
+            self.print_help()
+        if hasattr(self, "usage") and self.usage:
+            self.print_usage()
+        if hasattr(self, "version") and self.version:
+            self.print_version()
 
         # bomb out if we don't have an input/output if a special command
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
@@ -5933,7 +5962,7 @@ class EncpInterface(option.Interface):
         p = []
         for i in range(0, self.arglen):
             #Get fullpaths to the files.
-            (machine, fullname, directory, basename) = fullpath(self.args[i])
+            unused, fullname, unused, unused = fullpath(self.args[i])
             self.args[i] = fullname
             #If the file is a pnfs file, store a 1 in the list, if not store
             # a zero.  All files on the hsm system have /pnfs/ in there name.
@@ -6251,7 +6280,7 @@ def do_work(intf):
     try:
         main(intf)
         quit(0)
-    except SystemExit, msg:
+    except SystemExit:
         quit(1)
     #except:
         #exc, msg, tb = sys.exc_info()
