@@ -60,7 +60,7 @@ raise_exception(  char		*method_name )
 	char	errbuf[500];
 
     /*  dealloc and raise exception fix */
-    sprintf(  errbuf, "Error in %s\n", method_name );
+    sprintf(  errbuf, "Error in %.485s\n", method_name );
     PyErr_SetString( PtraceErrObject, errbuf );
     return (NULL);
 }   /* raise_exception */
@@ -350,7 +350,8 @@ get_msg(  PyObject	*args
     line_no = frame->f_lineno;
 
     if (frame->f_back){
-	from_source_file = PyString_AsString_Safe(frame->f_back->f_code->co_filename);
+	from_source_file = PyString_AsString_Safe(
+	    frame->f_back->f_code->co_filename);
 	from_line_no = frame->f_back->f_lineno;
     } else {
 	from_source_file = "?";
@@ -364,20 +365,23 @@ get_msg(  PyObject	*args
     {
     case 'c':
 	nargs = code_args_as_string(frame, code, buf, 200);
-	sprintf(  msg, " call %s.%s(%s) from %s:%d", /*XXX kludge alert!*/
-                  module_name,function_name, buf, from_source_file, from_line_no);
+	sprintf(  msg, " call %.50s.%.50s(%.200s) from %.50s:%d", 
+                        /*XXX kludge alert! note space before "c"  */
+                  module_name,function_name, buf, 
+		  from_source_file, from_line_no);
 	break;
     case 'r':
-	sprintf(  msg, "ret  %s.%s %s", module_name, function_name, 
+	sprintf(  msg, "ret  %.50s.%.50s %.500s", module_name, 
+		  function_name, 
 		  PyString_AsString_Safe(PyObject_Repr(arg_arg)));
 	break;
     case 'e':
-	sprintf(  msg, "exc  %s.%s at %s:%d"
-		, module_name, function_name, source_file,line_no );
+	sprintf(  msg, "exc  %.50s.%.50s at %.50s:%d", 
+		  module_name, function_name, source_file,line_no );
 	break;
     default:			/* must be 'l' as in "line" */
-	sprintf(  msg, "line %s"
-		, function_name );
+	sprintf(  msg, "line %.50s",
+		  function_name );
 	break;
     }
 
