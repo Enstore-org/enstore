@@ -8,10 +8,10 @@ import os
 import tempfile
 import pprint
 import cPickle
+import shutil
 
 #user imports
 import edb
-import checkBackedUpDatabases
 import configuration_client
 import enstore_constants
 import alarm_client
@@ -25,6 +25,9 @@ t0 = time.time()
 
 def get_vq_format_file(output_dir):
     return output_dir + enstore_constants.VQFORMATED
+
+def tod():
+    return time.strftime("%c",time.localtime(time.time()))
 
 # return filenames
 def get_vol_filenames(output_dir):
@@ -63,12 +66,9 @@ class match_list:
 def inventory_usage(message = None):
     if message:
         print "\n" + message + "\n"
-    print "Usage: " + sys.argv[0] + " [-v volume_file] [-f metadata_file]",
+    print "Usage: " + sys.argv[0],
     print "[[-o output_directory] | [-stdout]] [--help]"
-    print "   -v=      set the volume file to be inventoried"
-    print "   -f=      set the metadata file to be inventoried"
     print "   -o=      set the output directory"
-    print "  --volume= set the volume to check (enables --stdout)"
     print "  --stdout  set the output directory to standard out"
     print "  --help    print this message"
     print "See configuration dictionary entries \"backup\" and \"inventory\""\
@@ -88,11 +88,20 @@ def format_storage_size(size_in_bytes,mode="GB"):
     volume_size = float(size_in_bytes)
     count = 0
     while long(abs(volume_size) / 1024) > 0:
-        volume_size = volume_size / 1024
+        volume_size = volume_size / 1024.0
         count = count + 1
 
 
     return volume_size, suffix[count]
+
+# remove_files(file_list, dir)
+def remove_files(files, dir):
+    for i in files:
+        p = os.path.join(dir, i)
+        if os.path.isdir(p):
+            shutil.rmtree(p)
+        else:
+            os.remove(p)
 
 #Takes an arbitrary number of arguments which contain directories and creates
 # them if they do not exist.  If they already exist, then simply delete
@@ -106,18 +115,7 @@ def create_clean_dirs(*dirs):
             except OSError:
                 os.mkdir(dir, 0755)
                 
-            checkBackedUpDatabases.remove_files(os.listdir(dir),dir)
-
-#Takes an arbitrary number of arguments which contain directories and deletes
-# them and their contents.
-def cleanup_dirs(*dirs):
-    for dir in dirs:
-        if string.find(dir, "/dev/stdout") == -1:
-            try:
-                checkBackedUpDatabases.remove_files(os.listdir(dir), dir)
-                os.rmdir(dir)
-            except OSError:
-                continue
+            remove_files(os.listdir(dir),dir)
 
 #Read in the information from the authorized tapes file.
 def get_authorized_tapes():
@@ -258,38 +256,6 @@ def print_footer(volume, fd):
         else:
             out_string = "  '%s': %s\n" % (key, to_print)
             os.write(fd, out_string)
-
-
-def print_data(volume, fd_temp, fd_data):
-    sum_size = 0 #initalize this to avoid errors with empty files
-    #From the beginning of the temporary file, read it into memory...
-    os.lseek(fd_temp, 0, 0)
-    in_string = os.read(fd_temp, 512)
-    entire_file_string = ""
-    while len(in_string) > 0:
-        entire_file_string = entire_file_string + in_string
-        in_string = os.read(fd_temp, 512)
-        
-    #...make sure that there is data in the file (string)...
-    if len(entire_file_string) == 0:
-        return []
-    
-    #...then obtain a list of strings, where each line in the file
-    # is an element in the list.
-    sorted_list = string.split(entire_file_string, "\n")
-
-    #If the last line in the file/list is empty, delete it.
-    if sorted_list[-1] == "":
-        del sorted_list[-1]
-        
-    #Sort the list of file lines based on the location_cookie (lc).
-    sorted_list.sort(lc_sort)
-    
-    #Write the data to the appropriate file.
-    for line in sorted_list:
-        os.write(fd_data, line + "\n")
-
-    return sorted_list
 
 #Print the sums of the file sizes to the file VOLUME_SIZE.  Also, print
 # out the expected volume sizes.
@@ -702,7 +668,7 @@ def is_b_library(lib):
 #Takes the full filepath name to the metadata file in the second parameter.
 #Takes the full path to the ouput directory in the third parameter.
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
-def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
+def inventory(output_dir, cache_dir):
     # determine the output path
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
@@ -1061,28 +1027,26 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 def inventory_dirs():
     csc = configuration_client.ConfigurationClient()
     inven = csc.get('inventory',timeout=15,retry=3)
-    checkBackedUpDatabases.check_ticket('Configuration Server', inven)
+    if not 'status' in inven.keys():
+        print tod(), 'Configuration Server NOT RESPONDING'
+        sys.exit(1)
+    elif inven['status'][0] != e_errors.OK:
+        print tod(), 'Configuration Server BAD STATUS', `inven['status']`
+        sys.exit(1)
+    else:
+        print tod(), 'Configuration Server ok'
     
     inventory_dir = inven.get('inventory_dir','MISSING')
-    inventory_tmp_dir = inven.get('inventory_tmp_dir','MISSING')
-    inventory_extract_dir = inven.get('inventory_extract_dir','MISSING')
     inventory_rcp_dir = inven.get('inventory_rcp_dir','MISSING')
     inventory_cache_dir = inven.get('inventory_cache_dir', '/tmp')
 
     if inventory_dir == "MISSING":
         print "Error unable to find configdict entry inventory_dir."
         sys.exit(1)
-    if inventory_tmp_dir == "MISSING":
-        print "Error unable to find configdict entry inventory_tmp_dir."
-        sys.exit(1)
-    if inventory_extract_dir == "MISSING":
-        print "Error unable to find configdict entry inventory_extract_dir."
-        sys.exit(1)
     if inventory_rcp_dir == "MISSING":
         inventory_rcp_dir = '' #Set this to the empty string.
 
-    return inventory_dir, inventory_tmp_dir, inventory_extract_dir, \
-           inventory_rcp_dir, inventory_cache_dir
+    return inventory_dir, inventory_rcp_dir, inventory_cache_dir
 
 
 if __name__ == "__main__":
@@ -1101,31 +1065,14 @@ if __name__ == "__main__":
     else:
         mount_limit = {}
 
-    #Retrieve the necessary directories from the enstore servers.
-    # Extract_dir is ignored by inventory.py.
-    (backup_dir, extract_dir, current_dir, backup_node) = \
-                 checkBackedUpDatabases.configure()
-    (inventory_dir, inventory_tmp_dir, inventory_extract_dir,
-     inventory_rcp_dir, inventory_cache_dir) = inventory_dirs()
+    (inventory_dir, inventory_rcp_dir, inventory_cache_dir) = inventory_dirs()
 
     #Make sure all of the directories end with a /
-    if backup_dir[-1] != "/": backup_dir = backup_dir + "/"
-    if current_dir[-1] != "/": current_dir = current_dir + "/"
-    if inventory_dir[-1] != "/": inventory_dir = inventory_dir + "/"
-    if inventory_tmp_dir[-1] != "/":
-        inventory_tmp_dir = inventory_tmp_dir + "/"
-    if inventory_extract_dir[-1] != "/":
-        inventory_extract_dir = inventory_extract_dir + "/"
     if inventory_rcp_dir != "" and inventory_rcp_dir[-1] != "/":
         inventory_rcp_dir = inventory_rcp_dir + "/"
         
-#    print "backup_dir", backup_dir
-#    print "current_dir", current_dir
 #    print "inventory_dir", inventory_dir
-#    print "inventory_tmp_dir", inventory_tmp_dir
-#    print "inventory_extract_dir", inventory_extract_dir
 #    print "inventory_rcp_dir", inventory_rcp_dir
-#    print "extract_dir", extract_dir
 
     #Look through the arguments list for valid arguments.
     if "--stdout" in sys.argv:
@@ -1136,35 +1083,13 @@ if __name__ == "__main__":
     else:
         output_dir = inventory_dir
         
-    if "-f" in sys.argv:
-        file_file = sys.argv[sys.argv.index("-f") + 1]
-    else:
-        file_file = inventory_extract_dir + "file"
-        
-    if "-v" in sys.argv:
-        volume_file = sys.argv[sys.argv.index("-v") + 1]
-    else:
-        volume_file = inventory_extract_dir + "volume"
-
-    if "--volume" in sys.argv:
-        volume = sys.argv[sys.argv.index("--volume") + 1]
-        output_dir = "/dev/stdout/"
-        inventory_rcp_dir = "" #Makes no sense to move files that don't exist.
-    else:
-        volume = None
-
     #Remove the contents of existing direcories and create them if they do
     # not exist.
-    create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
+    create_clean_dirs(output_dir)
 
     #Inventory is the main function that does work.
-    counts = inventory(volume_file, file_file, output_dir,
-                       inventory_cache_dir, volume)
+    counts = inventory(output_dir, inventory_cache_dir)
     
-    #Cleanup those directories that we don't care about its contents.
-    cleanup_dirs(inventory_tmp_dir, inventory_extract_dir)
-    checkBackedUpDatabases.clean_up(current_dir) #Simple "cleanup".
-
     #Move all of the output files over to the web server node.
     if inventory_rcp_dir:
         if string.find(output_dir, "/dev/stdout") == -1:
