@@ -160,7 +160,8 @@ class FTTDriver(driver.Driver):
             #Trace.trace(42, "ftt.get_position()")
             file, block = self.ftt.get_position()
         except ftt.FTTError, detail: 
-            if detail.errno == ftt.ELOST: 
+            if detail.errno == ftt.ELOST:
+                Trace.log(e_errors.INFO, "seek: lost position, rewinding")
                 self.rewind() #don't know tape position, must rewind
             else:
                 Trace.log(e_errors.ERROR,"ftt_driver:seek: ftt error %s"%(detail,detail.value))
