@@ -304,7 +304,10 @@ class Interface:
             elif opt == "--ephemeral":
                 self.output_file_family="ephemeral"
             elif opt == "--export":
-                self._export = 1
+                if value:
+                    self.export = value
+                else:
+                    self._export = 1
             elif opt == "--file-family":
                 self.output_file_family=value
             elif opt == "--force":
