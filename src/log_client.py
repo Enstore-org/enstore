@@ -27,24 +27,15 @@ MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
 
 # send a message to the logger
-def logit(message="HELLO", logname="LOGIT",config_host="", config_port=7510):
+def logit(logc, message="HELLO", logname="LOGIT"):
 
-    try:
-        if config_host == "" :
-            (config_host,ca,ci) = socket.gethostbyaddr("pcfarm4.fnal.gov")
+    # reset our log name
+    logc.log_name = logname
+        
+    # send the message
+    Trace.log(e_errors.INFO, message)
 
-        csc = configuration_client.ConfigurationClient((config_host,
-                                                        config_port))
-	csc.connect()
-
-        # get a logger
-        logc = LoggerClient((config_host, config_port), logname,  MY_SERVER)
-
-        # send the message
-        return Trace.log(e_errors.INFO, message)
-
-    except:
-        return  str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])
+    return {"status" : (e_errors.OK, None)}
 
 class LoggerLock:
     def __init__(self):
@@ -68,7 +59,7 @@ class LoggerClient(generic_client.GenericClient):
         # get another logger client
         self.is_logger = 1
         generic_client.GenericClient.__init__(self, csc, i_am_a)
-        self.i_am = i_am_a
+        self.log_name = i_am_a
         self.uname = pwd.getpwuid(os.getuid())[0]
         self.log_priority = 7
 	lticket = self.csc.get( servername )
@@ -84,9 +75,13 @@ class LoggerClient(generic_client.GenericClient):
 
 	severity = args[0]
 	msg      = args[1]
+        if self.log_name:
+            ln = self.log_name
+        else:
+            ln = name
 	if severity > e_errors.MISC: severity = e_errors.MISC
 	msg = '%.6d %.8s %s %s  %s' % (os.getpid(),self.uname,
-				       e_errors.sevdict[severity],name,msg)
+				       e_errors.sevdict[severity],ln,msg)
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
 	return 	self.lock.unlock()
@@ -128,7 +123,7 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
     def __init__(self):
         self.config_file = ""
         self.test = 0
-        self.logit = 0
+        self.logit = ""
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.get_logfile_name = 0
@@ -182,10 +177,9 @@ if __name__ == "__main__" :
         Trace.log( e_errors.ERROR,
 		   "This is a test message %s %d"%('TEST',3456) )
         ticket = {}
-        #ticket = logc.send(e_errors.INFO, 21, "this is an INFO message")
 
     elif intf.logit:
-        ticket = logit(intf.logmsg)
+        ticket = logit(logc, intf.logit)
 
     else:
 	intf.print_help()
