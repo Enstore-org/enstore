@@ -76,6 +76,8 @@ class UDPClient:
         if not host:
             self.host, self.port, self.socket = get_client()
         else:
+            self.host = host
+            self.port = port
             self.socket = socket
         self.txn_counter = 0L
         self.pid = None
@@ -96,6 +98,10 @@ class UDPClient:
             #Trace.log(e_errors.INFO, "clearing "+server[0]+" "+ server[1])
             try:
                 self.send_no_wait({"work":"done_cleanup"}, server[0])
+            except:
+                pass
+            try:
+                self.socket.close()
             except:
                 pass
 
@@ -146,7 +152,7 @@ class UDPClient:
 
         msg, txn_id = self.protocolize(data)
         # keep track of where we are sending things so we can clean up later
-        self.where_sent[dst] = (self.ident,msg)
+        self.where_sent[dst] = (self.ident(),msg)
         
         n_sent = 0
         while max_send==0 or n_sent<max_send:
@@ -201,14 +207,12 @@ if __name__ == "__main__" :
 
     print "Sending message", intf.msg, "to", intf.sendhost, " with callback on ", intf.port
 
-    back = u.send(intf.msg, (intf.sendhost, intf.sendport))
-
-    if back != intf.msg :
-        print "Error: sent:",intf.msg+"but read:",back
-        status = 1
-
-    else:
-	print "Read back:", back
+    back = u.send_no_wait(intf.msg, (intf.sendhost, intf.sendport))
+    del intf
+    del u
+    print "sleeping for 5 sec"
+    time.sleep(5)
+    print "back"
 
     sys.exit(status)
     
