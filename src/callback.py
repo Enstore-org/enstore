@@ -39,7 +39,9 @@ def get_callback() :
     # now check for a port we can use
     while  1:
         # remember, only person with lock is pounding  hard on this
-        for port in range (7600, 7650) :
+        port1 = 7600
+        port2 = 7650
+        for port in range (port1,port2) :
             success, mysocket = try_a_port (host, port)
             # if we got a lock, give up the hunt lock and return port
             if success :
@@ -47,7 +49,10 @@ def get_callback() :
                 lockf.close()
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
-        time.sleep (1)
+        sleeptime = 1
+        print "callback: all port ",port1,' to ',port2,\
+              " used. waiting",sleeptime," seconds"
+        time.sleep (sleeptime)
 
 
 # return a mover tcp socket
