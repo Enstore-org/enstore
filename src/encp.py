@@ -707,8 +707,9 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     
     #Check the last used non-default brand for performance reasons.
     if __csc != None:
-        test_vcc = volume_clerk_client.VolumeClerkClient(__csc)
-        volume_info = test_vcc.inquire_vol(volume, 5, 3)
+        test_vcc = volume_clerk_client.VolumeClerkClient(
+            __csc, rcv_timeout = 5, rcv_tries = 20)
+        volume_info = test_vcc.inquire_vol(volume, 5, 20)
         if e_errors.is_ok(volume_info):
             return __csc
         else:
@@ -1952,14 +1953,15 @@ def open_data_socket(mover_addr, interface_ip):
     try:
         data_path_socket.bind((interface_ip, 0))
     except socket.error, msg:
+        close_descriptors(data_path_socket)
         raise socket.error, msg
 
     try:
         data_path_socket.connect(mover_addr)
         #error = 0 #MWZ: pychecker questioned this line.  
     except socket.error, msg:
-        #We have seen that on IRIX, when the connection succeds, we
-        # get an EISCONN error.
+        #We have seen that on IRIX, when the three way handshake is in
+        # progress, we get an EISCONN error.
         if hasattr(errno, 'EISCONN') and msg[0] == errno.EISCONN:
             pass
         #The TCP handshake is in progress.
@@ -1967,6 +1969,9 @@ def open_data_socket(mover_addr, interface_ip):
             pass
         #A real or fatal error has occured.  Handle accordingly.
         else:
+            message = "Connecting data socket failed immediatly."
+            Trace.log(e_errors.ERROR, message)
+            Trace.trace(12, message)
             raise socket.error, msg
 
     #Check if the socket is open for reading and/or writing.
@@ -1980,11 +1985,14 @@ def open_data_socket(mover_addr, interface_ip):
     #If the select didn't return sockets ready for read or write, then the
     # connection timed out.
     else:
-        raise socket.error, (errno.ETIMEDOUT, os.strerror(errno.ETIMEDOUT))
+        raise socket.error(errno.ETIMEDOUT, os.strerror(errno.ETIMEDOUT))
 
     #If the return value is zero then success, otherwise it failed.
     if rtn != 0:
-        raise socket.error, (rtn, os.strerror(rtn))
+        message = "Connecting data socket failed later."
+        Trace.log(e_errors.ERROR, message)
+        Trace.trace(12, message)
+        raise socket.error(rtn, os.strerror(rtn))
 
     #Restore flag values to blocking mode.
     fcntl.fcntl(data_path_socket.fileno(), fcntl.F_SETFL, flags)
@@ -2224,16 +2232,26 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
 def submit_one_request(ticket):
 
+    #Before resending, there are some fields that the library
+    # manager and mover don't expect to receive from encp,
+    # these should be removed.
+    item_remove_list = ['mover']
+    for item in (item_remove_list):
+        try:
+            del ticket[item]
+        except KeyError:
+            pass
+
     #These two lines of code are for get retries to work properly.
     if ticket.get('method', None) != None:
         ticket['method'] = "read_tape_start"
     
     ##start of resubmit block
-    Trace.trace(17,"submiting: %s"%(ticket,))
 
     #On a retry or resubmit, print the number of the retry.
     if ticket.get('retry', None):
         Trace.message(TO_GO_LEVEL, "RETRY COUNT:" + str(ticket['retry']))
+        time.sleep(10) #On error, wait for a few seconds.
     if ticket.get('resubmits', None):
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(ticket['resubmits']))
 
@@ -2242,13 +2260,16 @@ def submit_one_request(ticket):
           % (ticket['unique_id'], ticket['infile'], ticket['outfile'])
     Trace.log(e_errors.INFO, msg)
 
-    csc = get_csc(ticket)
-    Trace.message(TICKET_LEVEL, format_class_for_print(csc, "csc"))
+    Trace.message(TRANSFER_LEVEL, "Submitting request to LM.")
+    Trace.message(TICKET_LEVEL, "SUBMITTING TICKET: ")
+    Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
     #Send work ticket to LM
     #Get the library manager info information.
+    csc = get_csc(ticket)
     lmc = library_manager_client.LibraryManagerClient(
-        csc, ticket['vc']['library'] + ".library_manager")
+        csc, ticket['vc']['library'] + ".library_manager",
+        rcv_timeout = 5, rcv_tries = 20)
     if ticket['infile'][:5] == "/pnfs":
         responce_ticket = lmc.read_from_hsm(ticket)
     else:
@@ -2816,7 +2837,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # are two types of non retriable errors.  Those that cause the transfer
     # to be aborted, and those that in addition to abborting the transfer
     # tell the operator that someone needs to investigate what happend.
-    if not e_errors.is_retriable(status[0]):
+    if e_errors.is_non_retriable(status[0]):
         #Print error to stdout in data_access_layer format. However, only
         # do so if the dictionary is full (aka. the error occured after
         # the control socket was successfully opened).  Control socket
@@ -2862,7 +2883,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # list at a time, submitting like this will still work.
     elif status[0] == e_errors.RESUBMITTING:
         ###Is the work done here duplicated in the next commented code line???
-        request_dictionary['resubmits'] = resubmits + 1
+        # 1-21-2004 MWZ: By testing for a non-empty request_list this code
+        # should never get called.  This was duplicating the resubmit
+        # increase later on.
+        if not request_list:
+            request_dictionary['resubmits'] = resubmits + 1
 
         #Update the tickets callback fields.  The actual sockets
         # are updated becuase they are passed in by reference.  There
@@ -2941,7 +2966,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # actuall error, not just a timeout.  Also, increase the retry count by 1.
     else:
         #Log the intermidiate error as a warning instead as a full error.
-        Trace.log(e_errors.WARNING, status)
+        Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
 
         #Get a new unique id for the transfer request since the last attempt
         # ended in error.
@@ -4374,9 +4399,10 @@ def verify_read_request_consistancy(requests_per_vol):
 
 #######################################################################
 
-def get_clerks_info(vcc, fcc, bfid): #Not used for volume transfers.
+def get_file_clerk_info(fcc, bfid):
 
-    fc_ticket = fcc.bfid_info(bfid=bfid)
+    #Get the clerk info.
+    fc_ticket = fcc.bfid_info(bfid = bfid)
 
     if not e_errors.is_ok(fc_ticket['status'][0]):
         raise EncpError(None,
@@ -4386,48 +4412,52 @@ def get_clerks_info(vcc, fcc, bfid): #Not used for volume transfers.
         raise EncpError(None,
                         "Failed to obtain information for bfid %s." % bfid,
                         e_errors.EPROTO, fc_ticket)
-
-    vc_ticket = vcc.inquire_vol(fc_ticket['external_label'])
-
-    if not e_errors.is_ok(vc_ticket['status'][0]):
-        raise EncpError(None,
-                        "Failed to obtain information for external label %s." %
-                        fc_ticket['external_label'],
-                        e_errors.EPROTO, vc_ticket)
-    if not vc_ticket.get('system_inhibit', None):
-        raise EncpError(None,
-                        "Volume %s did not contain system_inhibit information."
-                        % fc_ticket['external_label'],
-                        e_errors.EPROTO, vc_ticket)
-    if not vc_ticket.get('user_inhibit', None):
-        raise EncpError(None,
-                        "Volume %s did not contain user_inhibit information."
-                        % fc_ticket['external_label'],
-                        e_errors.EPROTO, vc_ticket)
-    
-    inhibit = vc_ticket['system_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        raise EncpError(None,
-                        "Volume %s is marked %s."%(fc_ticket['external_label'],
-                                                  inhibit),
-                        inhibit, vc_ticket)
-
-    inhibit = vc_ticket['user_inhibit'][0]
-    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
-        raise EncpError(None,
-                        "Volume %s is marked %s."%(fc_ticket['external_label'],
-                                                  inhibit),
-                        inhibit, vc_ticket)
-
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
                         "File %s is marked %s." % (fc_ticket.get('pnfs_name0',
                                                                  "Unknown"),
                                                   e_errors.DELETED),
-                        e_errors.DELETED, vc_ticket)
+                        e_errors.DELETED, fc_ticket)
 
     #Include the server address in the returned info.
     fc_ticket['address'] = fcc.server_address
+
+    return fc_ticket
+
+def get_volume_clerk_info(vcc, volume):
+
+    #Get the clerk info.
+    vc_ticket = vcc.inquire_vol(volume)
+
+    if not e_errors.is_ok(vc_ticket['status'][0]):
+        raise EncpError(None,
+                        "Failed to obtain information for external label %s." %
+                        volume,
+                        e_errors.EPROTO, vc_ticket)
+    if not vc_ticket.get('system_inhibit', None):
+        raise EncpError(None,
+                        "Volume %s did not contain system_inhibit information."
+                        % volume,
+                        e_errors.EPROTO, vc_ticket)
+    if not vc_ticket.get('user_inhibit', None):
+        raise EncpError(None,
+                        "Volume %s did not contain user_inhibit information."
+                        % volume,
+                        e_errors.EPROTO, vc_ticket)
+    
+    inhibit = vc_ticket['system_inhibit'][0]
+    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        raise EncpError(None,
+                        "Volume %s is marked %s." % (volume, inhibit),
+                        inhibit, vc_ticket)
+
+    inhibit = vc_ticket['user_inhibit'][0]
+    if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        raise EncpError(None,
+                        "Volume %s is marked %s." % (volume, inhibit),
+                        inhibit, vc_ticket)
+
+    #Include the server address in the returned info.
     vc_ticket['address'] = vcc.server_address
 
     #Include this information in an easier to access location.
@@ -4443,7 +4473,15 @@ def get_clerks_info(vcc, fcc, bfid): #Not used for volume transfers.
         #    ifullname, ofullname, file_size,
         #    {'status':(e_errors.EPROTO, str(msg))})
         #quit()
-        
+
+    return vc_ticket
+
+def get_clerks_info(vcc, fcc, bfid):
+
+    #Get the clerk info.  These functions raise EncpError on error.
+    fc_ticket = get_file_clerk_info(fcc, bfid)
+    vc_ticket = get_volume_clerk_info(vcc, fc_ticket['external_label'])
+    
     #Return the information.
     return vc_ticket, fc_ticket
 
@@ -4527,6 +4565,15 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                                        e.output[0]))})
             quit(1)
 
+        #Make sure there is a valid volume clerk inquiry.
+        try:
+            vc_reply = get_volume_clerk_info(vcc, e.volume)
+        except EncpError, msg:
+            print_data_access_layer_format(
+                e.volume, e.output[0], 0,
+                {'status':(msg.type, str(msg))})
+            quit(1)
+
         #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
@@ -4570,7 +4617,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             # correct.  This mass of code obtains a bfid or determines
             # that it is not known.
             try:
-                #Get the number and filename for the next line on the file.
+                #Get thenumber and filename for the next line on the file.
                 number, filename = list_of_files[i].split()[:2]
                 filename = os.path.basename(filename)
                 
@@ -4627,25 +4674,17 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #Contact the file clerk and get current bfid that is on the list.
             if bfid:
                 try:
-                    #This is a paranoid check for the clerk classes.  Creating
-                    # new client classes is a sizable performance hit, this
-                    # we don't want to do this unless absolutly necessary.
-                    if not vcc or not fcc:
-                        vcc, fcc = get_clerks(e.volume)
+                    #This is a paranoid check for the clerk classes.  Using
+                    # clerk client classes is a sizable performance hit, thus
+                    # we use the tape_ticket info instead.
+                    fc_reply = tape_ticket['tape_list'].get(bfid, {})
+                    #Include the server address in the returned info.
+                    # Normally, get_file_clerk_info() would do this for us,
+                    # but since we are using tape_ticket instead (for
+                    # performance reasons) we need to set the address
+                    # explicitly.
+                    fc_reply['address'] = fcc.server_address
 
-                    #Get the clerk information.
-                    vc_reply, fc_reply = get_clerks_info(vcc, fcc, bfid)
-
-                    #Handle any errors.
-                    if vc_reply['status'][0] == e_errors.KEYERROR:
-                        raise EncpError(None, vc_reply['status'][1],
-                                        e_errors.NOVOLUME)
-                    if not e_errors.is_ok(vc_reply):
-                        raise EncpError(None, vc_reply['status'][1],
-                                        vc_reply['status'][0])
-                    if not e_errors.is_ok(fc_reply):
-                        raise EncpError(None, fc_reply['status'][1],
-                                        fc_reply['status'][0])
                 except EncpError, msg:
                     if msg.type == e_errors.DELETED:
                         continue
@@ -4759,10 +4798,10 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                         file_size = long(fc_reply['size'])
                     except (KeyError, TypeError):
                         file_size = None #Not known.
-                        
+
                     sys.stdout.write("Location %s is active, but the "
                                      "file has been deleted.\n" % lc)
-
+            
             #Case1:
             #This is the case where no previous information is known
             # about the filename of the file at the requested posistion
