@@ -2234,8 +2234,8 @@ int devtable_size = sizeof(devtable);
 
 ftt_stat_entry ftt_stat_op_tab[] = {
     {"2SDX",
-        FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|
-        FTT_DO_SN|FTT_DO_MS_Px0f|FTT_DO_RP},
+	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px0f|FTT_DO_RS|
+	FTT_DO_SN|FTT_DO_LS|FTT_DO_RP},
 
     {"1EXB-8200", 
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|FTT_DO_EXBRS|
@@ -2264,7 +2264,8 @@ ftt_stat_entry ftt_stat_op_tab[] = {
 	FTT_DO_RP_SOMETIMES},
 
     {"2EXB-8900", 
-	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_RS|
+        FTT_DO_MS|
+	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_RS|
 	FTT_DO_EXBRS|FTT_DO_05RS|FTT_DO_SN|
 	FTT_DO_LS|FTT_DO_RP_SOMETIMES},
 

@@ -112,6 +112,9 @@ ftt_scsi_command(
         Linux returns the request sense data in the read packet, we save it each time 
 	and return the data from the previous command if we get a request sense
  */
+        DEBUG2(stderr,"sending scsi frame:\n");
+        DEBUGDUMP2(pcCmd,nCmd);
+
 	if (gotstatus && pcCmd[0] == 0x03) {
 		/* we already have log sense data, so fake it */
 		memcpy(  pcRdWr, sg_hd->sense_buffer, nRdWr );
@@ -141,11 +144,13 @@ ftt_scsi_command(
 	}
           /* finally, write the buffer */
 	res = write(n, buffer, len);
+        DEBUG2(stderr,"write() returned %d\n", res);
 	if (res < 0) {
 	    scsistat = 255;
 	} else {
           /* and if it is successful, read the result */
 		res = read(n, buffer, sizeof(buffer));
+                DEBUG2(stderr,"read() returned %d\n", res);
 		if (res < 0 || sg_hd->result) {
                     fprintf(stderr, "scsi passthru read result = 0x%x cmd=0x%x\n",
                              sg_hd->result, buffer[SCSI_OFF]);

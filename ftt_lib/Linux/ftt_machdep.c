@@ -10,6 +10,8 @@ static char rcsid[] = "@(#)$Id$";
 #include <ctype.h>
 #include <ftt_private.h>
 
+
+#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
 int
 ftt_status(ftt_descriptor d, int time_out) {
     int res;
@@ -55,6 +57,56 @@ ftt_status(ftt_descriptor d, int time_out) {
 
     return res;
 }
+#else
+int
+ftt_status(ftt_descriptor d, int time_out) {
+    static ftt_stat block;
+    int res;
+    char *p;
+
+    res = ftt_get_stats(d,&block);
+    if (res < 0) {
+	if (ftt_errno == FTT_EBUSY) {
+	    return FTT_BUSY;
+	} else {
+	    return res;
+	}
+    }
+
+	while (time_out > 0 ) {
+		p = ftt_extract_stats(&block, FTT_READY);
+		if ( p && atoi(p)) {
+			break;
+		}
+		sleep(1);
+		time_out--;
+		res = ftt_get_stats(d,&block);
+	}
+    res = 0;
+    p = ftt_extract_stats(&block, FTT_BOT);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting ABOT flag\n");
+	res |= FTT_ABOT;
+    }
+    p = ftt_extract_stats(&block, FTT_EOM);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting AEOT flag\n");
+	res |= FTT_AEOT;
+	res |= FTT_AEW;
+    }
+    p = ftt_extract_stats(&block, FTT_WRITE_PROT);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting PROT flag\n");
+	res |= FTT_PROT;
+    }
+    p = ftt_extract_stats(&block, FTT_READY);
+    if ( p && atoi(p)) {
+	DEBUG3(stderr,"setting ONLINE flag\n");
+	res |= FTT_ONLINE;
+    }
+    return res;
+}
+#endif
 
 int
 ftt_set_compression(ftt_descriptor d, int compression) {
@@ -74,10 +126,14 @@ ftt_set_hwdens(ftt_descriptor d, int hwdens) {
 	    buf.mt_op = MTSETDENSITY;
 	    buf.mt_count = hwdens;
 	    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
 	    res = ftt_translate_error(d,FTT_OPN_STATUS,
 				    "an MTIOCTOP/MTSETDENSITY ioctl()", res,
 				"an ftt_open_dev",1);
 	    return res;
+#else
+	    return 0;
+#endif
        }
    }
    return -1;
@@ -103,13 +159,17 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 	return res;
     }
     recursing = 0;
-	buf.mt_op = MTSETBLK;
+    buf.mt_op = MTSETBLK;
     buf.mt_count = blocksize;
     res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
     return res;
+#else
+    return 0;
+#endif
 }
 
 int
@@ -132,12 +192,17 @@ ftt_get_hwdens(ftt_descriptor d, char *devname) {
     if (res < 0) return res;
 
     res = ioctl(d->file_descriptor, MTIOCGET, &buf);
+#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCGET ioctl()", res,
 				"an ftt_open_dev",1);
     if (res < 0) return res;
+#else
+    return 0;
+#endif
 
     res =  (buf.mt_dsreg >> 24) & 0xff;
     DEBUG2(stderr,"ftt_get_hwdens -- returning %d\n", res);
     return res;
 }
+

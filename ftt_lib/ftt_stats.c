@@ -547,12 +547,12 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     }
     if (stat_ops & FTT_DO_MS) {
 
-	static unsigned char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   18, 0x00};
+	static unsigned char cdb_mode_sense[]= {0x1a, 0x00, 0x00, 0x00,   12, 0x00};
 
-	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
+	res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 12, 10, 0);
 	if (res == -2) {
 	    /* retry on a CHECK CONDITION, it may be okay */
-	    res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 18, 10, 0);
+	    res = ftt_do_scsi_command(d,"mode sense",cdb_mode_sense, 6, buf, 12, 10, 0);
 	}
 	if(res < 0){
 	    failures++;
