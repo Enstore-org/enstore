@@ -122,6 +122,10 @@ def get_system(intf=None):
         sys.stderr.write("Unknown error.  Aborting\n")
         sys.exit(1)
 
+    #If running on 'canned' version, don't bother with configuration server.
+    if intf.movers_file:
+        return None
+    
     config_port = enstore_functions2.default_port()
     if len(intf.args) > 0:
         config_host = intf.args[0]
@@ -160,7 +164,10 @@ def get_config(intf):
     return _config_cache
 
 def get_system_name(intf):
-    #csc = encp.get_csc()
+
+    if intf.movers_file:
+        return "local_host"
+    
     csc = intf.csc
     try:
         hostinfo = socket.gethostbyaddr(csc.server_address[0])[0]
@@ -179,9 +186,10 @@ def get_system_name(intf):
         if config_servers[name][0] == event_relay_host:
             system_name = name
 
-    event_relay_port = 55510
+    #event_relay_port = 55510
+    #This is important
     os.environ['ENSTORE_CONFIG_HOST'] = event_relay_host
-    event_relay_addr = (event_relay_host, event_relay_port)
+    #event_relay_addr = (event_relay_host, event_relay_port)
 
     #return event_relay_addr, system_name
     return system_name
@@ -207,15 +215,19 @@ def get_entvrc():
     return lines
 
 def get_geometry(intf):
+
     try:
-        #csc = get_csc()
-        csc = intf.csc
+        if intf.movers_file:
+            address = "localhost"
+        else:
+            address = intf.csc.server_address[0]
+        #csc = intf.csc
         
         for line in get_entvrc():
             if line[0] == "#": #Skip comment lines.
                 continue
             words = line.split()
-            if socket.getfqdn(words[0])==socket.getfqdn(csc.server_address[0]):
+            if socket.getfqdn(words[0])==socket.getfqdn(address):
                 geometry = words[1]
                 try:
                     background = words[2]
@@ -233,10 +245,14 @@ def get_geometry(intf):
 
 def set_geometry(geometry, intf):
     try:
-        csc = intf.csc
+        if intf.movers_file:
+            address = "localhost"
+        else:
+            address = intf.csc.server_address[0]
+        #csc = intf.csc
         
         #Do this now to save the time to do the conversion for every line.
-        csc_server_name = socket.getfqdn(csc.server_address[0])
+        csc_server_name = socket.getfqdn(address)
 
         #Get the current .entvrc file data if possible.
         try:
@@ -307,7 +323,20 @@ def set_geometry(geometry, intf):
 
 def get_mover_list(intf, fullnames=None):
     movers = []
-    #csc = get_csc()
+
+    if intf.movers_file:
+        try:
+            mf_fp = open(intf.movers_file, "r")
+            data = mf_fp.readlines()
+            for i in range(len(data)):
+                data[i] = data[i][:-1]
+                if fullnames:
+                    data[i] = data[i] + ".mover"
+            return data
+        except (OSError, IOError), msg:
+            print str(msg)
+            sys.exit(1)
+    
     csc = intf.csc
 
     lm_dict = csc.get_library_managers({})
@@ -371,7 +400,10 @@ def handle_status(mover, status):
 def request_mover_status(display, intf):
     global stop_now
 
-    #csc = get_csc()
+    #If running from 'canned' version.
+    if intf.movers_file:
+        return
+
     csc = intf.csc
     config = get_config(intf)
     movers = get_mover_list(intf, 1)
@@ -395,14 +427,17 @@ def request_mover_status(display, intf):
             #Queue the command.
             display.queue_command(command)
 
-def handle_messages(display):
+def handle_messages(display, intf):
     global stop_now
 
     # we will get all of the info from the event relay.
-    erc = event_relay_client.EventRelayClient()
+    if intf.movers_file:
+        erc = event_relay_client.EventRelayClient(event_relay_host="localhost")
+    else:
+        erc = event_relay_client.EventRelayClient()
     erc.start([event_relay_messages.ALL,])
     erc.subscribe()
-    
+
     start = time.time()
     count = 0
 
@@ -468,6 +503,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
     def parse_options(self):
         self.dont_show = ""
         self.verbose = 0
+        self.movers_file = ""
         generic_client.GenericClientInterface.parse_options(self)
         
         #Setup the necessary cache global variables.
@@ -485,6 +521,11 @@ class EntvClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_LABEL:"LM short name,...",
                           option.USER_LEVEL:option.USER,},
+        option.MOVERS_FILE:{option.HELP_STRING:"use 'canned' version of entv",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_LABEL:"movers_file",
+                            option.USER_LEVEL:option.ADMIN,},
         option.VERBOSE:{option.HELP_STRING:"print out information.",
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_TYPE:option.INTEGER,
@@ -516,9 +557,11 @@ def main(intf):
         movers = get_mover_list(intf, 0)
         movers_command = "movers " + string.join(movers, " ")
 
-        #Inform the display the config server to use.
-        display.handle_command("csc %s %s" % (intf.csc.server_address[0],
-                                              intf.csc.server_address[1]))
+        #Inform the display the config server to use.  Don't do this
+        # if running 'canned' entv.
+        if not intf.movers_file:
+            display.handle_command("csc %s %s" % (intf.csc.server_address[0],
+                                                  intf.csc.server_address[1]))
         #Inform the display the names of all the movers.
         display.handle_command(movers_command)
 
@@ -533,7 +576,8 @@ def main(intf):
 
         messages_thread=threading.Thread(group=None,
                                          target=handle_messages,
-                                         name='', args=(display,), kwargs={})
+                                         name='', args=(display,intf),
+                                         kwargs={})
         messages_thread.start()
 
         #Loop until user says don't.

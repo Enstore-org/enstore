@@ -218,6 +218,7 @@ MESSAGE = "message"                          #log
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
 MOVER_TIMEOUT = "mover-timeout"              #assert
+MOVERS_FILE = "movers-file"                  #entv
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
@@ -332,6 +333,7 @@ valid_option_list = [
     KEEP, KEEP_DIR,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
+    MOVERS_FILE,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,

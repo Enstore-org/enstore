@@ -278,10 +278,13 @@ class Mover:
         self.timer_string       = '00:00:00'
 
         #Find out information about the mover.
-        csc = self.display.csc
-        minfo = csc.get(self.name+".mover")
-        #64GB is the default listed in mover.py.
-        self.max_buffer = long(minfo.get('max_buffer', 67108864))
+        try:
+            csc = self.display.csc
+            minfo = csc.get(self.name+".mover")
+            #64GB is the default listed in mover.py.
+            self.max_buffer = long(minfo.get('max_buffer', 67108864))
+        except AttributeError:
+            self.max_buffer = 67108864
 
         self.update_state("Unknown")
         
@@ -1742,6 +1745,9 @@ class Display(Tkinter.Canvas):
         #If the mover sends the buffer size info. display the bar.
         try:
             buffer_size = float(long(command_list[5]))
+            #This helps prevent potential problems against changes on the fly.
+            if long(buffer_size) > long(mover.max_buffer):
+                mover.max_buffer = long(buffer_size)
             buffer_percent = int(100 * (buffer_size/float(mover.max_buffer)))
             mover.draw_buffer(buffer_percent)
         except:
