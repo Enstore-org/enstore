@@ -690,8 +690,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             
 
     def watch_syslog(self):
-        try:
-            if self.syslog_match:
+        if self.syslog_match:
+            try:
                 cmd = "$ENSTORE_DIR/src/match_syslog.py '%s'"%(self.syslog_match)
                 pipeObj = popen2.Popen3(cmd, 0, 0)
                 if pipeObj is None:
@@ -701,8 +701,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if result:
                     for l in result:
                         Trace.log(e_errors.INFO,"SYSLOG Entry:[%s]"%(l[:-1],))
-        except: # do not know what kind of exception it may be
-            Trace.handle_error()
+            except: # do not know what kind of exception it may be
+                Trace.handle_error()
 
     def lock_state(self):
         self._state_lock.acquire()
