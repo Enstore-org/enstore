@@ -1040,6 +1040,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def mount_volume(self, volume_label):
         self.dismount_time = None
         self.state = MOUNT_WAIT
+        self.current_volume = volume_label
+        
         Trace.log(e_errors.INFO, "mounting %s" %( volume_label,))
         self.timer('mount_time')
         if volume_label != self.current_volume:
@@ -1052,9 +1054,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 #XXX robot error, deal with it
                 self.state = IDLE
+                self.current_volume = None
                 return
         self.state = ACTIVE
-        self.current_volume = volume_label
+
         return
     
     def seek_to_location(self, location, eot_ok=0):
