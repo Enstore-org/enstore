@@ -665,6 +665,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         self.verbose = 0
         self.movers_file = ""
         self.commands_file = ""
+        self.profile = 0 
         generic_client.GenericClientInterface.parse_options(self)
         
         #Setup the necessary cache global variables.
