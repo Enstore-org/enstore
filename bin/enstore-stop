@@ -33,7 +33,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
     turnoff "$ENSTORE_DB/`uname -n`-db_*_pids"            "databases"
     turnoff "$ENSTORE_DB/`uname -n`-admin*pids"           "admin"
 fi
-if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
+if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
     turnoff "$ENSTORE_DB/`uname -n`-inquisitor*pids"      "inquisitor"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
