@@ -308,8 +308,12 @@ class DispatchingWorker:
             purge_stale_entries(request_dict)
 
         # call the user function
-        apply(function, (ticket,))
-        
+        try:
+            apply(function, (ticket,))
+        except TypeError, detail:
+            Trace.log(e_errors.ERROR, "process request: %s(%s) raised %s" %
+                      (function, ticket, detail))
+                      
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
         Trace.trace(6,"handle_error %s %s"%(exc,msg))
