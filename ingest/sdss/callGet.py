@@ -18,7 +18,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     else:
         if output_s[len(output_s)-1] != tapeLabel:
             outputDir = os.path.join(outputDir,tapeLabel)
-    print "pnfsd %s out_d %s"%(pnfsDir, outputDir)
+    #print "pnfsd %s out_d %s"%(pnfsDir, outputDir)
     
     fname = tempfile.mktemp()
     f = open(fname, "w")
@@ -75,7 +75,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         args = (path, vopt, "--bypass-filesystem-max-filesize-check",
                 "--list", fname, tapeLabel, pnfsDir, outputDir)
 
-        print string.join(args)
+        print string.join(args), "\n"
 
         #Fork off the "get" process and read in its output.
 
