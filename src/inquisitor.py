@@ -1582,7 +1582,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # timeout
                     continue
                 # read and process the message
-                msg = enstore_erc_functions.read_erc(self.erc, self.erc.sock)
+                msg = enstore_erc_functions.read_erc(self.erc)
                 if msg:
                     if msg.type == event_relay_messages.ALIVE and \
                            not msg.server == self.inquisitor.name:

@@ -45,7 +45,7 @@ class GenericServerInterface(option.Interface):
 class GenericServer(generic_client.GenericClient):
 
     def handle_er_msg(self, fd):
-	msg = enstore_erc_functions.read_erc(self.erc, fd)
+	msg = enstore_erc_functions.read_erc(self.erc)
 	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
 	    #self.er_flag.new_config_msg()
             self.csc.new_config_obj.new_config_msg()
