@@ -122,14 +122,22 @@ class DbTable(db.DbTable):
 
 		return error
 
+import interface
+
+class Interface(interface.Interface):
+
+	def __init__(self):
+		interface.Interface.__init__(self)
+
+	def options(self):
+		return self.config_options()
 
 if __name__ == "__main__":		# main
 
-	import interface
 	import configuration_client
 	import hostaddr
 
-	intf = interface.Interface()
+	intf = Interface()
 
 	# find dbHome and jouHome
 	try:
@@ -200,7 +208,7 @@ if __name__ == "__main__":		# main
 		os.system(cmd)
 		print cmd
 
-	# get the database file from the backup
+	# get the database file from backup
 
 	print "Retriving database file from backup ("+bckHost+":"+bckHome+")"
 	cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
@@ -233,7 +241,7 @@ if __name__ == "__main__":		# main
 		print "Checking "+i+" ... "
 		err = d.cross_check()
 		if err:
-			print "Fixing "+i+" ... ",
+			print "Fixing "+i+" ... "
 			d.fix_db()
 		else:
 			print i+" is OK"
