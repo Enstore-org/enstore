@@ -191,14 +191,14 @@ class UDPServer:
             # handled it if we have a record of it in our dict
             lst = self.request_dict[idn]
             if lst[0] == number:
-                Trace.trace(6,"process_request "+repr(idn)+" already handled")
+                Trace.trace(16,"process_request "+repr(idn)+" already handled")
                 self.reply_with_list(lst)
                 return None
 
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             elif number < lst[0]: 
-                Trace.trace(6,"process_request "+repr(idn)+" old news")
+                Trace.trace(16,"process_request "+repr(idn)+" old news")
                 return None#old news, timing race....
         self.purge_stale_entries()
         return ticket
@@ -220,13 +220,18 @@ class UDPServer:
 			   self.reply_address)
 	del send_socket
 
+        Trace.trace(16, "udp_server (reply with interface): request_dict %s" %
+                    (self.request_dict[self.current_id],))
+
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
         self.request_dict[self.current_id] = copy.deepcopy(list)
         self.server_socket.sendto(repr(self.request_dict[self.current_id]),
 				  self.reply_address)
-        Trace.trace(6,"udp_server: request_dict %s"%(self.request_dict,))
+
+        Trace.trace(16, "udp_server (reply): request_dict %s" %
+                    (self.request_dict[self.current_id],))
         
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
