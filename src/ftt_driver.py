@@ -189,6 +189,7 @@ class FTTDriver(driver.Driver):
             blocksize = mode[3]
         r = self.ftt.set_mode(density, compression, blocksize)
         if self.verbose: print "ftt mode is", self.ftt.get_mode()
+        self.fd = self.ftt.open_dev()
         return r
 
     def set_fast_rate(self, rate):
