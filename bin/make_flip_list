@@ -24,7 +24,7 @@ if [ $? -ne 0 ]; then
 fi
 rm -f $work/$$
 
-get-i() { i=`ls -1U $work | sort -n | tail -n1`
+get_i() { i=`ls -1U $work | sort -n | tail -n1`
           if [ -z "$i" ]; then i=1; else i=`expr $i + 1`; fi
           if [ -z "$i" ]; then i=1; fi # you need 2 of these to get a number
           echo $i
@@ -32,7 +32,7 @@ get-i() { i=`ls -1U $work | sort -n | tail -n1`
 
 python $ENSTORE_DIR/src/readonly_volumes.py >$flip_list
 
-i=`get-i`
+i=`get_i`
 count=0
 vols=""
 cat $flip_list | while read vol type rest; do
@@ -47,7 +47,7 @@ cat $flip_list | while read vol type rest; do
     echo "$vols" >|$tmp_list
 done
 
-i=`get-i`
+i=`get_i`
 
 vols=`cat $tmp_list`
 if [ -n "$vols" ]; then 
