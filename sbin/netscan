@@ -18,6 +18,7 @@ ALLOW_BASE="
        LISTEN,python,:,,/home/enstore/enstore/bin/encp
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
        UDP,python,:,UDP,/home/enstore/enstore/src/monitor_server.py|/home/enstore/enstore/bin/encp|/home/enstore/enstore/src/mover.py
+       UDP,python,:,UDP,/local/ups/prd/ngop/v1_1/ma/PlugInAgent.py|/home/enstore/enstore/ngop/cronjobAgent.py
        UDP,xntpd,:ntp,UDP,x
        TCP,klogind,:eklogin,TCP,x
        TCP,xemacs,:6000,TCP,x
