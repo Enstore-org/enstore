@@ -1679,11 +1679,11 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
     route_ticket = None
 
     if not route_server:
-        return
+        return None, None
 
     start_time = time.time()
-    while(time.time() - start_time < encp_intf.mover_timeout):
 
+    while(time.time() - start_time < encp_intf.mover_timeout):
         try:
             route_ticket = route_server.process_request()
         except socket.error, msg:

@@ -256,7 +256,8 @@ def main(e):
 
 
     #Only the first submition goes to the LM for volume reads.
-    requests_per_vol[e.volume][0]['method'] = "read_tape_start" #evil hack
+    requests_per_vol[e.volume][0]['method'] = "read_tape_start" #evil hacks
+    requests_per_vol[e.volume][0]['route_selection'] = 1 #For get always on.
     Trace.message(10, "LM SUBMITION TICKET:")
     Trace.message(10, pprint.pformat(requests_per_vol[e.volume][0]))
     submitted, reply_ticket = encp.submit_read_requests(
@@ -270,11 +271,12 @@ def main(e):
     Trace.message(4, "Read tape submition sent to LM.")
 
     #Open the routing socket.
-    config = host_config.get_config()
+    #config = host_config.get_config()
     use_listen_socket = listen_socket
     try:
         #There is no need to do this on a non-multihomed machine.
-        if config and config.get('interface', None):
+        #if config and config.get('interface', None):
+        
             Trace.message(4, "Opening routing socket.")
             
             ticket, use_listen_socket = encp.open_routing_socket(
