@@ -761,8 +761,10 @@ def migrate(files):
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 	# get its own vcc
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
+
 	# check if vol is set to "readonly". If not, set it.
 	v = vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
