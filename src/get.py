@@ -184,10 +184,10 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(5, "Received final dialog (1).")
         Trace.message(10, "MOVER_DONE_TICKET:")
         Trace.message(10, pprint.pformat(mover_done_ticket))
-        Trace.message(5, "Waiting for final dialog. (2)")
+        Trace.message(5, "Waiting for final dialog (2).")
         #Keep the udp socket queues clear.
         mover_request = udp_socket.process_request()
-        Trace.message(5, "Received final dialog. (2)")
+        Trace.message(5, "Received final dialog (2).")
         Trace.message(10, "MOVER_REQUEST:")
         Trace.message(10, pprint.pformat(mover_request))
         
@@ -383,7 +383,8 @@ def main(e):
         while requests_outstanding(requests_per_vol[e.volume]):
 
             #Combine the ticket from the mover with the current information.
-            request = encp.combine_dict(ticket, request)
+            # Remember the ealier dictionaries 'win' in setting values.
+            request = encp.combine_dict(request, ticket)
             #Store these changes back into the master list.
             requests_per_vol[e.volume][index] = request
             
