@@ -58,7 +58,7 @@ olddbs:
 	@ echo "Tests are running. Do a	   killall -9 longtest	  to stop"
 	@ echo "   It takes a bit for them to die off"
 
-datafiles:
+datafiles:	jobs
 	if [ ! -d data ] ; then mkdir data ; fi
 	echo -n "1" > data/d1
 	echo -n "12" > data/d2
@@ -67,7 +67,8 @@ datafiles:
 	dd if=/dev/zero of=data/null30k.dat count=60
 	ecmd random-file --size=131072  --file=data/ran128k.dat
 	ecmd random-file --size=1048576 --file=data/ran1024k.dat
-
+	rm $$ENSTORE_DIR/test/data.in
+	find $$ENSTORE_DIR/test/data -type f -print > $$ENSTORE_DIR/test/data.in
 jobs:
 	for d in 1 2 3 4 5 6 7 8 9 ; do \
 		if [ ! -d $$d ] ; then mkdir $$d ; fi; \

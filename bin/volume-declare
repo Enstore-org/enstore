@@ -21,6 +21,14 @@ airedaledisk none    diskfile  flop305   140000000   140000000
 airedaledisk none    diskfile  flop306   140000000   140000000
 airedaledisk none    diskfile  flop307   140000000   140000000
 airedaledisk none    diskfile  flop308   140000000   140000000
+airedaledisk none    diskfile  flop309   140000000   140000000
+airedaledisk none    diskfile  flop310   140000000   140000000
+airedaledisk none    diskfile  flop311   140000000   140000000
+airedaledisk none    diskfile  flop312   140000000   140000000
+airedaledisk none    diskfile  flop313   140000000   140000000
+airedaledisk none    diskfile  flop314   140000000   140000000
+airedaledisk none    diskfile  flop315   140000000   140000000
+airedaledisk none    diskfile  flop316   140000000   140000000
 shelf        none    cartridge cart90     14000000    14000000
 shelf        none    cassette  cass91     14000000    14000000
 redwood50    none    redwood   000004  50000000000 50000000000
