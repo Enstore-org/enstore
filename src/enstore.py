@@ -94,6 +94,11 @@ def get_argv2(default=" "):
     else:
         return default
 
+def get_argv3(default=" "):
+    if len(sys.argv) > 3:
+        return sys.argv[3]
+    else:
+        return default
 
 local_scripts = {"enstore-start":[("enstore-start", sys.argv[2:])],
                  "start":[("enstore-start", sys.argv[2:])],
@@ -111,29 +116,27 @@ local_scripts = {"enstore-start":[("enstore-start", sys.argv[2:])],
                  "ps":[("EPS", sys.argv[2:])],
                  }
 
-remote_scripts = {"Estart":[("enstore", "%s enstore-start %s%s" % (CMD1,
-                                                get_farmlet("enstore"),
-                                                      dbs.CMD2))],
+# the sys.argv contains the whole thing
+VERIFY = "verify"
+PROMPT = "prompt"
+remote_scripts = {"Estart":[("enstore", 
+			     ("%s enstore-start " % (CMD1,), 
+			      get_argv3("enstore"), dbs.CMD2), VERIFY)],
                   "Estop":[("enstore-down",
-                            "%s enstore-stop %s%s" % (CMD1,
-                                                get_farmlet("enstore-down"),
-                                                      dbs.CMD2),
-                            "prompt"), ],
-                  "Erestart":[("enstore-down",
-                               "%s enstore-stop %s%s" % (CMD1,
-                                                  get_farmlet("enstore-down"),
-                                                         dbs.CMD2)),
-                              ("enstore",
-                               "%s enstore-start %s%s" % (CMD1, "%s",
-                                                          dbs.CMD2),
-                               ("get_farmlet('enstore')",))],
+                            ("%s enstore-stop " % (CMD1,), 
+			     get_argv3("enstore-down"), dbs.CMD2),
+                            PROMPT, VERIFY), ],
+                  "Erestart":[],                 # fill this in later
                   "EPS":[("enstore",
-                          "source /usr/local/etc/setups.sh;setup enstore;EPS"),
-                         ],
+                          ("source /usr/local/etc/setups.sh;setup enstore;",
+			  "EPS"))],
                   "ls":[("enstore",
-                         "ls %s",
-                         ("os.getcwd()",),)],
+                         ("ls %s" % (os.getcwd(),),))],
                   }
+
+remote_scripts['Erestart'] = [remote_scripts['Estop'], 
+			      remote_scripts['Estart']]
+
 
 # these general functions perform various system functions
 def call_function(executable, argv):
@@ -165,7 +168,8 @@ def no_argv3():
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
-    return os.system('rgang %s \"%s\"'%(farmlet, command))
+    #return os.system('rgang %s \"%s\"'%(farmlet, command))
+    return 0
 
 
 
@@ -421,38 +425,41 @@ class Enstore:
         pass
 
     # make sure the user wanted to start d0en nodes while on stken and vice versa
-    def verify_node(self,node):
-        if len(node)<=3:
-            return
-        # 1st three letters return the "production" cluster, almost
-        gang = node[0:3]
-        # there are just 3 clusters we deal with right now... (code this better?)
-        clusters = ('stk','d0e','rip')
-        if gang in clusters:
-            thisnode = os.uname()[1]
-            thisgang = thisnode[0:3]
-            if thisgang not in clusters:
-                return 1
-            # if we are trying to execute a command from a node in the same cluster, just do it
-            if thisgang == gang:
-                return 1
-            # rip9 and rip10 are special cases
-            if thisgang == 'stk' and node[0:4] == 'rip9':
-                    return 1
-            if len(node) > 4:
-                if thisgang == 'stk' and node[0:5] == 'rip10':
-                    return 1
-            # need to confirm if user really wanted to do this
-            print "You want to execute a command on",node,"but you are running on",thisnode
-            print "This doesn't seem right."
-            answer = prompt_user("Is this want you want to do - execute ",node)
-            if answer[0] == "y" or answer[0] == "Y":
-                return 1
-            else:
-                print 'command canceled'
-                return 0
-        else:
-            return 1
+    def verify_node(self,node, command):
+	if VERIFY in command:
+	    if len(node)<=3:
+		return
+	    # 1st three letters return the "production" cluster, almost
+	    gang = node[0:3]
+	    # there are just 3 clusters we deal with right now... (code this better?)
+	    clusters = ('stk','d0e','rip')
+	    if gang in clusters:
+		thisnode = os.uname()[1]
+		thisgang = thisnode[0:3]
+		if thisgang not in clusters:
+		    return 1
+		# if we are trying to execute a command from a node in the same cluster, just do it
+		if thisgang == gang:
+		    return 1
+		# rip9 and rip10 are special cases
+		if thisgang == 'stk' and node[0:4] == 'rip9':
+			return 1
+		if len(node) > 4:
+		    if thisgang == 'stk' and node[0:5] == 'rip10':
+			return 1
+		# need to confirm if user really wanted to do this
+		print "You want to execute a command on",node,"but you are running on",thisnode
+		print "This doesn't seem right."
+		answer = prompt_user("Is this want you want to do - execute ",node)
+		if answer[0] == "y" or answer[0] == "Y":
+		    return 1
+		else:
+		    print 'command canceled'
+		    return 0
+	    else:
+		return 1
+	else:
+	    return 1
 
     def prompt(self, command):
         #command is a tuple
@@ -462,13 +469,13 @@ class Enstore:
         # [-1] optionaly contains "prompt" to ask the user for confermation.
         answer = "y"
         try:
-            if command[-1] == "prompt":
+	    if PROMPT in command:
                 if no_argv2():
                     answer = prompt_user(command = "Stopping",
                                          node = "all nodes")
                 elif no_argv3():
                     answer = prompt_user(command = "Stopping",
-                                node = "farmlet %s" % get_farmlet(command[0]))
+                                node = "farmlet %s" % get_farmlet(""))
         except IndexError:
             pass
         return answer
@@ -511,28 +518,16 @@ class Enstore:
             r_script = remote_scripts.get(arg1, None)
             #r_script contains a list of tuples.
             for command in r_script:
-                #each tuple in r_script is two items long.
-                farmlet = get_farmlet(command[0])
-                if self.verify_node(farmlet):
+                if self.verify_node(get_farmlet(""), command):
                     #if command[-1] contains the string "prompt" then it
-                    # prompts the user for confermation under some cases.
+                    # prompts the user for confirmation under some cases.
                     # If no prompt is necessary returns "y".
                     answer = self.prompt(command)
-
-                    try:
-                        if command[2] != "prompt":
-
-                            tuple = ()
-                            for item in command[2]:
-                                tuple = tuple + (eval(item),)
-                            executable = command[1] % tuple
-                        else:
-                            executable = command[1]
-                    except IndexError, TypeError:
-                        executable = command[1]
-
                     if answer[0] == "y" or answer[0] == "Y":
-                        rtn = do_rgang_command(farmlet, executable)
+			executable = ""
+			for subcmd in command[1]:
+			    executable = "%s%s"%(executable, subcmd)
+                        rtn = do_rgang_command(command[0], executable)
                     else:
                         rtn = 0
                 else:
