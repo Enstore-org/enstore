@@ -533,7 +533,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def queue_is_stalled(self, server, node, ff, pend_num, wam_num):
 	# queue may be stalled, or we may be in a transitional state.  we should make
 	# sure the same problem exists several times in a row.
-	self.lm = self.server_d[server.name]
 	if self.lm.is_really_stalled(node, ff) and not self.already_sent_mail(server.name, ff, node):
 	    # send mail and raise an alarm, this looks stalled.
 	    txt = "Write queue stall for %s, file_family: %s, from node %s"%(server.name,
@@ -547,6 +546,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def check_for_stalled_queue(self, lib_man):
 	# get the number of writes that are being done now
+	self.lm = self.server_d[lib_man.name]
 	for node in self.check_nodes:
 	    # we can overwrite ff_width because we are really concerned about what is in
 	    # the pending queue.  if there is nothing, ff_width  = 0, but we don't care
