@@ -13,12 +13,6 @@ import e_errors
 import enstore_constants
 import enstore_functions
 
-# strip off anything before the '/'
-def strip_file_dir(str):
-    ind = string.rfind(str, "/")
-    if not ind == -1:
-	str = str[(ind+1):]
-
 # locate and pull out the dictionaries in the text message. assume that if
 # there is more than one dict, they are of the form -
 #
@@ -225,12 +219,12 @@ class EnStatus:
 	sus_vols = ticket['suspect_volumes']
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	if len(sus_vols) != 0:
+	if sus_vols:
 	    self.text[key][enstore_constants.SUSPECT_VOLS] = []
 	    for svol in sus_vols:
 	        str = svol['external_label']+" - "
 	        movers = svol['movers']
-	        if len(movers) != 0:
+	        if movers:
 	            not_first_one = 0
 	            for mover in movers:
 	                if not_first_one:
@@ -252,12 +246,12 @@ class EnStatus:
 	work = ticket['at movers']
 	if not self.text.has_key(key):
 	    self.text[key] = {}
-	if len(work) != 0:
+	if work:
 	    self.parse_lm_queues(work, key, enstore_constants.WORK)
 	else:
 	    self.text[key][enstore_constants.WORK] = enstore_constants.NO_WORK
 	pending_work = ticket['pending_work']
-	if len(pending_work) != 0:
+	if pending_work:
 	    self.parse_lm_queues(pending_work, key, enstore_constants.PENDING)
 	else:
 	    self.text[key][enstore_constants.PENDING] = enstore_constants.NO_PENDING
@@ -328,12 +322,12 @@ class EnStatus:
 	    self.text[key] = {}
 	self.text[key][enstore_constants.MOVERS] = []
 	self.text[key][enstore_constants.KNOWN_MOVERS] = []
-	if len(work) != 0:
+	if work:
 	    for mover in work:
 		self.text[key][enstore_constants.KNOWN_MOVERS].append([mover['mover'], 
 						     mover['address'][1],
 						     mover['state'], 
-					    enstore_functions.format_time(mover['last_checked']),
+					 enstore_functions.format_time(mover['last_checked']),
 						     mover['summon_try_cnt']])
 		# keep a  separate list of the mover names so can easily
 		# find if a mover belongs to this library_manager
