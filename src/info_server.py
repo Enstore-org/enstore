@@ -64,13 +64,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.volume = edb.VolumeDB(host=att['dbhost'], auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
-		# setup the communications with the event relay task
-		# self.resubscribe_rate = 300
-		# self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
-
 		# start our heartbeat to the event relay process
-		# self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
-                #                 self.alive_interval)
+		self.erc.start_heartbeat(enstore_constants.INFO_SERVER, 
+			self.alive_interval)
 		return
 
 	# The following are local methods
@@ -414,7 +410,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 					sanity_size, sanity_crc, size \
 			 from file, volume \
 			 where \
-				 file.volume = volume.id and volume.label = '%s';"%(
+				 file.volume = volume.id and volume.label = '%s' order by location_cookie;"%(
 			 external_label)
 
 		res = self.db.query(q).dictresult()
@@ -464,7 +460,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 					sanity_size, sanity_crc, size \
 			 from file, volume \
 			 where \
-				 file.volume = volume.id and volume.label = '%s';"%(
+				 file.volume = volume.id and volume.label = '%s' order by location_cookie;"%(
 			 external_label)
 
 		res = self.db.query(q).dictresult()
@@ -473,8 +469,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 		for ff in res:
 			value = self.file.export_format(ff)
-			if not value.has_key('deleted') or value['deleted'] != "yes":
-				if value.has_key('pnfs_name0'):
+			if not value.has_key('deleted') or value['deleted'] == "no":
+				if value.has_key('pnfs_name0') and value['pnfs_name0']:
 					alist.append(value['pnfs_name0'])
 
 		# finishing up
