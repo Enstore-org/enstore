@@ -428,6 +428,7 @@ def do_work(intf):
                 except:
                     pass #yuk...
                 d[k]=v
+        d['bfid']=intf.modify
         ticket = fcc.modify(d)
         print "bfid =", ticket['bfid']
     elif intf.dont_try_this_at_home_erase:
