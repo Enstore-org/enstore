@@ -207,7 +207,8 @@ class Mover:
             return
         if volume != self.volume.name:
             print "Mover does not have this tape : ", volume
-            del self.volume #XXX will this undraw it?
+            self.volume = None
+            #del self.volume #XXX will this undraw it?
             return
         
         self.volume.loaded = 0
