@@ -338,8 +338,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(10,"restore_file %s"%(ticket["status"],))
             return
 
-        if string.find(value["external_label"],'.deleted') !=-1:
-            ticket["status"] = "EACCES", "volume %s is deleted"%(value["external_label"],)
+        if string.find(record["external_label"],'.deleted') !=-1:
+            ticket["status"] = "EACCES", "volume %s is deleted"%(record["external_label"],)
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
             Trace.trace(10,"restore_file %s"%(ticket["status"],))
