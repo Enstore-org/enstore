@@ -74,11 +74,13 @@ class NetDriver(driver.Driver):
                 raise driver.DriverError, msg
         if r > 0:
             now = time.time()
-            self._last_rate = r/(now-t0)
+            t = now - t0
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
-            self._rate = self._bytes_transferred/(now - self._start_time)
+            if t != 0:
+               self._last_rate = r/t 
+               self._rate = self._bytes_transferred/(now - self._start_time)
         return r
                                   
     def write(self, buf, offset, nbytes):
@@ -93,11 +95,14 @@ class NetDriver(driver.Driver):
                 raise driver.DriverError, msg
         if r > 0:
             now = time.time()
+            t = now - t0
             self._last_rate = r/(now - t0)
             if self._bytes_transferred == 0:
                 self._start_time = t0
             self._bytes_transferred = self._bytes_transferred + r
-            self._rate = self._bytes_transferred/(now - self._start_time)
+            if t != 0:
+                self._last_rate = r/t
+                self._rate = self._bytes_transferred/(now - self._start_time)
         return r
         
     def rates(self):
