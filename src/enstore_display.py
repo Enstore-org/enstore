@@ -4,27 +4,20 @@
 
 import pprint
 import cmath
-#import exceptions
 import math
 import os
-#import select
 import socket
 import string
 import sys
 import time
 import stat
 import types
-#import errno
 import threading
 import re
 
-#import event_relay_client
-#import event_relay_messages
 import Trace
 import mover_client
-#import entv  #Don't ever import this from enstore_display.
 import configuration_client
-#import e_errors
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -120,11 +113,6 @@ def HMS(s):
     m = s / 60
     s = s - (m*60)
     return "%02d:%02d:%02d" % (h, m, s)
-
-#def my_atof(s):
-#    if s[-1] == 'L':
-#        s = s[:-1] #chop off any trailing "L"
-#    return string.atof(s)
 
 _font_cache = {}
 
@@ -400,18 +388,6 @@ class Mover:
     
         self.draw()
 
-    def __del__(self):
-        ##Mark this spot as unoccupied
-        try:
-            self.display.del_mover_position(self.name)
-        except KeyError:
-            pass
-        
-        try:
-            self.undraw()
-        except Tkinter.TclError:
-            pass #internal Tcl problems.
-
     #########################################################################
 
     def animate_timer(self):
@@ -554,15 +530,12 @@ class Mover:
                     self.x + self.volume_offset.x + self.vol_width,
                     self.y + self.volume_offset.y + self.vol_height,
                     fill = self.volume_bg_color,)
-                    #outline = self.volume_bg_color)
             
         
             if self.volume_display:
                 self.display.coords(self.volume_display,
                                     x + self.volume_label_offset.x,
                                     y + self.volume_label_offset.y)
-                            #x+self.volume_offset.x+(self.vol_width / 2.0) + 1,
-                            #y+self.volume_offset.y+(self.vol_height / 2.0)+ 1)
             else:
                 self.volume_display = self.display.create_text(
                    self.x + self.volume_offset.x + (self.vol_width / 2.0) + 1,
@@ -652,7 +625,6 @@ class Mover:
                 pass #We get here if percentage is still None.
 
         #Draw the percent of transfer done next to progress bar.
-        #if self.display.width > 470:
         if self.width > 100:
             if self.progress_percent_display:
                 self.display.itemconfigure(self.progress_percent_display,
@@ -694,7 +666,6 @@ class Mover:
             self.display.coords(self.buffer_bar_bg,
                                 self.get_buffer_position(100))
         else:
-            #self.buffer_bar_bg = self.draw_buffer_bar(100, progress_bg_color)
             self.buffer_bar_bg = self.display.create_rectangle(
                 self.get_buffer_position(100),
                 fill = progress_bg_color, outline = "")
@@ -703,8 +674,6 @@ class Mover:
             self.display.coords(self.buffer_bar,
                                 self.get_buffer_position(self.buffer_size))
         else:
-            #self.buffer_bar = self.draw_buffer_bar(self.buffer_size,
-            #                                       progress_bar_color)
             self.buffer_bar = self.display.create_rectangle(
                 self.get_buffer_position(self.buffer_size),
                 fill = progress_bar_color, outline = "")
@@ -738,12 +707,15 @@ class Mover:
         if self.state == "DRAINING":
             self.undraw_rate()
         elif self.rate_display:
-            self.display.itemconfigure(self.rate_display,
-                                       text=self.rate_string)
+            self.display.itemconfigure(
+                self.rate_display,
+                text=fit_string(self.font, self.rate_string, self.state_width))
         elif self.rate != None:
             self.rate_display =  self.display.create_text(
                 self.x + self.rate_offset.x, self.y + self.rate_offset.y,
-                text = self.rate_string, fill = colors('percent_color'),
+                #Use the state with since this is displayed in that space.
+                text=fit_string(self.font, self.rate_string, self.state_width),
+                fill = colors('percent_color'),
                 anchor = Tkinter.NE, font = self.font)
 
     def draw(self):
@@ -966,7 +938,6 @@ class Mover:
         numerator = float(self.b1 - self.b0)
         denominator = float(self.t1 - self.t0)
         try:
-            #rate    = (self.b1-self.b0)/(self.t1-self.t0)
             rate = float(numerator) / denominator
         except ZeroDivisionError:
             rate = 0.0
@@ -998,22 +969,19 @@ class Mover:
         mmpc = float(MMPC) #Maximum movers per column
 
         #total number of columns 
-        num_cols = self.display.get_client_collumn_count() + \
-                   self.display.get_mover_collumn_count() + 1 #num_cols = int(N / mmpc) + 1
-
+        num_cols = self.display.get_client_column_count() + \
+                   self.display.get_mover_column_count() + 1
         #total number of rows in the largest column
-        #num_cols_f = float(num_cols)
-        #rows_per_column_f = float(N) / num_cols_f
-        #num_rows = int(math.ceil(rows_per_column_f))
         num_rows = self.display.get_mover_count(position[0])
-        #this movers column and row
-        column = position[0]  #column = (k / num_rows)
-        #row = self.display.mover_positions[column].get_linear_index(self.name)     #row = (k % num_rows)
+
+        #this mover's column
+        column = position[0]
+        #this mover's row
         row = self.display.mover_positions[column].get_index(self.name)
 
         #vertical distance seperating the bottom of one mover with the top
         #  of the next.  Use MMPC instead of (MMPC - 1) for the
-        #  (self.height * MMPC) term to offset the even collumns'
+        #  (self.height * MMPC) term to offset the even columns'
         #  "lowerness" on the screen.
         #Note: The following calculation was divided into even more lines
         #  of code.  The error string:
@@ -1030,7 +998,6 @@ class Mover:
         space = (space / (mmpc - 1.0)) + space_between
 
         #The following offsets the y values for a second column.
-        #y_offset = ((self.height + space) / 2.0) * ((column + 1) % 2)
         if column % 2: #odds
             y_offset = 0
         else:
@@ -1051,36 +1018,13 @@ class Mover:
                 ((num_rows / 2.0) * (space + self.height)) + \
                 (row * (space + self.height)) + \
                 y_offset
-        """
-        y = (self.display.height / 2.0)
-        if num_rows % 2: #odd
-            if row > 0:
-                y = y - (row * (space + self.height))
-                y = y - (self.height / 2.0)
-            if row < 0:
-                y = y + (abs(row) * space) + ((abs(row) - 1) * self.height)
-                y = y + (self.height / 2.0)
-            if row == 0:
-                y = y - (self.height / 2.0)
-        else:    #even
-            if row >= 0:
-                y = y - (row * space) - (self.height * (row + 1))
-                y = y - (space / 2.0)
-            if row < 0:
-                y = y + ((abs(row) - 1) * space) + (self.height * (abs(row) - 1))
-                y = y + (space / 2.0)
-        """    
         
         #Adding 1 to the column values in the following line,
         # mathematically gives the clients their own column
         column_width = (self.display.width / float(num_cols))
         x =  column_width * (column + \
-                             self.display.get_client_collumn_count())
+                             self.display.get_client_column_count())
 
-        #This value is used when drawing the dotted connection line.
-        #self.column = column
-        #self.display.mover_columns[self.column] = int(x)
-        
         return int(x), int(y)
         
     def position(self, N):
@@ -1099,10 +1043,8 @@ class Mover:
         #Set the mover size in the display.
         self.height = ((self.display.height - 40) / 20)
         #This line assumes that their will not be 40 or more movers.
-        #self.width = (self.display.number_of_movers / int(MMPC))
-        #self.width = (self.display.width/(self.width + 3))
-        self.width = (self.display.get_client_collumn_count() +
-                      self.display.get_mover_collumn_count() + 1)
+        self.width = (self.display.get_client_column_count() +
+                      self.display.get_mover_column_count() + 1)
         self.width = (self.display.height / self.width)
         
         #Font geometry. (state, label, timer)
@@ -1142,13 +1084,10 @@ class Mover:
         self.buffer_bar_height     = self.height/10
         self.progress_bar_offset1  = XY(4, self.height - 2 - self.bar_height)
         self.progress_bar_offset2  = XY(4, self.height - 2)#yellow
-        #self.progress_bar_bg_offset1 = XY(4, self.height/1.6)#magenta
-        #self.progress_bar_bg_offset2 = XY(4, self.height/1.2)#magenta
         self.buffer_bar_offset1 = XY(4, self.height - 4 -
                                      self.buffer_bar_height - self.bar_height)
         self.buffer_bar_offset2 = XY(4, self.height - 4 -
                                      self.bar_height)#magenta
-        #self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
         self.percent_disp_offset   = XY(self.bar_width + 6, self.height)#green
 
 
@@ -1157,9 +1096,8 @@ class Mover:
 
     def max_label_font_width(self):
         #total number of columns 
-        #num_cols = (self.N / int(MMPC)) + 1
-        num_cols = self.display.get_total_collumn_count()
-        #size of column
+        num_cols = self.display.get_total_column_count()
+        #size of column in pixels
         column_width = (self.display.width / float(num_cols + 1))
         #difference of column width and mover rectangle with fudge factor.
         return (column_width - self.width) - 10
@@ -1193,17 +1131,6 @@ class Client:
         self.update_state()
         self.draw()
         
-    def __del__(self):
-        ##Mark this spot as unoccupied
-        try:
-            #del self.display.client_positions[self.index]
-            #self.display.client_positions.del_item(self.name)
-            self.display.del_client_position(self.name)
-        except KeyError:
-            pass
-
-        self.undraw()
-
     #########################################################################
         
     def draw(self):
@@ -1211,7 +1138,6 @@ class Client:
 
         if self.outline:
             self.display.coords(self.outline, x,y, x+self.width,y+self.height)
-            #self.display.itenconfigure(self.outline, fill=self.color)
         else:
             self.outline = self.display.create_oval(x, y, x+self.width,
                                                     y+self.height,
@@ -1268,40 +1194,17 @@ class Client:
     #########################################################################
 
     def resize(self):
-        #self.width = self.display.width/8
-        #self.height =  self.display.height/28
-        self.width = self.display.width / (self.display.get_total_collumn_count() + 1)
+        self.width = self.display.width / \
+                     (self.display.get_total_column_count() + 1)
         self.height =  self.display.height/28
         self.font = get_font(self.height/2.5, 'arial')
 
     def position(self):
-	"""
-	#If we do not currently have a position, get one.
-	if not hasattr(self, "index"):
-	    i = 0
 
-	    ## Step through possible positions in order 0, 1, -1, 2, -2, 3, ...
-	    while self.display.client_positions.has_key(i):
-		if i == 0:
-		    i = 1
-		elif i > 0:
-		    i = -i
-		else:
-		    i = 1 - i
-	    self.index = i
-	    self.display.client_positions[i] = self.name
-        
-	#Determine the x & y coordinates of the position index.
-        self.x, self.y = scale_to_display(-0.95, self.index/10.,
-                                          self.display.width,
-                                          self.display.height)
-        """
-
-        self.display.add_client_position(self.name)
         position = self.display.get_client_position(self.name)
 
         column_width = (self.display.width /
-                        self.display.get_total_collumn_count())
+                        self.display.get_total_column_count())
         row_height = self.display.height / MIPC
 
         x = 0.1 + (position[0] - 1) * column_width
@@ -1328,8 +1231,6 @@ class Connection:
     def __init__(self, mover, client, display):
         # we are passing instances of movers and clients
         self.mover              = mover
-        #client.n_connections    = client.n_connections + 1
-        #print "Connection.__init__",  client.name, client.n_connections, mover.name
         self.client             = client
         self.display            = display
         self.rate               = 0 #pixels/second, not MB
@@ -1342,11 +1243,6 @@ class Connection:
 
         self.position()
 
-    def __del__(self):
-	#self.client.n_connections = self.client.n_connections - 1
-        #print "Connection.__del__",  self.client.name, self.client.n_connections, self.mover.name
-        self.undraw()
-        
     #########################################################################
         
     def draw(self):
@@ -1480,7 +1376,15 @@ class Connection:
         position = self.display.get_client_position(self.client.name)
 
         if position == None:
-            print "?????????????????????", position
+            #Is this necessary anymore?
+            print "An unknown error occured.  Please send the enstore" \
+                  "developers the following output."
+            print "ERROR:", position, self.client.name, self.mover.name
+            pprint.pprint(self.display.clients)
+            for i in range(len(self.display.client_positions.keys())):
+                print "COLUMN:", i + 1
+                pprint.pprint(self.display.client_positions[i + 1].item_positions)
+
             return
         
         column = position[0]
@@ -1488,7 +1392,7 @@ class Connection:
 
         #This is more accurate than self.client.width.
         column_width = self.display.width / \
-                       self.display.get_total_collumn_count()
+                       self.display.get_total_column_count()
 
         #For the client side we will use a temporary list and go in the
         # opposite direction that we used for the movers (then reverse it).
@@ -1499,7 +1403,7 @@ class Connection:
                   self.client.y + self.client.height/2.0)
         client_path.extend([cx, cy])
 
-        for i in range(column, self.display.get_client_collumn_count()):
+        for i in range(column, self.display.get_client_column_count()):
             if (i % 2 == column % 2): #same column height
                 cx = column_width * (i)
                 cy = self.client.y + (self.client.height / 2.0)
@@ -1544,7 +1448,6 @@ class Title:
         self.display    = display
         self.tk_text    = None #this is a tk Text object
         self.fill       = None #color to draw with
-        #self.font       = tkFont.Font(size=36, family="Arial")
         self.font       = get_font(20, "arial")
         self.length     = 2.5  #animation runs 2.5 seconds
         now             = time.time()
@@ -1572,8 +1475,6 @@ class Title:
                                 (endrgb[i]-startrgb[i])*(elapsed/self.length))
         fill=rgbtohex(currentrgb[0], currentrgb[1], currentrgb[2])
         self.display.itemconfigure(self.tk_text, fill=fill)
-    def __del__(self):
-        self.display.delete(self.tk_text)
 
 #########################################################################
 ##
@@ -1599,7 +1500,6 @@ class MoverDisplay(Tkinter.Toplevel):
             self.state_display = Tkinter.Label(master=self,
                                                justify=Tkinter.LEFT,
                                                font = self.font,
-                                               #width = 0,
                                                text = self.status,
                                                foreground = mover.state_color,
                                                background = mover.mover_color,
@@ -1639,7 +1539,7 @@ class MoverDisplay(Tkinter.Toplevel):
 MOVERS="MOVERS"
 CLIENTS="CLIENTS"
 
-class Collumn:
+class Column:
 
     def __init__(self, number, type):
 
@@ -1731,9 +1631,6 @@ class Display(Tkinter.Canvas):
     ##** means "variable number of keyword arguments" (passed as a dictionary)
     #entvrc_info is a dictionary of various parameters.
     def __init__(self, entvrc_info, master = None, **attributes):
-        #title="", window_width=None, window_height=None,
-        #geometry=None, x_position=None, y_position=None,
-        #**attributes):
 
         self.master = master
         geometry = entvrc_info.get('geometry', None)
@@ -1746,8 +1643,6 @@ class Display(Tkinter.Canvas):
 
         self.unframed_geometry = geometry
         Tkinter.Canvas.__init__(self, master=master)
-                                #height=window_height,
-                                #width=window_width)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 ##        if canvas_width is None:
@@ -1777,10 +1672,7 @@ class Display(Tkinter.Canvas):
 ##        self.pack(side=Tkinter.LEFT)
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
-        #The toplevel widget the canvas created.
-        #toplevel = self.winfo_toplevel()
         #Various toplevel window attributes.
-        #toplevel.title(title)
         master.title(title)
         self.configure(attributes)
         #Menubar attributes.
@@ -1788,7 +1680,6 @@ class Display(Tkinter.Canvas):
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
         #Create the animate check button and set animate accordingly.
-        #self.animate = animate
         self.animate = Tkinter.BooleanVar()
         #By default animation is off.  If we need to turn animation, do so now.
         if animate == ANIMATE:
@@ -1840,7 +1731,6 @@ class Display(Tkinter.Canvas):
         self.mover_names      = [] ## List of mover names.
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
-        #self.mover_columns    = {} #x-coordinates for columns of movers
         self.mover_positions  = {} ##key is position index (0,1,-1,2,-2) and
                                    ##value is Mover
         self.clients          = {} ## dictionary, key = client name,
@@ -1900,11 +1790,8 @@ class Display(Tkinter.Canvas):
         Trace.trace(1, "New dimensions: %s" % self.master.wm_geometry())
 
         try:
-            #self.after_cancel(self.after_timer_id)
-            #self.after_cancel(self.after_animation_id)
             self.after_cancel(self.after_smooth_animation_id)
             self.after_cancel(self.after_clients_id)
-            #self.after_cancel(self.after_idle_id)
             self.after_cancel(self.after_reinitialize_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
@@ -1918,13 +1805,9 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = self.after(100, self.reposition_canvas)
 
         try:
-            #self.after_timer_id = self.after(1000, self.update_timers)
-            #self.after_animation_id = self.after(1000,
-            #                                     self.connection_animation)
             self.after_smooth_animation_id = self.after(1000,
                                                         self.smooth_animation)
             self.after_clients_id = self.after(1000, self.disconnect_clients)
-            #self.after_idle_id = self.after(1000, self.display_idle)
             self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         except AttributeError:
             pass
@@ -1934,11 +1817,8 @@ class Display(Tkinter.Canvas):
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
         
-        #self.after_cancel(self.after_timer_id)
-        #self.after_cancel(self.after_animation_id)
         self.after_cancel(self.after_smooth_animation_id)
         self.after_cancel(self.after_clients_id)
-        #self.after_cancel(self.after_idle_id)
         self.after_cancel(self.after_reinitialize_id)
         self._reinit = 1
         self.quit()
@@ -1997,39 +1877,6 @@ class Display(Tkinter.Canvas):
         #The current framed geometry.
         geometry = self.winfo_toplevel().geometry()
 
-        #Split the original geometry (unframed) and the current geometry.
-        #orig_x, orig_y = split_geometry(self.unframed_geometry)[2:]
-        #window_width, window_height, x_position, y_position = \
-        #              split_geometry(geometry)
-
-        #Calculate the difference in upper left location.
-        #x_diff = x_position - orig_x
-        #y_diff = y_position - orig_y
-
-	#print self.frame_width, self.frame_height
-	#if hasattr(self, "frame_width"):
-	#    x_diff = self.frame_width
-	#    y_diff = self.frame_height
-	#else:
-	#    x_diff = 0
-	#    y_diff = 0
-
-        #If the size is greater than the screen, shink the size by the
-        # two boarders' width.
-	#if x_diff * 2 + window_width > self.winfo_screenwidth():
-	#    print "1111111111"
-        #    window_width = self.winfo_screenwidth() - x_diff * 2
-        #if y_diff * 2 + x_diff * 2 + window_height > self.winfo_screenheight():
-	#    print "22222222222"
-        #    window_height = self.winfo_screenheight() - y_diff * 2 - x_diff * 2
-
-        #Reformulate the size and location of the window.
-        #geometry = "%sx%s+%s+%s" % (window_width, window_height,
-        #                            x_position, y_position)
-
-        #Set the new geometry.
-        #self.winfo_toplevel().geometry(geometry)
-
         ###The following records the initial framed geometry of the window.
         if not hasattr(self, "framed_geometry"):
             self.framed_geometry = geometry
@@ -2065,8 +1912,6 @@ class Display(Tkinter.Canvas):
             mover.reposition(N)            
          
     def reposition_clients(self):
-        #del self.client_positions
-        #self.client_positions = {}
         for client in self.clients.values():
             client.reposition()
 
@@ -2088,8 +1933,6 @@ class Display(Tkinter.Canvas):
         for connection in self.connections.values():
             connection.animate(now)
 
-        #self.after_animation_id = self.after(30, self.connection_animation)
-
     #Called from self.after().
     def process_messages(self):
         if self.stopped: #If we should stop, then stop.
@@ -2098,18 +1941,16 @@ class Display(Tkinter.Canvas):
         #Only process the messages in the queue at this time.
         display_lock.acquire()
         number = len(self.command_queue)
-        #display_lock.release()
         
         while number > 0:
-            #display_lock.acquire()
-            
+
+            #Process the next item in the queue.
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
             
-            #display_lock.release()
-
             number = number - 1
 
+        #Release the lock.
         display_lock.release()
 
     #Called from self.after().
@@ -2132,8 +1973,17 @@ class Display(Tkinter.Canvas):
             if now - client.last_activity_time > 5: # grace period
                 Trace.trace(2, "It's been longer than 5 seconds, %s " \
                             " client must be deleted" % (client_name,))
-                #client.undraw()
-                del self.clients[client_name]
+                client.undraw()
+                try:
+                    # Remove client from the client list.
+                    del self.clients[client_name]
+                except KeyError:
+                    pass
+                try:
+                    # Mark this spot as unoccupied.
+                    self.del_client_position(client_name)
+                except KeyError:
+                    pass
 
         self.after_clients_id = self.after(1000, self.disconnect_clients)
 
@@ -2199,7 +2049,6 @@ class Display(Tkinter.Canvas):
         if self.client_colors.get(client, None):
             return self.client_colors[client]
 
-        #self.client_colors[client] = colors('client_active_color')
         self.client_colors[client] = colors('client_outline_color')
 
         return self.client_colors[client]
@@ -2207,28 +2056,38 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     def add_client_position(self, client_name):
-        #Start searching the existing collumns for the client's name.
+        #Start searching the existing columns for the client's name.
         for i in range(len(self.client_positions) + 1)[1:]:
             if self.client_positions[i].has_item(client_name):
                 return
 
+        #The variable search_order is a list of two-tuples, where each
+        # two-tuple consits of the number in each column and the index number
+        # of that column.  The sort after the loop, first sorts by the number
+        # of clients in a column.  If there are ties, it sorts the lowest
+        # column number first.
+        search_order = []
         for i in range(len(self.client_positions) + 1)[1:]:
-            rtn = self.client_positions[i].add_item(client_name)
-            if rtn: #Filled the collumn, search the next one.
+            search_order.append((self.client_positions[i].count(), i))
+        search_order.sort() #sort into ascending order.
+
+        for t in search_order:
+            rtn = self.client_positions[t[1]].add_item(client_name)
+            if rtn: #Filled the column, search the next one.
                 continue
             #Otherwise return success.
             return
         else:
-            #Need to add another collumn.
+            #Need to add another column.
             index = len(self.client_positions) + 1
-            self.client_positions[index] = Collumn(index, CLIENTS)
+            self.client_positions[index] = Column(index, CLIENTS)
             #The following line is temporary
             self.client_positions[index].add_item(client_name)
 
         return
 
     def del_client_position(self, client_name):
-        #Start searching the existing collumns for the existing slot.
+        #Start searching the existing columns for the existing slot.
         for i in range(len(self.client_positions) + 1)[1:]:
             self.client_positions[i].del_item(client_name)
 
@@ -2236,56 +2095,56 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.client_positions) + 1)[1:]:
             i2 = self.client_positions[i].get_index(client_name)
             if i2 != None:
-                return (i, i2) #Tuple of the collumn number and row index. 
+                return (i, i2) #Tuple of the column number and row index. 
 
         return None
 
     def get_client_name(self, position):
         return self.client_positions[position[0]].get_name(position[1])
     
-    def get_client_count(self, collumn = None):
-        if collumn == None:
-            collumns_search = range(len(self.mover_positions) + 1)[1:]
+    def get_client_count(self, column = None):
+        if column == None:
+            columns_search = range(len(self.mover_positions) + 1)[1:]
         else:
-            collumns_search = [collumn]
+            columns_search = [column]
         
         sum = 0
-        for i in collumns_search: #range(len(self.client_positions) + 1)[1:]:
+        for i in columns_search:
             sum = sum + self.client_positions[i].count()
 
         return sum
 
-    def get_client_collumn_count(self):
+    def get_client_column_count(self):
         if len(self.client_positions) < 1:
-            return 1
+            return 1  #Always assume at least one column of clients.
         else:
             return len(self.client_positions)
 
 
     def add_mover_position(self, mover_name):
-        #Start searching the existing collumns for the client's name.
-        #for i in range(len(self.mover_positions) + 1)[1:]:
-        #    if self.mover_positions[i].has_item(mover_name):
-        #        return
+        #Start searching the existing columns for the movers's name.
+        for i in range(len(self.mover_positions) + 1)[1:]:
+            if self.mover_positions[i].has_item(mover_name):
+                return
 
         for i in range(len(self.mover_positions) + 1)[1:]:
             rtn = self.mover_positions[i].add_item(mover_name)
-            if rtn: #Filled the collumn, search the next one.
+            if rtn: #Filled the column, search the next one.
                 continue
             #Otherwise return success.
             #return
             break
         else:
-            #Need to add another collumn.
+            #Need to add another column.
             index = len(self.mover_positions) + 1
-            self.mover_positions[index] = Collumn(index, MOVERS)
+            self.mover_positions[index] = Column(index, MOVERS)
             self.mover_positions[index].add_item(mover_name)
             #self.reposition_canvas()
 
         return
 
     def del_mover_position(self, mover_name):
-        #Start searching the existing collumns for the existing slot.
+        #Start searching the existing columns for the existing slot.
         for i in range(len(self.mover_positions) + 1)[1:]:
             self.mover_positions[i].del_item(mover_name)
 
@@ -2293,33 +2152,39 @@ class Display(Tkinter.Canvas):
         for i in range(len(self.mover_positions) + 1)[1:]:
             i2 = self.mover_positions[i].get_index(mover_name)
             if i2 != None:
-                return (i, i2) #Tuple of the collumn number and row index. 
+                return (i, i2) #Tuple of the column number and row index. 
 
         return None
 
     def get_mover_name(self, position):
         return self.mover_positions[position[0]].get_name(position[1])
     
-    def get_mover_count(self, collumn = None):
-        if collumn == None:
-            collumns_search = range(len(self.mover_positions) + 1)[1:]
+    def get_mover_count(self, column = None):
+        if column == None:
+            columns_search = range(len(self.mover_positions) + 1)[1:]
         else:
-            collumns_search = [collumn]
+            columns_search = [column]
         
         sum = 0
-        for i in collumns_search: #range(len(self.mover_positions) + 1)[1:]:
+        for i in columns_search:
             sum = sum + self.mover_positions[i].count()
 
         return sum
 
     def reserve_mover_columns(self, number): #number of movers.
-        columns = int(math.ceil(number / float(MMPC)))
-        #limit = int(math.ceil(number / float(columns)))
 
+        #Determine the number of columns necessary for 'number' number
+        # of columns.
+        columns = int(math.ceil(number / float(MMPC)))
+
+        #First, use the whole number division to determine the number of
+        # movers that each column must contain to be even.
         limits = {}
         min_count = int(number) / int(columns)
         for i in range(1, columns + 1):
             limits[i] = min_count
+        #Second, take the remainder of movers and set them one at a time
+        # to the columns to evenly distribute them.
         i2 = 1
         for i in range(number - (min_count * columns)):
             limits[i2] = limits[i2] + 1
@@ -2327,20 +2192,22 @@ class Display(Tkinter.Canvas):
             i2 = ((i2 + 1) % columns)
             if i2 > columns:
                 columns = 1 
-            
+
+        #Create the nessecary columns and set the limit on the number of
+        # movers allowed in each of them.
         for i in range(1, columns + 1):
-            self.mover_positions[i] = Collumn(i, MOVERS)
+            self.mover_positions[i] = Column(i, MOVERS)
             self.mover_positions[i].set_max_limit(limits[i])
 
-    def get_mover_collumn_count(self):
+    def get_mover_column_count(self):
         if len(self.mover_positions) < 1:
-            return 1
+            return 1  #Always assume at least one column of movers.
         else:
             return len(self.mover_positions)
 
-    def get_total_collumn_count(self):
-        return self.get_mover_collumn_count() + \
-               self.get_client_collumn_count() + 1
+    def get_total_column_count(self):
+        return self.get_mover_column_count() + \
+               self.get_client_column_count() + 1
 
     def get_mover_coordinates(self, position):
         if type(position) != types.TupleType and len(position) != 2:
@@ -2366,7 +2233,6 @@ class Display(Tkinter.Canvas):
         self.stopped = 1
 
     def title_command(self, command_list):
-        #title = command[6:]
         title = string.join(command_list[1:])
         title=string.replace (title, '\\n', '\n')
         self.title_animation = Title(title, self)
@@ -2377,7 +2243,6 @@ class Display(Tkinter.Canvas):
                                                          int(command_list[2])))
 
             #Before blindly setting the value.  Make sure that it is good.
-            #rtn = csc.alive("configuration_server", 3, 3)
             rtn = csc.get_enstore_system(3, 5)
             if rtn:
                 self.csc_dict[rtn] = csc
@@ -2401,13 +2266,14 @@ class Display(Tkinter.Canvas):
         client_name = normalize_name(command_list[1])
         client = self.clients.get(client_name) 
         if client is None: #it's a new client
-            old_number = self.get_client_collumn_count()
+            old_number = self.get_client_column_count()
             
+            self.add_client_position(client_name)
             client = Client(client_name, self)
             self.clients[client_name] = client
 
             #If the number of client columns changed we need to reposition.
-            new_number = self.get_client_collumn_count()
+            new_number = self.get_client_column_count()
             if old_number != new_number:
                 self.reposition_canvas()
             
@@ -2429,13 +2295,14 @@ class Display(Tkinter.Canvas):
         client_name = normalize_name(command_list[2])
         client = self.clients.get(client_name)
         if not client: ## New client, we must add it
-            old_number = self.get_client_collumn_count()
+            old_number = self.get_client_column_count()
 
+            self.add_client_position(client_name)
             client = Client(client_name, self)
             self.clients[client_name] = client
 
             #If the number of client columns changed we need to reposition.
-            new_number = self.get_client_collumn_count()
+            new_number = self.get_client_column_count()
             if old_number != new_number:
                 self.reposition_canvas(force = 1)
         else:
@@ -2485,6 +2352,10 @@ class Display(Tkinter.Canvas):
             pass
         
         #Remove all references to the connection.
+        try:
+            self.connections[mover.name].undraw()
+        except (AttributeError, KeyError, Tkinter.TclError):
+            pass
         try:
             del self.connections[mover.name]
         except (AttributeError, KeyError):
@@ -2591,7 +2462,7 @@ class Display(Tkinter.Canvas):
                 mover.max_buffer = long(buffer_size)
             buffer_percent = int(100 * (buffer_size/float(mover.max_buffer)))
             mover.draw_buffer(buffer_percent)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()
         except:
             pass
@@ -2684,7 +2555,6 @@ class Display(Tkinter.Canvas):
             return []
 
         if words[0] not in self.comm_dict.keys():
-            #print "just passing"
             return []
 
         if len(words) < self.comm_dict[words[0]]['length']:
@@ -2758,11 +2628,8 @@ class Display(Tkinter.Canvas):
 
 
     def mainloop(self, threshold = None):
-        #self.after_timer_id = self.after(30, self.update_timers)
-        #self.after_animation_id = self.after(30, self.connection_animation)
         self.after_smooth_animation_id = self.after(30, self.smooth_animation)
         self.after_clients_id = self.after(1000, self.disconnect_clients)
-        #self.after_idle_id = self.after_idle(self.display_idle)
         self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
         if threshold == None:
