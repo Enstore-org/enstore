@@ -323,7 +323,7 @@ def next_work_this_volume(self, v):
 		# pick up request according to file locations
 		w = pending_work.get_init_by_location()
 		w = pending_work.get_next_for_this_volume(v)
-
+		if not w: return {"status" : (e_errors.NOWORK, None)}
 		# return read work ticket
 		return w
 	w=pending_work.get_next()
