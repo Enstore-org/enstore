@@ -230,7 +230,15 @@ def check(bfid, vol):
 	return
 
 def delete(bfid):
-	f = fcc.bfid_info(bfid).get('pnfs_name0', 'unknown')
+	ff = fcc.bfid_info(bfid)
+	if ff["deleted"] == "yes" or ff["deleted"] == "unknown":
+		print "already deleted ... OK"
+		return
+
+	f = ff.get('pnfs_name0', 'unknown')
+	if not f:
+		f = 'unknown'
+
 	if f == 'unknown':
 		af = 'unknown'
 	else:
