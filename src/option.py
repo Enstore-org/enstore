@@ -361,6 +361,8 @@ def default_port():
     return val
 
 def log_using_default(var, default):
+    import Trace
+    import e_errors
     Trace.log(e_errors.INFO,
               "%s not set in environment or command line - reverting to %s"\
               %(var, default))
