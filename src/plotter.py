@@ -58,9 +58,10 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                 plot_file = enstore_files.default_plot_html_file()
 	else:
 	    self.html_dir = html_file
-	    #NOTE: this needs some work here
+	    plot_file = "%s/%s"%(self.html_dir,
+				 enstore_files.plot_html_file_name())
 
-        # if no html refresh was entered on the command line, get it from
+	# if no html refresh was entered on the command line, get it from
         # the configuration file.
         if refresh == -1:
             refresh = self.inquisitor.get("refresh", DEFAULT_REFRESH)
