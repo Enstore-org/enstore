@@ -127,6 +127,8 @@ BFIDS = "bfids"                              #file
 CHECK = "check"                              #volume
 CLEAN_DRIVE = "clean_drive"                  #mover
 CLEAR = "clear"                              #volume
+CLEAR_ALL_IGNORED_STORAGE_GROUPS = "clear-all-ignored-storage-groups"   #volume
+CLEAR_IGNORED_STORAGE_GROUP = "clear-ignored-storage-group"   #volume
 CONFIG_FILE = "config-file"                  #configuration(c&s)
 CONST = "const"                              #pnfs
 COUNTERS = "counters"                        #pnfs
@@ -153,6 +155,7 @@ DUPLICATE = "duplicate"                      #pnfs
 ECHO = "echo"                                #pnfs
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
+EXPORT = "export"                            #volume
 FILE_FAMILY = "file-family"                  #pnfs
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
@@ -177,10 +180,13 @@ HTML_DIR = "html-dir"                        #monitor(server)
 HTML_FILE = "html-file"                      #inquisitor(server)
 HTML_GEN_HOST = "html-gen-host"              #monitor, system
 ID = "id"                                    #pnfs
+IGNORE_STORAGE_GROUP = "ignore-storage-group"   #volume
+IMPORT = "import"                            #volume
 IO = "io"                                    #pnfs
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
+LIST_IGNORED_STORAGE_GROUPS = "list-ignored-storage-groups"   #volume
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 KEEP = "keep"                                #plotter
@@ -214,6 +220,7 @@ POSITION = "position"                        #pnfs
 PRIORITY = "priority"                        #library
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
+RECYCLE = "recycle"                          #volume
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
@@ -267,28 +274,30 @@ valid_option_list = [
     ADD, ALIVE, ALL,
     BACKUP, BFID, BFIDS,
     CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
+    CLEAR_ALL_IGNORED_STORAGE_GROUPS, CLEAR_IGNORED_STORAGE_GROUP,
     COUNTERS, COUNTERSN, CP, CURSOR,
     DATABASE, DATABASEN,
     DECR_FILE_COUNT, DELETE, DELETED, DELETE_WORK, DESTROY,
     DISMOUNT,
     DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
-    ECHO, ENCP, ENSTORE_STATE,
+    ECHO, ENCP, ENSTORE_STATE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
     FORCE,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
-    ID, IO,
+    ID, IGNORE_STORAGE_GROUP, IMPORT, IO,
     KEEP, KEEP_DIR,
     LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
+    LIST_IGNORED_STORAGE_GROUPS,
     MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PRIORITY,
-    RAISE, READ_ONLY, RECURSIVE, REFRESH, RESET_LIB, RESOLVE, RESTORE, RETRIES,
-    RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
+    RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
+    RESTORE, RETRIES, RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
