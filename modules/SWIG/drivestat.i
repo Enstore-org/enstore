@@ -63,6 +63,15 @@ int ds_print_report(void) {
 #define INIT 16
 #define RECENT 32
 
+#define DRIVE_SERIAL_NUMBER 1
+#define VENDOR 2
+#define PRODUCT_TYPE 3
+#define OPERATION 4
+#define TAPE_VOLSER 5
+#define HOST 6
+#define LOGICAL_DRIVE_NAME 7
+
+
 /*************************************************************************
  *                                                                       *
  * ds_alloc()                                                            *
