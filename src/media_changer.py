@@ -21,6 +21,7 @@ import sys
 import types
 import time
 import popen2
+import signal
 import string
 import socket
 import time
