@@ -33,6 +33,11 @@ ddiff(o1, o2) -- comparing two objects
 
 	# relax on floating point number
 	if type(o1) == type(1.0):
+		if o1 == o2 or time.ctime(o1) == time.ctime(o2):
+			return 0
+		else:
+			return 1
+
 		return long(o1) != long(o2)
 
 	# list?
