@@ -62,7 +62,7 @@ given in full below.
                              PRODUCT DESCRIPTION
                              ===================
 This is the Fermi Tape Tools product (ftt).
-It provides an insulating layer which allows device and platform in-Dependant
+It provides an insulating layer which allows device and platform independent
 tape input, output, and control, including interrogating supported drives for
 usage, error, and other statistics.  Informational calls which are available
 for some drives/platforms and not others are allowed to yield an
@@ -144,15 +144,6 @@ process.
 Users may send mail to the mail address given above, with the expectation 
 that it will be read and noted.
 
-Fermitools Special Products
----------------------------
-Because of the special support needed for a few selected products Fermilab 
-is only able to support the software under special agreement. The support 
-offered will be discussed and negotiated on an individual basis and may be 
-different for different users. To initiate discussions send mail to the 
-mail address given above.
-
-
 ----------------------------------------------------------------------------
 
 			 TERMS AND CONDITIONS IN FULL
@@ -177,7 +168,7 @@ the Fermilab Software Tools Program, the user agrees to abide by the Terms and
 Conditions of the Program below:
 
 o   Any redistribution of the software shall be accompanied by this
-    INFORMATION/LICENSE file and the product's ORIGIN file.
+    README file.
 
 o   The User shall acknowledge the origin of the software as set forth 
     below:

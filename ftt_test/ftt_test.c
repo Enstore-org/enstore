@@ -16,11 +16,12 @@ Include files:-
 #include <string.h>
 #include "ftt_t_cmdtable.h"
 
-#include <unistd.h>  /* optarg */
 
-#ifdef WIN32
+#if defined(WIN32)
 extern char *optarg;
 int getopt(); 
+#else
+#include <unistd.h>  /* optarg */
 #endif
 
 /* Globals:-

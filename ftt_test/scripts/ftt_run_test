@@ -35,11 +35,16 @@ then
     
 fi
 
-if [ ! -a $script.dat ] 
+if [ -a $script.dat ] 
 then 
-    echo "ftt_run_test: Error file $script.dat not found " 
+    script="$script.dat"
+fi
+
+if [ ! -a $script ] 
+then 
+    echo "ftt_run_test: Error file $script not found " 
     exit 0 
 fi
 
-exec  ftt_test < $script.dat
+exec  ftt_test < $script
 

@@ -6,7 +6,7 @@
 #define FTT_EPRINT_BUF_SIZE 512
 extern char ftt_eprint_buf[];
 
-#define MAX_TRANS_ERRNO 49	/* maximum error number we translate */
+#define MAX_TRANS_ERRNO 50	/* maximum error number we translate */
 
 #define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
 

@@ -12,5 +12,6 @@ Common:
    Action = setup
 	proddir()
 	setupenv()
+	EnvPrepend(PATH,"${UPS_PROD_DIR}/bin")
 
 End:

@@ -63,8 +63,24 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 
 int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
-   /* ignore hwdens, 'cause we opened the right device node */
-   return 0;
+   struct mtop buf;
+   static int recursing = 0;
+   int res;
+   
+   if ( !recursing ) {
+       recursing = 1;
+       if (ftt_open_dev(d)) {
+            recursing = 0;
+	    buf.mt_op = MTSETDENSITY;
+	    buf.mt_count = hwdens;
+	    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+	    res = ftt_translate_error(d,FTT_OPN_STATUS,
+				    "an MTIOCTOP/MTSETDENSITY ioctl()", res,
+				"an ftt_open_dev",1);
+	    return res;
+       }
+   }
+   return -1;
 }
 
 int
@@ -87,26 +103,41 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 	return res;
     }
     recursing = 0;
-    if (blocksize != 0) {
-	/* 
-	** the silly program won't let us set the blocksize to zero,
-	** but since that gives us a different device node in 
-	** ftt_open_logical, it ends up getting set to zero anyhow.
-	*/
 	buf.mt_op = MTSETBLK;
-	buf.mt_count = blocksize;
-	res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-	res = ftt_translate_error(d,FTT_OPN_STATUS,
-				"an MTSPECOP/MTSCSI_SETFIXED ioctl()", res,
+    buf.mt_count = blocksize;
+    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
+    res = ftt_translate_error(d,FTT_OPN_STATUS,
+				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
-    }
     return res;
 }
 
 int
 ftt_get_hwdens(ftt_descriptor d, char *devname) {
+    static int recursing = 0;
+    struct mtget buf;
     int res;
 
-    res = d->devinfo[d->which_is_default].hwdens;
+    if (recursing) {
+	/* 
+	** we need the device open before we do this, so we call
+	** ftt_open_dev. of course, it is going to call *us* again.
+	** so we have this recursive call bail-out. 
+	*/
+	return 0;
+    }
+    recursing = 1;
+    res = ftt_open_dev(d);
+    recursing = 0; 	
+    if (res < 0) return res;
+
+    res = ioctl(d->file_descriptor, MTIOCGET, &buf);
+    res = ftt_translate_error(d,FTT_OPN_STATUS,
+				"an MTIOCGET ioctl()", res,
+				"an ftt_open_dev",1);
+    if (res < 0) return res;
+
+    res =  (buf.mt_dsreg >> 24) & 0xff;
+    DEBUG2(stderr,"ftt_get_hwdens -- returning %d\n", res);
     return res;
 }

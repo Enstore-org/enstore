@@ -508,3 +508,46 @@ ftt_clear_unrecovered(ftt_descriptor d) {
 	d->unrecovered_error = 0;
 	return 0;
 }
+
+int
+ftt_verify_blank(ftt_descriptor d) {
+    int max;
+    char *buffer;
+    ENTERING("ftt_verify_blank");
+    CKNULL("ftt_descriptor", d);
+
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+        ftt_close_dev(d);
+        switch(ftt_fork(d)){
+        case -1:
+                return -1;
+
+        case 0:  /* child */
+                fflush(stdout); /* make async_pf stdout */
+                fflush(d->async_pf_parent);
+                close(1);
+                dup2(fileno(d->async_pf_parent),1);
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x", "-v", d->basename,
+0);
+		} else {
+		    execlp("ftt_suid", "ftt_suid", "-v", d->basename, 0);
+		}
+
+        default: /* parent */
+                return ftt_wait(d);
+        }
+    }
+
+    max = ftt_get_max_blocksize(d);
+
+    buffer = malloc(max);
+    if (0 == buffer) {
+        fprintf(stderr, "unable to allocate buffer for copy, errno %d", errno);
+        return 0;
+    }
+
+    ftt_all_scsi(d);
+    ftt_rewind(d);
+    return ftt_read(d,buffer,max);
+}

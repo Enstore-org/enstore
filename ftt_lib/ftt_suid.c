@@ -49,6 +49,7 @@ main(int argc, char **argv) {
 		case 'c':
 		case 's': 
 		case 'i':
+		case 'v':
 			if (argc != 3) {
 				usage();
 			}
@@ -118,6 +119,9 @@ main(int argc, char **argv) {
 	case 'd':
 		ftt_set_mode_dev(d, basename,0);
 		res = ftt_set_hwdens(d,arg);
+		break;
+	case 'v':
+		res = ftt_verify_blank(d);
 		break;
 	}
 	ftt_report(d);

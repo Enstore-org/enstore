@@ -53,6 +53,7 @@ int ftt_trans_open[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_in[MAX_TRANS_ERRNO] = {
@@ -106,6 +107,7 @@ int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -158,6 +160,7 @@ int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
@@ -211,6 +214,7 @@ int ftt_trans_skiprec[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -263,6 +267,7 @@ int ftt_trans_skipf[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 int ftt_trans_skipf_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -315,6 +320,7 @@ int ftt_trans_skipf_AIX[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
@@ -367,6 +373,7 @@ int ftt_trans_skipr[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
@@ -420,6 +427,7 @@ int ftt_trans_skipr_AIX[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
@@ -473,6 +481,7 @@ int ftt_trans_skiprew_AIX[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
@@ -526,6 +535,7 @@ int ftt_trans_out_AIX[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_out[MAX_TRANS_ERRNO] = {
@@ -579,6 +589,7 @@ int ftt_trans_out[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 
 int ftt_trans_chall[MAX_TRANS_ERRNO] = {
@@ -632,6 +643,7 @@ int ftt_trans_chall[MAX_TRANS_ERRNO] = {
 	/*   46 ENOTREADY*/	FTT_ENOTAPE,
 	/*   47 EWRPROTECT */	FTT_EROFS,
 	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
 };
 int *ftt_trans_table_AIX[] = {
     /* none...but just to be safe0 */ ftt_trans_in,
@@ -710,9 +722,15 @@ char *DLT_density_trans[MAX_TRANS_DENSITY] = {
 static char LINUXfind[] =
     "IFS=\" \t\n\";\
      PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
-     dmesg | while read a b c d e f; do \
+     count=0; export count ;\
+     cat /proc/scsi/scsi | while read a b c d e f; do \
         if [ \"$c\" = \"Model:\" ]; then mod=$d; fi ; \
-        if [ \"$d\" = st%d ] ; then echo $mod; exit; fi; \
+        if [ \"$b\" = Sequential-Access ] ; then \
+		if [ \"$count\" = \"%d\" ] ; then \
+		    echo $mod; exit; \
+		fi; \
+		count=`expr $count + 1`; \
+	fi; \
        done";
 
 static char AIXfind[] =
@@ -823,7 +841,77 @@ static char Win32find_dev[] = "";
 
 
 ftt_dev_entry devtable[] = {
-    {"Linux", "", "SCSI", 0, FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
+    {"Linux", "DLT4", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+       "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "dev/nst%d",    5,  0, 0x1A, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "dev/sg%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Other Densities */
+       { "dev/nst%d",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    3,  0, 0x18, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    2,  0, 0x17, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    1,  0, 0x16, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    0,  0, 0x0A, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "DLT2", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+       "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "dev/nst%d",    4,  0, 0x80, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "dev/sg%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+    /* Other Densities */
+       { "dev/nst%d",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    5,  1, 0x83, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    0,  0, 0x0A, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    4,  0, 0x19, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    3,  0, 0x18, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    2,  0, 0x17, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d",    1,  0, 0x16, 0,  0,FTT_RDNW,   0, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "EXB-82", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+       "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "dev/nst%d",     0,  0,  0,  0,  0,      0,    1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "dev/sg%d",     -1,  0, -1,  1,  0,      0,    1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "EXB-85", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+       "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
+    /*   string          den mod hwd  pas fxd rewind   1st */
+    /*   ======          === === ===  === === ======   === */
+    /* Default */
+       { "dev/nst%d", 	  1,  0, 0x15,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
+    /* Default, passthru  */
+       { "dev/sg%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
+    /* Descriptive */
+       { "dev/nst%d", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "dev/st%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
+       { 0 },
+    }},
+    {"Linux", "", "SCSI", FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1318,7 +1406,7 @@ ftt_dev_entry devtable[] = {
         { "dev/rmt%d.7",        0,  0, 0x14, 0,  0,        0|FTT_RTOO, 1, EXB_MAX_BLKSIZE},
         { 0, },
     }},
-    {"AIX", "EXB-8505", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI, 
+    {"AIX", "EXB-8505", "SCSI", FTT_FLAG_HOLD_SIGNALS|FTT_FLAG_SUID_SCSI,
 	FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	"dev/rmt%d","dev/rmt%d", 1, AIXfind,  {
     /*   string                  den mod hwd   pas fxd rewind            1st */
@@ -1891,6 +1979,8 @@ ftt_stat_entry ftt_stat_op_tab[] = {
     {"DLT",      
 	FTT_DO_TUR|FTT_DO_INQ|FTT_DO_MS|FTT_DO_MS_Px10|FTT_DO_RS|
 	FTT_DO_DLTRS|FTT_DO_SN|FTT_DO_LSRW|FTT_DO_LSC|FTT_DO_RP},
+
+    {"", FTT_DO_TUR|FTT_DO_INQ },
 
     {0,0}
 };

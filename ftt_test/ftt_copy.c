@@ -18,6 +18,8 @@ Include files:-
 #ifdef WIN32
 extern char *optarg;
 int getopt();
+#else
+#include <unistd.h>
 #endif
 
 #define FTT_ERROR_REPORT(routine)   {           \

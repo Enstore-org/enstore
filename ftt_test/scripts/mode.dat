@@ -6,6 +6,8 @@
  
 ftt_open
 ftt_rewind
+ftt_echo "Note that on DLTs various modes won't work depending what"
+ftt_echo "density of tape you use."
 ftt_verify_modes
 ftt_rewind
 ftt_close

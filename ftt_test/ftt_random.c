@@ -22,6 +22,8 @@ extern char *optarg;
 int getopt();
 #define srandom srand
 #define random rand 
+#else
+#include <unistd.h>
 #endif
 
 

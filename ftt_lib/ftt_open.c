@@ -36,6 +36,7 @@ ftt_open(const char *name, int rdonly) {
     ENTERING("ftt_open");
     PCKNULL("base name", name);
 
+    DEBUG2(stderr, "ftt_open( %s, %d )\n", name, rdonly);
     strcpy(alignname, name);
     os=ftt_get_os();
     DEBUG2(stderr,"os is %s\n", os);
@@ -284,8 +285,9 @@ ftt_open_status (ftt_descriptor d ) {
 		/* put back readonly flag */
 			d->readonly = FTT_RDWR;
 
+
 	    /* coimplain if neccesary */
-			if (status_res & FTT_PROT) {
+			if (status_res > 0 && (status_res & FTT_PROT)) {
 				ftt_errno = FTT_EROFS;
 				ftt_eprintf("ftt_open_dev: called with a read/write ftt_descriptor and a write protected tape.");
 				return -1;
@@ -370,7 +372,7 @@ ftt_open_io_dev(ftt_descriptor d) {
 		ftt_errno = FTT_EFAULT;
 			ftt_eprintf("ftt_open_io_dev: called when the different device is open");
 		return -1;
-    }
+        }
 	
 	d->which_is_open = d->which_is_default;
 	DEBUG1(stderr,"Actually opening file \n");
@@ -406,6 +408,7 @@ ftt_open_io_dev(ftt_descriptor d) {
 	       ( d->readonly?"READ":"READ-WRITE"));
 	return 0;
 }
+
 int
 ftt_open_dev(ftt_descriptor d) {
     int status_res = 0;

@@ -206,6 +206,8 @@ ftt_get_scsi_devname(ftt_descriptor d){
 
     for( j = 0; d->devinfo[j].device_name != 0 ; j++ ){
 	if( d->devinfo[j].passthru ){
+	    DEBUG3(stderr, "Found slot %d, name %s\n", 
+				       j,       d->devinfo[j].device_name);
 	    return  d->devinfo[j].device_name;
 	}
     }
