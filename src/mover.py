@@ -70,6 +70,7 @@ eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 # python modules
 import errno
 import pprint
+import socket
 import signal				
 import os,sys				
 import time				
@@ -1771,7 +1772,6 @@ class MoverInterface(generic_server.GenericServerInterface):
 
 #############################################################################
 import sys				# sys.argv[1:]
-import socket                           # gethostname (local host)
 import string				# atoi
 
 
