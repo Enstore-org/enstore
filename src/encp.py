@@ -335,7 +335,7 @@ def extract_file_number(location_cookie):
         try:
             #Return just third integer portion of the string.
             return int(string.split(location_cookie, "_")[2])
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             return None
@@ -773,7 +773,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
 
                 __csc = csc_test  #Set global for performance reasons.
                 return __csc
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
@@ -863,7 +863,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                 __csc = csc_test  #Set global for performance reasons.
                 __fcc = fcc_test
                 return __csc
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
@@ -924,7 +924,8 @@ def get_csc(parameter=None):
         return __csc
     
     elif type(parameter) == types.DictType: #If passed a ticket with bfid.
-        bfid = parameter.get('fc', {}).get("bfid", None)
+        bfid = parameter.get('fc', {}).get("bfid",
+                                           parameter.get("bfid", None))
         volume = parameter.get('fc', {}).get('external_label',
                                              parameter.get('volume', None))
 
@@ -953,6 +954,20 @@ def get_fcc(parameter = None):
     global __csc
 
     if not parameter:
+        bfid = None
+
+    elif type(parameter) == types.DictType: #If passed a ticket with bfid.
+        bfid = parameter.get('fc', {}).get("bfid",
+                                           parameter.get("bfid", None))
+
+    elif is_bfid(parameter):  #If passed a bfid.
+        bfid = parameter
+        
+    else:
+        #Set default value.
+        bfid = None
+
+    if bfid == None:
         if __fcc != None: #No bfid, but have cached fcc.
             return __fcc
         else:
@@ -970,15 +985,6 @@ def get_fcc(parameter = None):
                                                  rcv_tries=2)
             return __fcc
     
-    elif type(parameter) == types.DictType: #If passed a ticket with bfid.
-        bfid = parameter.get('fc', {}).get("bfid", None)
-
-    elif is_bfid(parameter):  #If passed a bfid.
-        bfid = parameter
-        
-    else:
-        #Set default value.
-        bfid = None
 
     #First check that the cached version matches the bfid brand.
     if __fcc != None:
@@ -1044,7 +1050,7 @@ def get_fcc(parameter = None):
                 __csc = csc_test  #Set global for performance reasons.
                 __fcc = fcc_test
                 return __fcc
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
@@ -1058,6 +1064,20 @@ def get_vcc(parameter = None):
     global __csc
 
     if not parameter:
+        volume = None
+
+    elif type(parameter) == types.DictType: #If passed a ticket with volume.
+        volume = parameter.get('fc', {}).get('external_label',
+                                             parameter.get('volume', None))
+
+    elif is_volume(parameter):  #If passed a volume.
+        volume = parameter
+
+    else:
+        #Set default value.
+        volume = None
+
+    if volume == None: 
         if __vcc != None: #No volume, but have cached vcc.
             return __vcc
         else:
@@ -1075,17 +1095,6 @@ def get_vcc(parameter = None):
                                                           rcv_tries=2)
             return __vcc
     
-    elif type(parameter) == types.DictType: #If passed a ticket with volume.
-        volume = parameter.get('fc', {}).get('external_label',
-                                             parameter.get('volume', None))
-
-    elif is_volume(parameter):  #If passed a volume.
-        volume = parameter
-
-    else:
-        #Set default value.
-        volume = None
-
     #First check that the cached version knows about the volume.
     if __vcc != None:
         volume_info = __vcc.inquire_vol(volume, 5, 20)
@@ -1147,7 +1156,7 @@ def get_vcc(parameter = None):
                 __csc = csc_test  #Set global for performance reasons.
                 __vcc = vcc_test
                 return __vcc
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
@@ -1313,7 +1322,7 @@ def check_server(csc, server_name):
     
     try:
         stati = csc.alive(server_name, rcv_timeout, alive_retries)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
@@ -1371,10 +1380,17 @@ def clients():
 
 def get_callback_addr(encp_intf, ip=None):
     # get a port to talk on and listen for connections
-    (host, port, listen_socket) = callback.get_callback(
-        verbose=encp_intf.verbose, ip=ip)
+    try:
+        (host, port, listen_socket) = callback.get_callback(
+            verbose=encp_intf.verbose, ip=ip)
+        listen_socket.listen(4)
+    except socket.error:
+        #Most likely, there are no more sockets/files left to open.
+        host = ""
+        port = 0
+        listen_socket = None
+
     callback_addr = (host, port)
-    listen_socket.listen(4)
 
     Trace.message(CONFIG_LEVEL,
                   "Listening for mover(s) to call back on (%s, %s)." %
@@ -1462,8 +1478,6 @@ def filesystem_check(target_filesystem, inputfile):
     #Get filesize
     try:
         size = get_file_size(inputfile)
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1478,8 +1492,6 @@ def filesystem_check(target_filesystem, inputfile):
         #get the maximum filesize the local filesystem allows.
         bits = os.pathconf(target_filesystem,
                            os.pathconf_names['PC_FILESIZEBITS'])
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except KeyError:
         return
     except (OSError, IOError):
@@ -1522,8 +1534,6 @@ def wrappersize_check(target_filepath, inputfile):
         wrappersizes = csc.get('wrappersizes', {})
         wrapper_max = wrappersizes.get(pout.file_family_wrapper,
                                        MAX_FILE_SIZE)
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1547,8 +1557,6 @@ def librarysize_check(target_filepath, inputfile):
         csc = get_csc()
         library = csc.get(pout.library + ".library_manager", {})
         library_max = library.get('max_file_size', MAX_FILE_SIZE)
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1633,8 +1641,8 @@ def inputfile_check(input_files, e):
             except ValueError:
                 pass  #There is no error.
 
-        except KeyboardInterrupt:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        #except KeyboardInterrupt:
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except EncpError:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #msg = sys.exc_info()[1]
@@ -1924,16 +1932,16 @@ def create_zero_length_local_files(filenames):
             else:
                 fname = f
             
-        try:
-            fd = atomic.open(fname, mode=0666) #raises OSError on error.
+        #try:
+        fd = atomic.open(fname, mode=0666) #raises OSError on error.
+        
+        if type(f) == types.DictType:
+            f['local_inode'] = os.fstat(fd)[stat.ST_INO]
+            
+        os.close(fd)
 
-            if type(f) == types.DictType:
-                f['local_inode'] = os.fstat(fd)[stat.ST_INO]
-
-            os.close(fd)
-
-        except OSError:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        #except OSError:
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #if raise_error:
             #    #Originally needed for "Get", don't abort.
             #    exc, msg = sys.exc_info()[:2]
@@ -3265,8 +3273,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             # didn't let us determine which request failed, don't worry.
             del request_list[request_list.index(request_dictionary)]
             queue_size = len(request_list)
-        except KeyboardInterrupt:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (KeyError, ValueError):
             queue_size = len(request_list) - 1
 
@@ -3328,7 +3334,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #Since a retriable error occured, resubmit the ticket.
                 lm_responce = submit_one_request(req)
 
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 exc, msg = sys.exc_info()[:2]
@@ -3864,7 +3870,7 @@ def set_pnfs_settings(ticket, intf_encp):
         #t=pnfs.Tag(os.path.dirname(ticket['wrapper']['pnfsFilename']))
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         #Get the exception.
@@ -3915,7 +3921,7 @@ def set_pnfs_settings(ticket, intf_encp):
             p.bit_file_id,
             drive,
             crc)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         #Get the exception.
@@ -3969,7 +3975,7 @@ def set_pnfs_settings(ticket, intf_encp):
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
 
         #ticket['status'] = fc_reply['status']
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
@@ -4000,7 +4006,7 @@ def set_pnfs_settings(ticket, intf_encp):
             else:
                 # set the file size
                 p.set_file_size(ticket['file_size'])
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
@@ -4516,13 +4522,17 @@ def write_to_hsm(e, tinfo):
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
 
+    #If the sockets do not exist, do not continue.
+    if listen_socket == None or udp_server.server_socket == None:
+        print_data_access_layer_format(
+            "", "", 0, {'status':(e_errors.NET_ERROR, None)})
+        quit()
+
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     try:
         request_list = create_write_requests(callback_addr, routing_addr,
                                              e, tinfo)
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, EncpError), msg:
         if hasattr(msg, "type"):
             error = msg.type
@@ -5619,6 +5629,8 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #    sys.stderr.write("Old file clerk format detected.\n")
             del fc_reply['fc'] #Speed up debugging by removing these.
             del fc_reply['vc']
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
@@ -6037,13 +6049,21 @@ def read_from_hsm(e, tinfo):
     callback_addr, listen_socket = get_callback_addr(e)
     #Get an ip and port to listen for the mover address for routing purposes.
     routing_addr, udp_server = get_routing_callback_addr(e)
+
+    #If the sockets do not exist, do not continue.
+    if listen_socket == None:
+        print_data_access_layer_format("", "", 0,
+           {'status':(e_errors.NET_ERROR, "Unable to obtain control socket.")})
+        quit()
+    if udp_server.server_socket == None:
+        print_data_access_layer_format("", "", 0,
+           {'status':(e_errors.NET_ERROR, "Unable to obtain udp socket.")})
+        quit()
     
     #Create all of the request dictionaries.
     try:
         requests_per_vol = create_read_requests(callback_addr, routing_addr,
                                                 tinfo, e)
-    except KeyboardInterrupt:
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, EncpError), msg:
         if hasattr(msg, "type"):
             error = msg.type
