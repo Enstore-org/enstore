@@ -140,7 +140,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             Trace.trace(17,'remove_deleted_vols forked parent - returning')
             return
         vols = []
@@ -1176,7 +1176,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # this could tie things up for awhile - fork and let child
         # send the work list (at time of fork) back to client
-        if os.fork() != 0:
+        if self.fork() != 0:
             Trace.trace(17,'get_vols forked parent - returning')
             return
         try:
