@@ -19,7 +19,6 @@ case $node in
       *) echo `date` NOT backing up nodes - Policy choice.
           exit 0
           ;;
-          ;;
 esac
 
 d=`date +"%j" | sed -e 's/^0*//'`
