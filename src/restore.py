@@ -102,7 +102,7 @@ class DbTable(db.DbTable):
 				self.__setitem__(i, self.dict[i])
 				error = error + 1
 				print 'F> database['+i+'] =', self.dict[i]
-			elif self.dict[i] != self.__getitem__(i):
+			elif `self.dict[i]` != `self.__getitem__(i)`:
 				print 'C> database and journal disagree on key('+i+')'
 				print 'C>  journal['+i+'] =', self.dict[i]
 				print 'C> database['+i+'] =', self.__getitem__(i)
