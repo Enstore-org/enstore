@@ -63,8 +63,7 @@ class FileClient(generic_client.GenericClient, \
         # is probably legitimate to wait for hours....
         while 1:
             control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_socket(control_socket, "file"+\
-                                  "clerk client get_bfids,  fc call back")
+            new_ticket = callback.read_tcp_obj(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
@@ -84,22 +83,13 @@ class FileClient(generic_client.GenericClient, \
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.file_server_callback_socket(ticket)
-        ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
-                  +"client get_bfids, fc final dialog")
-        workmsg = ""
-        while 1: ##XXX warning read_tcp_buf can over-read
-          msg=callback.read_tcp_buf(data_path_socket,"fcc get_bfids, reading worklist")
-          if len(msg)==0:
-                break
-          workmsg = workmsg+msg
-	  Trace.log(e_errors.INFO, msg)
-        worklist = ticket
-        worklist['bfids'] = workmsg
+        ticket= callback.read_tcp_obj(data_path_socket)
+        msg=callback.read_tcp_raw(data_path_socket)
+        ticket['bfids'] = msg
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_socket(control_socket, "file clerk"\
-                  +"client get_bfids, fc final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             msg = "get_bfids "\
@@ -107,9 +97,9 @@ class FileClient(generic_client.GenericClient, \
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
             Trace.trace(7,msg)
-            raise errno.errorcode[errno.EPROTO],msg
+            raise 'EPROTO',msg
 
-        return worklist
+        return ticket
 
     def tape_list(self,external_label):
         host, port, listen_socket = callback.get_callback()
@@ -130,8 +120,7 @@ class FileClient(generic_client.GenericClient, \
         # is probably legitimate to wait for hours....
         while 1:
             control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_socket(control_socket, "file"+\
-                                  "clerk client tape_list,  fc call back")
+            new_ticket = callback.read_tcp_obj(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
@@ -151,23 +140,14 @@ class FileClient(generic_client.GenericClient, \
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.file_server_callback_socket(ticket)
-        ticket= callback.read_tcp_socket(data_path_socket, "file clerk"\
-                  +"client tape_list, fc final dialog")
-        workmsg=""
-        while 1: ## XXX warning read_tcp_buf can over-read
-          msg=callback.read_tcp_buf(data_path_socket,"file  clerk client tape_list, reading worklist")
-          #print msg
-          if len(msg)==0:
-              #print "break"
-              break
-          workmsg = workmsg+msg
-        worklist = ticket
-        worklist['tape_list'] = workmsg
+        ticket= callback.read_tcp_obj(data_path_socket)
+        msg=callback.read_tcp_raw(data_path_socket)
+        ticket['tape_list'] = msg
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with file clerk
-        done_ticket = callback.read_tcp_socket(control_socket, "file clerk"\
-                  +"client tape_list, fc final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket, "file clerk"
+                                               "client tape_list, fc final dialog")
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             msg = "tape_list "\
@@ -175,10 +155,9 @@ class FileClient(generic_client.GenericClient, \
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
             Trace.trace(7,msg)
-            raise errno.errorcode[errno.EPROTO],msg
+            raise 'EPROTO',msg
 
-        #print workmsg
-        return worklist
+        return ticket
 
 
     def bfid_info(self):

@@ -1070,22 +1070,18 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(17,"get_vols child processing")
             self.get_user_sockets(ticket)
             ticket["status"] = (e_errors.OK, None)
-            callback.write_tcp_socket(self.data_socket, ticket,
-                                      "volume_clerk get_vols, controlsocket")
-
+            callback.write_tcp_obj(self.data_socket, ticket)
             dict.cursor("open")
             key,value=dict.cursor("first")
             separator = ''
             while key:
-                callback.write_tcp_buf(self.data_socket,separator+repr(key),
-                                       "volume_clerk get_vols, datasocket")
+                callback.write_tcp_raw(self.data_socket,separator+repr(key))
                 separator=','
                 key,value=dict.cursor("next")
             dict.cursor("close")
             self.data_socket.close()
 
-            callback.write_tcp_socket(self.control_socket, ticket,
-                                      "volume_clerk get_vols, controlsocket")
+            callback.write_tcp_obj(self.control_socket, ticket)
             self.control_socket.close()
             Trace.trace(17,'get_vols child exitting')
         except:

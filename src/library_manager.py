@@ -1023,11 +1023,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket["status"] = (e_errors.OK, None)
         rticket["at movers"] = work_at_movers
         rticket["pending_work"] = pending_work.get_queue()
-        callback.write_tcp_socket(self.data_socket,rticket,
+        callback.write_tcp_obj(self.data_socket,rticket,
                                   "library_manager getwork, datasocket")
         self.data_socket.close()
-        callback.write_tcp_socket(self.control_socket,ticket,
-                                  "library_manager getwork, controlsocket")
+        callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         os._exit(0)
 
@@ -1052,12 +1051,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		 'tr_error'       : mover['tr_error']
 		 }
 	    rticket["moverlist"].append(m)
-        callback.write_tcp_socket(self.data_socket,rticket,
-                                  "library_manager getmoverlist, datasocket")
+        callback.write_tcp_obj(self.data_socket,rticket)
         self.data_socket.close()
-        callback.write_tcp_socket(self.control_socket,ticket,
-                                  "library_manager getmoverlist, \
-				  controlsocket")
+        callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         os._exit(0)
 
@@ -1084,12 +1080,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket = {}
         rticket["status"] = (e_errors.OK, None)
         rticket["suspect_volumes"] = self.suspect_volumes
-        callback.write_tcp_socket(self.data_socket,rticket,
-                                  "library_manager get_suspect_volumes, datasocket")
+        callback.write_tcp_obj(self.data_socket,rticket)
         self.data_socket.close()
-        callback.write_tcp_socket(self.control_socket,ticket,
-                                  "library_manager get_suspect_volumes, \
-				  controlsocket")
+        callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
 	Trace.trace(13,"get_suspect_volumes ")
         os._exit(0)
@@ -1106,12 +1099,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	rticket = {"status":            (e_errors.OK, None),
 		   "delayed_dismounts": self.del_dismount_list
 		   }
-        callback.write_tcp_socket(self.data_socket,rticket,
-                                  "library_manager get_suspect_volumes, datasocket")
+        callback.write_tcp_obj(self.data_socket,rticket)
         self.data_socket.close()
-        callback.write_tcp_socket(self.control_socket,ticket,
-                                  "library_manager get_delayed_dismounts, \
-				  controlsocket")
+        callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         os._exit(0)
 

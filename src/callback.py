@@ -4,12 +4,14 @@
 # system imports
 import time
 import sys
+import string
 
 # enstore imports
 import lockfile
-import dict_to_a
 import Trace
 import e_errors
+import checksum
+import random
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -52,7 +54,7 @@ def get_callback_port(start,end):
     # properly clean up, even on kill -9s.
     #lockf = open ("/var/lock/hsm/lockfile", "w")
     lockf = open (HUNT_PORT_LOCK, "w")
-    Trace.trace(20,"get_callback_port - trying to get lock on node"+repr(host_name)+" "+repr(ca))
+    Trace.trace(20,"get_callback_port - trying to get lock on node %s %s"%(host_name,ca))
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
     Trace.trace(20,"get_callback_port - got the lock - hunting for port")
 
@@ -73,6 +75,14 @@ def get_callback_port(start,end):
         Trace.log(e_errors.INFO, repr(msg))
         time.sleep (sleeptime)
 
+def hex8(x):
+    s=hex(x)[2:]  #kill the 0x
+    if type(x)==type(1L): s=s[:-1]  # kill the L
+    l = len(s)
+    if l>8:
+        raise "Overflow Error", x
+    return '0'*(8-l)+s
+    
 
 # get an unused tcp port for control communication
 def get_callback():
@@ -82,51 +92,59 @@ def get_callback():
 def get_data_callback():
     return get_callback_port( 7640, 7650 )
 
-def write_tcp_buf(sock,buffer,errmsg=""): #can delete errmsg, given new trace mechanism
-    del errmsg # quiet the linter
-    r = None
+#send a message, with bytecount and rudimentary security
+def write_tcp_raw(sock,msg):
     try:
-        r = sock.send(buffer)
+        sock.send("%08d"%len(msg))
+        salt=random.randint(11,99)
+        sock.send("ENSTOR%s"%salt)
+        sock.send(msg)
+        sock.send(hex8(checksum.adler32(salt,msg,len(msg))))
     except socket.error, detail:
-        Trace.trace(6,"write_tcp_buf: socket.error"+str(detail))
+        Trace.trace(6,"write_tcp_raw: socket.error %s"%detail)
         ##XXX Further sends will fail, our peer will notice incomplete message
-    return r
 
-# send a message on a tcp socket
-def write_tcp_socket(sock,buffer,errmsg=""):
-    return write_tcp_buf(sock,dict_to_a.dict_to_a(buffer),errmsg)
+
+# send a message which is a Python object
+def write_tcp_obj(sock,obj):
+    return write_tcp_raw(sock,repr(obj))
     
-# read a complete message in a  tcp socket
-def read_tcp_buf(sock,errmsg="") :
-    del errmsg # quiet the linter
-    buf = sock.recv(65536*4)
-    return buf
-
-
-
-def read_tcp_socket(sock,errmsg="") :
-    del errmsg #quiet the linter
-    workmsg = ""
-    depth = 0
-
-    while depth or not workmsg:
-        c = sock.recv(1)
-        if not c:
-            break
-        
-        if c=='{':  ### XXX Kludge in absence of a byte-count on message
-            depth = depth+1
-        elif c=='}':
-            depth = depth-1
-
-        workmsg = workmsg + c
-
+# read a complete message
+def read_tcp_raw(sock):
+    tmp = sock.recv(8) 
     try:
-        worklist = dict_to_a.a_to_dict(workmsg)
-        return worklist
-    except SyntaxError:
-        Trace.trace(6,"read_tcp_socket Error handling message"+repr(workmsg))
-        raise IOError,"Error handling message"+repr(workmsg)
+        bytecount = string.atoi(tmp)
+    except:
+        bytecount = None
+    if len(tmp)!=8 or bytecount is None:
+        Trace.trace(6,"read_tcp_raw: bad bytecount %s"%tmp)
+        return ""
+    tmp = sock.recv(8) # the 'signature'
+    if len(tmp)!=8 or tmp[:6] != "ENSTOR":
+        Trace.trace(6,"read_tcp_raw: wrong signature %s"%tmp)
+        return ""
+    salt=string.atoi(tmp[6:])
+    msg = ""
+    while len(msg) < bytecount:
+        tmp = sock.recv(bytecount)
+        if not tmp:
+            break
+        msg = msg+tmp
+    if len(msg)!=bytecount:
+        Trace.trace(6,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
+        return ""
+    tmp = sock.recv(8)
+    crc = string.atol(tmp, 16)
+    mycrc = checksum.adler32(salt,msg,len(msg))
+    if crc != mycrc:
+        Trace.trace(6,"read_tcp_raw: checmsum mismatch %s != %s"%(mycrc, crc))
+        return ""
+    return msg
+
+
+
+def read_tcp_obj(sock) :
+    return eval(read_tcp_raw(sock))
 
     
 # return a mover tcp socket
@@ -187,7 +205,7 @@ def user_callback_socket(ticket) :
                 repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(host, port)
-    write_tcp_socket(sock,ticket,"callback user_callback_socket")
+    write_tcp_obj(sock,ticket)
     return sock
 
 # send ticket/message on tcp socket
@@ -198,7 +216,7 @@ def send_to_user_callback(ticket) :
                 repr(port))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(host, port)
-    write_tcp_socket(sock,ticket,"callback send_to_user_callback")
+    write_tcp_obj(sock,ticket)
     sock.close()
 
 if __name__ == "__main__" :

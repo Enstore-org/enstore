@@ -123,8 +123,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # is probably legitimate to wait for hours....
         while 1:
             control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_socket(control_socket, "volume"+\
-                                  "clerk client get_vols,  vc call back")
+            new_ticket = callback.read_tcp_obj(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"]:
                 listen_socket.close()
                 break
@@ -147,25 +146,14 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.volume_server_callback_socket(ticket)
-        ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
-                  +"client get_vols, vc final dialog")
-
-        workmsg = ""
-        while 1:
-            msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+\
-                                    "client get_vols, reading worklist")
-            if len(msg)==0:
-                break
-            workmsg = workmsg+msg
-
-        ticket['volumes'] = workmsg
-        Trace.trace(12, workmsg)
+        ticket= callback.read_tcp_obj(data_path_socket)
+        msg=callback.read_tcp_raw(data_path_socket)
+        ticket['volumes'] = msg
         data_path_socket.close()
 
 
         # Work has been read - wait for final dialog with volume clerk
-        done_ticket = callback.read_tcp_socket(control_socket, "volume clerk"\
-                  +"client get_vols, vc final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             Trace.trace(12,"vcc.get_vols "\

@@ -88,9 +88,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # is probably legitimate to wait for hours....
         while 1 :
             control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_socket(control_socket, "library "+\
-                                                  "manager "+ work + \
-                                                  ", mover call back")
+            new_ticket = callback.read_tcp_obj(control_socket)
             if ticket["unique_id"] == new_ticket["unique_id"] :
                 listen_socket.close()
                 break
@@ -109,15 +107,11 @@ class LibraryManagerClient(generic_client.GenericClient) :
         # the library manager on the library manager's port and read the
         # work queues on that port.
         data_path_socket = callback.library_manager_callback_socket(ticket)
-        worklist = callback.read_tcp_socket(data_path_socket,"library "+\
-                                            "manager "+work+\
-                                            ", reading worklist")
+        worklist = callback.read_tcp_obj(data_path_socket)
         data_path_socket.close()
 
         # Work has been read - wait for final dialog with library manager.
-        done_ticket = callback.read_tcp_socket(control_socket, "library "+\
-                                               "manager "+work+\
-                                               ", mover final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\

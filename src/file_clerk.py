@@ -245,25 +245,21 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
      self.get_user_sockets(ticket)
      ticket["status"] = (e_errors.OK, None)
-     callback.write_tcp_socket(self.data_socket,ticket,
-                                  "file_clerk get bfids, controlsocket")
+     callback.write_tcp_obj(self.data_socket,ticket)
      msg=""
      dict.cursor("open")
      key,value=dict.cursor("first")
      while key:
         msg=msg+repr(key)+","
         if len(msg) >= 16384:
-           callback.write_tcp_buf(self.data_socket,msg,
-                                  "file_clerk get bfids, datasocket")
+           callback.write_tcp_raw(self.data_socket,msg)
            msg=""
         key,value=dict.cursor("next")
      dict.cursor("close")
      msg=msg[:-1]
-     callback.write_tcp_buf(self.data_socket,msg,
-                                  "file_clerk get bfids, datasocket")
+     callback.write_tcp_raw(self.data_socket,msg)
      self.data_socket.close()
-     callback.write_tcp_socket(self.control_socket,ticket,
-                                  "file_clerk get bfids, controlsocket")
+     callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
      return
 
@@ -412,7 +408,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          return
      # get a user callback
      self.get_user_sockets(ticket)
-     callback.write_tcp_socket(self.data_socket,ticket,"file_clerk get bfids, controlsocket")
+     callback.write_tcp_obj(self.data_socket,ticket)
      msg="     label            bfid       size        location_cookie delflag original_name\n"
 
      # now get a cursor so we can loop on the database quickly:
@@ -434,13 +430,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                                       deleted,value['pnfs_name0'])
              if len(msg) >= 16384:
                  #print "sending len(msg)"
-                 callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list, datasocket")
+                 callback.write_tcp_raw(self.data_socket,msg)
                  msg=""
          key,value=dict.cursor("next")
      dict.cursor("close")
-     callback.write_tcp_buf(self.data_socket,msg, "file_clerk tape_list(2), datasocket")
+     callback.write_tcp_raw(self.data_socket,msg)
      self.data_socket.close()
-     callback.write_tcp_socket(self.control_socket,ticket, "file_clerk tape_list, controlsocket")
+     callback.write_tcp_obj(self.control_socket,ticket)
      self.control_socket.close()
      return
 

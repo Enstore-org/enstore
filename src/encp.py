@@ -383,8 +383,7 @@ def write_to_hsm(input, output, output_file_family='',
             while 1 :
                 Trace.trace(10,"write_to_hsm listening for callback")
                 control_socket, address = listen_socket.accept()
-                ticket = callback.read_tcp_socket(control_socket,\
-                             "encp write_to_hsm, mover call back")
+                ticket = callback.read_tcp_obj(control_socket)
                 if verbose > 3:
                     print "ENCP:write_to_hsm MV called back with"
                     pprint.pprint(ticket)
@@ -477,8 +476,7 @@ def write_to_hsm(input, output, output_file_family='',
 			# could be network or could be mover closing socket...
 			# try to get done_ticket
 			try:
-			    done_ticket = callback.read_tcp_socket(control_socket,
-								   "encp write_to_hsm, error dialog")
+			    done_ticket = callback.read_tcp_obj(control_socket)
 			except:
 			    # assume network error...
 			    # no done_ticket!
@@ -486,8 +484,7 @@ def write_to_hsm(input, output, output_file_family='',
 			    #                               file_size[i], done_ticket)
 			    # exit here
 			    jraise(errno.errorcode[errno.EPROTO],
-				   " encp.write_to_hsm: network problem or mover crash "+\
-				   str(err_msg))
+				   " encp.write_to_hsm: network problem or mover crash  %s"%err_msg)
 			    pass
 
 			control_socket.close()
@@ -551,8 +548,7 @@ def write_to_hsm(input, output, output_file_family='',
 	    Trace.trace(10,"write_to_hsm waiting for final "+\
 			"mover dialog on"+\
 			repr(control_socket))
-	    done_ticket = callback.read_tcp_socket(control_socket,
-                          "encp write_to_hsm, mover final dialog")
+	    done_ticket = callback.read_tcp_obj(control_socket)
 	    control_socket.close()
 	    Trace.trace(10,"write_to_hsm final dialog recieved")
 
@@ -1242,8 +1238,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         while 1 :
             Trace.trace(8,"read_hsm_files listening for callback")
             control_socket, address = listen_socket.accept()
-            ticket = callback.read_tcp_socket(control_socket,\
-                         "encp read_from_hsm, mover call back")
+            ticket = callback.read_tcp_obj(control_socket)
             if verbose > 3:
                 print "ENCP:read_from_hsm MV called back with", ticket
             callback_id = ticket['unique_id']
@@ -1352,15 +1347,14 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		    error = 1
 		    data_path_socket.close()
 		    try:
-			done_ticket = callback.read_tcp_socket(control_socket,
-							       "red_from_hsm, error dialog")
+			done_ticket = callback.read_tcp_obj(control_socket)
 		    except:
 			# assume network error...
 			# no done_ticket!
 			# exit here
 			jraise(errno.errorcode[errno.EPROTO],
-			       " encp._read_from_hsm: network problem or mover crash "+\
-			       str(err_msg))
+			       " encp._read_from_hsm: network problem or mover crash %s"%err_msg)
+
 			pass
 		    control_socket.close()
 		    print_data_access_layer_format(  requests[j]['infile'],  
@@ -1427,8 +1421,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on"+\
                     repr(control_socket))
-        done_ticket = callback.read_tcp_socket(control_socket,\
-                      "encp read_from_hsm, mover final dialog")
+        done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
 	control_socket_closed = 1
         Trace.trace(8,"read_hsm_files final dialog recieved")

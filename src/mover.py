@@ -206,8 +206,7 @@ def fatal_enstore( self, error_info ):
 def send_user_done( self, ticket, error_info ):
     self.hsm_driver.user_state_set( forked_state.index('send_user_done') )
     ticket['status'] = (error_info,None)
-    callback.write_tcp_socket( self.control_socket, ticket,
-			       'mover send_user_done' )
+    callback.write_tcp_obj( self.control_socket, ticket)
     self.control_socket.close()
     return
 
