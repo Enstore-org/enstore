@@ -174,8 +174,8 @@ def testNodes():
     else:
         numTests = numTstGrps * numTstGrps - numTstGrps
     sys.stdout.write("\nThere are %s tests:\n" % str(numTests))
-    sys.stdout.write("This test will take app. %s seconds to run.\n" % str(testTime))
-    sys.stdout.write("It could take much longer depending on how busy the system is.\n")
+    sys.stdout.write("This program will take app. %s seconds to run.\n" % str(testTime))
+    sys.stdout.write("It could take much longer depending on how busy the systems are.\n")
     prevTstNum = testNum
     while grpSeqNum < numTstGrps:
         sys.stdout.write("\n")
@@ -267,9 +267,10 @@ def printResults():
         fromPtr = fromPtr + 1
     sys.stdout.write("\n\n    -2 : AN 'UNKNOWN ERROR' OCCURRED. RUN THE TEST BY HAND\n")
     sys.stdout.write("       : TO SEE WHAT THE ERROR WAS.\n")
+    sys.stdout.write("""       : rsh fromNode "/opt/netperf/netperf -l testtime -H toNode"\n""")
     sys.stdout.write("    -1 : SYSTEM HUNG OR HAS VERY SLOW RESPONSE\n")
     sys.stdout.write(" BLANK : SELF TEST. DEVICE DID NOT TEST ITSELF.\n")
-    sys.stdout.write("# >= 0 : THROUGHPUT - NUM * 10^6 BITS/SEC\n\n")
+    sys.stdout.write("# >= 0 : THROUGHPUT: NUM * 10^6 BITS/SEC\n\n")
 
 ####################################################################################
 # DESCRIPTION  : PRINTS THE HELP FILE WHEN PROGRAM IS CALLED WITH THE '-H' OPTION.
