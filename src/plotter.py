@@ -1,4 +1,5 @@
 import sys
+import os
 
 import inquisitor_plots
 import enstore_files
@@ -12,6 +13,7 @@ import e_errors
 import Trace
 
 MY_NAME = "Plotter"
+BURN_RATE = "burn-rate"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
@@ -71,6 +73,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
         # these are the files to which we will write, they are html files
 	self.plotfile_l = []
+	links_to_add = []
         plotfile1 = enstore_files.HTMLPlotFile(plot_file, self.system_tag)
 	if not bpd_dir == self.html_dir:
 	    # if the bpd_dir is the same as self.html_dir, then the page above
@@ -78,18 +81,30 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    plot_file = "%s/%s"%(bpd_dir, enstore_files.plot_html_file_name())
 	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
 						   self.system_tag, "../")
-	    self.plotfile_l.append((plotfile2, bpd_dir))
+	    self.plotfile_l.append([plotfile2, bpd_dir])
+	    links_to_add.append(("%s/%s"%(enstore_constants.BPD_SUBDIR, 
+					  enstore_files.plot_html_file_name()),
+				 "Bytes/Day per Mover Plots"))
+	# see if we should add a link to the burn rate plot
+	dir = "%s/%s"%(self.html_dir, BURN_RATE)
+	if os.path.isdir(dir):
+	    # there are plots here
+	    plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+						   self.system_tag, "../")
+	    self.plotfile_l.append([plotfile2, dir])
+	    links_to_add.append(("%s/%s"%(BURN_RATE, 
+					  enstore_files.plot_html_file_name()),
+				 "Total Tapes Used per Storage Group Plots"))
 	# the first plotfile needs to have a link to the second one on it, if 
 	# the second one exists
-	if not self.plotfile_l:
+	if not links_to_add:
 	    # no link is required
 	    self.plotfile_l.append((plotfile1, self.html_dir))
 	else:
-	    # we made the plotfile2 page, add a link to it on the 1st page
-	    self.plotfile_l.append((plotfile1, self.html_dir, 
-				    "%s/%s"%(enstore_constants.BPD_SUBDIR, 
-					     enstore_files.plot_html_file_name()),
-				    "Bytes per Day per Mover Plots"))
+	    # we made the plotfile2 page(s), add a link to it on the 1st page
+	    tmp_l = [plotfile1, self.html_dir] + links_to_add
+	    self.plotfile_l.append(tmp_l)
 
 class PlotterInterface(generic_client.GenericClientInterface):
 

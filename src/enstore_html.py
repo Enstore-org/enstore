@@ -2087,7 +2087,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 
     def __init__(self, title="ENSTORE System Plots", gif="en_plots.gif", 
 		 system_tag="", description="", mount_label=None,
-		 link=None, txt=None, nav_link=None):
+		 links_l=None, nav_link=None):
 	EnBaseHtmlDoc.__init__(self, refresh=0, help_file="plotHelp.html",
 			       system_tag=system_tag)
 	self.title = title
@@ -2095,8 +2095,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	self.source_server = THE_INQUISITOR
 	self.description = description
 	self.mount_label = mount_label
-	self.link = link
-	self.txt = txt
+	self.links_l = links_l
 	self.nav_link = nav_link
 
     def find_label(self, text):
@@ -2128,7 +2127,9 @@ class EnPlotPage(EnBaseHtmlDoc):
 		else:
 		    return file_label[1]
         else:
-            return DEFAULT_LABEL
+	    # we could not find a label.  use the text without the _stamp.jpg
+	    t = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
+	    return string.replace(text, t, "")
 
     def find_ps_file(self, jpg_file, pss):
 	# see if there is a corresponding ps file
@@ -2212,14 +2213,17 @@ class EnPlotPage(EnBaseHtmlDoc):
 	plot_table = HTMLgen.TableLite(width="100%", cols="3", align="CENTER",
                                        cellspacing=0, cellpadding=0)
 	# add any links to other plot pages
-	if self.link and self.txt:
-	    tr = HTMLgen.TR()
-	    tr.append(HTMLgen.TD(HTMLgen.Href(self.link, 
-					      HTMLgen.Font(self.txt, size="+2")),
-				 colspan=3, align="LEFT"))
-	    plot_table.append(tr)
-	    plot_table.append(empty_row(3))
-	    plot_table.append(empty_row(3))
+	if self.links_l:
+	    for link,txt in self.links_l:
+		tr = HTMLgen.TR()
+		tr.append(HTMLgen.TD(HTMLgen.Href(link, 
+						  HTMLgen.Font(txt, size="+2")),
+				     colspan=3, align="LEFT"))
+		plot_table.append(tr)
+	    else:
+		plot_table.append(empty_row(3))
+		plot_table.append(empty_row(3))
+
 	while stamps:
 	    trs = HTMLgen.TR()
 	    trps = HTMLgen.TR()

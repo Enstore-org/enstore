@@ -22,18 +22,18 @@ class InquisitorPlots:
     # create the html file with the inquisitor plot information
     def	make_plot_html_page(self):
 	for plotfile_t  in self.plotfile_l:
-	    if len(plotfile_t) == 4:
-		(plotfile, html_dir, link, txt) = plotfile_t
+	    if len(plotfile_t) > 2:
+		plotfile = plotfile_t[0]
+		html_dir = plotfile_t[1]
+		links_l = plotfile_t[2:]
 	    else:
 		(plotfile, html_dir) = plotfile_t
-		link = None
-		txt = None
+		links_l = None
 		nav_link = ""
 	    plotfile.open()
 	    # get the list of stamps and jpg files
 	    (jpgs, stamps, pss) = enstore_plots.find_jpg_files(html_dir)
-	    plotfile.write(jpgs, stamps, pss, self.mount_label, link,
-			   txt)
+	    plotfile.write(jpgs, stamps, pss, self.mount_label, links_l)
 	    plotfile.close()
 	    plotfile.install()
 

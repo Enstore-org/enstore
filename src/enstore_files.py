@@ -457,12 +457,11 @@ class HTMLPlotFile(EnFile):
 	self.nav_link = nav_link
 
     # format the config entry and write it to the file
-    def write(self, jpgs, stamps, pss, mount_label, link=None,
-	      txt=None):
+    def write(self, jpgs, stamps, pss, mount_label, links_l=None):
         if self.openfile:
             doc = enstore_html.EnPlotPage(system_tag=self.system_tag,
 					  mount_label=mount_label, 
-					  link=link, txt=txt,
+					  links_l=links_l,
 					  nav_link=self.nav_link)
             doc.body(jpgs, stamps, pss)
 	    self.do_write(str(doc))
