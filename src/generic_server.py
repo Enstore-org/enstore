@@ -51,7 +51,7 @@ class GenericServer(generic_client.GenericClient):
         if intf.do_alarm:
             Trace.do_alarm(intf.do_alarm)
         if intf.dont_alarm:
-            Trace.dont_alarm(intf_dont_alarm)
+            Trace.dont_alarm(intf.dont_alarm)
            
     # given a server name, return the name mutated into a name appropriate for
     # identification in log and trace. this means, upcase the name and possibly
