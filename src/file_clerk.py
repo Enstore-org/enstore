@@ -28,6 +28,7 @@ import Trace
 import e_errors
 import configuration_client
 import hostaddr
+import pnfs
 
 MY_NAME = "file_clerk"
 
@@ -469,7 +470,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # rename volume and volume map
     def rename_volume(self, ticket):
         try:
-            bfid = ticket["bfid"]
             label = ticket["external_label"]
             set_deleted = ticket[ "set_deleted"]
             restore_volmap = ticket["restore"]
@@ -511,12 +511,30 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # rename volume and volume map
     # this version rename volume for all files in it
 
+    def __rename_volume(self, old, new):
+        Trace.log(e_errors.INFO, 'renaming volume %s -> %s'%(old, new))
+        bfids = self.get_all_bfids(old)
+
+        for bfid in bfids:
+            record = self.dict[bfid] 
+            # replace old volume name with new one
+            p1, f = os.path.split(record["pnfs_mapname"])
+            p, f1 = os.path.split(p1)
+            if old != f1:
+                Trace.log(e_errors.ERROR, 'volmap name mismatch. Looking for"%s" but found "%s". Changed anyway.'%(old, f1))
+            record["pnfs_mapname"] = os.path.join(p, new, f)
+            record["external_label"] = new
+            self.dict[bfid] = record 
+ 
+        Trace.log(e_errors.INFO, 'volume %s renamed to %s'%(old, new))
+        return
+
+    # rename volume -- server service
+
     def rename_volume2(self, ticket):
         try:
-            label = ticket["external_label"]
-            set_deleted = ticket[ "set_deleted"]
-            restore_volmap = ticket["restore"]
-            restore_dir = ticket["restore_dir"]
+            old = ticket["external_label"]
+            new = ticket[ "new_external_label"]
         except KeyError, detail:
             msg = "File Clerk: key %s is missing" % (detail,)
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -524,23 +542,114 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        bfids = self.get_all_bfids(label)
-
-        for bfid in bfids:
-            record = self.dict[bfid] 
-            # replace old volume name with new one
-            record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
-                                                record["external_label"], 
-                                                label)
-            ticket["pnfs_mapname"] = record["pnfs_mapname"]
-            record["external_label"] = label
-            record["deleted"] = set_deleted
-            self.dict[bfid] = record 
- 
-        # and return to the caller
         ticket["status"] = (e_errors.OK, None)
+        # catch any failure
+        try:
+            self.__rename_volume(old, new)
+        except:
+            ticket["status"] = (e_errors.OK, "rename failed")
+        # and return to the caller
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
+        return
+
+    # __erase_volume(self, vol) -- delete all files belonging to vol
+
+    def __erase_volume(self, vol):
+        Trace.log(e_errors.INFO, 'erasing files of volume %s'%(vol))
+        bfids = self.get_all_bfids(vol)
+        for bfid in bfids:
+            del self.dict[bfid]
+        Trace.log(e_errors.INFO, 'files of volume %s are erased'%(vol))
+        return
+
+    # erase_volume -- server service
+
+    def erase_volume(self, ticket):
+        try:
+            vol = ticket["external_label"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["status"] = (e_errors.OK, None)
+        # catch any failure
+        try:
+            self.__erase_volume(vol)
+        except:
+            ticket["status"] = (e_errors.OK, "erase failed")
+        # and return to the caller
+        self.reply_to_caller(ticket)
+        return
+
+    # __delete_volume(self, vol) -- mark all files belonging to vol as deleted
+
+    def __delete_volume(self, vol):
+        Trace.log(e_errors.INFO, 'marking files of volume %s as deleted'%(vol))
+        bfids = self.get_all_bfids(vol)
+        for bfid in bfids:
+            record = self.dict[bfid]
+            record['deleted'] = 'yes'
+            self.dict[bfid] = record
+        Trace.log(e_errors.INFO, 'all files of volume %s are marked deleted'%(vol))
+        return
+
+    # delete_volume -- server service
+
+    def delete_volume(self, ticket):
+        try:
+            vol = ticket["external_label"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["status"] = (e_errors.OK, None)
+        # catch any failure
+        try:
+            self.__delete_volume(vol)
+        except:
+            ticket["status"] = (e_errors.OK, "delete failed")
+        # and return to the caller
+        self.reply_to_caller(ticket)
+        return
+
+    # __restore_volume(self, vol) -- restore according to volmap
+
+    def __restore_volume(self, vol):
+        Trace.log(e_errors.INFO, 'restoring files for vol %s'%(vol))
+        bfids = self.get_all_bfids(vol)
+        for bfid in bfids:
+            record = self.dict[bfid]
+            map = pnfs.Pnfs(record["pnfs_mapname"])
+            status = map.restore_from_volmap(restore_dir)
+        Trace.log(e_errors.INFO, 'all files of volume %s are restored'%(vol))
+        return
+
+    # restore_volume -- server service
+
+    def restore_volume(self, ticket):
+        try:
+            vol = ticket["external_label"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket["status"] = (e_errors.OK, None)
+        # catch any failure
+        try:
+            self.__restore_volume(vol)
+        except:
+            ticket["status"] = (e_errors.OK, "restore failed")
+        # and return to the caller
+        self.reply_to_caller(ticket)
         return
 
     # A bit file id is defined to be a 64-bit number whose most significant
