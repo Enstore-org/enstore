@@ -789,7 +789,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                         reply_read=1
                         break
                     else:
-                        Trace.log(e_errors.ERROR,"write_to_hsm mover impostor called us, \
+                        Trace.log(e_errors.INFO,"write_to_hsm mover impostor called us, \
  control_socket=%s address=%s, got id %s expected %s\nticket=%s" %(control_socket,address,
                                                                    callback_id, unique_id[i],ticket))
                         reply_read=0
@@ -875,7 +875,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                         # exit here
                         print_data_access_layer_format(inputlist[i],outputlist[i],0,
                                                        {'status':('EPROTO',
-                                                                  'Network problem or mover crash')})
+                                                                  'Network problem or mover crash')}) ##XXX RENAME
+                                                                                                                             ## disconnected
                         quit()
 
                     control_socket.close()
@@ -1323,7 +1324,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             %(control_socket, address))
                 break
             else:
-                Trace.log(e_errors.ERROR, "read_hsm_files: mover impostor called back on \
+                Trace.log(e_errors.INFO, "read_hsm_files: mover impostor called back on \
  control_socket=%s address=%s"%(control_socket, address))
                 #control_socket.close()
                 break
