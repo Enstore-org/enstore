@@ -44,6 +44,7 @@ node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
 
 LOG=/tmp/netscan.log
+ACTIVE=/tmp/netscan.ACTIVE
 
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           if [ "${2:-}"x = "psx" ]; then
@@ -51,6 +52,21 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           fi
           $ECHO "$1"
         }
+
+
+mkdir $ACTIVE 1>/dev/null 2>/dev/null
+if [ $? -ne 0 ] ; then
+   msg="netscan on $node already ACTIVE... exiting"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+   exit 1
+else
+   logit "netscan starting"
+fi
+
+
 
 right_file() { if ! $CMP $1 $2 2>/dev/null; then
                   msg1="BAD CONFIGURATION: $1 $2  do not match"
@@ -72,7 +88,11 @@ right_file /home/enstore/enstore/etc/hosts.allow /etc/hosts.allow
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
 right_file /home/enstore/enstore/etc/inetd.conf /etc/inetd.conf
-right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
+if [ $node = "cdfenmvr1a" -o $node = "cdfenmvr2a" ]; then
+  right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
+else
+  right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
+fi
 
 #rpm -Va | $EGREP bin | | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
 
