@@ -17,6 +17,7 @@ class Interface(generic_client.GenericClientInterface):
 		self.skip_pnfs = 0
 		self.dont_ask = 0
 		self.bfids = None
+		self.keep_vol = None
 		generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -34,6 +35,11 @@ class Interface(generic_client.GenericClientInterface):
 			option.USER_LEVEL:option.ADMIN},
 		option.SKIP_PNFS: {
 			option.HELP_STRING: "Ignore pnfs",
+			option.DEFAULT_VALUE:option.DEFAULT,
+			option.VALUE_USAGE:option.IGNORED,
+			option.USER_LEVEL:option.ADMIN},
+		option.KEEP_VOL: {
+			option.HELP_STRING: "Keep volume record",
 			option.DEFAULT_VALUE:option.DEFAULT,
 			option.VALUE_USAGE:option.IGNORED,
 			option.USER_LEVEL:option.ADMIN},
@@ -55,7 +61,7 @@ class Interface(generic_client.GenericClientInterface):
 		}
 
 def usage():
-	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] [--bfids] --delete] vol]"%(sys.argv[0])
+	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] [--bfids] --delete] [--keep-vol] vol]"%(sys.argv[0])
 
 if __name__ == '__main__':
 	# use GenericClientInterface to get basic environment
@@ -188,7 +194,7 @@ if __name__ == '__main__':
 			skip = '--skip-pnfs '
 		else:
 			skip = ''
-		print 'use "%s %s--delete %s" to really delete it'%(sys.argv[0], skip, vol)
+		print 'use "%s %s--delete [--keep-vol] %s" to really delete it'%(sys.argv[0], skip, vol)
 		sys.exit(0)
 
 	# let's get serious
@@ -306,7 +312,7 @@ if __name__ == '__main__':
 
 	# delete from volume database
 
-	if not intf.bfids:
+	if not intf.bfids and not intf.keep_vol:
 		print 'removing', vol, 'from volume database ...',
 		ticket = vcc.rmvolent(vol)
 		if ticket['status'][0] == e_errors.OK:

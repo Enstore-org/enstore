@@ -168,7 +168,7 @@ DISMOUNT = "dismount"                        #media
 DO_ALARM = "do-alarm"
 DO_LOG = "do-log"
 DO_PRINT = "do-print"
-DONT_ASK = "dont-ask"                        # super_remove
+DONT_ASK = "dont-ask"                        #super_remove
 DONT_ALARM = "dont-alarm"
 DONT_LOG = "dont-log"
 DONT_PRINT = "dont-print"
@@ -218,6 +218,7 @@ INPUT_DIR = "input_dir"                      #plotter
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
+KEEP_VOL = "keep-vol"                        #super-remove
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
@@ -300,7 +301,7 @@ SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
-SKIP_PNFS = "skip-pnfs"                      # super_remove
+SKIP_PNFS = "skip-pnfs"                      #super_remove
 START_DRAINING = "start-draining"            #library
 START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
@@ -372,7 +373,7 @@ valid_option_list = [
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
-    KEEP, KEEP_DIR,
+    KEEP, KEEP_DIR, KEEP_VOL,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
     LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML,
