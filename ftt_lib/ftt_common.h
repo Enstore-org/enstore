@@ -42,7 +42,7 @@ extern int		ftt_get_stats(ftt_descriptor, ftt_stat_buf);
 extern int		ftt_guess_label(char *,int, char**, int *);
 extern ftt_stat_buf *	ftt_init_stats(ftt_descriptor);
 extern char **		ftt_list_all(ftt_descriptor);
-extern int		ftt_load_partition(ftt_descriptor, int); 
+extern int		ftt_set_mount_partition(ftt_descriptor, int); 
 extern char * 		ftt_make_os_name(char *, char *, char *);
 extern int		ftt_name_to_density(ftt_descriptor, const char *);
 extern ftt_descriptor	ftt_open(const char*, int);

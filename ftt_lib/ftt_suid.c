@@ -17,9 +17,9 @@ usage(void) {
    fprintf(stderr, "       ftt_suid -d arg basename      # set density\n");
    fprintf(stderr, "       ftt_suid -p basename          # get/dump parts\n");
    fprintf(stderr, "       ftt_suid -u basename          # undump/write parts\n");
-   fprintf(stderr, "       ftt_suid -l blck basename  	 # locate to blk");
-   fprintf(stderr, "       ftt_suid -L blck prt basename # locate w/partition");
-   fprintf(stderr, "       ftt_suid -M prt basename      # set mount partition");
+   fprintf(stderr, "       ftt_suid -l blck basename  	 # locate to blk\n");
+   fprintf(stderr, "       ftt_suid -L blck prt basename # locate w/partition\n");
+   fprintf(stderr, "       ftt_suid -M prt basename      # set mount partition\n");
    exit(-1);
 }
 
@@ -161,7 +161,7 @@ main(int argc, char **argv) {
 		res = ftt_locate_part(d, arg, arg2);
 		break;
         case 'M':
-                ftt_load_partition(d, arg);
+                ftt_set_mount_partition(d, arg);
 		break;
 	}
 	ftt_report(d);

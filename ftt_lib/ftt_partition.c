@@ -321,7 +321,7 @@ ftt_undump_partitions(ftt_partbuf p, FILE *pf) {
 }
 
 int		
-ftt_load_partition(ftt_descriptor d, int partno) {
+ftt_set_mount_partition(ftt_descriptor d, int partno) {
     int res = 0;
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
