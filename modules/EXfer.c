@@ -793,15 +793,17 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 		       "fd timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
-	
+  
   /* Use with direct io. */
   if(info->direct_io)
   {
-    /* Only apply after the last write() call. */
-    if((info->bytes - sts) <= 0)
+    /* Only apply after the last write() call.  Also, if the size of the
+       file was a multiple of the alignment used, then everything is correct
+       and attempting to do this file size 'fix' is unnecessary. */
+    if(info->bytes <= sts)
     {
       /* Adjust the sts. */
-      sts = sts - info->bytes;
+      sts = ((int)((signed long long)info->bytes));
       /* Truncate size at end of transfer.  For direct io all writes must be
 	 a multiple of the page size.  The last write must be truncated down
 	 to the correct size. */
