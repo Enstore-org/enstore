@@ -392,11 +392,13 @@ class EnStatus:
                                                           (ticket[enstore_constants.CURRENT_VOLUME],)
             # in the following 2 tests the mover state must be 'ACTIVE'
             elif ticket["mode"] == mover_constants.WRITE:
-                self.text[key][enstore_constants.STATE] = "busy writing %s bytes to Enstore"%\
-                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),)
+                self.text[key][enstore_constants.STATE] = "busy writing %s bytes to %s"%\
+                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),
+                                                           ticket[enstore_constants.CURRENT_VOLUME])
             else:
-                self.text[key][enstore_constants.STATE] = "busy reading %s bytes from Enstore"%\
-                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),)
+                self.text[key][enstore_constants.STATE] = "busy reading %s bytes from %s"%\
+                                                          (add_commas(str(ticket[enstore_constants.BYTES_TO_TRANSFER])),
+                                                           ticket[enstore_constants.CURRENT_VOLUME])
             if ticket["mode"] == mover_constants.WRITE:
                 self.text[key][enstore_constants.EOD_COOKIE] = ticket[enstore_constants.CURRENT_LOCATION]
             else:
@@ -408,7 +410,7 @@ class EnStatus:
             self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket[enstore_constants.BYTES_READ]))
             self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket[enstore_constants.BYTES_WRITTEN]))
             if lcl_state == mover_constants.HAVE_BOUND:
-                self.text[key][enstore_constants.STATE] = "HAVE BOUND volume - IDLE"
+                self.text[key][enstore_constants.STATE] = "HAVE BOUND volume (%s) - IDLE"%(ticket[enstore_constants.CURRENT_VOLUME],)
             else:
                 self.text[key][enstore_constants.STATE] = "%s"%(lcl_state,)
             if ticket[enstore_constants.TRANSFERS_COMPLETED] > 0:
