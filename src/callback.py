@@ -136,11 +136,11 @@ def hex8(x):
 
 # get an unused tcp port for control communication
 def get_callback(use_multiple=0,fixed_ip=None,verbose=0):
-    return get_callback_port( 7600, 7640, use_multiple, fixed_ip, verbose )
+    return get_callback_port( 7600, 7800, use_multiple, fixed_ip, verbose )
 
 # get an unused tcp port for data communication - called by mover
 def get_data_callback(use_multiple=0, fixed_ip=None,verbose=0):
-    return get_callback_port( 7640, 7650, use_multiple, fixed_ip, verbose )
+    return get_callback_port( 7800, 8000, use_multiple, fixed_ip, verbose )
 
 #send a message, with bytecount and rudimentary security
 def write_tcp_raw(sock,msg):
@@ -208,13 +208,18 @@ def read_tcp_obj(sock) :
 
     
 # return a mover tcp socket
-def mover_callback_socket(ticket) :
+def mover_callback_socket(ticket, use_multiple=1, verbose=0) :
     host, port = ticket['mover']['callback_addr']    
     Trace.trace(16,'mover_callback_socket host='+\
                 repr(host)+" port="+\
                 repr(port))
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ##sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    localhost, localport, sock = get_callback_port(7000, 8000, use_multiple=use_multiple,
+                                                   verbose=verbose)
+    Trace.trace(16, "mover_callback_socket: using %s %s" % (localhost, localport))
     sock.connect(host, port)
+    Trace.trace(16, "mover_callback_socket: connected,  local=%s peer=%s" % (sock.getsockname(),
+                                                                             sock.getpeername()))
     return sock
 
 # return a library manager tcp socket
