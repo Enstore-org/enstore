@@ -1,0 +1,43 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+if [ "${1:-}" = "-a" ] ; then ALARM=1;       shift; else ALARM=0;        fi
+if [ "${1:-}" = "-f" ] ; then FIX=/bin/true; shift; else FIX=/bin/false; fi
+
+UPDATE="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x"
+CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x --delete --dry-run --stats"
+
+# $Id$
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+
+if $FIX; then
+    $UPDATE  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/
+    $UPDATE stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/
+    $UPDATE cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/
+fi
+
+ND0=9999
+NSTK=9999
+NCDF=9999
+NENS=9999
+
+ND0=`$CHECK  d0ensrv1:/usr/local/etc/farmlets/d0*  /usr/local/etc/farmlets/ 2>/dev/null |awk '/Number of files transferred:/ {print $NF}'`
+NSTK=`$CHECK stkensrv1:/usr/local/etc/farmlets/stk* /usr/local/etc/farmlets/ 2>/dev/null |awk '/Number of files transferred:/ {print $NF}'`
+NCDF=`$CHECK cdfensrv1:/usr/local/etc/farmlets/cdf* /usr/local/etc/farmlets/ 2>/dev/null |awk '/Number of files transferred:/ {print $NF}'`
+NENS=`$CHECK ${gang}srv1:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null |awk '/Number of files transferred:/ {print $NF}'`
+
+if [ $ND0 != 0 -o  $NSTK != 0 -o $NCDF != 0 -o $NENS != 0 ]; then
+    msg="`date` BAD CONFIGURATION: Farmlet mismatch  $ND0 $NSTK $NCDF $NENS"
+    echo $msg
+    if [ $ALARM -eq 1 ]; then
+       enstore alarm --raise --severity "A" --root-error "$msg1"
+    fi
+    rc=1
+else
+    echo "Farmlets match, ok"
+    rc=0
+fi
+
