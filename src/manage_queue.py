@@ -126,13 +126,13 @@ class SortedList:
             if rescan_list:
                 # temporarily remove records that have changed priorities
                 for record in rescan_list:
-                    #Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
-                    #            (record.pri, record.ticket))
+                    Trace.trace(23,"SortedList.update: delete Pri%s Ticket %s"%
+                                (record.pri, record.ticket))
                     self.delete(record)
                 # put them pack according to new priority
                 for record in rescan_list:
-                    #Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
-                    #            (record.pri, record.ticket))
+                    Trace.trace(23,"SortedList.update: reinsert Pri%s Ticket %s"%
+                                (record.pri, record.ticket))
                     self.put(record)
             self.last_aging_time = time_now
 
@@ -332,7 +332,7 @@ class Queue:
             #Trace.log(e_errors.INFO,"manage_queue.delete: no such key %s" %(key,))
             return
         # remove opt entry
-        #Trace.trace(23,"Queue.delete: opt %s %s"%(key, request.ticket))
+        Trace.trace(23,"Queue.delete: opt %s %s"%(key, request.ticket))
         
         self.queue[key]['opt'].delete(request)
         self.queue[key]['by_priority'].delete(request)
@@ -522,6 +522,10 @@ class Request_Queue:
     # flag next indicates whether to get a first highest request
     # or keep getting requsts for specified label
     def get(self, label='',location='', next=0, use_admin_queue=1):
+        a,w,r=self.get_queue()
+        #Trace.trace(21,"admin %s"%(a,))
+        Trace.trace(21,"read %s"%(r,))
+        Trace.trace(21,"write %s"%(w,))
         if label:
             if use_admin_queue:
                 # get came with label info, hence it is from
@@ -536,14 +540,18 @@ class Request_Queue:
                     else: rq = self.adm_queue.get()
                     self.adm_pri_t0 = now
                     if rq:
+                        Trace.trace(21, "admin_queue=1")
                         self.admin_rq_returned = 1
                         return rq
 
             # see if label points to write queue
             if label in self.ref.keys():
-                if next:
+                if next and self.admin_rq_returned == 0:
+                #if next:
+                    Trace.trace(21, "GET_NEXT")
                     record = self.write_queue.get_next(label)
                 else:
+                    Trace.trace(21, "GET")
                     record = self.write_queue.get(label, location)
                 # see if label points to read queue
                 if not record:
@@ -562,17 +570,22 @@ class Request_Queue:
                 else: rq = self.adm_queue.get()
                 #rq = self.adm_queue.get()
                 if rq:
+                    Trace.trace(21, "admin_queue=1")
                     self.admin_rq_returned = 1
                     return rq
             
             # label is not specified, get the highest priority from
             # the tags queue
-            if next:
+            if next and self.admin_rq_returned == 0:
+            #if next:
+                Trace.trace(21, "GET_NEXT")
                 for r in self.tags.sorted_list:
                     Trace.trace(21, "TAG %s" % (r,))
                 rq = self.tags.get_next()
                 Trace.trace(21,"NEXT %s" % (rq,))
-            else: rq = self.tags.get()
+            else:
+                Trace.trace(21, "GET")
+                rq = self.tags.get()
             if rq:
                 if rq.work == 'write_to_hsm':
                     label = rq.ticket['vc']['volume_family']
@@ -582,6 +595,7 @@ class Request_Queue:
                     if not location: record = self.read_queue.get(label)
             else: record = rq
         self.admin_rq_returned = 0
+        Trace.trace(21, "admin_queue=0")
         return record
 
     def get_queue(self):

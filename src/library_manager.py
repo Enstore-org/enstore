@@ -512,16 +512,17 @@ class LibraryManagerMethods:
         if not check_key in self.checked_keys:
             self.checked_keys.append(check_key)
         active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
+        Trace.trace(16, "SG LIMIT %s"%(self.get_sg_limit(storage_group),))
         if len(active_volumes) >= self.get_sg_limit(storage_group):
             rq.ticket["reject_reason"] = ("PURSUING",None)
-            #Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
+            Trace.trace(12, "fair_share: active work limit exceeded for %s" % (storage_group,))
             if rq.adminpri > -1:
                 self.continue_scan = 1
                 return None
             # we have saturated system with requests from the same storage group
             # see if there are pending requests for different storage group
             tags = self.pending_work.get_tags()
-            #Trace.trace(16,"tags: %s"%(tags,))
+            Trace.trace(16,"tags: %s"%(tags,))
             if len(tags) > 1:
                 for key in tags:
                     if not key in self.checked_keys:
@@ -619,6 +620,8 @@ class LibraryManagerMethods:
         vol_family = rq.ticket["vc"]["volume_family"]
         if rq.adminpri > -1:
             if vol_family in self.processed_admin_requests:
+                Trace.trace(16,"return here")
+                self.continue_scan = 1
                 return None,key_to_check
             else:
                self.processed_admin_requests.append(vol_family) 
@@ -635,7 +638,7 @@ class LibraryManagerMethods:
             rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
             self.continue_scan = 1
             return rq, key_to_check
-        Trace.trace(12,"process_write_request: request next write volume for %s" % (vol_family,))
+        #Trace.trace(12,"process_write_request: request next write volume for %s" % (vol_family,))
 
         # before assigning volume check if it is bound for the current family
         if self.process_for_bound_vol not in vol_veto_list:
@@ -735,7 +738,7 @@ class LibraryManagerMethods:
                 if fun == 'restrict_host_access':
                     args.append(rq.ticket['wrapper']['machine'][1])
                     ret = apply(getattr(self,fun), args)
-                    Trace.trace(16, "restrict_host_access returned %s"%(ret,))
+                    #Trace.trace(16, "restrict_host_access returned %s"%(ret,))
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
@@ -748,10 +751,9 @@ class LibraryManagerMethods:
                         continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
-                #if rq:
-                #    Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
-                #else:
-                #    Trace.trace(16,"process_read_request returned %s %s %s" % (rq, key,self.continue_scan))
+                if rq: t = rq.ticket
+                else: t = rq
+                Trace.trace(16,"process_read_request returned %s %s %s" % (t, key,self.continue_scan))
                     
                 if self.continue_scan:
                     if key:
@@ -762,10 +764,9 @@ class LibraryManagerMethods:
                 break
             elif rq.work == "write_to_hsm":
                 rq, key = self.process_write_request(rq, requestor)
-                #if rq:
-                #    Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
-                #else:
-                #    Trace.trace(16,"process_write_request returned %s %s %s" % (rq, key,self.continue_scan))
+                if rq: t = rq.ticket
+                else: t = rq
+                Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
                         rq = self.pending_work.get(key)
