@@ -681,6 +681,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # update the database entry for this volume
     def get_remaining_bytes(self, ticket):
+        ticket['status'] = (e_errors.OK, None)
         # everything is based on external label - make sure we have this
         try:
             key="external_label"
