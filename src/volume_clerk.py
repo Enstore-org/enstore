@@ -1343,7 +1343,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         #         self.reply_to_caller(record)
         #         return record["status"]
         record["system_inhibit"][index] = flag
-
+        # record time
+        if not record.has_key("si_time"):
+            record["si_time"] = [0,0]
+        record["si_time"][index] = time.time()
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
