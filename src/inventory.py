@@ -30,10 +30,11 @@ def inventory_usage(message = None):
         print "\n" + message + "\n"
     print "Usage: " + sys.argv[0] + " [-v volume_file] [-f metadata_file]",
     print "[[-o output_directory] | [-stdout]] [--help]"
-    print "   -v       set the volume file to be inventoried"
-    print "   -f       set the metadata file to be inventoried"
-    print "   -o       set the output directory"
-    print "   -stdout  set the output directory to standard out"
+    print "   -v=      set the volume file to be inventoried"
+    print "   -f=      set the metadata file to be inventoried"
+    print "   -o=      set the output directory"
+    print "  --volume= set the volume to check (enables --stdout)"
+    print "  --stdout  set the output directory to standard out"
     print "  --help    print this message"
     print "See configuration dictionary entries \"backup\" and \"inventory\""\
           " for defaults."
@@ -644,13 +645,19 @@ def sort_inventory(data_file, volume_list, tmp_dir):
 #Takes the full filepath name to the metadata file in the second parameter.
 #Takes the full path to the ouput directory in the third parameter.
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
-def inventory(volume_file, metadata_file, output_dir, tmp_dir):
+def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     volume_sums = {}   #The summation of all of the file sizes on a volume.
     volume_quotas = {} #Stats on usage of storage groups.
-    
+
     volume_list = read_db(os.path.split(volume_file))
     if volume_list == 1:
         print "Database " + volume_file + " read in unsuccessfully."
+
+    #If the user entered a specific volume to check on the command line.
+    if volume:
+        for vol in volume_list:
+            if vol['external_label'] == volume:
+                volume_list = [vol]
 
     #Sort all of the data in data_file into the correct temporary files.
     count_metadata = sort_inventory(metadata_file, volume_list, tmp_dir)
@@ -771,7 +778,7 @@ if __name__ == "__main__":
 #    print "extract_dir", extract_dir
 
     #Look through the arguments list for valid arguments.
-    if "-stdout" in sys.argv:
+    if "--stdout" in sys.argv:
         output_dir = "/dev/stdout/"
         inventory_rcp_dir = "" #Makes no sense to move files that don't exist.
     elif "-o" in sys.argv:
@@ -789,6 +796,13 @@ if __name__ == "__main__":
     else:
         volume_file = inventory_extract_dir + "volume"
 
+    if "--volume" in sys.argv:
+        volume = sys.argv[sys.argv.index("--volume") + 1]
+        output_dir = "/dev/stdout/"
+        inventory_rcp_dir = "" #Makes no sense to move files that don't exist.
+    else:
+        volume = None
+
     #Remove the contents of existing direcories and create them if they do
     # not exist.
     create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
@@ -799,7 +813,8 @@ if __name__ == "__main__":
         checkBackedUpDatabases.extract_backup(inventory_extract_dir, container)
 
     #Inventory is the main function that does work.
-    counts = inventory(volume_file, file_file, output_dir, inventory_tmp_dir)
+    counts = inventory(volume_file, file_file, output_dir,
+                       inventory_tmp_dir, volume)
     
     #Cleanup those directories that we don't care about its contents.
     cleanup_dirs(inventory_tmp_dir, inventory_extract_dir)
