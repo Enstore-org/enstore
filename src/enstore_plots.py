@@ -108,6 +108,7 @@ class MphDataFile(EnPlot):
 class MphGnuFile(enstore_status.EnFile):
 
     def write(self, outfile, gnuinfo):
+	Trace.trace(10,"{MphGnuFile write ")
 	self.filedes.write("set output '"+outfile+ \
                            "'\nset terminal postscript color\n"+ \
 	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
@@ -116,7 +117,7 @@ class MphGnuFile(enstore_status.EnFile):
 	    self.filedes.write("set title 'Mount Count For "+info[0]+ \
 	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
 	                       "' using 1:2 t '' with boxes\n")
-
+	Trace.trace(10,"}MphGnuFile write ")
 
 class MlatDataFile(EnPlot):
 
@@ -168,6 +169,7 @@ class MlatDataFile(EnPlot):
 
     # subtract two times and return their difference
     def latency(self, time1, time2):
+	Trace.trace(10,"{latency ")
 	# first convert each time into a tuple of the form -
 	#  (year, month, day, hour, minutes, seconds, 0, 0, -1)
 	# then convert the tuple into a seconds value and subtract the
@@ -178,12 +180,14 @@ class MlatDataFile(EnPlot):
 	t2 = (string.atoi(time2[0:4]), string.atoi(time2[5:7]), \
 	      string.atoi(time2[8:10]), string.atoi(time2[11:13]), \
 	      string.atoi(time2[14:16]), string.atoi(time2[17:]), 0, 0, -1)
+	Trace.trace(10,"}latency ")
 	return (time.mktime(t2) - time.mktime(t1))
 
 
 class MlatGnuFile(enstore_status.EnFile):
 
     def write(self, outfile, ptsfile):
+	Trace.trace(10,"{MlatGnuFile write ")
 	self.filedes.write("set output '"+outfile+"\n"+ \
                            "set terminal postscript color\n"+ \
                            "set title 'Mount Latency in Seconds'\n"+ \
@@ -196,6 +200,7 @@ class MlatGnuFile(enstore_status.EnFile):
 	                   "set grid\n"+ \
 	                   "set format x \"%m-%d\"\n"+ \
 	                   "plot '"+ptsfile+"' using 1:2 t '' with points\n")
+	Trace.trace(10,"}MlatGnuFile write ")
 
 class XferDataFile(EnPlot):
 
@@ -233,6 +238,7 @@ class XferDataFile(EnPlot):
 class XferGnuFile(enstore_status.EnFile):
 
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
+	Trace.trace(10,"{XferGnuFile write ")
 	self.filedes.write("set output '"+outfile2+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Individual Transfer Activity'\n"+ \
@@ -253,6 +259,7 @@ class XferGnuFile(enstore_status.EnFile):
 	                   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
 	                   "'"+ptsfile2+\
 	                   "' using 1:5 t 'mean file size' w points 3 5\n")
+	Trace.trace(10,"}XferGnuFile write ")
 
 class BpdDataFile(EnPlot):
 
@@ -343,6 +350,7 @@ class BpdDataFile(EnPlot):
 class BpdGnuFile(enstore_status.EnFile):
 
     def write(self, outfile, ptsfile):
+	Trace.trace(10,"{BpdGnuFile write ")
 	self.filedes.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day'\n"+ \
@@ -355,3 +363,4 @@ class BpdGnuFile(enstore_status.EnFile):
 	                   "set yrange [0: ]\n"+ \
 	                   "set format x \"%m-%d\"\n"+ \
 	                   "plot '"+ptsfile+"' using 1:2 t '' w boxes\n")
+	Trace.trace(10,"}BpdGnuFile write ")
