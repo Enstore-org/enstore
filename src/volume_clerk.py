@@ -390,7 +390,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-
+        
         # get the current entry for the volume
         try:
             record = self.dict[external_label]
@@ -401,12 +401,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
+        force = ticket.get('force',0)
         # get the volume state as seen by media changer
         ret = self.get_media_changer_state(record["library"],
                                             record["external_label"],
                                             record["media_type"])
         # the following code is robot type dependant!!!!!
-        if ret != 'unmounted' and ret != '' and ret != 'E':
+        if not force and ret != 'unmounted' and ret != '' and ret != 'E':
            ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'")
            self.reply_to_caller(ticket)
            return
