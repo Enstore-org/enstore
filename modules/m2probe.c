@@ -389,8 +389,7 @@ ftt_descriptor d;
 char *f;
 char *prefix;
 {
-	unsigned char buf[8192];
-	unsigned char buf2[256];
+	char buf[8192];
 	int fd, res, len, offset, l2;
 	char of[256];			/* output file */
 	char serial[256];
@@ -455,7 +454,7 @@ char *prefix;
 int is_m2(d)
 ftt_descriptor d;
 {
-	unsigned char buf[256];
+	char buf[256];
 	int res;
 
 	/* do a scsi inquiry to see the vendor and model */
@@ -485,7 +484,7 @@ char *buf;
 
 	/* fix the end of dump type */
 
-	*index(buf+16, ' ') = '\0';
+	*strchr(buf+16, ' ') = '\0';
 
 	return (M2Status *) buf;
 }
