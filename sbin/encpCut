@@ -1,0 +1,335 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+set -u  # force better programming AND ABILITY TO USE CHECK FOR NOT SET
+
+# based on copCut which is based almost entirely on Ron R's dscCut
+
+product=encp
+
+echo "${product}Cut starting at `date`"
+
+##############################################################################
+
+USAGE="
+
+   ${product}Cut -options
+
+-r version   next release version
+-d directory directory base (without version number and product) for the new revision (i.e. /p/Linux)
+-c chain     to set (force) chain to be <new|old|test|development|current>
+-s steps     to control which steps get executed ie. 1,2,4-13
+-x           to set -xv
+-?           to list this
+
+You need to be in the main ${product}'s CVS working directory.
+
+steps:
+1. cvs directory check
+2. cd modules - make clean all
+3. cd src - make clean encp
+3. cvs commit
+4. cvs tag
+5. sdssmake install
+6. ups undeclare
+7. ups declare
+8. uprist
+
+"
+
+##############################################################################
+# utility functions that do what their names imply
+
+check_status() { jstatus=${1:-0}
+                 jname=${2:-unknown}
+                 jstep=${Step:-unknown}
+                 if [ $jstatus != 0 ] ; then
+                   echo ""
+                   echo "${product}Cut Fatal Error=$1 \"$jname\", Step \"$jstep\"" >&2
+                   echo "${product}Cut ABORTED at `date`"
+                   cd $thepwd
+                   exit $jstatus
+                 else
+                   if [ -z "${3-}" ] ; then
+                      echo "${product}Cut success for \"$jname\", Step \"$jstep\" at `date`" >&2
+                   fi
+                 fi ; }
+
+echo_timed_read() { jtime=${1:-10}
+                    /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
+                    read ans ; echo "$ans"' ;}
+
+##############################################################################
+
+STEPSDEFINED=8
+
+echo "$USAGE"
+
+UNAME=`uname`
+thepwd=`pwd`
+
+##############################################################################
+# we need enstore to be setup and we need to be in a cvs working directory
+
+if [ -z "${ENSTORE_DIR-}" ] ; then
+  Step="enstore check"
+  check_status 1 "You need enstore to be setup before using ${product}Cut"
+fi
+cd $ENSTORE_DIR
+
+if [ -d CVS ] ; then
+   Cvs_Module=`expr "\`cat CVS/Repository\`" : ".*/\([^/]*\)"`
+fi
+if [ "${Cvs_Module:-}" = "" ];then
+   check_status 1 "You need to be in a cvs working directory to use ${product}Cut"
+fi
+
+##############################################################################
+# parse the options on the command line
+#### dadburned getopts does not work on OSF1, so parse opts manually############
+
+gotc=
+
+opt=""
+if [ $# -gt 0 ] ; then
+   for optarg in $@ ; do
+
+      case $opt in
+         -d) NEWDIR=$optarg
+             opt=""
+             ;;
+         -r) REV=$optarg
+             opt=""
+             ;;
+         -c) case $optarg in
+               "")  CHAIN="";                 chain=none        ;;
+               no*) CHAIN="";                 chain=none        ;;  # no or none
+               c*)  CHAIN="${CHAIN-} -c"; chain=current     ;;  # you can have multiple chains
+               d*)  CHAIN="${CHAIN-} -d"; chain=development ;;
+               n*)  CHAIN="${CHAIN-} -n"; chain=new         ;;
+               o*)  CHAIN="${CHAIN-} -o"; chain=old         ;;
+               t*)  CHAIN="${CHAIN-} -t"; chain=test        ;;
+                *)   Step="chain getopts"; check_status 1 "You have specified an illegal chain";  ;;
+             esac
+             gotc=1
+             opt=""
+             ;;
+         -s) STEPS=`for i in \`echo $optarg | sed -e 's/,/ /g'\` ; do
+                if x=\`expr $i : '\(.*\)-'\` ; then
+                   y=\`expr $i : '.*-\(.*\)'\`
+                   while [ $x -le $y -a $x -le $STEPSDEFINED ] ; do
+                     echo $x
+                     x=\`expr $x + 1\`
+                   done
+                else
+                   echo $i
+                fi
+              done | sort -nu`        # do not sort if we want to specify an order or repeating steps (could use uniq instead of sort)
+              STEPS="`echo $STEPS`"   # remove lfs (b/c STEPS isnt quoted inside)
+              opt=""
+              ;;
+         "") opt=$optarg;;
+         -?) echo "$USAGE"; Step="getopts"; check_status 1 "" ;;
+         *)  echo "$USAGE"; Step="getopts"; check_status 1 "Unknown option" ;;
+         esac
+   done
+fi
+
+if [ -n "$opt" ] ; then echo "$USAGE"; Step="getopts"; check_status 1 "Can not parse command line correctly"; fi
+
+echo ""
+echo "options have been processed... checking"
+
+if /bin/false; then
+  echo NEWDIR ${NEWDIR-x}
+  echo REV ${REV-x}
+  echo CHAIN ${CHAIN-x}
+  echo STEPS ${STEPS-x}
+fi
+
+##############################################################################
+# we need a revision - if not specified, get old one from a cvs tag
+
+if [ -z "${REV-}" ] ; then
+   Step="next revision"
+   last=`cvs status -v Makefile | grep \(revision: | grep $UNAME | head -1  | sed -e 's/^[ ]*//'`
+   check_status $? "cvs status -v Makefile"
+   if [ -z "${last-}" ] ; then
+     echo "revision info not available via cvs - defaulting to v0_0 as last known revision"
+     last=${last:-v0_0}
+   fi
+   major=`echo $last | awk -F_ '{print $1}'`
+   minor=`echo $last | awk -F_ '{print $2}'`
+   REV=${major}_`expr $minor + 1`
+   check_status $? "determining next rev from $last"
+   echo "Revision not specified - Defaulting to revison $REV"
+fi
+
+##############################################################################
+# we need a place to install the cut product
+
+if [ -z "${newDIR-}" ] ; then
+   case `uname -n` in
+      airedale*) newDIR=/home/products/$product;;
+      *)         newDIR=/p/$UNAME/$product;;
+   esac
+   echo "Install directory not specified - Defaulting to install directory of $newDIR"
+fi
+newDIR=${newDIR}/${REV}
+
+
+##############################################################################
+# we need to know what steps we are supposed to perform during the cut
+
+if [ -z "${STEPS-}" ] ; then
+   STEPS=1
+   s=2
+   while [ $s -le $STEPSDEFINED ] ; do STEPS="${STEPS-} $s"; s=`expr $s + 1`; done
+   echo "Cut steps not specified - Defaulting to all steps: $STEPS"
+fi
+STEPSOK=""
+for step in $STEPS; do
+   if [ $step -le $STEPSDEFINED ] ; then
+      if [ -z "${STEPSOK-}" ] ; then
+        STEPSOK=$step
+      else
+        STEPSOK="$STEPSOK $step"
+      fi
+   fi
+done
+set +xv
+STEPS=$STEPSOK
+STEPS="$STEPS done" # done is flag that we are finished
+save_STEPS=$STEPS
+
+##############################################################################
+# we need to know what chain we are cutting
+
+if [ -z "${gotc-}" ] ; then
+   CHAIN=" -c"
+   chain=current
+   echo "UPS/UPD chaing not specified - Defaulting to chain $CHAIN"
+fi
+
+echo ""
+echo "Using files in CVS $Cvs_Module working directory `pwd` to cut revision $REV"
+echo "  and ups declaring it as $chain ($CHAIN) into directory $newDIR using steps $save_STEPS."
+
+##############################################################################
+
+for try in list doit; do
+   echo ""
+   STEPS=$save_STEPS
+   while [ "$STEPS" != "done" ] ; do
+      Step="`expr \"$STEPS\" : '\([^ ]*\) .*'`"
+      STEPS="`expr \"$STEPS\" : '[^ ]* \(.*\)'`"
+      case $Step in
+
+        1) echo "Step $Step cvs directory check for `pwd` starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              cvs_nq_update=`cvs -nq update 2>&1`
+              check_status $? "cvs -nq update: $cvs_nq_update"
+              if echo "$cvs_nq_update" | fgrep '[server aborted]' >/dev/null ; then
+                check_status 1 "server aborted problems with cvs: $cvs_nq_update"
+              elif x="`echo \"$cvs_nq_update\"|grep '^M'`" ; then
+                check_status 1 "$x: Modified or unknown files ($cvs_nq_update) in working directory - update/commit needed first"
+              fi
+           fi
+           ;;
+
+        2) echo "Step $Step cd modules - make clean all starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              cd $ENSTORE_DIR/modules
+              make clean all
+              check_status $? "make clean all"
+           fi
+           ;;
+
+        3) echo "Step $Step cd src - make clean encp starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              cd $ENSTORE_DIR/src
+              make clean encp
+              check_status $? "make clean encp"
+           fi
+           ;;
+
+        3) echo "Step $Step cvs commit from `pwd` starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              cvs commit -m "Changes when cutting $REV on $UNAME"
+              check_status $? "cvs commit"
+           fi
+           ;;
+
+
+        4) TAG=${REV}_${UNAME}
+           echo "Step $Step cvs tag $TAG starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              cvs tag $TAG
+              check_status $? "cvs tag"
+           fi
+           ;;
+
+
+        5) DIR=$newDIR
+           export DIR
+           echo "Step $Step sdssmake install into $DIR starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              # check if directory doesn't exist
+              if [ ! -d $DIR ] ; then echo "$DIR does not exist... making it"; mkdir -p $DIR; check_status $? "mkdir -p $DIR" ; fi
+              sdssmake install
+              check_status $? "sdssmake install"
+           fi
+           ;;
+
+
+        6) echo "Step $Step ups undeclare $REV starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              $UPS_DIR/bin/ups undeclare -v  -f $UNAME ${product} $REV
+              #check_status $? "ups undeclare"
+           fi
+           ;;
+
+
+        7) DIR=$newDIR
+           export DIR
+           echo "Step $Step ups declare ${product} $REV into $DIR starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              if [ "$product" = "cop" ] ; then
+                 $UPS_DIR/bin/ups declare -v -c -f $UNAME -u "= astroda $ASTRODA_REV $UNAME" -r $DIR  ${product} $REV
+                 check_status $? "ups declare"
+              else
+                 $UPS_DIR/bin/ups declare -v -c -f $UNAME -u "= dervish $DERVISH_REV $UNAME" -r $DIR  ${product} $REV
+                 check_status $? "ups declare"
+              fi
+           fi
+           ;;
+
+
+        8) UPR_DIR=`csh -fc "echo ~upr"`
+           UPRIST=$UPR_DIR/bin/uprist
+           echo "Step $Step $UPRIST ${product} $REV starting at `date`"
+           if [ "$try" = "doit" ] ; then
+              $UPRIST -addf ${product} $REV $UNAME
+              check_status $? uprist
+           fi
+           ;;
+
+
+        *) check_status 1 "There is no step $Step. Why did you ask for it?"
+           ;;
+
+       esac
+   done
+
+   if [ "$try" = "list" ] ; then
+      /bin/echo -n "\nThere are a total of $STEPS defined. Is this the set that you want to do? "
+      ans=`echo_timed_read 10`
+      if [ $? != 0 ] || expr "$ans" : '[Yy]' >/dev/null ; then
+        echo "Proceeding with ${product}Cut..."
+        echo ""
+      else
+         exit 0
+      fi
+  fi
+done
+
+echo "${product}Cut finished at `date`"
