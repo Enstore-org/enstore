@@ -264,7 +264,7 @@ class VolumeClerk(EnstoreServer):
 class LibraryManager(EnstoreServer):
 
     # states of a library manager meaning 'alive but not available for work'
-    BADSTATUS = ['ignore', 'draining']
+    BADSTATUS = ['ignore', 'locked', 'pause']
 
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
@@ -316,7 +316,9 @@ class MediaChanger(EnstoreServer):
 class Mover(EnstoreServer):
 
     # states of a mover meaning 'alive but not available for work'
-    BADSTATUS = ['offline', 'draining']
+    BADSTATUS = {'ERROR' : enstore_constants.DOWN, 
+		 'OFFLINE' : enstore_constants.WARNING,
+		 'DRAINING' : enstore_constants.WARNING}
 
     def __init__(self, csc, name, offline_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, seen_down_d, allowed_down_d,
@@ -325,19 +327,13 @@ class Mover(EnstoreServer):
 
     def is_alive(self):
 	# now check to see if the mover is in a bad state
-	if self.mstate == self.BADSTATUS[0]:
+	keys = self.BADSTATUS.keys()
+	if self.mstate in keys:
 	    # the mover is not in a good state mark it as bad
 	    enprint("%s in a %s state"%(self.format_name, self.mstate))
-	    self.set_status(enstore_constants.DOWN)
+	    self.set_status(self.BADSTATUS[self.mstate])
             self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
-                                                                    self.BADSTATUS[0],
-                                                                    self.config_host))
-	elif self.mstate == self.BADSTATUS[1]:
-	    # the mover is not in a good state mark it as yellow
-	    enprint("%s in a %s state"%(self.format_name, self.mstate))
-	    self.set_status(enstore_constants.WARNING)
-            self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
-                                                                    self.BADSTATUS[1],
+                                                                    self.mstate,
                                                                     self.config_host))
 	else:
 	    EnstoreServer.is_alive(self)
