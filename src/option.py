@@ -186,6 +186,7 @@ ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
 ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
+FIND_SAME_FILE = "find-same-file"            # info
 FILE_FAMILY = "file-family"                  #pnfs, encp
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
@@ -380,7 +381,7 @@ valid_option_list = [
     DOWN, DUMP, DUPLICATE,
     ECHO, ECRC, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
-    FORCE,
+    FIND_SAME_FILE, FORCE,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,

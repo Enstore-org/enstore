@@ -121,6 +121,42 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
 		return
 
+	def find_same_file(self, ticket):
+		try:
+			
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "File Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		# look up in our dictionary the request bit field id
+		finfo = self.file[bfid] 
+		if not finfo:
+			ticket["status"] = (e_errors.KEYERROR,
+				"Info Clerk: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
+			return
+
+		#Copy all file information we have to user's ticket.  Copy the info
+		# one key at a time to avoid cyclic dictionary references.
+
+		q = "select bfid from file where size = %d and crc = %d and sanity_size = %d and sanity_crc = %d order by bfid asc;"%(finfo['size'], finfo['complete_crc'], finfo['sanity_cookie'][0], finfo['sanity_cookie'][1])
+
+		res = self.db.query(q).getresult()
+
+		files = []
+		for i in res:
+			files.append(self.file[i[0]])
+		ticket["files"] = files
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		return
+
 	# get the current database volume about a specific entry #### DONE
 	def inquire_vol(self, ticket):
 		try:

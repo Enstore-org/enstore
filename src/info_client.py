@@ -95,6 +95,9 @@ class infoClient(generic_client.GenericClient):
 			r['status'] = (e_errors.ERROR, msg)
 		return r
 
+	def find_same_file(self, bfid):
+		return self.send({"work": "find_same_file", "bfid": bfid})
+
 	def inquire_vol(self, external_label, timeout=20, retry=5):
 		ticket= { 'work': 'inquire_vol',
 			'external_label' : external_label }
@@ -595,6 +598,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.write_protect_status = None
 		self.show_bad = 0
 		self.query = ''
+		self.find_sam_file = None
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
@@ -609,6 +613,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
 				option.USER_LEVEL:option.USER},
+		option.FIND_SAME_FILE:{option.HELP_STRING:"find a file of the same size and crc",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_LABEL: "bfid",
+				option.VALUE_USAGE:option.REQUIRED,
+				option.USER_LEVEL:option.ADMIN},
 		option.BFIDS:{option.HELP_STRING:"list all bfids on a volume",
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
@@ -744,6 +753,26 @@ def do_work(intf):
 			del ticket['status']
 			pprint.pprint(ticket)
 			ticket['status'] = status
+	elif intf.find_same_file:
+		ticket = ifc.find_same_file(intf.find_same_file)
+		if ticket['status'][0] ==  e_errors.OK:
+			
+			print "%10s %20s %10s %22s %7s %s" % (
+			"label", "bfid", "size", "location_cookie", "delflag", "original path")
+			for record in ticket['files']:
+				deleted = 'unknown'
+				if record.has_key('deleted'):
+					if record['deleted'] == 'yes':
+						deleted = 'deleted'
+					elif record['deleted'] == 'no':
+						deleted = 'active'
+
+				print "%10s %20s %10d %22s %7s %s" % (
+					record['external_label'],
+					record['bfid'], record['size'],
+					record['location_cookie'], deleted,
+					record['pnfs_name0'])
+
 	elif intf.check:
 		ticket = ifc.inquire_vol(intf.check)
 		# guard against error
