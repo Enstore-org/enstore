@@ -1,4 +1,6 @@
 #
+#@(#)$Id$
+#
 #	Reliable UDP-based communication protocol implementation
 #
 #	Server example:
