@@ -1221,6 +1221,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     tm_file.close()
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
+    os.system('sed -e "s/<fonts color=#ff0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
     vols.close()
     files.close()
 
