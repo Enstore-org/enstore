@@ -62,8 +62,6 @@ class GenericClient:
                         string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
             self.csc = configuration_client.ConfigurationClient( def_addr )
 
-
-        
         # try to find the logname for this object in the config dict.  use
         # the lowercase version of the name as the server key.  if this
         # object is not defined in the config dict, then just use the
@@ -84,7 +82,8 @@ class GenericClient:
             return server_address
         except KeyError, detail:
             sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
-                             ( MY_SERVER, detail, os.environ.get('ENSTORE_CONFIG_HOST','')))
+                             ( MY_SERVER, detail, 
+			       os.environ.get('ENSTORE_CONFIG_HOST','')))
             os._exit(1)
 
     def send(self, ticket, rcv_timeout=0, tries=0):
@@ -100,10 +99,9 @@ class GenericClient:
 
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
-        try:
-            t = self.csc.get(server, rcv_timeout, tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(14,"alive - ERROR, config server get timed out")
+	t = self.csc.get(server, rcv_timeout, tries)
+	if t['status'] == (e_errors.TIMEDOUT, None):
+	    Trace.trace(14,"alive - ERROR, config server get timed out")
 	    return {'status' : (e_errors.TIMEDOUT, None)}
 	try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
@@ -171,4 +169,3 @@ class GenericClient:
     def dump(self, rcv_timeout=0, tries=0):
         x = self.send({'work':'dump'}, rcv_timeout, tries)
         return x
-
