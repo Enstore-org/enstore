@@ -30,12 +30,51 @@ def get_event_relay_host(csc):
         host = ""
     return host
 
-def get_rmem_max():
-    fd = open("/proc/sys/net/core/rmem_max", 'r')
-    line = fd.readline()
-    fd.close()
-    value = int(string.strip(line))
-    return value
+def set_max_recv_buffersize(sock):
+
+    try:
+        max_buffer_size = os.fpathconf(sock.fileno(),
+                                       os.pathconf_names['PC_SOCK_MAXBUF'])
+
+        #Note: In at least one case (Linux LTS) the value returned by
+        # fpathconf() is -1.
+    except ValueError:
+        #The string 'PC_SOCK_MAXBUF' is not recognized by this system.
+        max_buffer_size = -1
+    except OSError:
+        #The system knows about the symbol 'PC_SOCK_MAXBUF', but the
+        # required functionality is not implimented.
+        max_buffer_size = -1
+
+    if max_buffer_size > 0:
+        #This implimentaion knew about PC_SOCK_MAXBUF if we get here.
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, max_buffer_size)
+        return
+
+    #The maximum buffer sizes for the various supported fermi platforms:
+    # Linux(2.4): cat /proc/sys/net/core/rmem_max
+    #             65535 = 64K (in reality it is 131070; the kernel doubles it)
+    # SunOS: ndd /dev/tcp tcp_max_buf
+    #        1048576 = 1MB
+    # IRIX: cat /var/sysgen/mtune/bsd | grep -E "(tcp|udp)_(send|recv)space"
+    #       1073741824 = 1GB (Also returns default and minimum values.)
+    # OSF1: /sbin/sysconfig -q socket | grep sb_max
+    #       1048576 = 1MB
+    #This information came from:
+    # http://www.psc.edu/networking/perf_tune.html
+    current_size = 2097152  #2MB
+
+    while current_size > 4096:
+        try:
+            #Keep looping starting at a large number.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, current_size)
+
+            #Stop at the first success.
+            break
+        except socket.error:
+            pass
+
+        current_size = int(current_size / 2.0)
 
 
 class EventRelayClient:
@@ -49,9 +88,8 @@ class EventRelayClient:
         self.sock = None
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            max_size = get_rmem_max()
-            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, max_size)
-            self.sock.bind((self.hostname, 0))         # let the system pick a port
+            set_max_recv_buffersize(self.sock)
+            self.sock.bind((self.hostname, 0))    # let the system pick a port
             self.addr = self.sock.getsockname()
             self.host = self.addr[0]
             self.port = self.addr[1]
