@@ -318,7 +318,7 @@ def is_volume_busy(self, external_label):
             # check if volume is in the intemediate 'mounting state'
             elif vol_info['at_mover'][0] == 'mounting':
                 # volume is in the mounting state
-                # if it is for current mover check it's "real" state
+                # if it is for current mover check its "real" state
                 if vol_info['at_mover'][1] == self.requestor:
                     # restore volume state
                     mcstate =  self.vcc.update_mc_state(external_label)
