@@ -23,20 +23,20 @@ echo "excersizing $FTT_TAPE"
 echo "==============================================================="
 echo "write test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test twrite
+${FTT_DIR}/bin/ftt_run_test twrite
 
 echo "==============================================================="
 echo "verify test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test verify
+${FTT_DIR}/bin/ftt_run_test verify
 
 echo "==============================================================="
 echo "position test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test position
+${FTT_DIR}/bin/ftt_run_test position
 
 echo "==============================================================="
 echo "delay test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test delay
+${FTT_DIR}/bin/ftt_run_test delay
 echo "End of ftt_exercise"

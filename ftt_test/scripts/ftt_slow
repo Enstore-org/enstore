@@ -44,19 +44,19 @@ echo "==============================================================="
 echo "==============================================================="
 echo "write full test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test full
+${FTT_DIR}/bin/ftt_run_test full
 
 echo "==============================================================="
 echo "erase test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test erase
+${FTT_DIR}/bin/ftt_run_test erase
 
 echo "==============================================================="
 echo "delay test"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_run_test delay
+${FTT_DIR}/bin/ftt_run_test delay
 
 echo "==============================================================="
 echo "fast tests"
 echo "==============================================================="
-${FTT_DIR}/ftt_test/scripts/ftt_fast $fastswitches
+${FTT_DIR}/bin/ftt_fast $fastswitches
