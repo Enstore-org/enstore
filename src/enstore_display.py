@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import pprint
 import cmath
 import exceptions
 import math
@@ -13,6 +14,7 @@ import stat
 import event_relay_client
 import event_relay_messages
 import Trace
+import mover_client
 # from Tkinter import *
 # import tkFont
 
@@ -38,7 +40,11 @@ if IMAGE_DIR is None or not os.path.exists(IMAGE_DIR):
     
 import Tkinter
 import tkFont
+import entv
+import threading
 
+#A lock to allow only one thread at a time access the display class instance.
+display_lock = threading.Lock()
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
@@ -703,20 +709,6 @@ class Mover:
         #difference of column width and mover rectangle with fudge factor.
         return (column_width - self.width) - 10
 
-    def find_widest_mover_label(self):
-        font = get_font(12, 'Arial')
-                        #fit_string="DISMOUNT_WAIT",
-                        #width_wanted=(self.width - self.width/3.0 - 10))
-        if self.display.mover_label_width is None:
-            max_width = 0
-            mover = ""
-            #Find the widest mover label
-            for m in self.display.movers.keys():
-                if font.measure(m) > max_width:
-                    max_width = font.measure(m)
-                    mover = m
-            return mover
-
     def reposition(self, N): #, state=None):
         #Undraw the mover before moving it.
         self.undraw()
@@ -735,21 +727,9 @@ class Client:
         self.last_activity_time = time.time()
         self.n_connections      = 0
         self.waiting            = 0
-        i                       = 0
         self.label              = None
         self.outline            = None
         #self.font = get_font(12, 'arial')
-
-        ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
-        while display.client_positions.has_key(i):
-            if i == 0:
-                i =1
-            elif i>0:
-                i = -i
-            else:
-                i = 1 - i
-        self.index = i
-        display.client_positions[i] = name
 
         self.resize()
         self.position()
@@ -809,6 +789,19 @@ class Client:
         self.font = get_font(self.height/2.5, 'arial')
 
     def position(self):
+        i = 0
+
+        ## Step through possible positions in order 0, 1, -1, 2, -2, 3, -3, ...
+        while self.display.client_positions.has_key(i):
+            if i == 0:
+                i =1
+            elif i>0:
+                i = -i
+            else:
+                i = 1 - i
+        self.index = i
+        self.display.client_positions[i] = self.name
+        
         self.x, self.y = scale_to_display(-0.9, self.index/10.,
                                           self.display.width,
                                           self.display.height)        
@@ -867,6 +860,9 @@ class Connection:
             self.line = self.display.create_line(path, dash='...-',width=2,
                                                  dashoffset = self.dashoffset,
                                                  smooth=1)
+    def reposition(self):
+        self.undraw()
+        self.draw()
 
     def undraw(self):
         try:
@@ -897,7 +893,10 @@ class Connection:
     
         if new_offset != self.dashoffset:  #we need to redraw the line
             self.dashoffset = new_offset
-            self.display.itemconfigure(self.line, dashoffset=new_offset)
+            if self.line:
+                self.display.itemconfigure(self.line, dashoffset=new_offset)
+            else:
+                self.draw()
 
         
 class Title:
@@ -907,7 +906,7 @@ class Title:
         self.tk_text    = None #this is a tk Text object
         self.fill       = None #color to draw with
         #self.font       = tkFont.Font(size=36, family="Arial")
-        self.font = get_font(20, "arial")
+        self.font       = get_font(20, "arial")
         self.length     = 2.5  #animation runs 2.5 seconds
         now             = time.time()
         self.start_time = now
@@ -937,7 +936,37 @@ class Title:
     def __del__(self):
         self.display.delete(self.tk_text)
 
+class MoverDisplay(Tkinter.Toplevel):
+    """  The mover state display """
+    ##** means "variable number of keyword arguments" (passed as a dictionary)
+    def __init__(self, mover, **attributes):
+        Tkinter.Toplevel.__init__(self)
+
+        #Tell it to set the remaining configuration values and to apply them.
+        self.title(mover.name)
+        self.configure(attributes)
         
+        csc = entv.get_csc()
+        mov = mover_client.MoverClient(csc, mover.name+".mover")
+        status = mov.status(rcv_timeout=5, tries=1)
+
+        #Font geometry.
+        self.font = get_font(12, 'arial')
+        
+        msg = ""
+        for item, value in status.items():
+            msg = msg + "%s: %s\n" % (item, pprint.pformat(value))
+        self.state_display = Tkinter.Label(master=self,
+                                           justify=Tkinter.LEFT,
+                                           font = self.font,
+                                           width = 0,
+                                           text = msg,
+                                           foreground = mover.state_color,
+                                           background = mover.mover_color,
+                                           anchor=Tkinter.NW)
+        self.state_display.pack(side=Tkinter.LEFT, expand=Tkinter.YES,
+                                fill=Tkinter.BOTH)
+
 class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
@@ -987,17 +1016,14 @@ class Display(Tkinter.Canvas):
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
         self.mover_columns    = {} #x-coordinates for columns of movers
-        self.mover_label_width = None #width to allow for mover labels
+        #self.mover_label_width = None #width to allow for mover labels
         self.clients          = {} ## dictionary, key = client name,
                                    ##value is instance of class Client
         self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
                                    ##value is Client
         self.connections      = {} ##dict. of connections.
-        #self.volumes          = {}
-        #self.title_animation  = None
 
-        self.mover_update_index = 0
-        self.client_update_index = 0
+        self.command_queue = [] #List of notify commands to process.
 
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
@@ -1025,48 +1051,46 @@ class Display(Tkinter.Canvas):
         
     def action(self, event):
         x, y = self.canvasx(event.x), self.canvasy(event.y)
-        #print self.find_overlapping(x-1, y-1, x+1, y+1)
-        print (x, y)
+        overlapping = self.find_overlapping(x-1, y-1, x+1, y+1)
+        print overlapping, (x, y)
+
+        for mover in self.movers.values():
+            for i in range(len(overlapping)):
+                if mover.state_display == overlapping[i]:
+                    mover_display = MoverDisplay(mover=mover)
+                    print mover.name, mover.state
 
     def resize(self, event):
         #If the user changed the window size, update.
-        if self.has_canvas_changed():
-            self.reposition_canvas()
-            self.update()
-        #Assume the only way to get here is that the window was closed.
-        else:
-            self.stopped = 1
+        self.reposition_canvas()
 
     def reinititalize(self, event):
+        self.after_cancel(self.after_timer_id)
+        self.after_cancel(self.after_animation_id)
+        self.after_cancel(self.after_clients_id)
+        self.after_cancel(self.after_idle_id)
         self._reinit = 1
         self.quit()
 
     def reinit(self):
         self._reinit = 0
         self.stopped = 0
+        
+        self.mover_names      = [] ## List of mover names.
+        self.movers           = {} ## This is a dictionary keyed by mover name,
+                                   ##value is an instance of class Mover
+        self.mover_columns    = {} #x-coordinates for columns of movers
+        #self.mover_label_width = None #width to allow for mover labels
+        self.clients          = {} ## dictionary, key = client name,
+                                   ##value is instance of class Client
+        self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
+                                   ##value is Client
+        self.connections      = {} ##dict. of connections.
+
+        self.command_queue = [] #List of notify commands to process.        
 
     def attempt_reinit(self):
         return self._reinit
-
-    def create_movers(self, mover_names):
-        #Create a Mover class instance to represent each mover.
-        N = len(mover_names)
-
-        for k in range(N):
-            mover_name = mover_names[k]
-            self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
-
-    def has_canvas_changed(self):
-        try:
-            size = self.winfo_width(), self.winfo_height()
-        except:
-            self.stopped = 1
-            return
-
-        if size != (self.width, self.height):
-            return 1
-
-        return 0
 
     def position_canvas(self):
         try:
@@ -1091,6 +1115,8 @@ class Display(Tkinter.Canvas):
                 self.reposition_clients()
             if self.movers:
                 self.reposition_movers()
+            if self.connections:
+                self.reposition_connections()
         
     def reposition_movers(self, number_of_movers=None):
         items = self.movers.items()
@@ -1103,21 +1129,36 @@ class Display(Tkinter.Canvas):
             mover.reposition(N)            
          
     def reposition_clients(self):
+        del self.client_positions
+        self.client_positions = {}
         for client_name, client in self.clients.items():
             client.reposition()
 
-    #Called from entv.handle_periodic_actions().
-    def connection_animation(self):
+    def reposition_connections(self):
+        for connection in self.connections.values():
+            connection.reposition()
+
+    #Called from self.after().
+    def update_timers(self):
         now = time.time()
         #### Update all mover timers
         #This checks to see if the timer has changed at all.  If it has,
         # it resets the timer for new state.
         for mover in self.movers.values():
             mover.update_timer(now)
-            if mover.connection:
-                mover.connection.animate(now)
 
-    #Called from entv.handle_periodic_actions().
+        self.after_timer_id = self.after(30, self.update_timers)
+        
+    #Called from self.after().
+    def connection_animation(self):
+        now = time.time()
+        #### Update all connections.
+        for connection in self.connections.values():
+            connection.animate(now)
+
+        self.after_animation_id = self.after(30, self.connection_animation)
+
+    #Called from self.after().
     def disconnect_clients(self):
         now = time.time()
         #### Check for unconnected clients
@@ -1130,8 +1171,7 @@ class Display(Tkinter.Canvas):
                 client.undraw()
                 del self.clients[client_name]
 
-        ####force the display to refresh
-        self.update()
+        self.after_clients_id = self.after(30, self.disconnect_clients)
 
     #Called from entv.handle_periodic_actions().
     def handle_titling(self):
@@ -1146,6 +1186,19 @@ class Display(Tkinter.Canvas):
 
         ####force the display to refresh
         self.update()
+
+    def create_movers(self, mover_names):
+        #Create a Mover class instance to represent each mover.
+        N = len(mover_names)
+
+        for k in range(N):
+            mover_name = mover_names[k]
+            self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
+
+    def queue_command(self, command):
+        display_lock.acquire()
+        self.command_queue.append(command)
+        display_lock.release()
 
     def handle_command(self, command):
         ## Accept commands of the form:
@@ -1244,8 +1297,8 @@ class Display(Tkinter.Canvas):
                 mover.connection = None
 
                 #Remove the progress bar.
-                mover.t0 = time.time()
-                mover.b0 = 0
+                #mover.t0 = time.time()
+                #mover.b0 = 0
                 mover.draw_progress(None)
                 
                 return
@@ -1262,12 +1315,12 @@ class Display(Tkinter.Canvas):
                 except:
                     time_in_state = 0
                 mover.update_state(what_state, time_in_state)
-                #mover.undraw()
                 mover.draw()
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
                     msg="Need to disconnect because mover state changed to: %s"
                     if mover.connection: #no connection with mover object
                         Trace.trace(1, msg % (what_state,))
+                        del self.connections[mover.name]
                         mover.connection=None
                 return
         
@@ -1285,13 +1338,21 @@ class Display(Tkinter.Canvas):
                 else:
                     client.waiting = 0
                     client.update_state() #change fill color if needed
-                    client.draw()
-                connection = Connection(mover, client, self)
-                self.connections[mover.name] = connection
+                client.draw()
+                #First test if a connection is already present.
+                if self.connections.get(mover.name, None):
+                    connection = self.connections[mover.name]
+                    connection.undraw()
+                    connection.__init__(mover, client, self)
+                #If not create a new connection.
+                else:
+                    connection = Connection(mover, client, self)
+                    self.connections[mover.name] = connection
+                    connection.update_rate(0)
+                connection.draw() #Either draw or redraw correctly.
+                ###What are these for?
                 mover.t0 = now
                 mover.b0 = 0
-                connection.update_rate(0)
-                connection.draw()
                 mover.connection = connection
                 return
 
@@ -1301,10 +1362,6 @@ class Display(Tkinter.Canvas):
                     return
                 load_state = words[0] #=='loaded'
                 what_volume = words[2]
-                #volume=self.volumes.get(what_volume)
-                #if volume is None:
-                #    volume=Volume(what_volume, self, loaded=load_state)
-                #self.volumes[what_volume]=volume
                 mover.load_tape(what_volume, load_state)
                 return
         
@@ -1332,16 +1389,30 @@ class Display(Tkinter.Canvas):
                     mover.connection.client.last_activity_time = time.time()
                 return
 
+    def display_idle(self):
+        display_lock.acquire()
+        if self.command_queue: #If the queue is not empty:
+            self.handle_command(self.command_queue[0])
+            del self.command_queue[0]
+        display_lock.release()
+        self.after_idle_id = self.after(30, self.display_idle)
+
     #overloaded 
     def update(self):
         try:
             if Tkinter.Tk.winfo_exists(self):
                 Tkinter.Tk.update(self)
+        except ValueError:
+            Trace.trace(1, "Unexpected Tkinter error...ignore")
         except Tkinter.TclError:
             Trace.trace(1, "TclError...ignore")
 
 
     def mainloop(self):
+        self.after_timer_id = self.after(30, self.update_timers)
+        self.after_animation_id = self.after(30, self.connection_animation)
+        self.after_clients_id = self.after(30, self.disconnect_clients)
+        self.after_idle_id = self.after(30, self.display_idle)
         Tkinter.Tk.mainloop(self)
         self.undraw()
         self.stopped = 1

@@ -36,9 +36,8 @@ TEN_MINUTES=600   #600seconds = 10minutes
 
 status_thread = None
 messages_thread = None
-periodic_thread = None
 
-debug=1
+#debug=1
 
 _csc = None
 _config_cache = None
@@ -47,13 +46,13 @@ _config_cache = None
 stop_now = 0
 
 #A lock to allow only one thread at a time access the display class instance.
-display_lock = threading.Lock()
+#display_lock = threading.Lock()
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
 def signal_handler(sig, frame):
-    global status_thread, periodic_thread, messages_thread
+    global status_thread, messages_thread
     global stop_now
 
     try:
@@ -73,7 +72,6 @@ def signal_handler(sig, frame):
     #flag the threads to stop.
     stop_now = 1
     status_thread.join()
-    periodic_thread.join()
     messages_thread.join()
 
     sys.exit(0)
@@ -162,7 +160,12 @@ def get_mover_list():
 
     lm_dict = csc.get_library_managers({})
     for lm in lm_dict.keys():
-        mover_list = csc.get_movers(lm_dict[lm]['name'])
+        try:
+            mover_list = csc.get_movers(lm_dict[lm]['name'])
+        except TypeError:
+            print lm_dict[lm]
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         try:
             for mover in mover_list:
                 movers = movers + [mover['mover']]
@@ -219,45 +222,7 @@ def request_mover_status(display):
         if not commands:
             continue
         for command in commands:
-            display_lock.acquire()
-            if display.stopped or stop_now:
-                display_lock.release()
-                return
-            try:
-                display.handle_command(command)
-            except Tkinter.TclError:
-                pass
-            display_lock.release()
-
-def handle_periodic_actions(display):
-    global stop_now
-
-    while not display.stopped and not stop_now:
-        
-        display_lock.acquire()
-        if display.stopped or stop_now:
-            display_lock.release()
-            return
-        #Animate the connection lines.
-        try:
-            display.connection_animation()
-        except Tkinter.TclError:
-                pass
-        display_lock.release()
-
-
-        display_lock.acquire()
-        if display.stopped or stop_now:
-            display_lock.release()
-            return
-        #Remove unactive clients from the display.
-        try:
-            display.disconnect_clients()
-        except Tkinter.TclError:
-            pass
-        display_lock.release()
-        
-        time.sleep(0.03) #Without this sleep, the thread uses a lot of CPU.
+            display.queue_command(command)
 
 def handle_messages(display):
     global stop_now
@@ -305,15 +270,8 @@ def handle_messages(display):
                 if msg and not getattr(msg, "status", None):
                     command="%s %s" % (msg.type, msg.extra_info)
                     Trace.trace(1, command)
-                    display_lock.acquire()
-                    if display.stopped or stop_now:
-                        display_lock.release()
-                        return
-                    try:
-                        display.handle_command(command)
-                    except Tkinter.TclError:
-                        pass
-                    display_lock.release()
+                    display.queue_command(command)
+
                 ##If read_erc is valid it is a EventRelayMessage instance. If
                 # it gets here it is a dictionary with a status field error.
                 elif getattr(msg, "status", None):
@@ -331,7 +289,7 @@ def handle_messages(display):
 ###  main
 ###
 def main():
-    global status_thread, periodic_thread, messages_thread
+    global status_thread, messages_thread
     global stop_now
 
     for sig in range(1, signal.NSIG):
@@ -371,11 +329,6 @@ def main():
                                          name='', args=(display,), kwargs={})
         status_thread.start() #wait for movers to sends status seperately.
 
-        periodic_thread=threading.Thread(group=None,
-                                         target=handle_periodic_actions,
-                                         name='', args=(display,), kwargs={})
-        periodic_thread.start()
-
         messages_thread=threading.Thread(group=None,
                                          target=handle_messages,
                                          name='', args=(display,), kwargs={})
@@ -387,8 +340,6 @@ def main():
         Trace.trace(1, "waiting for threads to stop")
         status_thread.join()
         Trace.trace(1, "status thread finished")
-        periodic_thread.join()
-        Trace.trace(1, "periodic thread finished")
         messages_thread.join()
         Trace.trace(1, "message thread finished")
 
