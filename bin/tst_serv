@@ -1,0 +1,16 @@
+#!/bin/sh
+
+./configuration_server.py &
+# sleep is a poor substitue, need to add retry and time out
+sleep 1
+./storage_server.py &
+./hsmvoltool.py addvol activelibrary  family_raw floppy flop1 1400000 1400000
+./hsmvoltool.py addvol activelibrary  family_raw floppy flop2 1400000 1400000
+./hsmvoltool.py addvol activelibrary  family_process floppy flop22 1400000 1400000
+./hsmvoltool.py addvol shelf family_reserved floppy flop3 1400000 1400000
+./hsmvoltool.py addvol shelf family_reserved floppy flop4 1400000 1400000
+
+./bit_file_server.py &
+./volume_server.py activelibrary &
+./mover.py fd0.mover &
+
