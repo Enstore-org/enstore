@@ -6,16 +6,16 @@ import string
 import types
 
 import parser
-from token import *
-from symbol import *
+import token
+import symbol
 import pprint
 
 debug=0
 
 def factor_type(lst):
-    if lst[0] != factor:
+    if lst[0] != symbol.factor:
         raise TypeError, lst[0]
-    if lst[1][0] != power:
+    if lst[1][0] != symbol.power:
         if lst[1][1] not in '+-~':
             raise parser.ParserError
         return factor_type(lst[2])
@@ -85,7 +85,7 @@ def check_pct(filename, warn=0):
     for idx, line in terms:
         line=line
         item=get_item(ast,idx)
-        if item[0]==PERCENT:
+        if item[0]==token.PERCENT:
             pos = idx[-1]
             pre_pos= idx[:-1]+(pos-1,)
             op_pos= idx
@@ -94,26 +94,26 @@ def check_pct(filename, warn=0):
             op=get_item(ast,op_pos)
             post=get_item(ast,post_pos)
 
-            if factor_type(pre)[0] != STRING:
+            if factor_type(pre)[0] != token.STRING:
                 continue
 
             tok_type = factor_type(post)[0]
-            if tok_type == LPAR:
+            if tok_type == token.LPAR:
                 xx=post_pos
                 lst=get_item(ast,xx+(1,1,2))[1:]
                 if debug: print lst
                 narg=0
                 comma=0
                 for x in lst:
-                    if x[0]==COMMA:
+                    if x[0]==token.COMMA:
                         comma=1
                     else:
                         narg=narg+1
                 if not comma:
                     narg=1
-            elif tok_type in [NUMBER,STRING,LSQB,LBRACE]:
+            elif tok_type in [token.NUMBER,token.STRING,token.LSQB,token.LBRACE]:
                 narg=1
-            elif tok_type == NAME:
+            elif tok_type == token.NAME:
                 narg = -1  #not a sequence type
             else:
                 print "Unexpected token", factor_type(post)
