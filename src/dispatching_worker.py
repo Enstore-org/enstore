@@ -73,6 +73,8 @@ class DispatchingWorker:
         # the real info and work is in the ticket - get that
         Trace.trace(5,"{process_request add="+repr(client_address))
 
+	# ref udp_client.py (i.e. we may wish to have a udp_client method
+	# to get this information)
         exec ( "idn, number, ticket = " + request)
         self.reply_address = client_address
         self.client_number = number
