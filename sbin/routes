@@ -26,6 +26,8 @@ case $node in
                  d0enmvr9a:  \
                  d0enmvr11a: \
                  d0enmvr12a: \
+		 cdfenmvr1a: \
+		 cdfenmvr2a: \
                  stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -43,17 +45,29 @@ case $node in
                  d0enmvr15a: d0enmvr15b: \
                  d0enmvr16a: d0enmvr16b: \
                  d0enmvr21a: d0enmvr21b: \
-                 d0enmvr22a: d0enmvr22b:"
+                 d0enmvr22a: d0enmvr22b: \
+                 d0enmvr23a: d0enmvr23b: \
+                 d0enmvr24a: d0enmvr24b:"
           ;;
+
+   cdfen*) gang=cdfen
+          NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
+                 cdfenmvr3a: \
+                 cdfenmvr5a: \
+                 cdfenmvr6a: \
+                 cdfenmvr8a: \
+                 cdfenmvr9a: "
+          ;;
+
        *) gang=UNKNOWN
           NODE=UNKNOWN
           ;;
 esac
 
 case $node in
-  stkensrv*|d0ensrv*) type=server
+  stkensrv*|d0ensrv*|cdfensrv*) type=server
           ;;
-  stkmvr*|d0enmvr*) type=mover
+  stkmvr*|d0enmvr*|cdfenmvr*) type=mover
           ;;
   stkendca*) type=dcache
           ;;
@@ -66,62 +80,110 @@ case $job in
 ################################################################################
 add*)
 
-    e=`/sbin/ifconfig eth1`
+    e=`/sbin/ifconfig eth1 2>/dev/null`
     eth1=eth1
     if [ `echo $e | grep -c UP` -eq 0 -o $type = "server" -o $type = "dcache" ]; then
       eth1=eth0
     fi
 
-    /sbin/route add -host d0ensrv0 eth0
-    /sbin/route add -host d0ensrv1 eth0
-    /sbin/route add -host d0ensrv2 eth0
-    /sbin/route add -host d0ensrv3 eth0
-    /sbin/route add -host d0ensrv4 eth0
-    /sbin/route add -host d0ensrv5 eth0
+# This has become easier just to type in rather than to be fancy
 
-    /sbin/route add -host stkensrv0 eth0
-    /sbin/route add -host stkensrv1 eth0
-    /sbin/route add -host stkensrv2 eth0
-    /sbin/route add -host stkensrv3 eth0
-    /sbin/route add -host stkensrv4 eth0
+### d0en
 
-    /sbin/route add -host stkendca3a eth0
-    /sbin/route add -host stkendca4a eth0
-    /sbin/route add -host stkendca5a eth0
+    /sbin/route add -host d0ensrv0    eth0
+    /sbin/route add -host d0ensrv1    eth0
+    /sbin/route add -host d0ensrv2    eth0
+    /sbin/route add -host d0ensrv3    eth0
+    /sbin/route add -host d0ensrv4    eth0
+    /sbin/route add -host d0ensrv5    eth0
 
-    /sbin/route add -host stkenmvr7a eth0
-    /sbin/route add -host stkenmvr8a eth0
-    /sbin/route add -host stkenmvr9a eth0
-
-
-    x=1
-    while [ $x -le 22 ]; do
-      /sbin/route add -host d0enmvr${x}a  eth0
-      /sbin/route add -host d0enmvr${x}b $eth1
-      x=`expr $x + 1`
-    done
-
-    x=1
-    while [ $x -le 6 ]; do
-      /sbin/route add -host stkenmvr${x}a  eth0
-      /sbin/route add -host stkenmvr${x}b $eth1
-      x=`expr $x + 1`
-    done
-
-    /sbin/route add -host rip1 eth0
-    /sbin/route add -host rip2 eth0
-    /sbin/route add -host rip3 eth0
-    /sbin/route add -host rip4 eth0
-    /sbin/route add -host rip5 eth0
-    /sbin/route add -host rip6 eth0
-    /sbin/route add -host rip7 eth0
-    /sbin/route add -host rip8 eth0
-    /sbin/route add -host rip9 eth0
-    /sbin/route add -host rip10 eth0
+    /sbin/route add -host d0enmvr1a   eth0;      /sbin/route add -host d0enmvr1b  $eth1
+    /sbin/route add -host d0enmvr2a   eth0;      /sbin/route add -host d0enmvr2b  $eth1
+    /sbin/route add -host d0enmvr3a   eth0;      /sbin/route add -host d0enmvr3b  $eth1
+    /sbin/route add -host d0enmvr4a   eth0;   
+    /sbin/route add -host d0enmvr5a   eth0;      /sbin/route add -host d0enmvr5b  $eth1
+    /sbin/route add -host d0enmvr6a   eth0;      /sbin/route add -host d0enmvr6b  $eth1
+    /sbin/route add -host d0enmvr7a   eth0;   
+    /sbin/route add -host d0enmvr8a   eth0;      /sbin/route add -host d0enmvr8b  $eth1
+    /sbin/route add -host d0enmvr9a   eth0;   
+    /sbin/route add -host d0enmvr10a  eth0;   
+    /sbin/route add -host d0enmvr11a  eth0;   
+    /sbin/route add -host d0enmvr12a  eth0;   
+    /sbin/route add -host d0enmvr13a  eth0;      /sbin/route add -host d0enmvr13b $eth1
+    /sbin/route add -host d0enmvr14a  eth0;   
+    /sbin/route add -host d0enmvr15a  eth0;      /sbin/route add -host d0enmvr15b $eth1
+    /sbin/route add -host d0enmvr16a  eth0;      /sbin/route add -host d0enmvr16b $eth1
+    /sbin/route add -host d0enmvr17a  eth0;   
+    /sbin/route add -host d0enmvr18a  eth0;   
+    /sbin/route add -host d0enmvr19a  eth0;   
+    /sbin/route add -host d0enmvr20a  eth0;   
+    /sbin/route add -host d0enmvr21a  eth0;   
+    /sbin/route add -host d0enmvr22a  eth0;   
+    /sbin/route add -host d0enmvr23a  eth0;   
+    /sbin/route add -host d0enmvr24a  eth0;   
 
 
-    /sbin/route add -host cachen1a eth0
-    /sbin/route add -host cachen2a eth0
+### stken
+
+    /sbin/route add -host stkensrv0   eth0
+    /sbin/route add -host stkensrv1   eth0
+    /sbin/route add -host stkensrv2   eth0
+    /sbin/route add -host stkensrv3   eth0
+    /sbin/route add -host stkensrv4   eth0
+
+    /sbin/route add -host stkenmvr1a  eth0;      /sbin/route add -host stkenmvr1b  $eth1
+    /sbin/route add -host stkenmvr2a  eth0;      /sbin/route add -host stkenmvr2b  $eth1
+    /sbin/route add -host stkenmvr3a  eth0;      /sbin/route add -host stkenmvr3b  $eth1
+    /sbin/route add -host stkenmvr4a  eth0;      /sbin/route add -host stkenmvr4b  $eth1
+    /sbin/route add -host stkenmvr5a  eth0;      /sbin/route add -host stkenmvr5b  $eth1
+    /sbin/route add -host stkenmvr6a  eth0;      /sbin/route add -host stkenmvr6b  $eth1
+    /sbin/route add -host stkenmvr7a  eth0;   
+    /sbin/route add -host stkenmvr8a  eth0;
+    /sbin/route add -host stkenmvr9a  eth0;   
+
+    /sbin/route add -host rip9        eth0
+    /sbin/route add -host rip10       eth0
+
+    /sbin/route add -host stkendca3a  eth0
+    /sbin/route add -host stkendca4a  eth0
+    /sbin/route add -host stkendca5a  eth0
+
+
+### cdfen
+
+    /sbin/route add -host cdfensrv0   eth0
+    /sbin/route add -host cdfensrv1   eth0
+    /sbin/route add -host cdfensrv2   eth0
+    /sbin/route add -host cdfensrv3   eth0
+    /sbin/route add -host cdfensrv4   eth0
+
+    /sbin/route add -host cdfenmvr1a  eth0;
+    /sbin/route add -host cdfenmvr2a  eth0;
+    /sbin/route add -host cdfenmvr3a  eth0;
+    /sbin/route add -host cdfenmvr4a  eth0;
+    /sbin/route add -host cdfenmvr5a  eth0;
+    /sbin/route add -host cdfenmvr6a  eth0;
+    /sbin/route add -host cdfenmvr7a  eth0;   
+    /sbin/route add -host cdfenmvr8a  eth0;
+    /sbin/route add -host cdfenmvr9a  eth0;   
+    /sbin/route add -host cdfenmvr10a eth0;   
+
+
+### rip
+
+    /sbin/route add -host rip1        eth0
+    /sbin/route add -host rip2        eth0
+    /sbin/route add -host rip3        eth0
+    /sbin/route add -host rip4        eth0
+    /sbin/route add -host rip5        eth0
+    /sbin/route add -host rip6        eth0
+    /sbin/route add -host rip7        eth0
+    /sbin/route add -host rip8        eth0
+
+    /sbin/route add -host cachen1a    eth0
+    /sbin/route add -host cachen2a    eth0
+
+### private lan
 
     if [ "$type" = "server" ]; then
 
@@ -142,80 +204,145 @@ add*)
             /sbin/route add -host adic4      eth1
             /sbin/route add -host fntt       eth1
             ;;
+         cdfen)
+            /sbin/route add -host cdfensrv1p eth1
+            /sbin/route add -host cdfensrv2p eth1
+            /sbin/route add -host cdfensrv3p eth1
+            /sbin/route add -host cdfensrv4p eth1
+            /sbin/route add -host fnttcdf    eth1
+            ;;
       esac
     fi
+
     ;;
 
 ################################################################################
 del*)
 
-    /sbin/route del d0ensrv0
-    /sbin/route del d0ensrv1
-    /sbin/route del d0ensrv2
-    /sbin/route del d0ensrv3
-    /sbin/route del d0ensrv4
-    /sbin/route del d0ensrv5
+# This has become easier just to type in rather than to be fancy
 
-    /sbin/route del stkensrv0
-    /sbin/route del stkensrv1
-    /sbin/route del stkensrv2
-    /sbin/route del stkensrv3
-    /sbin/route del stkensrv4
+### d0en
 
-    /sbin/route del stkendca3a
-    /sbin/route del stkendca4a
-    /sbin/route del stkendca5a
+    /sbin/route del       d0ensrv0        
+    /sbin/route del       d0ensrv1        
+    /sbin/route del       d0ensrv2        
+    /sbin/route del       d0ensrv3        
+    /sbin/route del       d0ensrv4        
+    /sbin/route del       d0ensrv5        
 
-    /sbin/route del stkenmvr7a
-    /sbin/route del stkenmvr8a
-    /sbin/route del stkenmvr9a
+    /sbin/route del       d0enmvr1a       ;      /sbin/route del       d0enmvr1b  
+    /sbin/route del       d0enmvr2a       ;      /sbin/route del       d0enmvr2b  
+    /sbin/route del       d0enmvr3a       ;      /sbin/route del       d0enmvr3b  
+    /sbin/route del       d0enmvr4a       ;   
+    /sbin/route del       d0enmvr5a       ;      /sbin/route del       d0enmvr5b  
+    /sbin/route del       d0enmvr6a       ;      /sbin/route del       d0enmvr6b  
+    /sbin/route del       d0enmvr7a       ;   
+    /sbin/route del       d0enmvr8a       ;      /sbin/route del       d0enmvr8b  
+    /sbin/route del       d0enmvr9a       ;   
+    /sbin/route del       d0enmvr10a      ;   
+    /sbin/route del       d0enmvr11a      ;   
+    /sbin/route del       d0enmvr12a      ;   
+    /sbin/route del       d0enmvr13a      ;      /sbin/route del       d0enmvr13b 
+    /sbin/route del       d0enmvr14a      ;   
+    /sbin/route del       d0enmvr15a      ;      /sbin/route del       d0enmvr15b 
+    /sbin/route del       d0enmvr16a      ;      /sbin/route del       d0enmvr16b 
+    /sbin/route del       d0enmvr17a      ;   
+    /sbin/route del       d0enmvr18a      ;   
+    /sbin/route del       d0enmvr19a      ;   
+    /sbin/route del       d0enmvr20a      ;   
+    /sbin/route del       d0enmvr21a      ;   
+    /sbin/route del       d0enmvr22a      ;   
+    /sbin/route del       d0enmvr23a      ;   
+    /sbin/route del       d0enmvr24a      ;   
 
-    x=1
-    while [ $x -le 22 ]; do
-      /sbin/route del d0enmvr${x}a
-      /sbin/route del d0enmvr${x}b
-      x=`expr $x + 1`
-    done
 
-    x=1
-    while [ $x -le 6 ]; do
-      /sbin/route del stkenmvr${x}a
-      /sbin/route del stkenmvr${x}b
-      x=`expr $x + 1`
-    done
+### stken
 
-    /sbin/route del rip1
-    /sbin/route del rip2
-    /sbin/route del rip3
-    /sbin/route del rip4
-    /sbin/route del rip5
-    /sbin/route del rip6
-    /sbin/route del rip7
-    /sbin/route del rip8
-    /sbin/route del rip9
-    /sbin/route del rip10
+    /sbin/route del       stkensrv0       
+    /sbin/route del       stkensrv1       
+    /sbin/route del       stkensrv2       
+    /sbin/route del       stkensrv3       
+    /sbin/route del       stkensrv4       
 
-    /sbin/route del cachen1a
-    /sbin/route del cachen2a
+    /sbin/route del       stkenmvr1a      ;      /sbin/route del       stkenmvr1b  
+    /sbin/route del       stkenmvr2a      ;      /sbin/route del       stkenmvr2b  
+    /sbin/route del       stkenmvr3a      ;      /sbin/route del       stkenmvr3b  
+    /sbin/route del       stkenmvr4a      ;      /sbin/route del       stkenmvr4b  
+    /sbin/route del       stkenmvr5a      ;      /sbin/route del       stkenmvr5b  
+    /sbin/route del       stkenmvr6a      ;      /sbin/route del       stkenmvr6b  
+    /sbin/route del       stkenmvr7a      ;   
+    /sbin/route del       stkenmvr8a      ;
+    /sbin/route del       stkenmvr9a      ;   
+
+    /sbin/route del       rip9            
+    /sbin/route del       rip10           
+
+    /sbin/route del       stkendca3a      
+    /sbin/route del       stkendca4a      
+    /sbin/route del       stkendca5a      
+
+
+### cdfen
+
+    /sbin/route del       cdfensrv0       
+    /sbin/route del       cdfensrv1       
+    /sbin/route del       cdfensrv2       
+    /sbin/route del       cdfensrv3       
+    /sbin/route del       cdfensrv4       
+
+    /sbin/route del       cdfenmvr1a      ;
+    /sbin/route del       cdfenmvr2a      ;
+    /sbin/route del       cdfenmvr3a      ;
+    /sbin/route del       cdfenmvr4a      ;
+    /sbin/route del       cdfenmvr5a      ;
+    /sbin/route del       cdfenmvr6a      ;
+    /sbin/route del       cdfenmvr7a      ;   
+    /sbin/route del       cdfenmvr8a      ;
+    /sbin/route del       cdfenmvr9a      ;   
+    /sbin/route del       cdfenmvr10a     ;   
+
+
+### rip
+
+    /sbin/route del       rip1            
+    /sbin/route del       rip2            
+    /sbin/route del       rip3            
+    /sbin/route del       rip4            
+    /sbin/route del       rip5            
+    /sbin/route del       rip6            
+    /sbin/route del       rip7            
+    /sbin/route del       rip8            
+
+    /sbin/route del       cachen1a        
+    /sbin/route del       cachen2a        
+
+### private lan
 
     if [ "$type" = "server" ]; then
 
       case $gang in
          d0en)
-            /sbin/route del  d0ensrv1p
-            /sbin/route del  d0ensrv2p
-            /sbin/route del  d0ensrv3p
-            /sbin/route del  d0ensrv4p
-            /sbin/route del  d0ensrv5p
-            /sbin/route del  adic2
+            /sbin/route del        d0ensrv1p eth1
+            /sbin/route del        d0ensrv2p eth1
+            /sbin/route del        d0ensrv3p eth1
+            /sbin/route del        d0ensrv4p eth1
+            /sbin/route del        d0ensrv5p eth1
+            /sbin/route del        adic2     eth1
             ;;
          stken)
-            /sbin/route del stkensrv1p
-            /sbin/route del stkensrv2p
-            /sbin/route del stkensrv3p
-            /sbin/route del stkensrv4p
-            /sbin/route del adic4
-            /sbin/route del fntt
+            /sbin/route del       stkensrv1p eth1
+            /sbin/route del       stkensrv2p eth1
+            /sbin/route del       stkensrv3p eth1
+            /sbin/route del       stkensrv4p eth1
+            /sbin/route del       adic4      eth1
+            /sbin/route del       fntt       eth1
+            ;;
+         cdfen)
+            /sbin/route del       cdfensrv1p eth1
+            /sbin/route del       cdfensrv2p eth1
+            /sbin/route del       cdfensrv3p eth1
+            /sbin/route del       cdfensrv4p eth1
+            /sbin/route del       fnttcdf    eth1
             ;;
       esac
     fi
@@ -359,10 +486,13 @@ test*)
     node=`uname -n| sed -e 's/.fnal.gov//'`
     if [ $gang = "d0en" ];then
       num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-      max=22
+      max=24
     elif [ $gang = "stken" ]; then
       num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-      max=6
+      max=9
+    elif [ $gang = "cdfen" ]; then
+      num=`echo $node | sed -e 's/cdfenmvr//' -e 's/a//' -e 's/b//'`
+      max=10
     fi
     num1=`expr $num + 1`
 
@@ -409,10 +539,13 @@ ifconfig)
       server=0
       if [ $gang = "d0en" ];then
         num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-        max=22
+        max=24
       elif [ $gang = "stken" ]; then
         num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-        max=6
+        max=9
+      elif [ $gang = "cdfen" ]; then
+        num=`echo $node | sed -e 's/cdfenmvr//' -e 's/a//' -e 's/b//'`
+        max=10
       fi
       node0=`echo $node | sed -e "s/a\$//" -e "s/b\$//"`
     fi
@@ -438,7 +571,7 @@ arp)
     IFS="
 "
     for a in `/sbin/arp`; do
-       if [ `echo "$a" |egrep -c "stken|d0en"` -ne 0 ]; then
+       if [ `echo "$a" |egrep -c "stken|d0en|cdfen"` -ne 0 ]; then
          b=`echo $a | sed -e 's/.fnal.gov.*ether//'`
          n=`echo $b | awk '{print \$1}'`
          h=`echo $b | awk '{print \$2}'`
