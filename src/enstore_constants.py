@@ -162,7 +162,7 @@ LMSTATE = "lmstate"
 READ_FROM_HSM = "read_from_hsm"
 ACTIVE_VOLUMES = 'active_volumes'
 STORAGE_GROUP = 'storage_group'
-
+MOVER_DOWN_PERCENTAGE = 'mover_down_percentage'
 ADMIN_QUEUE = "admin_queue"
 WRITE_QUEUE = "write_queue"
 

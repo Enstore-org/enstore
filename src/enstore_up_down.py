@@ -305,14 +305,17 @@ class LibraryManager(EnstoreServer):
     # states of a library manager meaning 'alive but not available for work'
     BADSTATUS = ['ignore', 'locked', 'pause', 'unknown']
     BROKENSTATUS = [e_errors.BROKEN]
+    DEFAULT_MOVER_DOWN_PERCENTAGE = 50
 
-    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
-	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN)
+    def __init__(self, name, config, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, 
+			       allowed_down_d, enstore_constants.DOWN)
 	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.LIBRARY_MANAGER
 	self.server_state = ""
 	self.in_bad_state = 0
+	self.mover_down_percentage = config.get(enstore_constants.MOVER_DOWN_PERCENTAGE,
+						self.DEFAULT_MOVER_DOWN_PERCENTAGE)
 
     # return the number of movers we know about that have a good status, and those with a bad
     # status
@@ -327,7 +330,9 @@ class LibraryManager(EnstoreServer):
 		    ok_movers = ok_movers + 1
 		else:
 		    bad_movers = bad_movers + 1
-	if bad_movers > ok_movers:
+	total_movers = bad_movers + ok_movers
+	if total_movers > 0 and \
+	   float(bad_movers)/float(total_movers) * 100 > self.mover_down_percentage:
 	    return LOW_CAPACITY, bad_movers, ok_movers
 	else:
 	    return SUFFICIENT_CAPACITY, bad_movers, ok_movers
@@ -503,7 +508,8 @@ def do_real_work():
     total_lms = []
     total_movers = []
     for lm in library_managers:
-        lmc = LibraryManager(lm, offline_d, override_d, seen_down_d, allowed_down_d)
+        lmc = LibraryManager(lm, config_d[lm], offline_d, override_d, seen_down_d, 
+			     allowed_down_d)
 	if lmc.noupdown == FALSE:
 	    total_lms.append(lmc) 
 	    if no_override(lmc, override_d_keys):
