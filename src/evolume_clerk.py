@@ -2064,8 +2064,11 @@ class VolumeClerk(VolumeClerkMethods):
             dbHome = os.environ['ENSTORE_DIR']
             jouHome = dbHome
 
+        db_host = dbInfo['db_host']
+        db_port = dbInfo['db_port']
+
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
-        self.dict = edb.VolumeDB(jou=jouHome)
+        self.dict = edb.VolumeDB(host=db_host, port=db_port, jou=jouHome)
         self.sgdb = esgdb.SGDb(self.dict.db)
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:

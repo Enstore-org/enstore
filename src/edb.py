@@ -92,8 +92,9 @@ def str_value(v):
 # self.exprot_format(self, s) -- translate database output to external format
 
 class DbTable:
-	def __init__(self, host, database, table, pkey, jouHome ='.', auto_journal=0):
+	def __init__(self, host, port, database, table, pkey, jouHome ='.', auto_journal=0):
 		self.host = host
+		self.port = port
 		self.database = database
 		self.table = table
 		self.name = table	# backward compatible
@@ -113,7 +114,7 @@ class DbTable:
 		self.update_query = "update "+self.table+" set %s where "+self.pkey+" = '%s';"
 		self.delete_query = "delete from "+self.table+" where "+self.pkey+" = '%s';"
 
-		self.db = pg.DB(host=self.host, dbname=self.database)
+		self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
 
 	# translate database output to external format
 	def export_format(self, s):
@@ -211,7 +212,7 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', jou='.', database=default_database):
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
 		DbTable.__init__(self, host, database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
@@ -275,7 +276,7 @@ class FileDB(DbTable):
 			}
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', jou='.', database=default_database):
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database):
 		DbTable.__init__(self, host, database, jouHome=jou, table='volume', pkey='label', auto_journal = 1)
 		self.retrieve_query = "\
         		select \

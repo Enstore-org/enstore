@@ -970,8 +970,11 @@ if __name__ == "__main__":
         dbHome = os.environ['ENSTORE_DIR']
         jouHome = dbHome
 
+    db_host = dbInfo['db_host']
+    db_port = dbInfo['db_port']
+
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    fc.dict = edb.FileDB(jou=jouHome)
+    fc.dict = edb.FileDB(host=db_host, port=db_port, jou=jouHome)
     
     while 1:
         try:
