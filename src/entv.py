@@ -89,6 +89,13 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
+    #ask for events
+    try:
+        s.sendto("notify %s %s" % (target_ip, target_port),
+                 (event_relay_host, event_relay_port))
+    except:
+        pass
+    
     #Get the state of each mover before continuing
     for mover in movers:
         status = get_mover_status(mover)
