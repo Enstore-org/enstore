@@ -251,5 +251,6 @@ def check_load_balance(mode = 0, dest = None):
 
 # set config file, if any, once for all
 
-if get_config().get('hostip', None):
-    UDP_fixed_route = 1
+if get_config():
+    if get_config().get('hostip', None):
+        UDP_fixed_route = 1
