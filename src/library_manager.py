@@ -234,8 +234,6 @@ def next_work_this_volume(v):
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
-	#print "v", v
-	#print "w", w
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
             w["vc"]["file_family"]   == v['vc']["file_family"] and
@@ -560,8 +558,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
 	Trace.trace(3,"{have_bound_volume " + repr(mticket))
-	print "LM:have_bound_volume"
-	pprint.pprint(mticket)
 	if list: 
 	    print "LM:have_bound_volume"
 	    pprint.pprint(mticket)
