@@ -116,6 +116,7 @@ class FTTDriver(driver.Driver):
                     #Trace.trace(42, "ftt.close() done")
                     #Trace.trace(42, "ftt.open(%s,%s)"%(self.device,ftt.RDONLY))
                     self.ftt = ftt.open(self.device, ftt.RDONLY)
+                    self.mode = 0
                     #Trace.trace(42, "%s=ftt.open(%s,%s) done"%(self.ftt,self.device,ftt.RDONLY))
                 elif detail.errno == ftt.SUCCESS: ###XXX hack - why are we getting this?
                     Trace.log(e_errors.INFO, "CGW: got SUCCESS on open, why?")
