@@ -20,8 +20,12 @@ encp:	encp.py $(ENSTORE_DIR)/modules/Devcodes.o $(ENSTORE_DIR)/modules/ETape.o $
 	mkdir ENCPBIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -o ENCPBIN_TEMP encp.py
 	(cd ENCPBIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp ENCPBIN
-	cp ../ups/encp.table ENCPBIN
+	cp ENCPBIN_TEMP/encp      ENCPBIN
+	cp ../bin/pcmd            ENCPBIN
+	cp ../ups/encp.table      ENCPBIN
+	cp ../ups/pcfarm.table    ENCPBIN
+	cp ../ups/rip.table       ENCPBIN
+	cp ../ups/sam.table       ENCPBIN
 	cp ../sbin/encp1stInstall ENCPBIN
 	rm -rf ENCPBIN_TEMP
 
