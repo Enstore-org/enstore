@@ -87,7 +87,7 @@ def dash_to_underscore(s):
 
 def parse_range(s):
     if ',' in s:
-        s = string.split(s)
+        s = string.split(s,',')
     else:
         s = [s]
     r = []
