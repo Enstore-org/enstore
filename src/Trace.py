@@ -14,6 +14,10 @@ import os
 import pwd				
 import time
 import socket
+import types
+
+import event_relay_messages
+import event_relay_client
 
 if __name__== '__main__':
     print "No unit test, sorry"
@@ -37,22 +41,17 @@ print_levels = {}
 log_levels = {}
 alarm_levels = {}
 
-#XXX cgw temporary - this needs to come from config file
-event_relay_host = os.environ.get('ENSTORE_CONFIG_HOST')
-event_relay_port = 55510
-event_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+# stuff added by efb for new event_relay_client
+erc = event_relay_client.EventRelayClient()
 
 def notify(msg):
-    if not event_relay_host:
-        return
-    try:
-        event_socket.sendto(msg, (event_relay_host, event_relay_port))
-    except: #this has to be lightweight and foolproof
-        ##print "msg send failed", event_relay_host, event_relay_port
-        pass
+    if type(msg) == types.StringType:
+	# we must convert the message into a message instance
+	msg = event_relay_messages.decode(msg)
+    erc.send(msg)
 
-    
+# end of stuff added by efb
+
 def trunc(x):
     if type(x) != type(""):
         x = str(x)
