@@ -865,10 +865,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, 'device_dump('+`sendto`+', '+`notify`+')')
         # print 'device_dump('+`sendto`+', '+`notify`+')'
 
-        # do nothing if it is not a M2 drive
-
-        if self.config['product_id'] != "Mammoth2":
-            return "can not dump a non-Mammoth2 drive"
+        # self.config['product_id'] is not reliable. Leave m2probe to
+        # handle non-Mammoth2 drive situation
+        #
+        ## do nothing if it is not a M2 drive
+        #
+        # if self.config['product_id'] != "Mammoth2":
+        #    return "can not dump a non-Mammoth2 drive"
 
         res = m2.dump_code(self.device, '/tmp', sendto, notify, 'enstore mover: '+self.name)
 
