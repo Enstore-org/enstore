@@ -378,8 +378,9 @@ class EnStatus:
         self.text[key][enstore_constants.COMPLETED] = self.unquote(repr(ticket.get("transfers_completed", DASH)))
         self.text[key][enstore_constants.FAILED] = self.unquote(repr(ticket.get("transfers_failed", DASH)))
         # these are the states where the information  in the ticket refers to a current transfer
-        if ticket["state"] in (mover_constants.ACTIVE, mover_constants.MOUNT_WAIT,
-                               mover_constants.DISMOUNT_WAIT):
+	lcl_state = ticket.get("state", "")
+        if lcl_state in (mover_constants.ACTIVE, mover_constants.MOUNT_WAIT,
+			 mover_constants.DISMOUNT_WAIT):
             self.text[key][enstore_constants.CUR_READ] = add_commas(str(ticket["bytes_read"]))
             self.text[key][enstore_constants.CUR_WRITE] = add_commas(str(ticket["bytes_written"]))
             self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
@@ -403,15 +404,15 @@ class EnStatus:
             else:
                 self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["current_location"]
         # these states imply the ticket information refers to the last transfer
-        elif ticket["state"] in (mover_constants.IDLE, mover_constants.HAVE_BOUND,
-                                 mover_constants.DRAINING, mover_constants.OFFLINE,
-                                 mover_constants.CLEANING):
+        elif lcl_state in (mover_constants.IDLE, mover_constants.HAVE_BOUND,
+			   mover_constants.DRAINING, mover_constants.OFFLINE,
+			   mover_constants.CLEANING):
             self.text[key][enstore_constants.LAST_READ] = add_commas(str(ticket["bytes_read"]))
             self.text[key][enstore_constants.LAST_WRITE] = add_commas(str(ticket["bytes_written"]))
-            if ticket['state'] == mover_constants.HAVE_BOUND:
+            if lcl_state == mover_constants.HAVE_BOUND:
                 self.text[key][enstore_constants.STATE] = "HAVE BOUND volume - IDLE"
             else:
-                self.text[key][enstore_constants.STATE] = "%s"%(ticket['state'],)
+                self.text[key][enstore_constants.STATE] = "%s"%(lcl_state,)
             if ticket['transfers_completed'] > 0:
                 self.text[key][enstore_constants.VOLUME] = ticket['last_volume']
                 self.text[key][enstore_constants.FILES] = ["%s -->"%(ticket['files'][0],)]
@@ -421,7 +422,7 @@ class EnStatus:
                 else:
                     self.text[key][enstore_constants.LOCATION_COOKIE] = ticket["last_location"]
         # this state is an error state, we don't know if the information is valid, so do not output it
-        elif ticket["state"] in (mover_constants.ERROR,):
+        elif lcl_state in (mover_constants.ERROR,):
             self.text[key][enstore_constants.STATE] = "ERROR - %s"%(ticket["status"],)
         # unknown state
         else:
