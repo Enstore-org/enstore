@@ -86,13 +86,19 @@ def dash_to_underscore(s):
     return t
 
 def parse_range(s):
-    if '-' in s:
-        lo, hi = string.split(s)
-        lo, hi = int(lo), int(hi)
-        return range(lo, hi+1)
+    if ',' in s:
+        s = string.split(s)
     else:
-        return [int(s)]
-    
+        s = [s]
+    r = []
+    for t in s:
+        if '-' in t:
+            lo, hi = string.split(t,'-')
+            lo, hi = int(lo), int(hi)
+            r.extend(range(lo, hi+1))
+        else:
+            r.append(int(t))
+    return r
 
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
