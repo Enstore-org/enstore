@@ -119,6 +119,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
 		# update it
 		self.dict[external_label] = v
+                self.change_state(external_label, 'system_inhibit_1', "full")
                 Trace.log(e_errors.INFO, 'volume %s is set to "full" by is_volume_full()'%(external_label))
             else: ret = e_errors.NOSPACE
         return ret
