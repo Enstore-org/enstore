@@ -26,7 +26,6 @@ import lm_list
 ##############################################################
 movers = []    # list of movers belonging to this LM
 mover_cnt = 0  # number of movers in the queue
-mover_index = 0  # index if current mover in the queue
 
 # send a regret
 def send_regret(self, ticket):
@@ -484,9 +483,8 @@ def is_mover_suspect(self, mover, external_label):
 # find the next idle mover
 def idle_mover_next(self, external_label):
     global mover_cnt
-    global mover_index
     idle_mover_found = 0
-    j = mover_index
+    j = self.mover_index
     for i in range(0, mover_cnt):
 	if movers[j]['state'] == 'idle_mover':
 	    mv_suspect = None
@@ -496,7 +494,6 @@ def idle_mover_next(self, external_label):
 						    external_label) 
 	    if not mv_suspect:
 		idle_mover_found = 1
-		self.summon_queue_index = i
 		break
 	j = j+1
 	if j == mover_cnt:
@@ -506,7 +503,7 @@ def idle_mover_next(self, external_label):
 	j = j+1
 	if j == mover_cnt:
 	    j = 0
-	mover_index = j
+	self.mover_index = j
     else:
 	mv = None
     # return next idle mover
@@ -519,12 +516,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     summon_queue = []   # list of movers being summoned
     max_summon_attempts = 3
-    summon_queue_index = 0
     suspect_volumes = [] # list of suspected volumes
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
     max_suspect_volumes = 100 # maximal number of suspected volumes for alarm
                               # generation
     min_mv_num = 1 # minimal number of movers allowed
+    mover_index = 0  # index if current mover in the queue
 
     def __init__(self, libman, csc):
         self.name_ext = "LM"
@@ -598,7 +595,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # overrides timeout handler from DispatchingWorker
     def handle_timeout(self):
 	global mover_cnt
-	global mover_index
 	t = time.time()
 	
 	# if mover state did not change from being summoned then
@@ -642,9 +638,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 			# mover index must be not more than mover counter
 			# and cannot be negative
-			if (mover_index >= mover_cnt and 
-			    mover_index > 0):
-			    mover_index = mover_cnt - 1
+			if (self.mover_index >= mover_cnt and 
+			    self.mover_index > 0):
+			    self.mover_index = mover_cnt - 1
 			if mover_cnt == 0:
 			    # no movers left send regrets to clients
 			    Trace.log(e_errors.INFO,
@@ -1221,6 +1217,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # go through entire pending work queue and summon movers
     def force_summon(self):
+        # save mover_index
+        mv_index = self.mover_index
 	vols = []
 	# create list of volumes summon requst for which has been already sent
 	for mv in movers:
@@ -1260,6 +1258,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		work = self.pending_work.get_next()
 	    else:
 		break
+        if mv_index != self.mover_index: self.mover_index = mv_index 
 	
     # what is next on our list of work?
     def schedule(self):
