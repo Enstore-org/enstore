@@ -150,7 +150,7 @@ if __name__ == "__main__":
         print "You must be root to run this this program"
         sys.exit(-1)
     try:
-        os.stat('pnfs/fs/usr')
+        os.stat('/pnfs/fs/usr')
     except os.error, msg:
         if msg.errno == errno.ENOTDIR:
             print "This program must run on the pnfs server node"
