@@ -529,6 +529,7 @@ class Interface:
               SHORT_OPTION:"h",
               FORCE_SET_DEFAULT:NORMAL},
         USAGE:{DEFAULT_VALUE:1,
+               HELP_STRING:"prints short help message",
                VALUE_USAGE:IGNORED,
                FORCE_SET_DEFAULT:NORMAL}
         }
@@ -603,9 +604,13 @@ class Interface:
     #lines_of_text: list of strings where each item in the list is a line of
     #               text that will be used to output the help string.
     #text_string: the string that will be appended to the end of lines_of_text
-    #filler_length: 
+    #filler_length: Minumum number of character columns to indent the
+    #               text_string.
     def build_help_string(self, lines_of_text, text_string,
                           filler_length, num_of_cols):
+        #Set this for the first loop below.
+        use_existing_line = 1
+        
         #Build the non-help string part of the command output. Assume
         # that option_names is less than 80 characters.
         #lines_of_text = []
@@ -615,9 +620,13 @@ class Interface:
             last_line = ""
 
         if text_string:
-            value_line_length = num_of_cols - len(last_line)
+            #value_line_length is the number of character collumns to space
+            # over (or append to) before printing new characters.
+            value_line_length = num_of_cols - max(len(last_line),
+                                                  filler_length + 1)
             index = 0
             while index < len(text_string):
+                #print "value_line_len:", value_line_length, "index:", index
                 #calculate how much of the line can be used up without
                 # splitting words on different lines.
                 if (len(text_string) - index) < value_line_length:
@@ -625,24 +634,28 @@ class Interface:
                 else:
                     new_index = string.rfind(text_string, " ", index,
                                              index+value_line_length)
-                #build each line (so far).
-                if index == 0: #use existing line
+
+                if use_existing_line: #use existing line
                     try:
                         del lines_of_text[-1]
-                    except IndexError:
+                    except (TypeError, IndexError):
                         pass
 
                     temp_fill = filler_length - len(last_line)
                     if temp_fill < 0:
                         temp_fill = 0
+
                     temp = ("%s" % (last_line,)) + " " * temp_fill + \
                                          text_string[index:new_index]
                     lines_of_text.append(temp)
-                else: #use_new_line
+                else: #use new line
                     lines_of_text.append(" " * filler_length +
-                                        text_string[index:new_index].strip())
+                                         text_string[index:new_index].lstrip())
+                #Reset this to the next indent point for future lines.
+                value_line_length = num_of_cols - (filler_length - 1)
                 index=new_index
-
+                #Set this false to use a new line.
+                use_existing_line = 0
 
     def print_help(self):
         #First print the usage line.
@@ -719,13 +732,19 @@ class Interface:
             # that option_names is less than 80 characters.
             self.build_help_string(lines_of_text, option_names,
                                    0, num_of_cols)
-            #For those options with values, insert the =.
+            #For those options with values, include them in the help string.
             if has_value:
-                self.build_help_string(lines_of_text, "=", 0, num_of_cols)
-            #Build the VALUES part of the command output. Assume
-            # that option_names is less than 80 characters.
-            self.build_help_string(lines_of_text, has_value,
-                                   0, num_of_cols)
+                # Add extra padding space(s) for readability.
+                has_value = " " + has_value + " "
+                #has_value = "=" + has_value + " "
+
+                #Build the VALUES part of the command output. Assume
+                # that option_names is less than 80 characters.
+                self.build_help_string(lines_of_text, has_value,
+                                       len(option_names), num_of_cols)
+            else: #Insert spaces in case of long option name.
+                self.build_help_string(lines_of_text, "  ",
+                                       len(option_names), num_of_cols)
             #Build the HELP STRING part of the command output. Assume
             # that option_names is less than 80 characters.
             self.build_help_string(lines_of_text, help_string,
@@ -743,6 +762,8 @@ class Interface:
         else:
             short_opts = ""
 
+        # Give these string an initial value.
+        usage_string = "       " + os.path.basename(sys.argv[0])
         usage_line = ""
 
         list = self.options.keys()
@@ -761,22 +782,28 @@ class Interface:
                 has_value = "[=]"
             else:
                 has_value = ""
-                
+
             usage_line = usage_line + "--" + key + has_value + " "
 
-        usage_string = "       " + sys.argv[0]
+        #Combine the short and long options together.
         if short_opts or usage_line:
-            usage_string = usage_string + " [ " + short_opts + " " + \
-                           usage_line + "] "
+            switch_string = " [ " + short_opts + " " + usage_line + "] "
+
+        #If there are a lot of options, don't confuse the user and only
+        # report [OPTIONS]... instead.  
+        if len(usage_string) + len(switch_string) + \
+           len(getattr(self, "paramater", [""])[0]) > 80:
+            switch_string = " [OPTIONS]... "
 
         #usage_string = usage_string + self.format_parameters()
         full_usage_string = ""
         for parameter_set in self.parameters:
-            full_usage_string = full_usage_string + usage_string + parameter_set + "\n"
+            full_usage_string = full_usage_string + usage_string + \
+                                switch_string + parameter_set + "\n"
         if not full_usage_string:
-            full_usage_string = usage_string
+            full_usage_string = usage_string + switch_string
             
-        return "USAGE: \n" + full_usage_string
+        return "Usage: \n" + full_usage_string
 
     def format_parameters(self):
         param_string = ""
