@@ -16,13 +16,13 @@ frame .top -borderwidth 10 -bg darkcyan -fg yellow
 pack .top -side top -fill x
 
 label .top.l -text "Command:" -padx 0 -bg darkcyan -fg white
-entry .top.cmd -width 20 -relief sunken -textvariable command
+entry .top.cmd -width 65 -relief sunken -textvariable command
 pack .top.l -side left
 pack .top.cmd -side left -fill x -expand true
 
 button .top.quit -text "Quit" -command exit -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
 button .top.query -text "Query All" -command query -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-set but [button .top.run -text "Run command" -command Run -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+set but [button .top.run -text "Run " -command Run -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .top.quit .top.query .top.run -side right
 
 bind .top.cmd <Return> Run
@@ -31,14 +31,17 @@ focus .top.cmd
 
 ############################################################################################################################################
 # configuration server
-frame .config -borderwidth 10 -bg darkcyan -fg yellow
-pack .config -side top -fill x
-label .config.l -text "Configuration Server:" -width 25 -bg darkcyan -fg white
-pack .config.l -side left
-button .config.q -text "Query" -command CQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .config.q -side left
-set butc [button .config.s -text "????" -command CSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .config.s -side left
+frame .a -borderwidth 10 -bg darkcyan -fg yellow
+pack .a -side top -fill x
+
+frame .a.config  -bg darkcyan -fg yellow
+pack .a.config -side left
+label .a.config.l -text "Configuration Server:" -width 25 -bg darkcyan -fg white
+pack .a.config.l -side left
+button .a.config.q -text "Query" -command CQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .a.config.q -side left
+set butc [button .a.config.s -text "????" -command CSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .a.config.s -side left
 proc CQRun {} {
     global command butc env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7500 10"
@@ -63,14 +66,14 @@ proc CQRun_done { name element op } {
 
 ############################################################################################################################################
 # log server
-frame .log -borderwidth 10 -bg darkcyan -fg yellow
-pack .log -side top -fill x
-label .log.l -text "Log Server:" -width 25 -bg darkcyan -fg white
-pack .log.l -side left
-button .log.q -text "Query" -command LQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .log.q -side left
-set butl [button .log.s -text "????" -command LSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .log.s -side left
+frame .a.log -bg darkcyan -fg yellow
+pack .a.log -side left -fill x
+label .a.log.l -text "Log Server:" -width 25 -bg darkcyan -fg white
+pack .a.log.l -side left
+button .a.log.q -text "Query" -command LQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .a.log.q -side left
+set butl [button .a.log.s -text "????" -command LSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .a.log.s -side left
 proc LQRun {} {
     global command butl env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7504 10"
@@ -95,14 +98,17 @@ proc LQRun_done { name element op } {
 
 ############################################################################################################################################
 # file server
-frame .file -borderwidth 10 -bg darkcyan -fg yellow
-pack .file -side top -fill x
-label .file.l -text "File Server:" -width 25 -bg darkcyan -fg white
-pack .file.l -side left
-button .file.q -text "Query" -command FQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .file.q -side left
-set butf [button .file.s -text "????" -command FSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .file.s -side left
+frame .b -borderwidth 10 -bg darkcyan -fg yellow
+pack .b -side top -fill x
+
+frame .b.file -bg darkcyan -fg yellow
+pack .b.file -side left -fill x
+label .b.file.l -text "File Server:" -width 25 -bg darkcyan -fg white
+pack .b.file.l -side left
+button .b.file.q -text "Query" -command FQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .b.file.q -side left
+set butf [button .b.file.s -text "????" -command FSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .b.file.s -side left
 proc FQRun {} {
     global command butf env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7501 10"
@@ -127,14 +133,14 @@ proc FQRun_done { name element op } {
 
 ############################################################################################################################################
 # volume server
-frame .vol -borderwidth 10 -bg darkcyan -fg yellow
-pack .vol -side top -fill x
-label .vol.l -text "Volume Server:" -width 25 -bg darkcyan -fg white
-pack .vol.l -side left
-button .vol.q -text "Query" -command VQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .vol.q -side left
-set butv [button .vol.s -text "????" -command VSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .vol.s -side left
+frame .b.vol -bg darkcyan -fg yellow
+pack .b.vol -side left -fill x
+label .b.vol.l -text "Volume Server:" -width 25 -bg darkcyan -fg white
+pack .b.vol.l -side left
+button .b.vol.q -text "Query" -command VQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .b.vol.q -side left
+set butv [button .b.vol.s -text "????" -command VSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .b.vol.s -side left
 proc VQRun {} {
     global command butv env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7502 10"
@@ -159,14 +165,17 @@ proc VQRun_done { name element op } {
 
 ############################################################################################################################################
 # ait library manager
-frame .ait -borderwidth 10 -bg darkcyan -fg yellow
-pack .ait -side top -fill x
-label .ait.l -text "AIT Library Manager:" -width 25 -bg darkcyan -fg white
-pack .ait.l -side left
-button .ait.q -text "Query" -command AQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .ait.q -side left
-set buta [button .ait.s -text "????" -command ASRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .ait.s -side left
+frame .c -borderwidth 10 -bg darkcyan -fg yellow
+pack .c -side top -fill x
+
+frame .c.ait -bg darkcyan -fg yellow
+pack .c.ait -side left -fill x
+label .c.ait.l -text "AIT Library Manager:" -width 25 -bg darkcyan -fg white
+pack .c.ait.l -side left
+button .c.ait.q -text "Query" -command AQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .c.ait.q -side left
+set buta [button .c.ait.s -text "????" -command ASRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .c.ait.s -side left
 proc AQRun {} {
     global command buta env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
@@ -191,14 +200,14 @@ proc AQRun_done { name element op } {
 
 ############################################################################################################################################
 # mammoth library manager
-frame .mam -borderwidth 10 -bg darkcyan -fg yellow
-pack .mam -side top -fill x
-label .mam.l -text "Mammoth Library Manager:" -width 25 -bg darkcyan -fg white
-pack .mam.l -side left
-button .mam.q -text "Query" -command MQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .mam.q -side left
-set butm [button .mam.s -text "????" -command MSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .mam.s -side left
+frame .c.mam -bg darkcyan -fg yellow
+pack .c.mam -side left -fill x
+label .c.mam.l -text "Mammoth Library Manager:" -width 25 -bg darkcyan -fg white
+pack .c.mam.l -side left
+button .c.mam.q -text "Query" -command MQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .c.mam.q -side left
+set butm [button .c.mam.s -text "????" -command MSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .c.mam.s -side left
 proc MQRun {} {
     global command butm env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7508 10"
@@ -224,14 +233,17 @@ proc MQRun_done { name element op } {
 
 ############################################################################################################################################
 # dlt library manager
-frame .dlt -borderwidth 10 -bg darkcyan -fg yellow
-pack .dlt -side top -fill x
-label .dlt.l -text "DLT Library Manager:" -width 25 -bg darkcyan -fg white
-pack .dlt.l -side left
-button .dlt.q -text "Query" -command DQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .dlt.q -side left
-set butd [button .dlt.s -text "????" -command DSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .dlt.s -side left
+frame .d -borderwidth 10 -bg darkcyan -fg yellow
+pack .d -side top -fill x
+
+frame .d.dlt -bg darkcyan -fg yellow
+pack .d.dlt -side left -fill x
+label .d.dlt.l -text "DLT Library Manager:" -width 25 -bg darkcyan -fg white
+pack .d.dlt.l -side left
+button .d.dlt.q -text "Query" -command DQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .d.dlt.q -side left
+set butd [button .d.dlt.s -text "????" -command DSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .d.dlt.s -side left
 proc DQRun {} {
     global command butd env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7509 10"
@@ -256,14 +268,17 @@ proc DQRun_done { name element op } {
 
 ############################################################################################################################################
 # redwood-20 library manager
-frame .red20 -borderwidth 10 -bg darkcyan -fg yellow
-pack .red20 -side top -fill x
-label .red20.l -text "Redwood-20 Library Manager:" -width 25 -bg darkcyan -fg white
-pack .red20.l -side left
-button .red20.q -text "Query" -command R2QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .red20.q -side left
-set butr2 [button .red20.s -text "????" -command R2SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .red20.s -side left
+frame .e -borderwidth 10 -bg darkcyan -fg yellow
+pack .e -side top -fill x
+
+frame .e.red20 -bg darkcyan -fg yellow
+pack .e.red20 -side left -fill x
+label .e.red20.l -text "Redwood-20 Library Manager:" -width 25 -bg darkcyan -fg white
+pack .e.red20.l -side left
+button .e.red20.q -text "Query" -command R2QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .e.red20.q -side left
+set butr2 [button .e.red20.s -text "????" -command R2SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .e.red20.s -side left
 proc R2QRun {} {
     global command butr2 env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
@@ -288,14 +303,14 @@ proc R2QRun_done { name element op } {
 
 ############################################################################################################################################
 # redwood-50 library manager
-frame .red50 -borderwidth 10 -bg darkcyan -fg yellow
-pack .red50 -side top -fill x
-label .red50.l -text "Redwood-50 Library Manager:" -width 25 -bg darkcyan -fg white
-pack .red50.l -side left
-button .red50.q -text "Query" -command R5QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .red50.q -side left
-set butr5 [button .red50.s -text "????" -command R5SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .red50.s -side left
+frame .e.red50 -bg darkcyan -fg yellow
+pack .e.red50 -side left -fill x
+label .e.red50.l -text "Redwood-50 Library Manager:" -width 25 -bg darkcyan -fg white
+pack .e.red50.l -side left
+button .e.red50.q -text "Query" -command R5QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .e.red50.q -side left
+set butr5 [button .e.red50.s -text "????" -command R5SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .e.red50.s -side left
 proc R5QRun {} {
     global command butr5 env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7510 10"
@@ -320,14 +335,17 @@ proc R5QRun_done { name element op } {
 
 ############################################################################################################################################
 # emass media changer
-frame .emass -borderwidth 10 -bg darkcyan -fg yellow
-pack .emass -side top -fill x
-label .emass.l -text "EMASS Media Changer:" -width 25 -bg darkcyan -fg white
-pack .emass.l -side left
-button .emass.q -text "Query" -command EQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .emass.q -side left
-set bute [button .emass.s -text "????" -command ESRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .emass.s -side left
+frame .f -borderwidth 10 -bg darkcyan -fg yellow
+pack .f -side top -fill x
+
+frame .f.emass -bg darkcyan -fg yellow
+pack .f.emass -side left -fill x
+label .f.emass.l -text "EMASS Media Changer:" -width 25 -bg darkcyan -fg white
+pack .f.emass.l -side left
+button .f.emass.q -text "Query" -command EQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .f.emass.q -side left
+set bute [button .f.emass.s -text "????" -command ESRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .f.emass.s -side left
 proc EQRun {} {
     global command bute env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7523 10"
@@ -353,14 +371,14 @@ proc EQRun_done { name element op } {
 
 ############################################################################################################################################
 # stk media changer
-frame .stk -borderwidth 10 -bg darkcyan -fg yellow
-pack .stk -side top -fill x
-label .stk.l -text "STK Media Changer:" -width 25 -bg darkcyan -fg white
-pack .stk.l -side left
-button .stk.q -text "Query" -command STKQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-pack .stk.q -side left
-set butstk [button .stk.s -text "????" -command STKSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .stk.s -side left
+frame .f.stk -bg darkcyan -fg yellow
+pack .f.stk -side top -fill x
+label .f.stk.l -text "STK Media Changer:" -width 25 -bg darkcyan -fg white
+pack .f.stk.l -side left
+button .f.stk.q -text "Query" -command STKQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .f.stk.q -side left
+set butstk [button .f.stk.s -text "????" -command STKSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .f.stk.s -side left
 proc STKQRun {} {
     global command butstk env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7524 10"
@@ -420,7 +438,7 @@ proc Log {} {
 proc Stop {} {
     global input but done
     catch {close $input}
-    $but config -text "Run command" -command Run
+    $but config -text "Run " -command Run
     set done "done"
 }
 ############################################################################################################################################
