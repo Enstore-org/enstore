@@ -1,0 +1,982 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="StarOffice/4.0 (Unix)">
+	<META NAME="CREATED" CONTENT="19981028;10184100">
+	<META NAME="CHANGEDBY" CONTENT="Jon Bakkern">
+	<META NAME="CHANGED" CONTENT="19981029;13275900">
+</HEAD>
+<BODY>
+<P><A NAME="error"></A>&gt; 4 Error Control 
+</P>
+<P>This section describes Enstore's error control policy and plan.</P>
+<P>Much of the system state is stored within the user's encp client.
+This allows the encp client to retry on a large number of different
+errors. This retry is given a very high priority when it is received
+by the Library Manager so the user doesn't have to wait again for
+their job. It is the Library Manager's responsibility to ensure the
+error is not just repeated; for example, on a volume read error, the
+volume should not go to the same drive on a retry. The Library
+Manager gets the retry, volume and drive information from the ticket.</P>
+<P>Many interesting errors are related to cases where the volume
+cannot be written or read, or when it is suspected that volume is
+jammed, etc. More experience is needed with the actual hardware
+before the correct error control behavior is established. In the
+interim, Enstore will make the following working assumptions: 
+</P>
+<UL>
+	<LI>If there is trouble during a load or unload operation, the
+	volume is assumed to be physically jammed. No operations on the
+	drive or the volume until an administrator looks at the problem. 
+	<LI>If several drives have fatal write errors on a volume, the
+	volume will be marked read only. 
+	<LI>If several drives have fatal read errors on a volume, the volume
+	will be marked no access. 
+	<LI><P>If a drive has several fatal errors on different volumes, the
+	drive will be marked offline.</P>
+</UL>
+<DL>
+	<DT><BR>
+	</DT>
+	<DT>The following table describes the error conditions that Enstore
+	handles. 
+	</DT>
+	<DT><BR>
+	</DT>
+	<DT><BR><BR>
+	</DT>
+</DL>
+<TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
+	<TR VALIGN=TOP>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2><B>Error Code</B></FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Description</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Administrator</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Mover</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Library Manager</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Encp</FONT></FONT></P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Responsibility</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Retry</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Volume </FONT></FONT>
+			</P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+		<TH>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>Drive </FONT></FONT>
+			</P>
+			<P><FONT COLOR="#0000ff"><FONT SIZE=2>State</FONT></FONT></TH>
+	</TR>
+	<TR>
+		<TH COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TH>
+	</TR>
+	<TR>
+		<TH COLSPAN=9 VALIGN=TOP>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2>Volume Write Errors</FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_NOTAPE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Request volume was not found. Volume data base is
+			inconsistent with reality. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_TAPEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			or some other system has mounted volume or library micro put
+			volume elsewhere. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_DRIVEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			misconfiguration. Note: mover waits for automatic cleaning tape to
+			be ejected. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_BADMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			assume jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_BADSPACE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>EOD cookie does not produce EOD. Wrong volume,
+			Enstore bug or drive space error. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_ERROR</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error writing data block or file mark. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>If several errors occur with different volumes,
+			offline the drive.</FONT></P>
+			<P><FONT SIZE=2>If several errors occurs with different drives,
+			mark volume as read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR><BR>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Read Only</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_EOT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOT while writing data block or file mark. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as full and read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_UNLOAD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_UNMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unmounting volume. Volume is hanging in the
+			drive. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_NOBLANKS</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No more blank volumes. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Administrator should be paged.</FONT></P>
+			<P><FONT SIZE=2>DAQ should switch to alternate library. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>WRITE_MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>If mover is connected to an encp, encp will notice
+			its sockets being torn down prematurely. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR>
+		<TH COLSPAN=9>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Volume Read Errors</B></FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_NOTAPE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Requested volume was not found. Volume data base
+			is inconsistent with reality. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_TAPE_BUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Requested volume is in another drive. Enstore bug,
+			or some other system has mounted volume or library micro put
+			volume elsewhere. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_DRIVEBUSY</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>A volume is already in drive. Enstore bug or
+			misconfiguration. Note: mover waits for automatic cleaning tape to
+			be ejected. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and configuration in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_BADMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mount failure or load operation failed. Must
+			assume jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_BADLOCATE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Failed space or initial CRC's don't match. Either
+			file location cookie is corrupted, wrong volume in the drive or
+			drive cannot space properly. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_ERROR</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error reading data block. Run of the mill read
+			error. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>Check volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>If several errors occur with different volumes,
+			offline the drive.</FONT></P>
+			<P><FONT SIZE=2>If several errors occurs with different drives,
+			mark volume as read only </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Retry </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Yes</FONT></P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR><BR>
+			</P>
+			<P><BR><BR>
+			</P>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_COMP_CRC</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>CRC mismatch Drive and the volume are suspicious.
+			Corrupt file location cookie, drive space error, wrong volume in
+			the drive, etc. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_EOT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOT when reading. Corrupt file location
+			cookie, drive space error, or wrong volume in the drive. Should
+			have hit an EOF. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_EOD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Hit EOD when reading. Corrupt file location
+			cookie, drive space error, or wrong volume in the drive. Should
+			have hit an EOF. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume as no access</FONT></P>
+			<P><FONT SIZE=2>Offline drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_UNLOAD</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error unloading volume from drive. Must assume
+			jammed volume. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_UNMOUNT</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Error when unmounting volume. Volume is hanging in
+			the drive. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive and volume in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access</FONT></P>
+			<P><FONT SIZE=2>Offline the drive </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Not involved </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>READ_MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>If a Mover is connected to an encp, encp will
+			notice its sockets being torn down prematurely. The volume is tied
+			up at a mover. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check volume and drive in the morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Mark volume no access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No Access </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=9 VALIGN=TOP>
+			<P><BR><BR>
+			</P>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR>
+		<TH COLSPAN=9>
+			<P><FONT COLOR="#ff3333"><FONT SIZE=2><B>Other Errors</B></FONT></FONT></TH>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>ENCP_GONE</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>User has gone away while request is queued. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Unilateral unbind </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>TCP_HUNG</B> </FONT>
+		</TD>
+		<TD>
+			<UL>
+				<P><FONT SIZE=2>It appears that the data TCP link is hung.</FONT></UL>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check with user in morning </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Compute an anticipated transfer time for every
+			socket operation and abort the transfer if the actual transfer
+			takes more than three times the expected value. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>No </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>LM_CRASH</B> </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Library Manager crashes, and loses its queue of
+			pending work. The encp's will never be called back, and will wait
+			forever. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Ping Library Manager, every N mins (30) to see if
+			its request has gotten lost. </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+	</TR>
+	<TR VALIGN=TOP>
+		<TD>
+			<P><FONT SIZE=2><B>MOVER_CRASH</B></FONT></TD>
+		<TD>
+			<P><FONT SIZE=2>Mover is idle. The system degrades. </FONT>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Check drive in morning </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Remove from list when mover fails to respond to
+			summon </FONT>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><BR>
+		</TD>
+		<TD>
+			<P><FONT SIZE=2>Offline </FONT>
+		</TD>
+	</TR>
+</TABLE>
+<P><BR><BR>
+</P>
+</BODY>
+</HTML>
