@@ -1533,6 +1533,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if not hasattr(self,'too_long_in_state_sent'):
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
+                        Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state)) 
                         self.too_long_in_state_sent = 0 # send alarm just once
                     if buffer_empty_cnt >= self.max_in_state_cnt:
                         msg = "data transfer to client stuck. Breaking connection"
