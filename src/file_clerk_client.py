@@ -253,6 +253,13 @@ class FileClient(generic_client.GenericClient,
 		       "external_label" : vol } )
 	return r
 
+    # does the volume contain any undeleted file?
+
+    def has_undeleted_file(self, vol):
+        r = self.send({"work"           : "has_undeleted_file",
+		       "external_label" : vol } )
+	return r
+
     # rename volume and volume map
     def restore2(self, file_name, restore_dir="no"):
         r = self.send({"work"           : "restore_file",
