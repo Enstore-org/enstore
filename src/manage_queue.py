@@ -375,10 +375,10 @@ class Queue:
         print "********************"
 
     # get all entries from the queue
-    def get_queue(self):
+    def get_queue(self, queue_key='by_priority'):
         list = []
         for key in self.queue.keys():
-            list = list+self.queue[key]['by_priority'].get_tickets()
+            list = list+self.queue[key][queue_key].get_tickets()
         return list
 
     # find record in the queue
@@ -576,7 +576,7 @@ class Request_Queue:
     def get_queue(self):
         return (self.adm_queue.get_tickets(),
                 self.write_queue.get_queue(),
-                self.read_queue.get_queue())
+                self.read_queue.get_queue('opt'))
         
     # find record in the queue
     def find(self,id,output_file_name=None):
