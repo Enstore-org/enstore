@@ -73,7 +73,7 @@ ecrc: ecrc.c
 	cp ecrc ../sbin
 
 ddencp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT)
+	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT)
 	cp $(@) ../bin
 
 installpyc:
