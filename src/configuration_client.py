@@ -1,10 +1,7 @@
-import os
 import sys
-import string
 import time
 from udp_client import UDPClient
 import errno
-import pprint
 
 # Import SOCKS module if it exists, else standard socket module socket
 try:
@@ -90,7 +87,10 @@ class configuration_client :
 
 
 if __name__ == "__main__" :
+    import os
     import getopt
+    import string
+    import pprint
 
     # defaults
     #config_host = "localhost"

@@ -51,7 +51,7 @@ class UDPClient:
         if len(message) > TRANSFER_MAX :
             raise errno.errorcode[EMSGSIZE],"UDPClient.send:message too "+\
                   "big. Size = ",+repr(len(message))+" Max = "+\
-                  repr(TRANSFER_MAX)+" ",message
+                  repr(TRANSFER_MAX)+" "+repr(message)
 
         # send the udp message until we get a response that it was sent
         number = 0  # impossible number

@@ -1,13 +1,10 @@
-import sys
-import os
 import time
 import pprint
-from dict_to_a import *
-from SocketServer import *
-from configuration_client import *
+from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient
 from library_manager_client import LibraryManagerClient
 from dispatching_worker import DispatchingWorker
+from SocketServer import UDPServer, TCPServer
 from generic_server import GenericServer
 from udp_client import UDPClient
 from journal import JournalDict
@@ -173,8 +170,14 @@ class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"

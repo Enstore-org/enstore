@@ -1,9 +1,6 @@
-import sys
-import os
 import time
-from SocketServer import *
-from configuration_client import *
-from callback import send_to_user_callback
+from SocketServer import UDPServer, TCPServer
+from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from journal import JournalDict
@@ -424,8 +421,14 @@ class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import string
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"

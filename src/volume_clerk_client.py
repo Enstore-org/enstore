@@ -1,6 +1,4 @@
-import sys
-import os
-from configuration_client import *
+from configuration_client import configuration_client
 from udp_client import UDPClient
 
 class VolumeClerkClient :
@@ -140,8 +138,15 @@ class VolumeClerkClient :
 
 
 if __name__ == "__main__" :
+    import sys
     import getopt
-    import socket
+    import string
+    import pprint
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"

@@ -1,12 +1,10 @@
-import os
-import sys
-import posixfile
 import string
 import regsub
 import pprint
 import copy
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
+from SocketServer import UDPServer, TCPServer
 
 class ConfigurationDict(DispatchingWorker) :
 
@@ -125,8 +123,14 @@ class ConfigurationServer(ConfigurationDict, GenericServer, UDPServer) :
             pprint.pprint(self.__dict__)
 
 if __name__ == "__main__" :
+    import os
+    import sys
     import getopt
-    import socket
+    # Import SOCKS module if it exists, else standard socket module socket
+    try:
+        import SOCKS; socket = SOCKS
+    except ImportError:
+        import socket
 
     # defaults
     #config_host = "localhost"
