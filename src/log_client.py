@@ -71,7 +71,8 @@ class LoggerClient(generic_client.GenericClient):
 
     def log_func( self, time, pid, name, args ):
 	#prevent log func from calling itself recursively
-	if self.lock.test_and_set():    return
+	if self.lock.test_and_set():
+            return
 
 	severity = args[0]
 	msg      = args[1]
@@ -80,8 +81,10 @@ class LoggerClient(generic_client.GenericClient):
         else:
             ln = name
 	if severity > e_errors.MISC: severity = e_errors.MISC
-	msg = '%.6d %.8s %s %s  %s' % (os.getpid(),self.uname,
-				       e_errors.sevdict[severity],ln,msg)
+
+	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
+				       e_errors.sevdict[severity],name,msg)
+
 	ticket = {'work':'log_message', 'message':msg}
 	self.u.send_no_wait( ticket, self.logger_address )
 	return 	self.lock.unlock()
