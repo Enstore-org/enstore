@@ -4,6 +4,7 @@
 
 import os
 import string
+import time
 
 cleaned = []
 for line in open(string.strip(os.popen(
@@ -46,6 +47,7 @@ for vol in vols:
     else:
         good.append(vol)
 
+print time.strftime("%c",time.localtime(time.time()))
 print "The following drives were cleaned yesterday:"
 if cleaned:
     print '  ',string.join(cleaned, ' ')
