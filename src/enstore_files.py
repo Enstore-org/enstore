@@ -899,10 +899,10 @@ class EnstoreStatusFile(EnFile):
     def write(self, enstat, outage_d, offline_d, override_d):
 	self.do_write("status=%s"%([enstat[enstore_constants.ENSTORE],
 				    enstat[enstore_constants.TIME],
-				    outage_d.get(enstore_constants.ENSTORE, 
-						 enstore_constants.NONE),
 				    offline_d.get(enstore_constants.ENSTORE, 
 						  enstore_constants.NONE),
+				    outage_d.get(enstore_constants.ENSTORE, 
+						 enstore_constants.NONE),
 				    override_d.get(enstore_constants.ENSTORE, 
 						   enstore_constants.NONE),
 				    enstore_functions.get_www_host()],))
