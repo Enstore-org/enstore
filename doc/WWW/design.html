@@ -2505,7 +2505,7 @@ $ ecmd mov --status fndaprdisk.mover<br>
 </dl>
 
 <h4><a name="mover_config">
-1.3.8.2 Mover Config File Values
+1.3.4.2 Mover Config File Values
 </h4>
 <center><TABLE BORDER COLS=4 WIDTH="100%" NOSAVE >
 <TR VALIGN=CENTER NOSAVE>
@@ -2753,8 +2753,6 @@ The media changer does not keep tape drive or cartridge statistics.  Summary sta
 are not very useful and the media does not run on the machine connected to the tape drive.
 <p>
 Enstore writes detail error statistics to its log when a file is closed.
-
-
 
 <h3><a name="inquisitor">
 1.3.8 Inquisitor
@@ -3138,13 +3136,183 @@ number of attempts to summon them
 <li>number of bytes read and written so far on the current transfer (if working)
 </ul>
 </ul>
+<pre>
+ENSTORE SYSTEM STATUS
+DC12MAM.mover : alive on (rip2, 7535) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DE13DLT.mover : alive on (rip1, 7526) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DE14DLT.mover : alive on (rip1, 7527) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DE15DLT.mover : alive on (rip1, 7528) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DE16DLT.mover : alive on (rip1, 7529) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DM05AIT.mover : alive on (rip2, 7530) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 65,  Current State : busy writing 1073741824 bytes to the HSM
+    Current Transfer :  Read 1073741824 bytes,  Wrote 1070792703 bytes
+
+DM06AIT.mover : alive on (rip2, 7531) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 59,  Current State : busy writing 1073741824 bytes to the HSM
+    Current Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+DM07AIT.mover : alive on (rip2, 7532) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 51,  Current State : busy writing 1073741824 bytes to the HSM
+    Current Transfer :  Read 171179860 bytes,  Wrote 167182335 bytes
+
+DM08AIT.mover : timed out on (rip2, 7533) at 1999-Jan-7 00:00:27
+admin clerk     : alive on (rip6, 7503) at 1999-Jan-7 00:00:27
+ait.library_manager : alive on (rip5, 7507) at 1999-Jan-7 00:00:27
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    DM05AIT.mover         7530    work_at_mo    1999-Jan-6 23:52:31     0  
+    DM08AIT.mover         7533    work_at_mo    1999-Jan-6 21:26:51     0  
+    DM07AIT.mover         7532    work_at_mo    1999-Jan-6 23:58:01     0  
+    DM06AIT.mover         7531    work_at_mo    1999-Jan-6 23:59:38     0  
+
+    Work for: DM08AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7602
+          WRITE to: /pnfs/grau/ait/jon1/100MB.trand__Jan06212546rip8.fnal.gov25511,  BYTES: 104857600
+          DEVICE LABEL: CA2901,  FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
+          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
+          JOB SUBMITTED: 1999-Jan-6 21:25:48
+          FILE MODIFIED: 1999-Jan-6 21:25:49
+
+          DM05AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7600
+          WRITE to: /pnfs/grau/ait/jon1/1GB.trand__Jan06235102rip8.fnal.gov25520,  BYTES: 1073741824
+          DEVICE LABEL: CA2905,  FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
+          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
+          JOB SUBMITTED: 1999-Jan-6 23:51:04
+          FILE MODIFIED: 1999-Jan-6 23:51:04
+
+          DM07AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7601
+          WRITE to: /pnfs/grau/ait/jon2/1GB.trand__Jan06235709rip8.fnal.gov25550,  BYTES: 1073741824
+          DEVICE LABEL: CA2907,  FILE FAMILY: jon-ait-2,  FILE FAMILY WIDTH: 2
+          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
+          JOB SUBMITTED: 1999-Jan-6 23:57:11
+          FILE MODIFIED: 1999-Jan-6 23:57:11
+
+          DM06AIT.mover, from NODE: rip4.fnal.gov (Linux),  PORT: 7600
+          WRITE to: /pnfs/grau/ait/jon2/1GB.trand__Jan06235846rip4.fnal.gov17340,  BYTES: 1073741824
+          DEVICE LABEL: CA2906,  FILE FAMILY: jon-ait-2,  FILE FAMILY WIDTH: 2
+          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
+          JOB SUBMITTED: 1999-Jan-6 23:58:48
+          FILE MODIFIED: 1999-Jan-6 23:58:48
+
+
+    Pending work: from NODE: rip8.fnal.gov (Linux),  PORT: 7602
+          WRITE to: /pnfs/grau/ait/jon1/1GB.trand__Jan06235128rip8.fnal.gov25511,  BYTES: 1073741824
+          FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
+          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
+          JOB SUBMITTED: 1999-Jan-6 23:51:29
+          FILE MODIFIED: 1999-Jan-6 23:51:30
+
+backup : NOT SUPPORTED IN INQUISITOR
+blocksizes      : diskfile : 512,  redwood : 131072,  DECDLT : 131072,
+                  floppy : 512,  cartridge : 512,  exabyte : 131072,
+                  cassette : 512,  8MM : 131072
+config server   : alive on (rip6.fnal.gov, 7500) at 1999-Jan-7 00:00:27
+database : NOT SUPPORTED IN INQUISITOR
+dc11.media_changer : alive on (rip1, 7521) at 1999-Jan-7 00:00:27
+dc12.media_changer : alive on (rip1, 7522) at 1999-Jan-7 00:00:27
+de13.media_changer : alive on (rip10, 7517) at 1999-Jan-7 00:00:27
+de14.media_changer : alive on (rip10, 7518) at 1999-Jan-7 00:00:27
+de15.media_changer : alive on (rip10, 7519) at 1999-Jan-7 00:00:27
+de16.media_changer : alive on (rip10, 7520) at 1999-Jan-7 00:00:27
+dlt.library_manager : alive on (rip5, 7509) at 1999-Jan-7 00:00:27
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    DE13DLT.mover         7526    idle_mover    1999-Jan-6 18:01:14     0  
+    DE15DLT.mover         7528    idle_mover    1999-Jan-6 18:01:16     0  
+    DE16DLT.mover         7529    idle_mover    1999-Jan-6 18:01:17     0  
+    DE14DLT.mover         7527    idle_mover    1999-Jan-6 18:01:19     0  
+
+    No work at movers
+    No pending work
+
+dm05.media_changer : alive on (rip1, 7513) at 1999-Jan-7 00:00:27
+dm06.media_changer : alive on (rip1, 7514) at 1999-Jan-7 00:00:27
+dm07.media_changer : alive on (rip1, 7515) at 1999-Jan-7 00:00:27
+dm08.media_changer : alive on (rip1, 7516) at 1999-Jan-7 00:00:27
+encp            : 23:58:16 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2906 at a user rate of 0.509 MB/S
+                  23:56:39 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2907 at a user rate of 0.511 MB/S
+                  23:54:27 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2906 at a user rate of 1.93 MB/S
+                  23:52:51 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2907 at a user rate of 1.95 MB/S
+                  23:50:58 on rip8.fnal.gov by bakken (Data Transfer Rate : 1.35 MB/S)
+                     1048576 bytes copied to CA2905 at a user rate of 0.0183 MB/S
+                  23:50:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.41 MB/S)
+                     104857600 bytes copied to CA2905 at a user rate of 0.233 MB/S
+                  23:49:30 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2905 at a user rate of 1.08 MB/S
+                  23:45:04 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.39 MB/S)
+                     104857600 bytes copied to CA2906 at a user rate of 0.527 MB/S
+                  23:43:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2907 at a user rate of 0.529 MB/S
+
+file clerk      : alive on (rip6, 7501) at 1999-Jan-7 00:00:27
+inquisitor      : alive on (rip6, 7505) at 1999-Jan-7 00:00:27
+log server      : alive on (rip6, 7504) at 1999-Jan-7 00:00:27
+mam.library_manager : alive on (rip5, 7508) at 1999-Jan-7 00:00:27
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    DC12MAM.mover         7535    idle_mover    1999-Jan-6 18:01:05     0  
+
+    No work at movers
+    No pending work
+
+rip6.library_manager : alive on (rip5, 7506) at 1999-Jan-7 00:00:27
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    rip6.mover            7525    idle_mover    1999-Jan-6 18:00:50     0  
+
+    No work at movers
+    No pending work
+
+rip6.media_changer : alive on (rip6, 7512) at 1999-Jan-7 00:00:27
+rip6.mover : alive on (rip6, 7525) at 1999-Jan-7 00:00:27
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+volume clerk    : alive on (rip6, 7502) at 1999-Jan-7 00:00:27
+</pre>
 
 <h4><a name="inquisitor_html_status">
 1.3.8.3.2 Example Html Status Snapshot File
 </h4>
 The html snapshot file contains the last know status of the Enstore system. 
 As such it will be a repeat of the last set of information in the Ascii status
-file formatted for browsing.
+file formatted for browsing minus the <i>encp</i> information.
+
 <h4><a name="inquisitor_encp_status">
 1.3.8.3.3 Example <em>encp</em> History Snapshot File
 </h4>
@@ -3159,6 +3327,27 @@ Each <em>encp</em> history line contains the following information
 <li>user rate of transfer
 </ul>
 <p>
+<pre>
+encp            : 23:58:16 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2906 at a user rate of 0.509 MB/S
+                  23:56:39 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2907 at a user rate of 0.511 MB/S
+                  23:54:27 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2906 at a user rate of 1.93 MB/S
+                  23:52:51 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2907 at a user rate of 1.95 MB/S
+                  23:50:58 on rip8.fnal.gov by bakken (Data Transfer Rate : 1.35 MB/S)
+                     1048576 bytes copied to CA2905 at a user rate of 0.0183 MB/S
+                  23:50:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.41 MB/S)
+                     104857600 bytes copied to CA2905 at a user rate of 0.233 MB/S
+                  23:49:30 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
+                     1073741824 bytes copied to CA2905 at a user rate of 1.08 MB/S
+                  23:45:04 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.39 MB/S)
+                     104857600 bytes copied to CA2906 at a user rate of 0.527 MB/S
+                  23:43:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
+                     104857600 bytes copied to CA2907 at a user rate of 0.529 MB/S
+
+</pre>
 
 <h4><a name="inquisitor_plot_ita">
 1.3.8.3.4 Example Individual Transfer Activity Plot
