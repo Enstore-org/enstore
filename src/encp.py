@@ -1715,12 +1715,13 @@ def read_hsm_files(listen_socket, submitted, requests,
         # remove file requests if transfer completed succesfuly
         if done_ticket["status"][0] == e_errors.OK:
             delete_at_exit.unregister(localname)
-            try:
-                perms = os.stat(requests[j]['infile'])[stat.ST_MODE]
-                os.chmod(localname, perms)
-            except:
-                exc, msg, tb = sys.exc_info()
-                Trace.log(e_errors.INFO, "chmod %s failed: %s %s" % (localname, exc, msg))
+            if localname != '/dev/null':
+                try:
+                    perms = os.stat(requests[j]['infile'])[stat.ST_MODE]
+                    os.chmod(localname, perms)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    Trace.log(e_errors.INFO, "chmod %s failed: %s %s" % (localname, exc, msg))
                 
             bytes = bytes+requests[j]['file_size']
             del(requests[j])
