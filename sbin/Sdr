@@ -84,7 +84,7 @@ EOF
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
       data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
-      `enstore alarm --raise --root-error=\"DOESNOTEXIST - $des, $i\"`
+      `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i"`
     else
       data_item="<td align=center>$val</td>"
     fi
