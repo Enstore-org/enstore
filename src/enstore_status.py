@@ -43,9 +43,10 @@ trow = "<TR NOSAVE>\n"
 tdata_end = "</TD>\n"
 
 html_header1 = "<title>Enstore Status</title>\n"+\
-              "<meta http-equiv=\"Refresh\" content=\""
+               "<meta http-equiv=\"Refresh\" content=\""
 html_header2 = "\">\n"+\
-              "<body bgcolor=\""+bg_color+"\">\n<pre>\n"
+               "<body bgcolor=\""+bg_color+"\">\n"
+html_header3 = "<pre>\n"
 
 # format the timestamp value
 def get_ts():
@@ -487,6 +488,7 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
         Trace.trace(10,'{__init__ htmlstatusfile ')
 	EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh, verbose)
+	self.header2 = html_header3
         Trace.trace(10,'}__init__')
 
     # open the file and write the header to the file
@@ -494,6 +496,7 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
         Trace.trace(12,"{open "+self.header)
 	EnStatusFile.open(self, verbose)
 	self.file.write(self.header)
+	self.file.write(self.header2)
         Trace.trace(12,"}write_header ")
 
 class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
@@ -559,6 +562,13 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 	EnStatusFile.__init__(self, file)
 	EnHTMLFile.__init__(self, refresh, verbose)
         Trace.trace(10,'}__init__')
+
+    # open the file and write the header to the file
+    def open(self, verbose=0):
+        Trace.trace(12,"{open "+self.header)
+	EnStatusFile.open(self, verbose)
+	self.file.write(self.header)
+        Trace.trace(12,"}write_header ")
 
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
