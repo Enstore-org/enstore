@@ -89,9 +89,10 @@ fi
 
 logfiles=`ls -1 log*.ascii`
 for log in $logfiles; do
-  year=`tail -n 1 $log|cut -f1 -d/`
-  month=`echo $log | cut -b6-7`
-  day=`  echo $log | cut -b4-5`
+  last_line="`tail -n 1 $log`"
+  year=` echo $last_line | cut -f1 -d-`
+  month=`echo $last_line | cut -f2 -d-`
+  day=`  echo $last_line | cut -f3 -d-|cut -f1 -d\ `
   stash=0
   if [ $year  -lt $thisYear  ]; then stash=1;fi
   if [ $month -lt $thisMonth ]; then stash=1;fi
