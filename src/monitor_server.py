@@ -69,7 +69,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker):
         self.reply_to_caller({"status" : ('ok', "")})
         file = enstore_files.EnFile("DOG.html")
         file.open()
-        file.filedes.write(str(self.page))
+        file.write(str(self.page))
         file.close()
 
         
