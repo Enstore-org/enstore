@@ -146,7 +146,6 @@ EXfd_xfer(PyObject *self, PyObject *args)
     if (crc_flag>1 || crc_flag<0)
 	printf("fd_xfer - invalid crc param");
 
-    assert(blk_size < 0x400000);
     sts = do_read_write(fr_fd, to_fd, no_bytes, blk_size, crc_flag, &crc_i);
     if (sts == -1)
 	return (raise_exception("fd_xfer read error"));
