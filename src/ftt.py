@@ -94,8 +94,11 @@ class FTT:
 
     def open_dev(self):
         return check(_ftt.ftt_open_dev(self.d))
-    def close(self): 
-        return check(_ftt.ftt_close(self.d))
+    def close(self):
+        assert self.d!=None
+        ret = check(_ftt.ftt_close(self.d))
+        self.d = None
+        return ret
     def close_dev(self): 
         return check(_ftt.ftt_close_dev(self.d))
     def read(self, buf, length): 
