@@ -800,7 +800,7 @@ class Pnfs:
 
     def log_err(self,func_name):
         exc,msg,tb=sys.exc_info()
-        Trace.log("pnfs %s %s %s %s"%(
+        Trace.log(e_errors.ERROR,"pnfs %s %s %s %s"%(
                 func_name, self.file, exc,msg))
         
 ##############################################################################
