@@ -8,8 +8,7 @@ import time
 import generic_client
 import udp_client
 import enstore_constants
-import enstore_functions
-import enstore_functions2
+import e_errors
 import option
 import Trace
 
@@ -424,7 +423,7 @@ def do_work(intf):
 
     elif intf.show:
 	ticket = iqc.show()
-	if enstore_functions.is_ok(ticket):
+	if e_errors.is_ok(ticket):
 	    iqc.print_show(ticket)
 
     else:
