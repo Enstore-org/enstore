@@ -40,10 +40,10 @@ for dir in dirs:
             
 
 # concatenate all the eps files together
-os.system("epscat %s/*.eps > %s/%s"%(epsdir, epsdir, all_plots))
+os.system("epscat -f %s/*.eps > %s/%s"%(epsdir, epsdir, all_plots))
 
 # make them be 6 images per page
-os.system("psnup -d -%s %s/%s > %s/%s"%(plots_per_page, epsdir, all_plots, 
+os.system("psnup -%s %s/%s > %s/%s"%(plots_per_page, epsdir, all_plots, 
                                         epsdir, plot_print_file))
 print "\nprintCrons: Created %s/%s, please print this file.\n"%(epsdir,
                                                                plot_print_file)
