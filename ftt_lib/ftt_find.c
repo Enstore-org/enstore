@@ -180,8 +180,8 @@ ftt_find_last_part( char *p ) {
 */
 extern char *
 ftt_get_driveid(char *basename,char *os) {
-    static char cmdbuf[255];
-    static char output[255];
+    static char cmdbuf[512];
+    static char output[512];
     static union { int n; char s[512];} s1, s2, s3;
     FILE *pf;
     char *res = 0;
@@ -198,7 +198,7 @@ ftt_get_driveid(char *basename,char *os) {
 	sprintf(cmdbuf, "ftt_suid -i %s", basename );
 	pf = popen(cmdbuf, "r");
         if (pf != 0) {
-	    res = fgets(output,255,pf);
+	    res = fgets(output,512,pf);
 	    pclose(pf);
 	} else {
 	    res = 0;
@@ -209,10 +209,10 @@ ftt_get_driveid(char *basename,char *os) {
 	} else {
 	    sprintf(cmdbuf, devtable[i].drividcmd, s1.n, s2.n, s3.n);
 	}
-	DEBUG3(stderr,"Running \"%s\" to get drivid\n", cmdbuf);
+	DEBUG3(stderr,"Running \"%s\" to get drivid (lenght %d < 512 ) \n", cmdbuf,strlen(cmdbuf));
 	pf = popen(cmdbuf, "r");
 	if (pf) {
-	    res = fgets(output, 255,pf);
+	    res = fgets(output, 512,pf);
 	    pclose(pf);
 	}
     }
@@ -223,3 +223,5 @@ ftt_get_driveid(char *basename,char *os) {
     DEBUG3(stderr, "returning %s\n", res);
     return res;
 }
+
+

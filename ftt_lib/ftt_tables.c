@@ -751,7 +751,8 @@ static char SunOSfind_devices[] =
     IFS=\" \t\n\";\
     PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
     dir='%s';\
-    line=\"`dmesg | grep '^st%d:' `\" \n\
+    id=\"`dmesg | grep st@%d | sort -u | sed -e 's;^\\(st[0-9]*\\).*$;\\1;'`\" \n\
+    line=\"`dmesg | grep \\^${id}: `\" \n\
     case \"$line\" in \n\
     *Vendor*)  \n\
 	echo \"$line\" | sed -e 's/.*Product..\\([^ ]*\\).*>/\\1/' | tail -1\n\
@@ -766,7 +767,8 @@ static char SunOSfind_dev[] =
     IFS=\" \t\n\";\
     PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
     drive=%d\n\
-    id=\"`ls -l /dev/rmt/${drive} | sed -e 's;.*/\\(.*\\)@\\([0-9]*\\).*;\\1\\2;'`\" \n\
+    id=\"`ls -l /dev/rmt/${drive} | sed -e 's;.*/\\(st@[0-9]*\\).*;\\1;'`\" \n\
+    id=\"`dmesg | grep ${id} | sort -u | sed -e 's;^\\(st[0-9]*\\).*$;\\1;'`\" \n\
     line=\"`dmesg | grep \\^${id}: `\" \n\
     case \"$line\" in \n\
     *Vendor*)  \n\
