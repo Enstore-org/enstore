@@ -1,5 +1,4 @@
 import sys
-#from os import *
 import time
 from configuration_client import configuration_client
 from volume_clerk_client import VolumeClerkClient

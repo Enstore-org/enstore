@@ -1,7 +1,7 @@
 import sys
 import os
 import regex
-from errno import *
+import errno
 import stat
 import pwd
 import grp
@@ -11,7 +11,10 @@ import fcntl
 import lockfile
 import regsub
 import pprint
-import Devcodes # this is a compiled enstore module
+try:
+    import Devcodes # this is a compiled enstore module
+except ImportError:
+    print "Devcodes unavailable"
 
 enabled = "enabled"
 disabled = "disabled"
@@ -55,7 +58,7 @@ class pnfs :
             self.set_bit_file_id("1234567890987654321",123)
             self.statinfo()
         else:
-            raise errorcode[EINVAL],"pnfs.jon1: "\
+            raise errno.errorcode[EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
 
     # simple test configuration
@@ -67,7 +70,7 @@ class pnfs :
             self.set_file_family_width(2)
             self.statinfo()
         else:
-            raise errorcode[EINVAL],"pnfs.jon1: "\
+            raise errno.errorcode[EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
 
     ##########################################################################
@@ -308,7 +311,10 @@ class pnfs :
                 self.utime()
                 self.stat = os.stat(self.pnfsFilename)
                 self.exists = exists
-                code_dict = Devcodes.MajMin(self.pnfsFilename)
+                try:
+                    code_dict = Devcodes.MajMin(self.pnfsFilename)
+                except:
+                    code_dict={"Major":0,"Minor":0}
                 self.major = code_dict["Major"]
                 self.minor = code_dict["Minor"]
             except os.error :
@@ -316,7 +322,10 @@ class pnfs :
                     try :
                         self.stat = os.stat(self.dir)
                         self.exists = direxists
-                        code_dict = Devcodes.MajMin(self.dir)
+                        try:
+                            code_dict = Devcodes.MajMin(self.dir)
+                        except:
+                            code_dict={"Major":0,"Minor":0}
                         self.major = code_dict["Major"]
                         self.minor = code_dict["Minor"]
                     except :

@@ -188,7 +188,7 @@ class VolumeClerkMethods(DispatchingWorker) :
                 # administrator reset the system_inhibit back to none in these
                 # special, and hopefully rare cases.
                 v["system_inhibit"] = "full"
-                print k "is now full, bytes remaining = ",v["remaining_bytes"]
+                print k,"is now full, bytes remaining = ",v["remaining_bytes"]
                 dict[repr(k)] = v
                 continue
             vetoed = 0
