@@ -319,13 +319,91 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    # create internal list of input files even if just 1 file passed in
+    if list:
+        print "Storing/checking  local info   cum=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
+
+    # we will be needing all these lists, initialize them now
+    bfid = []
+    file_size = []
+    pinfo = []
+    finfo = []
+    vinfo = []
+    volume = []
+    unique_id = []
+    vols_needed = {}
+
+    # store some local information as part of ticket
+    uinfo = {}
+    uinfo['uid'] = os.getuid()
+    uinfo['gid'] = os.getgid()
+    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    uinfo['machine'] = os.uname()
+    uinfo['fullname'] = "" # will be filled in later for each transfer
+
+    tinfo["localinfo"] = time.time() - t1 #---------------------------------End
+    if list:
+        print "  dt:",tinfo["localinfo"], "   cum=",time.time()-t0
+
+    if list:
+        print "Checking input pnfs files:",input, "   cum=",time.time()-t0
+    t1 =  time.time() #---------------------------------------------------Start
+
+    # create internal list of input pnfs files even if just 1 file passed in
     try:
         ninput = len(input)
         inputlist = input
     except TypeError:
         inputlist = [input]
         ninput = 1
+
+    # first check the input pnfs files and get all info from pnfs that is needed
+    # if files don't exits, we bomb out to the user
+    for i in range(0,ninput):
+
+        # get fully qualified name
+        (machine, fullname, dir, basename) = fullpath(input[i])
+        input[i] = dir+'/'+basename
+
+        # on reads, the file must exist in pnfs
+        p = pnfs.pnfs(input[i])
+        if p.exists != pnfs.exists :
+            jraise(errno.errorcode[errno.ENOENT]," encp.read_from_hsm: "\
+                   +inputlist[i]+" does not exist")
+
+        # input files can't be directories
+        if not stat.S_ISREG(p.pstat[stat.ST_MODE]) :
+            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
+                   +input[i]+" is not a regular file")
+
+        # get the most important info and store into separate lists
+        bfid.append(p.bit_file_id)
+        file_size.append(p.file_size)
+        unique_id.append(0) # will be set later when submitted
+
+        # get all the required pnfs info for the ticket
+        pinf = {}
+        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
+                   'major','minor','rmajor','rminor',\
+                   'mode','pstat' ] :
+            exec("pinf["+repr(k)+"] = p."+k)
+        pinfo.append(pinf)
+
+        # we need to check (just ?) once that the system is running
+        if i==0:
+            running = p.check_pnfs_enabled()
+            if running != pnfs.enabled :
+                jraise(errno.errorcode[errno.EACCES]," encp.read_from_hsm: "\
+                       +"system disabled"+running)
+
+    tinfo["pnfscheck"] = time.time() - t1 #---------------------------------End
+    if list:
+        print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
+
+    if list:
+        print "Checking output unix files:",output, "   cum=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
 
     # can only handle 1 input file  copied to 1 output file
     #  or      multiple input files copied to 1 output directory
@@ -351,66 +429,12 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                    "multiple input files must be copied to a directory, not "\
                    +output[0])
 
-    bfid = []
-    file_size = []
-    pinfo = []
-    finfo = []
-    vinfo = []
-    volume = []
-    unique_id = []
-    vols_needed = {}
-
-    # first check the input pnfs files and get all info from pnfs that is needed
-    # if files don't exits, we bomb out to the user
-    if list:
-        print "Checking input files:",inputlist, "   cum=",time.time()-t0
-    t1 =  time.time()
-    for i in range(0,ninput):
-
-        # on reads, the file must exist in pnfs
-        p = pnfs.pnfs(input[i])
-        if p.exists != pnfs.exists :
-            jraise(errno.errorcode[errno.ENOENT]," encp.read_from_hsm: "\
-                   +inputlist[i]+" does not exist")
-
-        # input files can't be directories
-        if not stat.S_ISREG(p.pstat[stat.ST_MODE]) :
-            jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
-                   +input[i]+" is not a regular file")
-
-        # get the most important info and store into separate lists
-        bfid.append(p.bit_file_id)
-        file_size.append(p.file_size)
-        unique_id.append(0)
-
-        # get all the required pnfs info for the ticket
-        pinf = {}
-        for k in [ 'pnfsFilename','gid', 'gname','uid', 'uname',\
-                   'major','minor','rmajor','rminor',\
-                   'mode','pstat' ] :
-            exec("pinf["+repr(k)+"] = p."+k)
-        pinfo.append(pinf)
-
-        # we need to check (just ?) once that the system is running
-        if i==0:
-            running = p.check_pnfs_enabled()
-            if running != pnfs.enabled :
-                jraise(errno.errorcode[errno.EACCES]," encp.read_from_hsm: "\
-                       +"system disabled"+running)
-
-    tinfo["pnfscheck"] = time.time() - t1
-    if list:
-        print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
-
-
     # Make sure we can open the unixfiles. If we can't, we bomb out to user
-    if list:
-        print "Checking outputput files:",output, "   cum=",time.time()-t0
-    t1 = time.time()
+    # loop over all input files and generate full output file names
     for i in range(0,ninput):
         outputlist.append(output[0])
 
-        # see if output file exists
+        # see if output file exists as user specified
         try:
             statinfo = os.stat(outputlist[i])
             itexists = 1
@@ -449,55 +473,45 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             if "ok\012" != writable[0] :
                 jraise(errno.errorcode[errno.EACCES]," encp.read_from__hsm: "\
                        +" NO write access to directory"+odir)
-    tinfo["filecheck"] = time.time() - t1
+
+    tinfo["filecheck"] = time.time() - t1 #---------------------------------End
     if list:
         print " ",outputlist
         print "  dt:",tinfo["filecheck"], "   cum=",time.time()-t0
 
-    # store some local information as part of ticket
-    if list:
-        print "Storing local info   cum=",time.time()-t0
-
-    t1 = time.time()
-    uinfo = {}
-    uinfo['uid'] = os.getuid()
-    uinfo['gid'] = os.getgid()
-    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
-    uinfo['machine'] = os.uname()
-    uinfo['fullname'] = outputlist[0]
-
-    tinfo["localinfo"] = time.time() - t1
-    if list:
-        print "  dt:",tinfo["localinfo"], "   cum=",time.time()-t0
-
-    # get a port to talk on and listen for connections
-    t1 = time.time()
     if list:
         print "Requesting callback ports", "   cum=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
+
+    # get a port to talk on and listen for connections
     host, port, listen_socket = callback.get_callback()
     listen_socket.listen(4)
-    tinfo["get_callback"] = time.time() - t1
+
+    tinfo["get_callback"] = time.time() - t1 #------------------------------End
     if list:
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cum=",time.time()-t0
 
-    # ask configuration server what port the file clerk is using
-    t1 = time.time()
     if list:
         print "Calling Config Server to find file clerk",\
               "   cum=",time.time()-t0
-    fticket = csc.get("file_clerk")
-    tinfo["get_fileclerk"] = time.time() - t1
-    if list:
-        print "  ",fticket["host"],fticket["port"],"dt:",\
-              tinfo["get_fileclerk"], "   cum=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
 
-    # call file clerk and get file info about each bfid
+    # ask configuration server what port the file clerk is using
+    fticket = csc.get("file_clerk")
+
+    tinfo["get_fileclerk"] = time.time() - t1 #-----------------------------End
+    if list:
+        print " ",fticket["host"],fticket["port"]
+        print "  dt:", tinfo["get_fileclerk"], "   cum=",time.time()-t0
+
     if list:
         print "Calling file clerk for file info", "   cum=",time.time()-t0
-    t1 = time.time()
+    t1 = time.time() # ---------------------------------------------------Start
+
+    # call file clerk and get file info about each bfid
     for i in range(0,ninput):
+        t2 = time.time() # -------------------------------------------Lap-Start
         binfo  = u.send({'work': 'bfid_info', 'bfid': bfid[i]},
                         (fticket['host'],fticket['port']))
         if binfo['status']!='ok':
@@ -512,16 +526,24 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             vols_needed[label] = vols_needed[label]+1
         except KeyError:
             vols_needed[label] = 1
-    tinfo['file_clerk'] =  time.time() - t1
+        tinfo['fc'+repr(i)] = time.time() - t2 #------------------------Lap--End
+
+    tinfo['file_clerk'] =  time.time() - t1 #-------------------------------End
     if list:
         print "  dt:",tinfo["file_clerk"], "   cum=",time.time()-t0
+
+    if list:
+        print "Sending ticket to file clerk", "   cum=",time.time()-t0
+    t1 = time.time() #----------------------------------------------------Start
 
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
 
     for vol in vols_needed.keys():
+        t2 = time.time() #--------------------------------------------Lap-Start
         submitted = 0
+        Qd=""
         for i in range(0,ninput):
             if volume[i]==vol:
                 unique_id[i] = time.time()  # note that this is down to mS
@@ -539,10 +561,6 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                           }
 
                 # send ticket to file clerk who sends it to right library manger
-                if list:
-                    print "Sending ticket to file clerk",\
-                          "   cum=",time.time()-t0
-                t1 = time.time()
                 ticket = u.send(ticket, (fticket['host'], fticket['port']))
                 if ticket['status'] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
@@ -551,12 +569,27 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                            +repr(fticket['port']) +", ticket[\"status\"]="\
                            +ticket["status"])
                 submitted = submitted+1
-                tinfo["send_ticket"] = time.time() - t1
+                tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
                 if list :
-                    print "  Q'd:",inputlist[i], bfid[i],\
-                          "bytes:",file_size[i], "on",\
-                          finfo[i]["external_label"],finfo[i]["bof_space_cookie"],\
-                          "dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
+                    if len(Qd)==0:
+                        Qd = "  Q'd: %s %s bytes: %d on %s %s dt: %f   cum=%f" %\
+                             (inputlist[i],bfid[i],file_size[i],\
+                              finfo[i]["external_label"],\
+                              finfo[i]["bof_space_cookie"],\
+                              tinfo["send_ticket"+repr(i)],time.time()-t0)
+                    else:
+                        Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s dt: %f   cum=%f" %\
+                             (Qd,inputlist[i],bfid[i],file_size[i],\
+                              finfo[i]["external_label"],\
+                              finfo[i]["bof_space_cookie"],\
+                              tinfo["send_ticket"+repr(i)],time.time()-t0)
+
+        tinfo["send_ticket"] = time.time() - t1 #---------------------------End
+        if list:
+            print Qd
+            print "  dt:",tinfo["send_ticket"], "   cum=",time.time()-t0
+
+        t1 = time.time() #------------------------------------------------Start
 
         # We have placed our work in the system and now we have to wait for
         # resources. All we need to do is wait for the system to call us
@@ -566,11 +599,11 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
 
         for waiting in range(0,submitted):
             if list:
-                print "Waiting for mover to call back",\
-                      "   cum=",time.time()-t0
+                print "Waiting for mover to call back", "   cum=",time.time()-t0
+            t2 = time.time() #----------------------------------------Lap-Start
 
-            # listen for a mover - see if corresponds to one of the tickets
-            # we submitted for the volume
+            # listen for a mover - see if id corresponds to one of the tickets
+            #   we submitted for the volume
             while 1 :
                 control_socket, address = listen_socket.accept()
                 new_ticket = callback.read_tcp_socket(control_socket,\
@@ -578,10 +611,10 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                 callback_id = new_ticket['unique_id']
                 forus = 0
                 for j in range(0,ninput):
-                    # compare strings not floats
+                    # compare strings not floats (floats fail comparisons)
                     if str(unique_id[j])==str(callback_id):
                         forus = 1
-                        listen_socket.close()
+                        #listen_socket.close()
                         break
                 if forus==1:
                     break
@@ -589,7 +622,8 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                     print ("encp read_from_hsm: imposter called us back, "\
                            +"trying again")
                     control_socket.close()
-            # ok, we've been called back
+
+            # ok, we've been called back with a matched id
             ticket = new_ticket
             if ticket["status"] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
@@ -598,21 +632,21 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                        +"ticket[\"status\"]="+ticket["status"])
             data_path_socket = callback.mover_callback_socket(ticket)
 
-            # If system has called us back with our own unique id, call
-            # back the mover on the mover's port and read the file on that port.
-
-            t1 = time.time()
-            tinfo["tot_to_mover_callback"] = t1 - t0
+            tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
+            dt = time.time() - t2 #-------------------------------------Lap-End
             if list:
-                print "  ",ticket["mover_callback_host"],\
+                print " ",ticket["mover_callback_host"],\
                       ticket["mover_callback_port"],\
-                      "cum_time:",tinfo["tot_to_mover_callback"],\
-                      "   cum=",time.time()-t0
+                      "cum:",tinfo["tot_to_mover_callback"+repr(j)]
+                print "  dt:",dt,"   cum=",time.time()-t0
 
-            t1 = time.time()
             if list:
                 print "Receiving data for file ", outputlist[j],\
                       "   cum=",time.time()-t0
+            t2 = time.time() #----------------------------------------Lap-Start
+
+            # open file that corresponds to the mover call back and read file
+            # crc the data if user has request crc check
             l = 0
             mycrc = 0
             f = open(outputlist[j],"w")
@@ -626,31 +660,33 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
             data_path_socket.close()
             f.close()
             fsize = l
-            t2 = time.time()
-            tinfo["recvd_bytes"] = t2-t1
-            if list:
-                print "  bytes:",l,"dt:",tinfo["recvd_bytes"],\
-                      "   cum=",time.time()-t0
 
-            # File has been read - wait for final dialog with mover.
-            t1 = time.time()
+            tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
+            if list:
+                print "  bytes:",l
+                print "  dt:",tinfo["recvd_bytes"+repr(j)],\
+                      "   cum=",time.time()-t0
             if list:
                 print "Waiting for final mover dialog",\
                       "   cum=",time.time()-t0
+            t2 = time.time() #----------------------------------------Lap-Start
+
+            # File has been read - wait for final dialog with mover.
             done_ticket = callback.read_tcp_socket(control_socket,\
                           "encp read_to_hsm, mover final dialog")
             control_socket.close()
 
+            tinfo["final_dialog"+repr(j)] = time.time()-t1 #------------Lap-End
+            if list:
+                print "  dt:",tinfo["final_dialog"+repr(j)],\
+                "   cum=",time.time()-t0
+
             if done_ticket["status"] == "ok" :
 
+                # verify that the crc's match
                 if chk_crc != 0 :
                     if done_ticket["complete_crc"] != mycrc :
                         print "CRC error",complete_crc, mycrc
-
-                tinfo["final_dialog"] = time.time()-t1
-                if list:
-                    print "  dt:",tinfo["final_dialog"],\
-                          "   cum=",time.time()-t0
 
                 t1 = time.time()
                 if 0:
@@ -696,6 +732,8 @@ def read_from_hsm(input, output, u, csc, logc, list, chk_crc) :
                        +"2nd (post-file-read) mover callback on socket "\
                        +repr(address)+", failed to transfer: "\
                        +"done_ticket[\"status\"]="+done_ticket["status"])
+
+    listen_socket.close()
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
