@@ -1032,6 +1032,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
+    
     resubmits = request_list[0].get('resubmits', 0)
     
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
@@ -1116,7 +1117,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # that ths error means that there should be none left in the queue.
         # On writes, if it gets this far it should already be 0 and doesn't
         # effect anything.
-        if request_dictionary['status'][0] == e_errors.TOO_MANY_RESUBMITS:
+        if status == e_errors.TOO_MANY_RESUBMITS:
             queue_size = 0
         
         result_dict = {'status':status, 'retry':retry,
@@ -1467,8 +1468,8 @@ def set_pnfs_settings(ticket, client, verbose):
     except:
         exc, msg, tb = sys.exc_info()
         print exc, msg
-        print "DUMBING TICKET:"
-        pprint.pprint(ticket)
+    print "DUMPING TICKET:"
+    pprint.pprint(ticket)
         
     # create volume map and store cross reference data
     mover_ticket = ticket.get('mover', {})
@@ -1556,7 +1557,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             #Handle any possible errors occured so far
             status_ticket = (e_errors.IOERROR, detail)
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         work_ticket, None, e)
+                                         status_ticket, None, e)
 
             try:
                 control_socket.close()
@@ -1579,6 +1580,8 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
                                                   [data_path_socket], 15 * 60)
 
         if not write_fd:
+            status_ticket = {'status':(e_errors.UNKNOWN,
+                                       "No data written to mover.")}
             result_dict = handle_retries([work_ticket], work_ticket,
                                          status_ticket, control_socket, e)
             
@@ -1636,11 +1639,14 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         #Verify that everything is ok on this side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      EXfer_ticket, None, e)
+
+        #For simplicity combine everything together.
+        EXfer_ticket = combine_dict(EXfer_ticket, work_ticket)
         
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
-            return done_ticket
+            return EXfer_ticket
 
         #For simplicity combine everything together.
         done_ticket = combine_dict(done_ticket, result_dict, work_ticket)
@@ -1663,6 +1669,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         if e.verbose > 4:
             print "FINAL DIALOG"
             pprint.pprint(done_ticket)
+
+        print "BEFORE CHECK_CRC"
+        pprint.pprint(done_ticket)
         
         #This function writes errors/warnings to the log file and puts an
         # error status in the ticket.
