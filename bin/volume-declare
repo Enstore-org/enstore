@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # declare the volumes used on the rip test system
 
-USAGE="`basename $0` <red50|red20|ait|dlt|mam|rip6|samait|samdlt|sammam>"
+USAGE="`basename $0` <red50|red20|ait|dlt|mam|disk|samait|samdlt|sammam>"
 
 if [ -z "${1-}" ] ; then
   echo "$USAGE"
@@ -262,122 +262,142 @@ case $1 in
                       samdlt   none DECDLT  CA2549 35520749568 35520749568
                      "
          ;;
-  rip6)  rm -fr    /pnfs/rip6/*
-         rm -fr    /rip6a/rip6/*
+  disk)  rm -fr    /pnfs/rip6/*
+         rm -fr    /raid/rip6/*
          mkdir     /pnfs/rip6/volmap
 	 chmod 777 /pnfs/rip6/volmap
          volumes_del="
-                      rip6-01
-                      rip6-02
-                      rip6-03
-                      rip6-04
-                      rip6-05
-                      rip6-06
-                      rip6-07
-                      rip6-08
-                      rip6-09
-                      rip6-11
-                      rip6-12
-                      rip6-13
-                      rip6-14
-                      rip6-15
-                      rip6-16
-                      rip6-17
-                      rip6-18
-                      rip6-19
-                      rip6-21
-                      rip6-22
-                      rip6-23
-                      rip6-24
-                      rip6-25
-                      rip6-26
-                      rip6-27
-                      rip6-28
-                      rip6-29
-                      rip6-31
-                      rip6-32
-                      rip6-33
-                      rip6-34
-                      rip6-35
-                      rip6-36
-                      rip6-37
-                      rip6-38
-                      rip6-39
-                      rip6-41
-                      rip6-42
-                      rip6-43
-                      rip6-44
-                      rip6-45
-                      rip6-46
-                      rip6-47
-                      rip6-48
-                      rip6-49
-                      rip6-51
-                      rip6-52
-                      rip6-53
-                      rip6-54
-                      rip6-55
-                      rip6-56
-                      rip6-57
-                      rip6-58
-                      rip6-59
+	              null-01
+	              null-02
+	              null-03
+	              null-04
+	              null-05
+	              null-06
+	              null-07
+	              null-08
+	              null-09
+	              null-10
+                      disk-01
+                      disk-02
+                      disk-03
+                      disk-04
+                      disk-05
+                      disk-06
+                      disk-07
+                      disk-08
+                      disk-09
+                      disk-11
+                      disk-12
+                      disk-13
+                      disk-14
+                      disk-15
+                      disk-16
+                      disk-17
+                      disk-18
+                      disk-19
+                      disk-21
+                      disk-22
+                      disk-23
+                      disk-24
+                      disk-25
+                      disk-26
+                      disk-27
+                      disk-28
+                      disk-29
+                      disk-31
+                      disk-32
+                      disk-33
+                      disk-34
+                      disk-35
+                      disk-36
+                      disk-37
+                      disk-38
+                      disk-39
+                      disk-41
+                      disk-42
+                      disk-43
+                      disk-44
+                      disk-45
+                      disk-46
+                      disk-47
+                      disk-48
+                      disk-49
+                      disk-51
+                      disk-52
+                      disk-53
+                      disk-54
+                      disk-55
+                      disk-56
+                      disk-57
+                      disk-58
+                      disk-59
                      "
 #                     lib   ff   medtype   label   capacity    bytes left
          volumes="
-                      rip6 none  diskfile  rip6-01      140000      140000
-                      rip6 none  diskfile  rip6-02      140000      140000
-                      rip6 none  diskfile  rip6-03     1400000     1400000
-                      rip6 none  diskfile  rip6-04    14000000     1400000
-                      rip6 none  diskfile  rip6-05    14000000    14000000
-                      rip6 none  diskfile  rip6-06    14000000    14000000
-                      rip6 none  diskfile  rip6-07   140000000   140000000
-                      rip6 none  diskfile  rip6-08   140000000   140000000
-                      rip6 none  diskfile  rip6-09  1400000000  1400000000
-                      rip6 none  diskfile  rip6-11      140000      140000
-                      rip6 none  diskfile  rip6-12      140000      140000
-                      rip6 none  diskfile  rip6-13     1400000     1400000
-                      rip6 none  diskfile  rip6-14    14000000     1400000
-                      rip6 none  diskfile  rip6-15    14000000    14000000
-                      rip6 none  diskfile  rip6-16    14000000    14000000
-                      rip6 none  diskfile  rip6-17   140000000   140000000
-                      rip6 none  diskfile  rip6-18   140000000   140000000
-                      rip6 none  diskfile  rip6-19  1400000000  1400000000
-                      rip6 none  diskfile  rip6-21      140000      140000
-                      rip6 none  diskfile  rip6-22      140000      140000
-                      rip6 none  diskfile  rip6-23     1400000     1400000
-                      rip6 none  diskfile  rip6-24    14000000     1400000
-                      rip6 none  diskfile  rip6-25    14000000    14000000
-                      rip6 none  diskfile  rip6-26    14000000    14000000
-                      rip6 none  diskfile  rip6-27   140000000   140000000
-                      rip6 none  diskfile  rip6-28   140000000   140000000
-                      rip6 none  diskfile  rip6-29  1400000000  1400000000
-                      rip6 none  diskfile  rip6-31      140000      140000
-                      rip6 none  diskfile  rip6-32      140000      140000
-                      rip6 none  diskfile  rip6-33     1400000     1400000
-                      rip6 none  diskfile  rip6-34    14000000     1400000
-                      rip6 none  diskfile  rip6-35    14000000    14000000
-                      rip6 none  diskfile  rip6-36    14000000    14000000
-                      rip6 none  diskfile  rip6-37   140000000   140000000
-                      rip6 none  diskfile  rip6-38   140000000   140000000
-                      rip6 none  diskfile  rip6-39  1400000000  1400000000
-                      rip6 none  diskfile  rip6-41      140000      140000
-                      rip6 none  diskfile  rip6-42      140000      140000
-                      rip6 none  diskfile  rip6-43     1400000     1400000
-                      rip6 none  diskfile  rip6-44    14000000     1400000
-                      rip6 none  diskfile  rip6-45    14000000    14000000
-                      rip6 none  diskfile  rip6-46    14000000    14000000
-                      rip6 none  diskfile  rip6-47   140000000   140000000
-                      rip6 none  diskfile  rip6-48   140000000   140000000
-                      rip6 none  diskfile  rip6-49  1400000000  1400000000
-                      rip6 none  diskfile  rip6-51      140000      140000
-                      rip6 none  diskfile  rip6-52      140000      140000
-                      rip6 none  diskfile  rip6-53     1400000     1400000
-                      rip6 none  diskfile  rip6-54    14000000     1400000
-                      rip6 none  diskfile  rip6-55    14000000    14000000
-                      rip6 none  diskfile  rip6-56    14000000    14000000
-                      rip6 none  diskfile  rip6-57   140000000   140000000
-                      rip6 none  diskfile  rip6-58   140000000   140000000
-                      rip6 none  diskfile  rip6-59  1400000000  1400000000
+                      null none  diskfile  null-01 214748364800 214748364800
+                      null none  diskfile  null-02 214748364800 214748364800
+                      null none  diskfile  null-03 214748364800 214748364800
+                      null none  diskfile  null-04 214748364800 214748364800
+                      null none  diskfile  null-05 214748364800 214748364800
+                      null none  diskfile  null-06 214748364800 214748364800
+                      null none  diskfile  null-07 214748364800 214748364800
+                      null none  diskfile  null-08 214748364800 214748364800
+                      null none  diskfile  null-09 214748364800 214748364800
+                      null none  diskfile  null-10 214748364800 214748364800
+                      disk none  diskfile  disk-01      140000      140000
+                      disk none  diskfile  disk-02      140000      140000
+                      disk none  diskfile  disk-03     1400000     1400000
+                      disk none  diskfile  disk-04    14000000     1400000
+                      disk none  diskfile  disk-05    14000000    14000000
+                      disk none  diskfile  disk-06    14000000    14000000
+                      disk none  diskfile  disk-07   140000000   140000000
+                      disk none  diskfile  disk-08   140000000   140000000
+                      disk none  diskfile  disk-09  1400000000  1400000000
+                      disk none  diskfile  disk-11      140000      140000
+                      disk none  diskfile  disk-12      140000      140000
+                      disk none  diskfile  disk-13     1400000     1400000
+                      disk none  diskfile  disk-14    14000000     1400000
+                      disk none  diskfile  disk-15    14000000    14000000
+                      disk none  diskfile  disk-16    14000000    14000000
+                      disk none  diskfile  disk-17   140000000   140000000
+                      disk none  diskfile  disk-18   140000000   140000000
+                      disk none  diskfile  disk-19  1400000000  1400000000
+                      disk none  diskfile  disk-21      140000      140000
+                      disk none  diskfile  disk-22      140000      140000
+                      disk none  diskfile  disk-23     1400000     1400000
+                      disk none  diskfile  disk-24    14000000     1400000
+                      disk none  diskfile  disk-25    14000000    14000000
+                      disk none  diskfile  disk-26    14000000    14000000
+                      disk none  diskfile  disk-27   140000000   140000000
+                      disk none  diskfile  disk-28   140000000   140000000
+                      disk none  diskfile  disk-29  1400000000  1400000000
+                      disk none  diskfile  disk-31      140000      140000
+                      disk none  diskfile  disk-32      140000      140000
+                      disk none  diskfile  disk-33     1400000     1400000
+                      disk none  diskfile  disk-34    14000000     1400000
+                      disk none  diskfile  disk-35    14000000    14000000
+                      disk none  diskfile  disk-36    14000000    14000000
+                      disk none  diskfile  disk-37   140000000   140000000
+                      disk none  diskfile  disk-38   140000000   140000000
+                      disk none  diskfile  disk-39  1400000000  1400000000
+                      disk none  diskfile  disk-41      140000      140000
+                      disk none  diskfile  disk-42      140000      140000
+                      disk none  diskfile  disk-43     1400000     1400000
+                      disk none  diskfile  disk-44    14000000     1400000
+                      disk none  diskfile  disk-45    14000000    14000000
+                      disk none  diskfile  disk-46    14000000    14000000
+                      disk none  diskfile  disk-47   140000000   140000000
+                      disk none  diskfile  disk-48   140000000   140000000
+                      disk none  diskfile  disk-49  1400000000  1400000000
+                      disk none  diskfile  disk-51      140000      140000
+                      disk none  diskfile  disk-52      140000      140000
+                      disk none  diskfile  disk-53     1400000     1400000
+                      disk none  diskfile  disk-54    14000000     1400000
+                      disk none  diskfile  disk-55    14000000    14000000
+                      disk none  diskfile  disk-56    14000000    14000000
+                      disk none  diskfile  disk-57   140000000   140000000
+                      disk none  diskfile  disk-58   140000000   140000000
+                      disk none  diskfile  disk-59  1400000000  1400000000
                      "
          ;;
   *)     echo "$USAGE"
