@@ -509,8 +509,6 @@ def get_enstore_canonical_path(filepath):
     if dirname[:6] != "/pnfs/":
         raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
-    print "canonical_pathbase", canonical_pathbase
-
     if dirname[:19] == canonical_pathbase: #i.e. "/pnfs/fnal.gov/usr/"
         return filename
     elif dirname[:13] == "/pnfs/fs/usr/":
