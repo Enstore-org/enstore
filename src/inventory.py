@@ -6,6 +6,7 @@ import time
 import string
 import os
 import tempfile
+import pprint
 
 #user imports
 import db
@@ -423,6 +424,49 @@ def print_volume_quotas_status(volume_quotas, output_file):
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
 
+
+def print_volume_quota_sums(volume_quotas, output_file):
+    vq_file = open(output_file, "a")
+    vq_file.write(("-" * 125) + "\n\n")
+    
+    #Sum up each column for each library and print the results
+    library_dict = {}
+    quotas = volume_quotas.keys()
+    for key in quotas:
+        #Get the current (library, storage_group) out of the dict.
+        (l, sg, quota, allocated, blank, written, deleted_v, used,
+            active_f, deleted_f, unknown_f) = volume_quotas[key]
+
+        #For each library total up the numbers
+        try:
+            quota = quota + library_dict[l][2]
+        except:
+            quota = "N/A"
+        allocated = allocated + library_dict.get(l, (0,) * 11)[3]
+        blank = blank + library_dict.get(l, (0,) * 11)[4]
+        written =  written + library_dict.get(l, (0,) * 11)[5]
+        deleted_v =  deleted_v + library_dict.get(l, (0,) * 11)[6]
+        used = used + library_dict.get(l, (0,) * 11)[7]
+        active_f = active_f + library_dict.get(l, (0,) * 11)[8]
+        deleted_v =  deleted_v + library_dict.get(l, (0,) * 11)[9]
+        unknown_f = unknown_f + library_dict.get(l, (0,) * 11)[10]
+
+        library_dict[l] = (l, "", quota, allocated, blank, written,
+                           deleted_v, used, active_f, deleted_f, unknown_f)
+
+    #Since this info is appened to the same file as the volume quotas, make
+    # it have the same format.
+    keys = library_dict.keys()
+    keys.sort()
+    for key in keys:
+        formated_tuple = library_dict[key][0:7] + \
+                         format_storage_size(library_dict[key][7]) + \
+                         library_dict[key][8:]
+        vq_file.write("%-10s %-13s %-6s %-9d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
+                      % formated_tuple)
+    vq_file.write("\n") #insert newline between sections
+    vq_file.close()
+
 def print_total_bytes_on_tape(volume_sums, output_file):
     sum = 0
     for line in volume_sums.keys():
@@ -739,6 +783,7 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
         # funciton.
         verify_volume_quotas(file_data, volume, volumes_allocated)
 
+
     if string.find(output_dir, "/dev/stdout") != -1: 
         last_access_file = "/dev/stdout"
         volume_size_file = "/dev/stdout"
@@ -751,11 +796,13 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
         volumes_defind_file = output_dir + "VOLUMES_DEFINED"
         volume_quotas_file = output_dir + "VOLUME_QUOTAS"
         total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+
     #Create files that hold statistical data.
     print_last_access_status(volume_list, last_access_file)
     print_volume_size_stats(volume_sums, volume_list, volume_size_file)
     print_volumes_defind_status(volume_list, volumes_defind_file)
     print_volume_quotas_status(volumes_allocated, volume_quotas_file)
+    print_volume_quota_sums(volumes_allocated, volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return len(volume_list), count_metadata
