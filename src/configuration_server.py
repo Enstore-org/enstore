@@ -33,10 +33,10 @@ MY_NAME = enstore_constants.CONFIGURATION_SERVER   #"CONFIG_SERVER"
 class ConfigurationDict:
 
     def __init__(self):
-        self.print_id="CONFIG_DICT"
+        #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
-        
+
     def read_config(self, configfile):
         self.configdict={}
         try:
@@ -108,6 +108,14 @@ class ConfigurationDict:
                 return(e_errors.CONFLICT, "Configuration conflict detected. "
                        "Check configuration file")
 
+            # The other servers call the generic_server __init__ function
+            # to get this function called.  The configuration server does
+            # not use the generic_server __init__() function, so this must be
+            # done expliticly (after the configfile is loaded).
+            domains = self.configdict.get('domains', {})
+            domains['system_name'] = self._get_system_name()
+            hostaddr.update_domains(domains)
+
             #We have successfully loaded the config file.
             self.config_load_timestamp = time.time()
             return (e_errors.OK, None)
@@ -130,12 +138,23 @@ class ConfigurationDict:
             return
 
         # look up in our dictionary the lookup key
+        out_ticket = {}
         try:
-            out_ticket = self.configdict[lookup]
+            out_ticket[lookup] = self.configdict[lookup]
+            out_ticket['status'] = (e_errors.OK, None)
         except KeyError:
             out_ticket = {"status": (e_errors.KEYERROR,
                                      "Configuration Server: no such name: "
                                      +repr(lookup))}
+        #The following section places into the udp reply ticket information
+        # to prevent the configuration_client from having to pull it
+        # down seperatly.
+        domains = self.configdict.get('domains', {})
+        if domains:
+            #Put the domains into the reply ticket.
+            out_ticket['domains'] = domains
+            out_ticket['domains']['system_name'] = self._get_system_name()
+
         self.reply_to_caller(out_ticket)
 
 
@@ -151,7 +170,20 @@ class ConfigurationDict:
     # return a dump of the dictionary back to the user
     def dump(self, ticket):
         Trace.trace(15, 'DUMP: \n' + str(ticket))
-        ticket['status']=(e_errors.OK, None)
+
+        if not hostaddr.allow(ticket['callback_addr']):
+            return
+
+        ticket['status'] = (e_errors.OK, None)
+        #The following section places into the udp reply ticket information
+        # to prevent the configuration_client from having to pull it
+        # down seperatly.
+        domains = self.configdict.get('domains', {})
+        if domains:
+            #Put the domains into the reply ticket.
+            ticket['domains'] = domains
+            ticket['domains']['system_name'] = self._get_system_name()
+            
         reply=ticket.copy()
         reply["dump"] = self.configdict
         reply["config_load_timestamp"] = self.config_load_timestamp
@@ -268,27 +300,44 @@ class ConfigurationDict:
         ret['servers'] = self.get_dict_entry(ticket['keyValue'])
         self.reply_to_caller(ret)
 
+    #This function returns the key in the 'known_config_servers' sub-ticket
+    # that corresponds to this system.  If it is not there then a default
+    # based on the system name is returned.
+    def _get_system_name(self):
+        kcs = self.configdict.get('known_config_servers', {})
+        server_address = os.environ.get('ENSTORE_CONFIG_HOST', "default2")
+
+        for item in kcs.items():
+            if socket.getfqdn(item[1][0]) == \
+                   socket.getfqdn(server_address):
+                return item[0]
+        
+        return socket.getfqdn(server_address).split(".")[0]
 
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
 			  generic_server.GenericServer):
 
-    def __init__(self, csc, configfile=enstore_constants.DEFAULT_CONF_FILE):
+    def __init__(self, server_address,
+                 configfile = enstore_constants.DEFAULT_CONF_FILE):
 	self.running = 0
-	self.print_id = MY_NAME
-        #print csc
+	#self.print_id = MY_NAME
+        
         # make a configuration dictionary
-        cd =  ConfigurationDict()
+        cd = ConfigurationDict()
 
         # default socket initialization - ConfigurationDict handles requests
-        dispatching_worker.DispatchingWorker.__init__(self, csc)
-        self.request_dict_ttl = 10 # Config server is stateless, duplicate requests don't hurt us
+        dispatching_worker.DispatchingWorker.__init__(self, server_address)
+        self.request_dict_ttl = 10 # Config server is stateless,
+                                   # duplicate requests don't hurt us.
         # load the config file user requested
         self.load_config(configfile)
         self.running = 1
 
-	# set up for sending an event relay message whenever we get a new config loaded
-	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(csc[0],
-										  csc[1])
+	# set up for sending an event relay message whenever we get a
+        # new config loaded
+	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(
+            server_address[0],
+            server_address[1])
 	self.new_config_message.encode()
 
 	# start our heartbeat to the event relay process
