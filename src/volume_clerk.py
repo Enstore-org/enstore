@@ -346,6 +346,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
             # supposed to return first blank volume found?
             if first_found:
+		if file_family == "ephemeral":
+		    file_family = label
                 v["file_family"] = file_family+"."+wrapper_type
 		v["wrapper"] = wrapper_type
                 self.logc.send(log_client.INFO,2,
@@ -367,6 +369,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # return blank volume we found
         if len(vol) != 0:
             label = vol['external_label']
+	    if file_family == "ephemeral":
+		file_family = label
             vol["file_family"] = file_family+"."+wrapper_type
 	    vol["wrapper"] = wrapper_type
             self.logc.send(log_client.INFO,2,

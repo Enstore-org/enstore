@@ -292,6 +292,10 @@ class Interface:
 	        self.dbname=value
             elif opt == "--queue":
 	        self.queue_list=1
+            elif opt == "--ephemeral":
+	        self.output_file_family="ephemeral"
+            elif opt == "--file_family":
+	        self.output_file_family=value
             elif opt == "-v":
 	        self.criteria['external_label']=string.split(value,',')
             elif opt == "-l":

@@ -44,7 +44,7 @@ data_access_layer_format = "INFILE=%s\n"+\
 
 #######################################################################
 
-def write_to_hsm(input, output,
+def write_to_hsm(input, output, output_file_family='',
                  config_host, config_port,
                  ilist=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
@@ -137,6 +137,20 @@ def write_to_hsm(input, output,
     # bomb out if they exist already
     outputlist = outputfile_check(ninput,inputlist,output)
     (junk,library,file_family,ff_wrapper,width,pinfo,p)=pnfs_information(outputlist,ninput)
+
+    if output_file_family != "":
+	if output_file_family == "ephemeral":
+	    if ninput > 1:
+		jraise(errno.errorcode[errno.EPROTO],\
+		   " encp.write_to_hsm: SYNTAX ERROR"\
+                   " only 1 file allowed with --ephemeral")
+	    else:
+		file_family[0] = "ephemeral"
+		width[0] = 1
+	else:
+	    for i in range(0,ninput):
+		file_family[i] = output_file_family
+		width[i] = 1
 
     # note: Since multiple input files all go to 1 directory:
     #       all libraries are the same
@@ -676,6 +690,11 @@ def write_to_hsm(input, output,
     msg ="Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in "+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/S"
+    if file_family[0] == "ephemeral":
+	ff = string.split(done_ticket["vc"]["file_family"], ".")
+	
+	print "New File Family Created:", ff[0]
+
     if verbose:
         print msg
 
@@ -1282,7 +1301,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 	    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
 			       requests[j]['file_size'], bufsize, crc_fun )
 	except:
-	    Trace.trace(0,"write_to_hsm EXfer error:"+\
+	    Trace.trace(0,"read_from_hsm EXfer error:"+\
 			str(sys.argv)+" "+\
 			str(sys.exc_info()[0])+" "+\
 			str(sys.exc_info()[1]))
@@ -1872,7 +1891,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "data_access_layer", "d0sam", "queue"]+\
+                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "file_family=", "ephemeral", "data_access_layer", "d0sam", "queue"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
@@ -1884,7 +1903,9 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.help_line")
 
 	the_help = self.help_prefix()+self.parameters1()+"\n or\n  "+ \
-                   self.help_prefix()+self.parameters2()+self.help_suffix()+ \
+                   self.help_prefix()+self.parameters2()+"\n or\n  "+\
+		   "python "+repr(sys.argv[0])+ \
+		   self.parameters3()+\
                    self.format_options(self.options(), "\n\t\t")
 
         Trace.trace(16,"}encp.help_line help_line="+the_help)
@@ -1898,8 +1919,12 @@ class encp(interface.Interface):
     def parameters2(self):
         return "inputfilename1 ... inputfilenameN outputdirectory"
 
+    def parameters3(self):
+	return "--queue [--verbose=] hostname"
+
     def parameters(self):
-        return "[["+self.parameters1()+"] or ["+self.parameters2()+"]]"
+        return "[["+self.parameters1()+"] or ["+self.parameters2()+"] or ["+\
+	       self.parameters3()+"]]"
 
     ##########################################################################
     # parse the options from the command line
@@ -1979,7 +2004,7 @@ if __name__  ==  "__main__" :
 	#traceback.print_exc()
 	# have we been called "encp unixfile hsmfile" ?
 	if e.intype=="unixfile" and e.outtype=="hsmfile" :
-	    write_to_hsm(e.input,  e.output,
+	    write_to_hsm(e.input,  e.output, e.output_file_family,
 			 e.config_host, e.config_port,
 			 e.verbose, e.chk_crc,
 			 e.pri, e.delpri, e.agetime, e.delayed_dismount, t0)
