@@ -6,6 +6,8 @@ import select
 import time
 import string
 import traceback
+import sys
+import traceback
 
 import enstore_constants
 import Trace
@@ -116,7 +118,7 @@ class Relay:
 		    self.send_message(msg, tok[0], now)
 	except:
 	    Trace.handle_error()
-        
+
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
         for addr, (t0, filter_d) in self.clients.items():
@@ -129,9 +131,10 @@ class Relay:
                     try:
                         self.send_socket.sendto(msg, addr)
                     except:
+                        Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
 			msg = "send failed %s"%(addr,)
 		        ### debugging log message
-			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+			Trace.log(e_errors.ERROR, msg, Trace.MSG_EVENT_RELAY)
                         print msg
 			### traceback.print_exc()
 
