@@ -31,7 +31,7 @@ doit() { echo "$1"
 
 if [ `uname -n | grep -c ${thisNode}` -ne 0 ]; then
 
- cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force ${filePath}/enstore-log/*LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
+ cmd="/usr/bin/rsync   -l -p -o -g -D -t -x --delete --force ${filePath}/enstore-log/LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
  doit "$cmd"
 
 else
