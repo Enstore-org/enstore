@@ -178,9 +178,6 @@ if [ "$drive" = "mount" ]; then
       drv=`eval echo \\$$drive`
       rsh $acsssnode -l acsss "echo mount $label $drv | /export/home/ACSSS/bin/cmd_proc" < /dev/null
       exit $?
-    # rwquery
-    #    show the status of drives 1 and 3
-    #rsh fntt -l acsss "echo query drive  0,0,9,1 0,0,9,3 | /export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null
     else
       cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
       echo $cmd
@@ -216,6 +213,12 @@ elif [ "$drive" = "dismount" ]; then
       exit $stat
     fi
   fi
+
+elif [ "$drive" = "query" ]; then
+  rsh $acsssnode -l acsss "echo query drive all | /export/home/ACSSS/bin/cmd_proc" < /dev/null
+
+elif [ "$drive" = "listd2" ]; then
+  rsh $dasnode ". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2"
 fi
 
 
