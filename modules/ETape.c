@@ -226,7 +226,7 @@ static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
       memcpy(ET_desc->bufptr, data_buff, partlen);
       
       sts=ftt_write(ET_desc->ftt_desc,  ET_desc->buffer, ET_desc->block_size);
-      if (sts != length)
+      if (sts != ET_desc->block_size)
          return raise_ftt_exception("ET_WriteBlock", ET_desc);
       ET_desc->bufptr = ET_desc->buffer;
       length -= partlen;
