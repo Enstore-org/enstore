@@ -14,6 +14,62 @@ import udp_client
 import Trace
 import e_errors
 
+
+def getlist(self, work):
+    # get a port to talk on and listen for connections
+    host, port, listen_socket = callback.get_callback()
+    listen_socket.listen(4)
+    ticket = {"work"         : work,
+              "callback_addr" : (host, port),
+              "unique_id"    : time.time() }
+
+    # send the work ticket to the library manager
+    ticket = self.send(ticket)
+    if ticket['status'][0] != e_errors.OK:
+        raise errno.errorcode[errno.EPROTO],"lmc."+work+": sending ticket"\
+              +repr(ticket)
+
+    # We have placed our request in the system and now we have to wait.
+    # All we  need to do is wait for the system to call us back,
+    # and make sure that is it calling _us_ back, and not some sort of old
+    # call-back to this very same port. It is dicey to time out, as it
+    # is probably legitimate to wait for hours....
+    while 1 :
+        control_socket, address = listen_socket.accept()
+        new_ticket = callback.read_tcp_socket(control_socket, "library "+\
+                                     "manager "+ work + ",  mover call back")
+        if ticket["unique_id"] == new_ticket["unique_id"] :
+            listen_socket.close()
+            break
+        else:
+            print ("lmc."+work+": imposter called us back, trying again")
+            control_socket.close()
+    ticket = new_ticket
+    if ticket["status"][0] != e_errors.OK:
+        raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
+              +"1st (pre-work-read) library manager callback on socket "\
+              +repr(address)+", failed to setup transfer: "\
+              +"ticket[\"status\"]="+ticket["status"]
+
+    # If the system has called us back with our own  unique id, call back
+    # the library manager on the library manager's port and read the
+    # work queues on that port.
+    data_path_socket = callback.library_manager_callback_socket(ticket)
+    worklist = callback.read_tcp_socket(data_path_socket,"library "+\
+                                "manager "+work+", reading worklist")
+    data_path_socket.close()
+
+    # Work has been read - wait for final dialog with library manager.
+    done_ticket = callback.read_tcp_socket(control_socket, "library "+\
+                                  "manager "+work+", mover final dialog")
+    control_socket.close()
+    if done_ticket["status"][0] != e_errors.OK:
+        raise errno.errorcode[errno.EPROTO],"lmc."+work+": "\
+              +"2nd (post-work-read) library manger callback on socket "\
+              +repr(address)+", failed to transfer: "\
+              +"ticket[\"status\"]="+ticket["status"]
+    return worklist
+
 class LibraryManagerClient(generic_client.GenericClient) :
     def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
                  port=interface.default_port()):
@@ -36,58 +92,10 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send(ticket)
 
     def getwork(self,list) :
-        # get a port to talk on and listen for connections
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        ticket = {"work"         : "getwork",
-                  "callback_addr" : (host, port),
-                  "unique_id"    : time.time() }
-        # send the work ticket to the library manager
-        ticket = self.send(ticket)
-        if ticket['status'][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc.getwork: sending ticket"\
-                  +repr(ticket)
+	return getlist(self,"getwork")
 
-        # We have placed our request in the system and now we have to wait.
-        # All we  need to do is wait for the system to call us back,
-        # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. It is dicey to time out, as it
-        # is probably legitimate to wait for hours....
-        while 1 :
-            control_socket, address = listen_socket.accept()
-            new_ticket = callback.read_tcp_socket(control_socket, "library "+\
-                                         "manager getwork,  mover call back")
-            if ticket["unique_id"] == new_ticket["unique_id"] :
-                listen_socket.close()
-                break
-            else:
-                print ("lmc.getwork: imposter called us back, trying again")
-                control_socket.close()
-        ticket = new_ticket
-        if ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
-                  +"1st (pre-work-read) library manager callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-
-        # If the system has called us back with our own  unique id, call back
-        # the library manager on the library manager's port and read the
-        # work queues on that port.
-        data_path_socket = callback.library_manager_callback_socket(ticket)
-        worklist = callback.read_tcp_socket(data_path_socket,"library "+\
-                                    "manager getwork, reading worklist")
-        data_path_socket.close()
-
-        # Work has been read - wait for final dialog with library manager.
-        done_ticket = callback.read_tcp_socket(control_socket, "library "+\
-                                      "manager getwork, mover final dialog")
-        control_socket.close()
-        if done_ticket["status"][0] != e_errors.OK:
-            raise errno.errorcode[errno.EPROTO],"lmc.getwork: "\
-                  +"2nd (post-work-read) library manger callback on socket "\
-                  +repr(address)+", failed to transfer: "\
-                  +"ticket[\"status\"]="+ticket["status"]
-        return worklist
+    def getmoverlist(self):
+	return getlist(self,"getmoverlist")
 
 class LibraryManagerClientInterface(interface.Interface) :
     def __init__(self) :
@@ -97,6 +105,7 @@ class LibraryManagerClientInterface(interface.Interface) :
         self.alive = 0
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
+	self.getmoverlist = 0
         interface.Interface.__init__(self)
 
 	# parse the options
@@ -105,7 +114,7 @@ class LibraryManagerClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options()+self.list_options() +\
-	       ["config_list", "getwork", "alive","alive_rcv_timeout=","alive_retries="] +\
+	       ["config_list", "getwork", "alive","getmoverlist","alive_rcv_timeout=","alive_retries="] +\
 	       self.help_options()
 
     #  define our specific help
@@ -139,9 +148,12 @@ if __name__ == "__main__" :
         ticket = lmc.alive(intf.alive_rcv_timeout,intf.alive_retries)
     elif  intf.getwork:
         ticket = lmc.getwork(intf.list)
+    elif  intf.getmoverlist:
+	ticket = lmc.getmoverlist()
 
     del lmc.csc.u
     del lmc.u		# del now, otherwise get name exception (just for python v1.5???)
+
     if ticket['status'][0] == e_errors.OK:
         if intf.list:
             pprint.pprint(ticket)
@@ -152,3 +164,9 @@ if __name__ == "__main__" :
         pprint.pprint(ticket)
         Trace.trace(0,"lcc BAD STATUS - "+repr(ticket['status']))
         sys.exit(1)
+
+
+
+
+
+

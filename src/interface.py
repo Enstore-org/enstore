@@ -131,6 +131,8 @@ class Interface:
                 self.get_keys = 1
             elif opt == "--getwork" :
                 self.getwork = 1
+            elif opt == "--getmoverlist" :
+                self.getmoverlist = 1
             elif opt == "--load" :
                 self.load = 1
             elif opt == "--vols" :
@@ -208,3 +210,6 @@ class Interface:
             elif opt == "--help" :
 	        self.print_help()
                 sys.exit(0)
+
+
+

@@ -705,6 +705,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # what is going on
     def getwork(self,ticket):
+	print "getwork", ticket
 	Trace.trace(3,"{getwork ")
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
@@ -724,6 +725,29 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                   "library_manager getwork, controlsocket")
         self.control_socket.close()
 	Trace.trace(3,"}getwork ")
+        os._exit(0)
+    # what is going on
+
+    def getmoverlist(self,ticket):
+	Trace.trace(3,"{getmoverlist ")
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            return
+        self.get_user_sockets(ticket)
+        rticket = {}
+        rticket["status"] = (e_errors.OK, None)
+        rticket["moverlist"] = movers
+        callback.write_tcp_socket(self.data_socket,rticket,
+                                  "library_manager getmoverlist, datasocket")
+        self.data_socket.close()
+        callback.write_tcp_socket(self.control_socket,ticket,
+                                  "library_manager getmoverlist, \
+				  controlsocket")
+        self.control_socket.close()
+	Trace.trace(3,"}getmoverlist ")
         os._exit(0)
 
 
