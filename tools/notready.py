@@ -35,9 +35,9 @@ for file in filelist[:]:
         sys.exit(1)
         
     if string.find(cvsinfo[1], 'Status: Up-to-date\n') < 0:
-        out_of_date = 1
+        out_of_date = cvsinfo[1]
     else:
-        out_of_date = 0
+        out_of_date = ""
 
     if string.find(cvsinfo[3], '   Working revision') != 0:
         print "Cannot find Working revision", cvsinfo
@@ -69,7 +69,7 @@ for file in filelist[:]:
             break
 
     if repository_revision != production_revision or working_revision != production_revision or out_of_date:
-        print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision), cvsinfo[1]
+        print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision), out_of_date
     else:
         print '%s\t ok'%(file,)
         
