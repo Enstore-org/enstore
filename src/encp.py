@@ -46,7 +46,7 @@ def encp_client_version():
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
 mover_timeout = 15*60  #15 minutes
 
-
+data_access_layer_requested = 0
 data_access_layer_format = """INFILE=%s
 OUTFILE=%s
 FILESIZE=%s
@@ -68,17 +68,7 @@ start_time=None
 
 # log the error to the logger, print it to the console and exit
 
-def jraise(errcode,errmsg,exit_code=1) :
-    format = "Fatal error: %s %s  Exit code: %s" % (errcode, errmsg, exit_code)
-    x=sys.stdout;sys.stdout=sys.stderr
-    print format
-    try:
-        Trace.log(e_errors.ERROR, format)
-    except:
-        pass
-    # this error used to be a 0
-    Trace.trace(6,"encp.jraise and exiting with code=%s"%(exit_code,))
-    sys.stdout=x
+def quit(exit_code=1) :
     sys.exit(exit_code)
 
 
@@ -87,23 +77,24 @@ def jraise(errcode,errmsg,exit_code=1) :
 # log the error to the logger and print it to the stderr
 
 def print_error(errcode,errmsg,fatal=0) :
-    format = str(errcode)+" "+str(errmsg)
+        
+    format = str(errcode)+" "+str(errmsg) + '\n'
     if fatal:
         format = "Fatal error: "+format
     else:
         format = "Error: "+format
-    x=sys.stdout;sys.stdout=sys.stderr
-    print format
+    sys.stderr.write(format)
+    sys.stderr.flush()
+
+    if data_access_layer_requested:
+        return #prevent duplicate log messages
+
     try:
         Trace.log(e_errors.ERROR, format)
     except:
         pass
-    sys.stdout=x
 
 
-
-##############################################################################
-# print statistics in data_access_layer format
 def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     # check if all fields in ticket present
     try:
@@ -138,32 +129,53 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         status = ticket["status"][0]
     except:
         status = 'Unknown'
-    print data_access_layer_format % (inputfile, outputfile, filesize, external_label,
+    try:
+        msg = ticket["status"][1]
+    except:
+        msg = None
+        
+    if not data_access_layer_requested and status != e_errors.OK:
+        out=sys.stderr
+    else:
+        out=sys.stdout
+        
+    out.write(data_access_layer_format % (inputfile, outputfile, filesize, external_label,
                                       device, transfer_time, seek_time, mount_time, in_queue,
-                                      total, status)
+                                      total, status))
+    out.write('\n')
+    out.flush()
+    if msg:
+        sys.stderr.write(msg+'\n')
+        sys.stderr.flush()
+    
     
     try:
-        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
+        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f "+\
                  "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
-        
-        Trace.log(msg_type, format%(inputfile, outputfile, filesize, 
-                                          external_label, device,
-                                          transfer_time, seek_time, mount_time,
-                                          in_queue, total,
-                                          status) )
+        errmsg=format%(inputfile, outputfile, filesize, 
+                       external_label, device,
+                       transfer_time, seek_time, mount_time,
+                       in_queue, total,
+                       status)
+        if msg:
+            errmsg=errmsg+" "+msg
+        Trace.log(msg_type, msg)
     except:
         pass
 
-    
+
+client={}
+  
 #######################################################################
 
 # get the configuration client and udp client and logger client
 # return some information about who we are so it can be used in the ticket
 
-def clients(config_host,config_port,verbose):
+
+def clients(config_host,config_port):
     # get a configuration server
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
@@ -179,14 +191,13 @@ def clients(config_host,config_port,verbose):
                            (config_host, config_port))
     if stati['status'][0] != e_errors.OK:
         print_data_access_layer_format("","",0, stati)
-        jraise(stati['status'],"No response on alive to config",1)
+        quit()
     
     # get a udp client
     u = udp_client.UDPClient()
 
     # get a logger client
     global logc  #needs to be global so other functions in this module can use it.
-    ## You know, encp.py would be a lot cleaner!
     logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     # convenient, but maybe not correct place, to hack in log message that shows how encp was called
@@ -195,7 +206,6 @@ def clients(config_host,config_port,verbose):
                 'encp version %s, command line: "%s"' %
                 (encp_client_version(), string.join(sys.argv)))
         
-
     uinfo = {}
     uinfo['uid'] = os.getuid()
     uinfo['gid'] = os.getgid()
@@ -209,9 +219,9 @@ def clients(config_host,config_port,verbose):
         uinfo['uname'] = 'unknown'
     uinfo['machine'] = os.uname()
     uinfo['fullname'] = "" # will be filled in later for each transfer
-
-    return (csc,u,uinfo)
-
+    client['csc']=csc
+    client['u']=u
+    client['uinfo']=uinfo
 
 ##############################################################################
 
@@ -248,8 +258,7 @@ def inputfile_check(input_files, bytecount=None):
         print_data_access_layer_format(inputlist[0],'',0,
                                        {'status':('EPROTO',"Cannot specify --bytes with multiple files")}
                                        )
-        jraise(errno.errocode[errno.EPROTO],"encp.inputfile_check: "
-               "Cannot specify --bytes with multiple files")
+        quit()
 
     # we need to know how big each input file is
     file_size = []
@@ -263,9 +272,10 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files must exist
         if not os.access(inputlist[i],os.R_OK):
-            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','No such file')})
-            jraise(errno.errorcode[errno.EACCES],"encp.inputfile_check: %s, no read access to file" %
-                   (inputlist[i],))
+            print_data_access_layer_format(inputlist[i],
+                                           '',0,
+                                           {'status':('USERERROR','No such file %s'%(inputlist[i],))}) 
+            quit()
 
         # get the file size
         statinfo = os.stat(inputlist[i])
@@ -277,19 +287,18 @@ def inputfile_check(input_files, bytecount=None):
 
         # input files can't be directories
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-            print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','Not a regular file')})
-
-            jraise(errno.errorcode[errno.EACCES],"encp.inputfile_check: %s is not a regular file"%
-                   (inputlist[i],))
+            print_data_access_layer_format(inputlist[i],'',0,{'status':('USERERROR',
+                                                                        'Not a regular file %s'%(inputlist[i],))})
+            quit()
 
     # we cannot allow 2 input files to be the same
     # this will cause the 2nd to just overwrite the 1st
     for i in range(0,ninput):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
-                print_data_access_layer_format(inputlist[j],'',0,{'status':('EPROTO','Duplicate entry')})
-                jraise(errno.errorcode[errno.EPROTO],"encp.inputfile_check: "+
-                       inputlist[i]+" is the duplicated - not allowed")
+                print_data_access_layer_format(inputlist[j],'',0,{'status':('USERERROR',
+                                                                            'Duplicate entry %s'%(inputlist[i],))})
+                quit()
 
     return (ninput, inputlist, file_size)
 
@@ -305,23 +314,21 @@ def outputfile_check(ninput,inputlist,output):
     #  or      multiple input files copied to 1 output directory
     # this is just the current policy - nothing fundamental about it
     if len(output)>1:
-        print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Cannot have multiple output files')})  
-        jraise(errno.errorcode[errno.EPROTO],
-               "encp.outputfile_check: cannot handle multiple output files: %s"%(output,))
+        print_data_access_layer_format('',output[0],0,{'status':('USERERROR','Cannot have multiple output files')})
+        quit()
+
 
 
     # if user specified multiple input files, then output must be a directory
     outputlist = []
     if ninput!=1:
         if not os.path.exists(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':('EPROTO','Cannot have multiple output files')})  
-            jraise(errno.errorcode[errno.EPROTO],
-                   "encp.outputfile_check: multiple input files cannot be copied to non-existent directory %s"%
-                   (output[0],))
+            print_data_access_layer_format('',output[0],0,{'status':('USERERROR','No such directory %s'%(output[0],))})
+            quit()
+
         if not os.path.isdir(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':('ENOTDIR','Not a directory')})  
-            jraise(errno.errorcode[errno.ENOTDIR],
-                   "encp.outputfile_check: multiple input files must be copied to a directory, not  %s"%(output[0],))
+            print_data_access_layer_format('',output[0],0,{'status':('USERERROR','Not a directory %s'%(output[0],))})  
+            quit()
 
 
     outputlist = []
@@ -345,11 +352,9 @@ def outputfile_check(ninput,inputlist,output):
                                                outputlist[i],
                                                0,
                                                {'status':
-                                                ('EEXIST', "No such directory"+odir)})
-                jraise(errno.errorcode[errno.ENOENT],"encp.outputfile_check:"
-                       " base directory doesn't exist for "+outputlist[i])
+                                                ('USERERROR', "No such directory %s"%(odir,))})
+                quit()
 
-        # note: removed from itexist=1 try block to isolate errors
         else:
             # if output file exists, then it must be a directory
             if os.path.isdir(outputlist[i]):
@@ -364,26 +369,24 @@ def outputfile_check(ninput,inputlist,output):
                 # need to make sure generated filename doesn't exist
                 if os.path.exists(outputlist[i]):
                     # generated filename already exists - error
-                    print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
-                                                                          ('EEXIST', None)})
-                    jraise(errno.errorcode[errno.EEXIST],
-                           "encp.outputfile_check: "+outputlist[i]+
-                           " already exists")
+                    print_data_access_layer_format(inputlist[i],
+                                                   outputlist[i], 0, {'status':
+                                                            ('EEXIST', "File %s already exists"%(outputlist[i],))})
+                    quit()
 
             # filename already exists - error
             else:
                 print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status':
-                                                                      ('EEXIST', None)})
-                jraise(errno.errorcode[errno.EEXIST],"encp.outputfile_check: "+
-                       outputlist[i]+" already exists")
+                                                                      ('EEXIST', "File %s already exists"%
+                                                                       (outputlist[i],))})
+                quit()
 
         # need to check that directory is writable
         # since all files go to one output directory, one check is enough
         if i==0 and outputlist[0]!='/dev/null':
             if not os.access(odir,os.W_OK):
-                print_data_access_layer_format("",odir,0,{'status':('EEXIST',None)})
-                jraise(errno.errorcode[errno.EACCES],"encp.write_to_hsm: "+
-                       " NO write access to directory "+odir)
+                print_data_access_layer_format("",odir,0,{'status':('USERERROR',"No write access to %s"%(odir,))})
+                quit()
 
     # we can not allow 2 output files to be the same
     # this will cause the 2nd to just overwrite the 1st
@@ -393,9 +396,8 @@ def outputfile_check(ninput,inputlist,output):
         for j in range(i+1,ninput):
             if outputlist[i] == outputlist[j]:
                 print_data_access_layer_format('',outputlist[j],0,
-                                               {'status':('EPROTO',"Duplicated entry")})
-                jraise(errno.errorcode[errno.EPROTO],"encp.outputfile_check: %s is duplicated - not allowed"
-                       %(outputlist[i],))
+                                               {'status':('USERERROR',"Duplicated entry %s"%(outputlist[j],))})
+                quit()
 
     return outputlist
 
@@ -406,8 +408,8 @@ def system_enabled(p):                 # p is a  pnfs object
     running = p.check_pnfs_enabled()
     if running != pnfs.ENABLED :
         print_data_access_layer_format("","","",{'status':("EACCES", "Pnfs disabled")})
-        jraise(errno.errorcode[errno.EACCES],"encp.system_enabled: "
-               "system disabled "+running)
+        quit()
+
     Trace.trace(10,"system_enabled running= "+running)
 
 
@@ -456,33 +458,31 @@ def pnfs_information(filelist,nfiles):
 ##############################################################################
     
 def write_to_hsm(input_files, output, output_file_family='',
-                 config_host=None, config_port=None,
-                 verbose=0, data_access_layer=0, chk_crc=0, use_IPC=0,
+                 verbose=0, chk_crc=0, use_IPC=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0, bytecount=None):
     if t0==0:
         t0 = time.time()
 
-    Trace.trace(6,"write_to_hsm input_files=%s output=%s config_host=%s config_port=%s \
- verbose=%s data_access_layer=%s chk_crc=%s t0=%s" %
-                (input_files,output,config_host,config_port,verbose,data_access_layer,
-                 chk_crc, t0))
+    Trace.trace(6,"write_to_hsm input_files=%s output=%s  verbose=%s  chk_crc=%s t0=%s" %
+                (input_files,output,verbose,chk_crc, t0))
 
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    if verbose>2:
-        print "Getting clients, storing/checking local info   cumt=", time.time()-t0
     t1 = time.time() #-------------------------------------------Start
 
     # initialize - and get config, udp and log clients
     maxretry = 2
     unique_id = []
-    (csc,u,uinfo) = clients(config_host,config_port,verbose)
+
 
     # create the wrapper subticket - copy all the user info 
     # into for starters
     wrapper = {}
+    uinfo=client['uinfo']
+    csc=client['csc']
+    u=client['u']
     for key in uinfo.keys():
         wrapper[key] = uinfo[key]
 
@@ -500,7 +500,6 @@ def write_to_hsm(input_files, output, output_file_family='',
     times = {}
     times["t0"] = tinfo["abs_start"]
 
-    tinfo["clients"] = time.time() - t1 #---------------------------End
     if verbose>2:
         print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
     if verbose>3:
@@ -559,8 +558,8 @@ def write_to_hsm(input_files, output, output_file_family='',
             print "wrapper type=",ff_wrapper
             print "width=",width
             msg =  "library, file_family, width not all the same"
-            print_data_access_layer_format('','',0,{'status':(e_errors.USERERROR,msg)})
-            jraise(errno.errorcode[errno.EPROTO],msg)
+            print_data_access_layer_format('','',0,{'status':(e_errors.USERERROR, msg)})
+            quit()
 
 
     tinfo["pnfscheck"] = time.time() - t1 #------------------------End
@@ -602,8 +601,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     fticket = csc.get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, fticket)
-        jraise(fticket['status'][0], " encp.write_to_hsm:  ticket[\"status\"]=%s"%
-               (fticket["status"],))
+        quit()
 
     file_clerk_address = (fticket["hostip"],fticket["port"])
     Trace.trace(10,"write_to_hsm file clerk at host=%s port=%s"%
@@ -620,7 +618,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     vcticket = csc.get("volume_clerk")
     if vcticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vcticket)
-        jraise(vcticket['status'][0], ' encp.write_to_hsm:  ticket["status"]=%s'%(vcticket["status"]),)
+        quit()
         
     volume_clerk_address = (vcticket["hostip"],vcticket["port"])
     Trace.trace(10,"write_to_hsm volume clerk at host=%s port=%s"%
@@ -646,7 +644,7 @@ def write_to_hsm(input_files, output, output_file_family='',
     vticket = csc.get(lib_mgr)
     if vticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vticket)
-        jraise(vticket['status'][0], ' encp.write_to_hsm: status=%s'%(vticket["status"],))
+        quit()
         
     Trace.trace(10,"write_to_hsm %s at host=%s port=%s"%
                 (lib_mgr,vticket['hostip'],vticket['port']))
@@ -737,10 +735,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                     pprint.pprint(ticket)
                 if ticket['status'][0] != e_errors.OK :
                     print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
-
-                    jraise(errno.errorcode[errno.EPROTO],
-                           ' encp.write_to_hsm: from u.send to %s at %s:%s, ticket["status"]=%s'
-                           %(library[i],vticket['hostip'],vticket['port'],ticket['status']))
+                    quit()
 
                 tinfo1["send_ticket%d"%(i,)] = time.time() - t1 #--Lap End
                 if verbose:
@@ -809,12 +804,8 @@ def write_to_hsm(input_files, output, output_file_family='',
             # the status?
             if ticket["status"][0] != e_errors.OK :
                 print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
+                quit()
 
-                jraise(errno.errorcode[errno.EPROTO],
-                       ' encp.write_to_hsm: 1st (pre-file-send) mover callback on socket %s  failed to setup transfer: \
- ticket["status"]=%s' %  (address, ticket["status"]),
-                       exit_code=2)                
-                pass
 
             tinfo1["tot_to_mover_callback%d"%(i,)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-----------------------------Lap-End
@@ -851,10 +842,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                 if not bytecount and statinfo[stat.ST_SIZE] != fsize:
                     print_data_access_layer_format(
                         inputlist[i],'',fsize,{'status':('EPROTO','size changed')})
-                    jraise(errno.errorcode[errno.EPROTO],
-                           " encp.write_to_hsm:  file size has changed: was %s and now is %s" %
-                           (fsize,statinfo[stat.ST_SIZE]))
-                    pass
+                    quit()
+
                 try:
                     if chk_crc: crc_flag = 1
                     else:       crc_flag = 0
@@ -888,28 +877,24 @@ def write_to_hsm(input_files, output, output_file_family='',
                             print_data_access_layer_format(inputlist[i],outputlist[i],0,
                                                            {'status':('EPROTO',
                                                                       'Network problem or mover crash')})
-                            
-                            jraise(errno.errorcode[errno.EPROTO],
-                                   " encp.write_to_hsm: network problem or mover crash  %s"%(msg,))
-                            pass
+                            quit()
 
                         control_socket.close()
 
                         print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
                         if not e_errors.is_retriable(done_ticket["status"][0]):
                             # exit here
-                            jraise(errno.errorcode[errno.EPROTO],
-                                   ' encp.write_to_hsm: 2nd (post-file-send): mover callback on socket %s,\
- failed to transfer: done_ticket["status"]=%s'%(address,done_ticket['status']))
-
-                            pass
+                            quit()
                         print_error('EPROTO',
-'encp.write_to_hsm: 2nd (post-file-send): mover callback on socket %s,\
- failed to transfer: done_ticket["status"]=%s'%(address,done_ticket['status']),
+                                    "failed to transfer: status=%s"%(ticket['status'],),
                                     fatal=(retry<2))
+
                         retry = retry - 1
-                        if retry>0: sys.stderr.write("Retrying\n")
-                        continue
+                        if retry>0:
+                            sys.stderr.write("Retrying\n")
+                            continue
+                        else:
+                            quit()
 
                     else:
                         #some other error that needs coding
@@ -955,19 +940,17 @@ def write_to_hsm(input_files, output, output_file_family='',
                 print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
                 # exit here
                 if not e_errors.is_retriable(done_ticket["status"][0]):
-                    jraise(errno.errorcode[errno.EPROTO],
-                           ' encp.write_to_hsm: 2nd (post-file-send) mover callback on socket %s, failed to transfer:\
- done_ticket["status"]=%s'%(address,done_ticket['status']))                           
-
+                    quit()
 
                 print_error('EPROTO',
-                            'encp.write_to_hsm: 2nd (post-file-send) mover callback on socket %s, failed to transfer:\
- done_ticket["status"]=%s'%(address,done_ticket['status']),
+                            ' failed to transfer: status=%s'%(done_ticket['status'],),
                             fatal=(retry<2))
                 retry = retry - 1
                 if retry:
                     sys.stderr.write("Retrying\n")
-                continue
+                    continue
+                else:
+                    quit()
 
             # Check the CRC
             if chk_crc:
@@ -979,8 +962,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                 elif mover_crc != mycrc :
                     done_ticket['status']=('EPROTO', "CRC mismatch")
                     print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
-                    jraise(errno.errorcode[errno.EPROTO],
-                           " encp.write_to_hsm: CRC's mismatch: mover_crc=%s, my_crc=%s"%(mover_crc,mycrc))
+                    quit()
+
 
             tinfo1["final_dialog"] = time.time()-t1 #----------Lap End
             if verbose>1:
@@ -1017,10 +1000,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                 pprint.pprint(binfo)
             if done_ticket['status'][0] != e_errors.OK :
                 print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], done_ticket)
+                quit()
 
-                jraise(errno.errorcode[errno.EPROTO],
-                       ' encp.write_to_hsm: from u.send to FC at %s:%s, ticket["status"]=%s'
-                       %(fticket['hostip'],fticket['port'],done_ticket["status"]))
                 
             # store debugging info about transfer
             done_ticket["tinfo"] = tinfo1 # store as much as we can into pnfs
@@ -1064,7 +1045,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                        done_ticket["mover"]["serial_num"],
                        done_ticket["mover"]["vendor_id"],
                        time.time()-t0)
-            if data_access_layer:
+            if data_access_layer_requested:
                 print data_access_layer_format % \
                       (inputlist[i],
                        outputlist[i],
@@ -1306,7 +1287,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 # read hsm files in the loop after read requests have been submitted
 
 def read_hsm_files(listen_socket, submitted, ninput,requests,  
-                   tinfo, t0, chk_crc, use_IPC, data_access_layer, maxretry, verbose):
+                   tinfo, t0, chk_crc, use_IPC, maxretry, verbose):
     for rq in requests: 
         Trace.trace(7,"read_hsm_files: %s"%(rq['infile'],))
     files_left = ninput
@@ -1371,16 +1352,15 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 if files_left > 0:
                     files_left = files_left - 1
 
-                print_error (errno.errorcode[errno.EPROTO],
-                             'encp.read_from_hsm: 1st (pre-file-read)\
- mover callback on socket %s failed to setup transfer, ticket["status"]=%s' %(address, ticket["status"]),
+                print_error ('EPROTO',
+                             'failed to setup transfer, status=%s' %(ticket["status"]),
                              fatal=0)
 
                 continue
 
-            print_error (errno.errorcode[errno.EPROTO],'encp.read_from_hsm: 1st (pre-file-read)\
- mover callback on socket %s failed to setup transfer, ticket["status"]=%s' %(address, ticket["status"]),
-                             fatal=0)
+            print_error ('EPROTO',
+                         'failed to setup transfer, status=%s' %(ticket["status"],),
+                         fatal=0)
 
             if ticket['retry_cnt'] >= maxretry:
                 del(requests[j])
@@ -1420,8 +1400,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             try:
                 _f_ = open(tempname,"w")
             except:
-                done_ticket  = {'status':(e_errors.NOACCESS,None)}
-                error = e_errors.NOACCESS
+                error = e_errors.USERERROR
+                done_ticket  = {'status':(error,"Can't write %s"%(tempname,))}
+
                 
             Trace.trace(8,"read_hsm_files: reading data to file %s, socket=%s, bufsize=%s, chk_crc=%s"%
                         (tempname,data_path_socket.getsockname(),bufsize,chk_crc))
@@ -1446,13 +1427,14 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
                     if msg.args[1]==errno.ENOSPC:
                         try:
-                            os.unlink(tempname)
+                            if tempname!="/dev/null":
+                                os.unlink(tempname)
                         except:
                             pass
                         print_data_access_layer_format(
                             requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                             {'status':("ENOSPC", "No space left on device")})
-                        jraise(errno.errorcode[errno.ENOSPC], "no space left on device");
+                        quit()
                     ###XXX we shouldn't be matching literal strings here... this is really wrong                        
                     if msg.args[0] == "fd_xfer - read EOF unexpected":
                         error = 1
@@ -1468,10 +1450,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                            0,
                                                            {'status':("EPROTO",
                                                                       "Network problem or mover crash")})
-                            jraise(errno.errorcode[errno.EPROTO],
-                                   "encp.read_from_hsm: network problem or mover crash %s"%(msg,))
+                            quit()
 
-                            pass
                         control_socket.close()
                         print_data_access_layer_format(  requests[j]['infile'],  
                                                          requests[j]['outfile'], 
@@ -1482,15 +1462,13 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             if files_left > 0: files_left = files_left - 1
 
                             print_error ('EPROTO',
-                                         'encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
- failed to transfer,  done_ticket["status"]=%s' %(address, done_ticket["status"]),
+                                         'Failed to transfer, status=%s' %(done_ticket["status"],),
                                          fatal=1)
 
                             error=1
                             break
                         print_error ('EPROTO',
-                                     'encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
- failed to transfer,  done_ticket["status"]=%s' %(address, done_ticket["status"]),
+                                     'failed to transfer, status=%s' %(done_ticket["status"]),
                                      fatal=1)
                         pass
 
@@ -1529,8 +1507,9 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
             error = 1
-            try: os.remove(tempname)
-            except: pass #XXX
+            if tempname!="/dev/null":
+                try: os.unlink(tempname)
+                except: pass #XXX
             # print error to stdout in data_access_layer format
             print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            requests[j]['file_size'], done_ticket)
@@ -1542,16 +1521,15 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     files_left = files_left - 1
 
                 print_error ('EPROTO',
-                             'encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
- failed to transfer, done_ticket["status"]=%s' %(address, done_ticket["status"]),
+                             'failed to transfer, status=%s' %(done_ticket["status"],),
                              fatal=1)
 
                 continue
 
 
 
-            print_error ('EPROTO', 'encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
- failed to transfer, done_ticket["status"]=%s' %(address, done_ticket["status"]),
+            print_error ('EPROTO', 
+                         'failed to transfer, status=%s' %(done_ticket["status"],),
                          fatal=1)
 
             if ticket['retry_cnt'] >= maxretry:
@@ -1586,9 +1564,10 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                 # no retry for this case
                 bytes = bytes+requests[j]['file_size']
                 requests.remove(requests[j])
-                try: os.remove(tempname)
-                except os.error:
-                    print_error('EACCES',
+                if tempname!="/dev/null":
+                    try: os.unlink(tempname)
+                    except os.error:
+                        print_error('EACCES',
                                 "cannot remove temporary file %s"%(tempname,),fatal=0)
                 if files_left > 0:
                     files_left = files_left - 1
@@ -1619,11 +1598,12 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                     os.rename(tempname, outfile)
                 except:
                     try:
-                        os.unlink(tempname)
+                        if tempname!="/dev/null":
+                            os.unlink(tempname)
                     except:
                         pass
-                    error = e_errors.NOACCESS
-                    done_ticket['status']= (error,None)
+                    error = e_errors.USERERROR
+                    done_ticket['status']= (error,"Can't remove %s"%(tempname,))
                 
                 
             bytes = bytes+requests[j]['file_size']
@@ -1642,7 +1622,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
             fsize = statinfo[stat.ST_SIZE]
         else:
             fsize=0
-        if data_access_layer or done_ticket['status'][0] != e_errors.OK:
+        if data_access_layer_requested or done_ticket['status'][0] != e_errors.OK:
             print_data_access_layer_format(infile, outfile, 
                                            fsize, done_ticket)
 
@@ -1695,44 +1675,24 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
     if not control_socket_closed: control_socket.close()
     return files_left, bytes, error
 
+    
 
 #######################################################################
 def read_from_hsm(input_files, output,
-                  config_host, config_port,
-                  verbose=0, data_access_layer=0, chk_crc=0, use_IPC=0,
+                  verbose=0, chk_crc=0, use_IPC=0,
                   pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(6,"read_from_hsm input_files=%s output=%s config_host=%s config_port=%s\
- verbose=%s  data_access_layer=%s chk_crc=%s t0=%s"%
-                (input_files,output,config_host,config_port,verbose,data_access_layer,chk_crc,t0))
+    Trace.trace(6,"read_from_hsm input_files=%s output=%s verbose=%s  chk_crc=%s t0=%s"%
+                (input_files,output,verbose,chk_crc,t0))
     tinfo = {}
     tinfo["abs_start"] = t0
 
-    if verbose>2:
-        print "Getting clients, storing/checking local info   cumt=",time.time()-t0
-    t1 = time.time() #----------------------------------------------------Start
-
-    # initialize - and get config, udp and log clients
-
     request_list = []
-
 
     vols_needed = {}
     maxretry = 2
-
-    client = {}
-    client['csc'],client['u'],client['uinfo'] = clients(config_host, config_port,verbose)
-
-    tinfo["clients"] = time.time() - t1 #---------------------------------End
-    if verbose>2:
-        print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
-    if verbose>3:
-        print "csc=",client['csc']
-        print "u=",client['u']
-        print "logc=",logc
-        print "uinfo=",client['uinfo']
 
     if verbose>2:
         print "Checking input pnfs files:",input_files, "   cumt=",time.time()-t0
@@ -1794,7 +1754,7 @@ def read_from_hsm(input_files, output,
     fticket = client['csc'].get("file_clerk")
     if fticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, fticket)
-        jraise(fticket['status'][0], ' encp.read_from_hsm: ticket["status"]=%s' %(fticket['status'],))
+        quit()
 
     file_clerk_address = (fticket["hostip"],fticket["port"])
     Trace.trace(10,"read_from_hsm file clerk at host=%s port=%s"
@@ -1810,8 +1770,8 @@ def read_from_hsm(input_files, output,
     vticket = client['csc'].get("volume_clerk")
     if vticket['status'][0] != e_errors.OK:
         print_data_access_layer_format('', '', 0, vticket)
-        jraise(vticket['status'][0], ' encp.read_from_hsm: ticket["status"]=%s' %
-               (vticket['status'],))
+        quit()
+
     volume_clerk_address = (vticket["hostip"],vticket["port"])
     Trace.trace(10,"read_from_hsm volume clerk at host=%s port=%s"
                 %(vticket["hostip"],vticket["port"]))
@@ -1835,8 +1795,8 @@ def read_from_hsm(input_files, output,
                         (fticket['hostip'],fticket['port']))
         if binfo['status'][0]!=e_errors.OK:
             print_data_access_layer_format('', '', 0, binfo)
-            jraise(errno.errorcode[errno.EPROTO],
-                   "encp.read_from_hsm:  cannot get info on bfid %s"%(bfid[i],))
+            quit()
+
         Trace.trace(7,"read_from_hsm on volume=%s"%
                     (binfo['fc']['external_label'],))
         inhibit = binfo['vc']['system_inhibit'][0]
@@ -1938,7 +1898,6 @@ def read_from_hsm(input_files, output,
             files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
                                                       files_left, request_list,
                                                       tinfo, t0, chk_crc, use_IPC, 
-                                                      data_access_layer, 
                                                       maxretry, verbose)
             bytes = bytes + brcvd
             if verbose: print "FILES_LEFT ", files_left
@@ -2043,16 +2002,18 @@ class encp(interface.Interface):
         # normal parsing of options
         interface.Interface.parse_options(self)
 
+        clients(self.config_host, self.config_port)
+
         # bomb out if we don't have an input and an output
-        arglen = len(self.args)
-        if arglen < 2 :
-            print "ERROR: not enough arguments specified"
+        self.arglen = len(self.args)
+        if self.arglen < 2 :
+            print_error("USERERROR", "not enough arguments specified")
             self.print_help()
             sys.exit(1)
 
         # get fullpaths to the files
         p = []
-        for i in range(0,arglen):
+        for i in range(0,self.arglen):
             (machine, fullname, dir, basename) = fullpath(self.args[i])
             self.args[i] = os.path.join(dir,basename)
             p.append(string.find(dir,"/pnfs"))
@@ -2060,16 +2021,16 @@ class encp(interface.Interface):
         # all files on the hsm system have /pnfs/ as 1st part of their name
         # scan input files for /pnfs - all have to be the same
         p1 = p[0]
-        p2 = p[arglen-1]
+        p2 = p[self.arglen-1]
         self.input = [self.args[0]]
-        self.output = [self.args[arglen-1]]
+        self.output = [self.args[self.arglen-1]]
         for i in range(1,len(self.args)-1):
             if p[i]!=p1:
                 if p1:
-                    print "ERROR: Not all input files are /pnfs/... files"
+                    print_error("USERERROR", "Not all input files are /pnfs/... files",1)
                 else:
-                    print "ERROR: Not all input files are unix files"
-                sys.exit(1)
+                    print_error("USERERROR", "Not all input files are unix files",1)
+                quit()
             else:
                 self.input.append(self.args[i])
         if p1 == 0:
@@ -2081,20 +2042,15 @@ class encp(interface.Interface):
         else:
             self.outtype="unixfile"
 
-        # tracing info
-        dictlist = ""
-        for key in self.__dict__.keys():
-            dictlist = "%s %s:%s"%(dictlist,key,self.__dict__[key])
-        Trace.trace(16,"encp.parse_options objectdict=%s"%(dictlist,))
-
 
 ##############################################################################
 
 if __name__  ==  "__main__" :
+    global data_access_layer_requested #yuk
     t0 = time.time()
     Trace.init("ENCP")
     Trace.trace( 6, 'encp called at %s: %s'%(t0,sys.argv) )
-
+    
     # use class to get standard way of parsing options
     e = encp()
     if e.test_mode:
@@ -2106,37 +2062,47 @@ if __name__  ==  "__main__" :
                 print arg,
             print
         Trace.trace = trace
+
+    if e.data_access_layer:
+        data_access_layer_requested=1
+
     ## have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
-                     e.config_host, e.config_port,
-                     e.verbose, e.data_access_layer,
-                     e.chk_crc, e.use_IPC,
+                     e.verbose, e.chk_crc, e.use_IPC,
                      e.priority, e.delpri, e.age_time,
                      e.delayed_dismount, t0, e.bytes)
 
     ## have we been called "encp hsmfile unixfile" ?
     elif e.intype=="hsmfile" and e.outtype=="unixfile" :
         read_from_hsm(e.input, e.output,
-                      e.config_host, e.config_port,
-                      e.verbose, e.data_access_layer,
-                      e.chk_crc, e.use_IPC,
+                      e.verbose, e.chk_crc, e.use_IPC,
                       e.priority, e.delpri, e.age_time,
                       e.delayed_dismount, t0)
 
     ## have we been called "encp unixfile unixfile" ?
     elif e.intype=="unixfile" and e.outtype=="unixfile" :
-        print "encp copies to/from hsm. It is not involved in copying %s to %s" % (e.intype, e.outtype)
+        emsg="encp copies to/from tape. It is not involved in copying %s to %s" %   (e.intype, e.outtype)
+        print_error('USERERROR', emsg,1)
+        if data_access_layer_requested:
+            print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+
 
     ## have we been called "encp hsmfile hsmfile?
     elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
-        print "encp hsm to hsm is not functional. Copy hsmfile to local disk and them back to hsm"
+        emsg=  "encp tape to tape is not implemented. Copy file to local disk and them back to tape"
+        print_error('USERERROR',
+                    emsg,
+                    1)
+        if data_access_layer_requested:
+            print_data_access_layer_format(e.input, e.output, 0, {'status':("USERERROR",emsg)})
+
 
     else:
         emsg = "ERROR: Can not process arguments %s"%(e.args,)
         Trace.trace(6,emsg)
-        print_data_access_layer_format("","",0,{'status':("EPROTO","Cannot parse arguments")})
-        jraise(errno.errorcode[errno.EPROTO],emsg)
+        print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
+        quit()
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
 
