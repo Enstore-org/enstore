@@ -436,9 +436,6 @@ class FTTDriver(driver.Driver):
     def rates(self):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._burst_rate
-
-    def tape_transfer_time(self):
-        return self._active_time
     
     def get_cleaning_bit(self):
         clean = 0
