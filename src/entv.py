@@ -417,8 +417,8 @@ def get_mover_list(intf, fullnames=None):
         except TypeError:
             sys.stderr.write(str(lm_dict[lm]))
             continue
-            #exc, msg, tb = sys.exc_info()
-            #raise exc, msg, tb
+            #raise sys.exc_info()
+
         try:
             for mover in mover_list:
                 if not fullnames:
@@ -426,7 +426,7 @@ def get_mover_list(intf, fullnames=None):
                 else:
                     movers = movers + [mover['mover']]
         except (ValueError, TypeError, IndexError, KeyError):
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             Trace.trace(1, "No movers found: %s" % str(msg))
     movers.sort()
 
@@ -531,7 +531,7 @@ def handle_messages(display, intf):
             try:
                 readable, junk, junk = select.select([erc.sock], [], [], 1)
             except select.error:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 if msg.args[0] == errno.EINTR:
                     erc.unsubscribe()
                     erc.sock.close()
@@ -575,9 +575,9 @@ def handle_messages(display, intf):
 
     #End nicely.
     if not intf.commands_file:
-        #erc.unsubscribe()
+        erc.unsubscribe()
         #erc.sock.close()
-        del erc
+        #del erc
 
 #########################################################################
 # The following function sets the window geometry.
