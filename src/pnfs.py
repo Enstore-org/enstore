@@ -1525,8 +1525,7 @@ class PnfsInterface(option.Interface):
                     option.VALUE_LABEL:"filename",
                     option.FORCE_SET_DEFAULT:option.FORCE,
                     option.USER_LEVEL:option.USER,
-                    option.EXTRA_VALUES:[{option.DEFAULT_VALUE:
-                                          option.DEFAULT,
+                    option.EXTRA_VALUES:[{option.DEFAULT_VALUE:option.DEFAULT,
                                           option.DEFAULT_NAME:"named_layer",
                                           option.DEFAULT_TYPE:option.INTEGER,
                                           option.VALUE_NAME:"named_layer",
@@ -2007,6 +2006,9 @@ class PnfsInterface(option.Interface):
         self.file = ""
         self.directory = ""
         option.Interface.parse_options(self)
+
+        if not self.option_list:
+            self.print_usage("No valid options were given.")
 
         if getattr(self, "help", None):
             self.print_help()
