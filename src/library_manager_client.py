@@ -1,39 +1,42 @@
 import time
 import errno
-from configuration_client import configuration_client, set_csc
+import configuration_client
 import callback
-from udp_client import UDPClient, TRANSFER_MAX
-from base_defaults import default_host, default_port, BaseDefaults
-from client_defaults import ClientDefaults
+import udp_client
+import base_defaults
+import client_defaults
 
-class LibraryManagerClient(BaseDefaults, ClientDefaults) :
-    def __init__(self, csc=[], host=default_host(), port=default_port()) :
+class LibraryManagerClient(base_defaults.BaseDefaults,\
+                           client_defaults.ClientDefaults) :
+    def __init__(self, csc=[],\
+                 host=base_defaults.default_host(),\
+                 port=base_defaults.default_port()) :
         # we always need to be talking to our configuration server
         self.name = ""
         self.config_list = 0
         self.dolist = 0
         self.dogetwork = 0
         self.doalive = 0
-        set_csc(self, csc, host, port)
-        self.u = UDPClient()
+        configuration_client.set_csc(self, csc, host, port)
+        self.u = udp_client.UDPClient()
 
     # define the command line options that are valid
     def options(self):
-        return BaseDefaults.config_options(self) + \
-      	       BaseDefaults.list_options(self)   + \
-	       ["config_list", "getwork", "alive"] +\
-	       BaseDefaults.options(self)
+        return base_defaults.BaseDefaults.config_options(self) + \
+               base_defaults.BaseDefaults.list_options(self)   + \
+               ["config_list", "getwork", "alive"] +\
+               base_defaults.BaseDefaults.options(self)
 
     #  define our specific help
     def help_line(self):
-        return BaseDefaults.help_line(self)+" library"
+        return base_defaults.BaseDefaults.help_line(self)+" library"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):
-        BaseDefaults.parse_options(self)
+        base_defaults.BaseDefaults.parse_options(self)
         # bomb out if we don't have a library
         if len(self.args) < 1 :
-	    self.print_help(),
+            self.print_help(),
             sys.exit(1)
         else:
             self.name = self.args[0]
