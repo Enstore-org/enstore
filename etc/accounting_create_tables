@@ -1,5 +1,3 @@
-# tables for accounting database
-
 create table encp_xfer (
 date	datetime not null,
 node	varchar(32) not null,
