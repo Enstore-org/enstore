@@ -37,6 +37,7 @@ import StringIO
 import mimetools
 import MimeWriter
 import smtplib
+import socket		# for socket.error
 
 # mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
 
@@ -103,7 +104,14 @@ def mail_bin(from_add, to_add, subject, file, msg):
 
 	mesg = outf.getvalue()
 
-	server = smtplib.SMTP('localhost')
+	# protect it against eerror
+	try:
+		server = smtplib.SMTP('localhost')
+	except socket.error, (code, detail):
+		return detail
+	except:
+		return 'SMTP connection failed'
+
 	# server.set_debuglevel(1)	# no debug please
 	status = None
 	# handle the errors
@@ -154,7 +162,14 @@ def mail(from_add, to_add, subject, msg):
 
 	mesg = 'Subject: '+subject+'\r\n\r\n'+msg
 
-	server = smtplib.SMTP('localhost')
+	# protect it against eerror
+	try:
+		server = smtplib.SMTP('localhost')
+	except socket.error, (code, detail):
+		return detail
+	except:
+		return 'SMTP connection failed'
+
 	# server.set_debuglevel(1)	# no debug please
 	status = None
 	# handle the errors
