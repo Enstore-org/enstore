@@ -510,7 +510,7 @@ class  FTTDriver(GenericDriver) :
         dev_name = FTT.set_mode( drive_mode['density'],
 	 		         drive_mode['compression'],
 			         drive_block_size )
-	# verifiy location via FTT.stats???
+	# verify location via FTT.stats???
 	return self
 
     def seek( self, loc_cookie ):
