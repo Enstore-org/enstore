@@ -199,7 +199,7 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def offline( self, device ):
-	os.system( 'mt -t ' + device + ' offline')
+	os.system( 'sh -c "mt -t ' + device + ' offline 2>/dev/null"')
 	return None
 
     def get_stats( self ) :
