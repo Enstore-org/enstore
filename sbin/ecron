@@ -6,6 +6,9 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 # fermi specif information
 hypmail="hyp-enstore@hppc.fnal.gov"
 
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+
 # sun nodes need an extended path in order to find all the regular unix commands
 if [ `uname` = SunOS ]; then
   PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/lbin:/usr/ucb:/usr/ccs/bin
@@ -45,7 +48,7 @@ sendMail() {
   if [ -r $noMail ]; then
      mailaddress=$hypmail
   fi
-  /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
+  /usr/bin/Mail -s "$node ${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
   if test -w /dev/console -a $quiet -ne 1; then
      echo "`date`: $0 $@ has failed... sending mail to $mailaddress" >/dev/console
     echo < $filename >/dev/console
