@@ -10,7 +10,7 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 			int timeout, int rdonly) {
     char *buf;
     char label_buf[512];
-    int res;
+    int res=0,status=0,retval=0;
     char *pname;
     int len;
     int blocksize;
@@ -25,37 +25,25 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	return -1;
     }
 
-    res = ftt_status(d,timeout);	if (res < 0) return res;
+    status = ftt_status(d,timeout);	if (res < 0) return res;
 
-    if (0 == (res & FTT_ONLINE)) {
+    if (0 == (status & FTT_ONLINE)) {
 	ftt_errno = FTT_ENOTAPE;
 	ftt_eprintf("ftt_verify_vol_label: the drive is empty");
 	return -1;
     }
 
-    if (0 != (res & FTT_BUSY)) {
+    if (0 != (status & FTT_BUSY)) {
 	ftt_errno = FTT_EBUSY;
 	ftt_eprintf("ftt_verify_vol_label: the drive is busy");
 	return -1;
     }
 
-    if (0 != (res & FTT_PROT) && rdonly == FTT_RDWR) {
-	ftt_eprintf("ftt_verify_vol_label: unexpected write protection");
-	ftt_errno = FTT_EROFS;
-	return -1;
-    }
-
-    if (0 == (res & FTT_PROT) && rdonly == FTT_RDONLY) {
-	ftt_eprintf("ftt_verify_vol_label: missing expected write protection");
-	ftt_errno = FTT_ERWFS;
-	return -1;
-    }
 
     res = ftt_rewind(d);  			if (res < 0) return res;
 
-    if (type == FTT_DONTCHECK_HEADER) {
-	return 0;
-    } else {
+    if (type != FTT_DONTCHECK_HEADER) {
+
 	blocksize = ftt_get_max_blocksize(d);
 	buf = malloc(blocksize);
 	if (buf == 0) {
@@ -70,29 +58,39 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 	}
 	memset(buf,0,blocksize);
 	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
-	res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
-	if (type == res && (len == 0 || 
-		(0 == strncmp(vollabel,pname,len) && len == strlen(vollabel)))){
-	    return 0;
-	}
-
-	if (len > 512) len = 511;
-	strncpy(label_buf,pname,len);
-	label_buf[len] = 0;
-	if (type == res) {
+	if ( (res = ftt_guess_label(buf,res,&pname, &len) ) < 0) return res;
+	if (type != res || (len != 0 && 
+		(0 != strncmp(vollabel,pname,len) || len != strlen(vollabel)))){
+	  if (len > 512) len = 511;
+	  strncpy(label_buf,pname,len);
+	  label_buf[len] = 0;
+	  if (type == res) {
 	    ftt_eprintf("ftt_verify_vol_label: expected vol '%s', but got '%s'.",
 			vollabel, label_buf);
 	    ftt_errno = FTT_EWRONGVOL;
-	    res = -1;
-	} else {
-	ftt_eprintf("ftt_verify_vol_label: expected %s header, but got %s", 
-		ftt_label_type_names[type], ftt_label_type_names[res]);
+	    retval = -1;
+	  } else {
+	    ftt_eprintf("ftt_verify_vol_label: expected %s header, but got %s", 
+			ftt_label_type_names[type], ftt_label_type_names[res]);
 	    ftt_errno = FTT_EWRONGVOLTYP;
-	    res = -1;
+	    retval = -1;
+	  }
 	}
         free(buf);
     }
-    return res;
+    if ( retval == 0 ) { /* Check protection only if everything else if OK */
+      if (0 != (status & FTT_PROT) && rdonly == FTT_RDWR) {
+	ftt_eprintf("ftt_verify_vol_label: unexpected write protection");
+	ftt_errno = FTT_EROFS;
+	retval =  -1;
+      }
+      else if (0 == (status & FTT_PROT) && rdonly == FTT_RDONLY) {
+	ftt_eprintf("ftt_verify_vol_label: missing expected write protection");
+	ftt_errno = FTT_ERWFS;
+	retval =  -1;
+      }
+    }
+    return retval;
 }
 
 int
