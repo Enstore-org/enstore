@@ -43,9 +43,13 @@ def _open2(pathname,mode=0666):
         ok = 1
     except OSError, detail:
         try:
-            s = os.stat(tmpname)
-            if s and s[stat.ST_NLINK]==2:
-                ok = 1
+            #There are timeout issues with pnfs... keep trying.
+            for i in range(5):
+                s = os.stat(tmpname)
+                if s and s[stat.ST_NLINK]==2:
+                    ok = 1
+                    break
+                time.sleep(1)
         except OSError:
             #ok = 0
             os.close(fd_tmp)
