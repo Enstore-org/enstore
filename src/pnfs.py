@@ -2677,6 +2677,7 @@ def do_work(intf):
                     break
             else:
                 print "p%s not found" % arg 
+                rtn = 1
 
     return rtn
 
