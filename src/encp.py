@@ -319,7 +319,8 @@ def get_file_size(file):
         except (OSError, IOError), detail:
             filesize = 0
 
-    return filesize
+    #Always return the long version to avoid 32bit vs 64bit problems.
+    return long(filesize)
 
 #Return the number of requests in the list that have NOT had a non-retriable
 # error or have already finished.
@@ -1707,12 +1708,7 @@ def verify_file_size(ticket):
 
     #Handle large files.
     if pnfs_filesize == 1:
-        if ticket['file_size'] != out_filesize:
-            msg = "Expected file size (%s) equal to actuall file size " \
-                  "(%s) for file %s." % \
-                  (ticket['file_size'], out_filesize, ticket['outfile'])
-            ticket['status'] = (e_errors.EPROTO, msg)
-        elif full_filesize != pnfs_real_size:
+        if full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
                   " size (%s) for file %s." \
                   % (full_filesize, pnfs_real_size, ticket['outfile'])
@@ -2822,18 +2818,18 @@ def write_to_hsm(e, tinfo):
         Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
 
+        #handle_retries() is not required here since submit_write_request()
+        # handles its own retrying when an error occurs.
+        if done_ticket['status'][0] != e_errors.OK:
+            exit_status = 1
+            continue
+
         Trace.message(TRANSFER_LEVEL,
               "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
                       (work_ticket['infile'], work_ticket['vc']['library'],
                        work_ticket['vc']['file_family'],
                        long(work_ticket['file_size']),
                        time.time() - tinfo['encp_start_time']))
-
-        #handle_retries() is not required here since submit_write_request()
-        # handles its own retrying when an error occurs.
-        if done_ticket['status'][0] != e_errors.OK:
-            exit_status = 1
-            continue
 
         #Send (write) the file to the mover.
         done_ticket = write_hsm_file(listen_socket, udp_server,
