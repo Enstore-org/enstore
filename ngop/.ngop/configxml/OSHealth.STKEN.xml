@@ -1,0 +1,20 @@
+<?xml version='1.0'?>
+<!DOCTYPE NGOPConfig SYSTEM "system.dtd">
+<NGOPConfig>
+   <SystemView ID="OSHealth.STK">
+      <System ID="OSHealth" Cluster="stkensrv0"/>
+      <System ID="OSHealth" Cluster="stkensrv1"/>
+      <System ID="OSHealth" Cluster="stkensrv2"/>
+      <System ID="OSHealth" Cluster="stkensrv3"/>
+      <System ID="OSHealth" Cluster="stkensrv4"/>
+      <System ID="OSHealth" Cluster="stkenmvr1a"/>
+      <System ID="OSHealth" Cluster="stkenmvr2a"/>
+      <System ID="OSHealth" Cluster="stkenmvr3a"/>
+      <System ID="OSHealth" Cluster="stkenmvr4a"/>
+      <System ID="OSHealth" Cluster="stkenmvr5a"/>
+      <System ID="OSHealth" Cluster="stkenmvr6a"/>
+      <System ID="OSHealth" Cluster="rip9"/>
+      <System ID="OSHealth" Cluster="rip10"/>
+   </SystemView>
+</NGOPConfig>
+
