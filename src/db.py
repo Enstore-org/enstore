@@ -35,7 +35,8 @@ class MyIndex(table.Index):
 	return str
 
 class DbTable:
-  def __init__(self,dbname,logc=0,indlst=[]):
+  def __init__(self,dbname,logc=0,indlst=[], auto_journal=1):
+    self.auto_journal = auto_journal
     try:
 	self.dbHome=configuration_client.ConfigurationClient(\
 		interface.default_host(),\
@@ -47,20 +48,27 @@ class DbTable:
     self.db=libtpshelve.open(dbEnv,dbname,type='btree')
     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
     self.inx={}
+
     for name in indlst:
     	self.inx[name]=MyIndex(self.dbindex,name)
-    self.jou=journal.JournalDict({},self.dbHome+"/"+dbname+".jou")
-    self.count=0
+
+    if self.auto_journal:
+        self.jou=journal.JournalDict({},self.dbHome+"/"+dbname+".jou")
+        self.count=0
+
     self.name=dbname
     self.logc=logc
-    if len(self.jou):
+    if self.auto_journal:
+      if len(self.jou):
         self.start_backup()
         self.checkpoint()
         self.stop_backup()
+
   def next(self):
     if cursor_open==0:
 	return self.cursor("open")
     return self.cursor("next")
+
   def cursor(self,action,key="None",value=0):
     global c
     global t
@@ -120,6 +128,7 @@ class DbTable:
 
   def keys(self):
     return self.db.keys()
+
   def __len__(self):
     if cursor_open==1:
         return self.cursor("len")
@@ -134,28 +143,36 @@ class DbTable:
     c.close()
     t.commit()
     return len
+
   def has_key(self,key):
      return self.db.has_key(key)
+
   def __setitem__(self,key,value):
-     if 'db_flag' in value.keys(): del value['db_flag']
-     self.jou[key]=copy.deepcopy(value)
-     self.jou[key]['db_flag']='add'
-     self.count=self.count+1
-     if self.count > JOURNAL_LIMIT and backup_flag:
+
+     if self.auto_journal:
+       if 'db_flag' in value.keys(): del value['db_flag']
+       self.jou[key]=copy.deepcopy(value)
+       self.jou[key]['db_flag']='add'
+       self.count=self.count+1
+       if self.count > JOURNAL_LIMIT and backup_flag:
            self.checkpoint()
+
      for name in self.inx.keys():
         self.inx[name][value[name]]=key
+
      if cursor_open==1:
            self.cursor("update",key,value)
 	   return
+
      t=self.db.txn()
      self.db[(key,t)]=value
      t.commit()
 
   def is_index(self,key):
-	if self.inx.has_key(key):
+        if self.inx.has_key(key):
 		return 1
 	return 0
+
   def index(self,field,field_val):
        try:
 	return self.inx[field][field_val]
@@ -169,21 +186,26 @@ class DbTable:
 
   def __delitem__(self,key):
      value=self.db[key]
-     if self.jou.has_key(key) == 0:
-      	self.jou[key]=copy.deepcopy(self.db[key])
-     else:
-	if self.jou[key]['db_flag']=='delete':
+
+     if auto_journal:
+       if self.jou.has_key(key) == 0:
+         self.jou[key]=copy.deepcopy(self.db[key])
+       else:
+         if self.jou[key]['db_flag']=='delete':
 		return
-     self.jou[key]['db_flag']='delete'
-     del self.jou[key]
+       self.jou[key]['db_flag']='delete'
+       del self.jou[key]
+
      t=self.db.txn()
      del self.db[(key,t)]
      t.commit()
-     self.count=self.count+1
-     if self.count > JOURNAL_LIMIT and backup_flag:
-      	self.checkpoint()
+     if auto_journal:
+       self.count=self.count+1
+       if self.count > JOURNAL_LIMIT and backup_flag:
+      	 self.checkpoint()
      for name in self.inx.keys():
         del self.inx[name][(key,value[name])]
+
   def dump(self):
      t=self.db.txn()
      c=self.db.cursor(t)
@@ -192,11 +214,13 @@ class DbTable:
 	 generic_cs.enprint(c.next())
      c.close()
      t.commit()
+
   def close(self):
      self.jou.close()
      if cursor_open==1:
 	self.cursor("close")
      self.db.close()
+
   def checkpoint(self):
      import regex,string
      import time
