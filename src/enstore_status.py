@@ -32,6 +32,9 @@ EDEV = 6
 EURATE = 7
 
 bg_color = "FFFFFF"
+tdata = "<TD NOSAVE>"
+trow = "<TR NOSAVE>\n"
+tdata_end = "</TD>\n"
 
 html_header1 = "<title>Enstore Status</title>\n"+\
               "<meta http-equiv=\"Refresh\" content=\""
@@ -83,15 +86,13 @@ class EnStatus:
 
     # output the encp info
     def output_encp(self, lines, key, verbose):
-	Trace.trace(12,"{output_encp ")
+	Trace.trace(12,"{output_html_encp ")
 	if lines != []:
 	    str = self.format_encp(lines, key)
 	else:
-	    str = "encp            : NONE"
-	generic_cs.enprint(str, generic_cs.SERVER|generic_cs.PRETTY_PRINT,\
-	                   verbose)
+	    str = "encp            : NONE\n"
 	self.text[key] = str+"\n"
-	Trace.trace(12,"}output_encp ")
+	Trace.trace(12,"}output_html_encp ")
 
     # output the blocksize info
     def output_blocksizes(self, info, prefix, key):
@@ -375,34 +376,6 @@ class EnStatus:
         Trace.trace(12,"}format_moverstatus ")
 	return string
 
-    # format the encp info taken from the log file
-    def format_encp(self, lines, key):
-	Trace.trace(13,"{format_encp ")
-	prefix =  "\n                     "
-	str = key+"            : "
-	spacing = ""
-	# break up each line into it's component parts, format it and save it
-	for line in lines:
-	    einfo = parse_encp_line(line)
-	    str = str+spacing+einfo[ETIME]+" on "+einfo[ENODE]+" by "+\
-	          einfo[EUSER]
-	    spacing = "                  "
-	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
-	        str = str+" (Data Transfer Rate : "+einfo[EXRATE]+" MB/S)"
-	        # what's left in erest2 is what we want, but make it clearer
-	        # that the rate in this line is the user rate
-	        str = str+prefix+einfo[EBYTES]+" bytes copied to "+\
-	              einfo[EDEV]+" at a user rate of "+einfo[EURATE]+" MB/S\n"
-	    else:
-	        # there was an error or warning
-	        if len(einfo) == 7:
-	            str = str+prefix+einfo[4]+" : "+einfo[5]+prefix+einfo[6]
-	        else:
-	            # the leftover text was formatted funny, just output it
-	            str = str+prefix+einfo[4]
-	Trace.trace(13,"}format_encp ")
-	return str
-
 class EnStatusFile:
 
     def __init__(self, file):
@@ -476,6 +449,45 @@ class HTMLStatusFile(EnStatusFile, EnStatus):
     def get_refresh(self):
 	return self.refresh
 
+    # format the encp info taken from the log file
+    def format_encp(self, lines, key):
+	Trace.trace(13,"{format_encp ")
+	# include a </pre> here to finish the one started in the header
+	str = "</pre><P>\n<CENTER><TABLE BORDER COLS=7 WIDTH=\"100%\" NOSAVE>\n"+ \
+	      "<TH COLSPAN=7 VALIGN=CENTER>History of ENCP Commands</TH>\n"+ \
+	      "<TR VALIGN=CENTER NOSAVE>\n<TD NOSAVE><B>TIME</B></TD>\n"+ \
+	      "<TD NOSAVE><B>NODE</B></TD>\n<TD NOSAVE><B>USER</B></TD>\n"+ \
+	      "<TD NOSAVE><B>BYTES</B></TD>\n<TD NOSAVE><B>VOLUME</B></TD>\n"+\
+	      "<TD NOSAVE><B>DATA TRANSFER RATE (MB/S)</B></TD>\n"+ \
+	      "<TD NOSAVE><B>USER RATE (MB/S)</B></TD>\n</TR>\n"
+	str2 = "<P><PRE>\n"
+	# break up each line into it's component parts, format it and save it
+	for line in lines:
+	    einfo = parse_encp_line(line)
+	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	        str = str+trow+tdata+einfo[ETIME]+tdata_end+ \
+	                       tdata+einfo[ENODE]+tdata_end+ \
+	                       tdata+einfo[EUSER]+tdata_end+ \
+	                       tdata+einfo[EBYTES]+tdata_end+ \
+	                       tdata+einfo[EDEV]+tdata_end+ \
+	                       tdata+einfo[EXRATE]+tdata_end+ \
+	                       tdata+einfo[EURATE]+tdata_end+"</TR>\n"
+	    else:
+	        str2 = str2+einfo[ETIME]+" on "+einfo[ENODE]+" by "+einfo[EUSER]
+ 	        # there was an error or warning
+	        if len(einfo) == 7:
+	            str2 = str2+"\n  "+einfo[4]+" : "+einfo[5]+"\n  "+\
+	                   einfo[6]+"\n"
+	        else:
+	            # the leftover text was formatted funny, just output it
+	            str2 = str2+"\n  "+einfo[4]+"\n"
+	else:
+	    str = str+"</TABLE></CENTER>\n"
+	str = str+str2+"\n"
+	Trace.trace(13,"}format_encp ")
+	return str
+
+
 class AsciiStatusFile(EnStatusFile, EnStatus):
 
     def __init__(self, file, max_ascii_size, verbose=0):
@@ -483,6 +495,34 @@ class AsciiStatusFile(EnStatusFile, EnStatus):
 	self.max_ascii_size = max_ascii_size
 	EnStatusFile.__init__(self, file)
         Trace.trace(10,'}__init__')
+
+    # format the encp info taken from the log file
+    def format_encp(self, lines, key):
+	Trace.trace(13,"{format_encp ")
+	prefix =  "\n                     "
+	str = key+"            : "
+	spacing = ""
+	# break up each line into it's component parts, format it and save it
+	for line in lines:
+	    einfo = parse_encp_line(line)
+	    str = str+spacing+einfo[ETIME]+" on "+einfo[ENODE]+" by "+\
+	          einfo[EUSER]
+	    spacing = "                  "
+	    if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
+	        str = str+" (Data Transfer Rate : "+einfo[EXRATE]+" MB/S)"
+	        # what's left in erest2 is what we want, but make it clearer
+	        # that the rate in this line is the user rate
+	        str = str+prefix+einfo[EBYTES]+" bytes copied to "+\
+	              einfo[EDEV]+" at a user rate of "+einfo[EURATE]+" MB/S\n"
+	    else:
+	        # there was an error or warning
+	        if len(einfo) == 7:
+	            str = str+prefix+einfo[4]+" : "+einfo[5]+prefix+einfo[6]
+	        else:
+	            # the leftover text was formatted funny, just output it
+	            str = str+prefix+einfo[4]
+	Trace.trace(13,"}format_encp ")
+	return str
 
     # move the file to a timestamped backup copy
     def timestamp(self, really=0):
