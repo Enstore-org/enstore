@@ -176,9 +176,9 @@ def check(mover):
     print "\t%-30s\t%-20s"%(status, state), 
     if time_in_state:
         print '\t%10s' % hms(time_in_state)
-##      if state in ['SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT'] and int(time_in_state)>1200:
-        if state in ['SEEK', 'ACTIVE'] and int(time_in_state)>1200:
-            return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
+        if int(time_in_state)>1200:
+            if state not in ['IDLE', 'OFFLINE','HAVE_BOUND']:
+                return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
     else:
         print
 
@@ -186,7 +186,7 @@ def check(mover):
     if state=='ERROR':
         print mover,'\t', status
         return -1,  "Mover in ERROR state.\n\nFull status: %s" % pprint.pformat(d)
-    elif status[0]=='TIMEDOUT':
+    elif status and status[0]=='TIMEDOUT':
         return -2, "Status request timed out"
     elif status  != ("ok", None):
         return -3, "Status request returned %s.\n\nFull status: %s" % status, pprint.pformat(d)
