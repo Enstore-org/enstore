@@ -1,0 +1,404 @@
+#!/usr/bin/wish
+# sbin/$RCSfile$  $Revision$
+
+# Description...
+# I know this is horrible, I didn't try to make nice. I know I repeated code sections.
+#     --> I need something to make querying and stopping and starting more convenient!!!
+# This can be improved (or delete) as we understand things better.
+
+wm title . Enstore
+
+############################################################################################################################################
+# set up the command line, the Run/Stop button and the Quit button
+frame .top -borderwidth 10 -bg darkcyan -fg yellow
+pack .top -side top -fill x
+
+label .top.l -text Command: -padx 0 -bg darkcyan -fg white
+entry .top.cmd -width 20 -relief sunken -textvariable command
+pack .top.l -side left
+pack .top.cmd -side left -fill x -expand true
+
+button .top.quit -text Quit -command exit -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+set but [button .top.run -text "Run it" -command Run -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .top.quit .top.run -side right
+
+bind .top.cmd <Return> Run
+bind .top.cmd <Control-c> Stop
+focus .top.cmd
+
+############################################################################################################################################
+# configuration server
+frame .config -borderwidth 10 -bg darkcyan -fg yellow
+pack .config -side top -fill x
+label .config.l -text "Configuration Server:" -width 25 -bg darkcyan -fg white
+pack .config.l -side left
+button .config.q -text "Query" -command CQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .config.q -side left
+set butc [button .config.s -text "????" -command CSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .config.s -side left
+proc CQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7500 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w CQRun_done}
+    trace variable done w CQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc CQRun_done { name element op } {
+    global alive butc done
+    trace vdelete done w CQRun_done
+    if {$alive == "alive"} {
+        $butc config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butc config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# log server
+frame .log -borderwidth 10 -bg darkcyan -fg yellow
+pack .log -side top -fill x
+label .log.l -text "Log Server:" -width 25 -bg darkcyan -fg white
+pack .log.l -side left
+button .log.q -text "Query" -command LQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .log.q -side left
+set butl [button .log.s -text "????" -command LSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .log.s -side left
+proc LQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7504 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w LQRun_done}
+    trace variable done w LQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc LQRun_done { name element op } {
+    global alive butl done
+    trace vdelete done w LQRun_done
+    if {$alive == "alive"} {
+        $butl config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butl config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# file server
+frame .file -borderwidth 10 -bg darkcyan -fg yellow
+pack .file -side top -fill x
+label .file.l -text "File Server:" -width 25 -bg darkcyan -fg white
+pack .file.l -side left
+button .file.q -text "Query" -command FQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .file.q -side left
+set butf [button .file.s -text "????" -command FSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .file.s -side left
+proc FQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7501 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w FQRun_done}
+    trace variable done w FQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc FQRun_done { name element op } {
+    global alive butf done
+    trace vdelete done w FQRun_done
+    if {$alive == "alive"} {
+        $butf config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butf config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# volume server
+frame .vol -borderwidth 10 -bg darkcyan -fg yellow
+pack .vol -side top -fill x
+label .vol.l -text "Volume Server:" -width 25 -bg darkcyan -fg white
+pack .vol.l -side left
+button .vol.q -text "Query" -command VQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .vol.q -side left
+set butv [button .vol.s -text "????" -command VSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .vol.s -side left
+proc VQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7502 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w VQRun_done}
+    trace variable done w VQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc VQRun_done { name element op } {
+    global alive butv done
+    trace vdelete done w VQRun_done
+    if {$alive == "alive"} {
+        $butv config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butv config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# ait library manager
+frame .ait -borderwidth 10 -bg darkcyan -fg yellow
+pack .ait -side top -fill x
+label .ait.l -text "AIT Library Manager:" -width 25 -bg darkcyan -fg white
+pack .ait.l -side left
+button .ait.q -text "Query" -command AQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .ait.q -side left
+set buta [button .ait.s -text "????" -command ASRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .ait.s -side left
+proc AQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w AQRun_done}
+    trace variable done w AQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc AQRun_done { name element op } {
+    global alive buta done
+    trace vdelete done w AQRun_done
+    if {$alive == "alive"} {
+        $buta config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $buta config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# mammoth library manager
+frame .mam -borderwidth 10 -bg darkcyan -fg yellow
+pack .mam -side top -fill x
+label .mam.l -text "Mammoth Library Manager:" -width 25 -bg darkcyan -fg white
+pack .mam.l -side left
+button .mam.q -text "Query" -command MQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .mam.q -side left
+set butm [button .mam.s -text "????" -command MSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .mam.s -side left
+proc MQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7508 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w MQRun_done}
+    trace variable done w MQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc MQRun_done { name element op } {
+    global alive butm done
+    trace vdelete done w MQRun_done
+    if {$alive == "alive"} {
+        $butm config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butm config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+
+############################################################################################################################################
+# dlt library manager
+frame .dlt -borderwidth 10 -bg darkcyan -fg yellow
+pack .dlt -side top -fill x
+label .dlt.l -text "DLT Library Manager:" -width 25 -bg darkcyan -fg white
+pack .dlt.l -side left
+button .dlt.q -text "Query" -command DQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .dlt.q -side left
+set butd [button .dlt.s -text "????" -command DSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .dlt.s -side left
+proc DQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7509 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w DQRun_done}
+    trace variable done w DQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc DQRun_done { name element op } {
+    global alive butd done
+    trace vdelete done w DQRun_done
+    if {$alive == "alive"} {
+        $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butd config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# redwood-20 library manager
+frame .red20 -borderwidth 10 -bg darkcyan -fg yellow
+pack .red20 -side top -fill x
+label .red20.l -text "Redwood-20 Library Manager:" -width 25 -bg darkcyan -fg white
+pack .red20.l -side left
+button .red20.q -text "Query" -command R2QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .red20.q -side left
+set butr2 [button .red20.s -text "????" -command R2SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .red20.s -side left
+proc R2QRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w R2QRun_done}
+    trace variable done w R2QRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc R2QRun_done { name element op } {
+    global alive butr2 done
+    trace vdelete done w R2QRun_done
+    if {$alive == "alive"} {
+        $butr2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butr2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# redwood-50 library manager
+frame .red50 -borderwidth 10 -bg darkcyan -fg yellow
+pack .red50 -side top -fill x
+label .red50.l -text "Redwood-50 Library Manager:" -width 25 -bg darkcyan -fg white
+pack .red50.l -side left
+button .red50.q -text "Query" -command R5QRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .red50.q -side left
+set butr5 [button .red50.s -text "????" -command R5SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .red50.s -side left
+proc R5QRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7510 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w R5QRun_done}
+    trace variable done w R5QRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc R5QRun_done { name element op } {
+    global alive butr5 done
+    trace vdelete done w R5QRun_done
+    if {$alive == "alive"} {
+        $butr5 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butr5 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# emass media changer
+frame .emass -borderwidth 10 -bg darkcyan -fg yellow
+pack .emass -side top -fill x
+label .emass.l -text "EMASS Media Changer:" -width 25 -bg darkcyan -fg white
+pack .emass.l -side left
+button .emass.q -text "Query" -command EQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .emass.q -side left
+set bute [button .emass.s -text "????" -command ESRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .emass.s -side left
+proc EQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7523 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w EQRun_done}
+    trace variable done w EQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc EQRun_done { name element op } {
+    global alive bute done
+    trace vdelete done w EQRun_done
+    if {$alive == "alive"} {
+        $bute config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $bute config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+
+############################################################################################################################################
+# stk media changer
+frame .stk -borderwidth 10 -bg darkcyan -fg yellow
+pack .stk -side top -fill x
+label .stk.l -text "STK Media Changer:" -width 25 -bg darkcyan -fg white
+pack .stk.l -side left
+button .stk.q -text "Query" -command STKQRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+pack .stk.q -side left
+set butstk [button .stk.s -text "????" -command STKSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .stk.s -side left
+proc STKQRun {} {
+    global command env alive done
+    set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7524 10"
+    set alive "dead"
+    set done ""
+    catch {trace vdelete done w STKQRun_done}
+    trace variable done w STKQRun_done
+    #puts [trace vinfo done]
+    Run
+}
+proc STKQRun_done { name element op } {
+    global alive butstk done
+    trace vdelete done w STKQRun_done
+    if {$alive == "alive"} {
+        $butstk config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+    } else {
+        $butstk config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+    }
+}
+
+############################################################################################################################################
+# the command output
+frame .t -bg darkcyan -fg yellow
+set log [text .t.log -bg darkcyan -fg yellow -width 80 -height 10 -borderwidth 2 -relief raised -setgrid true -yscrollcommand {.t.scroll set}]
+scrollbar .t.scroll -activebackground cyan3 -bg cyan3 -troughcolor darkcyan -command {.t.log yview}
+pack .t.scroll -side right -fill y
+pack .t.log -side left -fill both -expand true
+pack .t -side top -fill both -expand true
+
+############################################################################################################################################
+# the procs that run, log and stop the commands
+proc Run {} {
+    global command input log but
+    if [catch {open "|$command |& cat"} input] {
+        $log insert end $input\n
+    } else {
+        fileevent $input readable Log
+        $log insert end $command\n
+        $but config -text Stop -command Stop
+    }
+}
+
+proc Log {} {
+    global input log alive line
+    if [eof $input] {
+        Stop
+    } else {
+        gets $input line
+        if {[string first alive $line] !=0} {set alive "alive" }
+        $log insert end $line\n
+        $log see end
+    }
+}
+
+proc Stop {} {
+    global input but done
+    catch {close $input}
+    $but config -text "Run it" -command Run
+    set done "done"
+}
+############################################################################################################################################
+# initialization
+#CQRun
+#LQRun
