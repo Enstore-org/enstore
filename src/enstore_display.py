@@ -978,11 +978,9 @@ class Mover:
         mmpc = float(MMPC) #Maximum movers per column
 
         #total number of columns 
-        num_cols = self.display.get_client_column_count() + \
-                   self.display.get_mover_column_count() + 1
+        num_cols = self.display.get_total_column_count()
         #total number of rows in the largest column
-        num_rows = self.display.get_mover_count(position[0])
-
+        num_rows = self.display.get_mover_maximum_column_count()
         #this mover's column
         column = position[0]
         #this mover's row
@@ -1000,6 +998,7 @@ class Mover:
         space_between = (self.display.height - (self.height * mmpc))
         #Adjusted space between individulal movers in the display.
         space_between = (space_between / (mmpc - 1.0))
+
         #Now that the seperation space in pixels between two movers is known,
         # it need to be adjusted for the odd-to-even column offset in the
         # display.
@@ -1567,6 +1566,9 @@ class Column:
 
     def get_name(self, item_index):
         return self.item_positions.get(item_index, None)
+
+    def get_max_limit(self):
+        return self.column_limit
 
     def set_max_limit(self, limit):
         if type(limit) == types.IntType and limit > 0 and limit <= MMPC:
@@ -2191,6 +2193,16 @@ class Display(Tkinter.Canvas):
             sum = sum + self.mover_positions[i].count()
 
         return sum
+
+    #Return the number of movers in the largest column.
+    def get_mover_maximum_column_count(self):
+        result = 0
+        for i in range(len(self.mover_positions) + 1)[1:]:
+            temp = self.mover_positions[i].get_max_limit()
+            if temp > result:
+                result = temp #Found greater column count.
+
+        return result
 
     def reserve_mover_columns(self, number): #number of movers.
 
