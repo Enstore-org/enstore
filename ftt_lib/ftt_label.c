@@ -21,30 +21,39 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     char *p;
     
     /* don't clear errors yet, need to look at ftt_errno */
+
     char *_name = "ftt_guess_label";
     DEBUG1(stderr, "Entering %s\n", _name);
     CKNULL("label data buffer pointer", buf);
 
     if (-1 == length && ftt_errno == FTT_EBLANK) {
+	/* read returned EBLANK... */
 	ftt_eprintf("Ok\n");
+	if (vol) *vol = "";
+	if (vlen) *vlen = 0;
 	ftt_errno = FTT_SUCCESS;
 	return FTT_BLANK_HEADER;
     } else if ( length < 80 ) {
+	/* no known header is < 80 bytes long */
 	ftt_eprintf("Ok\n");
+	if (vol) *vol = "";
+	if (vlen) *vlen = 0;
 	ftt_errno = FTT_SUCCESS;
-	*vol = "";
-	*vlen = 0;
 	return FTT_UNKNOWN_HEADER;
     }
 
     /* okay, now we can clear errors... */
+
     ftt_eprintf("Ok\n");
     ftt_errno = FTT_SUCCESS;
+
+    /* pick the ones we can with the first 4 bytes */
 
     switch(pack(buf[0],buf[1],buf[2],buf[3])) {
 
     case pack('V','O','L','1'):
 	if (vol) *vol = buf+4;
+	/* trim blanks -- loop has to stop at least when it hits the '1' */
 	p = buf+10;
 	while (' ' == *p) {
 	    p--;
@@ -58,11 +67,15 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	return FTT_CPIO_HEADER;
     }
 
+    /* check for a tar header */
+
     if (pack('u','s','t','a')==pack(buf[0401],buf[0402],buf[0403],buf[0404])) {
 	if (vol) *vol = buf;
 	if (vlen) *vlen = strlen(*vol);
 	return FTT_TAR_HEADER;
     }
+
+    /* check for an fmb header -- newline separated ascii */
 
     p = strchr(buf,'\n');
     if (0 != p && (1024 == length || 2048 == length)) {
@@ -70,8 +83,10 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	if (vlen) *vlen = p - buf;
 	return FTT_FMB_HEADER;
     }
-    *vol = "";
-    *vlen = 0;
+
+    /* if all else failed, we don't know what it was... */
+    if (vol) *vol = "";
+    if (vlen) *vlen = 0;
     return FTT_UNKNOWN_HEADER;
 }
 
