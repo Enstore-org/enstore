@@ -17,7 +17,7 @@ host=`uname -n | cut -d. -f1`
 
 # get db directory
 case $host in
-	rip1|stkensrv0|cdfensrv0|d0ensrv0)
+	rip1|stkensrv6|cdfensrv6|d0ensrv6)
 		db=/diska/drivestat_db
 		;;
 	*)
