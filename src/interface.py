@@ -365,13 +365,17 @@ class Interface:
             elif opt == "--resolve" :
                 self.resolve = string.atof(value)
             elif opt == "--patrol_file" :
-                self.patrol_file=1
+                self.patrol_file = 1
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
                 self.severity = string.atoi(value)
             elif opt == "--mc" :
-                self.mc = string.split(value, ",")
+                self.mcs = string.split(value, ",")
+            elif opt == "--keep" :
+                self.keep = 1
+            elif opt == "--pts_dir" :
+                self.pts_dir = value
             elif opt == "--key_value" :
                 self.key_value = str_to_tuple(value)
             elif opt == "--help" :
