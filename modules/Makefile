@@ -28,12 +28,12 @@ Trace:
 	make -f trace.mk trace.a all 
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	@mv traceShow trace_delta ../sbin
-	@cd ../sbin
-	ln -fs traceShow traceInfo
-	ln -fs traceShow traceReset
-	ln -fs traceShow traceMode
-	ln -fs traceShow traceOn
-	ln -fs traceShow traceOff
+	ln -fs traceShow ../sbin/traceInfo
+	ln -fs traceShow ../sbin/traceReset
+	ln -fs traceShow ../sbin/traceMode
+	ln -fs traceShow ../sbin/traceOn
+	ln -fs traceShow ../sbin/traceOff
+	@cd ../modules
 
 # Normally we don't install .py files:
 install: installpyc
@@ -59,3 +59,10 @@ clean:
 	-rm -f *.o *.so *~ *# so_locations sedscript
 	-rm -rf mksetup
 	-make -f trace.mk clean
+	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
+	-rm -f  ../sbin/traceShow ../sbin/trace_delta
+	-rm -f  ../sbin/traceInfo
+	-rm -f  ../sbin/traceReset
+	-rm -f  ../sbin/traceMode
+	-rm -f  ../sbin/traceOn
+	-rm -f  ../sbin/traceOff
