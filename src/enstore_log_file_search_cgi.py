@@ -40,10 +40,11 @@ def go():
 
 	# we need to find the location of enstore so we can import
 	(config_host, config_port) = enstore_utils_cgi.find_enstore()
+	config_port = int(config_port)
 
 	# add the config port and host to the environment
-	os.environ['ENSTORE_CONFIG_HOST'] = config_host
-	os.environ['ENSTORE_CONFIG_PORT'] = config_port
+	#os.environ['ENSTORE_CONFIG_HOST'] = config_host
+	#os.environ['ENSTORE_CONFIG_PORT'] = config_port
 
 	# get a list of the log files we need
 	import log_client
