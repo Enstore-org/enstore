@@ -235,7 +235,6 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
     if config['status'] == (e_errors.OK, None):
         logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
-
         ip_list = get_all_ips(config_host, config_port, csc)
         vetos = Vetos(config.get('veto_nodes', {}))
 
