@@ -154,7 +154,11 @@ def main():
         r, w, x = select.select([pipe, sock], [], [], 600)
         
         if sock in r: #getting responses to our mover status queries
-            msg = sock.recv(16384)
+            try:
+                msg = sock.recv(16384)
+            except socket.error, detail
+                print detail
+                
             try:
                 msg_id, status, timestamp = eval(msg)
                 mover = reqs[msg_id]
