@@ -2016,12 +2016,25 @@ class File:
 			# does it exist?
 			if os.access(self.path, os.F_OK):
 				f = open(self.layer_file(4))
-				self.volume, self.location_cookie, self.size,\
-				self.file_family, p_path, self.volmap,\
-				self.pnfs_id, self.pnfs_vid, self.bfid,\
-				self.drive = map(string.strip, f.readlines())
+				finfo = map(string.strip, f.readlines())
 				f.close()
-				# if p_path != self.path:
+				if len(finfo) == 10:
+					self.volume,\
+					self.location_cookie,\
+					self.size, self.file_family,\
+					p_path, self.volmap,\
+					self.pnfs_id, self.pnfs_vid,\
+					self.bfid, self.drive = finfo
+				elif len(finfo) == 9:
+					self.volume,\
+					self.location_cookie,\
+					self.size, self.file_family,\
+					p_path, self.volmap,\
+					self.pnfs_id, self.pnfs_vid,
+					self.bfid = finfo
+					
+				if p_path != self.path:
+					raise 'DIFFERENT_PATH'
 				#	print 'different paths'
 				#	print '\t f>', self.path
 				#	print '\t 4>', p_path
