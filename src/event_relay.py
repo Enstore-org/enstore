@@ -119,9 +119,9 @@ class Relay:
 			# get rid of old info first
 			self.cleanup(key)
 			self.clients[key] = (now, filter_d)
-			msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
-									      filter_d)
-			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+			#msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
+			#						      filter_d)
+			#Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 		    except:
 			self.dump()
                         Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
@@ -133,11 +133,12 @@ class Relay:
 			ip = tok[1]
 			port = int(tok[2])
 			if not self.clients.has_key((ip, port)):
-			    msg = "no client subscribed %s"%(msg,)
+			    #msg = "no client subscribed %s"%(msg,)
+                            pass
 			else:
 			    self.cleanup((ip, port))
-			    msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
-			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
+			    #msg = "Unsubscribe request for %s, (port: %s)"%(ip, port)
+			#Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 		    except:
 			self.dump()
                         Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
