@@ -312,7 +312,13 @@ class FTTDriver(driver.Driver):
         ##HACK: this seems to trigger a core dump in ftt, and it's
         ## not clear we're really changing the mode anyhow.
         ## XXX investigate this!
-        return 0
+        ## Be very careful with density and compression
+        ## possible values for them are defined in ftt_table.c and are different
+        ## for differint kinds of devices
+        ## NOT RECOMMENDED to specify dencity other than None
+        ## compressin must be either None (default compression), or 0, or 1
+        ## if 
+        #return 0
     
         r = -1
         try:
@@ -324,6 +330,9 @@ class FTTDriver(driver.Driver):
         if density is None:
             density = mode[1]
         if compression is None:
+            compression = mode[2]
+        elif not compression in (0,1):
+            Trace.log(e_errors.WARNING, "set_mode: wrong compression value %s. Using default" % (compression,))
             compression = mode[2]
         if blocksize is None:
             blocksize = mode[3]

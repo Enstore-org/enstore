@@ -664,6 +664,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.last_location = 0L
         self.last_volume = None
         self.mode = None # READ or WRITE
+        self.compression = None # use default
         self.bytes_to_transfer = 0L
         self.bytes_to_read = 0L
         self.bytes_to_write = 0L
@@ -751,6 +752,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             import null_driver
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
+            self.compression = self.config.get('compression', None)
+            if self.compression > 1: self.compression = None
             self.device = self.config['device']
             import ftt_driver
             import ftt
@@ -1189,7 +1192,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
                 Trace.trace(22, "position media")
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-                self.tape_driver.set_mode(blocksize = 0)
+                self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
                 save_location = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
@@ -1661,9 +1664,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         for retry_open in range(3):
             Trace.trace(10, "position media")
             have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
-            self.tape_driver.set_mode(blocksize = 0)
             if have_tape == 1:
                 err = None
+                self.tape_driver.set_mode(compression = self.compression, blocksize = 0)
                 break
             else:
                 try:
