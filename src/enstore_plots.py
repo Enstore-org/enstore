@@ -81,7 +81,7 @@ def find_files(files, dir, ignore):
 				  os.stat("%s/%s"%(dir, file))[stat.ST_MTIME]))
 	elif not string.find(file, enstore_constants.PS) == -1:
 	    # this file has '.ps' in it
-            ps_files.append(file, os.stat("%s/%s"%(dir, file))[stat.ST_MTIME])
+            ps_files.append((file, os.stat("%s/%s"%(dir, file))[stat.ST_MTIME]))
     return (jpg_files, tmp_stamps, ps_files)
 
 def find_jpg_files(dir):
