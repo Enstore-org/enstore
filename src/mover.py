@@ -233,31 +233,26 @@ class Mover :
 
         # call the user and announce that your her mover
         self.get_user_sockets(ticket)
-
         # open the hsm file for writing
-        self.driver.open_file_write()
-
+        try:
+            self.driver.open_file_write()
         # create the wrapper instance
-        self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
+            self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
 
         # now write the file
-        try:
             (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
                 inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
                 ticket["size_bytes"], pnfs["major"], pnfs["minor"],
                 pnfs["rmajor"], pnfs["rminor"], pnfs["pnfsFilename"],
                 sanity_size)
-            #print "cpio.write size:",wr_size,"crc:",complete_crc, \
-            #     "sanity_cookie:",sanity_cookie
+            file_cookie = self.driver.close_file_write()
         except:
             print sys.exc_info()[0],sys.exc_info()[1]
             media_error = 1 # I don't know what else to do right now
+            wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
 
         # we've read the file from user, shut down data transfer socket
         self.data_socket.close()
-
-        # close hsm file
-        file_cookie = self.driver.close_file_write()
 
         #  get file/eod cookies & remaining bytes & errs & mnts
         eod_cookie = self.driver.get_eod_cookie()
@@ -393,12 +388,13 @@ class Mover :
             self.driver.open_file_read(ticket["bof_space_cookie"])
             (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
              #print "cpio.read  size:",wr_size,"crc:",complete_crc
+
+        # close hsm file
+            self.driver.close_file_read()
         except:
             print sys.exc_info()[0],sys.exc_info()[1]
             media_error = 1 # I don't know what else to do right now
-
-        # close hsm file
-        self.driver.close_file_read()
+            wr_err,rd_err,wr_access,rd_access = (0,1,0,1)
 
         # we've sent the hsm file to the user, shut down data transfer socket
         self.data_socket.close()
