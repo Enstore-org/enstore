@@ -22,6 +22,7 @@ class NullDriver(driver.Driver):
         self.verbose = 0
         
     def open(self, device=None, mode=None, retry_count=10):
+        Trace.trace(25, "open")
         if mode==0:
             device = '/dev/zero'
         elif mode==1:
