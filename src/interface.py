@@ -167,8 +167,10 @@ class Interface:
                 self.get_timeout = 1
             elif opt == "--update" :
                 self.update = 1
-            elif opt == "--updatefile" :
-                self.updatefile = value
+            elif opt == "--ascii_file" :
+                self.ascii_file = value
+            elif opt == "--html_file" :
+                self.html_file = value
             elif opt == "--nocrc":
                 self.chk_crc = 0
             elif opt == "--pri" :
