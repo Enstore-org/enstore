@@ -3,6 +3,13 @@
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
+# in order to add support for a new 'client', add a section to the following
+# structures -
+#             import the appropriate file
+#             server_functions
+#             server_options (if this new client can be run by a normal user)
+
+
 # system imports
 #
 import sys
@@ -26,6 +33,9 @@ import media_changer_client
 import mover_client
 import monitor_client
 import volume_clerk_client
+import enstore_up_down
+import enstore_saag
+import enstore_schedule
 import dbs
 
 CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
@@ -51,6 +61,12 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 monitor_client.do_work],
                      "mover" : [mover_client.MoverClientInterface,
                                 mover_client.do_work],
+                     "up_down" : [enstore_up_down.UpDownInterface,
+                                  enstore_up_down.do_work],
+                     "system" : [enstore_saag.SaagInterface,
+                                 enstore_saag.do_work],
+                     "schedule" : [enstore_schedule.ScheduleInterface,
+                                   enstore_schedule.do_work],
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                                  volume_clerk_client.do_work],
 		     "database" : [dbs.Interface,
@@ -97,9 +113,9 @@ class UserOptions(GenericUserOptions):
     server_options = {
         "file" : ["bfid=", "restore=", "list=", "recursive"],
         "library" : ["priority=", "delete_work=", "get_queue"],
-	"monitor" : [],
         "volume" : ["add=", "delete=", "new_library=", "no_access=",
-                    "read_only=", "restore=", "update=", "vol="]
+                    "read_only=", "restore=", "update=", "vol="],
+	"monitor" : []
         }
     server_intfs = {}
 
@@ -267,6 +283,7 @@ class EnstoreInterface(UserOptions):
             intf = self.get_server_intf(server, 0)
             if not intf == None:
                 self.print_usage_line(server, intf)
+            print " "
 
 class Enstore(EnstoreInterface):
 
