@@ -5309,9 +5309,6 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
         #If the user specified a volume to read.
         elif e.volume:
 
-            Trace.message(TRANSFER_LEVEL,
-                          "Preparing file number %s for transfer." % (i,))
-
             try:
                 fc_reply = tape_ticket.get("tape_list", [])[i]
                 #Include the server address in the returned info.
@@ -5346,6 +5343,10 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 raise EncpError(None, 'No location cookie found.',
                                 e_errors.CONFLICT)
 
+            Trace.message(TRANSFER_LEVEL,
+                          "Preparing file number %s for transfer." %
+                          (extract_file_number(lc),))
+            
             #Attempt to get the pnfs ID.  If an encp failed in the
             # right way it is possible for this entry to not exist.
             try:
