@@ -1018,7 +1018,6 @@ FTT_status(  PyObject *self
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_status device not opened"));
 
-#   define GG g_stbuf_tp
     sts = ftt_status( g_ftt_desc_tp, timeout );
     if (sts == -1) return raise_ftt_exception( "FTT_status" );
 
@@ -1029,6 +1028,33 @@ FTT_status(  PyObject *self
 		       , "PROT",   (sts&FTT_PROT)?1:0
 		       , "ONLINE", (sts&FTT_ONLINE)?1:0
 		       , "BUSY",   (sts&FTT_BUSY)?1:0 );
+    return (rr);
+}
+
+
+
+/*****************************************************************************
+ */
+static char FTT_format_label_doc[] = "invoke ftt_stats";
+
+static PyObject*
+FTT_format_label(  PyObject *self
+	   , PyObject *args )
+{
+	int		sts;	/* general status */
+	char		*in_label_cp;
+	char		out_label_ca[100];
+	PyObject	*rr;
+
+    sts = PyArg_ParseTuple(args, "s", &in_label_cp );
+    if (!sts) return (NULL);
+
+    sts = ftt_format_label(  out_label_ca, sizeof(out_label_ca)
+			   , in_label_cp, strlen(in_label_cp)
+			   , FTT_ANSI_HEADER );
+    if (sts == -1) return raise_ftt_exception( "FTT_format_label" );
+
+    rr = Py_BuildValue( "s", out_label_ca );
     return (rr);
 }
 
@@ -1052,6 +1078,7 @@ static PyMethodDef FTT_Methods[] = {
     { "rewind", FTT_rewind, 1, FTT_rewind_doc },
     { "get_stats", FTT_get_stats, 1, FTT_get_stats_doc },
     { "status", FTT_status, 1, FTT_status_doc },
+    { "format_label", FTT_format_label, 1, FTT_format_label_doc },
     { 0, 0 }        /* Sentinel */
 };
 
