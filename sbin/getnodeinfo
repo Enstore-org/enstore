@@ -2,8 +2,22 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+
+case $node in
+  stken*|rip9*|rip10*) gangfile=/usr/local/etc/farmlets/stken-alla
+          ;;
+   d0en*) gangfile=/usr/local/etc/farmlets/d0en-alla
+          ;;
+   ripe*) gangfile=/usr/local/etc/farmlets/ripe
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+
 output=${1:-/dev/tty}
-if [ `echo $output | grep -c /dev/` -eq 0 ] ; then 
+if [ `echo $output | grep -c /dev/` -eq 0 ] ; then
   rm -f $output
 fi
 
@@ -54,7 +68,7 @@ cat << EOF >>$output
 </tr>
 EOF
 
-for i in `cat /usr/local/etc/farmlets/d0en-alla /usr/local/etc/farmlets/ripe /usr/local/etc/farmlets/stken-alla`; do
+for i in `cat $gangfile`; do
   echo "<tr><td align=center><font color=\"$color\">$i</font></td>" >>$output
   enrsh $i Nodeinfo >> $output
   echo "</tr>">>$output
