@@ -79,6 +79,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
 
+        
+        self.address = (self.config['hostip'], self.config['port'])
+
         self.do_eject = 1
         self.max_buffer = 256*MB;
         self.min_buffer = 16*MB;
@@ -157,9 +160,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.driver.close( skip=0 )
 
 
+
 	# now go on with server setup (i.e. respond to summon,status,etc.)
-	dispatching_worker.DispatchingWorker.__init__( self,(self.config['hostip'],
-                                                             self.config['port']) )
+	dispatching_worker.DispatchingWorker.__init__( self, self.address)
 
         
         self.do_collect = 0 # Don't let dispatching_worker's loop do a waitpid, we want to catch children ourself.
@@ -195,6 +198,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         
         ticket =  {
             "mover":  self.name,
+            "address": self.address,
             "external_label":  self.external_label,
             "current_location": self.current_location,
             "status": status, 
@@ -259,11 +263,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm( self, ticket ):
+        print "WRITE TO HSM"
 	self.fc = ticket['fc']
 	return self.forked_write_to_hsm(ticket )
 	
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm( self, ticket ):
+        print "READ FROM HSM"
 	self.fc = ticket['fc']
 	return self.forked_read_from_hsm(ticket )
 
@@ -995,14 +1001,15 @@ class Mover(  dispatching_worker.DispatchingWorker,
         ret = {'work'   : 'idle_mover',
                 'mover'  : self.name,
                 'state'  : state_names[self.state],
-                'address': (self.config['hostip'],self.config['port'])}
+                'address': self.address,
+               }
         return ret
     # create ticket that says we have bound volume x
     def have_bound_volume_next( self ):
         return { 'work'   : 'have_bound_volume',
                  'mover'  : self.name,
                  'state'  : state_names[self.state],
-                 'address': (self.config['hostip'],self.config['port']),
+                 'address': self.address,
                  'vc'     : self.vol_info }
 
     # create ticket that says we need to unbind volume x
@@ -1014,7 +1021,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         return {'work'           : 'unilateral_unbind',
                 'mover'          : self.name,
                 'state'          : state_names[self.state],
-                'address'        : (self.config['hostip'],self.config['port']),
+                'address'        : self.address,
                 'external_label' : self.fc['external_label'],
                 'status'         : (error_info,None)}
 
