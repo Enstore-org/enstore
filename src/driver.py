@@ -51,13 +51,13 @@ class GenericDriver:
     # list of the files on the device
     LOC_SPEC = '%012d'		# bytes offset (arbitary width)
 
-    def __init__( self ):
+    def __init__( self, sm_size ):
 	# Note, I could pass "device" here save it, but I want to pass it to
 	#       open (to make open like python builtin open) so I might as
 	# well pass it to sw_mount and offline also.
 
-	self.shm = IPC.shmget( IPC.IPC_PRIVATE, 0x400000, IPC.IPC_CREAT|0x1ff )
-	self.shm.offset( 0, 0x400000 )
+	self.shm = IPC.shmget( IPC.IPC_PRIVATE, sm_size, IPC.IPC_CREAT|0x1ff )
+	self.shm.offset( 0, sm_size )
 	self.shm.offset( 1, self.shm.id )
 	self.shm.offset( 6, 0 )		# user state location (for the record)
 	self.shm.offset( 7, 0 )		# for possible tcp port info

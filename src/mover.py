@@ -288,7 +288,10 @@ class MoverClient:
 	# next line of code is equivalent to:
 	# eval( "driver.%s()"%mvr_config['driver'] )  (we do not like to use eval)
 
-        try: self.hsm_driver = getattr(driver, mvr_config['driver']) ()
+	if 'shared_mem_size' in mvr_config.keys():
+	    sm_size = mvr_config['shared_mem_size']
+	else: sm_size = 0x400000
+        try: self.hsm_driver = getattr(driver, mvr_config['driver'])( sm_size )
         except AttributeError:
             Trace.log(e_errors.INFO, "No such driver: "+mvr_config['driver'])
             raise
