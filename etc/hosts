@@ -72,6 +72,7 @@
 131.225.164.91          d0enpwr2.fnal.gov       d0enpwr2
 131.225.164.92          d0enpwr3.fnal.gov       d0enpwr3
 131.225.164.93          rippwr1.fnal.gov        rippwr1
+131.225.164.62          d0enload.fnal.gov        d0enload
 131.225.13.59           stkensrv0.fnal.gov      stkensrv0
 131.225.13.1            stkensrv1.fnal.gov      stkensrv1
 131.225.13.2            stkensrv2.fnal.gov      stkensrv2
@@ -107,6 +108,7 @@
 131.225.13.16           stkenpwr1.fnal.gov      stkenpwr1
 131.225.13.17           stkenpwr2.fnal.gov      stkenpwr2
 131.225.13.18           stkentst1.fnal.gov      stkentst1
+131.225.13.76		stkenload.fnal.gov	stkenload
 131.225.13.20		rip9.fnal.gov		rip9
 131.225.13.21		rip9-ge.fnal.gov	rip9-ge
 131.225.13.22		rip10.fnal.gov		rip10
@@ -128,6 +130,9 @@
 192.168.19.15   	cdfensrv3p.fnal.gov     cdfensrv3p
 192.168.19.16    	cdfensrv4p.fnal.gov     cdfensrv4p
 192.168.19.17           fntt2.fnal.gov          fntt2
+192.168.19.18           stkensrv0p.fnal.gov     stkensrv0p
+192.168.19.19           d0ensrv3p2.fnal.gov	d0ensrv3p2
+192.168.19.20           d0ensrv4p2.fnal.gov	d0ensrv4p2
 # This sucks, but gets around the host lookup problem
 131.225.164.53          d0olc.fnal.gov          d0olc
 131.225.164.53          d0olc-gb-1.fnal.gov     d0olc-gb-1
@@ -166,3 +171,4 @@
 131.225.215.19          cdfendca3.fnal.gov      cdfendca3
 131.225.215.20          cdfendca4.fnal.gov      cdfendca4
 131.225.215.21          cdfendca5.fnal.gov      cdfendca5
+131.225.215.22          cdfload.fnal.gov        cdfload
