@@ -145,8 +145,11 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     try:
 	format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s DRIVE=%s TRANSFER_TIME=%f"+\
 		 "SEEK_TIME=%f MOUNT_TIME=%f QWAIT_TIME=%f TIME2NOW=%f STATUS=%s"
-
-        Trace.log(e_errors.ERROR, format%(inputfile, outputfile, filesize, 
+        msg_type=e_errors.ERROR
+        if status == e_errors.OK:
+            msg_type = e_errors.INFO
+        
+        Trace.log(msg_type, format%(inputfile, outputfile, filesize, 
 					  external_label, device,
 					  transfer_time, seek_time, mount_time,
 					  in_queue, total,
