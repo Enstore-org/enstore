@@ -27,8 +27,9 @@ enstore/cd/cdfenmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr26a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr28a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV', `dnl')
 aik@FNAL.GOV
-alcorn@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
@@ -50,5 +51,4 @@ ron@FNAL.GOV
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
 vsergeev@FNAL.GOV
-wellner@FNAL.GOV
 zalokar@FNAL.GOV

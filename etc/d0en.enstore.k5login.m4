@@ -68,7 +68,6 @@ enstore/cd/d0enmvr61a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout1a.fnal.gov@FNAL.GOV
 enstore/cd/d0enout2a.fnal.gov@FNAL.GOV
 aik@FNAL.GOV
-alcorn@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
@@ -89,5 +88,4 @@ ron@FNAL.GOV
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
 vsergeev@FNAL.GOV
-wellner@FNAL.GOV
 zalokar@FNAL.GOV
