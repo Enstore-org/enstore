@@ -594,8 +594,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 	r = p.read()
 	s = p.close()
 	if s:
-	    Trace.log(e_errors.ERROR, 
-		      "error getting outage file : %s"%(enstore_functions.get_status(ticket)))
+	    Trace.log(e_errors.ERROR, "error getting outage file (%s)"%(self.name,))
 	lines = string.split(r,'\n')
 	for line in lines:
 	    if line[0:7] == "offline":
