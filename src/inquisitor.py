@@ -1545,8 +1545,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 #                           "thread calling select")
                 ##r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
                 r, w, x = select.select([self.erc.sock,], [], [self.erc.sock,], rcv_timeout)
-                enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
-                                           "thread  %s %s %s"%(r, w, x))
+                #enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                #                           "thread  %s %s %s"%(r, w, x))
                 # check if we have been signalled to exit
 		if self.exit_now_event.isSet():
                     self.erc.unsubscribe()
@@ -1574,13 +1574,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                         enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
                                        "received event relay message type %s (%s)"%(msg.type, 
                                                                                     msg.server))
-                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
-                                                   "thread acquiring lock")
+                        #enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                        #                           "thread acquiring lock")
                         self.er_lock.acquire()
                         if self.server_d.has_key(msg.server):
                             self.server_er_msg[msg.server] = time.time()
-                        enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
-                                                   "thread releasing lock")
+                        #enstore_functions.inqTrace(enstore_constants.INQERTHREAD,
+                        #                           "thread releasing lock")
                         self.er_lock.release()
                         self.er_alive_event.set()
                     elif msg.type == event_relay_messages.NEWCONFIGFILE:
