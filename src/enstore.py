@@ -18,6 +18,15 @@ import media_changer_client
 import mover_client
 import volume_clerk_client
 
+# define in 1 place all the hoary pieces of the command needed to access an
+# entire enstore system.
+CMD1 = "(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
+
+CMD2 = ">>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+
+
+
+
 server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 alarm_client.do_work],
                      "configuration" : [configuration_client.ConfigurationClientInterface,
@@ -278,21 +287,21 @@ class Enstore(EnstoreInterface):
                                 sys.argv[2:])
         elif not self.user_mode and arg1 == "Estart":
             # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            command="%s enstore-start%s"%(CMD1, CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estart1":
             # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start --nocheck>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            command="%s enstore-start --nocheck%s"%(CMD1, CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
             # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-stop>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            command="%s enstore-stop%s"%(CMD1, CMD2)
             rtn = do_rgang_command("enstore-down",command)
         elif not self.user_mode and arg1 == "Erestart":
             # Yes, all those blasted slashes are needed and I agree it is insane. We should loop on rsh and dump rgang
-            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-stop>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            command="%s enstore-stop%s"%(CMD1, CMD2)
             rtn1 = do_rgang_command("enstore-down",command)
-            command="(F=~/\\\\\\`hostname\\\\\\`.startup;echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F; enstore-start>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+            command="%s enstore-start%s"%(CMD1, CMD2)
             rtn2 = do_rgang_command("enstore",command)
             rtn = rtn1|rtn2
         elif not self.user_mode and arg1 == "emass":
