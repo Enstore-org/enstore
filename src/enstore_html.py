@@ -984,7 +984,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh=0)
 	self.title = "ENSTORE System Plots"
 	self.script_title_gif = "en_plots.gif"
-	self.description = "Enstore system plots. This page is created by the Inquisitor."
+	self.description = "Enstore system plots. This page is created by the Inquisitor but not automatically refreshed."
 
     def find_ps_file(self, jpg_file, pss):
 	# see if there is a corresponding ps file
@@ -1005,8 +1005,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	# postscript file associated with it and add it in the following row.
 	# if there is no postscript file, then put a message saying this.
 	if stamps:
-	    stamp = stamps[0]
-	    del stamps[0]
+	    stamp = stamps.pop(0)
 	    jpg_file = string.replace(stamp, enstore_constants.STAMP, "")
 	    # see if there is a corresponding jpg file
 	    url = 0
@@ -1035,8 +1034,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    tr = HTMLgen.TR()
 	    for i in [1, 2, 3]:
 		if jpgs:
-		    jpg_file = jpgs[0]
-		    del jpgs[0]
+		    jpg_file = jpgs.pop(0)
 		    # see if there is a corresponding ps file
 		    (ps, ps_file) = self.find_ps_file(jpg_file, pss)
 		    td = HTMLgen.TD(HTMLgen.Href(jpg_file, jpg_file))
@@ -1052,22 +1050,18 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    tr = HTMLgen.TR()
 	    for i in [1, 2, 3]:
 		if pss:
-		    ps_file = pss[0]
-		    del pss[0]
+		    ps_file = pss.pop(0)
 		    td = HTMLgen.TD(HTMLgen.Href(ps_file, ps_file))
 		    tr.append(td)
 	    else:
 		table.append(tr)
 	    
-    def body(self, jpg_files, stamp_files, ps_files):
+    def body(self, jpgs, stamps, pss):
 	table = self.table_top()
 	# create a grid of jpg stamp files 3 stamps wide.  attach a link to
 	# the associated postscript file too
 	plot_table = HTMLgen.TableLite(width="100%", cols="3", align="CENTER",
                                        cellspacing=0, cellpadding=0)
-	jpgs = jpg_files
-	stamps = stamp_files
-	pss = ps_files
 	while stamps:
 	    trs = HTMLgen.TR()
 	    trps = HTMLgen.TR()

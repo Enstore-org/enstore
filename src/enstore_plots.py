@@ -22,44 +22,56 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
                 "09", "10", "11", "12", "13", "14", "15", "16", \
                 "17", "18", "19", "20", "21", "22", "23"]
 
-JPG_STAMP_FILES = []
-JPG_FILES = []
-PS_FILES = []
-
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
-
-def clear_jpg_files():
-    JPG_STAMP_FILES = []
-    JPG_FILES = []
-    PS_FILES = []
 
 def find_jpg_files(dir):
     # given the directory to look in, find all files with ".jpg" in them. fill
     # in the lists above with those files with and without the "_stamp" 
     # string from this group. also find the ps files
     files = os.listdir(dir)
-    clear_jpg_files()
+    tmp_stamps = []
+    jpg_stamp_files = []
+    jpg_files = []
+    ps_files = []
     for file in files:
 	if not string.find(file, enstore_constants.JPG) == -1:
 	    # this file has '.jpg' in it
 	    if not string.find(file, STAMP_JPG) == -1:
 		# this is a postage stamp file
-		JPG_STAMP_FILES.append(file)
+		tmp_stamps.append(file)
 	    else:
-		JPG_FILES.append(file)
+		jpg_files.append(file)
 	elif not string.find(file, enstore_constants.PS) == -1:
 	    # this file has '.ps' in it
-            PS_FILES.append(file)
-    JPG_FILES.sort()
-    JPG_STAMP_FILES.sort()
-    PS_FILES.sort()
-    return (JPG_FILES, JPG_STAMP_FILES, PS_FILES)
+            ps_files.append(file)
+    jpg_files.sort()
+    ps_files.sort()
+    # sort the stamp files so that all of the mount per hour stamps are at the end in
+    # descending date order.  first get the other plots to the front.
+    tmp_stamps.sort()
+    # now move all the list elements that are not mph stamps to a new list, and delete them
+    # from the old
+    i = 0
+    num_stamps = len(tmp_stamps)
+    while i < num_stamps:
+	if string.find(tmp_stamps[i], enstore_constants.MPH_FILE) == -1:
+	    # this is not an mph stamp 
+	    jpg_stamp_files.append(tmp_stamps.pop(i))
+	    num_stamps = num_stamps - 1
+	else:
+	    # this is an mph file, leave it here for later sorting but skip to the next stamp
+	    i = i + 1
+    # now we should have jpg_stamp_files full of the non mph stamps and only the mph stamps
+    # left in tmp_stamps.  reverse sort these and add them at the end of the other stamps
+    tmp_stamps.reverse()
+    jpg_stamp_files = jpg_stamp_files + tmp_stamps
+    return (jpg_files, jpg_stamp_files, ps_files)
 
 def convert_to_jpg(psfile, file_name):
     os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s%s"%(psfile, file_name, STAMP_JPG))
-    JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
+    #JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
     os.system("convert -rotate 90 %s %s%s"%(psfile, file_name, enstore_constants.JPG))
-    JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
+    #JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
 
 class EnPlot(enstore_files.EnFile):
 
