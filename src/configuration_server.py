@@ -328,7 +328,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
             if index != -1:
                 library_name = key[:index]
                 item = self.configdict[key]
-                ret[library_name] = {'address':(item.host,item.port)}
+                ret[library_name] = {'address':(item['host'],item['port'])}
         self.reply_to_caller(ret)
         Trace.trace(6,"}get_library_managers"+repr(ret))
                            
