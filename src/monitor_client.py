@@ -523,6 +523,7 @@ def get_host_list(csc, config_host, config_port, hostip=None):
     config = csc.get('monitor')
     
     vetos = Vetos(config.get('veto_nodes', {}))
+    host_list = []
 
     #If they specified one specific machines, return a list of one item.
     if hostip:
@@ -538,7 +539,6 @@ def get_host_list(csc, config_host, config_port, hostip=None):
 
         ip_list = get_all_ips(config_host, config_port, csc)
 
-        host_list = []
         for ip in ip_list:
             host_list.append((socket.gethostbyaddr(ip)[0], ip))
         host_list.sort()
