@@ -85,6 +85,8 @@ def write_to_hsm(input, output,
     encp["delpri"] = delpri
     encp["agetime"] = agetime
 
+    pid = os.getpid()
+    thishost = socket.gethostname()
     # create the time subticket
     times = {}
     times["t0"] = tinfo["abs_start"]
@@ -226,7 +228,12 @@ def write_to_hsm(input, output,
             # store timing info for each transfer in pnfs, not for all
             tinfo1 = copy.deepcopy(tinfo)
 
-            unique_id[i] = time.time()  # note that this is down to mS
+            #unique_id[i] = time.time()  # note that this is down to mS
+	    unique_id[i] = "%s-%f-%d" \
+			   % (thishost, time.time(), pid)
+
+
+
             wrapper["fullname"] = outputlist[i]
 
             # store the pnfs information info into the wrapper
@@ -787,11 +794,16 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
     # create the time subticket
     times = {}
     times["t0"] = tinfo["abs_start"]
+    pid = os.getpid()
+    thishost = socket.gethostname()
 
     for i in range(0,ninput):
         if volume[i]==vol:
 	    if not retry_flag:
-               unique_id.append(time.time())  # note that this is down to mS
+		id = "%s-%f-%d" \
+		     % (thishost, time.time(), pid)
+
+		unique_id.append(id)  # note that this is down to mS
             wrapper["fullname"] = outputlist[i]
             wrapper["sanity_size"] = 65535
             wrapper["size_bytes"] = file_size[i]
