@@ -3,7 +3,7 @@
 if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
 usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
-	  echo "       enter `basename $0`"
+	  echo "       enter `basename $0` [[un]lock]"
 	}
 
 [ "$USER" != enstore ] && usage && exit 1
@@ -35,7 +35,21 @@ esac
 
 output=/tmp/`basename $0`.output
 
-work=/write_protect_work
+action=${1:-lock}
+case $action in
+  lock)
+     work=/write_protect_work
+     prot=on
+     ;;
+  unlock)
+     work=/write_permit_work
+     prot=off
+     ;;
+  *) usage
+     exit 1
+     ;;
+esac
+
 if [ ! -d $work ]; then
   echo `date` ERROR. $work does not exist
   exit 1
@@ -53,7 +67,7 @@ for i in `ls -vI \*.\*`; do
       /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
       echo
       echo
-      /bin/echo -n "Press Enter when all tapes have been loaded with tab in write-protect mode"
+      /bin/echo -n "Press Enter when all tapes have been loaded with tab in ${action}ed position"
       read ans
       while /bin/true; do
 	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
@@ -77,9 +91,9 @@ for i in `ls -vI \*.\*`; do
      echo "... success acknowledged"
      echo
      echo "Now updating write-protect status in enstore..."
-     # extract the volumes successfully entered, and set them as write-protected
+     # extract the volumes successfully entered, and set them as write-protected or write-permitted
      awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | while read vol; do
-       enstore vol --write-protect-on $vol
+       enstore vol --write-protect-$prot $vol
      done
      touch $i
      mv $i ${i}.done
