@@ -89,6 +89,7 @@ class EnFile:
         self.openfile = 0
 	self.opened = 0
         self.system_tag = system_tag
+	self.nav_link = ""
 
     def get_lock(self):
 	# first check if we can get a lockfile for this
