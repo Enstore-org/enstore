@@ -21,20 +21,6 @@ def get_config_dict():
 	cdict = {}
     return cdict
 
-def read_schedule_file(html_dir=None):
-    if html_dir is None:
-	html_dir = get_html_dir()
-    # check if the html_dir is accessible
-    sfile = None
-    if os.path.exists(html_dir):
-	sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-	outage_d, offline_d, seen_down_d = sfile.read()
-    else:
-	outage_d = {}
-	offline_d = {}
-	seen_down_d = {}
-    return sfile, outage_d, offline_d, seen_down_d
-
 def get_from_config_file(server, keyword, default):
     cdict = get_config_dict()
     if cdict:
@@ -49,6 +35,20 @@ def get_from_config_file(server, keyword, default):
 # return the location of the html files from the config file
 def get_html_dir():
     return get_from_config_file("inquisitor", "html_file", DEFAULTHTMLDIR)
+
+def read_schedule_file(html_dir=None):
+    if html_dir is None:
+	html_dir = get_html_dir()
+    # check if the html_dir is accessible
+    sfile = None
+    if os.path.exists(html_dir):
+	sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
+	outage_d, offline_d, seen_down_d = sfile.read()
+    else:
+	outage_d = {}
+	offline_d = {}
+	seen_down_d = {}
+    return sfile, outage_d, offline_d, seen_down_d
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
