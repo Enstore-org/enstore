@@ -46,7 +46,7 @@ class GenericDriver:
     def get_eod_remaining_bytes(self):
         return self.remaining_bytes-5000
 
-    def get_eod_cookie(self):
+    def get_eod(self):
         return repr(self.eod)
 
     def get_errors(self) :
@@ -370,7 +370,7 @@ if __name__ == "__main__" :
                   #,sys.exc_info()[0],sys.exc_info()[1]
 
     if list:
-        print "EOD cookie:",rdd.get_eod_cookie()
+        print "EOD cookie:",rdd.get_eod()
         print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
 
     for k in cookie.keys() :

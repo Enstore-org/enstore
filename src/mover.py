@@ -285,7 +285,7 @@ class Mover:
 
         # All is well - write has finished successfully.
         #  get file/eod cookies & remaining bytes & errs & mnts
-        eod_cookie = self.driver.get_eod_cookie()
+        eod_cookie = self.driver.get_eod()
         remaining_bytes = self.driver.get_eod_remaining_bytes()
         wr_err,rd_err,wr_access,rd_access = self.driver.get_errors()
 
