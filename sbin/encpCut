@@ -291,17 +291,18 @@ for try in list doit; do
            if [ "$try" = "doit" ] ; then
               encpnew=`mktemp /tmp/$productCut.XXXXXXX`
               check_status $? "encpnew mktemp /tmp/$productCut.XXXXXXX"
-              sed -e "s#return \".*  CVS \$Revision$REV  CVS \$Revision$ENSTORE_DIR/src/encp.py > $encpnew
+              sed -e "s+return \".*  CVS +return \"$REV  CVS +" $ENSTORE_DIR/src/encp.py > $encpnew
               check_status $? "sed bump version to $REV"
               diff $ENSTORE_DIR/src/encp.py $encpnew
               cp $encpnew $ENSTORE_DIR/src/encp.py
-              check_status $? "mv $encpnew $$ENSTORE_DIR/src/encp.py"
+              check_status $? "mv $encpnew $ENSTORE_DIR/src/encp.py"
               rm $encpnew
               cd $ENSTORE_DIR/src
               cvs commit -m "bumping version to $REV because of $productCut" encp.py
               check_status $? "cvs commit of encp.py"
            fi
            ;;
+
         3) echo "Step $Step:  cd modules and make clean all   `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/modules
@@ -374,6 +375,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/ups/rip.table               $INSTALLDIR/rip.table
                 copyit $ENSTORE_DIR/ups/sam.table               $INSTALLDIR/sam.table
                 cd $INSTALLDIR
+                check_status $? "cd $INSTALLDIR/ups"
                 ln -s sam.table enstore_variables.table
                 check_status $? "ln -s sam.table enstore_variables.table"
 
@@ -403,7 +405,20 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 check_status $? "cd $INSTALLDIR/ups"
                 ln -s sam.table enstore_variables.table
                 check_status $? "ln -s sam.table enstore_variables.table"
-              fi
+                cd $INSTALLDIR/bin
+                check_status $? "cd $INSTALLDIR/bin"
+                ln -s ../src/encp.py encp
+                check_status $? "ln -s ../src/encp.py encp"
+                ln -s ../src/enstore_admin.py enstore
+                check_status $? "ln -s ../src/enstore_admin.py enstore"
+             fi
+
+              find $INSTALLDIR -type d | xargs chmod 555
+              check_status $? "find $INSTALLDIR -type d | xargs chmod 555"
+              find $INSTALLDIR -type f | xargs chmod -w
+              check_status $? "find . -type f | xargs chmod -w"
+              chmod 555 $INSTALLDIR
+              check_status $? "chmod 555 $INSTALLDIR"
 
            fi
            ;;
