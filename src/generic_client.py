@@ -91,7 +91,7 @@ class GenericClient:
             x = self.u.send(ticket, self.server_address, rcv_timeout, tries)
         except:
             exc, msg, tb = sys.exc_info()
-            if exc == errorcode[errno.ETIMEDOUT]:
+            if exc == errno.errorcode[errno.ETIMEDOUT]:
                 x = {'status' : (e_errors.TIMEDOUT, msg)}
             else:
                 x = {'status' : (str(exc), str(msg))}
