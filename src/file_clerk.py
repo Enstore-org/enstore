@@ -748,6 +748,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         bfids = self.get_all_bfids(vol)
         for bfid in bfids:
             record = self.dict[bfid]
+            print 'record =', `record`
             if record['deleted'] == 'yes':
                 return 1
         return 0
