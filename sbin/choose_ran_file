@@ -59,7 +59,7 @@ while [ $done -gt 0 ]; do
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
   rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;else echo `date` got it 1>&2 ; fi
   if [ `egrep -c 'NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then echo `date` REJECTED NOACCESS/NOTALLOED 1>&2; rm -f $tape; continue; fi
-  grep /pnfs $tape | grep -v deleted > ${tape}_
+  grep /pnfs $tape | egrep -v 'deleted|  yes /' > ${tape}_
   rm -f $tape
   NF=`wc ${tape}_| awk '{print $1}'`
   if [ $NF -le 0 ]; then echo `date` REJECTED NO FILES 1>&2; rm  ${tape}_; continue; fi
