@@ -957,7 +957,7 @@ class LibraryManagerMethods:
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "access delayed for %s : library=%s family=%s requester:%s"
+                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
                                                              rq.ticket["vc"]["library"],
                                                              rq.ticket["vc"]["volume_family"],
@@ -1021,6 +1021,10 @@ class LibraryManagerMethods:
         exc_limit_rq = None
         loop = 1
         while rq:
+            rej_reason = None
+            if rq.ticket.has_key('reject_reason'):
+                rej_reason = rq.ticket['reject_reason'][0]
+                del(rq.ticket['reject_reason'])
             ## check if there are any additional restrictions
             rc, fun, args, action = self.restrictor.match_found(rq.ticket)
             if rc and fun and action:
@@ -1030,7 +1034,7 @@ class LibraryManagerMethods:
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
-                            format = "access delayed for %s : library=%s family=%s requester:%s"
+                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
                                                              rq.ticket["vc"]["library"],
                                                              rq.ticket["vc"]["volume_family"],
@@ -1111,6 +1115,26 @@ class LibraryManagerMethods:
         Trace.trace(14,"try from the beginning")
         rq = self.pending_work.get(external_label, use_admin_queue=0)
         if rq:
+            rej_reason = None
+            if rq.ticket.has_key('reject_reason'):
+                rej_reason = rq.ticket['reject_reason'][0]
+                del(rq.ticket['reject_reason'])
+            ## check if there are any additional restrictions
+            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
+            if rc and fun and action:
+                rq.ticket["status"] = (e_errors.OK, None)
+                if fun == 'restrict_host_access':
+                    args.append(rq.ticket['wrapper']['machine'][1])
+                    ret = apply(getattr(self,fun), args)
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                        if not (rej_reason == "RESTRICTED_ACCESS"):
+                            format = "bound:access delayed for %s : library=%s family=%s requester:%s"
+                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                             rq.ticket["vc"]["library"],
+                                                             rq.ticket["vc"]["volume_family"],
+                                                             rq.ticket["wrapper"]["uname"]))
+                        rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                        return (None, (e_errors.NOWORK, None))
             if rq.work == 'read_from_hsm':
                 rq, status = self.check_read_request(external_label, rq, requestor)
             else:
