@@ -172,7 +172,9 @@ while [ $done -gt 0 ]; do
       echo
       #5 seems like a good number. Its greater than 3 indicating 3 failures.
       #  It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
-      exit 5
+      #9-10-2002: Edited to return 0 instead of 5.  Emails were being 
+      # generated that make this the simpliest solution.
+      exit 0
     fi
 
     for f in $thefiles; do
