@@ -401,6 +401,10 @@ class Interface:
                     print "bytecount may only be specified in test mode"
                     sys.exit(-1)
                 self.bytes = int(value)
+            elif opt == "--get_crcs":
+                self.get_crcs=value
+            elif opt == "--set_crcs":
+                self.set_crcs=value
             elif opt == "--start_draining":
                 self.start_draining = value
             elif opt == "--stop_draining":
