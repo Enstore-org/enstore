@@ -7,7 +7,7 @@ import sys
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
-cmd = '/bin/rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
+cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
 print cmd
 os.system(cmd)
 
@@ -94,7 +94,14 @@ for thefile in 'cdfen','d0en','stken':
     while 1:
         line = f.readline()
         if not line: break
-        (v,a,s1,s2,u1,u2,l,vf) = line.split()
+        ll = line.split()
+        if len(ll) < 8: # to be paranoid
+            continue
+        if line[0] == '<': # skip html tags
+            continue
+        (v,a,s1,s2,u1,u2,l) = ll[:7]
+        vf = ll[-1]
+        # (v,a,s1,s2,u1,u2,l,vf) = line.split()
         if string.find(v,'NUL')>=0:
             continue
         sg = vf.split('.')[0]
