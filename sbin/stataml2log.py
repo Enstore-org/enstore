@@ -23,6 +23,37 @@ msgList = []
 MAXMSG = 5         # YOU ONLY NEED TO CHANGE THIS NUMBER TO CHANGE HOW MANY LINES
                    # ARE TO BE PRINTED OUT I.E. UP TO 10; CHANGE 5 TO 10
 
+# THIS FUNCTION BUILDS ALLTHE DICTIONARIES AND LISTS. IT ALSO KEEPS TRACK
+# OF HOW MANY TIMES EACH LINE OCCURRED
+def updList(listType, key, line):
+    
+    if listType == "ERR":
+        if errDict.has_key(key):
+            errDict[key] = errDict[key] + 1
+            if errDict[key] <= MAXMSG:
+                errLine[key].append(line)
+        else:
+            errDict[key] = 1
+            errList.append(key)
+            errLine[key] = []
+            errLine[key].append(line)
+    elif listType == "MSG":
+        if msgDict.has_key(key):
+            msgDict[key] = msgDict[key] + 1
+        else:
+            msgDict[key] = 1
+            msgList.append(key)
+    elif listType == "MISC":
+        if miscDict.has_key(key):
+            miscDict[key] = miscDict[key] + 1
+            if miscDict[key] <= MAXMSG:
+                miscLine[key].append(line)
+        else:
+            miscDict[key] = 1
+            miscList.append(key)
+            miscLine[key] = []
+            miscLine[key].append(line)
+
 def newLog(inFile):
     
     t1lines = []
@@ -239,37 +270,6 @@ def newLog(inFile):
                     updList("MSG", "misc", tmpLines[count])
                     
         count = count + 1
-
-# THIS FUNCTION BUILDS ALLTHE DICTIONARIES AND LISTS. IT ALSO KEEPS TRACK
-# OF HOW MANY TIMES EACH LINE OCCURRED
-def updList(listType, key, line):
-    
-    if listType == "ERR":
-        if errDict.has_key(key):
-            errDict[key] = errDict[key] + 1
-            if errDict[key] <= MAXMSG:
-                errLine[key].append(line)
-        else:
-            errDict[key] = 1
-            errList.append(key)
-            errLine[key] = []
-            errLine[key].append(line)
-    elif listType == "MSG":
-        if msgDict.has_key(key):
-            msgDict[key] = msgDict[key] + 1
-        else:
-            msgDict[key] = 1
-            msgList.append(key)
-    elif listType == "MISC":
-        if miscDict.has_key(key):
-            miscDict[key] = miscDict[key] + 1
-            if miscDict[key] <= MAXMSG:
-                miscLine[key].append(line)
-        else:
-            miscDict[key] = 1
-            miscList.append(key)
-            miscLine[key] = []
-            miscLine[key].append(line)
 
 # THIS FUNCTION PRINTS OUT THE INFORMATION IN THE DICTIONARIES AND LISTS TO
 # A REPORT FILE NAME 'FILE_NAME.RPT'. THIS IS WHERE FILE_NAME IS THE NAME OF THE

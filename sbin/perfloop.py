@@ -36,19 +36,6 @@ defListPath = "/usr/local/etc/farmlets/d0en"      # LOCATION OF FILE CONTAINING 
 TRUE = 1
 FALSE = 0
 
-####################################################################
-# DESCRIPTION  : ACTUALLY CALLS THE TEST PROGRAM.
-# PRECONDITION : FROMNODE, TONODE AND TESTTIME EXISTS AND ARE VALID
-# POSTCONDITION: CALLS THE TEST PROGRAM FROM A 'RSH' AND STORES THE
-#              : RESULT IN 'TMPRESLTDICT'
-####################################################################
-def testSeq(fromNode, toNode):
-    ppid = os.getpid()
-    testdict["%s %s" % (fromNode, toNode)] = ""
-    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
-    if testdict["%s %s" % (fromNode, toNode)] == "":
-        testdict["%s %s" % (fromNode, toNode)] = findChild(ppid, fromNode, toNode)
-    
 ###########################################################################
 # DESCRIPTION  : FINDS THE CHILD PROCESS OF THE SYSTEM BEING TESTED.
 #              : THIS IS IN CASE THE SYSTEM HANGS. THE PROGRAM HAS
@@ -76,6 +63,19 @@ def findChild(ppid, fromNode, toNode):
         num = num + 1
     return cpid
 
+####################################################################
+# DESCRIPTION  : ACTUALLY CALLS THE TEST PROGRAM.
+# PRECONDITION : FROMNODE, TONODE AND TESTTIME EXISTS AND ARE VALID
+# POSTCONDITION: CALLS THE TEST PROGRAM FROM A 'RSH' AND STORES THE
+#              : RESULT IN 'TMPRESLTDICT'
+####################################################################
+def testSeq(fromNode, toNode):
+    ppid = os.getpid()
+    testdict["%s %s" % (fromNode, toNode)] = ""
+    tempresltdict["%s %s" % (fromNode, toNode)] = os.popen('rsh %s "%s -l %s -H %s" 2>/dev/null' % (fromNode, defNetPerfPath, paramdict['testtime'], toNode))
+    if testdict["%s %s" % (fromNode, toNode)] == "":
+        testdict["%s %s" % (fromNode, toNode)] = findChild(ppid, fromNode, toNode)
+    
 ###############################################################################
 # DESCRIPTION  : CHECKS TO SEE IF A PROCESS IS HUNG OR NOT RESPONDING
 #              : IF IT IS HUNG, IT WILL KILL THAT PROCESS. IF THE PROCESS
