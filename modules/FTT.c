@@ -72,6 +72,11 @@ struct s_msg
     struct s_msgdat	md;
 };
 
+/*checksumming is now being done here, instead of calling another module,
+  in order to save a strcpy  -  cgw 1990428 */
+unsigned int adler32(unsigned int, char *, int);
+
+
 static	PyObject	*FTTErrObject;
 	ftt_descriptor	g_ftt_desc_tp = 0;
 	int		g_blocksize = 1024;
@@ -435,7 +440,7 @@ static int
 do_read(  int 		rd_fd
 	, int 		no_bytes
 	, int 		blk_size /* is g_blocksize */
-	, PyObject	*crc_obj_tp
+	, int           crc_flag
 	, unsigned int	crc_i
 	, int		*read_bytes_ip )
 {
@@ -494,23 +499,16 @@ do_read(  int 		rd_fd
 	    /* write (writing to tape) will store partial block in g_buf_p */
 	    send_writer( WrtSiz, shm_bytes, g_shmaddr_p+shm_off );
 	    /* do not crc g_buf_bytes */
-	    if (crc_obj_tp)
-	    {   PyObject	*rr;
-		rr = PyObject_CallFunction(  crc_obj_tp, "Os#i"
-					     , PyLong_FromLong(crc_i)
-					     , g_shmaddr_p+shm_off+g_buf_bytes
-					     , shm_bytes-g_buf_bytes
-					     , shm_bytes-g_buf_bytes );
-		if (PyLong_Check(rr))
-		    crc_i = PyLong_AsLong( rr );
-		else if (PyInt_Check(rr))
-		    crc_i = PyInt_AsLong( rr );
-		else {
-		    crc_i = 0;
-		    /*XXX error*/
-		    printf("crc return value is neither int nor long \n");
-		}
+	    switch (crc_flag){
+	    case 0:
+		break;
+	    case 1:
+		crc_i=adler32(crc_i,g_shmaddr_p+shm_off, sts);
+		break;
+	    default:
+		printf("fd_xfer: invalid crc flag");
 	    }
+
 	    shm_off += shm_bytes;
 	    shm_bytes = 0;
 	}
@@ -534,22 +532,14 @@ do_read(  int 		rd_fd
 	    }
 	    send_writer( WrtSiz, sts, g_shmaddr_p+shm_off );
 	    /* some or all of g_buf_bytes are to be crc-ed */
-	    if (crc_obj_tp)
-	    {   PyObject	*rr;
-		rr = PyObject_CallFunction(  crc_obj_tp, "Os#i"
-					     , PyLong_FromLong(crc_i)
-					     , g_shmaddr_p+shm_off
-					     , user_bytes
-					     , user_bytes );
-		if (PyLong_Check(rr))
-		    crc_i = PyLong_AsLong(rr);
-		else if (PyInt_Check(rr))
-		    crc_i = PyInt_AsLong( rr );
-		else {
-		    /*XXX error*/
-		    printf("crc return value is neither int nor long\n");
-		    crc_i=0;
-		}
+	    switch (crc_flag){
+	    case 0:
+		break;
+	    case 1:
+		crc_i=adler32(crc_i,g_shmaddr_p+shm_off, sts);
+		break;
+	    default:
+		printf("fd_xfer: invalid crc flag");
 	    }
 	    *read_bytes_ip += user_bytes;
 	    no_bytes -= user_bytes;
@@ -634,6 +624,7 @@ FTT_fd_xfer(  PyObject *self
 	PyObject	*shm_tp;    /* /   */
 
 	unsigned int	 crc_i;
+	int              crc_flag=0;
 	int		 sts;	/* general status */
 	struct sigaction newSigAct_sa[32];
 	int		 rd_ahead_i;
@@ -654,12 +645,11 @@ FTT_fd_xfer(  PyObject *self
     else if (PyInt_Check(crc_tp)) crc_i = PyInt_AsLong( crc_tp );
     else return(raise_exception("fd_xfer - invalid crc param"));
 
-    if ((crc_fun_tp==Py_None) || PyInt_Check(crc_fun_tp)) crc_fun_tp = 0;
-#   if 0
-    else if (PyFunction_Check(crc_fun_tp) || PyCFunction_Check(crc_fun_tp))
-    {
-    }
-#   endif
+    if (crc_fun_tp==Py_None) crc_flag=0;
+    else if (PyInt_Check(crc_fun_tp)) crc_flag = PyInt_AsLong(crc_fun_tp);
+    else return raise_exception("FTT_fd_xfer: invalid crc flag");
+    if (crc_flag<0 || crc_flag>1)
+	return raise_exception("FTT_fd_xfer: invalid crc flag");
 
     /* set up the signal handler b4 we get the ipc stuff */
     newSigAct_sa[0].sa_handler = fd_xfer_SigHand;
@@ -728,7 +718,7 @@ FTT_fd_xfer(  PyObject *self
     /* fork off read (from) */
     if ((g_pid=fork()) == 0)
     {   PRINTF( "hello from reading forked process %d\n", getpid() );
-	sts = do_read( (g_mode_c=='r')?0:fd, no_bytes, g_blocksize, crc_fun_tp
+	sts = do_read( (g_mode_c=='r')?0:fd, no_bytes, g_blocksize, crc_flag
 		      , crc_i, read_bytes_ip );
 	exit( sts );
     }
@@ -847,7 +837,7 @@ FTT_fd_xfer(  PyObject *self
     if (waitpid(g_pid,&sts,0) == -1)
 	return (raise_exception("fd_xfer - waitpid"));
 
-    if (crc_fun_tp)
+    if (crc_flag)
 	rr = PyLong_FromLong(crc_i);
     else
 	rr = Py_BuildValue( "" );
