@@ -304,7 +304,6 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def block_read(self, nbytes, driver, fill_buffer=1):
-        raise "CRC_ERROR"
 
         if self.client_crc_on:
             # calculate checksum when reading from
