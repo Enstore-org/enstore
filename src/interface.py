@@ -255,6 +255,12 @@ class Interface:
                 self.view = value
             elif opt == "--newlib" :
                 self.newlib = 1
+            elif opt == "--insertvol" :
+                self.insertvol = 1
+	    elif opt == "--insertlib" :
+	        self.insertNewLib = value
+            elif opt == "--ejectvol" :
+                self.ejectvol = 1
             elif opt == "--rdovol" :
                 self.rdovol = 1
             elif opt == "--noavol" :

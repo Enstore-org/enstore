@@ -79,6 +79,23 @@ class MediaChangerClient(generic_client.GenericClient):
 	rt = self.send(ticket)
         return rt
 
+    def insertvol(self, IOarea, inNewLib):
+        ticket = {'work'         : 'insertvol',
+	          'IOarea_name'  : IOarea
+		 }
+	if inNewLib != "" :
+	    ticket['newlib'] = inNewLib
+	rt = self.send(ticket)
+        return rt
+
+    def ejectvol(self, media_type, volumeList):
+        ticket = {'work'         : 'ejectvol',
+	          'volList'      : volumeList,
+	          'media_type'   : media_type
+                  }
+	rt = self.send(ticket)
+        return rt
+
     def MaxWork(self, maxwork):
         ticket = {'work'           : 'maxwork',
                   'maxwork'        : maxwork
@@ -99,6 +116,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.maxwork=-1
         self.volume = 0
 	self.view = 0
+	self.insertvol = 0
+	self.insertNewLib = ""
+	self.ejectvol = 0
 	self.viewattrib = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
@@ -106,8 +126,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # define the command line options that are valid
     def options(self):
         return self.client_options()+\
-               ["maxwork=","view=","getwork"]
-
+               ["maxwork=","view=","getwork","insertvol",
+	        "ejectvol","insertlib="]
     #  define our specific help
     def parameters(self):
         if 0: print self.keys() #lint fix
@@ -116,15 +136,38 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # parse the options like normal but make sure we have other args
     def parse_options(self):
         interface.Interface.parse_options(self)
-        if len(self.args) < 1 :
-	    self.missing_parameter("media_changer")
-            self.print_help()
-            sys.exit(1)
-        else:
-            self.media_changer = self.args[0]
+	if self.insertvol:
+            if len(self.args) < 1:
+	        self.missing_parameter("media_changer")
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.media_changer = self.args[0]
+		if len(self.args) == 2:
+		    self.ioarea = self.args[1]
+		else:
+		    self.ioarea = None
+	elif self.ejectvol:
+            if len(self.args) < 3:
+	        self.missing_parameter("media_changer/media_type/volumeList")
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.media_changer = self.args[0]
+                self.media_type = self.args[1]
+                self.volumeList = self.args[2]
+	else:
+            if len(self.args) < 1 :
+	        self.missing_parameter("media_changer")
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.media_changer = self.args[0]
         if (self.alive == 0) and (self.maxwork==-1) and \
-           (self.getwork==0) and (self.view == 0) and (self.viewattrib == 0):
-            # bomb out if we number of arguments is wrong
+           (self.getwork==0) and (self.view == 0) and \
+           (self.insertvol==0) and (self.ejectvol == 0) and \
+	   (self.viewattrib == 0):
+            # bomb out if number of arguments is wrong
             self.print_help()
 	    sys.exit(1)
 
@@ -137,7 +180,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 if __name__ == "__main__" :
     Trace.init("MEDCH CLI")
     Trace.trace(6,"mcc called with args "+repr(sys.argv))
-
+    
     # fill in the interface
     intf = MediaChangerClientInterface()
 
@@ -145,7 +188,6 @@ if __name__ == "__main__" :
     mcc = MediaChangerClient((intf.config_host, intf.config_port),
                              intf.media_changer)
     Trace.init(mcc.get_name(mcc.log_name))
-                            
 
     if intf.alive:
         ticket = mcc.alive(intf.media_changer, intf.alive_rcv_timeout,
@@ -156,11 +198,15 @@ if __name__ == "__main__" :
         v_ticket = vcc.inquire_vol(intf.view)
 	ticket=mcc.viewvol(v_ticket)
 	del vcc
+    elif intf.insertvol:
+	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
+    elif intf.ejectvol:
+        ticket=mcc.ejectvol(intf.media_type, intf.volumeList)
     elif intf.maxwork  >= 0:
         ticket=mcc.MaxWork(intf.maxwork)
     elif intf.getwork:
         ticket=mcc.GetWork()
-        print repr(ticket['worklist'])
+        #print repr(ticket['worklist'])
     else:
         intf.print_help()
         sys.exit(0)
