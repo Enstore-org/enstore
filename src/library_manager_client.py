@@ -60,7 +60,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
                    pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
                    fn = pw_list[i]["wrapper"]["fullname"]
                    at_top = pw_list[i]["at_the_top"]
-                   reject_reason = ""
                    if pw_list[i].has_key('reject_reason'):
                        reject_reason = pw_list[i]['reject_reason']
                    if (host == node) or (not node):
