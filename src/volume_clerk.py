@@ -511,14 +511,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 
             # supposed to return first volume found?
-            if first_found and v[file_family] != "none":
+            if first_found and v['file_family'] != "none":
                 v["status"] = (e_errors.OK, None)
                 Trace.trace(16,'next_write_vol label = '+ v['external_label'])
                 self.reply_to_caller(v)
                 self.dict.cursor("close")
                 return
             # if not, is this an "earlier" volume that one we already found?
-            if len(vol) == 0:
+            if len(vol) == 0 or vol['file_family'] == "none":
                 Trace.trace(17,label+" ok")
                 vol = v  ## was deepcopy
             elif v['declared'] < vol['declared']:
