@@ -81,7 +81,9 @@ def empty_socket( sock ):
                 if rcount%rcountalert == 0:
                     Trace.trace(4,"empty_socket: r from select - count="+repr(rcount))
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                if badsock==errno.ECONNREFUSED:
+                refused = 1
+                while badsock==errno.ECONNREFUSED and refused<25:
+                    refused = refused+1
                     Trace.trace(3,"ECONNREFUSED...retrying (empty_socket r:)")
                     badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock != 0:
@@ -89,7 +91,9 @@ def empty_socket( sock ):
                                 repr(errno.errorcode[badsock]))
                 reply , server = sock.recvfrom(TRANSFER_MAX)
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-                if badsock==errno.ECONNREFUSED:
+                refused = 1
+                while badsock==errno.ECONNREFUSED and refused<25:
+                    refused = refused+1
                     Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
                     #generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
                     reply , server = sock.recvfrom(TRANSFER_MAX)
@@ -107,8 +111,10 @@ def empty_socket( sock ):
     return
 def send_socket( sock, message, address ):
     badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-    if badsock==errno.ECONNREFUSED:
-        Trace.trace(3,"ECONNREFUSED...retrying (get_request r:)")
+    refused = 1
+    while badsock==errno.ECONNREFUSED and refused<25:
+        refused = refused+1
+        Trace.trace(3,"ECONNREFUSED...retrying (send_socket)")
         badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
     if badsock != 0:
 	Trace.trace( 0, "send_socket pre send"+repr(errno.errorcode[badsock]) )
@@ -120,7 +126,9 @@ def send_socket( sock, message, address ):
 	try:
 	    sock.sendto( message, address )
             badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-            if badsock==errno.ECONNREFUSED:
+            refused = 1
+            while badsock==errno.ECONNREFUSED and refused<25:
+                refused = refused+1
                 Trace.trace(0,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
 		#generic_cs.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
                 sock.sendto( message, address )
@@ -128,7 +136,7 @@ def send_socket( sock, message, address ):
             if badsock != 0:
                 Trace.trace( 0,"send_socket post send"+repr(errno.errorcode[badsock]) )
                 tries = tries+1
-                if badsock!=errno.ECONNREFUSED or tries%25==25:
+                if badsock==errno.ECONNREFUSED and tries%25==25:
                     generic_cs.enprint("udp_client send_socket, post-sendto "+\
                                        repr(address)+" error: "+ \
                                        repr(errno.errorcode[badsock]))
@@ -167,7 +175,9 @@ def wait_rsp( sock, address, rcv_timeout ):
     # matches the number we sent out
     elif r:
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-        if badsock==errno.ECONNREFUSED:
+        refused = 1
+        while badsock==errno.ECONNREFUSED and refused<25:
+            refused = refused+1
             Trace.trace(3,"ECONNREFUSED...retrying (wait_rsp r:)")
             badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
@@ -176,7 +186,9 @@ def wait_rsp( sock, address, rcv_timeout ):
 	                       repr(errno.errorcode[badsock]))
 	reply , server = sock.recvfrom( TRANSFER_MAX )
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
-        if badsock==errno.ECONNREFUSED:
+        refused = 1
+        while badsock==errno.ECONNREFUSED and refused<25:
+            refused = refused+1
             Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
             #generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
             reply , server = sock.recvfrom( TRANSFER_MAX )
@@ -305,10 +317,8 @@ class UDPClient:
 	                               repr(type(self.number)))
 		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
-		    Trace.trace(21,'send stale='+repr(number)+' want='+\
-				repr(self.number))
-		    generic_cs.enprint(msg+" resending to "+repr(address)+\
-	                               message)
+		    Trace.trace(21,'send stale='+repr(number)+' want='+repr(self.number))
+		    #generic_cs.enprint(msg+" resending to "+repr(address)+message)
 
 	    elif tries!=0 and ntries>=tries:  # no reply after requested tries
                 Trace.trace(0,"send quiting,no reply after tries="+repr(ntries))
