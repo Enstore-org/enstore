@@ -45,18 +45,20 @@ sleeptime=3
 
 checkdas()  { td=$1
               count=0
-	      if [ "$media_changer" = "dasadmin" ]; then
-		lookfor="dasadmin"
-	      else
-		lookfor="enstore med"
+              if [ "$media_changer" = "dasadmin" ]; then
+                lookfor="dasadmin"
+              else
+                lookfor="enstore med"
               fi
               while [ $count -le $maxtries ]; do
                 if [ `ps axuww| grep "$lookfor" | grep $td | egrep -c 'mount|dismoumt'` -eq 0 ]; then
+  		  /bin/echo -n " " `date` mcclr
                   return 0
                 fi
                 sleep $sleeptime
                 count=`expr $count + 1`
               done
+  	      /bin/echo -n " " `date` robot FAILED
               return 1
             }
 
@@ -65,9 +67,11 @@ edismount() { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
               drv=`echo $2 | tr '[a-z]' '[A-Z]'`
               checkdas $drv
               if [ $? -eq 0 ]; then
-		if [ "$media_changer" = "dasadmin" ]; then
+                if [ "$media_changer" = "dasadmin" ]; then
+                   /bin/echo -n " " `date` issuing dasadmin dismount -d $drv
                    dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
-	        else
+                else
+                   /bin/echo -n " " `date` enstore med --dismount $media_changer $tap $drv
                    enstore med --dismount $media_changer $tap $drv </dev/null >/dev/null 2>&1 &
                 fi
                 if [ $co -eq 0 ]; then
@@ -92,9 +96,11 @@ emount()    { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
               fi
               checkdas $drv
               if [ $? -eq 0 ]; then
-		if [ "$media_changer" = "dasadmin" ]; then
+                if [ "$media_changer" = "dasadmin" ]; then
+                   /bin/echo -n " "`date` issuing dasadmin mount -t $typ $tap $drv
                    dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
-	        else
+                else
+                   /bin/echo -n " " `date` issuing enstore med --mount $media_changer $tap $drv
                    enstore med --mount $media_changer $tap $drv  </dev/null >/dev/null 2>&1 &
                 fi
                 if [ $co -eq 0 ]; then
