@@ -235,3 +235,20 @@ if threading:
             Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
         return 0
 
+
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = 7500
+
+def default_host():
+    val = os.environ.get('ENSTORE_CONFIG_HOST')
+    if val:
+        return val
+    else:
+        return DEFAULT_HOST
+
+def default_port():
+    val = os.environ.get('ENSTORE_CONFIG_PORT')
+    if val:
+        return int(val)
+    else:
+        return DEFAULT_PORT
