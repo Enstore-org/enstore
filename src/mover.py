@@ -3441,9 +3441,9 @@ class DiskMover(Mover):
         ticket['mover']={}
         ticket['mover'].update(self.config)
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
-
+        if ticket['fc']['external_label'] == None
+            del(ticket['fc']['external_label'])
         self.current_work_ticket = ticket
-        del(self.current_work_ticket['fc']['external_label'])
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def finish_transfer_setup(self):
