@@ -595,7 +595,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             return filesize
         elif file_size != filesize:
             raise OSError(errno.EBADFD,
-                          os.strerror(errno.EBADFD) + ": filesize coruption")
+                          os.strerror(errno.EBADFD) + ": filesize corruption")
         else:
             if not filepath:
                 self.file_size = filesize
