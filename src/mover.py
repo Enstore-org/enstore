@@ -1893,6 +1893,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.t0 = time.time()
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=ticket['vc']['address'])
+        vc = ticket['vc']
+        self.vol_info.update(vc)
+        self.volume_family=vc['volume_family']
         self.mount_volume(ticket['vc']['external_label'])
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
@@ -2690,7 +2693,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.setup_mode == ASSERT:
                     listen_socket.close()
                     self.control_socket  = control_socket
-                    self.run_in_thread('finish_transfer_setup_thread', self.assert_vol)
+                    self.run_in_thread('volume_assert__thread', self.assert_vol)
                     return
             except:
                 exc, detail, tb = sys.exc_info()
