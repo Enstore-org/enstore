@@ -6,9 +6,9 @@ enstore_config_host=localhost
 enstore_config_port=7500
 enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
-enstore_libraries_all="airedaledisk.library_manager fndaprdisk.library_manager hppcdisk.library_manager fntt1disk.library_manager 8500.library_manager redwood50.library_manager"
-enstore_media_changers_all="airedaledisk.library_manager fndaprdisk.media_changer hppcdisk.media_changer fntt1disk.media_changer FTT.media_changer STK.media_changer"
-enstore_movers_all="airedaledisk.library_manager fndaprdisk.mover hppcdisk.mover fntt1disk.mover 8500.mover stk0.mover"
+enstore_libraries_all="airedaledisk.library_manager igordisk.library_manager fndaprdisk.library_manager hppcdisk.library_manager fntt1disk.library_manager 8500.library_manager redwood50.library_manager"
+enstore_media_changers_all="airedaledisk.media_changer igordisk.media_changer fndaprdisk.media_changer hppcdisk.media_changer fntt1disk.media_changer FTT.media_changer STK.media_changer"
+enstore_movers_all="airedaledisk.mover igordisk.mover fndaprdisk.mover hppcdisk.mover fntt1disk.mover 8500.mover stk0.mover"
 
 enstore_db=$ENSTORE_DIR/etc
 enstore_libraries=""
@@ -50,6 +50,11 @@ elif [ `uname -n | grep -c airedale` -eq 1 ] ; then
   export J=/jon/enstore/airedaledisk.fake
   export P=/pnfs/enstore/airedale
   export V=/pnfs/enstore/volmap
+
+elif [ `uname -n | grep -c igor` -eq 1 ] ; then
+  enstore_libraries="igordisk.library_manager"
+  enstore_media_changers="igordisk.media_changer"
+  enstore_movers="igordisk.mover"
 
 elif [ `uname -n | grep -c hppc` -eq 1 ] ; then
   enstore_libraries="hppcdisk.library_manager"
