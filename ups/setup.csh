@@ -1,4 +1,3 @@
-
 set path=($path ${ENSTORE_DIR})
 rehash
 
@@ -8,11 +7,11 @@ else
     setenv PYTHONPATH "${PYTHONPATH}:${ENSTORE_DIR}/src"
 endif
 
-alias encp $PYTHON_DIR/bin/python encp.py '\!*'
-alias pnfs $PYTHON_DIR/bin/python pnfs.py '\!*'
+alias encp python $ENSTORE_DIR/src/encp.py '\!*'
+alias pnfs python $ENSTORE_DIR/src/pnfs.py '\!*'
 
-alias econ $PYTHON_DIR/bin/python configuration_client.py '\!*'
-alias bfid $PYTHON_DIR/bin/python file_clerk_client.py '\!*'
-alias rddt $PYTHON_DIR/bin/python driver.py '\!*'
-alias clbk $PYTHON_DIR/bin/python callback.py '\!*'
-alias udpc $PYTHON_DIR/bin/python udp_client.py '\!*'
+alias econ python $ENSTORE_DIR/src/configuration_client.py '\!*'
+alias bfid python $ENSTORE_DIR/src/file_clerk_client.py '\!*'
+alias rddt python $ENSTORE_DIR/src/driver.py '\!*'
+alias clbk python $ENSTORE_DIR/src/callback.py '\!*'
+alias udpc python $ENSTORE_DIR/src/udp_client.py '\!*'
