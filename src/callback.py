@@ -7,6 +7,7 @@ import sys, os
 import string
 import random
 import select
+import errno
 
 # enstore imports
 import lockfile
@@ -14,6 +15,7 @@ import Trace
 import e_errors
 import checksum
 import hostaddr
+import socket_ext
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -27,17 +29,26 @@ except ImportError:
     import socket
 
 
+
 HUNT_PORT_LOCK_DIR = "/tmp/enstore"
 HUNT_PORT_LOCK_FILE="hunt_port_lock"
 HUNT_PORT_LOCK=os.path.join(HUNT_PORT_LOCK_DIR, HUNT_PORT_LOCK_FILE)
 
 # see if we can bind to the selected tcp host/port
-def try_a_port(host, port) :
+def try_a_port(host, port, reuseaddr=1) :
     Trace.trace(16, "try_a_port: trying TCP port %s %s" % (host, port))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if reuseaddr:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE,1)
         sock.bind(host, port)
+        interface=hostaddr.interface_name(host)
+        if interface:
+            Trace.trace(16,"bindtodev:  %s %s %s"%(host,port,interface))
+            status=socket_ext.bindtodev(sock.fileno(),interface)
+            if status and status != errno.ENOSYS:
+                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
     except socket.error, detail:
 	try:
             sock.close()
@@ -55,7 +66,9 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
 
     host_name,junk,ips = hostaddr.gethostinfo(verbose)
     ca = ips[0]
+    reuseaddr=1
     if use_multiple:
+        reuseaddr=0
         interface_tab = hostaddr.get_multiple_interfaces(verbose)
     elif fixed_ip:
 	interface_tab = [(fixed_ip, 1)]
@@ -98,10 +111,10 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
             bw = bw-1
             port = next_port_to_try[which_interface]
             if use_multiple:
-                Trace.trace("multiple interface: trying %s %s" % (host,port))
+                Trace.trace(16,"multiple interface: trying %s %s" % (host,port))
             if verbose>2:
                 print "trying port", host, port
-            success, mysocket = try_a_port (host, port)
+            success, mysocket = try_a_port (host, port, reuseaddr)
             # if we got a lock, give up the hunt lock and return port
             if success :
                 if verbose>2: print "success"
@@ -117,8 +130,7 @@ def get_callback_port(start,end,use_multiple=0,fixed_ip=None,verbose=0):
                 
         #  otherwise, we tried all ports, try later.
         sleeptime = 1
-        msg = "get_callback_port: all ports from "+repr(start)+' to ' \
-	      +repr(end) + " used. waiting"+repr(sleeptime)+" seconds"
+        msg = "get_callback_port: all ports from %s to %s used, waiting %s seconds"%(start,end,sleeptime)
         if verbose>2: print msg
         Trace.log(e_errors.INFO, repr(msg))
         time.sleep (sleeptime)
