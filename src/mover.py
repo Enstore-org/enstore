@@ -748,6 +748,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # get the initial statistics
     def init_stat(self, drive, drive_name):
         self.stats_on = 0
+        self.send_stats = self.config.get('send_stats',None)
         if not self.stat_file: return
         if not self.driver_type == 'FTTDriver':
             return
@@ -3039,7 +3040,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         self.update_stat()
-        if self.stats_on and self.tape_driver and self.tape_driver.ftt:
+        if self.stats_on and self.tape_driver and self.tape_driver.ftt and self.send_stats:
             import drivestat
             ret=drivestat.ds_send_stats(self.drive_stats,
                                         10,
