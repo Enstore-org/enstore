@@ -1,138 +1,189 @@
 FILE = TABLE
 PRODUCT=enstore
 
-#*************************************************
-#
-FLAVOR = ANY
-QUALIFIERS = ""
-    ACTION=SETUP
-        setupEnv()
-        proddir()
-        pathPrepend( PATH, "${UPS_PROD_DIR}/sbin" )
-        pathPrepend( PATH, "${UPS_PROD_DIR}/bin" )
+GROUP:
 
-        # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documentation only
-        # dot and graphviz are the same product with different names!
-	# I don't care which version I get so don't specify any
-        setupOptional("dot")
-        setupOptional("graphviz")
-        setupOptional("tgif")
-        setupOptional("htmldoc")
-	setupOptional("ghostview")
-	setupOptional("ximagetools")
-	setupOptional("imagemagick")
+FLAVOR=ANY
+QUALIFIERS=central_mass_store
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
+                exeActionRequired(COMMON_SETUP)
+FLAVOR=ANY
+QUALIFIERS=stken
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/stk.conf)
+                exeActionRequired(COMMON_SETUP)
 
-	# we use the pylint tool in the gadfly product
-	setupRequired("gadfly v1_0")
+FLAVOR=ANY
+QUALIFIERS=d0en
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sam.conf)
+                exeActionRequired(COMMON_SETUP)
 
-	# ftt is Fermi tape tools
-        setupRequired("ftt v2_6")
+FLAVOR=ANY
+QUALIFIERS=rip
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/rip.conf)
+                exeActionRequired(COMMON_SETUP)
 
-	# aci is the EMASS tape library and admin tool product
-	# the media changer is the only server that interfaces to it
-	setupOptional("aci v1_3_0_c7")
+FLAVOR=ANY
+QUALIFIERS=buffalo
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, buffalo.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/buffalo.conf)
+                exeActionRequired(COMMON_SETUP)
 
-	# stk is the STK tape library
-	# the media changer is the only server that interfaces to it
-	setupOptional("stk v1_0")
+FLAVOR=ANY
+QUALIFIERS=happy
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, happy.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/happy.conf)
+                exeActionRequired(COMMON_SETUP)
 
-        # the setup of python is tricky
-        # if user has python declared via ups, set that up and use it
-        setupOptional("python v1_5_2_E_3")
-        # if no python from ups available, we need it from the user's path
-        exeAccess("python")
-        # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
-        execute("which python | sed -e 's@/bin/python@@'", NO_UPS_ENV, pypath)
-        #envSetIfNotSet(PYTHON_DIR, /usr)
-        envSetIfNotSet(PYTHON_DIR, $pypath)
-        # envUnset(pypath) - this can't be unset, needed for unsetup of enstore (bug in ups!)
+FLAVOR=ANY
+QUALIFIERS=airedale
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, airedale.fnal.gov)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/airedale.conf)
+                exeActionRequired(COMMON_SETUP)
 
-        # we need to determine where the python include and library paths are
-        # note in the following line, the sort allows multiple python versions,
-        #      the highest is used because of the reverse sort
-        execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
-        execute("basename $ver", NO_UPS_ENV, PVER)
-        envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
-        envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
-        envUnset(ver)
-        envUnset(PVER)
+FLAVOR=ANY
+QUALIFIERS=sirius
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST, sirius)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sirius.conf)
+                exeActionRequired(COMMON_SETUP)
 
-	# we now need swig to generate the modules. 
-	# as with python, allow the user to use his local copy if he doesn't have swig installed
-	setupOptional("swig v1_1p5")
-        # if no swig from ups available, we need it from the user's path
-        exeAccess("swig")
-	
-        # set the libtp and libtppy products up after python
-        setupRequired("libtppy v1_2_4")
-        # setupRequired("libtp v2_7_4") # libtp is set up by libtppy
-
-        # now set the python module search path, need to do these in separate
-	# lines so that when an unsetup is done, the dropit will do 3 separate
-	# dropits.   dropit does not support > 1 substring to drop on a line
-        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
-        envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
-        envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
-
-	# now setup the product with the python support for HTML
-	setupRequired("HTMLgen")
-
-        # control where the trace file goes
-        execute("whoami", NO_UPS_ENV, meme)
-	envSet(ENSTORE_TMP,"/tmp/enstore/$meme")
-        execute("mkdir -p $ENSTORE_TMP", NO_UPS_ENV)
-	execute('sh -c "chmod 777 /tmp/enstore 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
-	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
-        envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
-        envUnset(tracehost)
-        envUnset(meme)
-	
-	# we need a file lock to serialize access to requesting ports (callback.py)
-	execute("touch /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
-	execute('sh -c "chmod go+rw /tmp/enstore/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
-
-	# create an encp link in the bin area
-	# this provides compatibility with the encp product and allows people to just say "encp" and not "ecmd encp"
-	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.py $ENSTORE_DIR/bin/encp; fi"',NO_UPS_ENV)
-	
-	# create an enstore link in the bin area
-	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi"',NO_UPS_ENV)
-
-	# create an enstoreCut link in the sbin area
-	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ]; then ln -s $ENSTORE_DIR/sbin/encpCut $ENSTORE_DIR/sbin/enstoreCut; fi"',NO_UPS_ENV)
-
-	# create an enstore_up_down link in the sbin area
-	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
-
-	# create an enmonitor link in the sbin area
-	execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enmonitor ]; then ln -s $ENSTORE_DIR/src/monitor_client.py $ENSTORE_DIR/sbin/enmonitor; fi"',NO_UPS_ENV)
-
-	# special treatment for libds.a on IRIX64
-	execute("uname", UPS_ENV, ENSTORE_OSV)
-	# ups can't handle "sh -c `uanme` ...
-	execute("sh -c 'if [ ${ENSTORE_OSV} = IRIX64 ]; then echo -L/usr/lib32 -lds ; fi'", UPS_ENV, LIBDS)
-	envUnset(ENSTORE_OSV)
-
-        # default "control" environmental variables
-        envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/pcfarm.conf")
-        envSet(ENSTORE_CONFIG_PORT, 7500)
-        envSet(ENSTORE_CONFIG_HOST, pcfarm9.fnal.gov)
-        envSet(ENSTORE_MAIL,"enstore-admin@fnal.gov")
-        envSet(PYTHONUNBUFFERED, "x")
-
-	# allow a user to override the default control environmental variables
-	# the control variables are overridden by sourcing another "virtual" product
-	#       note that the enstore_variables product doesn't exist - only the table file does
-	#	ups doesn't check the databases since an absolute path is given 
-	# the enstore_variables.table file should be a LINK to the appropriate file
-	#     so, for example if this were a "sam" system, a user would ln -s sam.table enstore_variables.table
-	#     or, if bakken had special needs,                          ln -s bakken.table enstore_variables.table
-	# The basic idea is that everything in this table file is general, and everything in the
-	#     enstore_variables.table file is user/installation specific
-	setupOptional('-r "${UPS_PROD_DIR}" -M "${UPS_PROD_DIR}/ups" -m enstore_variables.table enstore_variables v0_0')
+FLAVOR=ANY
+QUALIFIERS=""
+        ACTION=SETUP
+                envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
+                envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/`${UPS_PROD_DIR}/ups/chooseConfig file`)
+                exeActionRequired(COMMON_SETUP)
+        ACTION=DECLARE
+                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=CONFIGURE
+                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=TAILOR
+                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=CURRENT
+                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
 
 
-    ACTION=CONFIGURE
-	# upd complains about enstore_variable not being declared - declare a dummy version
-	execute('sh -c "ups exist enstore_variables -f NULL v0_0;if [ $? -eq 1 ];then $UPS_DIR/bin/ups undeclare -f NULL enstore_variables v0_0;fi; >/dev/null 2>/dev/null"',NO_UPS_ENV)
-	execute('sh -c "$UPS_DIR/bin/ups declare -c -f NULL -r ${UPS_PROD_DIR} -M ${UPS_PROD_DIR}/ups  -m enstore_variables.table enstore_variables v0_0 >/dev/null 2>/dev/null"',NO_UPS_ENV)
+COMMON:
+        ACTION=COMMON_SETUP
+
+                setupEnv()
+                proddir()
+                pathPrepend(PATH, "${UPS_PROD_DIR}/sbin")
+                pathPrepend(PATH, "${UPS_PROD_DIR}/bin")
+
+                # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documenation only
+                # dot and graphviz are the same product with different names!
+                # I don't care which version I get so don't specify any
+                setupOptional("dot")
+                setupOptional("graphviz")
+                setupOptional("tgif")
+                setupOptional("htmldoc")
+                setupOptional("ghostview")
+                setupOptional("ximagetools")
+                setupOptional("imagemagick")
+
+                # we use the pylint tool in the gadfly product
+                setupRequired("gadfly v1_0")
+
+                # ftt is Fermi tape tools
+                ###setupRequired("ftt v2_6")
+                setupRequired("ftt v2_7")
+
+                # aci is the EMASS tape library and admin tool product
+                # the media changer is the only server that interfaces to it
+                setupOptional("aci v1_3_0_c7")
+                ###soon setupOptional("aci v3_0_1")
+
+                # stk is the STK tape library
+                # the media changer is the only server that interfaces to it
+                setupOptional("stk v1_0")
+
+                # the setup of python is tricky
+                # if user has python declared via ups, set that up and use it
+                setupOptional("python v1_5_2_E_3")
+                # if no python from ups available, we need it from the user's path
+                exeAccess("python")
+                # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
+                execute("which python | sed -e 's@/bin/python@@'", NO_UPS_ENV, pypath)
+                envSetIfNotSet(PYTHON_DIR, $pypath)
+                envUnset(pypath)
+
+                # we need to determine where the python include and library paths are
+                # note in the following line, the sort allows multiple python versions,
+                #      the highest is used because of the reverse sort
+                execute("/bin/ls -d $PYTHON_DIR/lib/python*| sort -r", NO_UPS_ENV, ver)
+                execute("basename $ver", NO_UPS_ENV, PVER)
+                envSet(PYTHONINC, $PYTHON_DIR/include/$PVER)
+                envSet(PYTHONLIB, $PYTHON_DIR/lib/$PVER)
+                envUnset(ver)
+                envUnset(PVER)
+
+                # we now need swig to generate the modules.
+                # as with python, allow the user to use his local copy if he doesn't have swig installed
+                setupOptional("swig v1_1p5")
+                # if no swig from ups available, we need it from the user's path
+                exeAccess("swig")
+
+                # set the libtp and libtppy products up after python
+                setupRequired("libtppy v1_2_4")
+                # setupRequired("libtp v2_7_4") # libtp is set up by libtppy
+
+                # now set the python module search path, need to do these in separate
+                # lines so that when an unsetup is done, the dropit will do 3 separate
+                # dropits.   dropit does not support > 1 substring to drop on a line
+                envAppend(PYTHONPATH,"${UPS_PROD_DIR}/src")
+                envAppend(PYTHONPATH,"${UPS_PROD_DIR}/modules")
+                envAppend(PYTHONPATH,"$LIBTPPY_DIR/lib")
+
+                # now setup the product with the python support for HTML
+                setupRequired("HTMLgen")
+
+                # get the output right away, no buffering
+                envSet(PYTHONUNBUFFERED, "x")
+
+                # all systems use port 7500 for the well-know port to the configuration port
+                envSet(ENSTORE_CONFIG_PORT, 7500)
+
+                # the place where mail gets sent when ther are problems
+                envSet(ENSTORE_MAIL,"enstore-admin@fnal.gov")
+
+                # special treatment for libds.a on IRIX64
+                execute("uname", UPS_ENV, ENSTORE_OSV)
+                execute("sh -c 'if [ ${ENSTORE_OSV} = IRIX64 ]; then echo -L/usr/lib32 -lds ; fi'", UPS_ENV, LIBDS)
+                envUnset(ENSTORE_OSV)
+
+                # create some links to put commands into your path
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ];             then ln -s $ENSTORE_DIR/src/encp.py            $ENSTORE_DIR/bin/encp; fi"',            NO_UPS_ENV)
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ];          then ln -s $ENSTORE_DIR/src/enstore_admin.py   $ENSTORE_DIR/bin/enstore; fi"',         NO_UPS_ENV)
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi"',     NO_UPS_ENV)
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.py  $ENSTORE_DIR/sbin/enmonitor; fi"',      NO_UPS_ENV)
+
+        ###The next 2 stanzas should be deleted shortly...
+
+                # we need a file lock to serialize access to requesting ports
+                envSet(ENSTORE_TMP,"/tmp/enstore/`whoami`")
+                execute("mkdir -p $ENSTORE_TMP", NO_UPS_ENV)
+	        execute('sh -c "chmod 777 `dirname $ENSTORE_TMP` 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
+                execute("touch `dirname $ENSTORE_TMP`/hunt_port_lock",NO_UPS_ENV)
+                execute('sh -c "chmod 777 `dirname $ENSTORE_TMP`/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
+
+                # control where the trace file goes
+                execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
+                envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
+                envUnset(tracehost)
+
+
+END:
+
