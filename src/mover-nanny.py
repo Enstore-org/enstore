@@ -9,9 +9,12 @@ import string
 import time
 import pprint
 
-mail_victims = "bakken@fnal.gov,cgw@fnal.gov,moibenko@fnal.gov"
+mail_victims = "enstore-admin@fnal.gov"
 
 config = eval(os.popen("enstore config --show",'r').read())
+
+prog = sys.argv[1]
+host = os.uname()[1]
 
 def hms(s):
     s = int(s)
@@ -114,7 +117,8 @@ def sendmail(subject, reason):
     mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
     p=os.popen(mail_cmd, 'w')
     p.write('reason: %s\n' % (reason,))
-    p.write('\n.\n')
+    p.write('\n\n')
+    p.write("This message sent by %s running on %s\n\n" % (prog, host))
     p.close()
     
 def start(mover, reason=None):
@@ -198,7 +202,11 @@ def get_status(mover):
     while l and startswith(l[0],' '):
         e=e+l[0]
         l=l[1:]
-    d=eval(e)
+    d={}
+    try:
+        d=eval(e)
+    except:
+        pass
     return d
 
     
