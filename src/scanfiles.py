@@ -177,5 +177,5 @@ if __name__ == '__main__':
     ff = {}
 
     for i in list:
-        if i[:2] != '__':
+        if i[:2] != '--':
             check_file(i)
