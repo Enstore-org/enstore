@@ -9,7 +9,7 @@ rm -f $out ${out}_1
 source $ENSTORE_DIR/sbin/gettkt
 rgang $gang " cd /home/enstore/enstore; cvs -qn update -r production" > $out 2>&1
 
-egrep -v " cvs -q update -r production| This rsh session is using DES encryption for all data transmissions|M etc/enstore_system.html" $out > ${out}_1
+egrep -v " cvs -qn update -r production| This rsh session is using DES encryption for all data transmissions|M etc/enstore_system.html" $out > ${out}_1
 mods=`egrep -v " - - - - - - - - - - - - - " ${out}_1`
 
 if [ `echo $mods | sed -e 's/ //g'|wc -w` -ne 0 ]; then
