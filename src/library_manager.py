@@ -844,8 +844,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # check if work is in the at mover list before inserting it
 	for wt in self.work_at_movers.list:
             # 2 requests cannot have the same output file names
-            if (wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]) \
-	       and wt['retry'] == ticket['retry']:
+            if ((wt["wrapper"]['pnfsFilename'] == ticket["wrapper"]["pnfsFilename"]) and
+                (wt['retry'] == ticket['retry'])):
                 ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
                 break
 	    elif wt["unique_id"] == ticket["unique_id"]:
@@ -1088,6 +1088,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11, "mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
         if status[0] == e_errors.OK:
             w = rq.ticket
+
+            # if new work volume is different from mounted
+            # and work is write check if this volume can be written
+            # update volumes_at_movers
+            if (w["vc"]["external_label"] != mticket['external_label'] and
+                w['work'] == 'write_to_hsm'):
+                new_rq, st = self.check_write_request(w['vc']['external_label'], rq)
+                if st[0] == 'full':
+                    return
+                
             format = "%s next work on vol=%s mover=%s requester:%s"
             Trace.log(e_errors.INFO, format%(w["work"],
 					     w["vc"]["external_label"],
@@ -1096,7 +1106,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    w['times']['lm_dequeued'] = time.time()
             if w.has_key('reject_reason'): del(w['reject_reason'])
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s %s to mover %s %s DEL_DISM %s"%
-                      (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'], mticket['address'], w['encp']['delayed_dismount']))
+                      (w['work'],w['wrapper']['pnfsFilename'], mticket['mover'],
+                       mticket['address'], w['encp']['delayed_dismount']))
             self.pending_work.delete(rq)
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
@@ -1136,13 +1147,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                status[0] == 'full'):
             # do not dismount
             return
-        elif (w['work'] == 'write_to_hsm' and status[0] == 'full'):
-            return
-
-        # alas
         else:
-	    Trace.log(1,"mover_bound_volume: assertion error %s %s"%(w,mticket))
-            raise AssertionError
+            Trace.log(e_errors.ERROR,"HAVE_BOUND: .next_work_this_volume returned %s:"%(status,))
+            return
 
 
     # if the work is on the awaiting bind list, it is the library manager's
