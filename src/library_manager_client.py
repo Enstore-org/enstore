@@ -83,5 +83,9 @@ if __name__ == "__main__" :
     if  printwork:
         ticket = lmc.printwork()
 
-    if list:
+    if ticket["status"] != "ok"  :
+        print "BAD status returned"
+        pprint.pprint(ticket)
+
+    elif list:
         pprint.pprint(ticket)

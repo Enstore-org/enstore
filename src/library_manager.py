@@ -257,12 +257,6 @@ class LibraryManagerMethods(DispatchingWorker) :
         rticket["at movers"] = work_at_movers
         rticket["awaiting volume bind"] = work_awaiting_bind
         rticket["pending_work"] = pending_work
-        for w in work_at_movers :
-            print ("at movers", w)
-        for w in work_awaiting_bind :
-            print ("awaiting volume bind", w)
-        for w in pending_work :
-            print ("pending", w)
         self.reply_to_caller(rticket)
 
 

@@ -66,4 +66,4 @@ class DispatchingWorker:
     # request and then send to the user
     def reply_with_list(self, list) :
         dict[self.current_id] = list
-        self.socket.sendto(`list`, self.reply_address)
+        self.socket.sendto(repr(list), self.reply_address)
