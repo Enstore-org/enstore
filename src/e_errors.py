@@ -89,6 +89,7 @@ WRITE_VOL1_MISSING = "WRITE_VOL1_MISSING"
 # VOL1 header present, but incorrect volume
 READ_VOL1_WRONG = "READ_VOL1_WRONG"
 WRITE_VOL1_WRONG = "WRITE_VOL1_WRONG"
+EOV1_ERROR = "EOV1_ERROR"
 
 # common for read or write
 UNMOUNT         = 'UNMOUNT'
