@@ -85,7 +85,7 @@ for filename in sys.argv[1:]:
                 break
         else:
             exit_status=1
-            print err
+            print filename+":"+err
                 
 sys.exit(exit_status)
     
