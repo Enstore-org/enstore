@@ -998,7 +998,6 @@ def do_work(intf):
             cookie = '0000_000000000_0000001'
         #library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
         capacity = my_atol(intf.volume_byte_capacity)
-        print 'intf.remaining_bytes =', `intf.remaining_bytes`
         if intf.remaining_bytes != None:
             remaining = my_atol(intf.remaining_bytes)
         else:
