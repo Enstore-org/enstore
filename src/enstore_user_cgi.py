@@ -46,15 +46,32 @@ def no_access(host):
     print "<FONT SIZE=+3>Sorry, your host (%s) is not allowed to query Enstore.</FONT>"%host
     print "</BODY></HTML>"
         
+def find_libtppy(enstore_setups):
+    es = string.strip(enstore_setups)
+    es = string.split(es, "\"")
+    for item in es:
+	# look for the setup for the libtppy product as we must add something
+	# here to sys.path too
+	if item[0:7] == "libtppy":
+	    libtppy_dir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR %s"%item).readlines()
+	    libtppy_dir = string.strip(libtppy_dir[0])
+	    libtppy_dir = string.replace(libtppy_dir, "\"", "")
+	    sys.path.append("%s/lib"%libtppy_dir)
+
 def find_enstore():
-    enstore_dir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR enstore").readlines()
-    enstore_dir = string.strip(enstore_dir[0])
+    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
+    enstore_dir = string.strip(enstore_info[0])
     enstore_dir = string.replace(enstore_dir, "\"", "")
     enstore_src = "%s/src"%enstore_dir
     enstore_modules = "%s/modules"%enstore_dir
     sys.path.append(enstore_src)
     sys.path.append(enstore_modules)
-    import enstore_user
+    find_libtppy(enstore_info[3])
+
+    # fix up the config host and port to give to the command
+    config_host = string.strip(enstore_info[2])
+    config_port = string.strip(enstore_info[1])
+    return (config_host, config_port)
 
 def go():
     # first print the two lines for the header
@@ -94,10 +111,7 @@ def go():
     try:
         # get the data from the form
         form = cgi.FieldStorage()
-        print "<PRE>"
         keys = form.keys()
-        #print_keys(keys, form)
-        print "</PRE>"
         an_argv = []
         if form.has_key("server"):
             server = form["server"].value
@@ -108,6 +122,15 @@ def go():
         # we will construct an argv and an argc to pass to our python
         # program 
         an_argv = ["enstore", server]
+
+	# we need to find the location of enstore so we can import
+	(config_host, config_port) = find_enstore()
+
+	# add the config port and host to the environment
+	#an_argv = an_argv + ["--config_host", config_host, 
+	#		     "--config_port", config_port]
+	os.environ['ENSTORE_CONFIG_HOST'] = config_host
+	os.environ['ENSTORE_CONFIG_PORT'] = config_port
 
         # look for any of the possibly multiple checkbox info
         main_cbox_key = "%s_cbox"%server
@@ -147,30 +170,16 @@ def go():
         # stuff
         cmd = string.join(an_argv, " ")
         print cmd
-	print an_argv
         print "<BR><P><HR><P><PRE>"
 
-	# now we need to find the location of enstore so we can import it and do what we have to
-	find_enstore()
-
 	# do our stuff
-	enstore_user.do_work()
-
-        #file = tempfile.mktemp()
-        #rtn = os.system(". /usr/local/etc/setups.sh;. `ups setup enstore`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
-
-        # now read in the file and output the results
-        #filedes = open(file)
-        #while 1:
-        #    line = filedes.readline()
-        #    if not line:
-        #        break
-        #    else:
-        #        print line
-        #filedes.close()
-        #os.remove(file)
-
-        print "</PRE>"
+	sys.argv = an_argv
+	import enstore_user
+	try:
+	    enstore_user.do_work()
+            print "</PRE>"
+	except SystemExit:
+            print "</PRE>"
     finally:
         if not an_argv:
             print "\nERROR: Could not process command"
