@@ -1,78 +1,282 @@
 #!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# Declare some new volumes
+# bin/$RCSfile$  $Revision$
 
-# (see bin/ecmd addvol doc)
-#                              volume
-#                              name
-#          file      med type (extern   capacity     remaining
-#library  family   (blocksize) label?)  in bytes      bytes
-volumes="
-hppcdisk     none    diskfile  flop1      14000000    14000000
-hppcdisk     none    diskfile  flop2      14000000    14000000
-hppcdisk     none    diskfile  flop3      14000000    14000000
-fndaprdisk   none    diskfile  flop101  2000000000  2000000000
-fndaprdisk   none    diskfile  flop102  2000000000  2000000000
-fndaprdisk   none    diskfile  flop103  2000000000  2000000000
-fntt1disk    none    diskfile  flop201    14000000    14000000
-fntt1disk    none    diskfile  flop202    14000000    14000000
-fntt1disk    none    diskfile  flop203    14000000    14000000
-airedaledisk none    diskfile  flop301      140000      140000
-airedaledisk none    diskfile  flop302      140000      140000
-airedaledisk none    diskfile  flop303     1400000     1400000
-airedaledisk none    diskfile  flop304    14000000     1400000
-airedaledisk none    diskfile  flop305    14000000    14000000
-airedaledisk none    diskfile  flop306    14000000    14000000
-airedaledisk none    diskfile  flop307   140000000   140000000
-airedaledisk none    diskfile  flop308   140000000   140000000
-airedaledisk none    diskfile  flop309  1400000000  1400000000
-igordisk     none    diskfile  flop401    14000000    14000000
-igordisk     none    diskfile  flop402    14000000    14000000
-igordisk     none    diskfile  flop403    14000000    14000000
-igordisk     none    diskfile  flop404   140000000   140000000
-igordisk     none    diskfile  flop405   140000000   140000000
-pcfarm5disk  none    diskfile  flop501    14000000    14000000
-pcfarm5disk  none    diskfile  flop502    14000000    14000000
-pcfarm5disk  none    diskfile  flop503    14000000    14000000
-pcfarm5disk  none    diskfile  flop504   140000000   140000000
-pcfarm5disk  none    diskfile  flop505   140000000   140000000
-shelf        none    cartridge cart90     14000000    14000000
-shelf        none    cassette  cass91     14000000    14000000
-redwood50    none    redwood   000004  50000000000 50000000000
-redwood50    none    redwood   000005  50000000000 50000000000
-redwood50    none    redwood   000006  50000000000 50000000000
-redwood50    none    redwood   000007  50000000000 50000000000
-redwood50    none    redwood   000008  50000000000 50000000000
-redwood50    none    redwood   000009  50000000000 50000000000
-redwood20    none    redwood   000020  20000000000 20000000000
-redwood20    none    redwood   000021  20000000000 20000000000
-redwood20    none    redwood   000022  20000000000 20000000000
-redwood20    none    redwood   000023  20000000000 20000000000
-redwood20    none    redwood   000024  20000000000 20000000000
-redwood20    none    redwood   000025  20000000000 20000000000
-redwood20    none    redwood   000026  20000000000 20000000000
-redwood20    none    redwood   000027  20000000000 20000000000
-redwood20    none    redwood   000028  20000000000 20000000000
-redwood20    none    redwood   000030  20000000000 20000000000
-redwood20    none    redwood   000031  20000000000 20000000000
-redwood20    none    redwood   000032  20000000000 20000000000
-redwood20    none    redwood   000033  20000000000 20000000000
-redwood20    none    redwood   000034  20000000000 20000000000
-redwood20    none    redwood   000035  20000000000 20000000000
-redwood20    none    redwood   000036  20000000000 20000000000
-redwood20    none    redwood   000037  20000000000 20000000000
-redwood20    none    redwood   000038  20000000000 20000000000
-redwood20    none    redwood   000039  20000000000 20000000000
-8500         none    exabyte   exasc1   4500000000  4500000000
-"
-oldifs="${IFS}"
+# declare the volumes used on the rip test system
+
+USAGE="`basename $0` <red50|red20|ait|dlt|mam|rip6>"
+
+if [ -z "${1-}" ] ; then
+  echo "$USAGE"
+  exit 1
+fi
+
+case $1 in
+  red50) rm -fr /pnfs/stk/red50/*
+         volumes_del="
+                      000004
+                      000005
+                      000006
+                      000007
+                      000008
+                      000009
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      red50 none redwood 000004 50000000000 50000000000
+                      red50 none redwood 000005 50000000000 50000000000
+                      red50 none redwood 000006 50000000000 50000000000
+                      red50 none redwood 000007 50000000000 50000000000
+                      red50 none redwood 000008 50000000000 50000000000
+                      red50 none redwood 000009 50000000000 50000000000
+                     "
+         ;;
+  red20) rm -fr /pnfs/stk/red20/*
+         volumes_del="
+                      000020
+                      000021
+                      000022
+                      000023
+                      000024
+                      000025
+                      000026
+                      000027
+                      000028
+                      000030
+                      000031
+                      000032
+                      000033
+                      000034
+                      000035
+                      000036
+                      000037
+                      000038
+                      000039
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      red20 none redwood 000020 20000000000 20000000000
+                      red20 none redwood 000021 20000000000 20000000000
+                      red20 none redwood 000022 20000000000 20000000000
+                      red20 none redwood 000023 20000000000 20000000000
+                      red20 none redwood 000024 20000000000 20000000000
+                      red20 none redwood 000025 20000000000 20000000000
+                      red20 none redwood 000026 20000000000 20000000000
+                      red20 none redwood 000027 20000000000 20000000000
+                      red20 none redwood 000028 20000000000 20000000000
+                      red20 none redwood 000030 20000000000 20000000000
+                      red20 none redwood 000031 20000000000 20000000000
+                      red20 none redwood 000032 20000000000 20000000000
+                      red20 none redwood 000033 20000000000 20000000000
+                      red20 none redwood 000034 20000000000 20000000000
+                      red20 none redwood 000035 20000000000 20000000000
+                      red20 none redwood 000036 20000000000 20000000000
+                      red20 none redwood 000037 20000000000 20000000000
+                      red20 none redwood 000038 20000000000 20000000000
+                      red20 none redwood 000039 20000000000 20000000000
+                     "
+         ;;
+  ait)   rm -fr /pnfs/grau/ait/*
+         volumes_del="
+                      CA2901
+                      CA2902
+                      CA2903
+                      CA2904
+                      CA2905
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      ait   none 8MM     CA2901 25501368320 25501368320
+                      ait   none 8MM     CA2902 25501368320 25501368320
+                      ait   none 8MM     CA2903 25501368320 25501368320
+                      ait   none 8MM     CA2904 25501368320 25501368320
+                      ait   none 8MM     CA2905 25501368320 25501368320
+                     "
+         ;;
+  mam)   rm -fr /pnfs/grau/mammoth/*
+         volumes_del="
+                      CA2251
+                      CA2252
+                      CA2253
+                      CA2254
+                      CA2255
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      mam   none 8MM     CA2251 21474836480 21474836480
+                      mam   none 8MM     CA2252 21474836480 21474836480
+                      mam   none 8MM     CA2253 21474836480 21474836480
+                      mam   none 8MM     CA2254 21474836480 21474836480
+                      mam   none 8MM     CA2255 21474836480 21474836480
+                     "
+         ;;
+  dlt)   rm -fr /pnfs/grau/dlt/*
+         volumes_del="
+                      CA2501
+                      CA2502
+                      CA2503
+                      CA2504
+                      CA2505
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      mam   none 8MM     CA2501 35003983462 35003983462
+                      mam   none 8MM     CA2502 35003983462 35003983462
+                      mam   none 8MM     CA2503 35003983462 35003983462
+                      mam   none 8MM     CA2504 35003983462 35003983462
+                      mam   none 8MM     CA2505 35003983462 35003983462
+                     "
+         ;;
+  rip6)  rm -fr /pnfs/rip6/*
+         rm -fr /rip6a/rip6/*
+         volumes_del="
+                      rip6-01
+                      rip6-02
+                      rip6-03
+                      rip6-04
+                      rip6-05
+                      rip6-06
+                      rip6-07
+                      rip6-08
+                      rip6-09
+                      rip6-11
+                      rip6-12
+                      rip6-13
+                      rip6-14
+                      rip6-15
+                      rip6-16
+                      rip6-17
+                      rip6-18
+                      rip6-19
+                      rip6-21
+                      rip6-22
+                      rip6-23
+                      rip6-24
+                      rip6-25
+                      rip6-26
+                      rip6-27
+                      rip6-28
+                      rip6-29
+                      rip6-31
+                      rip6-32
+                      rip6-33
+                      rip6-34
+                      rip6-35
+                      rip6-36
+                      rip6-37
+                      rip6-38
+                      rip6-39
+                      rip6-41
+                      rip6-42
+                      rip6-43
+                      rip6-44
+                      rip6-45
+                      rip6-46
+                      rip6-47
+                      rip6-48
+                      rip6-49
+                      rip6-51
+                      rip6-52
+                      rip6-53
+                      rip6-54
+                      rip6-55
+                      rip6-56
+                      rip6-57
+                      rip6-58
+                      rip6-59
+                     "
+#                     lib   ff   medtype   label   capacity    bytes left
+         volumes="
+                      rip6 none  diskfile  rip6-01      140000      140000
+                      rip6 none  diskfile  rip6-02      140000      140000
+                      rip6 none  diskfile  rip6-03     1400000     1400000
+                      rip6 none  diskfile  rip6-04    14000000     1400000
+                      rip6 none  diskfile  rip6-05    14000000    14000000
+                      rip6 none  diskfile  rip6-06    14000000    14000000
+                      rip6 none  diskfile  rip6-07   140000000   140000000
+                      rip6 none  diskfile  rip6-08   140000000   140000000
+                      rip6 none  diskfile  rip6-09  1400000000  1400000000
+                      rip6 none  diskfile  rip6-11      140000      140000
+                      rip6 none  diskfile  rip6-12      140000      140000
+                      rip6 none  diskfile  rip6-13     1400000     1400000
+                      rip6 none  diskfile  rip6-14    14000000     1400000
+                      rip6 none  diskfile  rip6-15    14000000    14000000
+                      rip6 none  diskfile  rip6-16    14000000    14000000
+                      rip6 none  diskfile  rip6-17   140000000   140000000
+                      rip6 none  diskfile  rip6-18   140000000   140000000
+                      rip6 none  diskfile  rip6-19  1400000000  1400000000
+                      rip6 none  diskfile  rip6-21      140000      140000
+                      rip6 none  diskfile  rip6-22      140000      140000
+                      rip6 none  diskfile  rip6-23     1400000     1400000
+                      rip6 none  diskfile  rip6-24    14000000     1400000
+                      rip6 none  diskfile  rip6-25    14000000    14000000
+                      rip6 none  diskfile  rip6-26    14000000    14000000
+                      rip6 none  diskfile  rip6-27   140000000   140000000
+                      rip6 none  diskfile  rip6-28   140000000   140000000
+                      rip6 none  diskfile  rip6-29  1400000000  1400000000
+                      rip6 none  diskfile  rip6-31      140000      140000
+                      rip6 none  diskfile  rip6-32      140000      140000
+                      rip6 none  diskfile  rip6-33     1400000     1400000
+                      rip6 none  diskfile  rip6-34    14000000     1400000
+                      rip6 none  diskfile  rip6-35    14000000    14000000
+                      rip6 none  diskfile  rip6-36    14000000    14000000
+                      rip6 none  diskfile  rip6-37   140000000   140000000
+                      rip6 none  diskfile  rip6-38   140000000   140000000
+                      rip6 none  diskfile  rip6-39  1400000000  1400000000
+                      rip6 none  diskfile  rip6-41      140000      140000
+                      rip6 none  diskfile  rip6-42      140000      140000
+                      rip6 none  diskfile  rip6-43     1400000     1400000
+                      rip6 none  diskfile  rip6-44    14000000     1400000
+                      rip6 none  diskfile  rip6-45    14000000    14000000
+                      rip6 none  diskfile  rip6-46    14000000    14000000
+                      rip6 none  diskfile  rip6-47   140000000   140000000
+                      rip6 none  diskfile  rip6-48   140000000   140000000
+                      rip6 none  diskfile  rip6-49  1400000000  1400000000
+                      rip6 none  diskfile  rip6-51      140000      140000
+                      rip6 none  diskfile  rip6-52      140000      140000
+                      rip6 none  diskfile  rip6-53     1400000     1400000
+                      rip6 none  diskfile  rip6-54    14000000     1400000
+                      rip6 none  diskfile  rip6-55    14000000    14000000
+                      rip6 none  diskfile  rip6-56    14000000    14000000
+                      rip6 none  diskfile  rip6-57   140000000   140000000
+                      rip6 none  diskfile  rip6-58   140000000   140000000
+                      rip6 none  diskfile  rip6-59  1400000000  1400000000
+                     "
+         ;;
+  *)     echo "$USAGE"
+         exit 1
+         ;;
+esac
+
+oldifs="$IFS"
 IFS="
 "
-for vol in $volumes; do
-  echo ecmd addvol $vol
-       ecmd addvol $vol
-  if [ $? != 0 ] ; then echo \'ERROR\'; fi
-done
-IFS="${oldifs}"
+newifs="$IFS"
 
-ecmd vcc --verbose=1 --vols
+# Delete all the old volumes, just in case they are already defined
+for vol in ${volumes_del}; do
+  IFS=$oldifs
+  vol=`echo $vol`
+  if [ "${vol}x" != "x" ] ; then
+    echo ecmd delvol $vol
+         ecmd delvol $vol
+    if [ $? != 0 ] ; then echo \'ERROR\'; fi
+  fi
+  IFS=$newifs
+done
+
+# Declare some new volumes
+for vol in $volumes; do
+  IFS=$oldifs
+  vol=`echo $vol`
+  if [ "${vol}x" != "x" ] ; then
+    echo ecmd addvol $vol
+         ecmd addvol $vol
+    if [ $? != 0 ] ; then echo \'ERROR\'; fi
+  fi
+  IFS=$newifs
+done
+
+IFS="$oldifs"
