@@ -103,7 +103,10 @@ class EncpLine:
 		self.valid = 0
 	else:
 	    # get rid of the MSG_TYPE=xxx information at the end of the line
-	    [self.text, tmp] = string.splitfields(self.text, Trace.MSG_TYPE)
+	    aList = string.splitfields(self.text, Trace.MSG_TYPE)
+	    # some of the lines  do not have MSG_TYPE in them (??? hmmm) so we cannot count on
+	    # aList being any more than 1 element long.
+	    self.text = aList[0]
 	    self.valid = 1
 
 class EnStatus:
