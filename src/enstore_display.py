@@ -143,9 +143,8 @@ class Mover:
         self.volume.draw(load_state)
 
     def unload_tape(self, volume):
-        
-        if volume != self.volume.name: 
-            print "Mover does not have this tape : ", volume
+       if self.volume and volume != self.volume.name: 
+             print "Mover does not have this tape : ", volume
         else:
            k=self.index
            N=self.N
