@@ -34,29 +34,7 @@ ecmd Esys     farmlet  global "enstore-associated" ps on all farmlet nodes
 
 "
 if [ -z "${1-}" ] ; then
-  echo "Getting help lines, one moment please....\n\n"
-  usage="
-$usage1
-ecmd encp `ecmd encp --usage_line`
-
-ecmd config `ecmd config --usage_line`
-
-ecmd fcc `ecmd fcc --usage_line`
-
-ecmd vcc `ecmd vcc --usage_line`
-
-ecmd lmc `ecmd lmc --usage_line`
-
-ecmd mcc `ecmd mcc --usage_line`
-
-ecmd mov `ecmd mov --usage_line`
-
-ecmd log `ecmd log --usage_line`
-
-ecmd inq `ecmd inq --usage_line`
-$usage2
-"
-  echo "$usage"; exit 1;
+  cmd="help"
 else
   cmd=$1
   shift
@@ -207,6 +185,28 @@ case $cmd in
     ;;
 
   help)
+  echo "Getting help lines, one moment please....\n\n"
+  usage="
+$usage1
+ecmd encp `ecmd encp --usage_line`
+
+ecmd config `ecmd config --usage_line`
+
+ecmd fcc `ecmd fcc --usage_line`
+
+ecmd vcc `ecmd vcc --usage_line`
+
+ecmd lmc `ecmd lmc --usage_line`
+
+ecmd mcc `ecmd mcc --usage_line`
+
+ecmd mov `ecmd mov --usage_line`
+
+ecmd log `ecmd log --usage_line`
+
+ecmd inq `ecmd inq --usage_line`
+$usage2
+"
     echo "$usage"
     stat=$?
     ;;
