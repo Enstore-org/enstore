@@ -39,7 +39,7 @@ tape_copy: tape_copy.c
 	-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt_test -lftt $(LIBDS)
 
 m2probe: m2probe.c
-	$(CC) -I. -I$(FTT_DIR)/include -o m2probe m2probe.c -L$(FTT_DIR)/lib -lftt
+	$(CC) -I. -I$(FTT_DIR)/include -o m2probe m2probe.c -L$(FTT_DIR)/lib -lftt $(LIBDS)
 	cp m2probe ../sbin
 
 enroute2: enroute2.c
