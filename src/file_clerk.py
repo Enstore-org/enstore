@@ -667,6 +667,7 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
         except SystemExit, exit_code:
+            fc.dict.close()
             sys.exit(exit_code)
         except:
             fc.serve_forever_error(fc.log_name)

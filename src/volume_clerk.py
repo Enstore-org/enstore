@@ -1522,6 +1522,7 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
         except SystemExit, exit_code:
+            vc.dict.close()
             sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)
