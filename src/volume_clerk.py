@@ -94,6 +94,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     def __init__(self, csc):
         # basically, to make pychecker happy
+        self.client_address = None
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         self.keys = self.csc.get(MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
@@ -430,7 +431,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        ticket['status'] = self.__delete_volume(vol)
+        # ticket['status'] = self.__delete_volume(vol)
+        ticket['status'] = (e_errors.INFO, "client_address: %s"%(self.client_address))
         self.reply_to_caller(ticket)
         return
 
