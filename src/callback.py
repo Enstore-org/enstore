@@ -37,7 +37,7 @@ def get_callback(use_multiple=0,fixed_ip=None,verbose=0):
         s.bind((fixed_ip, 0))
         interface=hostaddr.interface_name(fixed_ip)
         if interface:
-            status=socket_ext.bindtodev(sock.fileno(),interface)
+            status=socket_ext.bindtodev(s.fileno(),interface)
             if status:
                 Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
     else:
