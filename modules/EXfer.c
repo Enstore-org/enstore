@@ -4,7 +4,7 @@
     contacting Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
     */
 
-#ifndef NO_READ
+#ifdef NO_READ
 # include <sys/stat.h>		/* fstat, struct stat */
 #endif
 #include <sys/types.h>		/* read/write */
@@ -399,7 +399,7 @@ EXusrTo_(  PyObject	*self
 	int		writing_flg=1;
 	int             rd_ahead=50;    /* arbitrary default */
 	pid_t		pid;
-#      ifndef NO_READ
+#      ifdef NO_READ
 	struct stat	stat_s;
 #      endif
 
@@ -466,7 +466,7 @@ EXusrTo_(  PyObject	*self
 	shm_byts = 0;
 	crc_p = shmaddr;
 	dat_byts = 0;
-#      ifndef NO_READ
+#      ifdef NO_READ
 	if (fstat(fd_a[Frm],&stat_s) != 0)
 	    perror( "EXfer usrTo_ fstat" );
 #      endif
@@ -477,15 +477,15 @@ EXusrTo_(  PyObject	*self
 
 	    while (shm_byts < inc_size)
 	    {   read_byts = inc_size - shm_byts;
-#              ifndef NO_READ
-		just_red_byts = (frmFunc_p[Frm])(  fd_a[Frm]
-						  , shmaddr+(inc_size*ahead_idx)+shm_byts
-						  , read_byts );
-#              else
+#              ifdef NO_READ
 		if (dat_byts+inc_size <= stat_s.st_size)/* if "space" for full read */
 		    just_red_byts = inc_size;
 		else
 		    just_red_byts = stat_s.st_size - dat_byts; /* this will be 0 next time thru */
+#              else
+		just_red_byts = (frmFunc_p[Frm])(  fd_a[Frm]
+						  , shmaddr+(inc_size*ahead_idx)+shm_byts
+						  , read_byts );
 #              endif
 		if (just_red_byts <= 0)
 		{   eof_flg = 1;
