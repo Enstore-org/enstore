@@ -27,11 +27,41 @@ databases, and the pnfs databases.
 File Clerk
 <ul>
 
-<li>
+<li> <a
+href="http://www-hppc.fnal.gov/enstore/design.html#file_clerk">
+Detailed Information </a> on the Enstore File Clerk is available from
+the <a href="http://www-hppc.fnal.gov/enstore/design.html"> Enstore
+Technical Document.</a> Command details are covered there.
+
 <p>
+<li> The file clerk's database is  /diskb/enstore-database/file. This
+file is on a raid level-1 (software mirroring) disk.
+  <ul>
+
+     <li> A backup is made once an hour and copied to d0ensrv3
+
+     <li> Rsync is run once every 5 minutes and a complete copy of the
+     directory tree is made to a 2nd (independent) raid disk on
+     d0ensrv1.
+
+  </ul>
 <li>
+
 <p>
-<li>
+<li> The file clerk's database is journalled to
+/diska/enstore-journal/file.jou. This is an ascii readable file and is
+the final authority in the cases of conflicting data (resulting from
+corruption).  This file is also on a mirrored disk and rsynced to
+another mirrored disk.
+
+<p>
+<li> Complete information on a particular bfid can be seen by
+    <ul>
+       <li> Logging in as enstore to one of the console servers
+       <li> Type "setup enstore"
+       <li> Type " enstore file --bfid= &lt bfid &gt
+    </ul>
+
 </ul>
 
 <br>
@@ -39,6 +69,42 @@ File Clerk
 <br>
 Volume Clerk
 <ul>
+<li> <a
+href="http://www-hppc.fnal.gov/enstore/design.html#volume_clerk">
+Detailed Information </a> on the Enstore Volume Clerk is available
+from the <a href="http://www-hppc.fnal.gov/enstore/design.html">
+Enstore Technical Document.</a> Command details are covered there.
+
+<p>
+<li> The volume clerk's database is  /diskb/enstore-database/volume. This
+file is on a raid level-1 (software mirroring) disk.
+  <ul>
+
+     <li> A backup is made once an hour and copied to d0ensrv3
+
+     <li> Rsync is run once every 5 minutes and a complete copy of the
+     directory tree is made to a 2nd (independent) raid disk on
+     d0ensrv1.
+
+  </ul>
+<li>
+
+<p>
+<li> The volume clerk's database is journalled to
+/diska/enstore-journal/volume.jou. This is an ascii readable file and
+is the final authority in the cases of conflicting data (resulting
+from corruption).  This file is also on a mirrored disk and rsynced to
+another mirrored disk.
+
+<p>
+<li> Complete information on a particular volume can be seen by
+    <ul>
+       <li> Logging in as enstore to one of the console servers
+       <li> Type "setup enstore"
+       <li> Type " enstore volume --vol= &lt label &gt
+    </ul>
+
+</ul>
 
 <li>
 <p>
@@ -47,6 +113,48 @@ Volume Clerk
 <li>
 </ul>
 
+
+<br>
+<br>
+<br>
+Databases
+<ul>
+<p>
+<li> One, shared between the file and volume clerk, copy of
+db_deadlock must be running to prevent database deadlocks.
+
+<p>
+<li> One, shared between the file and volume clerk, copy of
+db_checkpoint must be running to provide frequent
+flushing/checkpointing of data to the database files.
+
+<p>
+<li> In the case of database corruption,
+   <ul>
+
+     <li> Log in to d0ensrv1 as enstore
+
+     <li> Stop all enstore processes on the node "setup enstore"
+     "enstore stop". Make sure they are stopped.  "lsof | egrep
+     '/diska|/diskb' shows you who is still accesses the databases.
+     Stop everyone.
+
+     <li> Make sure the inquisitor doesn't start enstore up while you
+     are working.
+
+     <li> cd /diskb/enstore-database
+
+     <li> db_recover -h . -v
+
+     <li> If that fails (it almost never does), rm __db* *.index log.*
+
+     <li> If that fails, it is time to go to the database backups!
+
+     <li> Then restart the enstore servers.
+
+   </ul>
+
+</ul>
 
 <br>
 <br>
@@ -63,7 +171,7 @@ namespace for the files that D0 transfers in and out of the robot.
 Detailed Information </a> on how Enstore uses DESY's PNFS is available
 from the <a href="http://www-hppc.fnal.gov/enstore/design.html">
 Enstore Technical Document.</a> Installation procedures and command
-details are covered here.
+details are covered there.
 
 <p>
 <li> The root of the PNFS directory tree is /diska/pnfs. This
@@ -131,6 +239,7 @@ again after the disk fixes have been resolved.
 
 
 </ul>
+
 
 <br>
 <br>
