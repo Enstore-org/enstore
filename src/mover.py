@@ -1208,17 +1208,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 	return res
  
     def check_written_file(self):
+        rc = 0
         if self.just_mounted and self.check_first_written_enabled:
             self.just_mounted = 0
-            return 1
+            rc = 1
         if self.check_written_file_period:
             ran = random.randrange(self.check_written_file_period,self.check_written_file_period*10,1)
             if (ran % self.check_written_file_period == 0):
-                return 1
-            else:
-                return 0
-        else:
-            return 0
+                rc = 1
+        return rc
         
     def nowork(self, ticket):
         Trace.trace(98, "nowork")
