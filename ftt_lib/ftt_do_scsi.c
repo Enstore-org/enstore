@@ -228,7 +228,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
     ENTERING("ftt_set_compression");
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_set_compression\n");
-    int res = 0;
+    res = 0;
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px0f) {
 	    DEBUG3(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
