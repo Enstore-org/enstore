@@ -46,6 +46,8 @@ class Tdb(threading.Thread) :
                 self.who()
             elif toks[0] == "eval" :
                 self.eval(line[4:])
+            elif toks[0] == "module" :
+                self.eval(line[6:])
             elif toks[0] == "help":
                 self.help()
             elif toks[0] ==  "quit" :
@@ -65,8 +67,13 @@ class Tdb(threading.Thread) :
     def eval(self, e):
         self.writeln(eval(e))
 
+    def module(self, e):
+	self.writeln(sys.modules[e])
+        self.module(e)
+
     def  help(self):
-        self.writeln("help, list filename line, who, eval expresion quit")
+        self.writeln(
+	  "help, module <name>,l ist filename line, who, eval expresion, quit")
     
     def quit(self):
         if 0: print self # quiet lint 
