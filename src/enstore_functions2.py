@@ -270,12 +270,12 @@ def ping(node):
             stats = string.split(line)
             if stats[0] == stats[3]:
                 # transmitted packets = received packets
-                return enstore_constants.ALIVE
+                return enstore_constants.IS_ALIVE
             else:
-                return enstore_constants.DEAD
+                return enstore_constants.IS_DEAD
     else:
         # we did not find the stat line
-        return enstore_constants.DEAD
+        return enstore_constants.IS_DEAD
 
 def get_remote_file(node, file, newfile):
     # we have to make sure that the rcp does not hang in case the remote node is goofy

@@ -128,7 +128,7 @@ def do_work():
     for node in keys:
 	node = enstore_functions2.strip_node(node)
         # make sure node is up before rcping
-        if enstore_functions2.ping(node) == enstore_constants.ALIVE:
+        if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
             # this must match with the import below
             NEWFILE = "enstore_status_only_%s"%(node,)
             new_file = "%s/%s.py"%(DESTDIR, NEWFILE)

@@ -251,7 +251,7 @@ class InquisitorPlots:
 	for node in nodes_l:
 	    node = enstore_functions2.strip_node(node)
 	    # make sure node is up before rcping
-	    if enstore_functions2.ping(node) == enstore_constants.ALIVE:
+	    if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
 		new_file = "/tmp/%s.%s"%(pts_file_only, node)
 		if node == this_node:
 		    rtn = os.system("cp %s %s"%(pts_file, new_file))
