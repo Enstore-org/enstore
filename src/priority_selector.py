@@ -23,7 +23,6 @@ class PriSelector:
         if exists == 0: 
             msg = (e_errors.DOESNOTEXIST,"%s " % (self.configfile,))
             return msg
-        print "read_config"
         try:
            mtime = os.stat(self.configfile)[stat.ST_MTIME]
         except OSError, detail:
@@ -32,7 +31,6 @@ class PriSelector:
             
             return msg
         if self.mtime == mtime:
-            print "No need to reread"
             return (e_errors.OK, None)
         self.mtime = mtime
         f = open(self.configfile,'r')
@@ -59,7 +57,6 @@ class PriSelector:
         self.pri_keys.sort()
         self.pri_keys.reverse()
 
-        print "PRI KEYS",self.pri_keys 
         return (e_errors.OK, None)
 
     def __init__(self, configfile, max_reg_pri=MAX_REG_PRIORITY):
@@ -67,7 +64,6 @@ class PriSelector:
         self.mtime = 0
         self.configfile = configfile
         rc = self.read_config()
-        print "RC", rc
         if e_errors.OK not in rc:
             self.exists = 0
             return
@@ -79,17 +75,14 @@ class PriSelector:
     def ticket_match(self, ticket, pri_key, conf_key):
         pattern = "^%s" % (self.prioritydict[pri_key][conf_key],)
         item='%s'%(ticket.get(conf_key, 'Unknown'),)
-        print "pattern %s ticket %s" % (pattern,  item)
         if re.search(pattern, item): return 1
         else: return 0
         
 
     def priority(self, ticket):
-        print "EXISTS", self.exists
         if not self.exists:  # no priority configuration info
             return ticket['encp']['basepri'], ticket['encp']['adminpri']
             
-        import pprint
         self.read_config()
         # make a "flat" copy of ticket
         flat_ticket={}
@@ -103,20 +96,14 @@ class PriSelector:
                     if k == 'machine': flat_ticket['host'] = flat_ticket[key][k][1]
                     else: flat_ticket[k] = flat_ticket[key][k]
                 del(flat_ticket[key])
-        #print "FLAT_TICKET"
-        #pprint.pprint(flat_ticket)
 
         cur_pri = flat_ticket['basepri']
         cur_adm_pri = flat_ticket.get('adminpri',-1) 
         for pri_key in self.pri_keys:
             conf_keys = self.prioritydict[pri_key].keys()
             nkeys = len(conf_keys)
-            #print "pri_key", pri_key
-            #print "conf_keys", conf_keys
             nmatches = 0
-            print "Match"
             for conf_key in conf_keys:
-                #print "KEY %s ITEM %s" % (conf_key, self.prioritydict[pri_key][conf_key])
                 # try to match a ticket
                 if not self.ticket_match(flat_ticket, pri_key, conf_key): break
                 nmatches = nmatches + 1
@@ -130,7 +117,6 @@ class PriSelector:
         if cur_pri >= self.max_reg_pri:
             cur_adm_pri = cur_pri / self.max_reg_pri + cur_adm_pri
             cur_pri = cur_pri % self.max_reg_pri
-        print "PRI",cur_pri, cur_adm_pri
         return cur_pri, cur_adm_pri
 
     
