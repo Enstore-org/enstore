@@ -1,17 +1,18 @@
+#include <unistd.h>
 #include <Python.h>
 #include "acssys.h"
 #include "acsapi.h"
 
 /*
         See media_changer.py
-  	This is a python interface to the stk acsls system.
+        This is a python interface to the stk acsls system.
         It requires -
-		1) STK product to compile and link - See Setup
-		2) stkssi and mini_el daemons be running.
-		   They are normally started with "$STKDIR/bin/stkssi start" 
-		   run at boot time.
-		3) The ACSAPI_PACKET_VERSION=2, ACSAPI_SSI_SOCKET=50015
-		   which are definded with setup stk
+                1) STK product to compile and link - See Setup
+                2) stkssi and mini_el daemons be running.
+                   They are normally started with "$STKDIR/bin/stkssi start"
+                   run at boot time.
+                3) The ACSAPI_PACKET_VERSION=2, ACSAPI_SSI_SOCKET=50015
+                   which are definded with setup stk
 */
 /*
  *  Get the acknowledgement response
@@ -21,38 +22,86 @@
 static PyObject *STKErrObject;
 
 static char volStatus[1000];
+static char volStatus2[1000];
 
-int STKerr(char *caller, char *location, STATUS status)
+static struct typename {
+    ACS_RESPONSE_TYPE rtype;
+    char *tname_string;
+}
+tname_table[] = {
+    RT_FIRST,
+    "RT_FIRST",
+    RT_ACKNOWLEDGE,
+    "RT_ACKNOWLEDGE",
+    RT_INTERMEDIATE,
+    "RT_INTERMEDIATE",
+    RT_FINAL,
+    "RT_FINAL",
+    RT_LAST,
+    "RT_LAST",
+};
+
+static char unknown[80];
+
+void sleep4IPC()
 {
-#ifdef DEBUG
- printf("STK err: %s - %s - code %d - %s\n", caller, location, status, cl_status(status));
-#endif
- return(status);
+    printf("\nSLEEP4IPC\n");
+    usleep((unsigned long)500000);
 }
 
-STATUS get_ack()           /* common get acknowledgment function*/
+char *type_response (ACS_RESPONSE_TYPE rtype)
 {
 
+    unsigned short i;
+
+    /* Look for the status parameter in the table. */
+    for (i = 1; tname_table[i].rtype != RT_LAST; i++) {
+        if (rtype == tname_table[i].rtype) {
+            return tname_table[i].tname_string;
+        }
+    }
+
+    /* untranslatable status */
+    sprintf (unknown, tname_table[i].tname_string);
+    return unknown;
+}
+
+STATUS get_ack(SEQ_NO seq,                /* common get acknowledgment function*/
+               ACS_RESPONSE_TYPE *p_type) /* common get final (or next)func */
+{
     SEQ_NO                seq_nmbr;     /* command identification number     */
     REQ_ID                req_id;       /* response request identification   */
     STATUS                status;       /* command return status structure   */
     ACS_RESPONSE_TYPE     type;         /* final response structure          */
     ALIGNED_BYTES         rbuf[(MAX_MESSAGE_SIZE/sizeof(ALIGNED_BYTES)+1)];
+    int                   maxtries=3;
 
     /*
-    **  Call acs_response to get the acknowledgement response.  If the
-    **  acknowledgement message fails, write an error message to stderr,
-    **  otherwise write the request id to stdout.
+    **  Call acs_response to get the acknowledgement response.
     */
 
-    status = acs_response(SSI_TIMEOUT,&seq_nmbr,&req_id,&type, rbuf);
-    return(status);
+    *p_type = RT_LAST;
+    while (maxtries>0) {
+        printf("\nACS_RESPONSE (get_ack) for seq %d\n",seq);
+        status = acs_response(SSI_TIMEOUT,&seq_nmbr,&req_id,&type, rbuf);
+        printf("\nACS_RESPONSE (get_ack) for seq=%d: seq=%d, req_id=%d, type=%d %s, status=%d %s\n",
+               seq,seq_nmbr,req_id,type,type_response(type),status,cl_status(status));
+        if (seq==seq_nmbr) {
+            *p_type = type;
+            return(status);
+        } else {
+            printf("\nMISMATCH acs_response (get_ack) for seq=%d: seq=%d MISMATCH!\n",seq,seq_nmbr);
+            maxtries--;
+        }
+    }
+    return(STATUS_NONE);
 }
 /*
  *  Get the final (or next) response
  */
 
-STATUS get_next( ALIGNED_BYTES *p_rbuf,
+STATUS get_next(SEQ_NO seq,
+                ALIGNED_BYTES *p_rbuf,
                 int p_size,
                 ACS_RESPONSE_TYPE *p_type) /* common get final (or next)func */
 
@@ -63,18 +112,28 @@ STATUS get_next( ALIGNED_BYTES *p_rbuf,
     STATUS                status;       /* command return status structure   */
     ACS_RESPONSE_TYPE     type;         /* final response structure          */
     ALIGNED_BYTES         rbuf[(MAX_MESSAGE_SIZE/sizeof(ALIGNED_BYTES)+1)];
+    int                   maxtries=3;
 
     /*
-    **  Call acs_response to get an intermediate and/or final response.  If
-    **  the message response fails, write an error message to stderr, otherwise
-    **  return the message and type to the caller.
+    **  Call acs_response to get an intermediate and/or final response.
     */
 
-    status = acs_response(SSI_TIMEOUT,&seq_nmbr,&req_id,&type, rbuf);
-
-    memcpy((ALIGNED_BYTES)p_rbuf,rbuf,p_size);
-    *p_type = type;
-    return(status);
+    *p_type = RT_LAST;
+    while (maxtries>0) {
+        printf("\nACS_RESPONSE (get_next) for seq %d\n",seq);
+        status = acs_response(SSI_TIMEOUT,&seq_nmbr,&req_id,&type, rbuf);
+        printf("\nACS_RESPONSE (get_next) for seq=%d: seq=%d, req_id=%d, type=%d %s, status=%d %s\n",
+               seq,seq_nmbr,req_id,type,type_response(type),status,cl_status(status));
+        if (seq==seq_nmbr) {
+            memcpy((ALIGNED_BYTES)p_rbuf,rbuf,p_size);
+            *p_type = type;
+            return(status);
+        } else {
+            printf("\nMISMATCH acs_response (get_next) for seq=%d: seq=%d MISMATCH!\n",seq,seq_nmbr);
+            maxtries--;
+        }
+    }
+    return(STATUS_NONE);
 }
 
 STATUS STKmount(SEQ_NO p_s,
@@ -93,34 +152,32 @@ STATUS STKmount(SEQ_NO p_s,
     BOOLEAN             bypass = FALSE; /* bypass checking flag              */
     char                *drive_name;    /* drive name                        */
 
-    /*
-    **  Call mount to mount the requested volume on the drive.  If the mount
-    **  itself, or the mount status fails, write an error message to stderr,
-    **  otherwise write the result of the mount to stdout.
-    */
+    printf("\nSTKMOUNT: seq=%d, vol=%s drive=%d/%d/%d/%d, RO=%d,lockid=%d\n",p_s,p_volume,
+           p_drv_id.panel_id.lsm_id.lsm, p_drv_id.panel_id.lsm_id.acs, p_drv_id.panel_id.panel, p_drv_id.drive,
+           p_readonly, p_lock_id );
 
     (void)strcpy(vol_id.external_label,p_volume);
 
-    if ((status = acs_mount(
-		p_s,		/* client defined number returned in the response */
-		p_lock_id,	/* Lock the drive with this id or NO_LOCK */
-		vol_id	,	/* Id of the tape cartridge to be mounted */
-		p_drv_id,	/* Id of the drive where the tape cartridge is mounted */
-		p_readonly,	/* If TRUE, the volume will be mounted readonly */
-		bypass))	/* If TRUE, bypass volser and media verification */ 
-                         != STATUS_SUCCESS)
-        return(STKerr("Mount", "transmit", status));
+    status = acs_mount(
+                       p_s,             /* client defined number returned in the response */
+                       p_lock_id,       /* Lock the drive with this id or NO_LOCK */
+                       vol_id   ,       /* Id of the tape cartridge to be mounted */
+                       p_drv_id,        /* Id of the drive where the tape cartridge is mounted */
+                       p_readonly,      /* If TRUE, the volume will be mounted readonly */
+                       bypass);         /* If TRUE, bypass volser and media verification */
+    printf("\nACS_MOUNT transmit. seq=%d, vol=%s, code=%d %s\n",p_s,p_volume,status,cl_status(status));
+    if (status != STATUS_SUCCESS){ sleep4IPC(); return(status); }
 
-    if ((status = get_ack()) != STATUS_SUCCESS) 
-        return(STKerr("Mount", "get_ack", status));
+    if ((status = get_ack(p_s,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
+    if (type == RT_FINAL | type== RT_LAST) { sleep4IPC(); return(STATUS_NONE); }
+
     size = sizeof(ACS_MOUNT_RESPONSE);
-    if ((status = get_next(rbuf,size,&type)) != STATUS_SUCCESS) 
-        return(STKerr("Mount", "get_next", status));
+    if ((status = get_next(p_s,rbuf,size,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
 
     mp = (ACS_MOUNT_RESPONSE *)rbuf;
-    if (mp->mount_status != STATUS_SUCCESS) 
-        return(STKerr("Mount", "status_field", mp->mount_status));
-    return(mp->mount_status);
+    status=mp->mount_status;
+    printf("\nSTKMOUNT returning. seq=%d, vol=%s, code=%d %s\n",p_s,p_volume,status,cl_status(status));
+    sleep4IPC(); return(status);
 
 }
 
@@ -142,38 +199,31 @@ STATUS STKdismount(SEQ_NO p_s,
     char                  *drive_name;  /* drive name                        */
     int                   ret;          /* function return code              */
 
-    /*
-    **  If the force flag is false, issue an unload for the requested drive,
-    **  and if the unload fails write an error message to stderr, and set the
-    **  force flag true.  Then call dismount to dismount the requested volume
-    **  from the drive.  If the dismount itself, or the dismount status fails,
-    **  write an error message to stderr, otherwise write the result of
-    **  dismount to stdout.
-    */
+    printf("\nSTKDISMOUNT: seq=%d, vol=%s drive=%d/%d/%d/%d, lockid=%d\n",p_s,p_volume,
+           p_drv_id.panel_id.lsm_id.lsm, p_drv_id.panel_id.lsm_id.acs, p_drv_id.panel_id.panel, p_drv_id.drive,
+           p_lock_id );
 
     (void)strcpy(vol_id.external_label,p_volume);
 
-    if ((status = acs_dismount(
-		p_s,		/* client defined number returned in the response*/
-		p_lock_id,	/* Lock the drive with this id */
-		vol_id,		/* Id of the tape cartridge to be mounted */
-		p_drv_id,	/* Id of the drive where the tape cartridge is mounted */
-		TRUE))		/* Force Dismount */
-		 != STATUS_SUCCESS) 
-        return(STKerr("Dismount", "transmit", status));
+    status = acs_dismount(
+                          p_s,          /* client defined number returned in the response*/
+                          p_lock_id,    /* Lock the drive with this id */
+                          vol_id,       /* Id of the tape cartridge to be mounted */
+                          p_drv_id,     /* Id of the drive where the tape cartridge is mounted */
+                          TRUE);        /* Force Dismount */
+    printf("\nACS_DISMOUNT transmit. seq=%d, vol=%s, code=%d %s\n",p_s,p_volume,status,cl_status(status));
+    if(status != STATUS_SUCCESS) { sleep4IPC(); return(status); }
 
-    if ((status = get_ack()) != STATUS_SUCCESS) 
-        return(STKerr("Dismount", "get_ack", status));
+    if ((status = get_ack(p_s,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
+    if (type == RT_FINAL | type== RT_LAST) { sleep4IPC(); return(STATUS_NONE); }
 
     size = sizeof(ACS_DISMOUNT_RESPONSE);
-    if ((status = get_next(rbuf,size,&type)) != STATUS_SUCCESS) 
-        return(STKerr("Dismount", "get_next", status));
+    if ((status = get_next(p_s,rbuf,size,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
 
     dp = (ACS_DISMOUNT_RESPONSE *)rbuf;
-    if (dp->dismount_status != STATUS_SUCCESS) 
-        return(STKerr("Dismount", "status_field", dp->dismount_status));
-
-    return(dp->dismount_status);
+    status=dp->dismount_status;
+    printf("\nSTKDISMOUNT returning. seq=%d, vol=%s, code=%d %s\n",p_s,p_volume,status,cl_status(status));
+    sleep4IPC(); return(status);
 }
 
 STATUS STKquery_volume(SEQ_NO p_s,
@@ -189,47 +239,50 @@ STATUS STKquery_volume(SEQ_NO p_s,
     ACS_RESPONSE_TYPE      type;        /* final response structure          */
     int                    size;        /* final response size               */
     int                    i;           /* loop counter                      */
-    char                   *drive_name; /* drive name                        */ 
+    char                   *drive_name; /* drive name                        */
+
+    printf("\nSTKQUERY_VOLUME: seq=%d, vol=%s\n",p_s,p_volume);
 
     /*
-    **  Call query_volume to get the status of the requested volume.  If the 
-    **  query itself, or the query_volume status fails, write an error message 
-    **  to stderr, otherwise write the query volume results to stdout.
+    **  Call query_volume to get the status of the requested volume.  If the
+    **  query itself, or the query_volume status fails, write an error message,
+    **  otherwise write the query volume results to stdout.
     */
 
     (void)strcpy(vol_id[0].external_label,p_volume);
     (void)strcpy(volStatus,"??");
+    (void)strcpy(volStatus2,"??");
 
-    if ((status = acs_query_volume(p_s,vol_id,(ushort) 1)) != STATUS_SUCCESS) {
-        (void)fprintf(stderr,"%s ERROR: %s transmit failed, error is %s, code is %d\n",
-	              "stkq","query_volume",cl_status(status),status);
-        return(status);
-    }
+    status = acs_query_volume(p_s,vol_id,(ushort) 1);
+    printf("\nACS_QUERY_VOLUME transmit. seq=%d, vol=%s, code=%d %s\n",p_s,p_volume,status,cl_status(status));
+    if(status != STATUS_SUCCESS) { sleep4IPC(); return(status); }
 
-    if ((status = get_ack()) != STATUS_SUCCESS) return(status);
+    if ((status = get_ack(p_s,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
+    if (type == RT_FINAL | type== RT_LAST) { sleep4IPC(); return(STATUS_NONE); }
 
     while (1) {
 
         size = sizeof(ACS_QUERY_VOL_RESPONSE);
-        if ((status = get_next(rbuf,size,&type))
-            != STATUS_SUCCESS) return(status);
+        if ((status = get_next(p_s,rbuf,size,&type)) != STATUS_SUCCESS) { sleep4IPC(); return(status); }
 
         qp = (ACS_QUERY_VOL_RESPONSE *)rbuf;
-        if (qp->query_vol_status != STATUS_SUCCESS) {
-            (void)fprintf(stderr,"%s ERROR: %s failure, error is %s, code is %d\n", 
-                          "stkq","query_volume",cl_status(qp->query_vol_status),
-	                  qp->query_vol_status);
+        status=qp->query_vol_status;
+
+        if (status != STATUS_SUCCESS) {
+            printf("\nSTKQUERY_VOLUME status. seq=%d, vol=%s, volStatus=%s, code=%d %s\n",p_s,p_volume,volStatus,status,cl_status(status));
         }  else {
-            /* I don't see how qp->count can ever be anything byt 1 */
+            /* I don't see how qp->count can ever be anything but 1 */
             for (i = 0; i < (int)qp->count; i++) {
                 sp = &qp->vol_status[i];
                (void)strcpy(volStatus,(char *)cl_status(sp->status));
             }
         }
+        printf("\nSTKQUERY_VOLUME status. seq=%d, vol=%s, qp->count=%d, volStatus=%s, code=%d %s\n",p_s,p_volume,(int)qp->count,volStatus,status,cl_status(status));
         if (type == RT_FINAL) break;
     }
 
-    return(qp->query_vol_status);
+    printf("\nSTKQUERY_VOLUME returning. seq=%d, vol=%s, volStatus=%s, code=%d %s\n",p_s,p_volume,volStatus,status,cl_status(status));
+    sleep4IPC(); return(status);
 }
 
 /*
@@ -247,43 +300,35 @@ void  asc2STKdrv( char *drive,  DRIVEID *stkdrv)
 
 /*
         Convert the STK error code to a canonical code
-        stat - status returned by the dismount
-        drive_errs - a list of status codes which are drive errors
-	media_errs - a list of status codes which are media errors
 */
-
-
-char* status_class(int stat, int* drive_errs, int* media_errs)
+char* status_class(int stat)
 {
-int *e;
-  if (stat == 0) return("ok");
-  for (e=drive_errs; *e; e++)
+    static int drive_errs[]={STATUS_DRIVE_IN_USE, STATUS_DRIVE_NOT_IN_LIBRARY, STATUS_DRIVE_OFFLINE,
+                             STATUS_DRIVE_RESERVED,STATUS_INVALID_DRIVE,STATUS_INVALID_DRIVE_TYPE,0};
+    static int media_errs[]={STATUS_MISPLACED_TAPE,STATUS_UNREADABLE_LABEL,STATUS_INVALID_VOLUME,
+                             STATUS_VOLUME_IN_TRANSIT,STATUS_VOLUME_NOT_FOUND,STATUS_VOLUME_DELETED,
+                             STATUS_VOLUME_ACCESS_DENIED,STATUS_VOLUME_NOT_IN_LIBRARY,0};
+    int *e;
+    if (stat == 0) return("ok");
+    for (e=drive_errs; *e; e++)
         if (stat == *e) return("DRIVE");
-  for (e=media_errs; *e; e++)
+    for (e=media_errs; *e; e++)
         if (stat == *e) return("TAPE");
-  return("BAD");
+    return("BAD");
 }
 
-/*
-	STK errors impying drive problem or media problem
-*/
-int drive_errs[]={STATUS_DRIVE_IN_USE, STATUS_DRIVE_NOT_IN_LIBRARY, STATUS_DRIVE_OFFLINE,
-	STATUS_DRIVE_RESERVED,STATUS_INVALID_DRIVE,STATUS_INVALID_DRIVE_TYPE,0};
-int media_errs[]={STATUS_MISPLACED_TAPE,STATUS_UNREADABLE_LABEL,STATUS_INVALID_VOLUME,
-	STATUS_VOLUME_IN_TRANSIT,STATUS_VOLUME_NOT_FOUND,STATUS_VOLUME_DELETED,
-	STATUS_VOLUME_ACCESS_DENIED,STATUS_VOLUME_NOT_IN_LIBRARY,0};
-int *e;
 
 /*
-	Documentation for python
+        Documentation for python
 */
 static char STK_Doc[] =  "STK Robot load and unload";
-static char Mount_Doc[] =  "Mount a tape";
-static char Dismount_Doc[] =  "Dismount a tape";
-static char Query_Volume_Doc[] =  "Query volume stat";
-/*   	mount
+static char Mount_Doc[] =  "Mount a tape: STK.mount(vol,drive,media_type,seq)";
+static char Dismount_Doc[] =  "Dismount a tape: STK.dismount(vol,drive,media_type,seq)";
+static char Query_Volume_Doc[] =  "Query volume: STK.query(vol,media_type,seq)";
+static char Test_Doc[] =  "Test routine: (vol,drive,media_type,seq)";
+/*      mount
 
-	Arguments{
+        Arguments{
                 vol - cartridge id
                 drive - drive name
                 media_type_s - mediatype
@@ -299,20 +344,20 @@ static PyObject* mount(PyObject *self, PyObject *args)
   char *drive;
   char *media_type;
   DRIVEID stkdrv;
+  int seqNo;
+  SEQ_NO seq;
   int stat;
-  char *sc;
-  /*
-        Get the arguments
-  */
-  if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
-  	return (NULL);
+
+  if(!PyArg_ParseTuple(args, "sssi", &vol, &drive, &media_type, &seqNo)) {
+      printf("\nMOUNT - invalid arguments\n");
+      return (NULL);
+  }
+  seq = seqNo;
+  printf("\nMOUNT: vol=%s drive=%s, media_type=%s seq=%d\n",vol,drive,media_type,seq);
+
   asc2STKdrv(drive, &stkdrv);
-  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
-    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
-  else
-    stat = STKmount(1, vol, stkdrv, 0, NO_LOCK_ID);
-  sc = status_class(stat, drive_errs, media_errs );
-  return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
+  stat = STKmount(seq, vol, stkdrv, 0, NO_LOCK_ID);
+  return(Py_BuildValue("sis", status_class(stat), stat, cl_status(stat)));
 }
 
 /*
@@ -324,18 +369,20 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   char *drive;
   char *media_type;
   DRIVEID stkdrv;
+  int seqNo;
+  SEQ_NO seq;
   int stat;
-  char *sc;
 
-  if(!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type))                /* get args */ 
-  	return (NULL);
-  asc2STKdrv(drive, &stkdrv);							/* cvt drive 0,0,9,1 to binary */
-  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
-    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
-  else
-    stat = STKdismount(2, vol, stkdrv, NO_LOCK_ID);				/* call stk rtns */
-  sc = status_class(stat, drive_errs, media_errs );
-  return(Py_BuildValue("sis", sc, stat, cl_status(stat)));
+  if(!PyArg_ParseTuple(args, "sssi", &vol, &drive, &media_type, &seqNo)) {
+      printf("\nDISMOUNT - invalid arguments\n");
+      return (NULL);
+  }
+  seq = seqNo;
+  printf("\nDISMOUNT: vol=%s drive=%s, media_type=%s seq=%d\n",vol,drive,media_type,seq);
+
+  asc2STKdrv(drive, &stkdrv);
+  stat = STKdismount(seq, vol, stkdrv, NO_LOCK_ID);
+  return(Py_BuildValue("sis", status_class(stat), stat, cl_status(stat)));
 }
 
 static PyObject* query_volume(PyObject *self, PyObject *args)
@@ -343,28 +390,94 @@ static PyObject* query_volume(PyObject *self, PyObject *args)
   char *vol;
   char *media_type;
   int stat;
-  char *sc;
+  int seqNo;
+  SEQ_NO seq;
 
-  if(!PyArg_ParseTuple(args, "ss", &vol, &media_type))                         /* get args */ 
-  	return (NULL);
-  /* printf("calling STK.query_volume, vol=%s\n",vol); */
-  if (strlen(vol) != 6)								/* rpc timeout if strlen(vol) != 6 */
-    stat = STATUS_VOLUME_NOT_IN_LIBRARY;
-  else
-    stat = STKquery_volume(3, vol);
-  sc = status_class(stat, drive_errs, media_errs );
-  /* printf("STK.query_volume returned %s\n",volStatus); *
+  if(!PyArg_ParseTuple(args, "ssi", &vol, &media_type, &seqNo)) {
+      printf("\nQUERY_VOLUME - invalid arguments\n");
+      return (NULL);
+  }
+  seq = seqNo;
+  printf("\nQUERY_VOLUME: vol=%s media_type=%s seq=%d\n",vol,media_type,seq);
+
+  stat = STKquery_volume(seq, vol);
+
+  /* printf("\nSTK.QUERY_VOLUME returned %s\n",volStatus); *
   /* try to put this into same format as aml/2 state */
   if (strcmp("STATUS_VOLUME_IN_DRIVE",volStatus)==0) {
-      strcpy(volStatus,"M"); /* mounted */
+      strcpy(volStatus2,"M"); /* mounted */
   } else if (strcmp("STATUS_VOLUME_HOME",volStatus)==0) {
-      strcpy(volStatus,"O"); /* occupied */
+      strcpy(volStatus2,"O"); /* occupied */
   } else if (strcmp("STATUS_VOLUME_NOT_IN_LIBRARY",volStatus)==0) {
       volStatus[0]=0; /* not present - no info */
   } else if (strcmp("STATUS_VOLUME_IN_TRANSIT",volStatus)==0) {
-      strcpy(volStatus,"T"); /* aml doesnot have this - byt shorten */
+      strcpy(volStatus2,"T"); /* aml doesnot have this - but shorten */
   }
-  return(Py_BuildValue("siss", sc, stat, cl_status(stat),volStatus));
+  return(Py_BuildValue("sisss", status_class(stat), stat, cl_status(stat),volStatus2,volStatus));
+}
+
+static PyObject* test(PyObject *self, PyObject *args)
+{
+  char *vol;
+  char *media_type;
+  char *drive;
+  int stat;
+  char *sc;
+  int seqNo;
+  SEQ_NO seq;
+  STATUS status;
+  ALIGNED_BYTES       rbuf[(MAX_MESSAGE_SIZE/sizeof(ALIGNED_BYTES)+1)];
+  ACS_RESPONSE_TYPE   type;           /* final response structure          */
+  int                 size;           /* final response size               */
+  ACS_QUERY_SRV_RESPONSE *sp;         /* server response structure         */
+  QU_SRV_STATUS          *rp;         /* query server  status structure */
+  int                    i;           /* loop counter                      */
+
+
+  if(!PyArg_ParseTuple(args, "sssi", &vol, &drive, &media_type, &seqNo)) {      /* get args */
+      printf("\nDISMOUNT - invalid arguments\n");
+      return (NULL);
+  }
+  seq = seqNo;
+  printf("\nTEST: vol=%s drive=%s, media_type=%s seq=%d\n",vol,drive,media_type,seq);
+
+  status = acs_query_server(seq);
+  printf("\nACS_QUERY_SERVER transmit seq=%d, code=%d %s\n",seq,status,cl_status(status));
+  if (status != STATUS_SUCCESS){
+      sleep4IPC();
+      return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),STATE_LAST,cl_state(STATE_LAST),seq));
+  }
+
+  if ((status = get_ack(seq,&type)) != STATUS_SUCCESS) {
+      sleep4IPC();
+      return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),STATE_LAST,cl_state(STATE_LAST),seq));
+  }
+  if (type == RT_FINAL | type== RT_LAST) {
+      sleep4IPC();
+      status=STATUS_NONE;
+      return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),STATE_LAST,cl_state(STATE_LAST),seq));
+  }
+  size = sizeof(ACS_MOUNT_RESPONSE);
+  if ((status = get_next(seq,rbuf,size,&type)) != STATUS_SUCCESS) {
+      sleep4IPC();
+      return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),STATE_LAST,cl_state(STATE_LAST),seq));
+  }
+  sp = (ACS_QUERY_SRV_RESPONSE *)rbuf;
+  status=sp->query_srv_status;
+
+  if (status != STATUS_SUCCESS) {
+      printf("\nTEST bad status. seq=%d, code=%d %s\n",seq,status,cl_status(status));
+      sleep4IPC;
+      return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),STATE_LAST,cl_state(STATE_LAST),seq));
+  }  else {
+      /* I don't see how sp->count can ever be anything but 1 */
+      for (i = 0; i < (int)sp->count; i++) {
+          rp = &sp->srv_status[i];
+      }
+  }
+  printf("\nTEST returning: status_class=%s, status=%d %s state=%d %s seq=%d, count=%d\n",status_class(status), status, cl_status(status),rp->state,cl_state(rp->state),seq,(int)sp->count);
+  sleep4IPC();
+  return(Py_BuildValue("sisisii", status_class(status), status, cl_status(status),rp->state,cl_state(rp->state),seq));
 }
 
 /*
@@ -382,6 +495,8 @@ static PyMethodDef STK_Methods[] = {
   { "mount", mount, 1, Mount_Doc},
   { "dismount", dismount, 1, Dismount_Doc},
   { "query_volume", query_volume, 1, Query_Volume_Doc},
+  { "test", test, 1, Test_Doc},
+
   {0,     0}        /* Sentinel */
 };
 
