@@ -178,6 +178,11 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 
 	len = buf[BD_SIZE+1] + BD_SIZE + 2;
 
+        if ( len < BD_SIZE + 10 + 2 * p->n_parts ) {
+            len =  BD_SIZE + 10 + 2 * p->n_parts;
+            buf[BD_SIZE + 1] = 8 + 2 * p->n_parts;
+        }
+
         cdb_modsel[4] = len;
 
         DEBUG3(stderr,"Got length of %d\n", len);
