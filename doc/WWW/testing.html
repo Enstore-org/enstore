@@ -1,27 +1,31 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.04 [en] (X11; U; IRIX 6.2 IP22) [Netscape]">
+</HEAD>
+<BODY>
+
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>PROTOTYPE RESULTS</FONT></FONT></U></I></B></CENTER>
 &nbsp;
 <H2>
 Origins</H2>
 Enstore was originally written in Python under Linux using disk files to
-simulate tape drives. It ported easily to IRIX and AIX. Next,
-it was extended with a C module named ETape that calls FTT (Fermi
-Tape Tools). FTT is used to obtain the information about space
-remaining on tape cartridges and errors encountered while accessing tapes.
-This phase required a more extensive test environment.
-<BR>
+simulate tape drives. It ported easily to IRIX and AIX. Next, it was extended
+with a C module named ETape that calls FTT (Fermi Tape Tools). FTT is used
+to obtain the information about space remaining on tape cartridges and
+errors encountered while accessing tapes. This phase required a more extensive
+test environment.
 <H2>
 Test Stand</H2>
 The test stand that evolved contained different operating systems, different
-network connections, and different kinds of tape drives. The test
-stand schematic</A> shows the layout.
-<p>
-<img src="test-stand.gif">
-<p>
-<a href="test-stand.ps">(also available in Postscript)</a>
-<p>
+network connections, and different kinds of tape drives. The test stand
+schematic shows the layout.
+
+<P><IMG SRC="test-stand.gif" >
+
+<P><A HREF="test-stand.ps">(also available in Postscript)</A>
 
 <P>Some of the interesting points in the test stand:
-<BR>
 <LI>
 A 20MB/sec fibre channel network connection between two AIX nodes.</LI>
 
@@ -29,7 +33,8 @@ A 20MB/sec fibre channel network connection between two AIX nodes.</LI>
 A 56KB/sec to a remote Linux PC</LI>
 
 <LI>
-Two Storage Tek Redwood tape drives (12MB/sec)</LI>
+Two Storage Tek Redwood tape drives (10MB/sec). For tape drive testing
+results see <A HREF="http://www-hppc.fnal.gov/rip/tapetests/index.html">http://www-hppc.fnal.gov/rip/tapetests/index.html</A></LI>
 
 <LI>
 A Storage Tek 4410 silo and robot</LI>
@@ -43,23 +48,20 @@ Enstore library managers and movers running on Linux, Irix and AIX platforms</LI
 <H2>
 Test Results</H2>
 The most significant test results were obtained using the two AIX machines
-with
-fibre channel connection and the Redwood tape drives. Enstore
-repeatedly wrote
-eight cartridges (50 GB each) or 400 GB of random data in in approximately
-60 hours.
-Eight cartridges was the number available for the test and there is
-no reason to
-believe enstore could not have continued.
+with fibre channel connection and the Redwood tape drives. Enstore repeatedly
+wrote eight cartridges (50 GB each) or 400 GB of random data in in approximately
+60 hours. Eight cartridges was the number available for the test and there
+is no reason to believe enstore could not have continued.
 
 <P>The test was run with a mover on fntt2, a RS6000/F50-a fast modern machine,
-writing to a Redwood tape drive and encp on fntt1, a RS6000/370 -a slow (circa
-1992) machine reading from old disk drives. During this test the data rates
-were limited by the memory FNTT1 which was paging during the transfer.
+writing to a Redwood tape drive and encp on fntt1, a RS6000/370 -a slow
+(circa 1992) machine reading from old disk drives. During this test the
+data rates were limited by the memory FNTT1 which was paging during the
+transfer.
 
-<P>The test was also run entirely on fntt2  i.e. over a local tcp/ip
-connect not over an external network. During this test the
-limit was the speed of the disk from which encp was reading.
+<P>The test was also run entirely on fntt2 i.e. over a local tcp/ip connect
+not over an external network. During this test the limit was the speed
+of the disk from which encp was reading.
 <H3>
 Test Summary</H3>
 
@@ -67,87 +69,94 @@ Test Summary</H3>
 
 <PRE>Network&nbsp;&nbsp;&nbsp; 1GB&nbsp;&nbsp;&nbsp; 851sec&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1.2MB/sec&nbsp;&nbsp; 932sec&nbsp;&nbsp; 1.1MB/sec</PRE>
 
-<PRE>Local&nbsp;&nbsp;&nbsp;&nbsp; .5GB&nbsp;&nbsp;&nbsp; 131sec&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.8MB/sec&nbsp;&nbsp; 210sec&nbsp;&nbsp; 2.4MB/sec&nbsp;</PRE>
-
-<PRE></PRE>
-In the above table the&nbsp; DATA&nbsp;XFR TIME and ATE are the times to
-transfer the data not including tape mount times (~50 sec). The TOTAL&nbsp;TIME
-and RATE is from the start of encp until it is notified the data is on tape.
-Logs of the <A HREF="#redwoodfiber">network transfer </A> and the 
-<A HREF="#redwoodlocal">local transfer</A> show all of the detail.
-<BR>
+<PRE>Local&nbsp;&nbsp;&nbsp;&nbsp; .5GB&nbsp;&nbsp;&nbsp; 131sec&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 3.8MB/sec&nbsp;&nbsp; 210sec&nbsp;&nbsp; 2.4MB/sec</PRE>
+In the above table the&nbsp; DATA XFR TIME and ATE are the times to transfer
+the data not including tape mount times (~50 sec). The TOTAL TIME and RATE
+is from the start of encp until it is notified the data is on tape. Logs
+of the <A HREF="#redwoodfiber">network transfer </A>and the <A HREF="#redwoodlocal">local
+transfer</A> show all of the detail.
 <H2>
 What Was Not Tested</H2>
-Error conditions did not occur during testing of the prototype. Tape
-and network errors are known to cause file transfers to fail and not be retried.
+
+<H3>
+Error Conditions and Recovery</H3>
+Error conditions did not occur during testing of the prototype. Tape and
+network errors are known to cause file transfers to fail and not be retried.
 These errors and many others must be handled in a production system but
 the prototype did run continuously for days with out error conditions.
+<H3>
+Performance and Bottle Necks</H3>
+The ultimate bottlenecks of the system are currently unknown because we
+were not worried about performance in the prototype and we were limited
+by disk performance in the tests. Work was done to understand and improve
+the performance of network file transfers but its performance could not
+be tested because of the slow speed of the disks.
 
-<h2><a name="redwoodfiber">
-Network Transfer Log
-</h2>
-<pre>
-TIMINGS FOR NETWORK COPY TO TAPE
+<P>There will ultimate bottle necks in the network data transfers and in
+the per file over head which is currently about 80 seconds (50 seconds
+of which is tape mount time).
+<H2>
+<A NAME="redwoodfiber"></A>Network Transfer Log</H2>
+
+<PRE>TIMINGS FOR NETWORK COPY TO TAPE
 
 fntt1> ecmd encp --list /data4/d4-1gb /pnfs/enstore/redwood-tests/x8
 Checking /data4/d4-1gb
-  dt: 0.109719991684    cum= 0.11406493187
-Checking /pnfs/enstore/redwood-tests/x8    cum= 0.120937943459
-  dt: 0.350533008575    cum= 0.472744941711
-Storing local info   cum= 0.476928949356
-  dt: 0.0382910966873    cum= 0.519853949547
-Requesting callback ports    cum= 0.5253469944
-   fntt1.fnal.gov 7600 dt: 0.0354549884796    cum= 0.567543029785
-Calling Config Server to find redwood50.library_manager    cum= 0.574772000313
-   fnhpssc-fc 7516 dt: 0.0254299640656    cum= 0.605423927307
-Sending ticket to redwood50.library_manager    cum= 0.61233496666
-  Q'd: /data4/d4-1gb redwood50 family: test bytes: 1073741312 dt: 0.126762032509    cum= 0.749526023865
-Waiting for mover to call back    cum= 0.754024982452
-   fntt2.fnal.gov 7600    cum= 52.1609499454
-Sending data    cum= 52.1665359735
-  bytes: 1073741312 dt: 850.942865014 = 1.20337046566 MB/S    cum= 903.121601939
-Waiting for final mover dialog    cum= 903.12666893
-  dt: 27.5477809906    cum= 930.678053975
-Adding file to pnfs    cum= 930.683827996
-  dt: 0.703927993774    cum= 931.390488982
-Adding transaction log to pnfs    cum= 931.39765501
-  dt: 0.398756980896    cum= 931.79796195
-pnfs/enstore/redwood-tests/x8 : 1073741312 bytes copied to 000005 
-   in  931.394680023 seconds at 1.0994258698 MB/S    cum= 931.822350979
-</pre>
+&nbsp; dt: 0.109719991684&nbsp;&nbsp;&nbsp; cum= 0.11406493187
+Checking /pnfs/enstore/redwood-tests/x8&nbsp;&nbsp;&nbsp; cum= 0.120937943459
+&nbsp; dt: 0.350533008575&nbsp;&nbsp;&nbsp; cum= 0.472744941711
+Storing local info&nbsp;&nbsp; cum= 0.476928949356
+&nbsp; dt: 0.0382910966873&nbsp;&nbsp;&nbsp; cum= 0.519853949547
+Requesting callback ports&nbsp;&nbsp;&nbsp; cum= 0.5253469944
+&nbsp;&nbsp; fntt1.fnal.gov 7600 dt: 0.0354549884796&nbsp;&nbsp;&nbsp; cum= 0.567543029785
+Calling Config Server to find redwood50.library_manager&nbsp;&nbsp;&nbsp; cum= 0.574772000313
+&nbsp;&nbsp; fnhpssc-fc 7516 dt: 0.0254299640656&nbsp;&nbsp;&nbsp; cum= 0.605423927307
+Sending ticket to redwood50.library_manager&nbsp;&nbsp;&nbsp; cum= 0.61233496666
+&nbsp; Q'd: /data4/d4-1gb redwood50 family: test bytes: 1073741312 dt: 0.126762032509&nbsp;&nbsp;&nbsp; cum= 0.749526023865
+Waiting for mover to call back&nbsp;&nbsp;&nbsp; cum= 0.754024982452
+&nbsp;&nbsp; fntt2.fnal.gov 7600&nbsp;&nbsp;&nbsp; cum= 52.1609499454
+Sending data&nbsp;&nbsp;&nbsp; cum= 52.1665359735
+&nbsp; bytes: 1073741312 dt: 850.942865014 = 1.20337046566 MB/S&nbsp;&nbsp;&nbsp; cum= 903.121601939
+Waiting for final mover dialog&nbsp;&nbsp;&nbsp; cum= 903.12666893
+&nbsp; dt: 27.5477809906&nbsp;&nbsp;&nbsp; cum= 930.678053975
+Adding file to pnfs&nbsp;&nbsp;&nbsp; cum= 930.683827996
+&nbsp; dt: 0.703927993774&nbsp;&nbsp;&nbsp; cum= 931.390488982
+Adding transaction log to pnfs&nbsp;&nbsp;&nbsp; cum= 931.39765501
+&nbsp; dt: 0.398756980896&nbsp;&nbsp;&nbsp; cum= 931.79796195
+pnfs/enstore/redwood-tests/x8 : 1073741312 bytes copied to 000005&nbsp;
+&nbsp;&nbsp; in&nbsp; 931.394680023 seconds at 1.0994258698 MB/S&nbsp;&nbsp;&nbsp; cum= 931.822350979</PRE>
 
-<h2><a name="redwoodlocal">
-Local Transfer Log
-</h2>
-<pre>
-TIMINGS FOR "LOCAL" COPY TO TAPE
+<H2>
+<A NAME="redwoodlocal"></A>Local Transfer Log</H2>
+
+<PRE>TIMINGS FOR "LOCAL" COPY TO TAPE
 
 fntt2> ecmd encp --list /data/d2 /pnfs/enstore/redwood-tests/x7
 Checking /data/d2
-  dt: 0.030956029892    cum= 0.0315579175949
-Checking /pnfs/enstore/redwood-tests/x7    cum= 0.032133936882
-  dt: 0.240665078163    cum= 0.273137927055
-Storing local info   cum= 0.273504018784
-  dt: 0.0108720064163    cum= 0.284879922867
-Requesting callback ports    cum= 0.285327911377
-   fntt2.fnal.gov 7600 dt: 0.0146160125732    cum= 0.300705909729
-Calling Config Server to find redwood50.library_manager    cum= 0.301414012909
-   fnhpssc-fc 7516 dt: 0.011283993721    cum= 0.313316941261
-Sending ticket to redwood50.library_manager    cum= 0.313857913017
-  Q'd: /data/d2 redwood50 family: test bytes: 524288000 dt: 0.0346219539642    cum= 0.349470019341
-Waiting for mover to call back    cum= 0.349876999855
-   fntt2.fnal.gov 7601    cum= 57.2415390015
-Sending data    cum= 57.2433879375
-  bytes: 524288000 dt: 130.913884997 = 3.81930457575 MB/S    cum= 188.159516931
-Waiting for final mover dialog    cum= 188.160026908
-  dt: 21.5957429409    cum= 209.75623095
-Adding file to pnfs    cum= 209.75672102
-  dt: 0.422170996666    cum= 210.179323912
-Adding transaction log to pnfs    cum= 210.179908991
-  dt: 0.202365994453    cum= 210.382684946
-/pnfs/enstore/redwood-tests/x7 : 524288000 bytes copied to 000005 
-    in  210.179669023 seconds at 2.37891662949 MB/S    cum= 210.384336948
-fntt2> 
-</pre>
+&nbsp; dt: 0.030956029892&nbsp;&nbsp;&nbsp; cum= 0.0315579175949
+Checking /pnfs/enstore/redwood-tests/x7&nbsp;&nbsp;&nbsp; cum= 0.032133936882
+&nbsp; dt: 0.240665078163&nbsp;&nbsp;&nbsp; cum= 0.273137927055
+Storing local info&nbsp;&nbsp; cum= 0.273504018784
+&nbsp; dt: 0.0108720064163&nbsp;&nbsp;&nbsp; cum= 0.284879922867
+Requesting callback ports&nbsp;&nbsp;&nbsp; cum= 0.285327911377
+&nbsp;&nbsp; fntt2.fnal.gov 7600 dt: 0.0146160125732&nbsp;&nbsp;&nbsp; cum= 0.300705909729
+Calling Config Server to find redwood50.library_manager&nbsp;&nbsp;&nbsp; cum= 0.301414012909
+&nbsp;&nbsp; fnhpssc-fc 7516 dt: 0.011283993721&nbsp;&nbsp;&nbsp; cum= 0.313316941261
+Sending ticket to redwood50.library_manager&nbsp;&nbsp;&nbsp; cum= 0.313857913017
+&nbsp; Q'd: /data/d2 redwood50 family: test bytes: 524288000 dt: 0.0346219539642&nbsp;&nbsp;&nbsp; cum= 0.349470019341
+Waiting for mover to call back&nbsp;&nbsp;&nbsp; cum= 0.349876999855
+&nbsp;&nbsp; fntt2.fnal.gov 7601&nbsp;&nbsp;&nbsp; cum= 57.2415390015
+Sending data&nbsp;&nbsp;&nbsp; cum= 57.2433879375
+&nbsp; bytes: 524288000 dt: 130.913884997 = 3.81930457575 MB/S&nbsp;&nbsp;&nbsp; cum= 188.159516931
+Waiting for final mover dialog&nbsp;&nbsp;&nbsp; cum= 188.160026908
+&nbsp; dt: 21.5957429409&nbsp;&nbsp;&nbsp; cum= 209.75623095
+Adding file to pnfs&nbsp;&nbsp;&nbsp; cum= 209.75672102
+&nbsp; dt: 0.422170996666&nbsp;&nbsp;&nbsp; cum= 210.179323912
+Adding transaction log to pnfs&nbsp;&nbsp;&nbsp; cum= 210.179908991
+&nbsp; dt: 0.202365994453&nbsp;&nbsp;&nbsp; cum= 210.382684946
+/pnfs/enstore/redwood-tests/x7 : 524288000 bytes copied to 000005&nbsp;
+&nbsp;&nbsp;&nbsp; in&nbsp; 210.179669023 seconds at 2.37891662949 MB/S&nbsp;&nbsp;&nbsp; cum= 210.384336948
+fntt2></PRE>
+
 </BODY>
 </HTML>
