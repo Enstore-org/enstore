@@ -86,7 +86,9 @@ struct transfer
   off_t mmap_left;        /* Bytes to next mmap segment. */
   int mmap_count;         /* Number of mmapped segments done. */
 
-  long long fsync_threshold; /* Number of bytes to wait between fsync()s. */
+  long long fsync_threshold; /* Number of bytes to wait between fsync()s. 
+			        It is the max of block_size, mmap_size and
+				1% of the filesize. */
   long long last_fsync;      /* Number of bytes done though last fsync(). */
 
   struct timeval timeout; /*time to wait for data to be ready*/
@@ -154,9 +156,11 @@ static struct transfer* pack_return_values(struct transfer *info,
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
 static double rusage_elapsed_time(struct rusage *sru, struct rusage *eru);
-static long long get_fsync_threshold(long long bytes, int blk_size);
+static long long get_fsync_threshold(struct transfer *info); /*long long bytes, int blk_size);*/
 static long align_to_page(long value);
 static long align_to_size(long value, long align);
+unsigned long long min(int num, ...);
+unsigned long long max(int num, ...);
 static int setup_mmap_io(struct transfer *info);
 static int setup_direct_io(struct transfer *info);
 static int setup_posix_io(struct transfer *info);
@@ -248,6 +252,7 @@ static int buffer_empty(int array_size)
 
   for(i = 0; i < array_size; i++)
   {
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     pthread_mutex_lock(&(buffer_lock[i]));
     if(stored[i])
     {
@@ -266,6 +271,7 @@ static int buffer_full(int array_size)
 
   for(i = 0; i < array_size; i++)
   {
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     pthread_mutex_lock(&(buffer_lock[i]));
     if(!stored[i])
     {
@@ -287,6 +293,7 @@ static struct transfer* pack_return_values(struct transfer* retval,
 					   double transfer_time,
 					   char* filename, int line)
 {
+  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
   /* Do not bother with checking return values for errors.  Should the
      pthread_* functions fail at this point, there is notthing else to
@@ -329,15 +336,17 @@ static double rusage_elapsed_time(struct rusage *sru, struct rusage *eru)
 	  (extract_time((&(sru->ru_stime)))+extract_time((&(sru->ru_utime)))));
 }
 
-static long long get_fsync_threshold(long long bytes, int blk_size)
+static long long get_fsync_threshold(struct transfer *info)
 {
   long long temp_value;
 
   /* Find out what one percent of the file size is. */
-  temp_value = (long long)(bytes / (double)100.0);
+  temp_value = (long long)(info->bytes / (double)100.0);
 
-  /* Return the larger of the block size and 1 percent of the file size. */
-  return (temp_value > blk_size) ? temp_value : blk_size;
+  /* Return the largest of these values. */
+  return (long long)max(3, (unsigned long long)temp_value,
+			(unsigned long long)info->block_size,
+			(unsigned long long)info->mmap_size);
 }
 
 /* A usefull function to round a value to the next full page. */
@@ -357,6 +366,8 @@ static long align_to_size(long value, long align)
 int is_empty(int bin)
 {
   int rtn = 0; /*hold return value*/
+
+  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
   if(pthread_mutex_lock(&buffer_lock[bin]) != 0)
@@ -381,7 +392,11 @@ unsigned long long min(int num, ...)
 {
   va_list ap;
   int i;
+#ifdef ULLONG_MAX
+  unsigned long long min_val = ULLONG_MAX;
+#else
   unsigned long long min_val = ULONG_MAX; /*Note: should be ULLONG_MAX */
+#endif
   unsigned long long current;
 
   va_start(ap, num);
@@ -392,6 +407,25 @@ unsigned long long min(int num, ...)
       min_val = current;
   }
   return min_val;
+}
+
+/*First argument is the number of arguments to follow.
+  The rest are the arguments to find the max of.*/
+unsigned long long max(int num, ...)
+{
+  va_list ap;
+  int i;
+  unsigned long long max_val = 0;
+  unsigned long long current;
+
+  va_start(ap, num);
+
+  for(i = 0; i < num; i++)
+  {
+    if((current = va_arg(ap, unsigned long long)) > max_val)
+      max_val = current;
+  }
+  return max_val;
 }
 
 /***************************************************************************/
@@ -699,7 +733,7 @@ static int setup_posix_io(struct transfer *info)
   if(S_ISREG(file_info.st_mode))
   {
     /* Get the number of bytes to transfer between fsync() calls. */
-    info->fsync_threshold = get_fsync_threshold(info->size, info->block_size);
+    info->fsync_threshold = get_fsync_threshold(info);
     /* Set the current number of bytes remaining since last fsync to
        the size of the file. */
     info->last_fsync = info->size;
@@ -880,16 +914,19 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
     {
       /* If the amount of data transfered between fsync()s has passed,
 	 do the fsync and record amount completed. */
-      if((info->last_fsync - info->bytes - sts) > info->fsync_threshold)
+      
+      if((info->last_fsync - info->bytes/* - sts*/) > info->fsync_threshold)
       {
 	info->last_fsync = info->bytes - sts;
-	fsync(info->fd);
+	/*fsync(info->fd);*/
+	sync();
       }
       /* If the entire file is transfered, do the fsync(). */
       else if((info->bytes - sts) == 0)
       {
 	info->last_fsync = info->bytes - sts;
-	fsync(info->fd);
+	/*fsync(info->fd);*/
+	sync();
       }
     }
   }
@@ -972,6 +1009,8 @@ int thread_wait(int bin, struct transfer *info)
   else                              /*read*/
     expected = 0;
 
+  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
   if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
   {
@@ -986,12 +1025,19 @@ int thread_wait(int bin, struct transfer *info)
     gettimeofday(&cond_wait_tv, NULL);
     cond_wait_ts.tv_sec = cond_wait_tv.tv_sec + info->timeout.tv_sec;
     cond_wait_ts.tv_nsec = cond_wait_tv.tv_usec * 1000;
-    
+
+  wait_for_condition:
+
     /* This bin still needs to be used by the other thread.  Put this thread
        to sleep until the other thread is done with it. */
     if((p_rtn = pthread_cond_timedwait(&next_cond, &buffer_lock[bin],
 				       &cond_wait_ts)) != 0)
     {
+      /* If the wait was interupted, resume. */
+      if(p_rtn == EINTR)
+	goto wait_for_condition;
+
+      pthread_mutex_unlock(&buffer_lock[bin]);
       pack_return_values(info, 0, p_rtn, THREAD_ERROR,
 			 "waiting for condition failed",
 			 0.0, __FILE__, __LINE__);
@@ -1024,6 +1070,8 @@ int thread_signal(int bin, size_t bytes, struct transfer *info)
 {
   int p_rtn;                    /* Pthread return value. */
 
+  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+    
   /* Obtain the mutex lock for the specific buffer bin that is needed to
      clear the bin for writing. */
   if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
@@ -1262,19 +1310,23 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     {
       if((p_rtn = thread_collect(reads->thread_id)) != 0)
       {
-	/* Don't let these threads continue on forever. */
-	thread_collect(writes->thread_id);
-	thread_collect(monitor_tid);
-
-	pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-			   "joining with read thread failed",
-			   0.0, __FILE__, __LINE__);
-	pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-			   "joining with read thread failed",
-			   0.0, __FILE__, __LINE__);
-	return;
+	/* If the error was EINTR, skip this handling.  The thread is hung
+	 and it is knowningly being abandoned. */
+	if(p_rtn != EINTR)
+	{
+	  /* Don't let these threads continue on forever. */
+	  thread_collect(writes->thread_id);
+	  thread_collect(monitor_tid);
+	  
+	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+			     "joining with read thread failed",
+			     0.0, __FILE__, __LINE__);
+	  pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+			     "joining with read thread failed",
+			     0.0, __FILE__, __LINE__);
+	  return;
+	}
       }
-
       if(reads->exit_status)
       {
 	fprintf(stderr,
@@ -1297,17 +1349,22 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     {
       if((p_rtn = thread_collect(writes->thread_id)) != 0)
       {
-	/* Don't let these threads continue on forever. */
-	thread_collect(reads->thread_id);
-	thread_collect(monitor_tid);
+	/* If the error was EINTR, skip this handling.  The thread is hung
+	 and it is knowningly being abandoned. */
+	if(p_rtn != EINTR)
+	{
+	  /* Don't let these threads continue on forever. */
+	  thread_collect(reads->thread_id);
+	  thread_collect(monitor_tid);
 
-	pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
-			   "joining with write thread failed",
-			   0.0, __FILE__, __LINE__);
-	pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
-			   "joining with write thread failed",
-			   0.0, __FILE__, __LINE__);
-	return;
+	  pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+			     "joining with write thread failed",
+			     0.0, __FILE__, __LINE__);
+	  pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+			     "joining with write thread failed",
+			     0.0, __FILE__, __LINE__);
+	  return;
+	}
       }
       if(writes->exit_status)
       {
@@ -1372,13 +1429,17 @@ static void* thread_monitor(void *monitor_info)
   struct timespec rem_time;    /* Nanosleep time left from signal interupt. */
   struct timeval start_read;   /* Old time to remember during nanosleep. */
   struct timeval start_write;  /* Old time to remember during nanosleep. */
-  int i;                       /* Loop counter. */
 
   /* This is the maximum time a read/write call is allowed to take. If it
      takes longer than this then it has not been able to achive a minimum 
      rate of 0.5 MB/S. */
-  sleep_time.tv_sec = (time_t)(read_info->block_size/(float)524288) + 1;
+  /* Don't use read_info->fsync_threshold; it may not be initalized yet. */
+  sleep_time.tv_sec = (time_t)(get_fsync_threshold(read_info)/524288.0) + 1;
+  /* To cause intential DEVICE_ERRORs use the following line instead. */
+  /*sleep_time.tv_sec = (time_t)(read_info->block_size/524288.0) + 1;*/
   sleep_time.tv_nsec = 0;
+
+  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
   if(pthread_mutex_lock(&done_mutex))
     pthread_exit(NULL);
@@ -1387,6 +1448,8 @@ static void* thread_monitor(void *monitor_info)
   {
     if(pthread_mutex_unlock(&done_mutex))
       pthread_exit(NULL);
+
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
     if(pthread_mutex_lock(&monitor_mutex))
       pthread_exit(NULL);
@@ -1419,7 +1482,9 @@ static void* thread_monitor(void *monitor_info)
       /* We successfully slept the full allotted time. */
       break;
     }
-
+    
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+    
     if(pthread_mutex_lock(&monitor_mutex))
       pthread_exit(NULL);
     if(pthread_mutex_lock(&done_mutex))
@@ -1442,35 +1507,34 @@ static void* thread_monitor(void *monitor_info)
 	 continue the memory locations have already been freed and will cause
 	 a segmentation violation. */
       pthread_cancel(read_info->thread_id);
-
-      /* This code is similar to pack_return_values, except that the value
-	 of 'done' is set to  -1 instead of 1. */
-
+      /* Specify the following since we can't use pack_return_values() here. */
       read_info->crc_ui = 0;             /* Checksum */
-      read_info->errno_val = EBUSY;      /* Errno value if error occured. */
+      read_info->errno_val = EBUSY    ;  /* Errno value if error occured. */
       read_info->exit_status = 1;        /* Exit status of the thread. */
-      read_info->msg = "read() system call stuck inside kernel to long";
-                                         /* Additional error message. */
+      read_info->msg = "write() system call stuck inside kernel to long";
+                                          /* Additional error message. */
       read_info->transfer_time = 0.0;
-      read_info->line = __LINE__;             
+      read_info->line = __LINE__;
       read_info->filename = __FILE__;
-      
       /* Setting this to -1 tells the main thread to ignore this thread. */
-      /* TEST: Now that thread_collect() is in place, this should be set to
-	 1 so an attempt to join the thread is made. */
       read_info->done = 1;
-      /* Tell the other thread to stop waiting (discover the other threads
+
+      /* Signal the other thread there was an error. */
+      pthread_cancel(write_info->thread_id);
+      /* Specify the following since we can't use pack_return_values() here. */
+      write_info->crc_ui = 0;             /* Checksum */
+      write_info->errno_val = ECANCELED;  /* Errno value if error occured. */
+      write_info->exit_status = THREAD_ERROR; /* Exit status of the thread. */
+      write_info->msg = "thread was terminated";
+                                          /* Additional error message. */
+      write_info->transfer_time = 0.0;
+      write_info->line = __LINE__;
+      write_info->filename = __FILE__;
+      write_info->done = 1;
+
+      /* Tell the main thread to stop waiting (discover the other threads
 	 failure) and error out nicely. */
       pthread_cond_signal(&done_cond);
-
-      /* Signal the other thread there was an error. We need to lock the
-	 mutex associated with the next bin to be used by the other thread.
-	 Since, we don't know which one, get them all. */
-      for(i = 0; i < read_info->array_size; i++)
-	pthread_mutex_trylock(&(buffer_lock[i]));
-      pthread_cond_signal(&next_cond);
-      for(i = 0; i < read_info->array_size; i++)
-	pthread_mutex_unlock(&(buffer_lock[i]));
 
       pthread_mutex_unlock(&monitor_mutex);
       pthread_mutex_unlock(&done_mutex);
@@ -1489,33 +1553,33 @@ static void* thread_monitor(void *monitor_info)
 	 continue the memory locations have already been freed and will cause
 	 a segmentation violation. */
       pthread_cancel(write_info->thread_id);
-      
-      /* This code is similar to pack_return_values, except that the value
-	 of 'done' is set to  -1 instead of 1. */
-
+      /* Specify the following since we can't use pack_return_values() here. */
       write_info->crc_ui = 0;             /* Checksum */
-      write_info->errno_val = EBUSY    ;  /* Errno value if error occured. */
-      write_info->exit_status = 1;        /* Exit status of the thread. */
+      write_info->errno_val = EBUSY;      /* Errno value if error occured. */
+      write_info->exit_status = THREAD_ERROR; /* Exit status of the thread. */
       write_info->msg = "write() system call stuck inside kernel to long";
                                           /* Additional error message. */
       write_info->transfer_time = 0.0;
       write_info->line = __LINE__;
       write_info->filename = __FILE__;
-
-      /* Setting this to -1 tells the main thread to ignore this thread. */
       write_info->done = 1;
-      /* Tell the other thread to stop waiting (discover the other threads
+      
+      /* Signal the other thread there was an error. */
+      pthread_cancel(read_info->thread_id);
+      /* Specify the following since we can't use pack_return_values() here. */
+      read_info->crc_ui = 0;             /* Checksum */
+      read_info->errno_val = ECANCELED;  /* Errno value if error occured. */
+      read_info->exit_status = THREAD_ERROR; /* Exit status of the thread. */
+      read_info->msg = "thread was terminated";
+                                         /* Additional error message. */
+      read_info->transfer_time = 0.0;
+      read_info->line = __LINE__;
+      read_info->filename = __FILE__;
+      read_info->done = 1;
+
+      /* Tell the main thread to stop waiting (discover the other threads
 	 failure) and error out nicely. */
       pthread_cond_signal(&done_cond);
-
-      /* Signal the other thread there was an error. We need to lock the
-	 mutex associated with the next bin to be used by the other thread.
-	 Since, we don't know which one, get them all. */
-      for(i = 0; i < write_info->array_size; i++)
-	pthread_mutex_trylock(&(buffer_lock[i]));
-      pthread_cond_signal(&next_cond);
-      for(i = 0; i < write_info->array_size; i++)
-	pthread_mutex_unlock(&(buffer_lock[i]));
 
       pthread_mutex_unlock(&monitor_mutex);
       pthread_mutex_unlock(&done_mutex);
@@ -1608,6 +1672,8 @@ static void* thread_read(void *info)
       if(do_select(info))
 	return NULL;
 
+      pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+
       /* In case something happens, make sure that the monitor thread can
 	 determine that the transfer is stuck. */
       if(pthread_mutex_lock(&monitor_mutex))
@@ -1645,6 +1711,8 @@ static void* thread_read(void *info)
 	  return NULL;
       }
       
+      pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+
       /* Since the read call returned, clear the timeval struct. */
       if(pthread_mutex_lock(&monitor_mutex))
       {
@@ -1698,6 +1766,7 @@ static void* thread_read(void *info)
 
     /* Determine where to put the data. */
     bin = (bin + 1) % read_info->array_size;
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
     if(pthread_mutex_lock(&monitor_mutex))
     {
@@ -1824,6 +1893,8 @@ static void* thread_write(void *info)
       if(do_select(info))
 	return NULL;
       
+      pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+
       /* In case something happens, make sure that the monitor thread can
 	 determine that the transfer is stuck. */
       if(pthread_mutex_lock(&monitor_mutex))
@@ -1860,6 +1931,8 @@ static void* thread_write(void *info)
 	if(sts < 0)
 	  return NULL;
       }
+
+      pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
 
       /* Since the write call returned, clear the timeval struct. */
       if(pthread_mutex_lock(&monitor_mutex))
@@ -1922,6 +1995,7 @@ static void* thread_write(void *info)
 
     /* Determine where to get the data. */
     bin = (bin + 1) % write_info->array_size;
+    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
     /* Determine the number of bytes left to transfer. */
     if(pthread_mutex_lock(&monitor_mutex))
     {
