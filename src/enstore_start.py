@@ -476,6 +476,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         "alarm_server",
         "volume_clerk",
         "file_clerk",
+        "info_server",
         "db_checkpoint",
         "db_deadlock",
         "inquisitor",
@@ -565,6 +566,7 @@ def do_work(intf):
                     enstore_constants.ALARM_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,
+                    enstore_constants.INFO_SERVER,
                     enstore_constants.INQUISITOR,
                     enstore_constants.RATEKEEPER,
                     enstore_constants.MONITOR_SERVER]:

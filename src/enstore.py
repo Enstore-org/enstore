@@ -36,6 +36,7 @@ import mover_client
 import monitor_client
 import option
 import volume_clerk_client
+import info_client
 import enstore_up_down
 import enstore_saag
 import enstore_saag_network
@@ -96,6 +97,8 @@ server_functions = {
                   inquisitor_client.do_work, option.ADMIN],
     "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                 volume_clerk_client.do_work, option.USER],
+    "info" : [info_client.InfoClientInterface,
+              info_client.do_work, option.USER],
     "database" : [dbs.Interface,
                   dbs.do_work, option.ADMIN],
     "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,

@@ -77,6 +77,7 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         "alarm_server",
         "volume_clerk",
         "file_clerk",
+        "info_server",
         "db_checkpoint",
         "db_deadlock",
         "inquisitor",

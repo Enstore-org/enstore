@@ -108,6 +108,7 @@ LOG_SERVER = "log_server"
 ALARM_SERVER = "alarm_server"
 EVENT_RELAY = "event_relay"
 FILE_CLERK = "file_clerk"
+INFO_SERVER = "info_server"
 VOLUME_CLERK = "volume_clerk"
 INQUISITOR = "inquisitor"
 CONFIG_SERVER = "configuration_server"  # included for use by inquisitor

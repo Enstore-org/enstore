@@ -219,8 +219,8 @@ class DbTable:
 		pass
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
-		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1, rdb = rdb)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None, auto_journal=1):
+		DbTable.__init__(self, host, port=port, database=database, jouHome=jou, table='file', pkey='bfid', auto_journal=auto_journal, rdb = rdb)
 		if dbHome:
 			self.bdb = db.DbTable(self.name, dbHome, jou, ['external_label'],0)
 		else:
@@ -350,8 +350,8 @@ class FileDB(DbTable):
 				Trace.log(e_errors.ERROR, 'index "external_label" does not exist')
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None):
-		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal = 1, rdb = rdb)
+	def __init__(self, host='localhost', port=8888, jou='.', database=default_database, rdb=None, dbHome=None, auto_journal=1):
+		DbTable.__init__(self, host, port, database=database, jouHome=jou, table='volume', pkey='label', auto_journal=auto_journal, rdb = rdb)
 		if dbHome:
 			self.bdb = db.DbTable(self.name, dbHome, jou, ['library', 'volume_family'])
 		else:
