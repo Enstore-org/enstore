@@ -500,6 +500,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                               control_socket = control_socket,
                                               external_label = external_label)
 
+            #Make sure the error get stored into work_ticket.
+            work_ticket = encp.combine_dict(done_ticket, work_ticket)
+
             if not e_errors.is_ok(result_dict):
                 #Log the error.
                 Trace.log(e_errors.ERROR,
