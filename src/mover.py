@@ -64,7 +64,7 @@ import dispatching_worker
 import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
-import callback				# used in send_user_done, get_user_sockets
+import callback				# used in send_user_done, get_usr_driver
 import wrapper_selector
 import ECRC				# for crc
 import Trace
@@ -246,6 +246,7 @@ class MoverClient:
 
 	self.read_error = [0,0]		# error this vol ([0]) and last vol ([1])
 	self.crc_func = ECRC.ECRC
+	self.local_mover_enable = 0
 
 	if config['device'][0] == '$':
 	    dev_rest=config['device'][string.find(config['device'],'/'):]
@@ -298,6 +299,7 @@ class MoverClient:
 			    self.vol_vcc[self.vol_info['external_label']] )
 	logc.send(log_client.INFO,2,"Media changer unload status"+str(rr['status']))
 	if rr['status'][0] != "ok":
+	    return freeze_tape_in_drive( self, errors.WRITE_UNMOUNT )
 	    raise "media loader cannot unload my volume"
 
 	del self.vol_vcc[self.vol_info['external_label']]
@@ -400,6 +402,7 @@ def do_fork( self, ticket, mode ):
     vcc = volume_clerk_client.VolumeClerkClient( csc, 0, 0, 0,
 						 ticket['vc']['address'] )
     self.vol_vcc[ticket['fc']['external_label']] = vcc# remember for unbind
+    ticket['mover'] = self.config
     self.hsm_driver._bytes_clear()
     self.state = 'busy'
     self.prev_r_bytes = 0; self.prev_w_bytes = 0; self.init_stall_time = 1
@@ -417,7 +420,6 @@ def forked_write_to_hsm( self, ticket ):
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
     if mvr_config['do_fork'] and self.pid != 0:
-        #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
 	logc.send(log_client.INFO,2,'WRITE_TO_HSM start'+str(ticket))
@@ -425,7 +427,7 @@ def forked_write_to_hsm( self, ticket ):
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
     
 	# First, call the user (to see if they are still there)
-	sts = get_user_sockets( self, ticket )
+	sts = get_usr_driver( self, ticket )
 	if sts == 'error':
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
@@ -469,7 +471,7 @@ def forked_write_to_hsm( self, ticket ):
             wrapper=wrapper_selector.select_wrapper(ticket['wrapper']['type'])
 	    if wrapper == None:
 		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"+\
-		      repr(ticket['wrapper']['type'])
+		      str(ticket['wrapper']['type'])
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
@@ -571,8 +573,6 @@ def forked_write_to_hsm( self, ticket ):
 		       "XXXXXXXXXXXenstore software error" )
 	    pass
 	ticket['fc'] = rsp['fc']
-	ticket['mover'] = self.config
-	ticket['mover']['callback_addr']        = self.callback_addr# this was the data callback
 	
 	logc.send(log_client.INFO,2,"WRITE DONE"+str(ticket))
 	
@@ -584,12 +584,10 @@ def forked_write_to_hsm( self, ticket ):
     return {}
 
 def forked_read_from_hsm( self, ticket ):
-    global vcc, fcc
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     if mvr_config['do_fork']: do_fork( self, ticket, 'r' )
     if mvr_config['do_fork'] and self.pid != 0:
-        #self.usr_driver.close()# parent copy??? opened in get_user_sockets
 	pass
     else:
 	logc.send(log_client.INFO,2,"READ_FROM_HSM start"+str(ticket))
@@ -597,7 +595,7 @@ def forked_read_from_hsm( self, ticket ):
 	self.lm_origin_addr = ticket['lm']['address']# who contacts me directly
 
 	# First, call the user (to see if they are still there)
-	sts = get_user_sockets( self, ticket )
+	sts = get_usr_driver( self, ticket )
 	if sts == "error":
 	    return_or_update_and_exit( self, self.lm_origin_addr, e_errors.ENCP_GONE )
 	    pass
@@ -648,7 +646,7 @@ def forked_read_from_hsm( self, ticket ):
             Trace.trace(11,'calling read_pre_data')
 	    self.hsm_driver.user_state_set( forked_state.index('wrapper, pre') )
             wrapper.read_pre_data( do, None )
-            Trace.trace(11,'calling fd_xfer -sanity size='+repr(ticket['fc']['sanity_cookie'][0]))
+            Trace.trace(11,'calling fd_xfer -sanity size='+str(ticket['fc']['sanity_cookie'][0]))
 	    self.hsm_driver.user_state_set( forked_state.index('data') )
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
@@ -660,7 +658,7 @@ def forked_read_from_hsm( self, ticket ):
 	       and san_crc != ticket['fc']['sanity_cookie'][1]:
 		pass
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
-                Trace.trace(11,'calling fd_xfer -rest size='+repr(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
+                Trace.trace(11,'calling fd_xfer -rest size='+str(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
 		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
 					    self.crc_func, san_crc )
@@ -727,8 +725,6 @@ def forked_read_from_hsm( self, ticket ):
         # add some info to user's ticket
         ticket['vc'] = self.vol_info
 	ticket['vc']['current_location'] = ticket['fc']['location_cookie']
-	ticket['mover'] = self.config
-	ticket['mover']['callback_addr'] = self.callback_addr# this was the data callback
 
         logc.send(log_client.INFO,2,'READ DONE'+str(ticket))
 
@@ -760,15 +756,19 @@ def return_or_update_and_exit( self, origin_addr, status ):
 
 # data transfer takes place on tcp sockets, so get ports & call user
 # Info is added to ticket
-def get_user_sockets( self, ticket ):
+def get_usr_driver( self, ticket ):
     self.hsm_driver.user_state_set( forked_state.index('encp check') )
+    ticket['mover']['local_mover'] = 0
     try:
-	host, port, listen_socket = callback.get_data_callback()
-	self.callback_addr = (host,port)
-	listen_socket.listen(4)
-	mover_ticket = {'callback_addr':self.callback_addr}
-	ticket['mover'] = mover_ticket
-	
+	if self.local_mover_enable and ticket['wrapper']['machine']==os.uname():
+	    if ticket['work'] == 'read_from_hsm': mode = 'r'
+	    else:                                 mode = 'w'
+	    try:
+		self.usr_driver = open( ticket['wrapper']['fullname'], mode )
+		ticket['mover']['local_mover'] = 1
+	    except: pass
+	    pass
+
 	# call the user and tell him I'm your mover and here's your ticket
 	# ticket should have index ['callback_addr']
 	# and then the entire ticket is sent to the callback_addr
@@ -776,18 +776,24 @@ def get_user_sockets( self, ticket ):
 	#           ['unique_id'] == id sent by the user
 	#           ['status'] == 'ok'
 	#           ['mover']['callback_addr']   set above
-	self.control_socket = callback.user_callback_socket( ticket )
-	
-	# we expect a prompt call-back here, and should protect against
-	# users not getting back to us. The best protection would be to
-	# kick off if the user dropped the control_socket, but I am at
-	# home and am not able to find documentation on select...
-	
-	self.usr_driver, address = listen_socket.accept()
-	listen_socket.close()
+	if ticket['mover']['local_mover']:
+	    self.control_socket = callback.user_callback_socket( ticket )
+	else:
+	    host, port, listen_socket = callback.get_data_callback()
+	    listen_socket.listen(4)
+	    ticket['mover']['callback_addr'] = (host,port)
+	    self.control_socket = callback.user_callback_socket( ticket )
+
+	    # we expect a prompt call-back here, and should protect against
+	    # users not getting back to us. The best protection would be to
+	    # kick off if the user dropped the control_socket, but I am at
+	    # home and am not able to find documentation on select...
+	    self.usr_driver, address = listen_socket.accept()
+	    listen_socket.close()
+	    pass
 	return 'ok'
-    except:
-	return 'error'
+    except: return 'error'
+    pass
 
 # create ticket that says we are idle
 def idle_mover_next( self ):
@@ -881,7 +887,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
     def quit(self,ticket):		# override dispatching_worker -
 	#  method which does not clean up
-        Trace.trace(10,"{quit address="+repr(self.server_address))
+        Trace.trace(10,"{quit address="+str(self.server_address))
 	del self.client_obj_inst	# clean up shm??? I should not have to!
 	# Note: 11-30-98 python v1.5 does cleans-up shm upon SIGINT (2)
         ticket['address'] = self.server_address
@@ -911,6 +917,13 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	
     def crc_off( self, ticket ):
 	self.client_obj_inst.crc_func = None
+	out_ticket = {'status':(e_errors.OK,None)}
+	self.reply_to_caller( out_ticket )
+	return
+
+    def local_mover( self, ticket ):
+	try: self.client_obj_inst.local_mover_enable = ticket['enable']
+	except: pass
 	out_ticket = {'status':(e_errors.OK,None)}
 	self.reply_to_caller( out_ticket )
 	return
