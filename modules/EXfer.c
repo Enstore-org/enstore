@@ -422,7 +422,6 @@ EXusrTo_(  PyObject	*self
     {
 	attrObj_p = PyObject_CallMethod( obj_pa[idx], "fileno", "" );
 	fd_a[idx] = PyInt_AsLong(attrObj_p);
-	/*Py_DECREF( attrObj_p );*/
 	frmFunc_p[idx] = read;
 	to_Func_p[idx] = write;
 	filesize_p[idx] = &filesize[idx]; filesize[idx] = 0;
