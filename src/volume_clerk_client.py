@@ -618,13 +618,16 @@ def do_work(intf):
                         status = ticket['status']
                         del ticket['status']
                         # deal with brain damaged backward compatibility
-                        del ticket['fc']
-                        del ticket['vc']
+                        if ticket.has_key('fc'):
+                            del ticket['fc']
+                        if ticket.has_key('vc'):
+                            del ticket['vc']
                         volume['files'][i] = ticket
                     else:
                         break
                 # is the status still ok?
                 if status[0] == e_errors.OK:
+                    # !!! need to generate a key to prevent fake import
                     # dump it now
                     f = open('vol.'+intf.export+'.obj', 'w')
                     cPickle.dump(volume, f)
