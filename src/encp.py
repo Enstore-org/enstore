@@ -949,6 +949,7 @@ def write_to_hsm(input_files, output, output_file_family='',
             # when this occurs. Create a file in pnfs namespace with
             #information about transfer.
             Trace.trace(10,"write_to_hsm waiting for final mover dialog on %s"%(control_socket,))
+            ### CGW need try here... can get "TCP connection closed"
             done_ticket = callback.read_tcp_obj(control_socket)
             control_socket.close()
             Trace.trace(10,"write_to_hsm final dialog recieved")
@@ -1004,7 +1005,7 @@ def write_to_hsm(input_files, output, output_file_family='',
                                  done_ticket["fc"]["size"])
             except:
                 exc,msg,tb=sys.exc_info()
-                print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
+                ### CGW tmp ###print  "Trouble with pnfs.set_xreference",str(exc),str(msg), "continuing..."
             # add the pnfs ids and filenames to the file clerk ticket and store it
             done_ticket["fc"]["pnfsid"] = p.id
             done_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
@@ -1515,6 +1516,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s"%(control_socket,))
+        ## CGW need a try here (can get TCP connection closed)
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         control_socket_closed = 1
