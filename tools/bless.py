@@ -61,8 +61,9 @@ if filelist:
     print "Applying tag production..."
 else:
     print "No files to tag!"
-err = 0
-for file in filelist:
+if 0:
+ err = 0
+ for file in filelist:
     cmd = "cvs tag -F production %s" % (file,)
     ret = os.system(cmd)
     if ret:
