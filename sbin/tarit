@@ -6,6 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # This script attempts to backup most things on a node
 
+bang=`echo -e "\041"`
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*|rip9|rip10)
@@ -103,5 +104,32 @@ nice -n 20 tar -l \
 echo "`date`:"
 ls -alR $M
 
-umount $BACKUP
+# on server1, also copy all "special" node-specific files from all nodes
+if [ $node = ${gang}srv1 ]; then
+  SPECIAL=$BACKUP/enstore/$gang/special
+  mkdir -p $SPECIAL >/dev/null 2>&1
+  SF=$SPECIAL/special_files
+  rm -f $SF
+  echo >$SF "\
+#$bang/bin/sh
+thisnode=\`uname -n| sed -e 's/\([^\.]\)\..*/\1/'\`
+F=/tmp/\${thisnode}.special.tgz
+rm -fr \$F
+tar -czf \$F \\
+  /var/adm/krb5/* \\
+  /fnal/ups/kt/*  \\
+  /etc/krb5.keytab \\
+  /etc/krb5.conf \\
+  /home/*/.k5login \\
+  /home/*/.k5user \\
+  /etc/sysconfig/network \\
+  /etc/sysconfig/network-scripts/ifcfg* \\
+  /var/spool/cron/*
+rcp \$F $node:$SPECIAL
+"
+chmod +x $SF
+rgang -c $gang $SF /tmp/special_files
+rgang $gang /tmp/special_files
+ls -l $SPECIAL
 
+umount $BACKUP

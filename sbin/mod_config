@@ -6,6 +6,11 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 export place=`pwd`
 
+if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
+    echo "You can not be `whoami` while you modify the enstore config file" >&2
+    exit 1
+fi
+
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 case $node in
   stken*) gang=stken
@@ -33,7 +38,10 @@ abort() { cd $place
         }
 
 # we need enstore to be setup
-if [ -z "${ENSTORE_DIR-}"  ]; then abort "do a setup enstore before calling $0"; fi
+if [ -z "${ENSTORE_DIR-}"  ]; then
+   . /usr/local/etc/setups.sh
+   setup enstore
+fi
 
 # all the action is here
 cd $ENSTORE_DIR/etc
@@ -52,7 +60,7 @@ else
      edcmd=$2
 fi
 export EDITOR=$edcmd # probably not needed, just did it so it is set
-export VISUAL=$edcmd # needed for cvs check in 
+export VISUAL=$edcmd # needed for cvs check in
 
 # make sure we are using the latest config from the repository
 echo "doing cvs update on $config"
