@@ -354,7 +354,10 @@ class Interface:
             elif opt == "--idle":
                 self.stop_draining=1
             elif opt == "--import":
-                self._import = 1
+                if value:
+                    self.import = value
+                else:
+                    self._import = 1
             elif opt == "--input-dir":
                 self.input_dir = value
             elif opt == "--update-interval":
