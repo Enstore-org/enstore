@@ -139,7 +139,7 @@ if __name__ == "__main__":
     err=0
     warn = 0
     if not args:
-        print "Usage: %s [-w] file.py [...]" % sys.argv[0]
+        print "Usage: %s [-w] file.py [...]" %  (sys.argv[0],)
         sys.exit(-1)
     if args[0] == '-w':
         warn=1
