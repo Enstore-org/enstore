@@ -526,3 +526,5 @@ class Interface:
                 self.dont_ask = 1
             elif opt == "--recycle":   # for recycling a tape
                 self.recycle = value
+            elif opt == "--dont-try-this-at-home-erase":
+                self.dont_try_this_at_home_erase = value
