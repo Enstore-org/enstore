@@ -203,10 +203,18 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             # record our changes
             self.dict[bfid] = record 
 
-            Trace.log(e_errors.INFO,
+            # some do not have pnfs_mapname
+            if record.has_key('pnfs_mapname'):
+                Trace.log(e_errors.INFO,
                       "%s = %s flagged as deleted:%s  volume=%s   mapfile=%s" %
                       (bfid,record["pnfs_name0"],record["deleted"],
                        record["external_label"], record["pnfs_mapname"]))
+            else:
+                Trace.log(e_errors.INFO,
+                      "%s = %s flagged as deleted:%s  volume=%s" %
+                      (bfid,record["pnfs_name0"],record["deleted"],
+                       record["external_label"]))
+           
 
             # and return to the caller
             status = (e_errors.OK, None)
@@ -923,10 +931,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             ####XXX client hangs waiting for TCP reply
             return
-
-        # fork as it may take quite a while to get the list
-        # if self.fork() != 0:
-        #    return
 
         # get a user callback
         if not self.get_user_sockets(ticket):
