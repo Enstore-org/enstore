@@ -898,6 +898,8 @@ if __name__ == "__main__" :
             Trace.log(e_errors.INFO, "Media Changer %s (re) starting"%
                       (intf.name,))
             mc.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
 	    mc.serve_forever_error("media changer")
             continue

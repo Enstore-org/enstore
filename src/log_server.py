@@ -243,6 +243,8 @@ if __name__ == "__main__" :
         try:
             Trace.trace(6,'Log Server (re)starting')
             logserver.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
 	    logserver.serve_forever_error(logserver.log_name)
             Trace.trace(6,"log_server main loop exception")

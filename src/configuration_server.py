@@ -323,6 +323,8 @@ if __name__ == "__main__":
         try:
             Trace.trace(6,"Configuration Server (re)starting")
             cs.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
 	    cs.serve_forever_error(MY_NAME)
             continue

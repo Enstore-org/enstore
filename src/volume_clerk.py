@@ -1339,6 +1339,8 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)
             continue

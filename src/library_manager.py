@@ -1590,11 +1590,10 @@ if __name__ == "__main__":
             Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%(intf.name,))
             lm.serve_forever()
+	except SystemExit, exit_code:
+	    sys.exit(exit_code)
         except:
 	    traceback.print_exc()
-	    if SystemExit:
-		sys.exit(0)
-	    else:
-	        lm.serve_forever_error("library manager", lm.logc)
-		continue
+	    lm.serve_forever_error("library manager", lm.logc)
+	    continue
     Trace.trace(1,"Library Manager finished (impossible)")
