@@ -412,10 +412,10 @@ def outputfile_check(inputlist, output):
             except ValueError:
                 pass  #There is no error.
 
-        except (e_errors.USERERROR, e_errors.EEXIST, e_errors.UNKNOWN), detail:
+        except (e_errors.USERERROR, e_errors.EEXIST, e_errors.UNKNOWN):
             exc, msg, tb = sys.exc_info()
             print_data_access_layer_format(ifullname, ofullname, 0,
-                                           {'status':(exc, detail)})
+                                           {'status':(exc, msg)})
             quit()
 
     if outputlist[0] == "/dev/null":
@@ -430,9 +430,10 @@ def outputfile_check(inputlist, output):
 
                 os.close(fd)
 
-            except OSError, detail:
-                print_data_access_layer_format('', f, 0, {'status':(
-                    e_errors.IOERROR, detail[1])})
+            except OSError:
+                exc, msg, tb = sys.exc_info()
+                print_data_access_layer_format('', f, 0,
+                                               {'status':(exc, msg)})
                 quit()
 
     return outputlist
@@ -845,7 +846,10 @@ def submit_one_request(ticket, verbose):
         if verbose > 1: print "RETRY_CNT=", ticket['retry']
 
     #Send work ticket to LM
-    responce_ticket = client['u'].send(ticket, ticket['lm']['address'])
+    #Get the library manager info information.
+    lmc = library_manager_client.LibraryManagerClient(
+        client['csc'], ticket['vc']['library'] + ".library_manager")
+    responce_ticket = lmc.read_from_hsm(ticket)
 
     if responce_ticket['status'][0] != e_errors.OK :
         Trace.log(e_errors.NET_ERROR,
@@ -957,10 +961,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #request_dictionary must have 'retry' as an element.
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
 
+    #This is here to help track down a hard to track error.  Leave this hear
+    # until the error is fixed.
     try:
         infile = request_dictionary.get('infile', '')
+        infile.close()
     except AttributeError, detail:
-        print "AttributeError", detail, type(request_dictionary)
+        print "request_dictionary:", type(request_dictionary),
+        pprint.pprint(request_dictionary)
 
     infile = request_dictionary.get('infile', '')
     outfile = request_dictionary.get('outfile', '')
@@ -969,13 +977,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     
     status = error_dictionary.get('status', (e_errors.OK, None))
 
-    try:
-        status = status[0]
-    except (KeyError, ValueError, TypeError):
-        pass
-
     #If there is no error, then don't do anything
-    if status == e_errors.OK:
+    if status == (e_errors.OK, None):
         result_dict = {'status':(e_errors.OK, None), 'retry':retry,
                        'queue_size':len(request_list)}
         return result_dict
@@ -1144,8 +1147,7 @@ def create_write_request(input_file, output_file,
                        file_size, library, file_family,
                        ff_wrapper, width, storage_group,
                        pinfo, pnfs, client, file_clerk_address,
-                       volume_clerk_address, library_manager_address,
-                       callback_addr, chk_crc, tinfo,
+                       volume_clerk_address, callback_addr, chk_crc, tinfo,
                        pri=1, delpri=0, agetime=0, delayed_dismount=0):
 
     ## quick fix to check HiPri functionality
@@ -1207,7 +1209,6 @@ def create_write_request(input_file, output_file,
                     "storage_group"      : storage_group,
                     "address"            : volume_clerk_address}
     file_clerk = {"address": file_clerk_address}
-    library_manager = {'address':library_manager_address}
 
     work_ticket = {}
     work_ticket['callback_addr'] = callback_addr
@@ -1217,7 +1218,6 @@ def create_write_request(input_file, output_file,
     work_ticket['fc'] = file_clerk
     work_ticket['file_size'] = file_size
     work_ticket['infile'] = input_file
-    work_ticket['lm'] = library_manager
     work_ticket['outfile'] = output_file
     work_ticket['pnfs'] = {'file_family':pnfs.file_family,
                            'file_family_width':pnfs.file_family_width,
@@ -1248,21 +1248,20 @@ def submit_write_request(work_ticket, client, max_retry, verbose):
         ##start of resubmit block
         Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
 
-        #Send work ticket to LM
-        ticket = client['u'].send(work_ticket, work_ticket['lm']['address'])
+        ticket = submit_one_request(work_ticket, verbose)
 
         if verbose > 4:
             print "LIBRARY MANAGER"
             pprint.pprint(ticket)
-            
-        if ticket['status'][0] == e_errors.OK :
-            return ticket
+
+        result_dict = handle_retries([work_ticket], work_ticket, ticket,
+                                     max_retry)
+        if result_dict['status'] == e_errors.RETRY or \
+           result_dict['status'] in e_errors.non_retriable_errors:
+            continue
         else:
-            work_ticket['retry'] = work_ticket['retry'] + 1
-            
-            Trace.log(e_errors.NET_ERROR,
-                      "submit_write_request: Write submit failed for %s"
-                      " - retrying" % work_ticket['infile'])
+            ticket['status'] = (e_errors.OK, ticket['status'])
+            return ticket
             
     ticket['status'] = (e_errors.TOO_MANY_RETRIES, ticket['status'])
     return ticket
@@ -1295,15 +1294,23 @@ def set_pnfs_settings(ticket, client, verbose):
         fc_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
         fc_ticket["fc"]["pnfs_mapname"] = p.mapfile
         fc_ticket["fc"]["drive"] = drive
+        #This shouldn't half to be set here.  It should be handled inside of
+        # the file clerk client.  Until it is this needs to be set here.
         fc_ticket["work"] = "set_pnfsid"
-        
-        fc_reply = client['u'].send(fc_ticket, fc_ticket['fc']['address'])
+
+        fcc = file_clerk_client.FileClient(client['csc'], ticket["fc"]["bfid"])
+        fc_reply = fcc.set_pnfsid(fc_ticket)
+    
+        if fc_reply['status'][0] != e_errors.OK:
+            print "aljhdfkajlshfjkasfhklasjfh"
+            print_data_access_layer_format('', '', 0, fc_reply)
+            quit()
         
         if verbose > 3:
             print "PNFS SET"
             pprint.pprint(fc_reply)
 
-        ticket['status'] = fc_ticket['status']
+        ticket['status'] = fc_reply['status']
     except:
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s, "
@@ -1556,16 +1563,14 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
 
     #Get the information needed to contact the file clerk, volume clerk and
     # the library manager.
-    fc_ticket, vc_ticket, lm_ticket = get_server_info(client, library[0])
+    fc_ticket, vc_ticket, lm_ticket = get_server_info(client)
     
     file_clerk_address = (fc_ticket["hostip"], fc_ticket["port"])
     volume_clerk_address = (vc_ticket["hostip"], vc_ticket["port"])
-    library_manager_address = (lm_ticket["hostip"], lm_ticket["port"])
 
     if verbose > 3:
         print "File clerk address:", file_clerk_address
         print "Volume clerk address:", volume_clerk_address
-        print "Library manager address:", library_manager_address
     
     file_fam = None
     # loop on all input files sequentially
@@ -1592,9 +1597,8 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
                            file_size[i], library[i], rq_file_family,
                            ff_wrapper[i], width[i], storage_group[i],
                            pinfo[i], p, client, file_clerk_address,
-                           volume_clerk_address, library_manager_address,
-                           callback_addr, chk_crc, tinfo, pri, delpri,
-                           agetime, delayed_dismount)
+                           volume_clerk_address, callback_addr, chk_crc,
+                           tinfo, pri, delpri, agetime, delayed_dismount)
 
         if verbose > 4:
             print "WORK_TICKET"
@@ -1623,7 +1627,6 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
         # handles its own retrying when an error occurs.
         if done_ticket['status'][0] != e_errors.OK:
             exit_status = 1
-            print "exit_status", exit_status
             continue
 
         #Send (write) the file to the mover.
@@ -1637,8 +1640,9 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
-        if done_ticket['status'] != e_errors.OK:
+        if done_ticket['status'][0] != e_errors.OK:
             exit_status = 1
+            print "exit_status", exit_status
             continue
 
         bytes = bytes + done_ticket['file_size']
@@ -1688,7 +1692,7 @@ def write_to_hsm(input_files, output, client, output_file_family='', verbose=0,
 #######################################################################
 #######################################################################
 
-def get_file_clerk_info(bfid, client):
+def get_clerks_info(bfid, client):
 
     #Get the file clerk information.
     fcc = file_clerk_client.FileClient(client['csc'], bfid)
@@ -1763,19 +1767,17 @@ def create_read_requests(inputlist, outputlist, file_size,
         
         Trace.trace(7,"read_from_hsm calling file clerk for bfid=%s"%(bfid[i],))
 
-        #Get the information from the file clerk.
+        #Get the information from the file and volume clerks.
         try:
             fc_reply = {}
             vc_reply = {}
-            fc_reply, vc_reply = get_file_clerk_info(bfid[i], client)
+            fc_reply, vc_reply = get_clerks_info(bfid[i], client)
 
             if fc_reply['status'][0] != e_errors.OK:
                 raise fc_reply['status']
             if vc_reply['status'][0] != e_errors.OK:
                 raise vc_reply['status']
 
-        #This should list errors specifically, I just don't know what they
-        # should be...
         except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
             exc, msg, tb = sys.exc_info()
             print_data_access_layer_format(inputlist[i], outputlist[i], 0,
@@ -1790,24 +1792,6 @@ def create_read_requests(inputlist, outputlist, file_size,
             print "VOLUME CLERK:"
             pprint.pprint(vc_reply)
         
-
-        #Get information about the library manager.
-        try:
-            library = vc_reply['library'] + ".library_manager"
-            lm_ticket = client['csc'].get(library)
-
-            if lm_ticket['status'][0] != e_errors.OK:
-                raise lm_ticket['status']
-            
-        except (e_errors.NOACCESS, e_errors.NOTALLOWED, e_errors.DELETED):
-            #exc, msg, tb = sys.exc_info()
-            #fc_reply['status'] = (exc, msg)
-            print_data_access_layer_format(inputlist[i],
-                                           outputlist[i], 0, lm_ticket)
-            continue
-
-        library_manager_address = (lm_ticket["hostip"], lm_ticket["port"])
-
         # make the part of the ticket that encp knows about.
         # (there's more later)
         encp_el = {}
@@ -1841,8 +1825,7 @@ def create_read_requests(inputlist, outputlist, file_size,
         vc_reply['file_family'] = volume_family.extract_file_family(vf)
         vc_reply['wrapper'] = volume_family.extract_wrapper(vf)
         fc_reply['fc']['address'] = file_clerk_address
-        #fc_reply['fc']['address'] = file_clerk_address
-        lm_ticket['address'] = library_manager_address
+        #fc_reply['address'] = file_clerk_address
 
         pnfs.get_file_family()
         pnfs.get_file_family_width()
@@ -1860,7 +1843,6 @@ def create_read_requests(inputlist, outputlist, file_size,
         #request['fc'] = fc_reply
         request['file_size'] = file_size[i]
         request['infile'] = inputlist[i]
-        request['lm'] = lm_ticket
         request['outfile'] = outputlist[i]
         request['pnfs'] = {'file_family':pnfs.file_family,
                            'file_family_width':pnfs.file_family_width,
@@ -1913,35 +1895,16 @@ def submit_read_requests(requests, client, tinfo, verbose):
 
             Trace.trace(8,"submit_read_requests queueing:%s"%(req,))
 
-            # send to library manager and tell user
-            ticket = client['u'].send(req, req['lm']['address'])
+            ticket = submit_one_request(req, verbose)
 
             if verbose > 4:
                 print "LIBRARY MANAGER"
                 pprint.pprint(ticket)
 
-            #If something went wrong, first try to retry.  If the retries
-            # fail then give up, print error message and move on.
-            if ticket['status'][0] != e_errors.OK :
-                req['retry'] = req['retry'] + 1
-
-                if req['retry'] > max_retry:
-                    del requests_to_submit[requests_to_submit.index(req)]
-
-                    print_data_access_layer_format(
-                        req['infile'], req["wrapper"]["fullname"], 
-                        req["wrapper"]["size_bytes"], ticket)
-
-                    print_error('EPROTO',
-                        'encp.read_from_hsm: from u.send to LM at %s:%s,'
-                            'ticket["status"]=%s'% (req['lm']['hostip'],
-                                                    req['lm']['port'],
-                                                    ticket['status']))
-                else:
-                    Trace.log(e_errors.NET_ERROR,
-                              "read_hsm_files: Read submit failed for %s"
-                              " - retrying" % req['infile'])
-                
+            result_dict = handle_retries(requests_to_submit, req, ticket,
+                                         max_retry)
+            if result_dict['status'] == e_errors.RETRY or \
+               result_dict['status'] in e_errors.non_retriable_errors:
                 continue
             
             del requests_to_submit[requests_to_submit.index(req)]
