@@ -1,6 +1,8 @@
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
+# generic_cs = generic client/server code
+
 #system imports
 import pprint
 
