@@ -1323,6 +1323,8 @@ class Interface:
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
             self.print_usage(msg)
 
+        return None
+
     def get_default_type(self, opt_dict):  #, value):
         try:
             if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
@@ -1341,6 +1343,8 @@ class Interface:
             msg = "option %s requires type %s" % \
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
             self.print_usage(msg)
+
+        return None
 
 ############################################################################
     #Thse options set the values in the interface class.  set_value() is
