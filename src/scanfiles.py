@@ -1,19 +1,23 @@
 #!/usr/bin/env python
 
 import os
-import info_client
-import option
-import pnfs
 import sys
 import stat
-import generic_client
-import volume_family
-import e_errors
 import string
 import time
 
+import info_client
+import option
+import pnfs
+import volume_family
+import e_errors
+from encp import e_access  #for e_access().
+
+os.access = e_access   #Hack for effective ids instead of real ids.
+
 infc = None
 ff = {}
+ONE_DAY = 24*60*60
 
 def usage():
     print "usage: %s path [path2 [path3 [ ... ]]]"%(sys.argv[0])
@@ -23,49 +27,64 @@ def usage():
 def error(s):
     print s, '... ERROR'
 
+def warning(s):
+    print s, '... WARNING'
+
 def layer_file(f, n):
-    p, ff = os.path.split(f)
-    return os.path.join(p, '.(use)(%d)(%s)'%(n, ff))
+    pn, fn = os.path.split(f)
+    return os.path.join(pn, '.(use)(%d)(%s)'%(n, fn))
 
 def check(f):
-    f_orig = f
-    cf = f
+
     msg = []
     warn = []
-    if not os.access(f, os.F_OK):
-        return ['non-existent'], []
-    if not os.access(f, os.R_OK):
-        f = pnfs.get_local_pnfs_path(f)
-        if not os.access(f, os.R_OK):
-            # try the back door
-            cf = pnfs.get_local_pnfs_path(f)
-            if not os.access(cf, os.R_OK):
-                return ['no read permission'], []
 
+    #If the file is an (P)NFS or encp temporary file, give the error that
+    # it still exists.
+    if os.path.basename(f)[:4] == ".nfs" \
+           or os.path.basename(f)[-5:] == "_lock":
+        msg.append("found temporary file")
+        return msg, warn
 
+    #Determine if the file exists and we can access it.
     try:
-        pf = pnfs.File(cf)
-    except:
-        return ['corrupted meta-data'], []
+        f_stats = os.stat(f)
+    except OSError:
+        f = pnfs.get_local_pnfs_path(f)
+        try:
+            f_stats = os.stat(f)
+        except OSError:
+            #No read permission is the likeliest at this point...
+            msg.append('no read permission')
+            return msg, warn
 
-    # get bfid
+    # get xref from layer 4 (?)
+    try:
+        pf = pnfs.File(f)
+    except (KeyboardInterrupt, SystemExit), msg:
+        raise msg
+    except:
+        msg.append('corrupted meta-data')
+        return msg, warn
+
+    # get bfid from layer 1
     f1 = open(layer_file(f, 1))
     bfid = f1.readline()
     f1.close()
+
+    #Look for missing pnfs information.
     try:
         if bfid != pf.bfid:
             msg.append('bfid(%s, %s)'%(bfid, pf.bfid))
-    except:
-    	age = time.time() - os.stat(cf)[8]
+    except (TypeError, ValueError, IndexError, AttributeError):
+    	age = time.time() - f_stats[8]
+        if age < ONE_DAY:
+                warn.append('younger than 1 day (%d)'%(age))
         if len(bfid) < 8:
             msg.append('missing layer 1')
-            if age < 3600:
-                warn.append('younger than 1 hour (%d)'%(age))
             return msg, warn
         else:
             msg.append('missing layer 4')
-            if age < 3600:
-                warn.append('younger than 1 hour (%d)'%(age))
             fr = infc.bfid_info(bfid)
             if fr['status'][0] != e_errors.OK:
                 msg.append('not in db')
@@ -76,23 +95,27 @@ def check(f):
                     msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
             else:
                 msg.append('unknown file')
-            id = pf.get_pnfs_id()
+            pnfs_id = pf.get_pnfs_id()
             if fr.has_key('pnfsid'):
-                if id != fr['pnfsid']:
-                    msg.append('pnfsid(%s, %s)'%(id, fr['pnfsid']))
+                if pnfs_id != fr['pnfsid']:
+                    msg.append('pnfsid(%s, %s)'%(pnfs_id, fr['pnfsid']))
             else:
                 msg.append('no pnfs id in db')
             return msg, warn
 
+    # Get file database information.
     fr = infc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
 	return msg, warn
+
+    #Compare pnfs metadata with file database metadata.
+    
     # volume label
     try:
         if pf.volume != fr['external_label']:
             msg.append('label(%s, %s)'%(pf.volume, fr['external_label']))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted external_label')
     # location cookie
     try:
@@ -102,7 +125,7 @@ def check(f):
         f_lc = string.split(fr['location_cookie'], '_')[2]
         if p_lc != f_lc:
             msg.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted location_cookie')
     # size
     try:
@@ -111,7 +134,7 @@ def check(f):
             msg.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
         elif real_size != 1 and long(real_size) != long(pf.size):
             msg.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted size')
     # file_family
     try:
@@ -128,14 +151,14 @@ def check(f):
         if pf.file_family != file_family and \
             pf.file_family+'-MIGRATION' != file_family:
             msg.append('file_family(%s, %s)'%(pf.file_family, file_family))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted file_family')
     # pnfsid
     try:
-        id = pf.get_pnfs_id()
-        if id != pf.pnfs_id or id != fr['pnfsid']:
-            msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, id, fr['pnfsid']))
-    except:
+        pnfs_id = pf.get_pnfs_id()
+        if pnfs_id != pf.pnfs_id or pnfs_id != fr['pnfsid']:
+            msg.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, pnfs_id, fr['pnfsid']))
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted pnfsid')
     # drive
     try:
@@ -144,14 +167,14 @@ def check(f):
                 if pf.drive != 'imported' and pf.drive != "missing" \
                     and fr['drive'] != 'unknown:unknown':
                     msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted drive')
     # path
     try:
         if pf.path != fr['pnfs_name0'] and \
            pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
             warn.append('original_pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted pnfs_path')
 
     # path2
@@ -159,37 +182,45 @@ def check(f):
         if pf.path != pf.p_path and \
            pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(pf.p_path):
             warn.append('moved_path(%s, %s)'%(pf.path, pf.p_path))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no or corrupted l4_pnfs_path')
 
     # deleted
     try:
         if fr['deleted'] != 'no':
             msg.append('deleted(%s)'%(fr['deleted']))
-    except:
+    except (TypeError, ValueError, IndexError, AttributeError):
         msg.append('no deleted field')
 
     return msg, warn
 
 def check_file(f):
-    if not os.access(f, os.F_OK):
-        error(f+' ... does not exist')
-    elif os.path.islink(f):    # skip links
-        pass
+
+    #Do one stat() for each file instead of one for each os.path.isxxx() call.
+    try:
+        f_stats = os.lstat(f)
+    except OSError, msg:
+        error(f + " ... " + os.strerror(msg.errno))
+        return
+    
+    #if os.path.islink(f):    # skip links
+    if stat.S_ISLNK(f_stats[stat.ST_MODE]):    # skip links
+        if not os.path.exists(f):
+            warning(f+ ' ... missing the original of link')
     # if f is a directory, recursively check its files
-    elif os.path.isdir(f):
+    elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
         # skip symbolic link to a directory
-        if not os.path.islink(f):
+        if not stat.S_ISLNK(f_stats[stat.ST_MODE]):
             # skip volmap and .bad and .removed directory
             lc = os.path.split(f)[1]
-            if lc != 'volmap' and lc != '.bad' and lc[:8] != '.removed'\
+            if lc != 'volmap' and lc[:4] != '.bad' and lc[:8] != '.removed'\
                and lc[:3] != '.B_' and lc[:3] != '.A_':
-                if os.access(f, os.R_OK) and os.access(f, os.X_OK):
+                if os.access(f, os.R_OK | os.X_OK):
                     for i in os.listdir(f):
                         check_file(os.path.join(f,i))
                 else:
                     error(f+' ... can not access directory')
-    elif os.path.isfile(f):
+    elif stat.S_ISREG(f_stats[stat.ST_MODE]):
         print f+' ...',
         res, wrn = check(f)
         # print warnings
@@ -204,8 +235,6 @@ def check_file(f):
             print 'WARNING'
         else:
             print 'OK'
-    elif os.path.islink(f):
-        error(f+' ... missing the original of link')
     else:
         error(f+' ... unrecognized type')
 
@@ -217,16 +246,20 @@ if __name__ == '__main__':
 
     if len(sys.argv) == 3 and sys.argv[1] == '--infile':
         f = open(sys.argv[2])
-        list = map(string.strip, f.readlines())
+        f_list = map(string.strip, f.readlines())
         f.close()
     else:
-        list = sys.argv[1:]
+        f_list = sys.argv[1:]
 
     intf = option.Interface()
     infc = info_client.infoClient((intf.config_host, intf.config_port))
 
     ff = {}
 
-    for i in list:
+    for i in f_list:
         if i[:2] != '--':
-            check_file(i)
+            try:
+                check_file(i)
+            except (KeyboardInterrupt, SystemExit):
+                #If the user does Control-C don't traceback.
+                pass
