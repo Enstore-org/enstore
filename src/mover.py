@@ -978,7 +978,8 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 		#while 1: time.sleep( 1 )# freeze
 		#pass
 	    pass
-	if self.client_obj_inst.state == 'busy' and rsp_ticket['work'] != 'nowork':
+	# STATE COULD BE 'BUSY' OR 'OFFLINE'
+	if self.client_obj_inst.state != 'idle' and rsp_ticket['work'] != 'nowork':
 	    logc.send( log_client.ERROR, 1, 'FATAL ENSTORE - libman told busy mover to do work' )
 	    while 1: time.sleep( 1 )	# freeze
 	    pass
