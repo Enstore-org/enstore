@@ -14,10 +14,11 @@ import db
 import checkBackedUpDatabases
 import configuration_client
 import enstore_constants
-import Trace
+import alarm_client
 import e_errors
 
 mount_limit = {}
+acc = None
 
 #Grab the start time.
 t0 = time.time()
@@ -1173,7 +1174,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 msg = 'Too many mounts on %s (%s, %d, %d)'%\
                     (vv['external_label'], vv['media_type'],
                         mounts, mount_limit[vv['media_type']][0])
-                Trace.alarm(e_errors.ERROR, msg)
+                acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
                 mnts = '<font color=#FF0000>'+mnts+'</font>'
                 # record it in tape mount file
                 tm_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6d %-40s\n" % \
@@ -1191,7 +1192,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
                 msg = '(Should be Red Ball!) Too many mounts on %s (%s, %d, %d)'%\
                     (vv['external_label'], vv['media_type'],
                         mounts, mount_limit[vv['media_type']][1])
-                Trace.alarm(e_errors.ERROR, msg)
+                acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
@@ -1266,10 +1267,11 @@ if __name__ == "__main__":
         inventory_usage()
         sys.exit(0)
 
-    Trace.init('INVENTORY')
+    alarm_client.Trace.init('INVENTORY')
 
     csc = configuration_client.ConfigurationClient()
     mount_limit = csc.get('tape_mount_limit', timeout=15,retry=3)
+    acc =alarm_client.AlarmClient(csc)
     if mount_limit['status'][0] == e_errors.OK:
         del mount_limit['status']
     else:
