@@ -19,7 +19,6 @@ import e_errors                 # error information
 import log_client               # for getting info into the log
 import hostaddr
 
-
 journal_backup = 'JOURNALS'     # for journal file backup
 
 def logthis(code, message):
