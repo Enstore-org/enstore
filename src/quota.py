@@ -16,8 +16,10 @@ import e_errors
 MY_NAME = "QUOTA"
 MY_SERVER = None
 
+# take a query object and pretty print the results
 def show_query_result(res):
 
+	# determine the format
 	width = []
 	fields = res.listfields()
 	w = len(fields)
@@ -35,23 +37,48 @@ def show_query_result(res):
 	for i in range(w):
 		format.append("%%%ds "%(width[i]))
 
+	# determine the length of the separation line
 	ll = 0
 	for i in range(w):
 		ll = ll + width[i]
 	ll = ll + 2*(w - 1)
 
+	# print the header
 	for i in range(w):
 		print format[i]%(fields[i]),
 	print
 	print "-"*ll
+
+	# print the rows
 	for r in result:
 		for i in range(w):
 			print format[i]%(r[i]),
+		# mark if the numbers are not quite right
 		if r[2] >= r[3] and r[3] >= r[4]:
 			print
 		else:
 			print "*"
 
+# try to identify the user using LOGNAME and kerberos principal
+def whoami():
+	# find the principal of kerberos ticket
+	kmsg = os.popen("klist").readlines()
+	kk = 'unknown'
+	for i in kmsg:
+		if i[:18] == "Default principal:":
+			kk = string.split(i)[2]
+			break
+	logname = 'unknown'
+	# try to find the real user name through $LOGNAME
+	if os.environ.has_key('LOGNAME'):
+		logname = os.environ['LOGNAME']
+	else:
+		# if failed, use effective user name
+		logname = pwd.getpwuid(os.getuid())[0]
+
+	return "%s(%s)"%(logname, kk)
+
+# handles everthing with quota		
 class Quota:
 	def __init__(self, csc):
 		# where is the database
@@ -63,13 +90,16 @@ class Quota:
 		self.db = pg.DB(host=self.host, port=self.port, dbname=self.dbname)
 		self.uname = whoami()
 
+	# informational log any way, stick user identity before the msg
 	def log(self, m):
 		Trace.log(e_errors.INFO, self.uname+' '+m)
 
+	# this is not used any more but it's handy to be kept around
 	def show_all(self):
 		res = self.db.query("select * from quota order by library;")
 		show_query_result(res)
 
+	# show summary by the libraries
 	def show_by_library(self):
 		q = "select library, sum(requested) as requested, \
 			sum(authorized) as authorized, \
@@ -77,12 +107,15 @@ class Quota:
 			group by library order by library;"
 		show_query_result(self.db.query(q))
 
+	# show [library [storage_group]]
 	def show(self, library=None, sg=None):
 		q = "select value from option where key = 'quota';"
 		state = self.db.query(q).getresult()[0][0]
 		print "QUOTA is %s\n"%(string.upper(state))
 		if library:
+			# with specific library
 			if sg:
+				# with specific storage group
 				q = "select library, storage_group, \
 					requested, authorized, quota \
 					from quota where \
@@ -90,6 +123,7 @@ class Quota:
 					storage_group = '%s';"%(
 					library, sg)
 			else:
+				# without specific storage group
 				q = "select library, storage_group, \
 					requested, authorized, quota \
 					from quota where \
@@ -97,12 +131,14 @@ class Quota:
 					order by storage_group;"%(
 					library)
 		else:
+			# without specific library -- show all
 			q = "select library, storage_group, requested,\
 				authorized, quota from quota \
 				order by library, storage_group;"
 
 		show_query_result(self.db.query(q))
 
+	# check if the numbers make sense
 	def check(self, library, sg):
 		msg = ""
 		q = "select * from quota where library = '%s' and \
@@ -116,11 +152,13 @@ class Quota:
 			if msg:
 				print "Warning:", msg
 
+	# check if (library, sg) already exist
 	def exist(self, library, sg):
 		q = "select * from quota where library = '%s' and \
 			storage_group = '%s';"%(library, sg)
 		return self.db.query(q).ntuples()
 
+	# create a new (library, storage_group)
 	def create(self, library, sg, requested = 0, authorized = 0,
 		quota = 0):
 		# check if it already existed
@@ -136,7 +174,7 @@ class Quota:
 		msg = "('%s', '%s', %d, %d, %d) created"%(
 			library, sg, requested, authorized, quota)
 		self.log(msg)
-		
+	# delete (library, sg)
 	def delete(self, library, sg):
 		# check if it already existed
 		if self.exist(library, sg):
@@ -149,6 +187,7 @@ class Quota:
 			print "('%s', '%s') does not exist."%(library, sg)
 
 
+	# set requested for (library, sg)
 	def set_requested(self, library, sg, n):
 		# check if it already existed
 		if self.exist(library, sg):
@@ -164,6 +203,7 @@ class Quota:
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
+	# set authorized for (library, sg)
 	def set_authorized(self, library, sg, n):
 		# check if it already existed
 		if self.exist(library, sg):
@@ -179,6 +219,7 @@ class Quota:
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
+	# set quota for (library, sg)
 	def set_quota(self, library, sg, n):
 		# check if it already existed
 		if self.exist(library, sg):
@@ -194,6 +235,7 @@ class Quota:
 		else:
 			print "('%s', '%s') does not exist."%(library, sg)
 
+	# enable quota
 	def enable(self):
 		q = "select value from option where key = 'quota';"
 		res = self.db.query(q).getresult()
@@ -207,6 +249,7 @@ class Quota:
 		self.db.query(q)
 		self.log("quota enabled")
 
+	# disable quota
 	def disable(self):
 		q = "select value from option where key = 'quota';"
 		res = self.db.query(q).getresult()
@@ -220,6 +263,9 @@ class Quota:
 		self.db.query(q)
 		self.log("quota disabled")
 
+	# quota_enabled() is not used directly.
+	# it serves a prototype for the real one in volume_clerk.py
+	# it is backward compatible with old quota_enabled()
 	def quota_enabled(self):
 		q = "select value from option where key = 'quota';"
 		state = self.db.query(q).getresult()[0][0]
@@ -245,26 +291,6 @@ class Quota:
 
 		return q_dict
 				
-
-def whoami():
-	# find the principal of kerberos ticket
-	kmsg = os.popen("klist").readlines()
-	kk = 'unknown'
-	for i in kmsg:
-		if i[:18] == "Default principal:":
-			kk = string.split(i)[2]
-			break
-	logname = 'unknown'
-	# try to find the real user name through $LOGNAME
-	if os.environ.has_key('LOGNAME'):
-		logname = os.environ['LOGNAME']
-	else:
-		# if failed, use effective user name
-		logname = pwd.getpwuid(os.getuid())[0]
-
-	return "%s(%s)"%(logname, kk)
-		
-	
 class Interface(option.Interface):
 	def __init__(self, args=sys.argv, user_mode=0):
 		self.show = None
