@@ -2541,8 +2541,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
-        print movers
-        ticket['movers'] = []
+          ticket['movers'] = []
         for mover in movers:
             ticket['movers'].append({'mover'          : mover['mover'],
                                      'external_label' : mover['external_label'],
@@ -2567,9 +2566,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.DOESNOTEXIST, "Volume not found")
             self.reply_to_caller(ticket)
             return
+        
+        found = 0
+        for wt in self.work_at_movers.list:
+            if wt['mover'] == mover['mover']:
+                found = 1     # must do this. Construct. for...else will not
+                              # do better 
+                break
+            
         Trace.log(e_errors.INFO, "removing active volume %s , mover %s" %
                   (mover['external_label'],mover['mover'])) 
         self.volumes_at_movers.delete({'mover': mover['mover']})
+        if found:
+          self.work_at_movers.remove(wt)  
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         
