@@ -2,6 +2,7 @@ import time
 import lockfile
 import dict_to_a
 import errno
+import Trace
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -15,17 +16,20 @@ except ImportError:
 
 # see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
+    Trace.trace(16,'Entering try_a_port host='+repr(host)+" port="+repr(port))
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(host, port)
     except:
         sock.close()
+        Trace.trace(16,'Leaving try_a_port FAILURE')
         return (0 , sock)
+    Trace.trace(16,'Leaving try_a_port sock='+repr(sock))
     return 1 , sock
 
 # get an unused tcp port for communication
 def get_callback() :
-    #host = 'localhost'
+    Trace.trace(16,"Entering get_callback")
     (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
@@ -34,7 +38,9 @@ def get_callback() :
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
     lockf = open ("/var/lock/hsm/lockfile", "w")
+    Trace.trace(20,"get_callback - trying to get lock")
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
+    Trace.trace(20,"get_callback - got the lock - hunting for port")
 
     # now check for a port we can use
     while  1:
@@ -47,57 +53,93 @@ def get_callback() :
             if success :
                 lockfile.unlock(lockf)
                 lockf.close()
+                Trace.trace(16,"Leaving get_callback host="+repr(host)+\
+                            " port="+repr(port)+" mysocket="+repr(mysocket))
                 return host, port, mysocket
         #  otherwise, we tried all ports, try later.
         sleeptime = 1
-        print "callback: all port ",port1,' to ',port2,\
-              " used. waiting",sleeptime," seconds"
+        msg = "get_callback: all ports from "+repr(port1)+' to '+repr(port2)+\
+              " used. waiting"+repr(sleeptime)+" seconds"
+        print msg
+        Trace.trace(2,msg)
         time.sleep (sleeptime)
 
 
 # return a mover tcp socket
 def mover_callback_socket(ticket) :
+    Trace.trace(16,'Entering mover_callback_socket host='+\
+                repr(ticket['mover_callback_host'])+" port="+\
+                repr(ticket['mover_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['mover_callback_host'], ticket['mover_callback_port'])
+    Trace.trace(16,"Leaving mover_callback_socket sock="+repr(sock))
     return sock
 
 # return a library manager tcp socket
 def library_manager_callback_socket(ticket) :
+    Trace.trace(16,'Entering library_manager_callback_socket host='+\
+                repr(ticket['library_manager_callback_host'])+" port="+\
+                repr(ticket['library_manager_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['library_manager_callback_host'], \
                  ticket['library_manager_callback_port'])
+    Trace.trace(16,"Leaving library_manager_callback_socket sock="+repr(sock))
     return sock
 
 # return a library manager tcp socket
 def volume_clerk_callback_socket(ticket) :
+    Trace.trace(16,'Entering volume_clerk_callback_socket host='+\
+                repr(ticket['volume_clerk_callback_host'])+" port="+\
+                repr(ticket['volume_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['volume_clerk_callback_host'], \
                  ticket['volume_clerk_callback_port'])
+    Trace.trace(16,"Leaving volume_clerk_callback_socket sock="+repr(sock))
     return sock
 
+# return a file clerk tcp socket
 def file_clerk_callback_socket(ticket) :
+    Trace.trace(16,'Entering file_clerk_callback_socket host='+\
+                repr(ticket['file_clerk_callback_host'])+" port="+\
+                repr(ticket['file_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['file_clerk_callback_host'], \
                  ticket['file_clerk_callback_port'])
+    Trace.trace(16,"Leaving file_clerk_callback_socket sock="+repr(sock))
     return sock
+
+# return and admin clerk tcp socket
 def admin_clerk_callback_socket(ticket) :
+    Trace.trace(16,'Entering admin_clerk_callback_socket host='+\
+                repr(ticket['admin_clerk_callback_host'])+" port="+\
+                repr(ticket['admin_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['admin_clerk_callback_host'], \
                  ticket['admin_clerk_callback_port'])
+    Trace.trace(16,"Leaving admin_clerk_callback_socket sock="+repr(sock))
     return sock
+
 # send ticket/message on user tcp socket and return user tcp socket
 def user_callback_socket(ticket) :
+    Trace.trace(16,'Entering user_callback_socket host='+\
+                repr(ticket['user_callback_host'])+" port="+\
+                repr(ticket['user_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
     write_tcp_socket(sock,ticket,"callback user_callback_socket")
+    Trace.trace(16,"Leaving user_callback_socket sock="+repr(sock))
     return sock
 
 # send ticket/message on tcp socket
 def send_to_user_callback(ticket) :
+    Trace.trace(16,'Entering send_to_user_callback host='+\
+                repr(ticket['user_callback_host'])+" port="+\
+                repr(ticket['user_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['user_callback_host'], ticket['user_callback_port'])
     write_tcp_socket(sock,ticket,"callback send_to_user_callback")
     sock.close()
+    Trace.trace(16,"Leaving send_to_user_callback")
 
 def write_tcp_buf(sock,buffer,errmsg=""):
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
@@ -126,7 +168,7 @@ def read_tcp_buf(sock,errmsg="") :
     badsock = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
     if badsock != 0 :
        print errmsg,"post-recv error:", errno.errorcode[badsock]
-    return buf	
+    return buf
 def read_tcp_socket(sock,errmsg="") :
     workmsg = ""
     while 1:

@@ -29,7 +29,7 @@ import Trace
 def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(3,"Entering write_to_hsm input="+repr(input)+\
+    Trace.trace(3,"{write_to_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" list="+repr(list)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -178,12 +178,12 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
 
             # if no ticket, then this is a not a retry
             except NameError:
-		file_clerk = {}
+                file_clerk = {}
                 work_ticket = {"work"               : "write_to_hsm",\
                                "delayed_dismount"   : delayed_dismount,\
                                "priority"           : 1,\
                                "library"            : library[i],\
-			       "file_clerk"         : file_clerk,\
+                               "file_clerk"         : file_clerk,\
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
                                "orig_filename"      : inputlist[i],\
@@ -409,7 +409,6 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     msg ="Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
           " in "+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/S"
-    Trace.trace(3,"write_to_hsm "+msg)
     if list or ninput>1:
         print msg
 
@@ -417,12 +416,14 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
 
+    Trace.trace(3,"}write_to_hsm "+msg)
+
 ##############################################################################
 
 def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
     if t0==0:
         t0 = time.time()
-    Trace.trace(3,"Entering read_from_hsm input="+repr(input)+\
+    Trace.trace(3,"{read_from_hsm input="+repr(input)+\
                 " output="+repr(output)+" config_host="+repr(config_host)+\
                 " config_port="+repr(config_port)+" list="+repr(list)+\
                 " chk_crc="+repr(chk_crc)+" t0="+repr(t0))
@@ -558,10 +559,10 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 uinfo["fullname"] = outputlist[i]
 
                 # generate the work ticket
-		file_clerk = {"bfid"               : bfid[i]}
+                file_clerk = {"bfid"               : bfid[i]}
                 work_ticket = {"work"               : "read_from_hsm",\
                                "user_info"          : uinfo,\
-			       "file_clerk"         : file_clerk,\
+                               "file_clerk"         : file_clerk,\
                                "pnfs_info"          : pinfo[i],\
                                "sanity_size"        : 5000,\
                                "user_callback_port" : port,\
@@ -781,16 +782,16 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
 # log the error to the logger, print it to the console and exit
 
 def jraise(errcode,errmsg,exit_code=1) :
-    Trace.trace(0,"Entering encp.jraise errcode=%d "+\
-                "exit_code=%d msg="+errmsg,errcode,exit_code)
+    Trace.trace(0,"{encp.jraise errcode="+repr(errcode)+\
+                " errmsg="+repr(errmsg)+" exit_code="+repr(exit_code))
 
     format = "Fatal error:"+str(errcode)+str(errmsg)
     print format
     global logc
     logc.send(log_client.ERROR, 1, format)
 
-    Trace.trace(0,"Leaving encp.jraise and exitting with code=%d",\
-                exit_code)
+    Trace.trace(0,"}encp.jraise and exitting with code="+\
+                repr(exit_code))
     sys.exit(exit_code)
 
 ##############################################################################
@@ -799,7 +800,7 @@ def jraise(errcode,errmsg,exit_code=1) :
 # return some information about who we are so it can be used in the ticket
 
 def clients(config_host,config_port,list):
-    Trace.trace(16,"Entering clients config_host="+repr(config_host)+\
+    Trace.trace(16,"{clients config_host="+repr(config_host)+\
                 " port="+repr(config_port)+" list="+repr(list))
 
     if list>3 :
@@ -824,7 +825,7 @@ def clients(config_host,config_port,list):
     uinfo['machine'] = os.uname()
     uinfo['fullname'] = "" # will be filled in later for each transfer
 
-    Trace.trace(16,"Leaving clients csc="+repr(csc)+" u="+repr(u)+\
+    Trace.trace(16,"}clients csc="+repr(csc)+" u="+repr(u)+\
                 " uinfo="+repr(uinfo))
     return (csc,u,uinfo)
 
@@ -833,13 +834,13 @@ def clients(config_host,config_port,list):
 # check if the system is still running by checking the wormhole file
 
 def system_enabled(p):                 # p is a  pnfs object
-    Trace.trace(16,"Entering system_enabled p="+repr(p))
+    Trace.trace(16,"{system_enabled p="+repr(p))
 
     running = p.check_pnfs_enabled()
     if running != pnfs.enabled :
         jraise(errno.errorcode[errno.EACCES]," encp.system_enabeld: "\
                +"system disabled"+running)
-    Trace.trace(10,"Leaving system_enabled running="+running)
+    Trace.trace(10,"}system_enabled running="+running)
 
 ##############################################################################
 
@@ -847,7 +848,7 @@ def system_enabled(p):                 # p is a  pnfs object
 # and an open pnfs object so you can check if  the system is enabled.
 
 def pnfs_information(filelist,nfiles):
-    Trace.trace(16,'Entering pnfs_information filelist='+repr(filelist)+\
+    Trace.trace(16,'{ pnfs_information filelist='+repr(filelist)+\
                 " nfiles="+repr(nfiles))
     bfid = []
     pinfo = []
@@ -870,7 +871,7 @@ def pnfs_information(filelist,nfiles):
             exec("pinf["+repr(k)+"] = p."+k)
         pinfo.append(pinf)
 
-    Trace.trace(16,"Leaving pnfs_information bfid="+repr(bfid)+\
+    Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\
                 " library="+repr(library)+" file_family="+repr(file_family)+\
                 " width="+repr(width)+" pinfo="+repr(pinfo)+" p="+repr(p))
     return (bfid,library,file_family,width,pinfo,p)
@@ -880,7 +881,7 @@ def pnfs_information(filelist,nfiles):
 # generate the full path name to the file
 
 def fullpath(filename):
-    Trace.trace(16,'Entering fullpath filename='+filename)
+    Trace.trace(16,'{ fullpath filename='+filename)
 
     machine = socket.gethostbyaddr(socket.gethostname())[0]
     dir, file = os.path.split(filename)
@@ -902,7 +903,7 @@ def fullpath(filename):
     dir = regsub.sub("//","/",dir)
     file = regsub.sub("//","/",file)
 
-    Trace.trace(16,"Leaving fullpath machine="+machine+\
+    Trace.trace(16,"}fullpath machine="+machine+\
                 " filename="+filename+" dir="+dir+" file="+file)
     return (machine, filename, dir, file)
 
@@ -911,7 +912,7 @@ def fullpath(filename):
 # check the input file list for consistency
 
 def inputfile_check(input):
-    Trace.trace(16,"Entering inputfile_check input="+repr(input))
+    Trace.trace(16,"{inputfile_check input="+repr(input))
 
     # create internal list of input unix files even if just 1 file passed in
     try:
@@ -955,7 +956,7 @@ def inputfile_check(input):
                 jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "\
                        +inputlist[i]+" is the duplicated - not allowed")
 
-    Trace.trace(16,"Leaving inputfile_check ninput="+repr(ninput)+\
+    Trace.trace(16,"}inputfile_check ninput="+repr(ninput)+\
                 " inputlist="+repr(inputlist)+" file_size="+repr(file_size))
     return (ninput, inputlist, file_size)
 
@@ -965,7 +966,7 @@ def inputfile_check(input):
 # generate names based on input list if required
 
 def outputfile_check(ninput,inputlist,output):
-    Trace.trace(16,"Entering outputfile_check ninput="+repr(ninput)+\
+    Trace.trace(16,"{outputfile_check ninput="+repr(ninput)+\
                 " inputlist="+repr(inputlist)+" output="+repr(output))
 
     # can only handle 1 input file  copied to 1 output file
@@ -1060,7 +1061,7 @@ def outputfile_check(ninput,inputlist,output):
                 jraise(errno.errorcode[errno.EPROTO]," encp.outputfile_check: "\
                        +outputlist[i]+" is the duplicated - not allowed")
 
-    Trace.trace(16,"Leaving outputfile_check outputlist="+repr(outputlist))
+    Trace.trace(16,"}outputfile_check outputlist="+repr(outputlist))
     return outputlist
 
 ##############################################################################
@@ -1068,44 +1069,44 @@ def outputfile_check(ninput,inputlist,output):
 class encp(base_defaults.BaseDefaults):
 
     def __init__(self):
-        Trace.trace(16,"Entering encp.__init__")
+        Trace.trace(16,"{encp.__init__")
 
         self.chk_crc = 1
         host = 'localhost'
         port = 0
         base_defaults.BaseDefaults.__init__(self, host, port)
-        Trace.trace(16,"Entering encp.__init__")
+        Trace.trace(16,"{encp.__init__")
 
     ##########################################################################
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16,"Entering encp.options")
+        Trace.trace(16,"{encp.options")
 
         the_options = base_defaults.BaseDefaults.config_options(self) + \
                       base_defaults.BaseDefaults.list_options(self)   + \
                       ["nocrc"] +\
                       base_defaults.BaseDefaults.options(self)
 
-        Trace.trace(16,"Leaving encp.options options="+repr(the_options))
+        Trace.trace(16,"}encp.options options="+repr(the_options))
         return the_options
 
     ##########################################################################
     #  define our specific help
     def help_line(self):
-        Trace.trace(16,"Entering encp.help_line")
+        Trace.trace(16,"{encp.help_line")
 
         the_help = base_defaults.BaseDefaults.help_line(self)+\
                    " inputfilename outputfilename \n  or\n"+\
                    base_defaults.BaseDefaults.help_line(self)+\
                    " inputfilename1 ... inputfilenameN outputdirectory"
 
-        Trace.trace(16,"Leaving encp.help_line help_line="+the_help)
+        Trace.trace(16,"}encp.help_line help_line="+the_help)
         return the_help
 
     ##########################################################################
     # parse the options from the command line
     def parse_options(self):
-        Trace.trace(16,"Entering encp.parse_options")
+        Trace.trace(16,"{encp.parse_options")
 
         # normal parsing of options
         base_defaults.BaseDefaults.parse_options(self)
@@ -1152,7 +1153,7 @@ class encp(base_defaults.BaseDefaults):
         dictlist = ""
         for key in self.__dict__.keys():
             dictlist = dictlist+" "+key+":"+repr(self.__dict__[key])
-        Trace.trace(16,"Leaving encp.parse_options objectdict="+dictlist)
+        Trace.trace(16,"}encp.parse_options objectdict="+dictlist)
 
 
 ##############################################################################
