@@ -1231,10 +1231,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         # offline it
                         msg = "mover is stuck in %s" % (self.return_state(),)
                         Trace.alarm(e_errors.ERROR, msg)
-                        Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
+                        #Trace.log(e_errors.ERROR, "marking %s noaccess" % (self.current_volume,))
                         #self.vcc.set_system_noaccess(self.current_volume)
-                        self.set_volume_noaccess(self.current_volume)
-                        self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE)
+                        #self.set_volume_noaccess(self.current_volume)
+                        self.transfer_failed(e_errors.MOVER_STUCK, msg, error_source=TAPE, dismount_allowed=0)
                         return
                         
                     else:
@@ -3392,7 +3392,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
                 #self.vcc.set_system_noaccess(volume_label)
-                self.set_volume_noaccess(self.volume_label)
+                self.set_volume_noaccess(volume_label)
             except:
                 exc, msg, tb = sys.exc_info()
                 broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
@@ -3426,6 +3426,38 @@ class Mover(dispatching_worker.DispatchingWorker,
                 detail = "wrong location %s, eod %s"%(self.current_location, previous_eod)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
+        # If seek takes too long and main thread sets mover to ERROR state
+        # fail the transfer
+        if self.state == ERROR:
+            Trace.trace(e_errors.WARNING, "mover went to the error state while positioning tape. Will try to reset the mover")
+            if self.current_volume:
+                vol = self.current_volume
+                vol_info = self.vol_info
+                self.dismount_volume(after_function=self.idle)
+                #self.unload_volume(self.vol_info, after_function=self.idle)
+            else:
+                vol = self.last_volume # current_volume does not exist, perhaps was unloaded already
+                if self.state == ERROR:
+                    self.state = IDLE
+                else:
+                    # lost track of the state
+                    Trace.log(e_errors.ERROR,"lost track of states. State %s"%(state_name(self.state),))
+                    return
+                if self.state == IDLE:
+                    # successful unload
+                    vol_info = (self.vcc.inquire_vol(vol))
+                if vol_info['system_inhibit'][0] == e_errors.NOACCESS:
+                    # clear NOACCESS
+                    ret = self.vcc.clr_system_inhibit(vol,
+                                                      what='system_inhibit',
+                                                      pos = 0,
+                                                      timeout= 10,
+                                                      retry= 2)
+                    if ret['status'][0] != e_errors.OK:
+                        Trace.log(e_errors.ERROR,
+                                  "failed to clear system inhibit for %s. Status %s"%(self.current_volume,ret['status']))
+            return        
+            
         if after_function and not failed:
             Trace.trace(10, "seek calling after function %s" % (after_function,))
             after_function()
@@ -3433,7 +3465,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def start_transfer(self):
         Trace.trace(10, "start transfer")
         #If we've gotten this far, we've mounted, positioned, and connected to the client.
-        #Just start up the work threads and watch the show...
+        # If seek takes too long and main thread sets mover to ERROR state
+        # fail the transfer
+        if self.state == ERROR:
+            Trace.log(e_errors.ERROR, "State ERROR, can not proceed")
+        
         self.state = ACTIVE
         if self.draining:
             self.state = DRAINING
