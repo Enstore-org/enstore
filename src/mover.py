@@ -1645,6 +1645,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if ((type(ticket['encp']['delayed_dismount']) is type(0)) or
                 (type(ticket['encp']['delayed_dismount']) is type(0.))):
                 delay = 60 * ticket['encp']['delayed_dismount']
+            else:
+                delay = self.default_dismount_delay
         if delay > 0:
             self.delay = max(delay, self.default_dismount_delay)
         elif delay < 0:
@@ -2053,6 +2055,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         r2 = r1                                #value reported from drive, if possible
+        Trace.trace(24, "estimate remainig %s" % (r2,))
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
             import ftt
@@ -2060,6 +2063,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 stats = self.tape_driver.ftt.get_stats()
                 r2 = long(stats[ftt.REMAIN_TAPE]) * 1024L
+                Trace.trace(24, "reported remainig %s" % (r2,))
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%
                           (detail,))
