@@ -4,7 +4,7 @@ import string
 import signal
 import time
 
-import enstore_functions
+import enstore_functions2
 import enstore_constants
 import enstore_files
 
