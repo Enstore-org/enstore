@@ -74,6 +74,8 @@ www_new: pics
 	@- cp ../operations/d0en/consoles.html ./d0en_consoles.html
 	@- cp ../operations/d0en/operations.html ./d0en_operations.html
 	@- cp ../operations/d0en/check.html ./d0en_check.html
+	@- cp ../operations/d0en/d0ensrv1.html ./d0en_d0ensrv1.html
+	@- cp ../operations/d0en/d0ensrv2.html ./d0en_d0ensrv2.html
 	../moveAndAddButton.pl $(WWW_NEW) `justfiles`
 
 PS_pics: $(PIC_PS_FILES)
