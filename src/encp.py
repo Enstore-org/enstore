@@ -7511,8 +7511,8 @@ class EncpInterface(option.Interface):
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
         self.arglen = len(self.args)
         if self.arglen < 1 :
-            print_error(e_errors.USERERROR, "not enough arguments specified")
-            self.print_usage()
+            self.print_usage("%s: not enough arguments specified" %
+                             e_errors.USERERROR)
             sys.exit(1)
 
         if self.volume:
@@ -7547,8 +7547,8 @@ class EncpInterface(option.Interface):
         # bomb out if we don't have an input and an output
         self.arglen = len(self.args)
         if self.arglen < 2 :
-            print_error(e_errors.USERERROR, "not enough arguments specified")
-            self.print_usage()
+            self.print_usage("%s: not enough arguments specified" %
+                             e_errors.USERERROR)
             sys.exit(1)
 
         #Determine whether the files are in /pnfs or not.

@@ -15,6 +15,7 @@ import Trace
 import option
 import generic_client
 import delete_at_exit
+import e_errors
 
 
 MY_NAME = "ENSYNC"
@@ -185,7 +186,8 @@ class EnsyncInterface(generic_client.GenericClientInterface):
         #There should be two directories in self.args.  They correspond to
         # the to values in the parameters list (see below).
         if len(self.args) != 2:
-            self.print_usage()
+            self.print_usage("%s: not enough arguments specified" %
+                             e_errors.USERERROR)
 
     #Required non switch options.
     parameters = ["<src directory> <dst directory>"]

@@ -417,12 +417,12 @@ class EnmvInterface(option.Interface):
         #Need a source and destination file name.
         self.arglen = len(self.args)
         if self.arglen < 2:
-            print_error(e_errors.USERERROR, "not enough arguments specified")
-            self.print_usage()
+            self.print_usage("%s: not enough arguments specified" %
+                             e_errors.USERERROR)
             sys.exit(1)
         elif self.arglen > 2:
-            print_error(e_errors.USERERROR, "too many arguments specified")
-            self.print_usage()
+            self.print_usage("%s: not enough arguments specified" %
+                             e_errors.USERERROR)
             sys.exit(1)
             
         self.input = [enstore_functions2.fullpath(self.args[0])[1]]
