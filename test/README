@@ -1,7 +1,17 @@
-This is a small, stand alone test of enstore. I imagine that
-it us useful for testing the servers in a stand-alone fashion.
+You need a hsm lock directory and lock file:
+client_node_install   will create it for you
 
-It works with the default data in the file
+You also need pnfs to be available for your machine.
+This requires adding your node to the pnfs export list.
+See bakken if you can't access it.
+
+To mount pnfs:
+    choose 1:
+        irix-options="hard,intr,rw,noac"
+        options="hard,intr,rw"
+    mount -o $options pcfarm4:/enstore  /pnfs/enstore
+
+Small, stand alone tests of enstore.
 
 To run the tests:
 
