@@ -1255,8 +1255,10 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def clean_drive( self, ticket ):
-        self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info, self.client_obj_inst.vol_vcc)
-	out_ticket = {'status':(e_errors.OK,None)}
+        rt =self.client_obj_inst.mcc.doCleaningCycle(mvr_config, self.client_obj_inst.vol_info, self.client_obj_inst.vol_vcc)
+
+	out_ticket = {'status':(rt['status'][0],rt['status'][2])}
+        
 	self.reply_to_caller( out_ticket )
         return
     

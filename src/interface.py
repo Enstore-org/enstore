@@ -258,7 +258,7 @@ class Interface:
                 self._import = 1
             elif opt == "--export" :
                 self._export = 1
-            elif opt == "--cleanDrive" :
+            elif opt == "--clean_drive" :
                 self.clean_drive = 1
             elif opt == "--new_library" :
                 self.new_library = value

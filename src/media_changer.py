@@ -92,7 +92,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def insertvol(self, ticket):
         ticket["function"] = "insert"
 	if not ticket.has_key("newlib"):
-	    ticket["status"] = (e_errors.WRONGPARAMETER, 1, "new library name not specified")
+	    ticket["status"] = (e_errors.WRONGPARAMETER, 37, "new library name not specified")
             Trace.log(e_errors.ERROR, "ERROR:insertvol new library name not specified")
 	    return
         return self.DoWork( self.insert, ticket)
@@ -189,7 +189,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         pass
         return (e_errors.OK, 0, None) 
 
-    def doWaitingCleaningCycles(self):
+    def doWaitingCleaningCycles(self, ticket):
         ticket["function"] = "waitingCleanCycle"
         return self.DoWork( self.waitingCleanCycle, ticket)
 
@@ -240,8 +240,8 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	            Trace.log(e_errors.INFO,
                       "MC: "+ ticket['function'] + " bumped for cleaning")
 	        ticket = self.work_cleaning_list[0][0]
-	        self.work_cleaning_list.remove(ticket)
 	        function = self.work_cleaning_list[0][1]
+	        self.work_cleaning_list.remove((ticket,function))
                 Trace.log(e_errors.INFO, 'REPLACEMENT '+ticket['function'])
             # if this a duplicate request, drop it
             for i in self.work_list:
@@ -300,6 +300,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                         Trace.trace(e_errors.ERROR, 'mcDoWork >>> RPC error, count= :'+repr(rpcErrors)+' '+repr(count)+' '+repr(sts[2]))
 		    else:
 			count = count - 1
+                    #print "RET",sts
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
                 Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
@@ -338,7 +339,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.lastWorkTime = time.time()
 	# check for cleaning jobs
 	if len(self.work_list) < self.MaxWork and len(self.work_cleaning_list) > 0:
-            sts = self.doWaitingCleaningCycles()
+            sts = self.doWaitingCleaningCycles(ticket)
  	# if work queue is closed and work_list is empty, do insert
 	sts = self.doWaitingInserts()
 
@@ -370,16 +371,16 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    return
 
 	if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
-	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily']  # expected format is "externalfamilyname.wrapper"
 	    try:
-	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1]
+                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.') # expected format is "externalfamilyname.wrapper"
             except IndexError:
 	        Trace.log(e_errors.ERROR, "ERROR:mc:aml2 bad CleanTapeFileFamily in configuration file")
-	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1] # force error
 	else:
-            Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no CleanTapeFileFamily assignments in configuration")
-	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily'] # force the exception
-	    return
+	    try:
+                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = string.split(self.mc_config['CleanTapeFileFamily'],'.')
+            except:
+                Trace.log(e_errors.ERROR, "ERROR:mc:aml2 no CleanTapeFileFamily assignments in configuration")
+                self.cleanTapeFileFamily,self.cleanTapeFileWrapper = None,None
 
 	if self.mc_config.has_key('IdleTimeHome'):
 	    temp = self.mc_config['IdleTimeHome']
@@ -393,13 +394,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
                 Trace.log(e_errors.ERROR, "ERROR:mc:aml2 IdleHomeTimeNotAnInt, default used")
 
 	import aml2
+        
         self.load=aml2.mount
         self.unload=aml2.dismount
         self.prepare=aml2.dismount
         self.robotHome=aml2.robotHome
         self.robotStatus=aml2.robotStatus
         self.robotStart=aml2.robotStart
-
+        
+        
     def insert(self, ticket):
         import aml2
 	self.insertRA = None
@@ -437,8 +440,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
           state = rt[5]
         return (rt[0], rt[1], rt[2], state)
 	
-    def doCleaningCycle(self, inTicket):
-        """ do drive cleaning cycle """
+    def cleanCycle(self, inTicket):
+        #do drive cleaning cycle
         import aml2
         Trace.log(e_errors.INFO, 'mc:aml2 ticket='+repr(inTicket))
         classTicket = { 'mcSelf' : self }
@@ -447,53 +450,57 @@ class AML2_MediaLoader(MediaLoaderMethods):
             ticket['drive'] = inTicket['moverConfig']['device']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no device field found in ticket.')
-	    status = 1
-            return "ERROR", status, "no device field found in ticket"
+	    status = 37
+            return e_errors.DOESNOTEXIST, status, "no device field found in ticket"
         try:
             ticket['mc_device'] = inTicket['moverConfig']['mc_device']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no mc_device field found in ticket.')
-	    status = 1
-            return "ERROR", status, "no mc_device field found in ticket"
+	    status = 37
+            return e_errors.DOESNOTEXIST, status, "no mc_device field found in ticket"
         try:
 	    ticket['media_type'] = inTicket['volInfo']['media_type']
         except KeyError:
             Trace.log(e_errors.ERROR, 'mc:aml2 no media_type field found in ticket.')
-	    status = 1
-            return "ERROR", status, "no media_type field found in ticket"
+	    status = 37
+            return e_errors.DOESNOTEXIST, status, "no media_type field found in ticket"
 	
 	driveType = ticket['mc_device'][:2]  # ... need device type, not actual device
         ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
         driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
-	
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-	if type(vcc) == types.StringType:
-	    cleaningVolume = vcc
-	else:
-	    min_remaining_bytes = 1
-	    wrapper = self.cleanTapeFileWrapper
-	    vol_veto_list = []
-	    first_found = 0
-	    libraryManagers = inTicket['moverConfig']['library']
-            if type(libraryManagers) == types.StringType:
-                library = string.split(libraryManagers,".")[0]
-            elif type(libraryManagers) == types.ListType:
-                library = string.split(libraryManagers[0],".")[0]
-            else:
-                Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field found in ticket.')
-                status = 1
-                return "ERROR", status, "no library_manager field found in ticket"
-	    cleaningVolume = vcc.next_write_volume(library,
-	                      min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
-			      vol_veto_list, first_found)  # get which volume to use
+        min_remaining_bytes = 1
+        wrapper = self.cleanTapeFileWrapper
+        vol_veto_list = []
+        first_found = 0
+        libraryManagers = inTicket['moverConfig']['library']
+        if type(libraryManagers) == types.StringType:
+            library = string.split(libraryManagers,".")
+        elif type(libraryManagers) == types.ListType:
+            library = string.split(libraryManagers[0],".")[0]
+        else:
+            Trace.log(e_errors.ERROR, 'mc:aml2 library_manager field not found in ticket.')
+            status = 37
+            return e_errors.DOESNOTEXIST, status, "no library_manager field found in ticket"
+        v = vcc.next_write_volume(library,
+                                  min_remaining_bytes, self.cleanTapeFileFamily, wrapper, 
+                                  vol_veto_list, first_found)  # get which volume to use
+        if v["status"][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,"error getting cleaning volume:%s %s"%\
+                      (v["status"][0],v["status"][1]))
+            status = 37
+            return v["status"][0], 0, v["status"][1]
+
+        cleaningVolume = v['external_label']
 	ticket['volume'] = cleaningVolume
 	
 	for i in range(driveCleanCycles):
+            Trace.log(e_errors.INFO, "AML2 Clean: %s"%repr(ticket))
 	    rt = aml2.cleanADrive(ticket, classTicket)
-	if type(vcc) != types.StringType:
-	    retTicket = vcc.get_remaining_bytes(cleaningVolume)
-	    remaining_bytes = retTicket['remaining_bytes']-1
-	    vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
+            Trace.log(e_errors.INFO,"AML2 Clean returned %s"%repr(rt)) 
+        retTicket = vcc.get_remaining_bytes(cleaningVolume)
+        remaining_bytes = retTicket['remaining_bytes']-1
+        vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
         return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):

@@ -70,7 +70,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover=", "cleanDrive", "start_draining" ]
+            return self.client_options()+["status", "local_mover=", "clean_drive", "start_draining" ]
 
     #  define our specific help
     def parameters(self):
@@ -107,6 +107,7 @@ def do_work(intf):
                                   intf.alive_retries)
     elif intf.clean_drive:
         ticket = movc.clean_drive(intf.alive_rcv_timeout, intf.alive_retries)
+        print ticket
     elif intf.start_draining:
         ticket = movc.start_draining(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.stop_draining:
