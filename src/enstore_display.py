@@ -19,6 +19,7 @@ import types
 import threading
 import re
 import gc
+import host_config
 
 import Trace
 import mover_client
@@ -98,7 +99,9 @@ import tkFont
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
+queue_lock   = threading.Lock()
 startup_lock = threading.Lock()
+thread_lock  = threading.Lock()
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
@@ -114,6 +117,9 @@ REINIT_TIME = 3600000  #in milliseconds (1 hour)
 ANIMATE_TIME = 42      #in milliseconds (~1/42nd of second)
 UPDATE_TIME = 1000     #in milliseconds (1 second)
 MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
+JOIN_TIME = 10000      #in milliseconds (10 seconds)
+
+status_request_threads = []
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
@@ -326,6 +332,7 @@ def split_geometry(geometry):
 #     update_state() - as the state of the movers change, display
 #                                  for state will be updated
 #     update_timer() - timer associated w/state, will update for each state
+#     update_rate() - updates the current rate of active transfer
 #     load_tape() - tape gets loaded onto mover:
 #                        gray indicates robot recognizes tape and loaded it
 #                        orange indicates when mover actually recognizes tape
@@ -335,7 +342,6 @@ def split_geometry(geometry):
 #     undraw() - undraws the features fromthe movers
 #     position() - calculates the position for each mover
 #     reposition() - reposition each feature after screen has been moved
-#     __del__() - calls undraw() module and deletes features
 #
 #########################################################################
 class Mover:
@@ -381,7 +387,7 @@ class Mover:
         self.b0                 = 0
         now                     = time.time()
         self.rate               = None  #In bytes per second.
-        self.rate_string        = "0 MB/S"
+        self.rate_string        = None  #"0 MB/S"
         self.t0                 = 0.0
         self.timer_seconds      = 0
         self.timer_started      = now
@@ -397,12 +403,33 @@ class Mover:
         except (AttributeError, KeyError):
             self.max_buffer = 67108864L
             self.library = "Unknown"
-            
+
         self.update_state("Unknown")
         self.animate_timer() #Start the automatic timer updates.
-    
+
+        #Draw the mover.
         self.draw()
 
+        """
+        #Need to keep the thread list consistant.
+        thread_lock.acquire()
+
+        #Query the mover about its current state.
+        #We don't want the main thread waiting.
+        status_request_threads.append(
+            threading.Thread(group=None,
+                             target=self.get_status,
+                             name='',
+                             args=(),
+                             kwargs={}))
+        status_request_threads[-1].start()
+
+        #Always release this lock.
+        thread_lock.release()
+
+        #self.get_status()
+        """
+        
     #########################################################################
 
     def animate_timer(self):
@@ -704,6 +731,11 @@ class Mover:
 
     def draw_rate(self):
 
+        #On the off chance that the state still exists on the display
+        # when it should not.
+        if self.rate_string and self.state != "ACTIVE":
+            self.undraw_state()
+
         #The rate is usualy draw when the mover is in active state.
         # However, it can go into draining state while a transfer is in
         # progress.  The display of the draining state and rate can not
@@ -730,10 +762,9 @@ class Mover:
 
         self.draw_timer()
 
-        #Display the progress bar and percent done.
-        self.draw_progress()  #self.percent_done, self.alt_percent_done)
+        self.draw_progress() #Display the progress bar and percent done.
         
-        self.draw_buffer()  #self.buffer_size)
+        self.draw_buffer()
 
         self.draw_volume()
 
@@ -769,9 +800,6 @@ class Mover:
             pass
 
     def undraw_progress(self):
-        #self.percent_done = None
-        #self.alt_percent_done = None
-        
         try:
             self.display.delete(self.progress_alt_bar)
             self.progress_alt_bar = None
@@ -797,8 +825,6 @@ class Mover:
             pass
 
     def undraw_buffer(self):
-        #self.buffer_size = None #Clear this before next connection.
-
         try:        
             self.display.delete(self.buffer_bar_bg)
             self.buffer_bar_bg = None
@@ -812,8 +838,6 @@ class Mover:
             pass
 
     def undraw_volume(self):
-        #self.volume = None
-        
         try:
             self.display.delete(self.volume_display)
             self.volume_display = None
@@ -893,6 +917,7 @@ class Mover:
         self.timer_started = now - time_in_state
         self.update_timer(now)
 
+        self.draw_mover() #Some state changes change the mover color.
         self.draw_state()
 
         #Perform some cleanup in case some UDP Mmessages were lost.
@@ -1204,17 +1229,49 @@ class Mover:
         self.draw()
 
     #########################################################################
-        
-    def get_status(self):
+
+    def handle_status(self, mover, status):
+        state = status.get('state','Unknown')
+        time_in_state = status.get('time_in_state', '0')
+        mover_state = "state %s %s %s" % (mover, state, time_in_state)
+        volume = status.get('current_volume', None)
+        client = status.get('client', "Unknown")
+        connect = "connect %s %s" % (mover, client)
+        if not volume:
+            return [mover_state]
+        if state in ['ACTIVE', 'SEEK', 'SETUP']:
+            loaded = "loaded %s %s" % (mover, volume)
+            return [loaded, mover_state, connect]
+        if state in ['HAVE_BOUND', 'DISMOUNT_WAIT']:
+            loaded = "loaded %s %s" % (mover, volume)
+            return [loaded, mover_state]
+        if state in ['MOUNT_WAIT']:
+            loading = "loading %s %s" % (mover, volume)
+            return [loading, mover_state, connect]
+
+        return [mover_state]
+
+    def get_mover_client(self):
         name = self.name.split("@")[0]
         csc = self.display.csc_dict[self.name.split("@")[1]]
         mov = mover_client.MoverClient(csc, name + ".mover",
-              flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
-        status = mov.status(rcv_timeout=3, tries=1)
-        if not e_errors.is_ok(status):
-            status = None
+                flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
+        return mov
+        
+    def get_status(self):
+        mov = self.get_mover_client()
+        status = mov.status(rcv_timeout=3, tries=3)
 
-        return status
+        if e_errors.is_ok(status):
+            commands = self.handle_status(self.name, status)
+            if not commands:
+                return
+            for command in commands:
+                #Queue the command.  Calling handle_command() directly here
+                # results in startup problems, since get_status is called
+                # before __init__ is finished (and the object is added to
+                # the list of movers).
+                self.display.queue_command(command)
 
 #########################################################################
 ##
@@ -1753,14 +1810,18 @@ class Display(Tkinter.Canvas):
         self.master = master
         #geometry = entvrc_info.get('geometry', "1200x1600+0+0")
         title = entvrc_info.get('title', "Enstore")
-        self.animate = int(entvrc_info.get('animate', 1))
+        #self.animate = int(entvrc_info.get('animate', 1))
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
 
         self.csc_dict = {}
 
-        self.master_geometry = self.master.geometry()
-        Tkinter.Canvas.__init__(self, master=master)
+        if master:
+            self.master_geometry = self.master.geometry()
+            Tkinter.Canvas.__init__(self, master = master)
+            self.master.title(title)
+        else:
+            Tkinter.Canvas.__init__(self)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 ##        if canvas_width is None:
@@ -1791,38 +1852,14 @@ class Display(Tkinter.Canvas):
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
         #Various toplevel window attributes.
-        master.title(title)
         self.configure(attributes)
-        #Menubar attributes.
-        self.menubar = Tkinter.Menu(master=master)   #self.master)
-        #Options menu.
-        self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
-        #Create the animate check button and set animate accordingly.
-        self.do_animation = Tkinter.BooleanVar()
-        #By default animation is off.  If we need to turn animation, do so now.
-        if self.animate == ANIMATE:
-            self.do_animation.set(ANIMATE)
-        #Add the checkbutton to the menu.
-        ## Note: There is no way to obtain the actual checkbutton object.
-        ## This would make accessing it internally do-able.
-        ## 
-        ## The only way to have the check in the checkbutton turned on
-        ## by default is to have the BooleanVar variable be a member
-        ## of the class.  Having it as a local variable does not want to
-        ## work (though I don't know why that would be).
-        self.option_menu.add_checkbutton(label = "Animate",
-                                         indicatoron = Tkinter.TRUE,
-                                         onvalue = ANIMATE,
-                                         offvalue = STILL,
-                                         variable = self.do_animation,
-                                         command = self.toggle_animation,
-                                         )
-        #Added the menus to there respective parent widgets.
-        self.menubar.add_cascade(label="options", menu=self.option_menu)
-        master.config(menu=self.menubar)
 
-        #With the window attributes created, pack them in.
-        self.pack(expand=1, fill=Tkinter.BOTH)
+        if master:
+            #If animation is turned on, set animation on (by default it
+            # is set off until here).
+            if entvrc_info.get('animate', 1) == ANIMATE:
+                master.entv_do_animation.set(ANIMATE)
+
         self.width  = int(self['width'])
         self.height = int(self['height'])
 
@@ -1841,11 +1878,11 @@ class Display(Tkinter.Canvas):
         #Clear the window for drawing to the screen.
         self.update()
 
-    def toggle_animation(self):
-        if self.animate:
-            self.animate = STILL
-        else:
-            self.animate = ANIMATE
+    #def toggle_animation(self):
+    #    if self.animate:
+    #        self.animate = STILL
+    #    else:
+    #        self.animate = ANIMATE
 
     def clear_display(self):
         self.mover_names      = [] ## List of mover names.
@@ -1860,6 +1897,7 @@ class Display(Tkinter.Canvas):
         self.connections      = {} ##dict. of connections.
 
         self.command_queue    = [] #List of notify commands to process.
+        self.request_queue    = [] #List of request commands to process.
 
     def attempt_reinit(self):
         return self._reinit
@@ -2025,7 +2063,8 @@ class Display(Tkinter.Canvas):
     def connection_animation(self):
 
         #If the user turned off animation, don't do it.
-        if not self.animate:
+        #if not self.animate:
+        if self.master and self.master.entv_do_animation.get() == STILL: 
             return
         
         now = time.time()
@@ -2033,84 +2072,87 @@ class Display(Tkinter.Canvas):
         for connection in self.connections.values():
             connection.animate(now)
 
-    #Called from process_messages().  Remember; process_messages()
-    # grabs the display_lock, so don't take to long or other threads
-    # will hang.
+    #Called from process_messages().
+    def is_up_to_date(self, command):
+        words = command.split(" ")
+
+        if words and words[0] in ["state"]:
+
+            try:
+                mover = self.movers[words[1]]
+            except (KeyError, IndexError):
+                mover = None
+
+            if mover and mover.volume == None and words[2] in \
+                ["HAVE_BOUND", "SEEK", "ACTIVE", "CLEANING", "DRAINING"] \
+                 or \
+                 mover and self.connections.get(mover.name, None) == None \
+                 and words[2] in ["ACTIVE", "DRAINING", "SEEK", "MOUNT_WAIT"]:
+
+                return 0 #Not up-to-date.
+            
+        return 1  #Up to date.
+
+    """
+    #Called from process_messages().
     def get_up_to_date(self, command):
 
+        try:
+            words = command.split()
+            mover = self.movers[words[1]]
+        except (KeyError, IndexError):
+            mover = None
+
         result = startup_lock.acquire(False)
-        if result:
-        
-            #words = self.command_queue[0].split(" ")
-            words = command.split(" ")
+        if result and mover:
 
-            if words and words[0] in ["state"]:
-                status = None
-                
-                try:
-                    mover = self.movers[words[1]]
-                except:
-                    mover = None
+            #Need to keep the thread list consistant.
+            thread_lock.acquire()
+            
+            #We don't want the main thread waiting.
+            status_request_threads.append(
+                threading.Thread(group=None,
+                                 target=mover.get_status,
+                                 name='',
+                                 args=(),
+                                 kwargs={}))
+            status_request_threads[-1].start()
 
-                if mover and mover.volume == None and words[2] in \
-                   ["HAVE_BOUND", "SEEK", "ACTIVE", "CLEANING", "DRAINING"]:
-                    
-                    try:
-                        status = mover.get_status()
-                    except KeyError:
-                        pass
-
-                    if e_errors.is_ok(status):
-                        volume = status['current_volume']
-                        words2 = ['state', mover.name, "MOUNT_WAIT"]
-                        self.handle_command(string.join(words2, " "))
-                        if volume:
-                            words3 = ['loaded', mover.name, volume]
-                            self.handle_command(string.join(words3, " "))
-                        
-                
-                if mover and self.connections.get(mover.name, None) == None \
-                       and words[2] in ["ACTIVE", "DRAINING", "SEEK",
-                                        "MOUNT_WAIT"]:
-
-                    try:
-                        if not e_errors.is_ok(status): #Don't repeat.
-                            status = mover.get_status()
-                    except KeyError:
-                        pass
-
-                    if e_errors.is_ok(status):
-                        client = status['client']
-                        if client:
-                            words2 = ['connect', mover.name, client]
-                            self.handle_command(string.join(words2, " "))
-
+            #Always release this lock.
+            thread_lock.release()
+            #Only release the lock if we got it.
             startup_lock.release()
-                        
-
+    """
+    
     #Called from self.after().
     def process_messages(self):
         if self.stopped: #If we should stop, then stop.
             self.quit()
+            return
 
         #Only process the messages in the queue at this time.
-        display_lock.acquire()
+        queue_lock.acquire()
         number = min(len(self.command_queue), MIPC)
+        queue_lock.release()
 
         while number > 0:
 
+            #Words is a list of the split string command.
+            command = self.get_valid_command()
+
             #If a datagram gets dropped, attempt to recover the lost
             # information by asking for it.
-            self.get_up_to_date(self.command_queue[0])
+            if not self.is_up_to_date(command):
+                result = startup_lock.acquire(0)
+                if result:
+                    words = command.split()
+                    self.put_request(words[1], words[1].split("@")[-1])
+                    startup_lock.release()
             
             #Process the next item in the queue.
-            self.handle_command(self.command_queue[0])
-            del self.command_queue[0]
+            self.handle_command(command)
             
             number = number - 1
-
-        #Release the lock.
-        display_lock.release()
 
         #Schedule the next animation.
         self.after_process_messages_id = self.after(MESSAGES_TIME,
@@ -2149,6 +2191,81 @@ class Display(Tkinter.Canvas):
 
         self.after_clients_id = self.after(UPDATE_TIME,
                                            self.disconnect_clients)
+
+    #Called from join_thread().
+    def _join_thread(self):
+        global status_request_threads
+        
+        thread_lock.acquire()
+
+        #del_list = []
+        alive_list = []
+        for i in range(len(status_request_threads)):
+            status_request_threads[i].join()
+            if status_request_threads[i].isAlive():
+                alive_list.append(status_request_threads[i])
+            #else:
+            #    del_list.append(i)
+
+        #del status_request_threads[0]
+        status_request_threads = alive_list
+
+        thread_lock.release()
+
+    #Called from self.after().
+    def join_thread(self):
+        __pychecker__ = "unusednames=i"
+
+        self._join_thread()
+        
+        self.after_join_id = self.after(JOIN_TIME, self.join_thread)
+
+    #Called from self.after().
+    def init_status(self):
+        __pychecker__ = "unusednames=i"
+
+        display_lock.acquire()
+
+        still_left = 0 #Only schedule again if necessary.
+        for mov in self.movers.values():
+            if mov.state == "Unknown":
+                print mov.state, mov.name
+                still_left = 1 
+
+                thread_lock.acquire()
+                list_len = len(status_request_threads)
+                thread_lock.release()
+                if list_len >= 5:
+                    self._join_thread()
+
+                thread_lock.acquire()
+                list_len = len(status_request_threads)
+
+                #We don't want to be too greedy.
+                if list_len < 5:
+                    
+                    #Query the mover about its current state.
+                    #We don't want the main thread waiting.
+                    status_request_threads.append(
+                        threading.Thread(group=None,
+                                         target=mov.get_status,
+                                         name='',
+                                         args=(),
+                                         kwargs={}))
+                    status_request_threads[-1].start()
+
+                #Always release this lock.
+                thread_lock.release()
+                    
+                
+                break #Don't hog this init_status() call.
+
+        display_lock.release()
+
+        if still_left:
+            #Only schedule again if necessary.
+            self.after_init_status_id = self.after(ANIMATE_TIME,
+                                                   self.init_status)
 
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
@@ -2651,16 +2768,16 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     def queue_command(self, command):
-        display_lock.acquire()
-
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
+
+        queue_lock.acquire()
 
         if words[0] in self.comm_dict.keys():
             #Under normal situations.
             self.command_queue.append(command)
 
-        display_lock.release()
+        queue_lock.release()
 
     #      connect MOVER_NAME CLIENT_NAME
     #      disconnect MOVER_NAME CLIENT_NAME
@@ -2695,33 +2812,41 @@ class Display(Tkinter.Canvas):
                  'movers' : {'function':movers_command, 'length':2},
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
-    def get_valid_command(self, command):
+    def get_valid_command(self):  #, command):
+
+        queue_lock.acquire()
+        try:
+            command = self.command_queue[0]
+            del self.command_queue[0]
+        except IndexError:
+            command = ""
+        queue_lock.release()
 
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
 
         if not words: #input was blank, nothing to do!
-            return []
+            return ""  #[]
 
         if words[0] not in self.comm_dict.keys():
-            return []
+            return ""  #[]
 
         #Don't bother processing transfer messages if we are not keeping up.
         if words[0] in ["transfer"] and \
                len(self.command_queue) > max(20, (len(self.movers))):
-            return []
+            return ""  #[]
 
         if len(words) < self.comm_dict[words[0]]['length']:
             Trace.trace(1, "Insufficent length for %s command." % (words[0],))
-            return []
+            return ""  #[]
 
         if self.comm_dict[words[0]].get('mover_check', None) and \
            not self.movers.get(words[1]):
             #This is an error, a message from a mover we never heard of
             Trace.trace(1, "Don't recognize mover, continuing ....")
-            return []
-        
-        return words
+            return ""  #[]
+
+        return command
 
     def handle_command(self, command):
         ## Accept commands of the form:
@@ -2746,16 +2871,50 @@ class Display(Tkinter.Canvas):
         # (N) number of words:
         #      movers M1 M2 M3 ...
 
-        #Words is a list of the split string command.
-        words = self.get_valid_command(command)
+        words = command.split()
         if words:
             #Every command gets processed though handle_command().  Thus,
             # this will output all processed messages and those necessary
             # to insert because of missed messges.
             Trace.message(10, string.join((time.ctime(), command), " "))
+
             #Run the corresponding function.
+            display_lock.acquire()
             apply(self.comm_dict[words[0]]['function'], (self, words,))
+            display_lock.release()
+
+    #Get the next mover to ask for information.
+    def get_request(self, system_name):
+        queue_lock.acquire()
+        try:
+            request = self.request_queue[0]
+        except IndexError:
+            request = {}
+        queue_lock.release()
+
+        #Make sure this is a valid request dictionary and that it
+        # belongs to the current thread.
+        mover_name = request.get('name', None)
+        sys_name = request.get('system_name', None)
+        if mover_name and sys_name == system_name:
+            del self.request_queue[0]
             
+            mover_name = mover_name.split(".")[0].split("@")[0]
+
+            return mover_name + ".mover"
+
+        return None
+
+    #Tell the other thread what movers have old status.
+    def put_request(self, request, system_name):
+        queue_lock.acquire()
+        try:
+            self.request_queue.append({'name' : request,
+                                       'system_name' : system_name})
+        except IndexError:
+            pass
+        queue_lock.release()
+
     #########################################################################
     """        
     def display_idle(self):
@@ -2775,18 +2934,31 @@ class Display(Tkinter.Canvas):
     """
     #overloaded
     def destroy(self):
+
+        for mov in self.movers.values():
+            mc = mov.get_mover_client()
+            try:
+                #If we added a route to the mover, we should remove it.
+                # Most clients would prefer to leave such routes in place,
+                # but entv is not your normal client.  It talks to many
+                # movers that makes the routing table huge.
+                if mc.server_address:
+                    host_config.unset_route(mc.server_address[0])
+            except (socket.error, OSError):
+                pass
+            except TypeError:
+                # mov.server_address is equal to None
+                pass
+        
         self.clear_display()
-        try:
-            #When a reinitialization occurs, there is a resource leak.
-            del self.do_animation
-        except AttributeError:
-            pass
+        
         try:
             #When a reinitialization occurs, there is a resource leak.
             for key in self.csc_dict.keys():
                 del self.csc_dict[key]
         except (AttributeError, KeyError):
             pass
+        
         Tkinter.Canvas.destroy(self)
     
     #overloaded 
@@ -2806,6 +2978,10 @@ class Display(Tkinter.Canvas):
         # reinitializations this should not happen.
         if self.master.state() == "withdrawn":
             self.reposition_canvas(force = True)
+            #This tells the window to let the Canvas fill the entire window.
+            # When this is here, it is one factor to having the first drawing
+            # look correct (among other factors).
+            self.pack(expand = 1, fill = Tkinter.BOTH)
             self.master.deiconify()
             self.master.lift()
             self.master.update()
@@ -2818,6 +2994,10 @@ class Display(Tkinter.Canvas):
                                                 self.reinitialize)
         self.after_process_messages_id = self.after(MESSAGES_TIME,
                                                     self.process_messages)
+        self.after_join_id = self.after(JOIN_TIME,
+                                        self.join_thread)
+        #self.after_init_status_id = self.after(ANIMATE_TIME,
+        #                                       self.init_status)
 
         #Since, the startup_lock is still held, we have nothing yet to do.
         # This would be a good time to cleanup before things get hairy.
@@ -2825,7 +3005,11 @@ class Display(Tkinter.Canvas):
         del gc.garbage[:]
 
         #Let the other startup threads go.
-        startup_lock.release()
+        try:
+            startup_lock.release()
+        except:
+            #Will get here if run from enstore_display.py not entv.py.
+            pass
         
         self.after_reposition_id = None
         if threshold == None:

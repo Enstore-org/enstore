@@ -13,11 +13,9 @@ import socket
 import select
 import string
 import time
-#import pprint
 import threading
 import re
 import rexec
-#import signal
 import errno
 import gc
 import types
@@ -27,14 +25,12 @@ import types
 import enstore_display
 import configuration_client
 import enstore_functions2
-import enstore_constants
+#import enstore_constants
 import enstore_erc_functions
 import e_errors
-import mover_client
+#import mover_client
 import event_relay_messages
 import event_relay_client
-#import udp_client
-#import setpath
 import Trace
 import generic_client
 import option
@@ -45,6 +41,9 @@ import host_config
 # If the wrong order is done, then the dashed lines are not drawn.
 #3-5-2003: Update to previous comment.  Tkinter must be imported after
 # importing enstore_display.  I still don't know why this is.
+#11-1-2004: Update to previous comment.  The reason enstore_display must
+# be imported first is that the tkinter environmental variables are set
+# at the top of the file.
 import Tkinter
 
 #########################################################################
@@ -185,18 +184,13 @@ def get_all_systems(csc, intf=None): #, system_name=None):
             if system_name not in intf.args:
                 del config_servers[system_name]
 
-    #if system_name != None: #len(intf.args) > 0:
-    #    config_host = system_name   #intf.args[0]
     else:
         config_host = enstore_functions2.default_host()
-        #config_host = os.environ.get("ENSTORE_CONFIG_HOST")
 
         #Based on the config file determine which config server was specified.
         for name in config_servers.keys():
             if len(config_host) >= len(name) and \
                    config_host[:len(name)] == name:
-                #config_host = config_servers[name][0]
-                #break
                 pass
             else:
                 del config_servers[name]
@@ -464,7 +458,7 @@ def set_entvrc(display, csc, intf):
                 except IndexError:
                     background = DEFAULT_BG_COLOR
                 try:
-                    if display.animate.get():
+                    if display.master.entv_do_animation.get():
                         animate = str("animate")
                     else:
                         animate = str("still")
@@ -628,6 +622,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
             movers[i] = movers[i] + "@" + enstore_system
     return movers
 
+#Takes the name of the mover and the status dictionary.
 def handle_status(mover, status):
     state = status.get('state','Unknown')
     time_in_state = status.get('time_in_state', '0')
@@ -649,10 +644,12 @@ def handle_status(mover, status):
 
     return [mover_state]
 
+
 #########################################################################
 # The following functions run in their own thread.
 #########################################################################
 
+"""
 def request_mover_status(display, csc, intf):
     global stop_now
 
@@ -718,6 +715,21 @@ def request_mover_status(display, csc, intf):
 
     #Never forget to release a lock.
     enstore_display.startup_lock.release()
+"""
+
+def send_mover_request(csc, send_request_dict, mover_name, u):
+    #Get the message, mover name and mover network address
+    # for sending the status request.
+    m_addr = csc.get(mover_name, {}).get('hostip', None)
+    m_port = csc.get(mover_name, {}).get('port', None)
+    if not m_addr or not m_port:
+        return
+    message = {'work' : 'status'}
+    mover_system_name = mover_name.split(".")[0]
+    tx_id = u.send_deferred(message, (m_addr, m_port))
+    send_request_dict[tx_id] = {}
+    send_request_dict[tx_id]['name'] = mover_system_name
+    send_request_dict[tx_id]['time'] = time.time()
 
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
@@ -728,8 +740,13 @@ def request_mover_status(display, csc, intf):
 def handle_messages(display, csc, intf):
     global stop_now
 
+    #Prevent the main thread from queuing status requests.
+    enstore_display.startup_lock.acquire()
+
     #This is a time hack to get a clean output file.
     timeout_time = time.time() + intf.capture_timeout
+
+    send_request_dict = {}
     
     # we will get all of the info from the event relay.
     if intf.messages_file:
@@ -776,7 +793,16 @@ def handle_messages(display, csc, intf):
             erc = event_relay_client.EventRelayClient(
                 event_relay_host = er_addr[0], event_relay_port = er_addr[1])
             erc.start([event_relay_messages.ALL])
-        
+
+            import udp_client
+            u = udp_client.UDPClient()
+
+            #Get the list of movers that we need to send status requests to.
+            movers = get_mover_list(intf, csc, 1)
+
+            for mover_name in movers:
+                send_mover_request(csc, send_request_dict, mover_name, u)
+                
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
@@ -785,9 +811,17 @@ def handle_messages(display, csc, intf):
 
     start = time.time()
     count = 0
+    
+    #Allow the main thread to queue status requests.
+    enstore_display.startup_lock.release()
 
     while not display.stopped and not stop_now:
 
+        #Send any requests to the mover.
+        mover_name = display.get_request(enstore_system)
+        if mover_name:
+            send_mover_request(csc, send_request_dict, mover_name, u)
+            
         # If commands are listed, use 'canned' version of entv.
         if intf.messages_file:
             try:
@@ -798,6 +832,8 @@ def handle_messages(display, csc, intf):
                 command = string.join(line.split()[5:])
                 if not command:
                     break  #Is this correct to break here?
+                #Store the command into the list (in this case of 1).
+                commands = [command]
             except (OSError, IOError, TypeError, ValueError,
                     KeyError, IndexError):
                 messages_file.seek(0, 0) #Position at beginning of file.
@@ -811,7 +847,9 @@ def handle_messages(display, csc, intf):
             #test whether there is a command ready to read, timeout in
             # 1 second.
             try:
-                readable, unused, unused = select.select([erc.sock], [], [], 1)
+                readable, unused, unused = select.select([erc.sock,
+                                                          u.get_tsd().socket],
+                                                         [], [], 1)
             except select.error, msg:
                 if msg.args[0] == errno.EINTR:
                     erc.unsubscribe()
@@ -829,77 +867,106 @@ def handle_messages(display, csc, intf):
                 count = count + 1
                 continue
 
-            #for fd in readable:
-            msg = enstore_erc_functions.read_erc(erc)
+            commands = []
 
-            if msg and not getattr(msg, "status", None):
-                #Take the message from event relay.
-                command = "%s %s" % (msg.type, msg.extra_info)
+            #Read any status reports from movers.
+            if u.get_tsd().socket in readable:
+                for tx_id in send_request_dict.keys():
+                    try:
+                        mstatus = u.recv_deferred(tx_id, 0.0)
+                        commands = commands + handle_status(
+                            send_request_dict[tx_id]['name'], mstatus)
+                        del send_request_dict[tx_id]
+                    except errno.errorcode[errno.ETIMEDOUT]:
+                        pass
+            #Remove items that are in the queue without having recieved a
+            # responce.
+            elif send_request_dict:
+                for tx_id in send_request_dict.keys():
+                    if time.time() - send_request_dict[tx_id]['time'] > 15:
+                        del send_request_dict[tx_id]
+                    
+            #Read the next message from the event relay.
+            if erc.sock in readable:
+                msg = enstore_erc_functions.read_erc(erc)
+
+                if msg and not getattr(msg, "status", None):
+                    #Take the message from event relay.
+                    commands = commands + ["%s %s" % (msg.type,
+                                                      msg.extra_info)]
+
+                ##If read_erc is valid it is a EventRelayMessage instance. If
+                # it gets here it is a dictionary with a status field error.
+                elif getattr(msg, "status", None):
+                    Trace.trace(1, msg["status"])
+                    #continue
+                #elif msg == None:
+                #    continue
+
+            if not commands:
+                continue
             
-            ##If read_erc is valid it is a EventRelayMessage instance. If
-            # it gets here it is a dictionary with a status field error.
-            elif getattr(msg, "status", None):
-                Trace.trace(1, msg["status"])
-                continue
-            elif msg == None:
-                continue
-
         #Those commands that use mover names need to have the system name
         # appended to the name.
-        words = command.split(" ")
-        if words[0] in ("connect", "disconnect", "loaded", "loading", "state",
-                        "unload", "transfer"):
-            if len(words[1].split("@")) == 1:
-                #If the name already has the enstore_system appended to the
-                # end (from messages_file) then don't do this step.
-                command = "%s %s %s" % (words[0],
-                                        words[1] + "@" + enstore_system,
-                                        string.join(words[2:], " "))
+        for i in range(len(commands)):
+            words = commands[i].split(" ")
+            if words[0] in ("connect", "disconnect", "loaded", "loading",
+                            "state", "unload", "transfer"):
+                if len(words[1].split("@")) == 1:
+                    #If the name already has the enstore_system appended to
+                    # the end (from messages_file) then don't do this step.
+                    commands[i] = "%s %s %s" % (words[0],
+                                               words[1] + "@" + enstore_system,
+                                               string.join(words[2:], " "))
+
 
         ############# HACK ###############################################
         #When writing the messages file, special attention needs to be
         # given to make the "ending" clean.
         if intf.generate_messages_file:
-            words = command.split(" ")
-            if words[0] in ("connect", "disconnect", "loaded", "loading",
-                            "state", "unload", "transfer"):
-                try:
-                    if time.time() > timeout_time \
-                           and display.movers[words[1]].state == "HAVE_BOUND":
-                        words2 = ["state", words[1], "DISMOUNT_WAIT"]
-                        display.queue_command(string.join(words2, " "))
-                        #Use a dummny name for the volume.  Obtaining the
-                        # real name can cause a race condition leading to
-                        # a traceback.  enstore_display.unload_command()
-                        # does not even look at the volume name anyway.
-                        words2 = ["unload", words[1], "dummy"]
-                        display.queue_command(string.join(words2, " "))
-                        words2 = ["state", words[1], "IDLE"]
-                        display.queue_command(string.join(words2, " "))
-                    elif words[0] == "state" \
-                       and words[2] in \
-                       ("MOUNT_WAIT", "DISMOUNT_WAIT", "HAVE_BOUND",
-                        "FINISH_WRITE") \
-                       and display.movers[words[1]].state == "IDLE":
+            for command in commands:
+                words = command.split(" ")
+                if words[0] in ("connect", "disconnect", "loaded", "loading",
+                                "state", "unload", "transfer"):
+                    try:
+                        if time.time() > timeout_time \
+                               and display.movers[words[1]].state == \
+                               "HAVE_BOUND":
+                            words2 = ["state", words[1], "DISMOUNT_WAIT"]
+                            display.queue_command(string.join(words2, " "))
+                            #Use a dummny name for the volume.  Obtaining the
+                            # real name can cause a race condition leading to
+                            # a traceback.  enstore_display.unload_command()
+                            # does not even look at the volume name anyway.
+                            words2 = ["unload", words[1], "dummy"]
+                            display.queue_command(string.join(words2, " "))
+                            words2 = ["state", words[1], "IDLE"]
+                            display.queue_command(string.join(words2, " "))
+                        elif words[0] == "state" \
+                           and words[2] in \
+                           ("MOUNT_WAIT", "DISMOUNT_WAIT", "HAVE_BOUND",
+                            "FINISH_WRITE") \
+                           and display.movers[words[1]].state == "IDLE":
+                            pass
+                        elif words[0] in ("loaded", "loading", "transfer") \
+                             and display.movers[words[1]].state == "IDLE":
+                            pass
+                        elif time.time() < timeout_time:
+                            display.queue_command(command)
+                        elif display.movers[words[1]].state != "IDLE":
+                            display.queue_command(command)
+                    except KeyError:
+                        #A KeyError can occur if the main window has been
+                        # closed and the main thread has already cleared the
+                        # display.movers list.
                         pass
-                    elif words[0] in ("loaded", "loading", "transfer") \
-                         and display.movers[words[1]].state == "IDLE":
-                        pass
-                    elif time.time() < timeout_time:
-                        display.queue_command(command)
-                    elif display.movers[words[1]].state != "IDLE":
-                        display.queue_command(command)
-                except KeyError:
-                    #A KeyError can occur if the main window has been closed
-                    # and the main thread has already cleared the
-                    # display.movers list.
-                    pass
-            else:
-                display.queue_command(command)
+                else:
+                    display.queue_command(command)
         ##################################################################
         else:
-            #For normal use put everything into the queue.
-            display.queue_command(command)
+            for command in commands:
+                #For normal use put everything into the queue.
+                display.queue_command(command)
             
         #If necessary, handle resubscribing.
         if not intf.messages_file:
@@ -911,7 +978,24 @@ def handle_messages(display, csc, intf):
 
     #End nicely.
     if not intf.messages_file:
+        #Tell the event relay to stop sending us information.
         erc.unsubscribe()
+
+        #Remove all of the routes that were set up to all of the movers.
+        for mover_name in movers:
+            try:
+                m_addr = csc.get(mover_name, {}).get('hostip', None)
+                #If we added a route to the mover, we should remove it.
+                # Most clients would prefer to leave such routes in place,
+                # but entv is not your normal client.  It talks to many
+                # movers that makes the routing table huge.
+                host_config.unset_route(m_addr)
+                pass
+            except (socket.error, OSError):
+                pass
+            except TypeError:
+                # mov.server_address is equal to None
+                pass
 
 #########################################################################
 # The following function sets the window geometry.
@@ -967,6 +1051,46 @@ def set_geometry(tk, entvrc_info):
     # that the window appears to migrate upward without human intervention.
     tk.update()
 
+#########################################################################
+#  Create menubar
+#########################################################################
+
+def create_menubar(animate, master):
+    if not master:
+        return
+    
+    #Menubar attributes.
+    master.entv_menubar = Tkinter.Menu(master = master)
+    #Options menu.
+    master.entv_option_menu = Tkinter.Menu(tearoff = 0) #,master = self.entv_menubar)
+
+    #Create the animate check button and set animate accordingly.
+    master.entv_do_animation = Tkinter.BooleanVar()
+    #By default animation is off.  If we need to turn animation, do so now.
+    if animate == enstore_display.ANIMATE:
+        master.entv_do_animation.set(enstore_display.ANIMATE)
+    #Add the checkbutton to the menu.
+    ## Note: There is no way to obtain the actual checkbutton object.
+    ## This would make accessing it internally do-able.
+    ## 
+    ## The only way to have the check in the checkbutton turned on
+    ## by default is to have the BooleanVar variable be a member
+    ## of the class.  Having it as a local variable does not want to
+    ## work (though I don't know why that would be).
+    master.entv_option_menu.add_checkbutton(
+        label = "Animate",
+        indicatoron = Tkinter.TRUE,
+        onvalue = enstore_display.ANIMATE,
+        offvalue = enstore_display.STILL,
+        variable = master.entv_do_animation,
+        #command = self.toggle_animation,
+        )
+
+    #Added the menus to there respective parent widgets.
+    master.entv_menubar.add_cascade(label = "options",
+                                    menu = master.entv_option_menu)
+    master.config(menu = master.entv_menubar)
+    
 #########################################################################
 #  Interface class
 #########################################################################
@@ -1060,6 +1184,8 @@ def main(intf):
         csc = None
 
         system_name = DEFAULT_SYSTEM_NAME
+
+        cscs = [None]
     else:
         # get a configuration server
         default_config_host = enstore_functions2.default_host()
@@ -1079,11 +1205,25 @@ def main(intf):
         #Get the short name for the enstore system specified.
         system_name = get_system_name(intf, cscs_info)
 
+        cscs = []
+        for address in cscs_info.values():
+            cscs.append(configuration_client.ConfigurationClient(address))
+            try:
+                cscs[-1].dump_and_save()
+
+                # Once, the enable_caching() function is called the
+                # csc get() function is okay to use.
+                cscs[-1].new_config_obj.enable_caching()
+            except:
+                pass
+
     #Get the main window.
     master = Tkinter.Tk()
     master.withdraw()
+    create_menubar(enstore_display.STILL, master)
     
     continue_working = 1
+    display = None
 
     while continue_working:
         #Get the entvrc file information
@@ -1096,45 +1236,32 @@ def main(intf):
 
         #Set the size of the window.
         set_geometry(master, entvrc_dict)
-        
-        display = enstore_display.Display(entvrc_dict, master = master,
+
+        if display:
+            display.__init__(entvrc_dict, master = master,
+                              background = entvrc_dict.get('background', None))
+        else:
+            display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
 
-        #Inform the display the config server to use.  Don't do
-        # this if running 'canned' entv.  Make sure this is run
-        # before the movers_command is.
-        if intf.movers_file or intf.messages_file:
-            mover_list = get_mover_list(intf, None, 0, 1)
-
-            cscs = [None]
-        else:
-            cscs = []
-            mover_list = []
-            for address in cscs_info.values():
-                cscs.append(configuration_client.ConfigurationClient(address))
-
+        mover_list = []
+        for i in range(len(cscs)):
+            if cscs[i].server_address:
                 try:
                     #Inform the display the config server to use.  Don't do
                     # this if running 'canned' entv.  Make sure this is run
                     # before the movers_command is.
                     display.handle_command(
-                        "csc %s %s" % (cscs[-1].server_address[0],
-                                       cscs[-1].server_address[1]))
+                        "csc %s %s" % (cscs[i].server_address[0],
+                                       cscs[i].server_address[1]))
                 except:
                     pass
 
-                try:
-                    cscs[-1].dump_and_save()
-
-                    # Once, the enable_caching() function is called the
-                    # csc get() function is okay to use.
-                    cscs[-1].new_config_obj.enable_caching()
-
-                    #Append the new movers to the end of the list.
-                    mover_list = mover_list + get_mover_list(intf, cscs[-1],
-                                                             0, 1)
-                except:
-                    pass
+            #Inform the display the config server to use.  Make sure this
+            # is run before the movers_command is.
+            #This function can be called for 'canned' entv too.  This is
+            # because a None value is inserted into the cscs list.
+            mover_list = mover_list + get_mover_list(intf, cscs[i], 0, 1)
 
         #Inform the display the names of all the movers.
         movers_command = "movers" + " " + string.join(mover_list, " ")
@@ -1160,21 +1287,9 @@ def main(intf):
         enstore_display.startup_lock.acquire()
         
         #Start a thread for each event relay we should contact.
-        status_threads = []
         messages_threads = []
         
         for i in range(len(cscs)):
-            if not intf.generate_messages_file and not intf.messages_file:
-                #If we are in normal running mode start the treads that
-                # will get the initial status of the movers.
-                status_threads.append(threading.Thread(group=None,
-                                                  target=request_mover_status,
-                                                       name='',
-                                                       args=(display,
-                                                             cscs[i], intf),
-                                                       kwargs={}))
-                status_threads[-1].start()
-
             messages_threads.append(threading.Thread(group=None,
                                                      target=handle_messages,
                                                      name='',
@@ -1191,10 +1306,6 @@ def main(intf):
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
-        for i in range(len(status_threads)):
-            status_threads[0].join()
-            del status_threads[0]
-        Trace.trace(1, "status thread finished")
         for i in range(len(messages_threads)):
             messages_threads[0].join()
             del messages_threads[0]
@@ -1209,7 +1320,7 @@ def main(intf):
         except Tkinter.TclError:
             pass #If the window is already destroyed (i.e. user closed it)
                  # then this error will occur.
-        del display
+        #del display
 
         #Force garbage collection while the display is off while awaiting
         # initialization.
@@ -1221,6 +1332,25 @@ def main(intf):
         if uncollectable_count > 0:
             Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
+        #The following code is useful for debugging resource leaks.
+        """
+        if old_list:
+            new_list = gc.get_objects()
+            for item in new_list:
+                if item not in old_list and item != old_list:
+
+                    if type(item) ==  types.InstanceType or \
+                       type(item) ==  types.ClassType or \
+                       type(item) ==  types.TracebackType or \
+                       type(item) ==  types.FrameType :
+                        print item
+
+            print
+            print
+        else:
+            old_list = gc.get_objects()
+        """
+        
         if continue_working:
             #As long as we are reinitializing, make sure we pick up any
             # new configuration changes.  It is possible that the
