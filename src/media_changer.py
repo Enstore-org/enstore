@@ -27,6 +27,7 @@ import socket
 import hostaddr
 import struct, fcntl, FCNTL
 import pprint
+import re
 
 # enstore imports
 import configuration_client
