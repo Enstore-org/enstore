@@ -44,6 +44,8 @@ def dodebug(a,b):
 import signal
 signal.signal(3,dodebug)
 
+verbose = 0
+
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
     try:
@@ -157,7 +159,7 @@ class DispatchingWorker:
 
     # a server can add an fd to the server_fds list
     def add_select_fd(self, fd, write=0, callback=None):
-        print "add fd", fd, ['read','write'][write], callback
+        if verbose: print "add fd", fd, ['read','write'][write], callback
         if fd is None:
             return
         if write:
@@ -170,7 +172,7 @@ class DispatchingWorker:
         ##print "callbacks", self.callback
         
     def remove_select_fd(self, fd):
-        print "disable fd", fd
+        if verbose: print "disable fd", fd
         if fd is None:
             return
 
