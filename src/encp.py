@@ -46,7 +46,7 @@ d0sam_format = "INFILE=%s\n"+\
 
 def write_to_hsm(input, output,
                  config_host, config_port,
-                 ilist=0, chk_crc=1,
+                 ilist=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0,
                  t0=0):
     if t0==0:
@@ -630,7 +630,7 @@ def write_to_hsm(input, output,
 #######################################################################
 def read_from_hsm(input, output,
                   config_host, config_port,
-                  ilist=0, chk_crc=1,
+                  ilist=0, chk_crc=0,
                   pri=1, delpri=0, agetime=0,
                   t0=0):
     if t0==0:
