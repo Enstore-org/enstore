@@ -1703,6 +1703,10 @@ class Display(Tkinter.Canvas):
                     self.itemconfigure(connection.line, fill=connection.color)
                                                  
     def resize(self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+        
         Trace.trace(1, "New dimensions: %s" % self.master.wm_geometry())
 
         try:
@@ -1734,7 +1738,11 @@ class Display(Tkinter.Canvas):
         except AttributeError:
             pass
 
-    def reinitialize(self, event=None):
+    def reinitialize(self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+        
         #self.after_cancel(self.after_timer_id)
         #self.after_cancel(self.after_animation_id)
         self.after_cancel(self.after_smooth_animation_id)
@@ -1745,9 +1753,17 @@ class Display(Tkinter.Canvas):
         self.quit()
 
     def print_canvas(self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+        
         self.postscript(file="/home/zalokar/entv.ps", pagewidth="8.25i")
 
     def window_killed(self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+        
         self.stopped = 1
 
         new_position = self.unframed_geometry.split("+", 1)[1]
@@ -1783,6 +1799,10 @@ class Display(Tkinter.Canvas):
         self.geometry = "%s+%s" % (new_size, new_position)
 
     def visibility (self, event):
+        #This is a callback function that must take as arguments self and
+        # event.  Thus, turn off the unused args test in pychecker.
+        __pychecker__ = "no-argsused"
+        
         #The current framed geometry.
         geometry = self.winfo_toplevel().geometry()
 
@@ -1991,6 +2011,11 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     def quit_command(self, command_list):
+        #This function is called by apply().  It must have the same signature
+        # as the others, even tough command_list is not used.  Thus,
+        # suppress the unused args pychecker test.
+        __pychecker__ = "no-argsused"
+        
         self.stopped = 1
 
     def title_command(self, command_list):
