@@ -132,7 +132,7 @@ def is_ok(dict):
 def inqTrace(severity, msg):
     # add the pid to the front of the msg
     msg2 = "(%s) %s"%(os.getpid(), msg)
-    Trace.trace(severity, msg)
+    Trace.trace(severity, msg2)
 
 try:
     import threading
