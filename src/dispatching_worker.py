@@ -1,10 +1,8 @@
+# system imports
 import errno
 import time
-import timeofday
 import os
 import sys
-from SocketServer import UDPServer, TCPServer
-
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses
 # the SOCKS protocol to make connections through a firewall machine.
@@ -15,18 +13,24 @@ try:
 except ImportError:
     import socket
 
+#enstore imports
+import timeofday
+import Trace
+
 dict = {}
 #
 # Purge entries older than 600 seconds. Dict is a dictionary
 #    The first entry, dict[0], is the key
 #    The second entry, dict[1], is the message, client number, ticket, and time
 #        which becomes list[0-2]
-def purge_stale_entries(dict) :
-     stale_time = time.time() - 600
-     for entry in dict.items() :
-         list = entry[1]
-         if  list[2] < stale_time :
-             del dict[entry[0]]
+def purge_stale_entries(dict):
+    Trace.trace(16,"{purge_stale_entries")
+    stale_time = time.time() - 600
+    for entry in dict.items():
+        list = entry[1]
+        if  list[2] < stale_time:
+            del dict[entry[0]]
+    Trace.trace(16,"}purge_stale_entires")
 
 import pdb
 def dodebug(a,b):
@@ -36,15 +40,19 @@ import signal
 signal.signal(3,dodebug)
 
 # check for any children that have exitted (zombies) and collect them
-def collect_children() :
+def collect_children():
+    Trace.trace(16,"{collect_children")
     try:
-	pid, status = os.waitpid(0, os.WNOHANG)
-	if (pid!=0) :
-	    #print "Child reaped: pid=",pid," status=",status
-	    pass
+        pid, status = os.waitpid(0, os.WNOHANG)
+        if (pid!=0):
+            #print "Child reaped: pid=",pid," status=",status
+            Trace.trace(17,"collect_children reaped pid="+repr(pid))
     except os.error:
-	if sys.exc_info()[1][0] != errno.ECHILD :
-	    raise sys.exc_info()[0],sys.exc_info()[1]
+        if sys.exc_info()[1][0] != errno.ECHILD:
+            Trace.trace(0,"collect_children "+str(sys.exc_info()[0])+\
+                        str(sys.exc_info()[1]))
+            raise sys.exc_info()[0],sys.exc_info()[1]
+    Trace.trace(16,"}collect_children")
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
@@ -53,8 +61,10 @@ def collect_children() :
 class DispatchingWorker:
 
     # Process the  request that was (generally) sent from UDPClient.send
-    def process_request(self, request, client_address) :
+    def process_request(self, request, client_address):
         # the real info and work is in the ticket - get that
+        Trace.trace(16,"{process_request add="+repr(client_address)+\
+                    " req="+repr(request))
 
         exec ( "idn, number, ticket = " + request)
         self.reply_address = client_address
@@ -67,13 +77,13 @@ class DispatchingWorker:
             # see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
             exec ("list = " + repr(dict[idn]))
-            if list[0] == number :
+            if list[0] == number:
                 self.reply_with_list(list)
                 return
 
             # if the request number is larger, then this request is new
             # and we need to process it
-            elif list[0] < number :
+            elif list[0] < number:
                 pass # new request, fall through
 
             # if the request number is smaller, then there has been a timing
@@ -90,6 +100,7 @@ class DispatchingWorker:
             function = ticket["work"]
         except KeyError:
             ticket = {'status' : "cannot find requested function"}
+            Trace.trace(0,"process_request "+repr(ticket)+repr(function))
             self.reply_to_caller(ticket)
             return
 
@@ -97,37 +108,48 @@ class DispatchingWorker:
             purge_stale_entries(dict)
 
         # call the user function
+        Trace.trace(16,"process_request function="+repr(function))
         exec ("self." + function + "(ticket)")
 
-	# check for any zombie children and get rid of them
-	collect_children()
+        # check for any zombie children and get rid of them
+        collect_children()
+        Trace.trace(15,"}process_request")
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
-	ticket['address'] = self.server_address
+        Trace.trace(16,"{alive address="+repr(self.server_address))
+        ticket['address'] = self.server_address
         ticket['status'] = "ok"
         self.reply_to_caller(ticket)
+        Trace.trace(16,"}alive")
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
         try:
+            Trace.trace(16,"{done_cleanup id="+repr(self.current_id))
             del dict[self.current_id]
         except KeyError:
             pass
+        Trace.trace(16,"}done_cleanup")
 
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
-    def reply_to_caller(self, ticket) :
+    def reply_to_caller(self, ticket):
+        Trace.trace(16,"{reply_to_caller number="+repr(self.client_number))
         reply = (self.client_number, ticket, time.time())
         self.reply_with_list(reply)
+        Trace.trace(16,"}reply_to_caller number="+repr(self.client_number))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
-    def reply_with_list(self, list) :
+    def reply_with_list(self, list):
+        Trace.trace(16,"{reply_with_list")
         dict[self.current_id] = list
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
+        if badsock != 0:
+            Trace.trace(0,"reply_with_list pre-send error "+\
+                        repr(errno.errorcode[badsock]))
             print "dispatching_worker reply_with_list, pre-sendto error:",\
                   errno.errorcode[badsock]
         sent = 0
@@ -136,12 +158,17 @@ class DispatchingWorker:
                 self.socket.sendto(repr(list), self.reply_address)
                 sent = 1
             except socket.error:
+                Trace.trace(0,"reply_with_list Nameserver not responding "+\
+                            "add="+repr(address)+\
+                            str(sys.exc_info()[0])+str(sys.exc_info()[1]))
                 print timeofday.tod(),\
                       "dispatching_worker: Nameserver not responding\n",\
-                      message,"\n",address,"\n",\
-                      sys.exc_info()[0],"\n", sys.exc_info()[1]
+                      address,"\n", sys.exc_info()[0],"\n", sys.exc_info()[1]
                 time.sleep(10)
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
-        if badsock != 0 :
+        if badsock != 0:
+            Trace.trace(0,"reply_with_list post-send error "+\
+                        repr(errno.errorcode[badsock]))
             print "dispatching_worker reply_with_list, post-sendto error:",\
                   errno.errorcode[badsock]
+        Trace.trace(16,"}reply_with_list")
