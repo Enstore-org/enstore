@@ -1992,8 +1992,41 @@ class N:
             print_results(self.countersN)
         except (OSError, IOError), detail:
             print str(detail)
-    
 
+# get_mtab() -- read /etc/mtab, for local/remote pnfs translation
+
+def get_mtab():
+    mtab = {}
+    try:
+        f = open('/etc/mtab')
+        l = f.readline()
+        while l:
+            lc = string.split(l)
+            if lc[1][:5] == 'pnfs':
+                c1 = string.split(lc[0], ':')
+                if len(c1) > 1:
+                    mtab[lc[1]] = (c1[1], c1[0])
+                else:
+                    mtab[lc[1]] = (c1[0], None)
+            l = f.readline()
+    except:
+        return {}
+    f.close()
+    return mtab
+
+# get_local_pnfs_path(p, mtab) -- find local pnfs path
+
+def get_local_pnfs_path(p, m={}):
+    if not m:
+        mtab = get_mtab()
+    else:
+        mtab = m
+
+    for i in mtab.keys():
+        if string.find(p, i) == 0 and \
+           string.split(os.uname()[1], '.')[0] == mtab[i][1]:
+            return string.replace(p, i, mtab[i][0])
+    return p
 
 # This is a cleaner interface to access the file, as well as its
 # metadata, in /pnfs
