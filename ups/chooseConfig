@@ -26,12 +26,13 @@ case $node in
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
             ;;
-  d0en*)    ENSTORE_CONFIG_HOST=$d0en
-	    ENSTORE_CONFIG_FILE=sam.conf
+  rip*|d0enmvr13*|d0enmvr14*|d0enmvr15*|d0enmvr16*|d0enmvr17*)
+	    ENSTORE_CONFIG_HOST=$rip
+	    ENSTORE_CONFIG_FILE=rip.conf
             complain=0
             ;;
-  rip*)     ENSTORE_CONFIG_HOST=$rip
-	    ENSTORE_CONFIG_FILE=rip.conf
+  d0en*)    ENSTORE_CONFIG_HOST=$d0en
+	    ENSTORE_CONFIG_FILE=sam.conf
             complain=0
             ;;
   buffalo)  ENSTORE_CONFIG_HOST=$buffalo
