@@ -25,7 +25,7 @@ HTML_FILES = $(WWW)/design.html $(WWW)/assumptions.html \
 HOME_FILE = $(WWW)/index.html
 
 PS_FILES = $(WWW)/enstore.ps $(WWW)/read.ps $(WWW)/test-stand.ps \
-	$(WWW)/write.ps $(WWW)enstoreSimple.ps
+	$(WWW)/write.ps $(WWW)enstoreSimple.ps $(WWW)/vonruden-698-enstore.ps
 
 GIF_FILES = $(WWW)/bookshelf.gif $(WWW)/read.gif $(WWW)/write.gif \
 	$(WWW)/enstore.gif $(WWW)/test-stand.gif $(WWW)/enstoreSimple.gif
