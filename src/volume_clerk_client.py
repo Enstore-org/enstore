@@ -1219,7 +1219,12 @@ def do_work(intf):
         ticket = fcc.tape_list(intf.list)
         vol = ticket['tape_list']
         print "     label           bfid       size        location_cookie delflag original_name\n"
+        klist = []
         for key in vol.keys():
+            klist.append((vol[key]['location_cookie'], vol[key]['bfid']))
+        klist.sort()
+        for k in klist:
+            key = k[1]
             record = vol[key]
             deleted = 'unknown'
             if record.has_key('deleted'):
