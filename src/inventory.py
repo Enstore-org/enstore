@@ -42,6 +42,9 @@ def format_storage_size(size_in_bytes):
 
     return volume_size, suffix[count]
 
+#Takes an arbitrary number of arguments which contain directories and creates
+# them if they do not exist.  If they already exist, then it simply delete
+# everything in the directory.
 def create_clean_dirs(*dirs):
     for dir in dirs:
         #An empty output directory would be nice.
@@ -49,7 +52,12 @@ def create_clean_dirs(*dirs):
             os.system("rm -rf " + dir) #clear/remove the directory
             os.mkdir(dir, 0755)
 
-
+#Takes an arbitrary number of arguments which contain directories and deletes
+# them and their contents.
+def cleanup_dirs(*dirs):
+    for dir in dirs:
+        if string.find(dir, "/dev/stdout") == -1:
+            os.system("rm -rf " + dir) #remove the directory and its contents.
 
 #############################################################################
 #############################################################################
@@ -517,10 +525,17 @@ def sort_inventory(data_file, volume_list, tmp_dir):
         db = long_read_return[1]
 
         for volume in volume_list:
+            #Determine the full file name path for the output.
+            file_string = tmp_dir + volume['external_label']
+
+            #
+            #file_stats = os.stat(file_string)
+            #if file_stats[8] < volume['last_access']:
+            #    print "The file", volume['last_access'], "needs to be updated."
+
             #It may seam that always opening a file is a waste.  But, this
             # way there will always be a file for a volume (even empty
             # volumes).
-            file_string = tmp_dir + volume['external_label']
             fd = os.open(file_string,
                          os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0666)
             if fd == -1:
@@ -621,15 +636,6 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir):
     print_volume_quotas_status(volume_quotas, volume_quotas_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
-    #Remove both the extraction temporary directory (and contents) and the
-    # inventory temporary directory used for sorting the metadata
-    # (and contents).
-    try:
-        os.system("rm -rf " + tmp_dir) # 'inventory_tmp_dir'
-        checkBackedUpDatabases.clean_up(current_dir, inventory_extract_dir)
-    except OSError:
-        pass #We want the dirs to go away, if it's already gone don't worry.
-
     return len(volume_list), count_metadata
 
 
@@ -656,14 +662,8 @@ def inventory_dirs():
         print "Error unable to find configdict entry inventory_extract_dir."
         sys.exit(1)
     if inventory_rcp_dir == "MISSING":
-        print "Error unable to find configdict entry inventory_rcp_dir."
-        sys.exit(1)
+        inventory_rcp_dir = '' #Set this to the empty string.
 
-#    checkBackedUpDatabases.check_existance(inventory_dir, 0)
-#    checkBackedUpDatabases.check_existance(inventory_tmp_dir, 0)
-#    checkBackedUpDatabases.check_existance(inventory_extract_dir, 0)
-#    checkBackedUpDatabases.check_existance(inventory_tcp_dir, 0)
-    
     return inventory_dir, inventory_tmp_dir, inventory_extract_dir, \
            inventory_rcp_dir
 
@@ -692,6 +692,14 @@ if __name__ == "__main__":
     if inventory_extract_dir[-1] != "/":
         inventory_extract_dir = inventory_extract_dir + "/"
 
+    print "backup_dir", backup_dir
+    print "current_dir", current_dir
+    print "inventory_dir", inventory_dir
+    print "inventory_tmp_dir", inventory_tmp_dir
+    print "inventory_extract_dir", inventory_extract_dir
+    print "inventory_rcp_dir", inventory_rcp_dir
+    print "extract_dir", extract_dir
+
     #Look through the arguments list for valid arguments.
     if "-stdout" in sys.argv:
         output_dir = "/dev/stdout/"
@@ -712,7 +720,13 @@ if __name__ == "__main__":
 
     #Remove the contents of existing direcories and create them if they do
     # not exist.
-    create_clean_dirs(inventory_extract_dir, inventory_tmp_dir, output_dir)
+    #Note: This function works by performing an "rm -rf" on each directory.
+    # This makes it important to cleanup the higher directory first as
+    # indicated by the needs of the system.  The probelm most likely will
+    # involve having the inventory_extract_dir and inventory_tmp_dir be
+    # subdirectories of output_dir (=inventory_dir).  So, cleanup this
+    # directory first.
+    create_clean_dirs(output_dir, inventory_extract_dir, inventory_tmp_dir)
 
     #If the backup needs to be extracted (the defualt) then do.
     if "-f" not in sys.argv and "-v" not in sys.argv:
@@ -725,6 +739,10 @@ if __name__ == "__main__":
     if inventory_rcp_dir:
         os.system("rcp %s %s" % (inventory_extract_dir + "*",
                                  inventory_rcp_dir))
+
+    #Cleanup those directories that we don't care about its contents.
+    cleanup_dirs(inventory_tmp_dir, inventory_extract_dir)
+    checkBackedUpDatabases.clean_up(current_dir) #Simple "cleanup".
 
     #Print stats regarding the data generated.
     delta_t = time.time() - t0
