@@ -1210,7 +1210,31 @@ def outputfile_check(inputlist, outputlist, dcache):
 
             #The file exits, as it should, for a dache transfer.
             elif access_check(outputlist[i], os.F_OK) and dcache:
-                outputlist.append(outputlist[i])
+                #Before continuing lets check to see if layers 1 and 4 are
+                # empty first.  This check is being added because it appears
+                # that the dcache can (and has) written multiple copies of
+                # the same file to Enstore.  The filesize being zero trick
+                # doesn't work with dcache, since the dcache sets the filesize.
+                p = pnfs.Pnfs(outputlist[i])
+                try:
+                    layer1 = p.readlayer(1)
+                    layer4 = p.readlayer(4)
+
+                    #Test if the layers are empty.
+                    if layer1 != [] or layer4 != []:
+                        #The layers are not empty.
+                        raise EncpError(None,
+                                        "Layer 1 and layer 4 are already set.",
+                                        e_errors.PNFS_ERROR)
+                    else:
+                        #The layers are empty.
+                        outputlist.append(outputlist[i])
+                except (OSError, IOError), msg:
+                    #Some other non-foreseen error has occured.
+                    raise EncpError(msg.errno, str(msg), e_errors.PNFS_ERROR)
+                except EncpError, msg:
+                    raise msg
+
             else:
                 raise EncpError(None,
                              "Failed outputfile check for: %s" % outputlist[i],
