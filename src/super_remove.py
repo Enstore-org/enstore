@@ -8,6 +8,7 @@ import generic_client
 import configuration_client
 import e_errors
 import string
+import option
 
 class Interface(generic_client.GenericClientInterface):
 	def __init__(self):
@@ -20,6 +21,37 @@ class Interface(generic_client.GenericClientInterface):
 
 	def options(self):
 		return(['delete', 'force', 'skip-pnfs', 'dont-ask', 'bfids'])
+
+	def valid_dictionaries(self):
+		return (self.help_options, self.super_remove_options)
+
+        super_remove_options = {
+		option.DONT_ASK: {
+			option.HELP_STRING: "No confirmation needed",
+			option.DEFAULT_VALUE:option.DEFAULT,
+			option.VALUE_USAGE:option.IGNORED,
+			option.USER_LEVEL:option.ADMIN},
+		option.SKIP_PNFS: {
+			option.HELP_STRING: "Ignore pnfs",
+			option.DEFAULT_VALUE:option.DEFAULT,
+			option.VALUE_USAGE:option.IGNORED,
+			option.USER_LEVEL:option.ADMIN},
+		option.FORCE: {
+			option.HELP_STRING: "Proceed on errors",
+			option.DEFAULT_VALUE:option.DEFAULT,
+			option.VALUE_USAGE:option.IGNORED,
+			option.USER_LEVEL:option.ADMIN},
+		option.BFIDS: {
+			option.HELP_STRING: "Take a file of bfids",
+			option.VALUE_TYPE:option.STRING,
+			option.VALUE_USAGE:option.REQUIRED,
+			option.USER_LEVEL:option.ADMIN},
+		option.DELETE: {
+			option.HELP_STRING: "Actual deletion",
+			option.DEFAULT_VALUE:option.DEFAULT,
+			option.VALUE_USAGE:option.IGNORED,
+			option.USER_LEVEL:option.ADMIN}
+		}
 
 def usage():
 	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] [--bfids] --delete] vol]"%(sys.argv[0])
