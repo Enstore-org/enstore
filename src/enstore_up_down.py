@@ -616,7 +616,7 @@ def do_real_work():
 		enprint("Sufficient capacity of movers for %s, %s of %s responding"%(server.name,
 										     ok_movers,
 									           server.num_movers))
-		self.real_status(enstore_constants.WARNING)
+		server.real_status(enstore_constants.WARNING)
 	    elif bad_movers == 0 and ok_movers == 0:
 		# there are no movers, all are known down, flag a warning.
 		server.real_status(enstore_constants.WARNING)
