@@ -311,7 +311,7 @@ class EMASS_MediaLoader(MediaLoaderMethods):
 	    return
 	if self.mc_config.has_key('IdleTimeHome'):
 	    temp = self.mc_config['IdleTimeHome']
-            if temp == types.int:
+            if type(temp) == types.IntType:
 	        if temp < 20:   # wait at least 20 seconds
 	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
 		else:
