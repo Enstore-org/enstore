@@ -32,7 +32,7 @@ class MediaLoaderClient(BaseDefaults, ClientDefaults):
 
     #  define our specific help
     def help_line(self):
-        print BaseDefaults.help_line(self), "media_changer volume drive",
+        return BaseDefaults.help_line(self)+" media_changer volume drive"
 
     def set_mc(self, mc) :
         self.media_changer = mc
