@@ -98,9 +98,9 @@ class PyGdb(Gdb):
 
     def backtrace(self):
         if self.at_gdb_breakpoint() != 1:
-            return ['Not at a Python source line, printing C backtrace'] + \
-                   self.gdb_command('where')
-
+##            return ['Not at a Python source line, printing C backtrace'] + \
+##                   self.gdb_command('where')
+            self.gdb_command("cont")
         
         frame_expr = 'f'
         ret = []
