@@ -166,7 +166,7 @@ if [ -z "${REV-}" ] ; then
    check_status $? "cvs status -v Makefile"
    if [ -z "${last-}" ] ; then
      echo "revision info not available via cvs - defaulting to v0_0 as last known revision"
-     last=${last:-v0_0}
+     last=${last:-v0_0_Linux}
    fi
    major=`echo $last | awk -F_ '{print $1}'`
    minor=`echo $last | awk -F_ '{print $2}'`
@@ -271,7 +271,7 @@ for try in list doit; do
            fi
            ;;
 
-        4) tag=${REV}_$product
+        4) tag=${REV}_$product_`uname`
            echo "Step $Step:  cvs tag $tag    `starting`"
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR
