@@ -67,11 +67,12 @@ verify_file(char *pnfs_dir, char *strip, char *filename){
 	fprintf(stderr,"%s: %s: no pnfs directory given\n", progname, filename);
 	return -1;
     }
-    if (strlen(pnfs_dir)<5 || strncmp(pnfs_dir,"/pnfs",5)){
+    if (strlen(pnfs_dir)<5 || strncmp(pnfs_dir,"/pnfs",5)
+	||(strlen(pnfs_dir)>5 && pnfs_dir[5]!='/')){
 	fprintf(stderr,"%s: pnfs_dir must start with /pnfs\n", progname);
 	return -1;
     }
-    
+
     if (strip){
 	if (stat(strip, &sbuf)){
 	    fprintf(stderr,"%s: ", progname);
