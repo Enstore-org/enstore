@@ -1740,7 +1740,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
 
         self.state = SETUP
-        
+        self.update_lm()        
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
@@ -3547,7 +3547,7 @@ class DiskMover(Mover):
             return 0
 
         self.state = SETUP
-        
+        self.update_lm()
         #prevent a delayed dismount from kicking in right now
         if self.dismount_time:
             self.dismount_time = None
