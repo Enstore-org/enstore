@@ -97,13 +97,12 @@ install : install_home
 	@mkdir		  $(ENSTORE_INSTALL_DIR)/doc/WWW
 	cp `justfiles`    $(ENSTORE_INSTALL_DIR)/doc/WWW
 
-install_home : www_new
+install_home : 
 	@-if [ -d "$(ENSTORE_HOME)" -a -w "$(ENSTORE_HOME)" ]; then \
 		cp `justfiles`  $(ENSTORE_HOME); \
 	else \
 		echo "ERROR: No permissions to write to $(ENSTORE_HOME)"; \
 	fi;
-
 
 #
 #
