@@ -14,6 +14,7 @@ import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
 import volume_clerk
+import shelve
 
 #Grab the start time.
 t0 = time.time()
@@ -876,7 +877,7 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 #Takes the full filepath name to the metadata file in the second parameter.
 #Takes the full path to the ouput directory in the third parameter.
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
-def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
+def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # determine the output path
     if string.find(output_dir, "/dev/stdout") != -1: 
         last_access_file = "/dev/stdout"
@@ -891,6 +892,10 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
         volume_quotas_file = output_dir + "VOLUME_QUOTAS"
         total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
 
+    # open volume_summary_cache
+    volume_summary_cache_file = os.path.join(cache_dir, 'volume_summary')
+    vol_sum = shelve.open(volume_summary_cache_file)
+    
     vols = db.DbTable('volume', os.path.split(volume_file)[0], '/tmp', [], 0)
     files = db.DbTable('file', os.path.split(metadata_file)[0], '/tmp', ['external_label'], 0)
 
@@ -931,6 +936,8 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
     csc = configuration_client.ConfigurationClient()
     quotas = csc.get('quotas',timeout=15,retry=3)
 
+    unchanged = []
+
     # read volume ... one by one
 
     vc = vols.newCursor()
@@ -941,66 +948,84 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
             vk, vv = vc.next()
             continue
 
-        # # skipping volumes that were not accessed in last two days
-        # if vv['last_access'] < two_day_ago:
-        #     vk, vv = vc.next()
-        #     continue
+        if vol_sum.has_key(vk):
+            vsum = vol_sum[vk]
+        else:
+            vsum = {}
 
         print 'processing', vk, '...',
-        if fd_output != 1:
-            fd_output = os.open(output_dir + vv['external_label'],
-                                os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                                0666)
-        print_header(vv, fd_output)
 
-        # some volume statistics
-
-        active = 0L
-        deleted = 0L
-        unknown = 0L
-        active_size = 0L
-        deleted_size = 0L
-        unknown_size = 0L
-
-        # dealing with files
-
-        fc = files.inx['external_label'].cursor()
-        fk, pfk = fc.set(vk)
-        while fk:
-            f = files[pfk]
-            if f.has_key('deleted'):
-                if f['deleted'] == 'yes':
-                    deleted = deleted + 1
-                    deleted_size = deleted_size + f['size']
+        if vsum and vsum['last'] > vv['last_access']:
+            # good, don't do anything
+            active = vsum['active']
+            deleted = vsum['deleted']
+            unknown = vsum['unknown']
+            active_size = vsum['active_size']
+            deleted_size = vsum['deleted_size']
+            unknown_size = vsum['unknown_size']
+            unchanged.append(vk)
+        else:
+            if fd_output != 1:
+                fd_output = os.open(output_dir + vv['external_label'],
+                                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                                    0666)
+            print_header(vv, fd_output)
+    
+            # some volume statistics
+    
+            active = 0L
+            deleted = 0L
+            unknown = 0L
+            active_size = 0L
+            deleted_size = 0L
+            unknown_size = 0L
+    
+            # dealing with files
+    
+            fc = files.inx['external_label'].cursor()
+            fk, pfk = fc.set(vk)
+            while fk:
+                f = files[pfk]
+                if f.has_key('deleted'):
+                    if f['deleted'] == 'yes':
+                        deleted = deleted + 1
+                        deleted_size = deleted_size + f['size']
+                    else:
+                        active = active + 1
+                        active_size = active_size + f['size']
                 else:
-                    active = active + 1
-                    active_size = active_size + f['size']
-            else:
-                unknown = unknown + 1
-                unknown_size = unknown_size + f['size']
+                    unknown = unknown + 1
+                    unknown_size = unknown_size + f['size']
+    
+                # write out file information
+                os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
+                    (f.get('external_label', "unknown"),
+                     f.get('bfid', "unknown"),
+                     f.get('size', "unknown"),
+                     f.get('location_cookie', "unknown"),
+                     f.get('deleted', "unknown"),
+                     f.get('pnfs_name0', "unknown")))
+    
+                n_files = n_files + 1
+                fk, pfk = fc.nextDup()
+            fc.close()
+            total = active+deleted+unknown
+            total_size = active_size+deleted_size+unknown_size
+            os.write(fd_output, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
+                     (active, deleted, unknown, total))
+            os.write(fd_output, '%d/%d/%d/%d (active/deleted/unknown/total) bytes\n\n'% \
+                     (active_size, deleted_size, unknown_size,
+                      total_size))
+            print_footer(vv, fd_output)
+            if fd_output != 1:
+                os.close(fd_output)
+            vsum = {'last':time.time(), 'active':active,
+                    'deleted':deleted, 'unknown':unknown,
+                    'active_size':active_size,
+                    'deleted_size':deleted_size,
+                    'unknown_size':unknown_size}
+            vol_sum[vk] = vsum
 
-            # write out file information
-            os.write(fd_output, "%10s %15s %15s %22s %7s %s\n" % \
-                (f.get('external_label', "unknown"),
-                 f.get('bfid', "unknown"),
-                 f.get('size', "unknown"),
-                 f.get('location_cookie', "unknown"),
-                 f.get('deleted', "unknown"),
-                 f.get('pnfs_name0', "unknown")))
-
-            n_files = n_files + 1
-            fk, pfk = fc.nextDup()
-        fc.close()
-        total = active+deleted+unknown
-        total_size = active_size+deleted_size+unknown_size
-        os.write(fd_output, '\n\n%d/%d/%d/%d (active/deleted/unknown/total) files\n'% \
-                 (active, deleted, unknown, total))
-        os.write(fd_output, '%d/%d/%d/%d (active/deleted/unknown/total) bytes\n\n'% \
-                 (active_size, deleted_size, unknown_size,
-                  total_size))
-        print_footer(vv, fd_output)
-        if fd_output != 1:
-            os.close(fd_output)
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
@@ -1093,6 +1118,7 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir, volume):
         vk, vv = vc.next()
 
     vc.close()
+    vol_sum.close()
     la_file.close()
     vs_file.close()
     vd_file.close()
@@ -1117,6 +1143,7 @@ def inventory_dirs():
     inventory_tmp_dir = inven.get('inventory_tmp_dir','MISSING')
     inventory_extract_dir = inven.get('inventory_extract_dir','MISSING')
     inventory_rcp_dir = inven.get('inventory_rcp_dir','MISSING')
+    inventory_cache_dir = inven.get('inventory_cache_dir', '/tmp')
 
     if inventory_dir == "MISSING":
         print "Error unable to find configdict entry inventory_dir."
@@ -1131,7 +1158,7 @@ def inventory_dirs():
         inventory_rcp_dir = '' #Set this to the empty string.
 
     return inventory_dir, inventory_tmp_dir, inventory_extract_dir, \
-           inventory_rcp_dir
+           inventory_rcp_dir, inventory_cache_dir
 
 
 if __name__ == "__main__":
@@ -1144,8 +1171,8 @@ if __name__ == "__main__":
     # Extract_dir is ignored by inventory.py.
     (backup_dir, extract_dir, current_dir, backup_node) = \
                  checkBackedUpDatabases.configure()
-    (inventory_dir, inventory_tmp_dir,
-     inventory_extract_dir, inventory_rcp_dir) = inventory_dirs()
+    (inventory_dir, inventory_tmp_dir, inventory_extract_dir,
+     inventory_rcp_dir, inventory_cache_dir) = inventory_dirs()
 
     #Make sure all of the directories end with a /
     if backup_dir[-1] != "/": backup_dir = backup_dir + "/"
@@ -1203,7 +1230,7 @@ if __name__ == "__main__":
 
     #Inventory is the main function that does work.
     counts = inventory(volume_file, file_file, output_dir,
-                       inventory_tmp_dir, volume)
+                       inventory_cache_dir, volume)
     
     #Cleanup those directories that we don't care about its contents.
     cleanup_dirs(inventory_tmp_dir, inventory_extract_dir)
