@@ -1,6 +1,8 @@
 # library manager list of dictionaries
 import os
 import db
+import Trace
+import e_errors
 
 class LMList:
     def __init__(self,db_dir=None,db_name=None, db_key=None):
@@ -10,6 +12,7 @@ class LMList:
 	    f.close()
 	    self.dict = db.DbTable(db_name,db_dir, None, None, 0)
 	    self.db_key = db_key
+            self.db_name = db_name
 	    self.have_db = 1
 	else:
 	    self.have_db = 0
@@ -23,6 +26,7 @@ class LMList:
 	    key,value=self.dict.cursor("first")
 	    while key:
 		self.list.append(value)
+                Trace.log(e_errors.INFO, "restoring LM list from DB %s:%s "%(self.db_name,repr(value)))
 		key,value=self.dict.cursor("next")
 	    self.dict.cursor("close")
 	else:

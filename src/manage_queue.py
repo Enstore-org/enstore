@@ -1,6 +1,8 @@
 # manage the pending Library Managerwork queue
 import time
 import db
+import Trace
+import e_errors
 
 class LM_Queue:
 
@@ -15,6 +17,7 @@ class LM_Queue:
 	key,value=self.dict.cursor("first")
 	while key:
 	    self.queue.append(value)
+            Trace.log(e_errors.INFO, "restoring LM pending work %s "%repr(value))
 	    key,value=self.dict.cursor("next")
 	self.dict.cursor("close")
 
