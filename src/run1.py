@@ -49,28 +49,34 @@ class Wrapper :
     def sw_mount( self, driver, info ):
 	return
 
-    def read_pre_data( self, driver, ticket ):
+    def read_pre_data( self, driver, info ):
+        """ I do not understand this
         if type(ticket) == types.DictType:
             fileInfo = ticket['hsm_driver']['cur_loc_cookie']
             fileNumber = int(string.split(fileInfo,"_")[2])
 	elif type(ticket) == types.IntType:
 	    fileNumber = ticket
 	else:
-	    raise IOError, "bad file number input " + repr(ticket)	    
-        if fileNumber == 0:
-            header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
+	    raise IOError, "bad file number input " + repr(ticket)
+        """
+        if info:
+           fileNumber = info['location_cookie']
+        else:
+           fileNumber = 0 
+        if fileNumber == 0: # so if it is a first file on a tape then there's one more header?
+            self.vol = driver.read(self.recordLength)
+	self.header1 = driver.read(self.recordLength)
+	self.header2 = driver.read(self.recordLength)
+	self.header3 = driver.read(self.recordLength)
+	self.header4 = driver.read(self.recordLength)
 	return
 
 
     def read_post_data( self, driver, info ):
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
-	header = driver.read(self.recordLength)
+	self.tail1 = driver.read(self.recordLength)
+	self.tail2 = driver.read(self.recordLength)
+	self.tail3 = driver.read(self.recordLength)
+	self.tail4 = driver.read(self.recordLength)
 	return
 	
 
@@ -115,7 +121,10 @@ if __name__ == "__main__" :
     import sys
     import getopt
     import Devcodes
-
+    import FTT				# needed for FTT.error
+    import EXfer			# needed for EXfer.error
+    import driver
+    
     options = ["extract"]
     optlist,args=getopt.getopt(sys.argv[1:], '', options)
     (opt,val) = optlist[0]
@@ -127,25 +136,20 @@ if __name__ == "__main__" :
 	print "usage: run1" + " <"+repr(options)+"> infile outfile infilenumber"
 	sys.exit(1)
 
-    fin = DiskDriver()
+    fin = driver.FTTDriver(0x400000)
     fin.open(args[0],"r")
-    fout = DiskDriver()
-    fout.open(args[1],"w")
+    print "FIN",fin
+    fout = open(args[1],"w")
 
     wrapper = Wrapper()
 	
     if opt == "--extract":
-	wrapper.read_pre_data(fin, int(args[2]))
-	wrapper.file_size = -1
-	while wrapper.file_size < 0 :
-	    wrapper.file_size = int(raw_input('Input file size in bytes:'))
-	print "FILE SIZE", wrapper.file_size
-	if  wrapper.file_size > 0:
-	    buf = fin.read(wrapper.file_size)
-	    print "buf=",buf
-	    fout.write(buf)
-	wrapper.read_post_data(fin,{'data_crc':0})
-
+	wrapper.read_pre_data(fin, None)
+        print "VOL", wrapper.vol
+        print "H1", wrapper.header1
+        print "H2", wrapper.header2
+        print "H3", wrapper.header3
+        print "H4", wrapper.header4
     fin.close()
     fout.close()
 
