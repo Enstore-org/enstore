@@ -315,7 +315,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
-            
+        self.draining = 0
+        
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
         try:
@@ -992,7 +993,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ### r=self.tape_driver.rewind()
                     err = r
                     Trace.log(e_errors.INFO, "rewind/retry: mt rewind returns %s, status %s" % (r,s))
-                    if s != 0:
+                    if s:
                         # XXX we cannot dismount the tape. Charles, could you check if code is correct?
                         self.error("cannot open tape device for positioning") # we do not need to notify LM
                         return
@@ -1153,8 +1154,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
         self.delayed_update()
-
-
             
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
@@ -1348,7 +1347,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
 
-        if state in (IDLE, HAVE_BOUND):
+        if self.unique_id and state in (IDLE, HAVE_BOUND):
             ## If we've been idle for more than 5 minutes, force the LM to clear
             ## any entry for this mover in the work_at_movers.  Yes, this is a
             ## kludge, but it keeps the system from getting completely hung up
@@ -1356,7 +1355,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             now = time.time()
             if time.time() - self.state_change_time > 300:
                 self.unique_id = None
-                self.state_change_time = now
                 
         ticket =  {
             "mover":  self.name,
