@@ -1,6 +1,9 @@
 # @(#) $Id$
 # $Author$
 # $Log$
+# Revision 1.1  2001/08/09 20:28:15  yanfen
+# my agent files
+#
 # Revision 1.13  2001/03/22 22:23:52  tlevshin
 # b0_6, bug fixes, doAction Api,added name to ma name
 #
@@ -41,6 +44,7 @@
 # initial version for standart monitoring agent
 #
 
+flag = 0
 
 import os
 import string
@@ -53,9 +57,14 @@ class OSFunc(Worker):
 	Worker.__init__(self)
 	self.runAway={}
 
+    def checkprint(self, flg, str):
+        if flg == 1:
+           print str
+
+
     def chkProc(self,name):
 	file,str = string.splitfields(name,',')
-	print "file is %s, str is %s" % (file, str)
+	self.checkprint(flag, "file is %s, str is %s" % (file, str))
 	cnt=0
 	try:
 	    lines = os.popen('cat %s' % (file,),'r').readlines()
@@ -68,7 +77,7 @@ class OSFunc(Worker):
 	except:
 	    cnt=-1
         
-        print "The number of processor is %s"%(cnt,)
+        self.checkprint(flag, "The number of processor is %s"%(cnt,))
 	return cnt
 
     def tempMsr(self,name):
@@ -94,7 +103,7 @@ class OSFunc(Worker):
     def checkSensor(self, name):
         try:
             lines=os.popen("/usr/local/bin/sdrread" , "r").readlines()
-            print "checkSensor and name is %s"%(name,)
+            self.checkprint(flag, "checkSensor and name is %s"%(name,))
         except:
             return -1
 
@@ -121,13 +130,13 @@ class OSFunc(Worker):
         if found == 1:      
             val1=float(string.splitfields(list1[2])[0])
             val2=float(string.splitfields(list2[2])[0])
-            print "value of %s is %s"%(list1[1], val1)
-            print "value of %s is %s"%(list2[1], val2)
+            self.checkprint(flag, "value of %s is %s"%(list1[1], val1))
+            self.checkprint(flag, "value of %s is %s"%(list2[1], val2))
             if string.find(line, "Temp") >= 0:
-               print "return value is %s"%(max(val1, val2),)
+               self.checkprint(flag, "return value is %s"%(max(val1, val2),))
                return max(val1, val2)
             else:
-               print "return value is %s"%(min(val1, val2),)
+               self.checkprint(flag, "return value is %s"%(min(val1, val2),))
                return min(val1, val2)
 
 
@@ -142,10 +151,10 @@ class OSFunc(Worker):
 
         try:
             val = float(string.splitfields(lines[0])[-1])
-            print "Time is syncronized"
-            print "the value of disp is %s"%(val,)
+            self.checkprint(flag, "Time is syncronized")
+            self.checkprint(flag, "the value of disp is %s"%(val,))
             val = 1000000*val
-            print "return value is %s"%(val,)
+            self.checkprint(flag, "return value is %s"%(val,))
             return val
         except:
             return 0
@@ -157,7 +166,7 @@ class OSFunc(Worker):
                 return -2
 
 	    line=string.join(lines)
-            print line
+            self.checkprint(flag, line)
 	    return string.atoi(string.splitfields(line)[4][:-1])
 	except:
 	    return -1
@@ -281,9 +290,14 @@ if __name__ == '__main__':
 		usage()
 		sys.exit(1)
       
-       if len(args)!=1:
+       if len(args) < 1:
 	   print "You have to provides the name of xml file"
 	   sys.exit(1)
+
+       if len(args) > 1:
+          if args[1] == "--print":
+             flag = 1
+
        try:
 	   cfg=args[0]
 	   open(cfg,'r')
