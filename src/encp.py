@@ -42,7 +42,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +unixfile+" is not a regular file"
     tinfo["filecheck"] = time.time() - t1
     if list:
-        print unixfile,"ok, dt:",tinfo["filecheck"]
+        print "  dt:",tinfo["filecheck"]
 
     # check the output pnfs file next
     t1 = time.time()
@@ -61,7 +61,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +pnfsfile+", NO write access to directory"
     tinfo["pnfscheck"] = time.time() - t1
     if list:
-        print pnfsfile,"ok, dt:",tinfo["pnfscheck"]
+        print "  dt:",tinfo["pnfscheck"]
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -89,7 +89,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     listen_socket.listen(4)
     tinfo["get_callback"] = time.time() - t1
     if list:
-        print host,port,"ok, dt:",tinfo["get_callback"]
+        print "  ",host,port,"dt:",tinfo["get_callback"]
 
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
@@ -114,7 +114,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     vticket = csc.get(p.library+".library_manager")
     tinfo["get_libman"] = time.time() - t1
     if list:
-        print vticket["host"],vticket["port"],"ok, dt:",tinfo["get_libman"]
+        print "  ",vticket["host"],vticket["port"],"dt:",tinfo["get_libman"]
 
     # send the work ticket to the library manager
     t1 = time.time()
@@ -128,8 +128,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
-    if list :
-        print "Q'd:",unixfile, ticket["library"], ticket["file_family"]\
+    if list:
+        print "  Q'd:",unixfile, ticket["library"], ticket["file_family"]\
               ,ticket["file_family_width"],ticket["size_bytes"]
 
     # We have placed our work in the system and now we have to wait for
@@ -161,8 +161,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     data_path_socket = mover_callback_socket(ticket)
     tinfo["tot_to_mover_callback"] = t1 - t0
     if list:
-        print ticket["mover_callback_host"],ticket["mover_callback_port"],\
-              "mover called back, cum_time:",tinfo["tot_to_mover_callback"]
+        print "  ",ticket["mover_callback_host"],\
+              ticket["mover_callback_port"], \
+              "cum_time:",tinfo["tot_to_mover_callback"]
 
     t1 = time.time()
     if list:
@@ -176,7 +177,11 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     tinfo["sent_bytes"] = t2-t1
     tinfo["tot_to_sent_bytes"] = t2-t0
     if list:
-        print "Data sent, bytes:",fsize,"dt:",tinfo["sent_bytes"]
+	if t1!=t2:
+	    sent_rate = 1.*fsize/1024./1024./(t2-t1)
+	else:
+	    sent_rate = 0.0
+        print "  bytes:",fsize,"dt:",tinfo["sent_bytes"]," = ",sent_rate,"MB/S"
 
     data_path_socket.close()
     in_file.close()
@@ -191,7 +196,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     control_socket.close()
     tinfo["final_dialog"] = time.time()-t1
     if list:
-        print "Dialog complete, dt:",tinfo["final_dialog"]
+        print "  dt:",tinfo["final_dialog"]
 
     if done_ticket["status"] == "ok" :
         t1 = time.time()
@@ -200,7 +205,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
         tinfo["pnfsupdate"] = time.time() - t1
         if list:
-            print "pnfs updated, dt:",tinfo["pnfsupdate"]
+            print "  dt:",tinfo["pnfsupdate"]
 
         tinfo["total"] = time.time()-t0
         done_ticket["tinfo"] = tinfo
@@ -217,9 +222,9 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
         p.writelayer(3,done_formatted)
         t2 = time.time() - t1
         if list:
-            print "pnfs logged, dt:",t2
+            print "  dt:",t2
 
-        if list :
+        if list:
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, ":",p.file_size,"bytes",\
                   "copied to", done_ticket["external_label"], \
