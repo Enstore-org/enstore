@@ -114,9 +114,9 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options() +\
-                   ["raise", "severity=", "root_error=", "get_patrol_file",
-                    "resolve=", "dump"]
+            return self.client_options() + [
+                "raise", "severity=", "root-error=", "get-patrol-file",
+                "resolve=", "dump"]
 
 def do_work(intf):
     # now get an alarm client
