@@ -31,7 +31,8 @@ import cPickle
 
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"
-
+RCV_TIMEOUT = 10
+RCV_TRIES = 5
 
 #turn byte count into a nicely formatted string
 def capacity_str(x,mode="GB"):
@@ -179,10 +180,10 @@ def extract_volume(v):    # v is a string
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
-    def __init__( self, csc, server_address=None ):
+    def __init__( self, csc, server_address=None, timeout=RCV_TIMEOUT, retry=RCV_TRIES ):
         generic_client.GenericClient.__init__(self, csc, MY_NAME, server_address)
         if self.server_address == None:
-            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=60, tries=10)
+            self.server_address = self.get_server_address(MY_SERVER, rcv_timeout=timeout, tries=retry)
 
     # add a volume to the stockpile
     def add(self,
@@ -1028,7 +1029,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
 def do_work(intf):
     # get a volume clerk client
-    vcc = VolumeClerkClient((intf.config_host, intf.config_port))
+    vcc = VolumeClerkClient((intf.config_host, intf.config_port), None,  intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(vcc.get_name(MY_NAME))
 
     ticket = vcc.handle_generic_commands(MY_SERVER, intf)
