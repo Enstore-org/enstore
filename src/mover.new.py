@@ -350,7 +350,7 @@ def forked_write_to_hsm( self, ticket ):
 
             location_cookie = self.vol_info['eod_cookie']
 	    eod_cookie = do.tell()
-	    stats = self.do.get_stats()
+	    stats = do.get_stats()
 	    do.close()			# b/c of fm above, this is purely sw.
 
         #except EWHATEVER_NET_ERROR:
