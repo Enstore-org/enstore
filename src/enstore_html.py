@@ -167,12 +167,10 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	td.colspan = rows
 	return HTMLgen.TR(td)
 
-    def script_title(self, table):
+    def script_title(self, tr):
 	# output the script title at the top of the page
         if self.script_title_gif :
-            table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Image(self.script_title_gif), 
-					       align="RIGHT")))
-	table.append(empty_row())
+            tr.append(HTMLgen.TD(HTMLgen.Image(self.script_title_gif), align="RIGHT"))
 
     def table_top_b(self, table, td):
 	td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
@@ -184,11 +182,16 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	return table
 
     def table_top(self):
-	# create the outer table and its rows
-	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(self.nav_table())), 
+	# create the outer table and its rows	
+	fl_table = HTMLgen.TableLite(cellspacing=0, cellpadding=0, align="LEFT",
+				     width="800")
+	tr = HTMLgen.TR(HTMLgen.TD(self.nav_table()))
+	self.script_title(tr)
+	fl_table.append(tr)
+	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(fl_table)), 
 				  cellspacing=0, cellpadding=0, align="LEFT",
 				  width="800")
-	self.script_title(table)
+	table.append(empty_row())
 	td = HTMLgen.TD(HTMLgen.HR())
 	self.table_top_b(table, td)
 	return table
@@ -356,7 +359,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    else:
 		tr.append(empty_data())
 	    tr.append(HTMLgen.TD(HTMLgen.Font("Node", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(qelem[enstore_constants.NODE]))
+	    tr.append(HTMLgen.TD(enstore_functions.strip_node(qelem[enstore_constants.NODE])))
 	    tr.append(HTMLgen.TD(HTMLgen.Font("Port", color=BRICKRED)))
 	    tr.append(HTMLgen.TD(qelem[enstore_constants.PORT]))
 	    table.append(tr)
@@ -710,6 +713,8 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	errors = []
 	for row in data_list:
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
+	    # remove .fnal.gov from the node
+	    row[1] = enstore_functions.strip_node(row[1])
 	    if not len(row) == 4:
 		# this is a normal encp data transfer row
 		for item in row[1:]:
@@ -847,7 +852,7 @@ class EnLogPage(EnBaseHtmlDoc):
 	EnBaseHtmlDoc.__init__(self, refresh)
 	self.title = "ENSTORE Log Files"
 	self.script_title_gif = "en_log.gif"
-	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor and periodically updated. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Href('enstore_log_file_search.html', 'searched')))
+	self.description = "%s%sThis is a list of the existing Enstore log files. Additionally, user specified log files are included at the top. This page is created by the Inquisitor and periodically updated. Enstore log files may be %s"%(NBSP, NBSP, str(HTMLgen.Bold(HTMLgen.Href('enstore_log_file_search.html', 'searched'))))
 
     def logfile_date(self, logfile):
 	(prefix, year, month, day) = string.split(logfile, '-')
@@ -940,10 +945,6 @@ class EnLogPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(log_table)))
 	log_table.append(empty_row())
 	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR())))
-	table.append(empty_row())
-	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Href("enstore_log_file_search.html",
-							"Search the Enstore Log Files"))))
-	table.append(empty_row())
 	# now create the tables for the different months.
 	self.generate_months(table, logs, "%s%s"%(www_host, http_path))
 	self.append(table)							 
@@ -973,6 +974,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 			    html_escape='OFF')
 	    td.append("%s%s"%(NBSP*3, alarm[0]))
 	    tr = HTMLgen.TR(td)
+	    # remove .fnal.gov
+	    alarm[1] = enstore_functions.strip_node(alarm[1])
 	    tr.append(HTMLgen.TD(enstore_functions.format_time(float(alarm[0]))))
 	    for item in alarm[1:]:
 		tr.append(HTMLgen.TD(item))
@@ -1040,6 +1043,8 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	for akey in akeys:
 	    alarm = alarms[akey].list_alarm()
 	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions.format_time(time.mktime(eval(alarm[0]))))))
+	    # remove .fnal.gov
+	    alarm[1] = enstore_functions.strip_node(alarm[1])
 	    for item in alarm[1:]:
 		tr.append(HTMLgen.TD(item))
 	    table.append(tr)

@@ -12,3 +12,6 @@ def strip_file_dir(str):
     if not ind == -1:
 	str = str[(ind+1):]
 
+# remove the string .fnal.gov if it is in the input string
+def strip_node(str):
+    return string.replace(str, ".fnal.gov", "")
