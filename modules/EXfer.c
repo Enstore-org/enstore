@@ -17,6 +17,7 @@
 #include <alloca.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -37,7 +38,6 @@
 #define WRITE_ERROR (-3)
 
 /*Number of buffer bins to use*/
-/*#define ARRAY_SIZE 3*/
 #define THREAD_ERROR (-4)
 #ifdef __linix__
 #define __USE_BSD
@@ -90,6 +90,7 @@ struct transfer
   long long last_fsync;      /* Number of bytes done though last fsync(). */
 
   struct timeval timeout; /*time to wait for data to be ready*/
+  struct timeval start_transfer_function; /*time last read/write was started.*/
   double transfer_time;   /*time spent transfering data*/
 
   int crc_flag;           /*crc flag - 0 or 1*/
@@ -102,6 +103,7 @@ struct transfer
   int threaded;           /*is true if using threaded implementation*/
   
   short int done;         /*is true if this part of the transfer is finished.*/
+  pthread_t thread_id;    /*the thread id (if doing MT transfer)*/
   
   int exit_status;        /*error status*/
   int errno_val;          /*errno of any errors (zero otherwise)*/
@@ -109,6 +111,12 @@ struct transfer
   int line;               /*line number where error occured*/
   char* filename;         /*filename where error occured*/
 
+};
+
+struct monitor
+{
+  struct transfer *read_info;
+  struct transfer *write_info;
 };
 
 #ifdef PROFILE
@@ -169,6 +177,7 @@ int thread_wait(int bin, struct transfer *info);
 int thread_signal(int bin, size_t bytes, struct transfer *info);
 static void* thread_read(void *info);
 static void* thread_write(void *info);
+static void* thread_monitor(void *monitor);
 #ifdef PROFILE
 void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count);
@@ -178,6 +187,9 @@ void print_profile(struct profile *profile_data, int profile_count);
 static void print_status(FILE *fp, int, int, struct transfer *info);
 			 /*char, long long, unsigned int, int array_size);*/
 #endif /*DEBUG*/
+static int buffer_empty(int array_size);
+static int buffer_full(int array_size);
+static void sig_alarm(int sig_num);
 
 /***************************************************************************
  globals
@@ -213,15 +225,58 @@ int *stored;   /*pointer to array of bytes copied per bin*/
 char *buffer;  /*pointer to array of buffer bins*/
 pthread_mutex_t *buffer_lock; /*pointer to array of bin mutex locks*/
 pthread_mutex_t done_mutex; /*used to signal main thread a thread returned*/
+pthread_mutex_t monitor_mutex; /*used to sync the monitoring*/
 pthread_cond_t done_cond;   /*used to signal main thread a thread returned*/
 pthread_cond_t next_cond;   /*used to signal peer thread to continue*/
 #ifdef DEBUG
 pthread_mutex_t print_lock; /*order debugging output*/
 #endif
+static sigjmp_buf alarm_join;
 
 /***************************************************************************
  user defined functions
 **************************************************************************/
+
+static void sig_alarm(int sig_num)
+{
+  siglongjmp(alarm_join, 1);
+}
+
+static int buffer_empty(int array_size)
+{
+  int i;  /*loop counting*/
+
+  for(i = 0; i < array_size; i++)
+  {
+    pthread_mutex_lock(&(buffer_lock[i]));
+    if(stored[i])
+    {
+      pthread_mutex_unlock(&(buffer_lock[i]));
+      return 0;
+    }
+    pthread_mutex_unlock(&(buffer_lock[i]));
+  }
+  
+  return 1;
+}
+
+static int buffer_full(int array_size)
+{
+  int i;  /*loop counting*/
+
+  for(i = 0; i < array_size; i++)
+  {
+    pthread_mutex_lock(&(buffer_lock[i]));
+    if(!stored[i])
+    {
+      pthread_mutex_unlock(&(buffer_lock[i]));
+      return 0;
+    }
+    pthread_mutex_unlock(&(buffer_lock[i]));
+  }
+
+  return 1;
+}
 
 /* Pack the arguments into a struct return_values. */
 static struct transfer* pack_return_values(struct transfer* retval,
@@ -232,6 +287,12 @@ static struct transfer* pack_return_values(struct transfer* retval,
 					   double transfer_time,
 					   char* filename, int line)
 {
+
+  /* Do not bother with checking return values for errors.  Should the
+     pthread_* functions fail at this point, there is notthing else to
+     do but set the global flag and return. */
+  pthread_mutex_lock(&done_mutex);
+
   retval->crc_ui = crc_ui;             /* Checksum */
   retval->errno_val = errno_val;       /* Errno value if error occured. */
   retval->exit_status = exit_status;   /* Exit status of the thread. */
@@ -239,19 +300,13 @@ static struct transfer* pack_return_values(struct transfer* retval,
   retval->transfer_time = transfer_time;
   retval->line = line;             
   retval->filename = filename;
+  retval->done = 1;
 
   /* Putting the following here is just the lazy thing to do. */
-
-  /* Do not bother with checking return values for errors.  Should the
-     pthread_* functions fail at this point, there is notthing else to
-     do but set the global flag and return. */
-  pthread_mutex_lock(&done_mutex);
-  /* For the threaded transfer, indicates to the other threads that this
-     thread is almost done. */
-  retval->done = 1;
   /* For this code to work this must be executed after setting retval->done
      to 1 above. */
   pthread_cond_signal(&done_cond);
+
   pthread_mutex_unlock(&done_mutex);
 
   return retval;
@@ -751,7 +806,9 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
   }
 
   errno = 0;
+  pthread_testcancel();  /* On Linux, read() isn't a cancelation point. */
   sts = read(info->fd, dst, bytes_to_transfer);
+  pthread_testcancel();
   
   if (sts < 0)
   {
@@ -781,8 +838,10 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 
   /* When faster methods will not work, use read()/write(). */
   errno = 0;
+  pthread_testcancel();  /* On Linux, write() isn't a cancelation point. */
   sts = write(info->fd, src, bytes_to_transfer);
-  
+  pthread_testcancel();
+
   if (sts == -1)
   {
     pack_return_values(info, 0, errno, WRITE_ERROR,
@@ -864,6 +923,13 @@ int thread_init(struct transfer *info)
   }
   /* initalize the mutex for signaling when a thread has finished. */
   if((p_rtn = pthread_mutex_init(&done_mutex, NULL)) != 0)
+  {
+    pack_return_values(info, 0, p_rtn, THREAD_ERROR,
+		       "mutex init failed", 0.0, __FILE__, __LINE__);
+    return 1;
+  }
+  /* initalize the mutex for signaling when a thread has finished. */
+  if((p_rtn = pthread_mutex_init(&monitor_mutex, NULL)) != 0)
   {
     pack_return_values(info, 0, p_rtn, THREAD_ERROR,
 		       "mutex init failed", 0.0, __FILE__, __LINE__);
@@ -990,6 +1056,42 @@ int thread_signal(int bin, size_t bytes, struct transfer *info)
   return 0;
 }
 
+/* WARNING: Only use this function from the main thread.  Also, no other
+   thread is allowd to use SIGALRM, sleep, pause, usleep.  Note: nanosleep()
+   by posix definition is guarenteed not to use the alarm signal. */
+
+int thread_collect(int tid)
+{
+  int rtn;
+  
+  errno = 0;
+  
+  /* We don't want to leave the thread behind.  However, if something
+     very bad occured that maybe the only choice. */
+  if(signal(SIGALRM, sig_alarm) != SIG_ERR)
+  {
+    /* If the alarm times off, the thread will not go away.  Probably, it
+       is waiting in the kernel. */
+    if(sigsetjmp(alarm_join, 0) == 0)
+    {
+      /* The only error returned is when the thread to cancel does not exist
+	 (anymore).  Since the point is to stop it, if it is already stopped
+	 then there is not a problem ignoring the error. */
+      pthread_cancel(tid);
+
+      /* Collect the killed thread. */
+      alarm(5);
+      rtn = pthread_join(tid, (void**)NULL);
+      alarm(0);
+      
+      return rtn;
+    }
+    else
+      return EINTR;
+  }
+  return errno;
+}
+
 /***************************************************************************/
 /***************************************************************************/
 
@@ -999,9 +1101,13 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   int block_size = reads->block_size;  /* Align the buffers size. */
   int i;                               /* Loop counting. */
   int p_rtn = 0;                       /* pthread* return values. */
-  pthread_t read_tid, write_tid;       /* Thread id numbers. */
+  pthread_t monitor_tid;               /* Thread id numbers. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
   struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
+  struct monitor monitor_info;  /* Stuct pointing to both transfer stucts. */
+
+  monitor_info.read_info = reads;
+  monitor_info.write_info = writes;
 
   /* Do stuff to the file descriptors. */
 
@@ -1070,8 +1176,10 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 		       "mutex lock failed", 0.0, __FILE__, __LINE__);
     return;
   }
+  
   /* get the threads going. */
-  if((p_rtn = pthread_create(&write_tid, NULL, &thread_write, writes)) != 0)
+  if((p_rtn = pthread_create(&(writes->thread_id), NULL,
+			     &thread_write, writes)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "write thread creation failed", 0.0, __FILE__,__LINE__);
@@ -1079,8 +1187,27 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 		       "write thread creation failed", 0.0, __FILE__,__LINE__);
     return;
   }
-  if((p_rtn = pthread_create(&read_tid, NULL, &thread_read, reads)) != 0)
+  if((p_rtn = pthread_create(&(reads->thread_id), NULL,
+			     &thread_read, reads)) != 0)
   {
+    /* Don't let this thread continue on forever. */
+    thread_collect(writes->thread_id);
+
+    pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+		       "monitor thread creation failed", 0.0,
+		       __FILE__, __LINE__);
+    pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+		       "monitor thread creation failed", 0.0,
+		       __FILE__, __LINE__);
+    return;
+  }
+  if((p_rtn = pthread_create(&monitor_tid, NULL, &thread_monitor,
+			     &monitor_info)) != 0)
+  {
+    /* Don't let these threads continue on forever. */
+    thread_collect(writes->thread_id);
+    thread_collect(reads->thread_id);
+
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
@@ -1091,6 +1218,11 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   /* Determine the absolute time to wait in pthread_cond_timedwait(). */
   if(gettimeofday(&cond_wait_tv, NULL) < 0)
   {
+    /* Don't let these threads continue on forever. */
+    thread_collect(writes->thread_id);
+    thread_collect(reads->thread_id);
+    thread_collect(monitor_tid);
+
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 		       "read thread creation failed", 0.0, __FILE__, __LINE__);
     pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
@@ -1112,6 +1244,11 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     if((p_rtn = pthread_cond_timedwait(&done_cond, &done_mutex,
 				       &cond_wait_ts)) != 0)
     {
+      /* Don't let these threads continue on forever. */
+      thread_collect(writes->thread_id);
+      thread_collect(reads->thread_id);
+      thread_collect(monitor_tid);
+      
       pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			 "waiting for condition failed", 0.0,
 			 __FILE__, __LINE__);
@@ -1123,8 +1260,12 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 
     if(reads->done > 0) /*true when thread_read ends*/
     {
-      if((p_rtn = pthread_join(read_tid, (void**)NULL)) != 0)
+      if((p_rtn = thread_collect(reads->thread_id)) != 0)
       {
+	/* Don't let these threads continue on forever. */
+	thread_collect(writes->thread_id);
+	thread_collect(monitor_tid);
+
 	pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			   "joining with read thread failed",
 			   0.0, __FILE__, __LINE__);
@@ -1154,8 +1295,12 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     }
     if(writes->done > 0) /*true when thread_write ends*/
     {
-      if((p_rtn = pthread_join(write_tid, (void**)NULL)) != 0)
+      if((p_rtn = thread_collect(writes->thread_id)) != 0)
       {
+	/* Don't let these threads continue on forever. */
+	thread_collect(reads->thread_id);
+	thread_collect(monitor_tid);
+
 	pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
 			   "joining with write thread failed",
 			   0.0, __FILE__, __LINE__);
@@ -1184,6 +1329,9 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     }
   }
   pthread_mutex_unlock(&done_mutex);
+
+  /* Don't let this thread continue on forever. */
+  thread_collect(monitor_tid);
 
   /* Print out an error message.  This information currently is not returned
      to encp.py. */
@@ -1214,6 +1362,167 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   free(buffer_lock);
 
   return;
+}
+
+static void* thread_monitor(void *monitor_info)
+{
+  struct transfer *read_info = ((struct monitor *)monitor_info)->read_info;
+  struct transfer *write_info = ((struct monitor *)monitor_info)->write_info;
+  struct timespec sleep_time;  /* Time to wait in nanosleep. */
+  struct timespec rem_time;    /* Nanosleep time left from signal interupt. */
+  struct timeval start_read;   /* Old time to remember during nanosleep. */
+  struct timeval start_write;  /* Old time to remember during nanosleep. */
+  int i;                       /* Loop counter. */
+
+  /* This is the maximum time a read/write call is allowed to take. If it
+     takes longer than this then it has not been able to achive a minimum 
+     rate of 0.5 MB/S. */
+  sleep_time.tv_sec = (time_t)(read_info->block_size/(float)524288) + 1;
+  sleep_time.tv_nsec = 0;
+
+  if(pthread_mutex_lock(&done_mutex))
+    pthread_exit(NULL);
+
+  while(!read_info->done && !write_info->done)
+  {
+    if(pthread_mutex_unlock(&done_mutex))
+      pthread_exit(NULL);
+
+    if(pthread_mutex_lock(&monitor_mutex))
+      pthread_exit(NULL);
+
+    /* Grab the currently recorded start time. */
+    memcpy(&start_read, &(read_info->start_transfer_function),
+	   sizeof(struct timeval));
+    memcpy(&start_write, &(write_info->start_transfer_function),
+	   sizeof(struct timeval));
+
+    if(pthread_mutex_unlock(&monitor_mutex))
+      pthread_exit(NULL);
+    
+    while(1) /*rem_time.tv_sec > 0 && rem_time.tv_nsec > 0)*/
+    {
+      /* Wait for the amount of time that it would take to transfer the buffer
+	 at 0.5 MB/S. */
+      if(nanosleep(&sleep_time, &rem_time) < 0)
+      {
+	/* If the nanosleep was interupted we want to keep going. */
+	if(errno == EINTR)
+	{
+	  memcpy(&sleep_time, &rem_time, sizeof(struct timespec));
+	  continue;
+	}
+	/* If there was a real error that occured, there isn't much to do. */
+	else
+	  pthread_exit(NULL);
+      }
+      /* We successfully slept the full allotted time. */
+      break;
+    }
+
+    if(pthread_mutex_lock(&monitor_mutex))
+      pthread_exit(NULL);
+    if(pthread_mutex_lock(&done_mutex))
+      pthread_exit(NULL);
+
+    /* Check the old time versus the new time to make sure it has changed. */
+    if(!read_info->done && buffer_empty(read_info->array_size) &&
+       (start_read.tv_sec == read_info->start_transfer_function.tv_sec) && 
+       (start_read.tv_usec == read_info->start_transfer_function.tv_usec))
+    {
+      printf("read() is taking to long.\n");
+
+      /* Tell the 'hung' thread to exit.  If we don't, then if/when it does
+	 continue the memory locations have already been freed and will cause
+	 a segmentation violation. */
+      pthread_cancel(read_info->thread_id);
+
+      /* This code is similar to pack_return_values, except that the value
+	 of 'done' is set to  -1 instead of 1. */
+
+      read_info->crc_ui = 0;             /* Checksum */
+      read_info->errno_val = EBUSY;      /* Errno value if error occured. */
+      read_info->exit_status = 1;        /* Exit status of the thread. */
+      read_info->msg = "read() system call stuck inside kernel to long";
+                                         /* Additional error message. */
+      read_info->transfer_time = 0.0;
+      read_info->line = __LINE__;             
+      read_info->filename = __FILE__;
+      
+      /* Setting this to -1 tells the main thread to ignore this thread. */
+      /* TEST: Now that thread_collect() is in place, this should be set to
+	 1 so an attempt to join the thread is made. */
+      read_info->done = 1;
+      /* Tell the other thread to stop waiting (discover the other threads
+	 failure) and error out nicely. */
+      pthread_cond_signal(&done_cond);
+
+      /* Signal the other thread there was an error. We need to lock the
+	 mutex associated with the next bin to be used by the other thread.
+	 Since, we don't know which one, get them all. */
+      for(i = 0; i < read_info->array_size; i++)
+	pthread_mutex_trylock(&(buffer_lock[i]));
+      pthread_cond_signal(&next_cond);
+      for(i = 0; i < read_info->array_size; i++)
+	pthread_mutex_unlock(&(buffer_lock[i]));
+
+      pthread_mutex_unlock(&monitor_mutex);
+      pthread_mutex_unlock(&done_mutex);
+
+      return NULL;
+    }
+    if(!write_info->done && buffer_full(write_info->array_size) &&
+       (start_write.tv_sec == write_info->start_transfer_function.tv_sec) && 
+       (start_write.tv_usec == write_info->start_transfer_function.tv_usec))
+    {
+      printf("write() is taking to long.\n");
+
+      /* Tell the 'hung' thread to exit.  If we don't, then if/when it does
+	 continue the memory locations have already been freed and will cause
+	 a segmentation violation. */
+      pthread_cancel(write_info->thread_id);
+      
+      /* This code is similar to pack_return_values, except that the value
+	 of 'done' is set to  -1 instead of 1. */
+
+      write_info->crc_ui = 0;             /* Checksum */
+      write_info->errno_val = EBUSY    ;  /* Errno value if error occured. */
+      write_info->exit_status = 1;        /* Exit status of the thread. */
+      write_info->msg = "write() system call stuck inside kernel to long";
+                                          /* Additional error message. */
+      write_info->transfer_time = 0.0;
+      write_info->line = __LINE__;
+      write_info->filename = __FILE__;
+
+      /* Setting this to -1 tells the main thread to ignore this thread. */
+      write_info->done = 1;
+      /* Tell the other thread to stop waiting (discover the other threads
+	 failure) and error out nicely. */
+      pthread_cond_signal(&done_cond);
+
+      /* Signal the other thread there was an error. We need to lock the
+	 mutex associated with the next bin to be used by the other thread.
+	 Since, we don't know which one, get them all. */
+      for(i = 0; i < write_info->array_size; i++)
+	pthread_mutex_trylock(&(buffer_lock[i]));
+      pthread_cond_signal(&next_cond);
+      for(i = 0; i < write_info->array_size; i++)
+	pthread_mutex_unlock(&(buffer_lock[i]));
+
+      pthread_mutex_unlock(&monitor_mutex);
+      pthread_mutex_unlock(&done_mutex);
+
+      return NULL;
+    }
+
+    if(pthread_mutex_unlock(&monitor_mutex))
+      pthread_exit(NULL);
+
+  }
+  
+  pthread_mutex_unlock(&done_mutex);
+
+  return NULL;
 }
 
 static void* thread_read(void *info)
@@ -1280,11 +1589,37 @@ static void* thread_read(void *info)
     while(bytes_remaining > 0)
     {
       /* Record the time to start waiting for the read to occur. */
-      gettimeofday(&start_time, NULL);
-      
+      if(gettimeofday(&start_time, NULL))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+
       /* Handle calling select to wait on the descriptor. */
       if(do_select(info))
 	return NULL;
+
+      /* In case something happens, make sure that the monitor thread can
+	 determine that the transfer is stuck. */
+      if(pthread_mutex_lock(&monitor_mutex))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      if(gettimeofday(&(read_info->start_transfer_function), NULL))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      if(pthread_mutex_unlock(&monitor_mutex))
+      {
+	pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
       
       /* Read in the data. */
       if(read_info->mmap_ptr != MAP_FAILED)
@@ -1340,7 +1675,19 @@ static void* thread_read(void *info)
     /* Determine where to put the data. */
     bin = (bin + 1) % read_info->array_size;
     /* Determine the number of bytes left to transfer. */
+    if(pthread_mutex_lock(&monitor_mutex))
+    {
+      pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			 "mutex lock failed", 0.0, __FILE__, __LINE__);
+      return NULL;
+    }
     read_info->bytes -= bytes_transfered;
+    if(pthread_mutex_unlock(&monitor_mutex))
+    {
+      pack_return_values(read_info, 0, errno, THREAD_ERROR,
+			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
+      return NULL;
+    }
   }
 
   /* Sync the data to disk and other 'completion' steps. */
@@ -1442,11 +1789,37 @@ static void* thread_write(void *info)
     while(bytes_remaining > 0)
     {
       /* Record the time to start waiting for the read to occur. */
-      gettimeofday(&start_time, NULL);
+      if(gettimeofday(&start_time, NULL))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
 
       /* Handle calling select to wait on the descriptor. */
       if(do_select(info))
 	return NULL;
+      
+      /* In case something happens, make sure that the monitor thread can
+	 determine that the transfer is stuck. */
+      if(pthread_mutex_lock(&monitor_mutex))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "mutex lock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      if(gettimeofday(&(write_info->start_transfer_function), NULL))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      if(pthread_mutex_unlock(&monitor_mutex))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "mutex unlock failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
 
       if(write_info->mmap_ptr != MAP_FAILED)
       {
@@ -1459,14 +1832,20 @@ static void* thread_write(void *info)
 	/* Does double duty in that it also does the direct io read. */
 	sts = posix_write(
 		  (buffer + (bin * write_info->block_size) + bytes_transfered),
-			bytes_remaining, info);
+		  bytes_remaining, info);
 	if(sts < 0)
 	  return NULL;
       }
 
       /* Record the time that this thread wakes up from waiting for the
 	 condition variable. */
-      gettimeofday(&end_time, NULL);
+      if(gettimeofday(&end_time, NULL))
+      {
+	pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			   "gettimeofday failed", 0.0, __FILE__, __LINE__);
+	return NULL;
+      }
+      /* Get total end time. */
       transfer_time += elapsed_time(&start_time, &end_time);
 
       /* Calculate the crc (if applicable). */
@@ -1504,7 +1883,19 @@ static void* thread_write(void *info)
     /* Determine where to get the data. */
     bin = (bin + 1) % write_info->array_size;
     /* Determine the number of bytes left to transfer. */
-    write_info->bytes -= bytes_transfered;
+    if(pthread_mutex_lock(&monitor_mutex))
+    {
+      pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			 "mutex lock failed", 0.0, __FILE__, __LINE__);
+      return NULL;
+    }
+    write_info->bytes -= bytes_transfered;    
+    if(pthread_mutex_unlock(&monitor_mutex))
+    {
+      pack_return_values(write_info, 0, errno, THREAD_ERROR,
+			 "mutex unlock failed", 0.0, __FILE__, __LINE__);
+      return NULL;
+    }
   }
 
   /* If mmapped io was used, unmap the last segment. */
@@ -1639,7 +2030,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
       /* Handle calling select to wait on the descriptor. */
       if(do_select(read_info))
 	return;
-      
+
 #ifdef PROFILE
       update_profile(2, bytes_remaining, read_info->fd,
 		     profile_data, &profile_count);
