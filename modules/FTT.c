@@ -89,7 +89,7 @@ static	PyObject	*FTTErrObject;
  */
 
 static PyObject *
-raise_exception( char *msg )
+raise_exception( char *msg, int ftt_err )
 {
         PyObject	*v;
         int		i = errno;
@@ -98,8 +98,8 @@ raise_exception( char *msg )
     if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
 #   endif
 
-    /* note: format should be the same as in EXfer.c */
-    v = Py_BuildValue( "(s,i,s,i)", msg, i, strerror(i), getpid() );
+    /* note: the 1st part of format should be the same as in EXfer.c */
+    v = Py_BuildValue( "(s,i,s,i,i)", msg, i, strerror(i), getpid(), ftt_err );
     if (v != NULL)
     {   PyErr_SetObject( FTTErrObject, v );
 	Py_DECREF(v);
@@ -116,10 +116,11 @@ raise_ftt_exception( char *msg )
 {
 	char		buf[2000];
 	char		*ss;
+	int		ftt_errno;
 
-    ss = ftt_get_error( 0 ); /* Zero says do not return errno into pointer */
+    ss = ftt_get_error( &ftt_errno ); /* Zero says do not return errno into pointer */
     sprintf( buf, "%s - %s", msg, ss );
-    return raise_exception( buf );
+    return raise_exception( buf, ftt_errno );
 }
 
 
@@ -161,7 +162,7 @@ FTT_set_blocksize(  PyObject *self
     if (new_blocksize != g_blocksize)
     {   free( g_buf_p );
 	g_buf_p = malloc( 2*new_blocksize );
-	if (!g_buf_p) return (raise_exception("set_blocksize"));
+	if (!g_buf_p) return (raise_exception("set_blocksize",0));
 	g_blocksize = new_blocksize;
     }
 
@@ -187,7 +188,7 @@ FTT_open(  PyObject *self
     sts = PyArg_ParseTuple( args, "ss", &dev_s, &mode_s );
     if (!sts) return (NULL);
 
-    if (g_ftt_desc_tp) return (raise_exception("FTT_Open - already open"));
+    if (g_ftt_desc_tp) return (raise_exception("FTT_Open - already open",0));
 
     if (mode_s[0] == 'r')
     {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDONLY );
@@ -199,7 +200,63 @@ FTT_open(  PyObject *self
     }
 
     sts = ftt_open_dev( g_ftt_desc_tp );
-    if (!sts) return (raise_ftt_exception("FTT_Open"));
+    if (sts == -1) return (raise_ftt_exception("FTT_Open"));
+
+    return (Py_BuildValue(""));	/* return None */
+}
+
+
+/*****************************************************************************
+ */
+static char FTT_open_only_doc[] = "invoke ftt_open only";
+
+static PyObject*
+FTT_open_only(  PyObject *self
+	 , PyObject *args )
+{
+	char	*dev_s;
+	char	*mode_s;
+	int	sts;		/* general status */
+
+    sts = PyArg_ParseTuple( args, "ss", &dev_s, &mode_s );
+    if (!sts) return (NULL);
+
+    if (g_ftt_desc_tp) return (raise_exception("FTT_open_only - already open",0));
+
+    if (mode_s[0] == 'r')
+    {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDONLY );
+	g_mode_c = 'r';
+    }
+    else /* assume write */
+    {   g_ftt_desc_tp = ftt_open( dev_s, FTT_RDWR );
+	g_mode_c = 'w';
+    }
+
+    if (!g_ftt_desc_tp) return (raise_ftt_exception("FTT_open_only"));
+
+    return (Py_BuildValue(""));	/* return None */
+}
+
+
+/*****************************************************************************
+ */
+static char FTT_open_dev_doc[] = "invoke ftt_open_dev";
+
+static PyObject*
+FTT_open_dev(  PyObject *self
+	 , PyObject *args )
+{
+	char	*dev_s;
+	char	*mode_s;
+	int	sts;		/* general status */
+
+    sts = PyArg_ParseTuple( args, "ss", &dev_s, &mode_s );
+    if (!sts) return (NULL);
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_open_dev - not open",0));
+
+    sts = ftt_open_dev( g_ftt_desc_tp );
+    if (sts == -1) return (raise_ftt_exception("FTT_open_dev"));
 
     return (Py_BuildValue(""));	/* return None */
 }
@@ -252,9 +309,9 @@ FTT_read(  PyObject *self
 
     if (PyLong_Check(no_bytes_obj)) no_bytes = PyLong_AsUnsignedLong(no_bytes_obj);
     else if (PyInt_Check(no_bytes_obj)) no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
-    else return(raise_exception("FTT_read - invalid no_bytes param"));
+    else return(raise_exception("FTT_read - invalid no_bytes param",0));
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_read device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_read device not opened",0));
 
     if (no_bytes <= g_buf_bytes)
     {   /* we already have the data */
@@ -336,7 +393,7 @@ FTT_write(  PyObject *self
     sts = PyArg_ParseTuple(args, "s#", &buf_p, &no_bytes );
     if (!sts) return (NULL);
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_write device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_write device not opened",0));
 
     if (g_buf_bytes)
     {   /* I have a *partial block* to deal with */
@@ -649,21 +706,21 @@ FTT_fd_xfer(  PyObject *self
 
     if (PyLong_Check(no_bytes_obj)) no_bytes = PyLong_AsUnsignedLong(no_bytes_obj);
     else if (PyInt_Check(no_bytes_obj)) no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
-    else return(raise_exception("FTT_fd_xfer - invalid no_bytes param"));
+    else return(raise_exception("FTT_fd_xfer - invalid no_bytes param",0));
 
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened",0));
 
     if      (crc_tp == Py_None)   crc_i = 0;
     else if (PyLong_Check(crc_tp)) crc_i = PyLong_AsUnsignedLong(crc_tp);
     else if (PyInt_Check(crc_tp)) crc_i = (unsigned long) PyInt_AsLong( crc_tp );
-    else return(raise_exception("fd_xfer - invalid crc param"));
+    else return(raise_exception("fd_xfer - invalid crc param",0));
 
     if (crc_fun_tp==Py_None) crc_flag=0;
     else if (PyInt_Check(crc_fun_tp)) crc_flag = PyInt_AsLong(crc_fun_tp);
-    else return raise_exception("FTT_fd_xfer: invalid crc flag");
+    else return raise_exception("FTT_fd_xfer: invalid crc flag",0);
     if (crc_flag<0 || crc_flag>1)
-	return raise_exception("FTT_fd_xfer: invalid crc flag");
+	return raise_exception("FTT_fd_xfer: invalid crc flag",0);
 
     /* set up the signal handler b4 we get the ipc stuff */
     newSigAct_sa[0].sa_handler = fd_xfer_SigHand;
@@ -709,12 +766,12 @@ FTT_fd_xfer(  PyObject *self
     }
 
     msgctl( g_msgqid, IPC_STAT, &msgctl_s );
-    if (sts == -1) return (raise_exception("fd_xfer msgctl IPC_STAT"));
+    if (sts == -1) return (raise_exception("fd_xfer msgctl IPC_STAT",0));
 #   if 0 /* the default is the max size -- we can not set bigger and do not
 	    need smaller */
     msgctl_s.msg_qbytes = (rd_ahead_i+1) * sizeof(struct s_msgdat);
     sts = msgctl( g_msgqid, IPC_SET, &msgctl_s );
-    if (sts == -1) return (raise_exception("fd_xfer msgctl IPC_SET"));
+    if (sts == -1) return (raise_exception("fd_xfer msgctl IPC_SET",0));
 #   endif
 
     /* == NOW DO THE WORK ===================================================*/
@@ -726,7 +783,7 @@ FTT_fd_xfer(  PyObject *self
     /* init wr2rd */
     sops_wr_wr2rd.sem_op  = rd_ahead_i;
     sts = semop( g_semid, &sops_wr_wr2rd, 1 );
-    if (sts == -1) return (raise_exception("fd_xfer semop"));
+    if (sts == -1) return (raise_exception("fd_xfer semop",0));
     sops_wr_wr2rd.sem_op  = 1;  /* reader dec's, writer inc's */
 
     /* fork off read (from) */
@@ -753,7 +810,7 @@ FTT_fd_xfer(  PyObject *self
 	    if (sts == -1) 
 	    {   kill( g_pid, 9 );
 		waitpid( g_pid, &sts, 0 );
-		return (raise_exception("fd_xfer - writer msgrcv"));
+		return (raise_exception("fd_xfer - writer msgrcv",0));
 	    }
 
 	    switch (msg_s.mtype)
@@ -791,7 +848,7 @@ FTT_fd_xfer(  PyObject *self
 		    {   /* writing to user */
 			sts = write( fd, msg_s.md.c_p
 				    , (no_bytes<msg_s.md.data)?no_bytes:msg_s.md.data );
-			if (sts == -1) return (raise_exception("fd_xfer - write"));
+			if (sts == -1) return (raise_exception("fd_xfer - write",0));
 			if (no_bytes < msg_s.md.data)
 			{   /* left over goes into g_buf_p */
 			    int ii=msg_s.md.data-no_bytes;
@@ -814,18 +871,18 @@ FTT_fd_xfer(  PyObject *self
 		if (sts == -1)
 		{   kill( g_pid, 9 );
 		    waitpid( g_pid, &sts, 0 );
-		    return (raise_exception("fd_xfer - write - semop"));
+		    return (raise_exception("fd_xfer - write - semop",0));
 		}
 		break;
 	    case Err:
 		waitpid( g_pid, &sts, 0 );
 		errno = msg_s.md.data;
-		return (raise_exception("fd_xfer - read error"));
+		return (raise_exception("fd_xfer - read error",0));
 	    case Eof:
 		waitpid( g_pid, &sts, 0 );
 		/* NOTE: string must be the same as in EXfer -- it is must in
 		   mover.py */
-		return (raise_exception("fd_xfer - read EOF unexpected"));
+		return (raise_exception("fd_xfer - read EOF unexpected",0));
 	    default:		/* assume DatCrc */
 		writing_flg = 0;	/* DONE! */
 		crc_i = (unsigned int)msg_s.md.data;
@@ -849,7 +906,7 @@ FTT_fd_xfer(  PyObject *self
 #   endif
 
     if (waitpid(g_pid,&sts,0) == -1)
-	return (raise_exception("fd_xfer - waitpid"));
+	return (raise_exception("fd_xfer - waitpid",0));
 
     if (crc_flag)
 	rr = PyLong_FromUnsignedLong(crc_i);
@@ -871,7 +928,7 @@ FTT_writefm(  PyObject *self
 {
 	int	sts;
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_writefm device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_writefm device not opened",0));
 
     /* just like close */
     if (g_buf_bytes && (g_mode_c=='w'))
@@ -904,7 +961,7 @@ FTT_skip_fm(  PyObject *self
     sts = PyArg_ParseTuple(args, "i", &skip );
     if (!sts) return (NULL);
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_skip_fm device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_skip_fm device not opened",0));
 
     sts = ftt_skip_fm( g_ftt_desc_tp, skip );
     if (sts == -1) return (raise_ftt_exception("FTT_skipfm"));
@@ -927,7 +984,7 @@ FTT_skip_rec(  PyObject *self
     sts = PyArg_ParseTuple(args, "i", &skip );
     if (!sts) return (NULL);
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_skip_rec device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_skip_rec device not opened",0));
 
     sts = ftt_skip_rec( g_ftt_desc_tp, skip );
     if (sts == -1) return (raise_ftt_exception("FTT_skipfm"));
@@ -951,7 +1008,7 @@ FTT_locate(  PyObject *self
     sts = PyArg_ParseTuple(args, "i|i", &locate, &part );
     if (!sts) return (NULL);
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_locate device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_locate device not opened",0));
 
 #   ifdef NO_PARTITION_SUPPORT
     sts = ftt_scsi_locate( g_ftt_desc_tp, locate );
@@ -978,7 +1035,7 @@ FTT_rewind(  PyObject *self
     /* if (!PyArg_NoArgs(args)) return (NULL); from Modules/socketmodule.c but
        why is it returning 0??? */
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_rewind device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_rewind device not opened",0));
 
     sts = ftt_rewind( g_ftt_desc_tp );
     if (sts == -1) return (raise_ftt_exception("FTT_rewind"));
@@ -1002,7 +1059,7 @@ FTT_dump_stats(  PyObject *self
 	PyObject        *pyt_fptr = 0;
 	
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_dump_stats device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_dump_stats device not opened",0));
 
     sts = PyArg_ParseTuple(args, "O", &pyt_fptr );
     if (!sts) return (NULL);
@@ -1035,7 +1092,7 @@ FTT_get_statsAll(  PyObject *self
 	char            *bvFormat;
 	
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_statsAll device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_statsAll device not opened",0));
 
 #   define GG g_stbuf_tp
     sts = ftt_get_stats( g_ftt_desc_tp, GG );
@@ -1122,7 +1179,7 @@ FTT_get_stats(  PyObject *self
 	int		sts;	/* general status */
 	PyObject	*rr;
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_stats device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_stats device not opened",0));
 
 #   define GG g_stbuf_tp
     sts = ftt_get_stats( g_ftt_desc_tp, GG );
@@ -1159,7 +1216,7 @@ FTT_status(  PyObject *self
     sts = PyArg_ParseTuple(args, "i", &timeout );
     if (!sts) return (NULL);
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_status device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_status device not opened",0));
 
     sts = ftt_status( g_ftt_desc_tp, timeout );
     if (sts == -1) return raise_ftt_exception( "FTT_status" );
@@ -1213,7 +1270,7 @@ FTT_unload(  PyObject *self
 {
 	int		sts;	/* general status */
 
-    if (!g_ftt_desc_tp) return (raise_exception("FTT_unload device not opened"));
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_unload device not opened",0));
 
     sts = ftt_unload( g_ftt_desc_tp );
     if (sts == -1) return (raise_ftt_exception("FTT_unload"));
@@ -1225,11 +1282,77 @@ FTT_unload(  PyObject *self
 
 /*****************************************************************************
  */
+static char FTT_get_mode_doc[] = "invokes ftt_get_mode";
+
+static PyObject*
+FTT_get_mode(  PyObject *self
+	     , PyObject *args )
+{
+	int		density, cmp, blocksize;
+	char		*dev_name;
+	PyObject	*rr;
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_get_mode device not opened",0));
+
+    dev_name = ftt_get_mode( g_ftt_desc_tp, &density, &cmp, &blocksize );
+
+    rr = Py_BuildValue(  "{s:s,s:i,s:i,s:i}"
+		       , "system_device",dev_name
+		       , "density",      density
+		       , "compression",  cmp      
+		       , "blocksize",    blocksize );
+    return (rr);
+}   /* FTT_get_mode */
+
+
+
+/*****************************************************************************
+ */
+static char FTT_set_mode_doc[] = "invokes ftt_set_mode";
+
+static PyObject*
+FTT_set_mode(  PyObject *self
+	     , PyObject *args )
+{
+	int		sts;	/* general status */
+	int		density, cmp, blocksize;
+	char		*dev_name;
+	PyObject	*rr;
+
+    sts = PyArg_ParseTuple(args, "iii", &density, &cmp, &blocksize );
+    if (!sts) return (NULL);
+
+    if (!g_ftt_desc_tp) return (raise_exception("FTT_set_mode device not opened",0));
+
+    dev_name = ftt_set_mode( g_ftt_desc_tp, density, cmp, blocksize );
+
+    rr = Py_BuildValue( "s", dev_name );
+    return (rr);
+}   /* FTT_set_mode */
+
+
+
+/*****************************************************************************
+ */
+
+static void
+insint(  PyObject	*d
+       , char		*name
+       , int		value )
+{
+    PyObject *v = PyInt_FromLong((long) value);
+    if (!v || PyDict_SetItemString(d,name,v))
+	PyErr_Clear();
+
+    Py_XDECREF(v);
+}
 
 static PyMethodDef FTT_Methods[] = {
     { "set_debug", FTT_set_debug, 1, FTT_set_debug_doc },
     { "set_blocksize", FTT_set_blocksize, 1, FTT_set_blocksize_doc },
     { "open", FTT_open, 1, FTT_open_doc },
+    { "open_only", FTT_open_only, 1, FTT_open_only_doc },
+    { "open_dev", FTT_open_dev, 1, FTT_open_dev_doc },
     { "close", FTT_close, 1, FTT_close_doc },
     { "read", FTT_read, 1, FTT_read_doc },
     { "write", FTT_write, 1, FTT_write_doc },
@@ -1245,6 +1368,8 @@ static PyMethodDef FTT_Methods[] = {
     { "status", FTT_status, 1, FTT_status_doc },
     { "format_label", FTT_format_label, 1, FTT_format_label_doc },
     { "unload", FTT_unload, 1, FTT_unload_doc },
+    { "get_mode", FTT_get_mode, 1, FTT_get_mode_doc },
+    { "set_mode", FTT_set_mode, 1, FTT_set_mode_doc },
     { 0, 0 }        /* Sentinel */
 };
 
@@ -1266,6 +1391,38 @@ initFTT()
 
     g_buf_p = malloc( 2*g_blocksize );
     g_stbuf_tp = ftt_alloc_stat();
+
+#   define INSINT( dict, ftt ) insint( dict, #ftt, ftt )
+    INSINT( d, FTT_SUCCESS );
+    INSINT( d, FTT_EPARTIALSTAT );
+    INSINT( d, FTT_EUNRECOVERED );
+    INSINT( d, FTT_ENOTAPE );
+    INSINT( d, FTT_ENOTSUPPORTED );
+    INSINT( d, FTT_EPERM );
+    INSINT( d, FTT_EFAULT );
+    INSINT( d, FTT_ENOSPC );
+    INSINT( d, FTT_ENOENT );
+    INSINT( d, FTT_EIO );
+    INSINT( d, FTT_EBLKSIZE );
+    INSINT( d, FTT_ENOEXEC );
+    INSINT( d, FTT_EBLANK );
+    INSINT( d, FTT_EBUSY );
+    INSINT( d, FTT_ENODEV );
+    INSINT( d, FTT_ENXIO );
+    INSINT( d, FTT_ENFILE );
+    INSINT( d, FTT_EROFS );
+    INSINT( d, FTT_EPIPE );
+    INSINT( d, FTT_ERANGE );
+    INSINT( d, FTT_ENOMEM );
+    INSINT( d, FTT_ENOTTAPE );
+    INSINT( d, FTT_E2SMALL );
+    INSINT( d, FTT_ERWFS );
+    INSINT( d, FTT_EWRONGVOL );
+    INSINT( d, FTT_EWRONGVOLTYP );
+    INSINT( d, FTT_ELEADER );
+    INSINT( d, FTT_EFILEMARK );
+    INSINT( d, FTT_ELOST );
+    INSINT( d, FTT_ENOTBOT );
 
     return;
 }
