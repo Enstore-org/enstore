@@ -88,17 +88,21 @@ def get_vcc_list():
     if not e_errors.is_ok(config_server_addr_list['status']):
         sys.stderr.write(str(config_server_addr_list['status']) + "\n")
         sys.exit(1)
-        
-    #Add this hosts default csc.
-    config_server_addr_list[socket.gethostname()] = csc.server_address
     #Remove status.
     del config_server_addr_list['status']
-
+    
+    #Add this hosts current enstore system to the beginning of the list.
+    csc_list = []
+    csc_list.append(csc)
+    vcc_list = []
+    vcc_list.append(volume_clerk_client.VolumeClerkClient(csc,
+                                                          rcv_timeout=5,
+                                                          rcv_tries=2))
+                    
     #For all systems that respond get the volume clerk and configuration
     # server clients.
-    csc_list = []
-    vcc_list = []
     for config in config_server_addr_list.values():
+        Trace.trace(4, "Locating volume clerk on %s." % (config,))
         _csc = configuration_client.ConfigurationClient(config)
         csc_list.append(_csc)
         vcc_list.append(volume_clerk_client.VolumeClerkClient(_csc,
@@ -227,19 +231,22 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
     while len(error_id_list) + len(completed_id_list) < len(assert_list):
         
         try:
-            #Obtain the control socket and if necessary the routing socket.
+            #Obtain if necessary the routing socket.
             if udp_server:
 	        #There is no need to do this on a non-multihomed machine.
                 route_ticket, listen_socket = encp.open_routing_socket(
                     udp_server, unique_id_list, intf)
-            #If everything is okay, open the control socket.
-            if e_errors.is_ok(route_ticket):
-                socket, addr, callback_ticket = \
-                    encp.open_control_socket(listen_socket, intf.mover_timeout)
-            else:
-                raise encp.EncpError(None, "Routing socket error.",
-                         route_ticket.get('status', (e_errors.UNKNOWN, None)),
+
+                #If everything is okay, open the control socket.
+                if not e_errors.is_ok(route_ticket):
+                    raise encp.EncpError(None, "Routing socket error.",
+                                         route_ticket.get('status',
+                                                          (e_errors.UNKNOWN,
+                                                           None)),
                                           route_ticket)
+            #Obtain the control socket.
+            socket, addr, callback_ticket = \
+                    encp.open_control_socket(listen_socket, intf.mover_timeout)
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
@@ -252,7 +259,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
                 if assert_list[i]['unique_id'] not in error_id_list or \
                    assert_list[i]['unique_id'] not in completed_id_list:
                     #If an error occured, update the unique id.
-                    if msg.errno != errno.ETIMEDOUT:
+                    if getattr(msg, "errno", None) != errno.ETIMEDOUT:
                         assert_list[i]['unique_id'] = encp.generate_unique_id()
                     uncompleted_list.append(assert_list[i])
             #Resend or resubmit the volume request.
