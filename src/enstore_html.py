@@ -225,7 +225,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# now do all the library managers
 	for lm in shortcut_lm:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
-						  '#%s'%lm, lm)
+						  '#%s'%(lm,), lm)
 	# now finish up with the media changers, orphan movers and blocksizes
 	if got_media_changers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,

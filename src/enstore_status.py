@@ -115,7 +115,7 @@ def add_commas(str):
     for i in range(end, -1, -1):
         if j == 3: 
             j = 0
-            new_str = ",%s"%new_str
+            new_str = ",%s"%(new_str,)
         new_str = "%s%s"%(str[i], new_str)
         j = j + 1
     return new_str
@@ -216,7 +216,7 @@ class EnStatus:
 	    dict[FILE_FAMILY] = vc['file_family']
 	    # 'file_family_width not found in reads
 	    if vc.has_key('file_family_width'):
-		dict[FILE_FAMIlY_WIDTH] = repr(vc['file_family_width'])
+		dict[FILE_FAMILY_WIDTH] = repr(vc['file_family_width'])
 
 	    # 'fc' not found in pending work
 	    fc = mover.get('fc', "")
