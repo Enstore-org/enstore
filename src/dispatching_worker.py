@@ -37,6 +37,7 @@ class DispatchingWorker:
         self.rcv_timeout = 60.   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
         self.server_address = server_address
+        self.node_name = socket.gethostbyaddr(self.server_address[0])[0]
         self.read_fds = []    # fds that the worker/server also wants watched with select
         self.write_fds = []   # fds that the worker/server also wants watched with select
         self.callback = {} #callback functions associated with above
@@ -462,3 +463,18 @@ class DispatchingWorker:
             self.client_number,
             reply))
         self.reply_to_caller(ticket)
+
+    def restricted_access(self):
+        '''
+        restricted_access(self) -- check if the service is restricted
+
+        restricted service can only be requested on the server node
+        This function simply compares self.server_address and
+        self.reply_address. If they match, return None. If not, return a
+        error status that can be used in reply_to_caller.
+        '''
+        if self.server_address[0] == self.reply_address[0]:
+             return None
+
+        return (e_errors.ERROR, "This restricted service can only be requested from node %s"%(self.node_name))
+    
