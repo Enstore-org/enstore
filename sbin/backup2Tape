@@ -49,33 +49,47 @@ if [ "$LABEL" = "NOLABL" ]; then
    fi
 fi
 
-AML2_BACKUP_DAY=Thu
-AML2_BACKUP_FLAG=$VAULT/aml2_needs_backup
 ERRORS_TO="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
 
 TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
 STRIP=$VAULT
+FULL_BACKUP_DAYS="Mon Thu"
+FULL_BACKUP_FLAG=$VAULT/full_backup_needed
+FULL_BACKUP_LAST=$VAULT/full_backup_date
 
+
+############################################################################
+# decided if we need to do a full backup or incremetal since last full backup
+
+if [ `echo $FULL_BACKUP_DAYS | grep -c "\`date +'%a'\`"` -ne 0 -a -r $FULL_BACKUP_FLAG ]; then
+   echo "FULL BACKUP being performed"
+   tar_options=""
+   touch $FULL_BACKUP_LAST
+   rm -f $FULL_BACKUP_FLAG # indicate we've done the full backup on selected day (not twice per day)
+   kind=FULL
+else
+   reference="`date -r $FULL_BACKUP_LAST`"
+   echo "INCREMENTAL BACKUP since $reference"
+   tar_options="--newer=\"$reference\""
+   touch $FULL_BACKUP_FLAG # indicate that another full backup is needed when the right day rolls around
+   kind=INCREMENTAL
+fi
 
 ############################################################################
 # create the tar files that we will be copying to tape
 
-PNFS_TAR=$VAULT/pnfs.`date_string`.tar
-doit "tar -cvf $PNFS_TAR $PNFS"
+PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tar
+doit "tar $tar_options -cvf $PNFS_TAR $PNFS"
 doit "ls -l $PNFS_TAR"
 
-ENSTORE_TAR=$VAULT/enstore.`date_string`.tar
-doit "tar -cvf $ENSTORE_TAR $ENSTORE"
+ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tar
+doit "tar $tar_options -cvf $ENSTORE_TAR $ENSTORE"
 doit "ls -l $ENSTORE_TAR"
 
-if [ "`date +'%a'`" = "$AML2_BACKUP_DAY" -a -r $AML2_BACKUP_FLAG ]; then
-   AML2_TAR=$VAULT/aml2.`date_string`.tar
-   doit "tar -cvf $AML2_TAR $AML2"
-   doit "ls -l $AML2_TAR"
-   doit "rm $AML2_BACKUP_FLAG"
-elif [ "`date +'%a'`" != "$AML2_BACKUP_DAY" ]; then
-   doit "touch $AML2_BACKUP_FLAG"
-fi
+AML2_TAR=$VAULT/aml2.`date_string`.$kind.tar
+doit "tar $tar_options -cvf $AML2_TAR $AML2"
+doit "ls -l $AML2_TAR"
+
 
 ############################################################################
 # copy the files to tape using an enstore compatible format
@@ -83,10 +97,13 @@ fi
 doit "$ENSTORE_DIR/volume_import/enstore_tape \
               --write --volume-label=$LABEL \
               --pnfs-dir=/pnfs/backups --strip-path=$STRIP \
-              $PNFS_TAR $ENSTORE_TAR ${AML2_TAR:-}"
+              $PNFS_TAR $ENSTORE_TAR $AML2_TAR"
 
-doit "rm -f $PNFS_TAR $ENSTORE_TAR ${AML2_TAR:-}"
+doit "rm -f $PNFS_TAR $ENSTORE_TAR $AML2_TAR"
 
+if [ $kind = "FULL" ]; then
+  doit "rm -f $FULL_BACKUP_FLAG" # indicate we've done the full backup on selected day (not twice per day) 
+fi
 
 ############################################################################
 # get the tape stats and check for dirty drives or out of space conditions
