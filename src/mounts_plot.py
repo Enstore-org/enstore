@@ -156,6 +156,7 @@ if __name__ == '__main__':
 	outf.write("set yrange [0:%d]\n"%(((maxy+yoffset*2)/ystep+1)*ystep))
 	outf.write(set_label)
 	outf.write(set_xtics)
+	outf.write("set tics out\n")
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
 	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
