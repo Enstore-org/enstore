@@ -6,6 +6,7 @@ import os
 import tempfile
 
 import configuration_client
+import enstore_functions
 
 
 #Conversion from "bytes per 15 seconds" to "terabytes per day"
@@ -47,6 +48,7 @@ def get_rate_info():
     dir  = ratekeep.get('dir', 'MISSING')
     tmp_dir  = ratekeep.get('tmp', 'MISSING')
     ratekeeper_name = ratekeep.get('name','MISSING')
+    ratekeeper_host = ratekeep.get('host','MISSING')
     rate_nodes = ratekeep.get('nodes','MISSING')
     gif_filename = ratekeep.get('gif','MISSING')
     
@@ -56,7 +58,11 @@ def get_rate_info():
     if tmp_dir == 'MISSING':
         tmp_dir = None
     if ratekeeper_name == 'MISSING' or ratekeeper_name == "":
-        ratekeeper_name = os.environ.get("ENSTORE_CONFIG_HOST")
+        if ratekeeper_host == 'MISSING' or ratekeeper_name == "":
+            ratekeeper_name = os.environ.get("ENSTORE_CONFIG_HOST")
+            ratekeeper_name = enstore_functions.strip_node(ratekeeper_name)
+        else:
+            ratekeeper_name = enstore_functions.strip_node(ratekeeper_host)
     if rate_nodes == 'MISSING':
         rate_nodes = ''
     if gif_filename == 'MISSING':
