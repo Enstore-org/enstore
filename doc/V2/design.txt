@@ -1,0 +1,321 @@
+$Id$
+
+
+	Enstore "V2" project design notes
+	
+	Charles G. Waldman
+	Alexander Moibenko
+				    
+
+0. Introduction:
+
+  Enstore "V2" is a project to improve the reliability, performance
+  and maintainability of the Library Manager (LM) and Mover modules,
+  two of the key pieces of Enstore.  The time frame for completion of
+  this project is 4-6 weeks, beginning end of January 2000 and ending
+  sometime around the middle of March.
+
+  There are plenty of redesign/re-engineering issues which are *not*
+  being addressed in this project, in the interest of keeping within
+  the allotted timeframe.  The main ones are: addressing the
+  reliability and robustness of the databases used in the File and
+  Volume Clerks (possibly replacing libtp with Metakit or some other
+  database engine), and also a replacement of the rather amorphous
+  "ticket" objects (implemented as Python dictionaries) with a more
+  clearly defined ticket class.  These issues, if they are to be
+  addressed, will be part of a later "V3" initiative.
+
+
+1. Design goals:
+
+1.1 General principles:
+
+  Simplicity
+
+    The current LM and Mover have grown to the point where the code is
+    difficult to read and understand; features have been added on an
+    ad-hoc basis, and maintenance of the code has become rather
+    difficult.  It's time to re-factor and simplify.  In particular,
+    we wish to reduce the number of intermediate states
+
+  Generality
+
+    We wish to avoid assumptions about how the system will be used,
+    what types of drives and media will be used for what purposes;
+    inasmuch as it does not conflict with the previous goal of
+    simplicity, strive for the most general solutions to problems
+    rather than a lot of special cases.  In particular, consider
+    allowing a Mover to serve more than one LM and a Library to
+    consist of more than one media type.
+
+  Robustness
+
+    Hardware is unreliable.  Robot arms fail.  Mover nodes have been
+    crashing frequently; we need to avoid situations where other parts
+    of the system become "confused" or hung when individual mover
+    nodes crash or reboot.
+
+  Performance 
+
+    We're not getting the throughput that we expect, and the CPU loads
+    are too high.  Carefully examine the implementations of buffering,
+    checksumming, etc. to make sure we're not copying data more times
+    than absolutely necessary.
+
+
+1.2 Specifics:
+
+    Eliminate mirroring of mover state within the library manager.
+    The library manager must have no "memory" of what various movers
+    are doing.  In the V2 system, messages from the Movers to the LM
+    will drive the flow of execution.
+
+    Eliminate the library manager databases.  The LM should have the
+    minimum possible "history", that is, just its "pending work"
+    queue, the "work at movers list", and the "suspect
+    volumes"/"suspect movers" lists.
+
+    All retrying of failed requests will be driven by the encp client
+    rather than the LM.
+
+    Eliminate "summoning" of movers by the LM.
+
+    Eliminate intermediate "mounting" and "unmounting" Mover states.
+
+    Have delayed dismount handled internally by the Mover; having this
+    handled by the LM adds undue complexity and state mirroring.
+
+    Add in support for high-priority (HI-PRI) requests, which will
+    cause a mover in delayed-dismount state to immediately dismount
+    and handle the new incoming request.
+
+2. Implementation plan:
+
+2.1. Mover:
+
+    The Mover will not act as a server; the only messages it will
+    recieve will be in response to messages it sends to the other
+    servers.  The client/server relationship between Mover and LM will
+    be inverted, so that the Mover is a client of the LM.
+
+    The Mover will, when a transfer is not in progress, periodically
+    send messages to all of its associated LMs.  The "ping interval"
+    for these messages will be configurable, for the purposes of
+    discussion it is somewhere on the order 10-15 seconds.
+
+
+    Mover Interactions:
+   
+    The Mover sends the following message types to the Library
+    Manager(s):
+
+	STARTING:   sent once on startup of the Mover.
+	IDLE:       mover is not transferring any data, and has no
+		    tape volume loaded
+	BOUND:	    mover is not transferring any data, and has a
+		    tape volume loaded
+	I/O ERROR:  an error occurred related to the tape drive and/or
+		    tape cartridge.  This type of error results
+		    in updating the Suspect Volumes/Suspect Movers 
+		    data.
+	GENERAL ERROR:  Some other error occurred - e.g. mover unable to
+		    contact File or Volume Clerk - reported back to 
+		    LM, but does not affect Suspect
+		    Volumes/Suspect Movers data.
+	BUSY:	    Sent once when a transfer is beginning.  Ignored
+		    by the LM, for now.
+	
+
+    All "work" is assigned to the Mover by the LM in response to these
+    messages.  The LM will not send messages to the mover, except as
+    replies to the above message types.
+
+    The Library Manager does not send bind/unbind volume requests to
+    the Mover - these are part of the read or write requests.
+
+    Other servers:
+
+    The Mover needs to communicate with the Media Changer to send two
+    types of message: LOAD_VOLUME and UNLOAD_VOLUME
+
+    The Mover needs to communicate with the Volume Clerk in order to
+    send UPDATE_COUNTS messages and UPDATE_STATE (loaded/unloaded)
+
+    The Mover needs to communicate with the File Clerk in one place
+    only - ASSIGN_NEW_BFID, to generate a new bitfile ID for stored
+    files; this BFID is sent back to the encp client which stores it
+    in PNFS.
+
+    And, finally, the Mover needs to talk to the encp client itself,
+    to rendezvous on a TCP/IP port to transfer data and also to send
+    final status.
+
+
+  Miscellaneous Mover notes:
+
+    Retrying of I/O failures due to dirty heads - Mover will initiate
+    cleaning and retry the operation autonomously.
+
+    The Mover must be able to be told to re-read its configuration
+    from the Configuration Server, in order to reassign Movers to
+    Library Managers, and/or modify LM ordering.  A Mover may belong
+    to more than one LM, but will always have a ranking of LMs, to
+    simplify the handling of conflicting priorities.
+
+    The use of shared memory and semaphores in the Mover needs careful
+    scrutiny and review.  In particular, I believe that it might be
+    possible, using `select'-based multiplexing, to keep the Mover
+    from having to fork a child process, which would simplify the
+    Mover greatly.  It might also be possible to use threads, but this
+    approach is not without its own drawbacks.  This requires some
+    investigation.
+
+
+2.2  Library Manager (LM):
+
+    The Library Manager will be drastically simplified.
+
+    The LM will not have a pre-defined list of Movers.  Any Mover which
+    contacts a LM will be eligible for work assignments.  Thus new
+    Movers can be added dynamically without reconfiguring/restarting
+    the LM.
+
+2.2.1 Library Manager interactions:
+
+    Encp interaction:
+
+    When the encp client contacts a LM with a read or write request,
+    the unique id of the request is first examined to see if it
+    matches a request already in the pending_requests queue or the
+    work_at_movers list; if so, the request is simply ignored by the
+    LM (it is an encp retry, but the work is still queued).
+
+    If the request is not a duplicate request, it is timestamped and
+    added to the pending_requests queue.
+
+      
+    Mover/LM interaction:
+
+    STARTING: 
+   
+      When a Mover sends a LM a STARTING message, this mover is
+      removed from the Suspect Movers list, if present, and any
+      entries in the work_at_movers list associated with this mover
+      are cleared.
+
+    IDLE:
+
+      When a Mover sends an IDLE message to the LM, the LM scans its
+      pending_requests queue to find suitable work to give this Mover.
+      The highest-priority job which is compatible with this Mover's
+      supported media types is returned.  Of course, the LM must first
+      examine the Suspect Volumes/Suspect Movers list to avoid sending
+      a tape back to a Mover where it previously failed, or sending
+      any work at all to a "known bad" Mover.
+
+      If the request is a write request, the Library Manager must also
+      scan the work_at_movers list, to ensure that the number of
+      writes to tapes in the current file family does not exceed that
+      file family's configured width.
+
+      Furthermore, the LM must check with the Volume Clerk to make
+      sure that the volume associated with the request is not in the
+      "bound" state (i.e. another mover has this volume loaded).
+
+      If a request is found in the pending queue meeting all of the
+      above conditions, this work is returned to the Mover as a
+      response to the IDLE message.  Otherwise a "no_work" ticket
+      is returned.
+
+      The IDLE message also results in any previous work_at_movers
+      being cleared, since IDLE will not be sent until any previous
+      transfer is completed.
+
+
+    BOUND:
+
+      When a Mover sends a BOUND message to the LM, this indicates
+      that the Mover has completed its previous work assignment, but
+      has not yet unloaded the tape volume (delayed dismount).  The
+      BOUND message contains the external label of the bound volume.
+      The LM will preferentially assign work matching this
+      volume. However, the introduction of HI-PRI requests (which are
+      able to veto a delayed dismount) requires that we first scan the
+      pending_requests queue for any HI-PRI requests which have been
+      enqueued for longer than the Mover's "ping interval" (~15
+      seconds).  This allows time for any Movers which are completely
+      idle to have picked up the HI-PRI request already.  If HI-PRI
+      requests have remained enqueued for longer than the Mover's
+      ping interval, this is because there are no more idle movers,
+      and we are forced to veto a delayed dismount.
+
+      If there are no HI-PRI requests meeting the above condition,
+      then the pending_requests queue is examined for work matching
+      the bound volume.  If any such work is enqueued, it is assigned
+      to the Mover.  If not, the Mover is sent a "no_work" ticket.
+
+      The handling of the BOUND message must also have the same
+      handling of Suspect Volumes/Suspect Movers as the IDLE message;
+      also, as in the IDLE case, it clears any previous
+      work_at_movers.
+
+    I/O ERROR:
+
+      When a Mover sends an I/O ERROR message to the LM, it indicates
+      that the last transfer failed.  The work_at_movers for this
+      mover is cleared, and the Suspect Volumes/Suspect Movers lists
+      are updated. 
+
+    GENERAL ERROR:
+
+      Some Mover error occurred which was not directly related to tape
+      I/O operations (e.g. media changer failure).  work_at_movers
+      is cleared but the Mover and volume are not marked as suspect.
+      The encp client is responsible for initiating retries.
+
+    BUSY: 
+
+      This message is sent once when a transfer begins.  (Does it make
+      sense to send it periodically, just like the IDLE and BOUND
+      messages?)  In V2, the LM will not do anything with this
+      message,  but we believe it may be useful to have an indication
+      that the Mover is "still there".
+
+
+
+9. Open Questions:
+
+9.1 Is it ever OK to ignore file family width?
+
+    Imagine the following scenario:  file family X has width=2.  Due to
+system problems (say, a faulty tape drive generating I/O errors) a
+large number of non-full volumes for this family are marked readonly
+or noaccess.  After the problem is remedied, the volumes are clear;
+now the family X has 5 non-empty, non-full volumes.  
+
+    Now, 5 read requests for the 5 different volumes are issued, and
+since file family width is only a factor during writing, all 5 volumes
+are mounted for reading.
+
+    Finally, 5 write requests for family X come in.  Since 5 tapes are
+already mounted, it would be possible to handle all 5 write requests
+right away.  But due to width=2, only 2 writes commence, and 3 drives
+sit idle.  Due to delayed dismount, these 3 drives are not used for
+anything.  Wouldn't it be more efficient to ignore the width in this
+case and let all the available volumes be used?
+
+    Hmm, even if the drives are sitting in delayed dismount state, a
+HI-PRI request would still be able to force a dismount.
+
+
+9.2  More about HI-PRI
+
+    Are there HI-PRI read requests, or is this only an attribute of
+writes?  Seems to me that the intention here is for D/A jobs which
+simply can't wait.  Reading data can always wait (?).  
+
+    What if a HI-PRI write request comes in for a file family with 
+width=1, and another write is already in progress for this file
+family?  In this case, do we ignore the file family width?
+
+
