@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -99,14 +100,10 @@ def archive_clean(ago):
 		
 if __name__=="__main__":
     import string
+    import hostaddr
     Trace.init("BACKUP")
     Trace.trace(6,"backup called with args "+repr(sys.argv))
 
-    try:
-	import SOCKS
-        socket = SOCKS
-    except ImportError:
-	import socket
     if len(sys.argv) > 1 :
 	ago=string.atoi(sys.argv[1])
     else :
@@ -154,7 +151,7 @@ if __name__=="__main__":
                             str(sys.exc_info()[0])+str(sys.exc_info()[1]))
 		sys.exit(1)
     dir_bck=bckHome+"/dbase."+repr(time.time())
-    hst_local=socket.gethostname()
+    hst_local,junk,junk=hostaddr.gethostinfo()
     try:
         hst_bck = backup_config['host']
     except:
