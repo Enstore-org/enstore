@@ -98,7 +98,7 @@ Each request originating from the <em>encp</em> program is branded
 with a unique ID.
 <em>Encp</em> retries under well-defined circumstances, issuing
 an equivalent request with a new unique ID.
-The system can instruct <em>encp</em> to re-try if it needs to back out
+The system can instruct <em>encp</em> to retry if it needs to back out
 of an operation.
 
 <h2><a name="pnfs">
@@ -151,7 +151,7 @@ Enstore uses pnfs for three different kinds of access and information:
     After a file is written to tape, the file clerk generates a bfid and
      <em>encp</em>     stores this information
      in one of the pnfs file layers.
-    <em>Encp</em> then reads this bit file id and gives it to the servers
+    <em>Encp</em> then reads this bit file ID and gives it to the servers
     when fetching data from tape.
      Other encp file transfer details, such as time of last access or location of
      where the file was copied to or transfer rates, are stored in a different
@@ -618,7 +618,7 @@ channel unilaterally, assume he has aborted.
 1.3.5 Configuration Server
 </h3>
 The Configuration server maintains the crucial information about
-system configuration, such as the location and status of each server.
+system configuration, such as the location and parameters of each server.
 The first thing that each server does when it starts up is to
 ask the configuration server for information (e.g. the location
 of any other server with which to communicate).  New configurations can be
@@ -634,7 +634,7 @@ Log files are labeled by dates.
 At midnight each day, the currently opened log file gets closed and another
 one is opened.
 <p>
-Additionally it is expected that a trace server will be developed.
+Additionally it is expected that a trace module will be developed.
 <h3><a name="media_changer">
 1.3.7 Media Changer
 </h3>
@@ -665,7 +665,7 @@ Support recovery of corrupted databases using the journal or log files.
 <h3><a name="backup">
 2.1.1 Backup
 </h3>
-The backup procedure is a cron job that is performed daily. It copies
+The backup procedure is a cron job that is performed routinely. It copies
 the database files, log files and journal files to a designated
 directory on a remote host. Two environment variables should be set
 up for this purpose: ENSTORE_BCKP_HST (default="localhost") and
@@ -755,7 +755,7 @@ ability to store data items of unlimited size
 support for various data storage structures: hash table, binary tree,
 numbered records
 <li>
-allows duplicate keys
+allows duplicate keys (enstore doesn't use them)
 <li>
 data scanning with cursors, multiple cursors may be opened at the same time
 <li>
@@ -864,12 +864,12 @@ communications flow before the Mover contacts the Library manager.
 <p>
 <ul>
 <li>
-The User (through <em>encp</em>) contacts PNFS asking for a bit file id (bfid)
+The user (through <em>encp</em>) contacts PNFS asking for a bit file ID (bfid)
 for the named file.
 <li>
 PNFS returns the bfid to <em>encp</em>.
 <li>
-<em>encp</em> asks the Configuration server with which File clerk should it be
+<em>Encp</em> asks the Configuration server with which File clerk should it be
 communicating.
 <li>
 The Configuration server returns the location of the appropriate File clerk.
@@ -935,9 +935,9 @@ communications flow before the Mover contacts the Library manager.
 <p>
 <ul>
 <li>
-The User (through <em>encp</em>) contacts PNFS with a request to create a file.
+The user (through <em>encp</em>) contacts PNFS with a request to create a file.
 <li>
-PNFS returns the file family information to <em>encp</em>.
+PNFS returns the file family and volume library information to <em>encp</em>.
 <li>
 <em>encp</em> asks the Configuration server with which Library manager should
 it be communicating.
@@ -980,7 +980,7 @@ The Mover tells the Volume clerk that he is appending to this tape.
 <li>
 The Volume clerk acknowledges this.
 <li>
-<em>encp</em> sends the data to the Mover.
+<em>Encp</em> sends the data to the Mover.
 <li>
 The Mover tells the Volume clerk that the append operation is done and how much
 space is left on the tape.
@@ -989,12 +989,12 @@ The Volume clerk acknowledges this.
 <li>
 The Mover tells the File clerk which file has been created.
 <li>
-The file Clerk responds with the bit file id.
+The File Clerk responds with the bit file id.
 <li>
 The Mover tells <em>encp</em> that the file has been written and sends the bit
-file id and the crc.
+file ID and the crc.
 <li>
-<em>encp</em> tells PNFS that the file has been created, and the bfid should
+<em>Encp</em> tells PNFS that the file has been created, and the bfid should
 be stored.
 <li>
 The write has completed.
@@ -1010,10 +1010,13 @@ The mover tells the Media changer to dismount the volume.
 4 Error Control
 </h2>
 
+This section represents plans -- error control was only partially implemented
+in the prototype. <p>
+
 Error control in Enstore is simple, because much of the system state
 is stored in the <em>encp</em> client. The <em>encp</em> client can be given a
-"retry-able error" and will resend data for a write into the system, or the
-system can re-start a read from the system from scratch. This re-try
+"retryable error" and will resend data for a write into the system, or the
+system can restart a read from the system from scratch. This retry
 is given a very high priority when it is received by the library
 manager -- put on the head of the unassigned work queue.
 
@@ -1047,7 +1050,7 @@ If we have trouble during a load or unload operation, we assume that
 the tape is physically jammed. Until a human looks at the problem, we
 will permit no future operations on the drive or the volume.
 <li>
-If we have errors on writing a volume, we will not write on that
+If several drives have fatal errors on writing a volume, we will not write on that
 volume anymore.
 <li>
 If a tape drive has errors on "consecutive" tapes, we should "stop
@@ -1065,7 +1068,7 @@ for no access, given many recent errors.
 <li>
 Library manager:
 <br>
-Two Features should be added to the tickets to support re-tries.
+Two Features should be added to the tickets to support retries.
 <ul>
 <li>Tickets should be marked as retries or not by <em>encp</em>. Retries go
 to the head of the queue.
@@ -1102,7 +1105,7 @@ it is best to discover this <em><b>before</b></em> incurring the expense of a mo
 <li>mark the tape as "system noaccess"
 <li>log that this happened and let an administrator look at the
 problem in the morning.
-<li><em>encp</em> shall not re-try.
+<li><em>encp</em> shall not retry.
 </ul>
 <li>
 "Off-lining the drive" means:
@@ -1134,7 +1137,7 @@ the system falls below a threshold.
 <td valign=top>Other mount failure on write, or load operation failed.
     Must assume jammed tape.
     Mover shall freeze the tape in the drive.
-    <em>encp</em> shall re-try
+    <em>encp</em> shall retry
 <tr>
 <td valign=top><b>WRITE_BADSPACE</b>
 <td valign=top>"EOD cookie does not produce EOD"
@@ -1148,7 +1151,7 @@ the system falls below a threshold.
     If the drive has had many recent errors, mover shall
     "offline the drive"
     The volume shall be marked read-only.
-    <em>encp</em> shall re-try.
+    <em>encp</em> shall retry.
 <tr>
 <td valign=top><b>WRITE_EOT</b>
 <td valign=top>"Hit EOT while writing data block or file mark"
@@ -1205,12 +1208,12 @@ the system falls below a threshold.
     Run of the mill read error.
     Mover shall consider the recent error history of the drive and the volume.
     If the drive has had many recent errors, mover shall offline the drive.
-    <em>encp</em> shall re-try.
+    <em>encp</em> shall retry.
     If the volume has had many recent errors, mover shall freeze the tape.
     <em>encp</em> shall not retry.
     If the volume has had few recent errors,
     mover shall fail the transfer,
-    <em>encp</em> shall re-try, and annotate that this mover shall be avoided.
+    <em>encp</em> shall retry, and annotate that this mover shall be avoided.
 <tr>
 <td valign=top><b>READ_COMP_CRC</b>
 <td valign=top>Failure of complete CRC.
