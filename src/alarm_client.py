@@ -8,7 +8,8 @@ import errno
 # enstore imports
 import generic_client
 import udp_client
-import interface
+#import interface
+import option
 import enstore_constants
 import Trace
 import e_errors
@@ -91,7 +92,7 @@ class AlarmClient(generic_client.GenericClient):
     def get_patrol_file(self):
         ticket = {'work' : 'get_patrol_filename'}
         return self.send(ticket, self.rcv_timeout, self.rcv_tries)
-
+"""
 class AlarmClientInterface(generic_client.GenericClientInterface,\
                            interface.Interface):
 
@@ -119,6 +120,70 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
             return self.client_options() + [
                 "raise", "severity=", "root-error=",
                 "resolve=", "dump"]
+"""
+class AlarmClientInterface(generic_client.GenericClientInterface):
+
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        # fill in the defaults for the possible options
+        # we always want a default timeout and retries so that the alarm
+        # client/server communications does not become a weak link
+        self.alive_rcv_timeout = RCV_TIMEOUT
+        self.alive_retries = RCV_TRIES
+        self.alarm = 0
+        self.resolve = 0
+        self.dump = 0
+        self.severity = e_errors.DEFAULT_SEVERITY
+        self.root_error = e_errors.DEFAULT_ROOT_ERROR
+        self.get_patrol_file = 0
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.trace_options, self.alive_options,
+                self.alarm_options)
+
+    alarm_options = {
+        option.DUMP:{option.HELP_STRING:
+                        "print (stdout) alarms the alarm server has in memory",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN,
+                              },
+        option.RAISE:{option.HELP_STRING:"raise an alarm",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_NAME:"alarm",
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+                      },
+        option.RESOLVE:{option.HELP_STRING:
+                        "resolve the previously raised alarm whose key "
+                        "matches the entered value",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"key",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
+        option.ROOT_ERROR:{option.HELP_STRING:
+                           "error which caused an alarm to be raised "
+                           "[D: UNKONWN]",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"node_name",
+                           option.USER_LEVEL:option.ADMIN,
+                           },
+        option.SEVERITY:{option.HELP_STRING:"severity of raised alarm "
+                         "(E, U, W, I, M)[D: W]",
+                         option.VALUE_NAME:"severity",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"severity",
+                         option.USER_LEVEL:option.ADMIN,
+                         },
+        }
 
 def do_work(intf):
     # now get an alarm client

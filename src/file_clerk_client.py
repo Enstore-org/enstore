@@ -18,6 +18,7 @@ def eval(stuff):
 # enstore imports
 import setpath
 import generic_client
+import option
 import backup_client
 import udp_client
 import callback
@@ -309,6 +310,7 @@ class FileClient(generic_client.GenericClient,
         ticket['work'] = 'modify_file_record'
         return self.send(ticket)
 
+"""
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -342,7 +344,77 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                 "get-crcs=","set-crcs=",
                 "restore=", "recursive", "bfids=", "ls-active=",
                 "modify=", "add=" ]
-            
+"""
+
+class FileClerkClientInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        # fill in the defaults for the possible options
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.list =None 
+        self.bfid = 0
+        self.bfids = None
+        self.backup = 0
+        self.deleted = 0
+	self.restore = ""
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
+        self.get_crcs=None
+        self.set_crcs=None
+	self.all = 0
+        self.list_active = None
+        generic_client.GenericClientInterface.__init__(self)
+
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.file_options)
+
+    file_options = {
+        option.BACKUP:{option.HELP_STRING:
+                       "backup file journal -- part of database backup",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.BFID:{option.HELP_STRING:"get info of a file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.USER_LEVEL:option.USER},
+        option.BFIDS:{option.HELP_STRING:"list all bfids on a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.ADMIN},
+        option.DELETED:{option.HELP_STRING:"mark the file as deleted",
+                        option.DEFAULT_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.GET_CRCS:{option.HELP_STRING:"list all bfids on a volume",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.USER_LEVEL:option.ADMIN},
+        option.LIST:{option.HELP_STRING:"list the files in a volume",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.RECURSIVE:{option.HELP_STRING:"restore directory",
+                          option.DEFAULT_NAME:"restore_dir",
+                          option.DEFAULT_VALUE:option.DEFAULT,
+                          option.DEFAULT_TYPE:option.INTEGER,
+                          option.VALUE_USAGE:option.IGNORED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.SET_CRCS:{option.HELP_STRING:"set CRC of a file",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        }
+
+
 def do_work(intf):
     # now get a file clerk client
     fcc = FileClient((intf.config_host, intf.config_port), intf.bfid)
@@ -400,11 +472,13 @@ def do_work(intf):
     elif intf.bfid:
         ticket = fcc.bfid_info()
 	if ticket['status'][0] ==  e_errors.OK:
+	    #print ticket['fc'] #old encp-file clerk format
+	    #print ticket['vc']
+            del ticket['work']
             status = ticket['status']
             del ticket['status']
 	    pprint.pprint(ticket)
             ticket['status'] = status
-	    # print ticket['vc']
     elif intf.restore:
 	try:
 	    if intf.restore_dir: dir="yes"
@@ -466,6 +540,7 @@ def do_work(intf):
         sys.exit(0)
 
     fcc.check_ticket(ticket)
+
 
 if __name__ == "__main__" :
     Trace.init(MY_NAME)

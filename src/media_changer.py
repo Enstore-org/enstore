@@ -34,7 +34,8 @@ import dispatching_worker
 import generic_server
 import monitored_server
 import enstore_constants
-import interface
+#import interface
+import option
 import Trace
 import traceback
 import e_errors
@@ -1421,6 +1422,21 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         self.max_work=7
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+	    return media_options + \
+		 generic_server.GenericServerInterface.valid_dictionaries(self)
+
+    media_options = {
+	    option.LOG:{option.HELP_STRING:"",
+			option.VALUE_USAGE:option.REQUIRED,
+			option.VALUE_TYPE:option.STRING,
+			},
+	    option.MAX_WORK:{option.HELP_STRING:"",
+			     option.VALUE_USAGE:option.REQUIRED,
+			     option.VALUE_TYPE:option.INTEGER
+			     },
+	    }
+    """
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+[
@@ -1429,7 +1445,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
     #  define our specific help
     def parameters(self):
         return "media_changer"
-
+    """
     # parse the options like normal but make sure we have a media changer
     def parse_options(self):
         interface.Interface.parse_options(self)

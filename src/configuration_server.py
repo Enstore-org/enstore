@@ -20,6 +20,7 @@ import event_relay_client
 import event_relay_messages
 import enstore_constants
 import interface
+import option
 import Trace
 import e_errors
 import hostaddr
@@ -75,8 +76,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
                     self.configdict[key]['status'] = (e_errors.OK, None)
                 for insidekey in self.configdict[key].keys():
                     if insidekey == 'host':
-                        self.configdict[key]['hostip'] = hostaddr.name_to_address(
-                            self.configdict[key]['host'])
+                        if not self.configdict[key].has_key('hostip'):
+                            self.configdict[key]['hostip'] = \
+                                hostaddr.name_to_address(
+                                self.configdict[key]['host'])
                         if not self.configdict[key].has_key('port'):
                             self.configdict[key]['port'] = -1
                         # check if server is already configured
@@ -140,6 +143,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
     # return a dump of the dictionary back to the user
     def dump(self, ticket):
+        pprint.pprint(ticket)
         Trace.trace(15, 'DUMP')
         ticket['status']=(e_errors.OK, None)
         reply=ticket.copy()
@@ -254,7 +258,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
     def __init__(self, csc, configfile=interface.default_file()):
 	self.running = 0
 	self.print_id = MY_NAME
-
+        print csc
         # make a configuration dictionary
         cd =  ConfigurationDict()
 
@@ -281,12 +285,25 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
         # fill in the defaults for possible options
         self.config_file = ""
         generic_server.GenericServerInterface.__init__(self)
-        self.parse_options()
-        
+        #self.parse_options()
+
+    def valid_dictionaries(self):
+        return generic_server.GenericServerInterface.valid_dictionaries(self) \
+               + (self.configuration_options,)
+    
+    configuration_options = {
+        option.CONFIG_FILE:{option.HELP_STRING:"specify the config file",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.USER_LEVEL:option.ADMIN,
+                            }
+        }
+
+"""
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+["config-file="]
-
+"""
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)

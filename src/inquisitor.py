@@ -31,6 +31,7 @@ import enstore_constants
 import www_server
 import safe_dict
 import volume_family
+import option
 
 server_map = {"log_server" : enstore_constants.LOGS,
 	      "alarm_server" : enstore_constants.ALARMS,
@@ -1372,6 +1373,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
 	self.servers_by_name[enstore_constants.CONFIG_SERVER] = self.config_server
 
+        for server_key in self.server_d.keys():
+            server = self.server_d[server_key]
+            server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+
 	self.mover_state = {}
 	self.lm_queues = {}
         for key in self.config_d.keys():
@@ -1433,10 +1438,44 @@ class InquisitorInterface(generic_server.GenericServerInterface):
         self.refresh = NOVALUE
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+        return generic_server.GenericServerInterface.valid_dictionaries(self)+\
+               (self.inquisitor_options, self.alive_rcv_options)
+
+    inquisitor_options = {
+        option.HTML_FILE:{option.HELP_STRING:"specifies the html file",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN,
+                          },
+        option.UPDATE_INTERVAL:{option.HELP_STRING:
+                                "set the interval between updates of"
+                                "the system server status web page",
+                                option.VALUE_TYPE:option.INTEGER,
+                                option.VALUE_USAGE:option.REQUIRED,
+                                option.USER_LEVEL:option.ADMIN,
+                          },
+        option.MAX_ENCP_LINES:{option.HELP_STRING:"set the number of "
+                               "displayed lines on the encp history web page",
+                               option.VALUE_TYPE:option.INTEGER,
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.USER_LEVEL:option.ADMIN,
+                               },
+        option.REFRESH:{option.HELP_STRING:"set the refesh interval for "
+                        "inquisitor creted web pages",
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN,
+                        },
+        }
+    
+"""
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+[
             "html-file=","update-interval=", "max-encp-lines=", "refresh="] + self.alive_rcv_options()
+"""
+
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))

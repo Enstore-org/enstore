@@ -24,6 +24,7 @@ import generic_client
 import udp_client
 import Trace
 import e_errors
+import option
 
 MY_NAME = "LOG_CLIENT"
 MY_SERVER = "log_server"
@@ -457,7 +458,7 @@ def parse(lineIn):
         lineDict['msg'] = msg
 
     return lineDict
-
+"""
 class LoggerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -478,7 +479,54 @@ class LoggerClientInterface(generic_client.GenericClientInterface):
         else:
             return self.client_options()+[
                 "message=", "get-logfile-name", "get-last-logfile-name","get-logfiles="]
+"""
 
+class LoggerClientInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.message = ""
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
+	self.get_logfile_name = 0
+	self.get_logfiles = ""
+	self.get_last_logfile_name = 0
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.log_options)
+
+    log_options = {
+        option.GET_LAST_LOGFILE_NAME:{option.HELP_STRING:
+                                     "return the fname of yesturdays log file",
+                                      option.DEFAULT_TYPE:option.INTEGER,
+                                      option.DEFAULT_VALUE:option.DEFAULT,
+                                      option.VALUE_USAGE:option.IGNORED,
+                                      option.USER_LEVEL:option.ADMIN,
+                              },
+        option.GET_LOGFILE_NAME:{option.HELP_STRING:
+                                 "return the name of the current log file",
+                                 option.DEFAULT_TYPE:option.INTEGER,
+                                 option.DEFAULT_VALUE:option.DEFAULT,
+                                 option.VALUE_USAGE:option.IGNORED,
+                                 option.USER_LEVEL:option.ADMIN,
+                                 },
+        option.GET_LOGFILES:{option.HELP_STRING:"return the last 'n' log file "
+                             "names (today, week, month, all)",
+                             option.VALUE_TYPE:option.STRING,
+                             option.VALUE_USAGE:option.REQUIRED,
+                             option.VALUE_LABEL:"period",
+                             option.USER_LEVEL:option.ADMIN,
+                             },
+        option.MESSAGE:{option.HELP_STRING:"log a message",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"message",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
+        }
 
     """ 
     This function takes two arguments:

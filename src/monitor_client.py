@@ -15,7 +15,8 @@ import fcntl, FCNTL
 
 # enstore imports
 import callback
-import interface
+#import interface
+import option
 import hostaddr
 import socket_ext
 import generic_client
@@ -426,7 +427,7 @@ class MonitorServerClient(generic_client.GenericClient):
     #Check on alive status.
     #Override alive definition inside generic_client.
     def alive(self, server, rcv_timeout=0, tries=0):
-        if self.monitor_server_addr:
+        if self.monitor_server_addr[0]:
             ip = self.monitor_server_addr[0]
         else:
             ip = self.localaddr[0]
@@ -436,6 +437,7 @@ class MonitorServerClient(generic_client.GenericClient):
                             (ip, enstore_constants.MONITOR_PORT),
                             rcv_timeout, tries)
             x['address'] = (ip, x['address'][1])
+            print "Server %s found at %s." % (server, x['address'])
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
             x = {'status' : (e_errors.TIMEDOUT, None)}
@@ -446,6 +448,7 @@ class MonitorServerClient(generic_client.GenericClient):
             print x
         return x
 
+"""
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -466,7 +469,49 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         else:
             return self.help_options() +  self.alive_options() +\
                    ["summary", "html-gen-host=", "hostip="]
+"""
 
+class MonitorServerClientInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.summary = 0
+        self.html_gen_host = None
+        self.name = MY_SERVER
+        self.alive_rcv_timeout = 10
+        self.alive_retries = 3
+        self.hostip = ""
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.alive_options, self.monitor_options)
+    
+    # parse the options like normal but make sure we have other args
+    def parse_options(self):
+
+        generic_client.GenericClientInterface.parse_options(self)
+
+        #if getattr(self, "help", None):
+        #    self.print_help()
+        #
+        #if getattr(self, "usage", None):
+        #    self.print_usage()
+
+    monitor_options = {
+        option.HOST:{option.HELP_STRING:"selects a single host",
+                option.VALUE_NAME:"hostip",
+                option.VALUE_USAGE:option.REQUIRED,
+                },
+        option.SUMMARY:{option.HELP_STRING:"summary for saag",},
+        option.HTML_GEN_HOST:{option.HELP_STRING:
+                              "ip/hostname of the html server",
+                              option.VALUE_USAGE:option.REQUIRED,},
+        }
+                   
+                   
+                   
+            
 class Vetos:
     """
     A small class to manage the veto dictionary that is provided
@@ -610,7 +655,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
             config['block_count'],
             summary
             )
-        
+
         
         #Test rate sending from the server.  The rate info for read time
         # information is stored in msc.measurement.
@@ -653,14 +698,16 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
     return summary_d
 
 def do_work(intf):
-    if hasattr(intf, "help") and intf.help:
-        intf.print_help()
-        return
-    elif hasattr(intf, "usage_line") and intf.usage_line:
-        intf.print_usage_line()
-        return
+    #if hasattr(intf, "help") and intf.help:
+    #    intf.print_help()
+    #    return
+    #elif hasattr(intf, "usage_line") and intf.usage_line:
+    #    intf.print_usage_line()
+    #    return
 
-    if hasattr(intf, "alive") and intf.alive:
+    if hasattr(intf, option.ALIVE) and intf.alive or\
+       hasattr(intf, option.HELP) and intf.help or \
+       hasattr(intf, option.USAGE) and intf.usage:
         msc = MonitorServerClient(
             (intf.config_host, intf.config_port),
             (intf.hostip, enstore_constants.MONITOR_PORT),

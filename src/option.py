@@ -150,6 +150,7 @@ DOWN = "down"                                #pnfs, inqusitor, mover
 DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"                      #pnfs
 ECHO = "echo"                                #pnfs
+ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 FILE_FAMILY = "file-family"                  #pnfs
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
@@ -179,13 +180,16 @@ LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
 LOAD = "load"                                #configuration
+KEEP = "keep"                                #plotter
+KEEP_DIR = "keep-dir"                        #plotter
+LOGFILE_DIR = "logfile-dir"                  #plotter
 LS = "ls"                                    #pnfs
 LS_ACTIVE = "ls-active"                      #volume, file
 MAX_ENCP_LINES = "max-encp-lines"            #inquisitor(c&s)
 MAX_WORK = "max-work"                        #media
 MESSAGE = "message"                          #log
 MODIFY = "modify"                            #volume
-MOUNT = "mount"                              #media
+MOUNT = "mount"                              #media, plotter
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
 NO_ACCESS = "no-access"                      #volume
@@ -196,6 +200,7 @@ NOOVERRIDE = "nooverride"                    #inquisitor
 OFFLINE = "offline"                          #mover
 ONLINE = "online"                            #mover
 OUTAGE = "outage"                            #inquisitor
+OUTPUT_DIR = "output-dir"                    #plotter
 OVERRIDE = "override"                        #inquisitor
 RECURSIVE = "recursive"                      #file
 REFRESH = "refresh"                          #inquisitor(c&s)
@@ -218,12 +223,15 @@ SAAG_STATUS = "saagstatus"                   #inquisitor
 SENDTO = "sendto"                            #mover
 SET_CRCS = "set-crcs"                        #file
 SEVERITY = "severity"                        #alarm
+SG = "sg"                                    #plotter
 SHOW = "show"                                #configuration, inquisitor, media
 SHOWID = "showid"                            #pnfs
 SIZE = "size"                                #pnfs
 START_DRAINING = "start-draining"            #library
+START_TIME = "start-time"                    #plotter
 STATUS = "status"                            #mover, library
 STOP_DRAINING = "stop-draining"              #library
+STOP_TIME = "stop-time"                    #plotter
 STORAGE_GROUP = "storage-group"              #pnfs
 SUBSCRIBE = "subscribe"                      #inquisitor
 SUMMARY = "summary"                          #monitor, configuration, up_down
@@ -262,22 +270,24 @@ valid_option_list = [
     DISMOUNT,
     DO_ALARM, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT, DOWN,
     DUMP, DUPLICATE,
-    ECHO, ENSTORE_STATE,
+    ECHO, ENCP, ENSTORE_STATE,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FORCE,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
     GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IO,
-    LAYER, LIBRARY, LIST, LOAD, LS, LS_ACTIVE,
+    KEEP, KEEP_DIR,
+    LAYER, LIBRARY, LIST, LOAD, LOGFILE_DIR, LS, LS_ACTIVE,
     MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, 
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NO_MAIL, NOTIFY, NOOUTAGE, NOOVERRIDE,
-    OFFLINE, ONLINE, OPT, OUTAGE, OVERRIDE,
+    OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PNFS_STATE, POSITION, PRIORITY,
     RAISE, READ_ONLY, RECURSIVE, REFRESH, RESET_LIB, RESOLVE, RESTORE, RETRIES,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
-    SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SHOW, SHOWID, SIZE,
-    START_DRAINING, STATUS, STOP_DRAINING, STORAGE_GROUP, SUBSCRIBE, SUMMARY,
+    SAAG_STATUS, SENDTO, SET_CRCS, SEVERITY, SG, SHOW, SHOWID, SIZE,
+    START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
+    STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGECHO, TAGRM, TAGS, TEST, TIME, TIMEOUT,
     UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, USAGE,
     VOL, VOLS, VOLUME, VOL1OK,

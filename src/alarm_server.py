@@ -256,12 +256,17 @@ class AlarmServerInterface(generic_server.GenericServerInterface):
         generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
-        self.parse_options()
+        #self.parse_options()
 
+    def valid_dictionaries(self):
+        return (self.help_options,)
+
+"""
     # define the command line options that are valid
     def options(self):
         return (self.config_options() + 
                 self.help_options() )
+"""
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))

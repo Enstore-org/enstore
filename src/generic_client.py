@@ -13,27 +13,48 @@ import string
 import setpath
 import Trace
 import e_errors
-import interface
+import option
 
-class GenericClientInterface(interface.Interface):
+class GenericClientInterface(option.Interface):
 
     def __init__(self):
         self.dump = 0
         self.alive = 0
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
         self.do_print = []
         self.dont_print = []
         self.do_log = []
         self.dont_log = []
         self.do_alarm = []
         self.dont_alarm = []
-        interface.Interface.__init__(self)
+        option.Interface.__init__(self)
 
     def client_options(self):
         return (self.config_options() + 
                self.alive_options()  + 
                self.trace_options() + 
                self.help_options() )
-    
+
+    def complete_server_name(self, server_name, server_type):
+        if not server_name:
+            return server_name
+
+        #If the complete name of a server, for example is rain.mover, then
+        # server_name is the string we want to check to see if it is appended
+        # by "." + server_type.
+        try:
+            if server_name[(-len(server_type) - 1):] != "." + server_type:
+                server_name = server_name + "." + server_type
+            else:
+                server_name = server_name
+        except IndexError:
+            #The string does not contain enough characters to end in
+            # ".mover".  So, it must be added.
+            server_name = server_name + "." + server_type
+
+        return server_name
+
 init_done = 0
 
 class GenericClient:
@@ -114,6 +135,7 @@ class GenericClient:
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
+            print "Server %s found at %s." % (server, (t['hostip'], t['port']))
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
             x = {'status' : (e_errors.TIMEDOUT, None)}

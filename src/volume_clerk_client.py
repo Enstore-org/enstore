@@ -20,7 +20,8 @@ def eval(stuff):
 import setpath
 import callback
 import hostaddr
-import interface
+#import interface
+import option
 import generic_client
 import backup_client
 import udp_client
@@ -488,6 +489,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket)
 
+"""
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -570,7 +572,158 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.print_add_args()
         self.print_new_library_args()
         self.print_clear_args()
+"""
+class VolumeClerkClientInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
+        self.clear = ""
+        self.backup = 0
+        self.vols = 0
+        self.in_state = 0
+        self.next = 0
+        self.vol = ""
+        self.check = ""
+        self.add = ""
+        self.modify = ""
+        self.delete = ""
+        self.restore = ""
+        self.all = 0
+        self.force  = 0
+        self.new_library = ""
+        self.read_only = ""
+        self.no_access = ""
+        self.decr_file_count = 0
+        self.rmvol = 0
+        self.vol1ok = 0
+        self.lm_to_clear = ""
+        self.list = None
+        self.list_active = None
+        self.recycle = None
         
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.volume_options)
+
+    volume_options = {
+        option.ADD:{option.HELP_STRING:"declare a new volume",
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"volume_name",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{option.VALUE_NAME:"library",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         {option.VALUE_NAME:"storage_group",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         {option.VALUE_NAME:"file_family",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         {option.VALUE_NAME:"wrapper",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         {option.VALUE_NAME:"media_type",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                     {option.VALUE_NAME:"volume_byte_capacity",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         ]},
+        option.ALL:{option.HELP_STRING:"used with --restore to restore all",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.BACKUP:{option.HELP_STRING:
+                       "backup voume journal -- part of database backup",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.CHECK:{option.HELP_STRING:"check a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.ADMIN},
+        option.CLEAR:{option.HELP_STRING:"clear a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.ADMIN},
+        option.DECR_FILE_COUNT:{option.HELP_STRING:
+                                "decreases file count of a volume",
+                                option.VALUE_TYPE:option.INTEGER,
+                                option.VALUE_USAGE:option.REQUIRED,
+                                option.USER_LEVEL:option.ADMIN},
+        option.DELETE:{option.HELP_STRING:"delete a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.USER_LEVEL:option.ADMIN},
+        option.DESTROY:{option.HELP_STRING:"wipe out a volume",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.FORCE:{option.HELP_STRING:
+                       "used with --delete to force the action",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.LIST:{option.HELP_STRING:"list the files in a volume",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.LS_ACTIVE:{option.HELP_STRING:"list active files in a volume",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.MODIFY:{option.HELP_STRING:
+                       "modify a volume record -- extremely dangerous",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.NEW_LIBRARY:{option.HELP_STRING:"set new library",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.USER_LEVEL:option.ADMIN},
+        option.NO_ACCESS:{option.HELP_STRING:"set volume to NOACCESS",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.READ_ONLY:{option.HELP_STRING:"set volume TO readonly",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.RESET_LIB:{option.HELP_STRING:"reset library manager",
+                          option.VALUE_NAME:"lm_to_clear",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.RESTORE:{option.HELP_STRING:"restore a volume",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.VOL:{option.HELP_STRING:"get info of a volume",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.USER_LEVEL:option.ADMIN},
+        option.VOLS:{option.HELP_STRING:"list all volumes",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.VOL1OK:{option.HELP_STRING:
+                       "reset cookie to '0000_000000000_0000001'",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        }
+
 def do_work(intf):
     # get a volume clerk client
     vcc = VolumeClerkClient((intf.config_host, intf.config_port))

@@ -19,6 +19,7 @@ import event_relay_client
 import event_relay_messages
 import Trace
 import e_errors
+import option
 
 DEFAULT = "default"
 # default number of times in a row a server can be down before mail is sent
@@ -397,7 +398,7 @@ class Mover(EnstoreServer):
 	    EnstoreServer.is_alive(self)
 	    self.in_bad_state = 0
 
-
+"""
 class UpDownInterface(generic_client.GenericClientInterface):
  
     def __init__(self, flag=1, opts=[]):
@@ -414,6 +415,42 @@ class UpDownInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.help_options() + ["summary", "html", "no-mail"]
+"""
+class UpDownInterface(generic_client.GenericClientInterface):
+ 
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+	self.summary = do_output
+	self.no_mail = 0
+	self.html = 0
+	generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.updown_options)
+
+    updown_options = {
+        option.HTML:{option.HELP_STRING:"format output as html",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN,
+                              },
+        option.NO_MAIL:{option.HELP_STRING:
+                        "do net send e-mail in case of errors",
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.DEFAULT_VALUE:option.DEFAULT,
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.USER_LEVEL:option.ADMIN,
+                              },
+        option.SUMMARY:{option.HELP_STRING:"print (stdout) server states",
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.DEFAULT_VALUE:option.DEFAULT,
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.USER_LEVEL:option.ADMIN,
+                        },
+        }
+
 
 def no_override(server, okeys):
     if server.format_name in okeys:

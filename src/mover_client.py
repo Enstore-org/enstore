@@ -15,7 +15,8 @@ import pprint
 
 #enstore imports
 import udp_client
-import interface
+#import interface
+import option
 import generic_client
 import Trace
 
@@ -47,7 +48,7 @@ class MoverClient(generic_client.GenericClient):
         return self.send({"work" : "device_dump_S",
                           "sendto" : sendto,
                           "notify" : notify}, rcv_timeout, tries)
-
+"""
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, flag=1, opts=[]):
         self.do_parse = flag
@@ -105,7 +106,117 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                 #The string does not contain enough characters to end in
                 # ".mover".  So, it must be added.
                 self.mover = self.args[0] + ".mover"
+"""
 
+class MoverClientInterface(generic_client.GenericClientInterface):
+    def __init__(self, args=sys.argv, user_mode=1):
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.alive_rcv_timeout = 0
+        self.alive_retries = 0
+        self.mover = ""
+        self.local_mover = 0
+        self.clean_drive = 0
+        self.enable = 0
+        self.status = 0
+        self.start_draining = 0
+        self.stop_draining = 0
+        self.notify = []
+        self.sendto = []
+        self.dump = 0
+        self.warm_restart = 0
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.mover_options)
+
+    mover_options = {
+        option.CLEAN_DRIVE:{option.HELP_STRING:"clean tape drive",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.USER_LEVEL:option.ADMIN},
+        option.DOWN:{option.HELP_STRING:"set mover to offline state",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.DUMP:{option.HELP_STRING:
+                     "get the tape drive dump (used only with M2 movers)",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.NOTIFY:{option.HELP_STRING:
+                       "send e-mail.  Used with --dump option only",
+                       option.VALUE_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_LABEL:"e_mail_address",
+                       option.USER_LEVEL:option.ADMIN},
+        option.OFFLINE:{option.HELP_STRING:"set over to offline state",
+                        option.DEFAULT_VALUE:option.DEFAULT,
+                        option.DEFAULT_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.USER_LEVEL:option.ADMIN},
+        option.ONLINE:{option.HELP_STRING:"set over to online state",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.SENDTO:{option.HELP_STRING:
+                       "send e-mail.  Used with --dump option only",
+                       option.VALUE_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_LABEL:"e_mail_address",
+                       option.USER_LEVEL:option.ADMIN},
+        option.STATUS:{option.HELP_STRING:"print mover status",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.USER},
+        option.UP:{option.HELP_STRING:"set mover to online state",
+                   option.DEFAULT_VALUE:option.DEFAULT,
+                   option.DEFAULT_TYPE:option.INTEGER,
+                   option.VALUE_USAGE:option.IGNORED,
+                   option.USER_LEVEL:option.ADMIN},
+        option.WARM_RESTART:{option.HELP_STRING:"gracefully restart the mover",
+                             option.DEFAULT_VALUE:option.DEFAULT,
+                             option.DEFAULT_TYPE:option.INTEGER,
+                             option.VALUE_USAGE:option.IGNORED,
+                             option.USER_LEVEL:option.ADMIN},
+        }
+    """
+    alive_options = option.Interface.alive_options.copy()
+    alive_options[option.ALIVE] = {
+        option.DEFAULT_VALUE:1,
+        option.DEFAULT_TYPE:option.INTEGER,
+        option.DEFAULT_NAME:"alive",
+        option.VALUE_NAME:"mover",
+        option.VALUE_USAGE:option.REQUIRED,
+        option.FORCE_SET_DEFAULT:option.FORCE,
+        option.HELP_STRING:"prints message if the server is up or down.",
+        option.SHORT_OPTION:"a"
+        }
+    """
+
+    parameters = ["mover_name"]
+        
+    def parse_options(self):
+        generic_client.GenericClientInterface.parse_options(self)
+
+        if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
+            pass
+        elif len(self.args) < 1:
+            self.print_usage("expected mover parameter")
+        else:
+            try:
+                self.mover = self.args[0]
+                del self.args[0]
+            except KeyError:
+                self.mover = ""
+
+        self.mover = self.complete_server_name(self.mover, "mover")
 
 def do_work(intf):
     # get a mover client

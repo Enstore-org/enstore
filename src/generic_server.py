@@ -13,11 +13,12 @@ import Trace
 import traceback
 import timeofday
 import e_errors
-import interface
+#import interface
+import option
 import generic_client
 import event_relay_client
 import enstore_constants
-
+"""
 class GenericServerInterface(interface.Interface):
 
     def __init__(self):
@@ -32,6 +33,23 @@ class GenericServerInterface(interface.Interface):
         
     def options(self):
 	return self.config_options() + self.help_options() + self.trace_options()
+"""
+class GenericServerInterface(option.Interface):
+
+    def __init__(self):
+        self.do_print = []
+        self.dont_print = []
+        self.do_log = []
+        self.dont_log = []
+        self.do_alarm = []
+        self.dont_alarm = []
+        self.help = 0
+        self.usage = 0
+	option.Interface.__init__(self)
+        
+    def valid_dictionaries(self):
+        return (self.help_options, self.trace_options)
+
 
 class GenericServer(generic_client.GenericClient):
 

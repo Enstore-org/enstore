@@ -27,7 +27,8 @@ import monitored_server
 import inquisitor_client
 import enstore_functions
 import enstore_constants
-import interface
+#import interface
+import option
 import dispatching_worker
 import volume_clerk_client
 import volume_family
@@ -2773,13 +2774,18 @@ class MoverInterface(generic_server.GenericServerInterface):
         # fill in the defaults for possible options
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+        return ({},)
+        
     #  define our specific help
-    def parameters(self):
-        return 'mover_name'
+    #def parameters(self):
+    #    return 'mover_name'
+
+    parameters = ["mover_name"]
 
     # parse the options like normal but make sure we have a mover
     def parse_options(self):
-        interface.Interface.parse_options(self)
+        option.Interface.parse_options(self)
         # bomb out if we don't have a mover
         if len(self.args) < 1 :
             self.missing_parameter(self.parameters())

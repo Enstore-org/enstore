@@ -6,6 +6,7 @@ import enstore_constants
 import enstore_functions
 import udp_client
 import generic_client
+import option
 import www_server
 import e_errors
 import Trace
@@ -66,7 +67,37 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         # these are the files to which we will write, they are html files
         self.plotfile = enstore_files.HTMLPlotFile(plot_file, 
                                                    self.system_tag)
+"""
+class PlotterInterface(generic_client.GenericClientInterface):
 
+    def __init__(self, flag=1, opts=[]):
+        # fill in the defaults for the possible options
+        self.do_parse = flag
+        self.restricted_opts = opts
+        self.alive_rcv_timeout = 5
+        self.alive_retries = 1
+	self.logfile_dir = None
+	self.start_time = None
+	self.stop_time = None
+        self.media_changer = []
+        self.keep = 0
+        self.keep_dir = ""
+        self.output_dir = None
+	self.html_file = None
+	self.encp = None
+	self.mount = None
+	self.sg = None
+        generic_client.GenericClientInterface.__init__(self)
+
+    # define the command line options that are valid
+    def options(self):
+        if self.restricted_opts:
+            return self.restricted_opts
+        else:
+            return self.client_options() +[
+                "logfile-dir=", "start-time=", "stop-time=", "keep",
+                "keep-dir=", "output-dir=", "encp", "mount", "sg"]
+"""
 
 class PlotterInterface(generic_client.GenericClientInterface):
 
@@ -89,14 +120,78 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.sg = None
         generic_client.GenericClientInterface.__init__(self)
         
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options() +[
-                "logfile-dir=", "start-time=", "stop-time=", "keep",
-                "keep-dir=", "output-dir=", "encp", "mount", "sg"]
+    plotter_options = {
+        option.ENCP:{option.HELP_STRING:"create the bytes transfered and " \
+                     "transfer activity plots",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER,
+                   },
+        option.KEEP:{option.HELP_STRING:"keep all intermediate files " \
+                     "generated in order to make the plots",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER,
+                   },
+        option.KEEP_DIR:{option.HELP_STRING:"location of log files is not " \
+                        "in directory in config file",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"directory",
+                        option.USER_LEVEL:option.USER,
+                   },
+        option.LOGFILE_DIR:{option.HELP_STRING:"location of log files is not" \
+                            " in directory in config file",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"directory",
+                            option.USER_LEVEL:option.USER,
+                   },
+        option.MOUNT:{option.HELP_STRING:"create the bytes mounts/day and " \
+                      "mount latency plots",
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.USER,
+                      },
+        option.OUTPUT_DIR:{option.HELP_STRING:"directory in which to store " \
+                           "the output plot files",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"directory",
+                           option.USER_LEVEL:option.USER,
+                           },
+        option.SG:{option.HELP_STRING:"create the storage group plot",
+                   option.DEFAULT_VALUE:option.DEFAULT,
+                   option.DEFAULT_TYPE:option.INTEGER,
+                   option.VALUE_USAGE:option.IGNORED,
+                   option.USER_LEVEL:option.USER,
+                   },
+        option.START_TIME:{option.HELP_STRING:"date/time at which to " \
+                           "start each specified plot",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"YYYY-MM-DD-HH:MM:SS",
+                           option.USER_LEVEL:option.USER,
+                           },
+        option.STOP_TIME:{option.HELP_STRING:"date/time at which to " \
+                           "stop each specified plot",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.VALUE_LABEL:"YYYY-MM-DD-HH:MM:SS",
+                           option.USER_LEVEL:option.USER,
+                           },
+        }
+    
+    def valid_dictionaries(self):
+        return (self.plotter_options,)
+
+    # parse the options like normal but make sure we have other args
+    #def parse_options(self):
+    #    option.Interface.parse_options(self)
+
 
 if __name__ == "__main__":
     Trace.trace(1, "plotter called with args %s"%(sys.argv,))

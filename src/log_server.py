@@ -48,6 +48,7 @@ import e_errors
 import hostaddr
 import Trace
 import log_client
+import option
 
 """Logger Class. Instance of this class is a log server. Multiple instances
    of this class can run using unique port numbers. But it actually is not
@@ -296,11 +297,24 @@ class LoggerInterface(generic_server.GenericServerInterface):
 	self.test = 0
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+        return generic_server.GenericServerInterface.valid_dictionaries(self) \
+               + (self.logger_options,)
+
+    logger_options = {
+        option.CONFIG_FILE:{option.HELP_STRING:
+                            "specifies the configuration file to use",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            }
+        }
+    
+    """
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
-	       ["config-file=", "test"]
-
+            ["config-file=", "test"]
+    """
 
 if __name__ == "__main__" :
     Trace.init(string.upper(MY_NAME))

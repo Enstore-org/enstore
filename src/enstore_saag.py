@@ -12,6 +12,7 @@ import enstore_up_down
 import monitor_client
 import www_server
 import alarm_server
+import option
 
 """
 
@@ -20,7 +21,7 @@ This main line must have read access to the configuration
 file.
 
 """
-
+"""
 class SaagInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -32,7 +33,29 @@ class SaagInterface(generic_client.GenericClientInterface):
 
     def options(self):
 	return self.help_options() + ["html-gen-host="]
-  
+"""
+class SaagInterface(generic_client.GenericClientInterface):
+
+    def __init__(self, args=sys.argv, user_mode=1):
+	# fill in the defaults for the possible options
+	#self.do_parse = flag
+	#self.restricted_opts = opts
+	self.html_gen_host = None
+	generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.saag_options)
+
+    saag_options = {
+        option.HTML_GEN_HOST:{option.HELP_STRING:
+                              "ip/hostname of the html server",
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_LABEL:"node_name",
+                              option.USER_LEVEL:option.ADMIN,
+                              },
+        }
+    
 def do_work(intf):
     # we do not want anything printed out
     summary = 1

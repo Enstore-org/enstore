@@ -18,7 +18,8 @@ import errno
 # enstore imports
 import dispatching_worker
 import generic_server
-import interface
+#import interface
+import option
 import Trace
 import e_errors
 import hostaddr
@@ -359,13 +360,18 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
-        self.html_dir = None
+        #self.html_dir = None
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+        return (self.help_options,)
+
+"""
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
                self.alive_options() + ["html-dir="]
+"""
 
 config = None
 

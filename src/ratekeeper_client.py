@@ -24,18 +24,38 @@ class RatekeeperClient(generic_client.GenericClient):
         return x
 
 
-class RatekeeperClientInterface(generic_client.GenericClientInterface):
+#class RatekeeperClientInterface(generic_client.GenericClientInterface):
+#
+#    def __init__(self, flag = 1, opts = []):
+#        self.name = "ratekeeper"
+#        self.alive_rcv_timeout = 10 #Required here
+#        self.alive_retries = 3      #Required here
+#	generic_client.GenericClientInterface.__init__(self)
+#
+#    # define the command line options that are valid
+#    def options(self):
+#        return self.help_options() + self.alive_options()
 
-    def __init__(self, flag = 1, opts = []):
+class RatekeeperClientInterface(generic_client.GenericClientInterface):
+    def __init__(self, args=sys.argv, user_mode=1):
         self.name = "ratekeeper"
         self.alive_rcv_timeout = 10 #Required here
         self.alive_retries = 3      #Required here
 	generic_client.GenericClientInterface.__init__(self)
 
-    # define the command line options that are valid
-    def options(self):
-        return self.help_options() + self.alive_options()
+    def valid_dictionaries(self):
+        return (self.help_options, self.alive_options)
 
+    # parse the options like normal but make sure we have other args
+    def parse_options(self):
+
+        generic_client.GenericClientInterface.parse_options(self)
+
+        #if getattr(self, "help", None):
+        #    self.print_help()
+        #
+        #if getattr(self, "usage", None):
+        #    self.print_usage()
 
 # we need this in order to be called by the enstore.py code
 def do_work(intf):
@@ -52,7 +72,6 @@ def do_work(intf):
 
 
 if __name__ == "__main__":
-    
 
     intf = RatekeeperClientInterface()
     

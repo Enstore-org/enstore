@@ -12,7 +12,8 @@ import select
 #enstore imports
 import callback
 import hostaddr
-import interface
+#import interface
+import option
 import generic_client
 import udp_client
 import Trace
@@ -217,7 +218,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def storage_groups(self):
         return self.send({"work":"storage_groups"})
         
-
+"""
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, flag=1, opts=[]) :
         # this flag if 1, means do everything, if 0, do no option parsing
@@ -286,6 +287,129 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     # print priority arguments
     def print_priority_args(self):
         print "   priority arguments: library work_id"
+"""
+
+class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
+    def __init__(self, args=sys.argv, user_mode=1) :
+        # this flag if 1, means do everything, if 0, do no option parsing
+        #self.do_parse = flag
+        #self.restricted_opts = opts
+        self.name = ""
+        self.get_work = 0
+        self.get_work_sorted = 0
+        self.alive_retries = 0
+        self.alive_rcv_timeout = 0
+        self.get_susp_vols = 0
+        self.get_susp_vols = 0
+        self.delete_work = 0
+        self.priority = -1
+        self.get_queue = None
+        self.start_draining = 0
+        self.stop_draining = 0
+        self.status = 0
+        self.vols = 0
+        self.storage_groups = 0
+        self.rm_suspect_vol = 0
+        self.rm_active_vol = 0
+        generic_client.GenericClientInterface.__init__(self)
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.library_options)
+
+    parameters = ["library"]
+        
+    def parse_options(self):
+        generic_client.GenericClientInterface.parse_options(self)
+
+        if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
+                pass
+        elif len(self.args) < 1:
+            self.print_usage("expected library parameter")
+        else:
+            try:
+                self.name = self.args[0]
+                del self.args[0]
+            except KeyError:
+                self.name = ""
+                
+        self.name = self.complete_server_name(self.name, "library_manager")
+
+    library_options = {
+        option.DELETE_WORK:{option.HELP_STRING:
+                            "delete work identified by unique id from "
+                            "the pending queue",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"unique_id",
+                            option.USER_LEVEL:option.ADMIN},
+        option.GET_QUEUE:{option.HELP_STRING:
+                          "print queue submitted from the specified host.  "
+                          "If empty string specified, print the whole queue",
+                          option.VALUE_TYPE:option.STRING,
+                          option.VALUE_USAGE:option.REQUIRED,
+                          option.VALUE_LABEL:"host_name",
+                          option.USER_LEVEL:option.USER},
+        option.GET_SUSPECT_VOLS:{option.HELP_STRING:
+                                 "print suspect volume list",
+                                 option.DEFAULT_TYPE:option.INTEGER,
+                                 option.DEFAULT_NAME:"get_susp_vols",
+                                 option.VALUE_USAGE:option.IGNORED,
+                                 option.USER_LEVEL:option.USER},
+        option.GET_WORK_SORTED:{option.HELP_STRING:
+                           "print sorted lists of pending and active requests",
+                                option.DEFAULT_TYPE:option.INTEGER,
+                                option.VALUE_USAGE:option.IGNORED,
+                                option.USER_LEVEL:option.USER},
+        option.PRIORITY:{option.HELP_STRING:
+                         "change priority of the specified request",
+                         option.VALUE_NAME:"unique_id",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.USER_LEVEL:option.ADMIN,
+                         option.EXTRA_VALUES:[{option.VALUE_TYPE:
+                                                                option.INTEGER,
+                                               option.VALUE_USAGE:
+                                                               option.REQUIRED,
+                                               option.VALUE_NAME:"priority",
+                                               },]},
+        option.RM_ACTIVE_VOL:{option.HELP_STRING:
+                              "remove volume from the list of active volumes",
+                              option.VALUE_TYPE:option.STRING,
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_LABEL:"volume",
+                              option.USER_LEVEL:option.ADMIN},
+        option.RM_SUSPECT_VOL:{option.HELP_STRING:
+                              "remove volume from the list of suspect volumes",
+                               option.VALUE_TYPE:option.STRING,
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.VALUE_LABEL:"volume",
+                               option.USER_LEVEL:option.ADMIN},
+        option.START_DRAINING:{option.HELP_STRING:
+                               "start draining library manager",
+                               option.VALUE_TYPE:option.STRING,
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.VALUE_LABEL:
+                               "locked,ingore,pause,noread,nowrite",
+                               option.USER_LEVEL:option.ADMIN},
+        option.STOP_DRAINING:{option.HELP_STRING:
+                              "stop draining library manager",
+                              option.DEFAULT_TYPE:option.INTEGER,
+                              option.VALUE_USAGE:option.IGNORED,
+                              option.USER_LEVEL:option.ADMIN},
+        option.STATUS:{option.HELP_STRING:
+                       "print current status of the library manager",
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        option.STOP_DRAINING:{option.HELP_STRING:
+                              "stop draining library manager",
+                              option.DEFAULT_TYPE:option.INTEGER,
+                              option.VALUE_USAGE:option.IGNORED,
+                              option.USER_LEVEL:option.ADMIN},
+        
+        }
+
 
 def do_work(intf):
     # get a library manager client

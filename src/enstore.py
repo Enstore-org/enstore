@@ -37,6 +37,7 @@ import enstore_up_down
 import enstore_saag
 import dbs
 import ratekeeper_client
+import pnfs
 
 CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
 #CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
@@ -59,8 +60,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 media_changer_client.do_work],
                      "monitor" : [monitor_client.MonitorServerClientInterface,
                                 monitor_client.do_work],
-                     "mover" : [mover_client.MoverClientInterface,
-                                mover_client.do_work],
+#                     "mover" : [mover_client.MoverClientInterface,
+#                                mover_client.do_work],
                      "up_down" : [enstore_up_down.UpDownInterface,
                                   enstore_up_down.do_work],
                      "system" : [enstore_saag.SaagInterface,
@@ -72,8 +73,67 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
 		     "database" : [dbs.Interface,
 			           dbs.do_work],
                      "ratekeeper" : [ratekeeper_client.RatekeeperClientInterface,
-                                     ratekeeper_client.do_work]
-                         }
+                                     ratekeeper_client.do_work],
+                     }
+
+server_interfaces = {"pnfs":[pnfs.PnfsInterface,
+                             pnfs.do_work],
+                     "mover" : [mover_client.MoverClientInterface,
+                                mover_client.do_work],
+                     }
+
+def get_farmlet(default):
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    else:
+        return default
+
+def get_argv2(default=" "):
+    if len(sys.argv) > 2:
+        return sys.argv[2]
+    else:
+        return default
+
+
+local_scripts = {"enstore-start":[("enstore-start", sys.argv[2:])],
+                 "start":[("enstore-start", sys.argv[2:])],
+                 "enstore-stop":[("enstore-stop", sys.argv[2:])],
+                 "stop":[("enstore-stop", sys.argv[2:])],
+                 "restart":[("enstore-stop", sys.argv[2:]),
+                            ("enstore-start --nocheck", sys.argv[2:])],
+                 "ping":[("enstore-ping", sys.argv[2:])],
+                 "qping":[("quick-ping", sys.argv[2:])],
+                 "backup":[("python $ENSTORE_DIR/src/backup.py",sys.argv[2:])],
+                 "aml2":[('enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"',
+                          [],
+                          "self.node"),
+                         ],
+                 "ps":[("EPS", sys.argv[2:])],
+                 }
+
+remote_scripts = {"Estart":[("enstore", "%s enstore-start %s%s" % (CMD1,
+                                                get_farmlet("enstore"),
+                                                      dbs.CMD2))],
+                  "Estop":[("enstore-down",
+                            "%s enstore-stop %s%s" % (CMD1,
+                                                get_farmlet("enstore-down"),
+                                                      dbs.CMD2),
+                            "prompt"), ],
+                  "Erestart":[("enstore-down",
+                               "%s enstore-stop %s%s" % (CMD1,
+                                                  get_farmlet("enstore-down"),
+                                                         dbs.CMD2)),
+                              ("enstore",
+                               "%s enstore-start %s%s" % (CMD1, "%s",
+                                                          dbs.CMD2),
+                               ("get_farmlet('enstore')",))],
+                  "EPS":[("enstore",
+                          "source /usr/local/etc/setups.sh;setup enstore;EPS"),
+                         ],
+                  "ls":[("enstore",
+                         "ls %s",
+                         ("os.getcwd()",),)],
+                  }
 
 # these general functions perform various system functions
 def call_function(executable, argv):
@@ -84,17 +144,6 @@ def call_function(executable, argv):
         str = "%s %s"%(str, arg)
     return os.system(str)>>8
 
-def get_farmlet(default):
-    if len(sys.argv) > 2:
-        return sys.argv[2]
-    else:
-        return default
-
-def get_argv3(default=" "):
-    if len(sys.argv) > 3:
-        return sys.argv[3]
-    else:
-        return default
 
 def prompt_user(command="", node=""):
     sys.stdout.write("Please confirm: %s enstore on %s [y/n def:n] : "%(command, 
@@ -107,43 +156,36 @@ def no_argv_num(num):
     else:
 	return None
 
+def no_argv2():
+    return no_argv_num(2)
+
 def no_argv3():
     return no_argv_num(3)
-
-def no_argv4():
-    return no_argv_num(4)
 
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
     return os.system('rgang %s \"%s\"'%(farmlet, command))
 
-# keep a list of the commands (specific and generic) accessible when in user
-# mode.
-class GenericUserOptions:
-    
-    g_server_options = ["help", "timeout=", "retries="]
 
-    def get_options(self):
-        return self.g_server_options
 
-class UserOptions(GenericUserOptions):
 
-    server_options = {
-        "file" : ["bfid=", "restore=", "list=", "recursive"],
-        "library" : ["priority=", "delete-work=", "get-queue"],
-        "volume" : ["add=", "delete=", "new-library=", "no-access=",
-                    "read-only=", "restore=", "update=", "vol="],
-        "monitor" : [] }
-    server_intfs = {}
+class EnstoreInterface:
+
+    def __init__(self, user_mode):
+        self.user_mode = user_mode
+        self.match_server()
+        #self.match_script()
+
+    #server_intfs = {}
 
     # get a new server interface and store it to use later if needed
     def get_server_intf(self, skey, flag):
         functions = server_functions.get(skey, None)
-        if not functions is None:
-            self.server_intfs[skey] = self.server_intfs.get(skey,
-                                                            functions[0](flag))
-            return self.server_intfs[skey]
+        if functions:
+            self.server_intf = functions[0](flag,)
+
+            return self.server_intf
         else:
             return None
 
@@ -158,8 +200,11 @@ class UserOptions(GenericUserOptions):
         if self.user_mode:
             opts = self.get_options(skey)
         else:
-            intf = self.get_server_intf(skey, 1)
-            if not intf is None:
+            #intf = self.get_server_intf(skey, 1)
+            intf = server_functions[skey][0]()
+            if type(intf.options) == type({}):
+                opts = intf.options.keys()
+            elif not intf is None:
                 opts = intf.options()
             else:
                 # this was not a valid server key
@@ -184,34 +229,13 @@ class UserOptions(GenericUserOptions):
         else:
             return 1
 
-    # figure out if the passed option is valid for this key
-    def is_valid_option(self, skey, opt):
-        if self.user_mode:
-            if self.is_valid_server(skey):
-                # check if the option is valid
-                opts = self.get_valid_options(skey)
-                for vopt in opts:
-                    if opt == vopt:
-                        break
-                else:
-                    # not a valid opt
-                    rtn = 0
-                # we found it
-                rtn = 1
-            else:
-                # this is not a valid server key
-                rtn = 0
-        else:
-            # we are in admin mode and all opts are valid
-            rtn = 1
 
-class EnstoreInterface(UserOptions):
-
-    def __init__(self):
+    def match_server(self):
         # the user can enter the least amount of text that uniquely
         # identifies the desired server. (e.g. - i for inquisitor).  so get
         # the full server name here.
-        all_servers = self.get_valid_servers()
+        all_servers = self.get_valid_servers() + local_scripts.keys() + \
+                      remote_scripts.keys() + server_interfaces.keys()
         total_matches = self.find_server_match(all_servers)
         if total_matches > 1:
             # not enough info was entered and we matched more than
@@ -222,11 +246,10 @@ class EnstoreInterface(UserOptions):
             # allowed options.
             # remove the 'enstore' name from sys.argv
             del sys.argv[0]
-
+            
             # call the servers' interface, since we pass in a list of valid
             # options, we do not have to validate them, getopts does it
-            self.server_intf = server_functions[self.matched_server][0](1,
-                                   self.get_valid_options(self.matched_server))
+            self.server_intf = self.get_server_intf(self.matched_server, 1)
 
         else:
             # we did not match anything.  if this is user_mode, check if the
@@ -238,26 +261,33 @@ class EnstoreInterface(UserOptions):
                 if total_matches == 0:
                     # nope, this is a bogus first arg, we don't know what was
                     # meant, print all the help
-                    self.print_help()
+                    #self.print_help()
+                    pass
                 else:
                     # this was an existing but invalid server, print the valid
                     # ones
-                    self.print_valid_servers()
+                    #self.print_valid_servers()
+                    pass
             else:
                 # we were allowed access to all servers but did not match on
                 # any of them, so we don't know what was meant, print all help
-                self.print_help()
+                #self.print_help()
+                pass
+            self.server_intf = None
             self.matched_server = ""
 
     def find_server_match(self, servers):
         total_matches = 0
-        pattern = "^%s"%(sys.argv[1],)
-        for server in servers:
-            match = re.match(pattern, server, re.I)
-            if not match is None:
-                total_matches = total_matches + 1
-                self.matched_server = server
-        return total_matches
+        try:
+            pattern = "^%s"%(sys.argv[1],)
+            for server in servers:
+                match = re.match(pattern, server, re.I)
+                if not match is None:
+                    total_matches = total_matches + 1
+                    self.matched_server = server
+            return total_matches
+        except (TypeError, IndexError):
+            return 0  #total_matches = 0 
 
     def print_valid_servers(self):
         servers = self.get_valid_servers()
@@ -266,7 +296,7 @@ class EnstoreInterface(UserOptions):
             print "\t%s"%(server,)
 
     def print_valid_options(self, server):
-        opts = self.get_valid_options(server)
+        opts = self.get_valid_options()
         print "\nERROR: Allowed options for %s are : "
         for opt in opts:
             print "\t%s"%(opt,)
@@ -314,14 +344,28 @@ class EnstoreInterface(UserOptions):
                 print self.get_usage_line(server, intf),
             print " "
 
-class Enstore(EnstoreInterface):
+class Enstore:
 
     timeout = 2
     retry = 2
     mc_type = ("type", "AML2_MediaLoader")
 
-    def __init__(self, mode):
-        self.user_mode = mode
+    def __init__(self, intf):
+        self.user_mode = intf.user_mode
+
+        self.server_intf = intf.server_intf
+        self.matched_server = intf.matched_server
+        self.intf = intf
+
+        # find the node to rsh to.  this node is the one associated with
+        # the media changer of type "AML2_MediaLoader"
+        #   if the configuration server is running, get the information
+        #   from it.  if not, just read the config file pointed to by
+        #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
+        #   in DEFAULT_AML2_NODE.
+        if not self.get_config_from_server() and \
+           not self.get_config_from_file():
+            self.node = DEFAULT_AML2_NODE
 
     # try to get the configuration information from the config server
     def get_config_from_server(self):
@@ -409,98 +453,93 @@ class Enstore(EnstoreInterface):
         else:
             return 1
 
+    def prompt(self, command):
+        #command is a tuple
+        # [0] is the default farmlet
+        # [1] is the command to rgang
+        # [2] arguments to assign dynamicaly
+        # [-1] optionaly contains "prompt" to ask the user for confermation.
+        answer = "y"
+        try:
+            if command[-1] == "prompt":
+                if no_argv2():
+                    answer = prompt_user(command = "Stopping",
+                                         node = "all nodes")
+                elif no_argv3():
+                    answer = prompt_user(command = "Stopping",
+                                node = "farmlet %s" % get_farmlet(command[0]))
+        except IndexError:
+            pass
+        return answer
+           
+
     # this is where all the work gets done
     def do_work(self):
-        if len(sys.argv) > 1:
-            arg1 = sys.argv[1]
-        else:
-            # no parameters were entered
-            arg1 = ''
-        # check if help was asked for and no server passed in
-        if not self.user_mode and \
-           arg1 == "start" or arg1 == "enstore-start":
-            rtn = call_function("enstore-start", sys.argv[2:])
-        elif not self.user_mode and arg1 == "ping":
-            rtn = call_function("enstore-ping", sys.argv[2:])
-        elif not self.user_mode and arg1 == "qping":
-            rtn = call_function("quick-ping", sys.argv[2:])
-        elif not self.user_mode and \
-             arg1 == "stop" or arg1 == "enstore-stop":
-            rtn = call_function("enstore-stop", sys.argv[2:])
-        elif not self.user_mode and arg1 == "restart":
-            rtn = call_function("enstore-stop", sys.argv[2:])
-            rtn = call_function("enstore-start --nocheck", sys.argv[2:])
-        elif not self.user_mode and arg1 == "backup":
-            rtn = call_function("python $ENSTORE_DIR/src/backup.py", sys.argv[2:])
-        elif not self.user_mode and arg1 == "Estart":
-            argv3 = get_argv3("enstore")
-            farmlet = get_farmlet("")
-            if self.verify_node(farmlet):
-                command="%s enstore-start %s%s"%(CMD1, argv3, dbs.CMD2)
-                rtn = do_rgang_command("enstore",command)
-            else:
-                rtn = 0
-        elif not self.user_mode and arg1 == "Estop":
-            argv3 = get_argv3("enstore-down")
-            farmlet = get_farmlet("")
-            if self.verify_node(farmlet):
-                command="%s enstore-stop %s%s"%(CMD1, argv3, dbs.CMD2)
-                farmlet = "enstore-down"
-                answer = "y"
-                if no_argv3():
-                    # make sure user wants to do this before continuing
-                    answer = prompt_user(command="Stopping", node="all nodes")
-                elif no_argv4():
-                    answer = prompt_user(command="Stopping",
-                                         node="farmlet %s"%(get_farmlet(farmlet),))
-                if answer[0] == "y" or answer[0] == "Y":
-                    rtn = do_rgang_command("enstore-down",command)
+        #        if self.matched_server: #len(sys.argv) > 1:
+        arg1 = self.matched_server
+        #        else:
+        #            # no parameters were entered
+        #            arg1 = ''
+
+
+        #execute local scripts
+        if arg1 in local_scripts.keys():
+            l_script = local_scripts.get(arg1, None)
+            #l_script contains a list of tuples.
+            for command in l_script:
+                #each tuple in l_script is two items long.
+                try:
+                    executable = command[0] % command[2:]
+                except IndexError, TypeError:
+                    executable = command[0]
+                rtn = call_function(executable, command[1])
+
+        #handles old interface style
+        elif arg1 in server_functions.keys():
+            rtn = server_functions[self.matched_server][1](self.server_intf)
+        
+        
+        #handles new interface style
+        elif arg1 in server_interfaces.keys():
+            intf = server_interfaces[arg1][0](args=sys.argv[:],
+                                              user_mode=self.user_mode)
+            rtn = server_interfaces[arg1][1](intf)
+
+        #execute remote scripts
+        elif arg1 in remote_scripts.keys():
+            r_script = remote_scripts.get(arg1, None)
+            #r_script contains a list of tuples.
+            for command in r_script:
+                #each tuple in r_script is two items long.
+                farmlet = get_farmlet(command[0])
+                if self.verify_node(farmlet):
+                    #if command[-1] contains the string "prompt" then it
+                    # prompts the user for confermation under some cases.
+                    # If no prompt is necessary returns "y".
+                    answer = self.prompt(command)
+
+                    try:
+                        if command[2] != "prompt":
+
+                            tuple = ()
+                            for item in command[2]:
+                                tuple = tuple + (eval(item),)
+                            executable = command[1] % tuple
+                        else:
+                            executable = command[1]
+                    except IndexError, TypeError:
+                        executable = command[1]
+
+                    if answer[0] == "y" or answer[0] == "Y":
+                        rtn = do_rgang_command(farmlet, executable)
+                    else:
+                        rtn = 0
                 else:
                     rtn = 0
-            else:
-                rtn = 0
-        elif not self.user_mode and arg1 == "Erestart":
-            argv3 = get_argv3("enstore-down")
-            if self.verify_node(argv3):
-                command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
-                rtn1 = do_rgang_command("enstore-down",command)
-                command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
-                rtn2 = do_rgang_command("enstore",command)
-                rtn = rtn1|rtn2
-            else:
-                rtn = 0
-        elif not self.user_mode and arg1 == "aml2":
-            # find the node to rsh to.  this node is the one associated with
-            # the media changer of type "AML2_MediaLoader"
-            #   if the configuration server is running, get the information
-            #   from it.  if not, just read the config file pointed to by
-            #   $ENSTORE_CONFIG_FILE.  if neither of these works, assume node
-            #   in DEFAULT_AML2_NODE.
-            if not self.get_config_from_server() and \
-               not self.get_config_from_file():
-                self.node = DEFAULT_AML2_NODE
-            cmd = 'enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"'%(self.node,)
-            rtn = os.system(cmd)
-        elif not self.user_mode and arg1 == "EPS":
-            command=". /usr/local/etc/setups.sh; setup enstore; EPS"
-            rtn = do_rgang_command("enstore",command)
-        elif arg1 == "ps":
-            rtn = call_function("EPS", sys.argv[2:])
-        elif not self.user_mode and arg1 == "pnfs": 
-            rtn = call_function("pnfsa", sys.argv[2:])
-        elif arg1 == "pnfs": 
-            rtn = call_function("pnfs", sys.argv[2:])
+
+        # arg1 == "help" or arg1 == "--help" or arg1 == '':
         else:
-            if arg1 == "help" or arg1 == "--help" or arg1 == '': 
-                rtn = 0
-                self.print_help()
-            else:
-                # it was not one of the above commands.  assume it was a server
-                # request.
-                EnstoreInterface.__init__(self)
-                if self.matched_server == "":
-                    rtn = 1
-                else:
-                    # call the passed in server to do it's stuff
-                    rtn = server_functions[self.matched_server][1](self.server_intf)
+            rtn = 0
+            self.intf.print_help()
+            
         sys.exit(rtn)

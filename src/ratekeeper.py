@@ -210,11 +210,15 @@ class RatekeeperInterface(generic_server.GenericServerInterface):
         self.host = None
         generic_server.GenericServerInterface.__init__(self)
 
+    def valid_dictionaries(self):
+        return (self.help_options,)
+
+"""
     # define the command line options that are valid
     def options(self):
         return generic_server.GenericServerInterface.options(self)+\
                ["host="]
-
+"""
 
 
 if __name__ == "__main__":

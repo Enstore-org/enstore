@@ -9,7 +9,10 @@ def do_work():
     # user mode
     mode = 0
 
-    en = enstore.Enstore(mode)
+    #en = enstore.Enstore(mode)
+    #return en.do_work()
+    intf = enstore.EnstoreInterface(mode)
+    en = enstore.Enstore(intf)
     return en.do_work()
 
 if __name__ == "__main__" :

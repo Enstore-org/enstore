@@ -12,7 +12,8 @@ import select
 
 # enstore imports
 import generic_client
-import interface
+import interface  #Should be removed???
+import option
 import udp_client
 import Trace
 import callback
@@ -64,7 +65,7 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'dump',
                    'callback_addr'  : (host,port)
                    }
-
+        print self.server_address
         reply = self.send(request, timeout, retry)
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
@@ -121,11 +122,50 @@ class ConfigurationClient(generic_client.GenericClient):
                    'keyValue': keyValue }
         return self.send(request, timeout, retry)
         
+#class ConfigurationClientInterface(generic_client.GenericClientInterface):
+#    def __init__(self, flag=1, opts=[]):
+#        # fill in the defaults for the possible options
+#        self.do_parse = flag
+#        self.restricted_opts = opts
+#        self.config_file = ""
+#        self.show = 0
+#        self.load = 0
+#        self.alive_rcv_timeout = 0
+#        self.alive_retries = 0
+#        self.summary = 0
+#        generic_client.GenericClientInterface.__init__(self)
+#
+#        # if we are using the default host and port, warn the user
+#        interface.check_for_config_defaults()
+#
+#    # define the command line options that are valid
+#    def options(self):
+#        if self.restricted_opts:
+#            return self.restricted_opts
+#        else:
+#            return self.client_options()+[
+#                "config-file=","summary","show","load"]
+#
+#    #  define our specific help
+#    def parameters(self):
+#        return "element"
+#
+#    # parse the options like normal but see if we have a server
+#    def parse_options(self):
+#        interface.Interface.parse_options(self)
+#        # see if we have an element 
+#        if self.show:
+#            if len(self.args) < 1 :
+#                # no parameter, show all
+#                self.element = ""
+#            else:
+#                self.element = self.args[0]
+
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
-    def __init__(self, flag=1, opts=[]):
+    def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
-        self.do_parse = flag
-        self.restricted_opts = opts
+        #self.do_parse = flag
+        #self.restricted_opts = opts
         self.config_file = ""
         self.show = 0
         self.load = 0
@@ -137,33 +177,42 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         # if we are using the default host and port, warn the user
         interface.check_for_config_defaults()
 
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "config-file=","summary","show","load"]
+    def valid_dictionaries(self):
+        return (self.help_options, self.alive_options, self.trace_options,
+                self.config_options)
 
-    #  define our specific help
-    def parameters(self):
-        return "element"
+    config_options = {
+        option.SHOW:{option.HELP_STRING:"print the current configuration",
+                     option.DEFAULT_TYPE:option.INTEGER},
+        option.LOAD:{option.HELP_STRING:"load a new configuration",
+                     option.DEFAULT_TYPE:option.INTEGER},
+        option.SUMMARY:{option.HELP_STRING:"summary for saag",
+                        option.DEFAULT_TYPE:option.INTEGER},
+        option.CONFIG_FILE:{option.HELP_STRING:"config file to load",
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.DEFAULT_TYPE:option.STRING},
+         }
 
-    # parse the options like normal but see if we have a server
+    # parse the options like normal but make sure we have other args
     def parse_options(self):
-        interface.Interface.parse_options(self)
-        # see if we have an element 
-        if self.show:
-            if len(self.args) < 1 :
-                # no parameter, show all
-                self.element = ""
-            else:
-                self.element = self.args[0]
+
+        generic_client.GenericClientInterface.parse_options(self)
+
+        try:
+            self.element = self.args[0]
+        except IndexError:
+            self.element = None
+        
 
 def do_work(intf):
     csc = ConfigurationClient((intf.config_host, intf.config_port))
     csc.csc = csc
     result = csc.handle_generic_commands(MY_SERVER, intf)
+    if intf.alive:
+        if result['status'] == (e_errors.OK, None):
+            print "Server configuration found at %s." % (result['address'],)
+        else:
+            print result
     if result:
         pass
     elif intf.show:
