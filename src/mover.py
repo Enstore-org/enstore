@@ -119,23 +119,25 @@ class Buffer:
         self._lock.release()
         
     def nbytes(self):
-        self._lock.acquire()
-        n = self._buf_bytes
-        self._lock.release()
-        return n
+        return self._buf_bytes
         
     def full(self):
         return self.nbytes() >= self.max_bytes
     
     def empty(self):
-        ## this means that a "pull" would fail
+        ## this means that a stream write would fail - we have no data at all to send
         self._lock.acquire()
-        r =  len(self._buf) == 0
+        r =  len(self._buf) == 0 and not self._writing_block
         self._lock.release()
         return r
     
     def low(self):
-        r = self.empty() or self.nbytes() < self.min_bytes
+        ## this means that either we don't have enough data for a full block,
+        ## or we're deferring writes until enough data is buffered (min_bytes)
+        self._lock.acquire()
+        r = len(self._buf) == 0 or self.nbytes() < self.min_bytes
+        self._lock.release()
+        return r
     
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
@@ -562,8 +564,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         count = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
-
-            if self.buffer.empty() or self.bytes_read < self.bytes_to_read and self.buffer.low():
+            if (self.bytes_read == self.bytes_to_read and self.buffer.empty()
+                or self.bytes_read < self.bytes_to_read and self.buffer_low()):
                 Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
                             (self.buffer.nbytes(), self.buffer.min_bytes,
                              self.bytes_read, self.bytes_to_read))
@@ -682,9 +684,8 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
             if self.buffer.empty():
-                Trace.trace(9, "write_client: buffer empty %s/%s, wrote %s/%s" %
-                            (self.buffer.nbytes(), self.buffer.min_bytes,
-                             self.bytes_written, self.bytes_to_write))
+                Trace.trace(9, "write_client: buffer empty, wrote %s/%s" %
+                            (self.bytes_written, self.bytes_to_write))
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
                 continue
