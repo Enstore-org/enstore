@@ -72,4 +72,36 @@ for file in filelist[:]:
         print '%s\t Working revision=%s  Repository revision=%s  Production revision=%s'%(file,working_revision, repository_revision, production_revision), out_of_date
     else:
         print '%s\t ok'%(file,)
-        
+
+### #!/bin/sh
+### 
+### 
+### cd /home/bakken
+### 
+### output=`pwd`/repository-production
+### rm -f $output
+### 
+### dirs=/tmp/dirs
+### rm -f $dirs
+### 
+### rm -fr lz >/dev/null 2>&1
+### mkdir lz  >/dev/null 2>&1
+### cd lz
+### 
+### export CVSROOT=cvsuser@hppc.fnal.gov:/cvs/hppc
+### cvs co enstore2 >/dev/null 2>&1
+### 
+### date >> $output
+### echo "List of files in $CVSROOT without production tag" >> $output
+### 
+### #find enstore2 -type f -exec /home/bakken/lz/enstore2/tools/notready.py {} \; | egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output
+### 
+### find enstore2 -type d |grep -v CVS > $dirs
+### cat $dirs | while read d; do 
+###  (cd $d; /home/bakken/lz/enstore2/tools/notready.py *| egrep -v 'Checking files...|ok$|not in CVS, skipping$|is a directory, ignoring|in in /CVS/ directory. Can not possibly check it' >> $output )
+### done
+### 
+### date >> $output
+### 
+### /usr/bin/Mail -s "Nonproduction files in cvs repository" enstore-auto@fnal.gov <$output
+
