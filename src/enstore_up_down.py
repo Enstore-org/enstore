@@ -150,12 +150,11 @@ class EnstoreServer:
     def set_status(self, status):
 	self.status = status
 	if status == enstore_constants.DOWN:
-	    if self.seen_down_d.has_key(self.format_name):
-		self.seen_down_d[self.format_name] = self.seen_down_d.get(self.format_name, 0) + 1
-	    else:
-		self.seen_down_d[self.format_name] = 1
-	    if not self.is_really_down():
+	    self.seen_down_d[self.format_name] = self.seen_down_d.get(self.format_name, 0) + 1
+	    if not self.in_bad_state and not self.is_really_down():
 		self.status = enstore_constants.SEEN_DOWN
+	elif status == enstore_constants.WARNING:
+	    self.seen_down_d[self.format_name] = self.seen_down_d.get(self.format_name, 0) + 1
 	elif status == enstore_constants.UP:
 	    if self.seen_down_d.has_key(self.format_name):
 		del self.seen_down_d[self.format_name]
@@ -269,6 +268,7 @@ class LibraryManager(EnstoreServer):
 			       enstore_constants.DOWN, csc)
 	self.postfix = enstore_constants.LIBRARY_MANAGER
 	self.server_state = ""
+	self.in_bad_state = 0
 
     # return the number of movers we know about that have a good status, and those with a bad
     # status
@@ -286,6 +286,7 @@ class LibraryManager(EnstoreServer):
     def is_alive(self):
 	# now that we know this lm is alive we need to examine its state
 	if self.server_state in self.BADSTATUS:
+	    self.in_bad_state = 1
 	    # the lm is not in a good state mark it as yellow
 	    enprint("%s in a %s state"%(self.format_name, self.server_state))
 	    self.set_status(enstore_constants.WARNING)
@@ -294,6 +295,7 @@ class LibraryManager(EnstoreServer):
                                                                      self.server_state,
                                                            self.seen_down_d.get(self.format_name, 0)))
 	else:
+	    self.in_bad_state = 0
 	    EnstoreServer.is_alive(self)
 
 class MediaChanger(EnstoreServer):
@@ -316,11 +318,13 @@ class Mover(EnstoreServer):
 	self.postfix = enstore_constants.MOVER
 	self.server_state = ""
         self.check_result = 0
+	self.in_bad_state = 0
 
     def is_alive(self):
 	# check to see if the mover is in a bad state
 	keys = self.BADSTATUS.keys()
 	if self.server_state in keys:
+	    self.in_bad_state = 1
 	    # the mover is not in a good state mark it as bad
 	    enprint("%s in a %s state"%(self.format_name, self.server_state))
 	    self.set_status(self.BADSTATUS[self.server_state])
@@ -329,6 +333,7 @@ class Mover(EnstoreServer):
                                                            self.seen_down_d.get(self.format_name, 0)))
 	else:
 	    EnstoreServer.is_alive(self)
+	    self.in_bad_state = 0
 
 
 class UpDownInterface(generic_client.GenericClientInterface):
