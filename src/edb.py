@@ -24,7 +24,7 @@ import time
 import string
 import types
 import pg
-import journal
+import ejournal
 import os
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -90,8 +90,10 @@ class DbTable:
 		self.auto_journal = auto_journal
 
 		if self.auto_journal:
-			self.jou = journal.JournalDict({}, os.path.join(jouHome, self.table+'.jou'))
-			self.count = 0
+			self.jou = ejournal.Journal(os.path.join(
+					jouHome, self.table))
+		else:
+			self.jou = None
 
 		self.retrieve_query = "select * from "+self.table+" where "+self.pkey+" = '%s';"
 		self.insert_query = "insert into "+self.table+" (%s) values (%s);"
@@ -116,6 +118,8 @@ class DbTable:
 			return self.export_format(res[0])
 
 	def __setitem__(self, key, value):
+		if self.auto_journal:
+			self.jou[key] = value
 		v1 = self.import_format(value)
 		# figure out whether this is an insert or an update
 		res = self.db.query(self.retrieve_query%(key)).dictresult()
@@ -136,6 +140,10 @@ class DbTable:
 				res = self.db.query(cmd)
 
 	def __delitem__(self, key):
+		if self.auto_journal:
+			if not self.jou.has_key(key):
+				self.jou[key] = self.__getitem__(key)
+			del self.jou[key]
 		res = self.db.query(self.delete_query%(key))
 			
 
