@@ -27,7 +27,7 @@ or may not be necessary to flush changes to disk.
 
 
 # system imports
-import time
+#import time
 
 # enstore imports
 import Trace
