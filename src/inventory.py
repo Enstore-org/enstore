@@ -733,7 +733,7 @@ def inventory(output_dir, cache_dir):
 
     mv_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
-    mv_file.write("These migrated volume can be recycled or deleted from system:\n\n")
+    mv_file.write("These migrated volumes can be recycled or deleted from system:\n\n")
 
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
     de_count = 0
