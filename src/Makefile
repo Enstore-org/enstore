@@ -81,6 +81,17 @@ get:
 	cp $(ENSTORE_DIR)/ups/get.table GETBIN
 	- rm -rf GET_TEMP
 
+entv:
+	- rm -rf ENTV_TEMP
+	mkdir ENTV_TEMP
+	- rm -rf ENTVBIN
+	mkdir ENTVBIN
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
+	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp ENTV_TEMP/entv ENTVBIN
+	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTVBIN/entv.table
+	# - rm -rf ENTV_TEMP
+
 
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
 #	mkdir MONITOR_CLIENT_BIN_TEMP
