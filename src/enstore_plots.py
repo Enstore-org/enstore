@@ -36,7 +36,12 @@ class EnPlot(enstore_status.EnFile):
 	self.filedes = open(self.ptsfile, 'w')
 
     def install(self, dir):
-	os.system("gnuplot "+self.gnufile+";cp "+self.psfile+" "+dir)
+        # create the ps file, copy it to the users dir
+	os.system("gnuplot %s;cp %s %s;"%(self.gnufile, self.psfile, dir))
+
+    def cleanup(self):
+        # delete the gnu command file and the data points file
+	os.system("rm %s;rm %s*"%(self.gnufile, self.ptsfile))
 
 class MphGnuFile(enstore_status.EnFile):
 
@@ -228,8 +233,8 @@ class XferDataFile(EnPlot):
 	gnucmds.close()
 
     def install(self, dir):
-	os.system("gnuplot "+self.gnufile+";cp "+self.psfile+" "+dir+\
-	          ";cp "+self.logfile+" "+dir)
+        EnPlot.install(self, dir)
+	os.system("cp %s %s"%(self.logfile, dir))
 
 class BpdGnuFile(enstore_status.EnFile):
 

@@ -711,6 +711,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mountfile.timed_read(ticket)
 	# now pull out the info we are going to plot from the lines
 	mountfile.parse_data()
+        mountfile.close()
+        mountfile.cleanup()
 
 	# create the data files
 	mphfile = enstore_plots.MphDataFile(lfd)
@@ -718,12 +720,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mphfile.plot(mountfile.data)
 	mphfile.close()
 	mphfile.install(self.html_dir)
+        mphfile.cleanup()
 
 	mlatfile = enstore_plots.MlatDataFile(lfd)
 	mlatfile.open()
 	mlatfile.plot(mountfile.data)
 	mlatfile.close()
 	mlatfile.install(self.html_dir)
+        mlatfile.cleanup()
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
@@ -743,6 +747,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	encpfile.timed_read(ticket)
 	# now pull out the info we are going to plot from the lines
 	encpfile.parse_data()
+        encpfile.close()
 
 	bpdfile = enstore_plots.BpdDataFile(lfd)
 	bpdfile.open()
@@ -755,6 +760,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	xferfile.plot(encpfile.data)
 	xferfile.close()
 	xferfile.install(self.html_dir)
+
+        # delete any extraneous files. do it here because the xfer file
+        # plotting needs the bpd data file
+        bpdfile.cleanup()
+        xferfile.cleanup()
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
