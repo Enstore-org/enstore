@@ -39,7 +39,11 @@ def encp_client_version():
     ##this should get set automatically somehow,
     ##as it is this has to be edited manually when a new
     ##version is cut.  Don't forget to do this!
-    
+
+
+#seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
+mover_timeout = 15*60  #15 minutes
+
 
 data_access_layer_format = "INFILE=%s\n"+\
                            "OUTFILE=%s\n"+\
@@ -298,7 +302,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
         # allow some retries if mover fails
         retry = maxretry
-        while retry:  # note that real rates are not correct in retries
+        while retry>0:  # note that real rates are not correct in retries
             if verbose:
                 print "Sending ticket to",\
 		      library[i]+".library_manager",\
@@ -357,66 +361,93 @@ def write_to_hsm(input_files, output, output_file_family='',
                                }
             # send the work ticket to the library manager
             tinfo1["tot_to_send_ticket"+repr(i)] = t1 - t0
-            system_enabled(p) # make sure system still enabled before submitting
-            Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
-            ticket = u.send(work_ticket, (vticket['hostip'], 
-					  vticket['port']))
-            if verbose > 3:
-                print "ENCP: write_to_hsm LM returned"
-                pprint.pprint(ticket)
-            if ticket['status'][0] != e_errors.OK :
-		print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
-                jraise(errno.errorcode[errno.EPROTO],\
-		       " encp.write_to_hsm: "
-                       "from u.send to " +library[i]+" at " +
-                       vticket['hostip']+"/"+repr(vticket['port'])+
-                       ", ticket[\"status\"]="+repr(ticket["status"]))
-
-            tinfo1["send_ticket"+repr(i)] = time.time() - t1 #--Lap End
-            if verbose:
-                print "  Q'd:",inputlist[i], library[i],\
-                      "family:",file_family[i],\
-                      "bytes:", file_size[i],\
-                      "dt:",tinfo1["send_ticket"+repr(i)],\
-                          "   cumt=",time.time()-t0
-
-            if verbose>1:
-                print "Waiting for mover to call back", \
-                      "   cumt=",time.time()-t0
-            t1 = time.time() #--------------------------------Lap-Start
-            tMBstart = t1
-
-            # We have placed our work in the system and now we 
-	    # have to wait for resources. All we need to do 
-	    # is wait for the system to call us back, and make 
-	    # sure that is it calling _us_ back, and not some 
-	    # sort of old call-back to this very same port. 
-	    # It is dicey to time out, as it is probably 
-	    # legitimate to wait for hours....
-
-            while 1 :
-                Trace.trace(10,"write_to_hsm listening for callback")
-                control_socket, address = listen_socket.accept()
-                ticket = callback.read_tcp_obj(control_socket)
+            
+            reply_read=0
+            while not reply_read:
+                system_enabled(p) # make sure system still enabled before submitting
+                ##start of resubmit block
+                Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
+                ticket = u.send(work_ticket, (vticket['hostip'], 
+                                              vticket['port']))
                 if verbose > 3:
-                    print "ENCP:write_to_hsm MV called back with"
+                    print "ENCP: write_to_hsm LM returned"
                     pprint.pprint(ticket)
-                callback_id = ticket['unique_id']
-                # compare strings not floats (floats fail comparisons)
-                if str(unique_id[i])==str(callback_id):
-                    Trace.trace(10,"write_to_hsm mover called back "+
-                                "on control_socket="+
-				repr(control_socket)+
-                                " address="+repr(address))
-                    break
-                else:
-                    print "encp write_to_hsm: imposter called us, trying again"
-                    Trace.trace(10,"write_to_hsm mover imposter "+
-				"called us control_socket="+
-				repr(control_socket)+
-                                " address="+repr(address))
-                    control_socket.close()
+                if ticket['status'][0] != e_errors.OK :
+                    print_data_access_layer_format(inputlist[i], outputlist[i], file_size[i], ticket)
+                    jraise(errno.errorcode[errno.EPROTO],\
+                           " encp.write_to_hsm: "
+                           "from u.send to " +library[i]+" at " +
+                           vticket['hostip']+"/"+repr(vticket['port'])+
+                           ", ticket[\"status\"]="+repr(ticket["status"]))
 
+                tinfo1["send_ticket"+repr(i)] = time.time() - t1 #--Lap End
+                if verbose:
+                    print "  Q'd:",inputlist[i], library[i],\
+                          "family:",file_family[i],\
+                          "bytes:", file_size[i],\
+                          "dt:",tinfo1["send_ticket"+repr(i)],\
+                              "   cumt=",time.time()-t0
+
+                if verbose>1:
+                    print "Waiting for mover to call back", \
+                          "   cumt=",time.time()-t0
+                t1 = time.time() #--------------------------------Lap-Start
+                tMBstart = t1
+
+                # We have placed our work in the system and now we 
+                # have to wait for resources. All we need to do 
+                # is wait for the system to call us back, and make 
+                # sure that is it calling _us_ back, and not some 
+                # sort of old call-back to this very same port. 
+                # It is dicey to time out, as it is probably 
+                # legitimate to wait for hours....
+                
+                ##19990723:  resubmit request after 15minute timeout.  Since the unique_id is unchanged
+                ##the library manager should not get confused by duplicate requests.
+                timedout=0
+                while not (timedout or reply_read):
+                    Trace.trace(10,"write_to_hsm listening for callback")
+                    read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],
+                                                             mover_timeout)
+
+
+                    if not read_fds:
+                        #timed out
+                        if verbose:
+                            print "write_to_hsm: timeout on mover callback"
+                        Trace.log(e_errors.INFO, "mover callback timed out, resubmitting request")
+                        timedout=1
+                        break
+                    control_socket, address = listen_socket.accept()
+                    ticket = callback.read_tcp_obj(control_socket)
+                    if verbose > 3:
+                        print "ENCP:write_to_hsm MV called back with"
+                        pprint.pprint(ticket)
+                    callback_id = ticket['unique_id']
+                    # compare strings not floats (floats fail comparisons)
+                    if str(unique_id[i])==str(callback_id):
+                        Trace.trace(10,"write_to_hsm mover called back "+
+                                    "on control_socket="+
+                                    repr(control_socket)+
+                                    " address="+repr(address))
+                        reply_read=1
+                        break
+                    else:
+                        print "encp write_to_hsm: imposter called us, trying again"
+                        Trace.trace(10,"write_to_hsm mover imposter "+
+                                    "called us control_socket="+
+                                    repr(control_socket)+
+                                    " address="+repr(address))
+                        reply_read=0
+                        control_socket.close()
+                if timedout:
+                    msg = "Timeout on mover callback, resubmitting request"
+                    if verbose:
+                        print msg
+                    Trace.log(e_errors.INFO, msg)
+
+
+            #END of timeout/resubmit loop
             # ok, we've been called back with a matched id - how's 
 	    # the status?
             if ticket["status"][0] != e_errors.OK :
@@ -527,8 +558,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 				    "mover callback on socket "+
 				    repr(address)+", failed to transfer: "+
 				    "done_ticket[\"status\"]="+
-				    repr(done_ticket["status"]),fatal=0)
+				    repr(done_ticket["status"]),fatal=(retry<2))
 			retry = retry - 1
+                        if retry>0: sys.stderr.write("Retrying\n")
 			continue
 
 		    else:
@@ -592,6 +624,8 @@ def write_to_hsm(input_files, output, output_file_family='',
 			    "done_ticket[\"status\"]="+
 			    repr(done_ticket["status"]),fatal=(retry<2))
 		retry = retry - 1
+                if retry:
+                    sys.stderr.write("Retrying\n")
 		continue
 
 	    # Check the CRC
@@ -1048,7 +1082,9 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
   t2 = time.time() #--------------------------------------------Lap-Start
   rq_list = []
   for rq in requests: 
-      Trace.trace(7,"submit_read_requests:"+repr(rq['infile'])+" t2="+repr(t2))
+      msg="submit_read_requests:"+repr(rq['infile'])+" t2="+repr(t2)
+      if verbose>1:
+          print msg
   Qd=""
   current_library = ''
   submitted = 0
@@ -1221,6 +1257,16 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         #   we submitted for the volume
         while 1 :
             Trace.trace(8,"read_hsm_files listening for callback")
+            read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],
+                                                     mover_timeout)
+            if not read_fds:
+                #timed out!
+                msg="read_hsm_files: timeout on mover callback"
+                if verbose:
+                    print msg
+                Trace.log(e_errors.INFO, msg)
+                return files_left, bytes, error
+                
             control_socket, address = listen_socket.accept()
             ticket = callback.read_tcp_obj(control_socket)
             if verbose > 3:
@@ -1585,7 +1631,7 @@ def print_error(errcode,errmsg,fatal=0) :
     if fatal:
         format = "Fatal error: "+format
     else:
-        format = "Error:"+format
+        format = "Error: "+format
     x=sys.stdout;sys.stdout=sys.stderr
     print format
     try:
