@@ -66,33 +66,33 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to subscribe to the event relay
 	return self.send({"work"     : "subscribe" })
 
-    def down (self, server_list, time):
+    def down (self, server_list, time, rcv_timeout=0, tries=0):
 	# tell the inquisitor to mark the passed servers as down
 	return self.send({"work"    : "down",
 			  "servers" : server_list,
-			  "time"    : time})
+			  "time"    : time}, rcv_timeout, tries)
 
-    def up (self, server_list):
+    def up (self, server_list, rcv_timeout=0, tries=0):
 	# tell the inquisitor to mark the passed servers as up
 	return self.send({"work"    : "up",
-			  "servers" : server_list })
+			  "servers" : server_list }, rcv_timeout, tries)
 
-    def nooutage (self, server_list):
+    def nooutage (self, server_list, rcv_timeout=0, tries=0):
 	# tell the inquisitor to mark the passed servers as no longer scheduled 
 	# for an outage
 	return self.send({"work"    : "nooutage",
-			  "servers" : server_list })
+			  "servers" : server_list }, rcv_timeout, tries)
 
-    def outage (self, server_list, time):
+    def outage (self, server_list, time, rcv_timeout=0, tries=0):
 	# tell the inquisitor to mark the passed servers as scheduled for an outage
 	return self.send({"work"    : "outage",
 			  "servers" : server_list,
-			  "time"    : time})
+			  "time"    : time}, rcv_timeout, tries)
 
-    def show (self):
+    def show (self, rcv_timeout=0, tries=0):
 	# tell the inquisitor to return the outage/status of the servers in the 
 	# schedule file
-	return self.send({"work"    : "show" })
+	return self.send({"work"    : "show" }, rcv_timeout, tries)
 
     def print_show(self, ticket):
 	print "\n Enstore Items Scheduled To Be Down"
