@@ -930,11 +930,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['remaining_bytes']=remaining
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        fc_ticket = {'location_cookie': loc_to_cookie(self.last_seek),
-                     'size': self.bytes_to_transfer,
-                     'sanity_cookie': sanity_cookie,
-                     'external_label': self.current_volume,
-                     'complete_crc': complete_crc}
+        fc_ticket = {  'location_cookie': loc_to_cookie(self.last_seek),
+                       'size': self.bytes_to_transfer,
+                       'sanity_cookie': sanity_cookie,
+                       'external_label': self.current_volume,
+                       'complete_crc': complete_crc}
         ##  HACK:  store 0 to database if mover is NULL
         if self.config['driver']=='NullDriver':
             fc_ticket['complete_crc']=0L
@@ -958,8 +958,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
         self.vol_info.update(reply)
         self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
-        self.volume_status =  (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
-                               self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
+        self.volume_status = (self.vol_info.get('system_inhibit',['Unknown', 'Unknown']),
+                              self.vol_info.get('user_inhibit',['Unknown', 'Unknown']))
         return 1
 
     
