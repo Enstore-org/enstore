@@ -1,6 +1,8 @@
 import errno
 import time
 import timeofday
+import os
+import sys
 from SocketServer import UDPServer, TCPServer
 
 # Import SOCKS module if it exists, else standard socket module socket
@@ -33,6 +35,15 @@ def dodebug(a,b):
 import signal
 signal.signal(3,dodebug)
 
+# check for any children that have exitted (zombies) and collect them
+def collect_children() :
+    try :
+	pid, status = os.waitpid(0, os.WNOHANG)
+	if (pid!=0) :
+	    print "Child reaped: pid=",pid," status=",status
+    except os.error:
+	if sys.exc_info()[1][0] != errno.ECHILD :
+	    raise sys.exc_info()[0],sys.exc_info()[1]
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
@@ -80,12 +91,15 @@ class DispatchingWorker:
             ticket = {'status' : "cannot find requested function"}
             self.reply_to_caller(ticket)
             return
-        
+
         if len(dict) > 200:
              purge_stale_entries(dict)
 
-        # finally call the user function
+        # call the user function
         exec ("self." + function + "(ticket)")
+
+	# check for any zombie children and get rid of them
+	collect_children()
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
@@ -123,5 +137,4 @@ class DispatchingWorker:
         if badsock != 0 :
             print "dispatching_worker reply_with_list, post-sendto error:",\
                   errno.errorcode[badsock]
-
 

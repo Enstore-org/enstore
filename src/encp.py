@@ -196,7 +196,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     				  65536/2, chk_crc )
             retry = 0
         except:
-    	    print "Error with encp EXfer - continueing";traceback.print_exc()
+    	    print "Error with encp EXfer - continuing";traceback.print_exc()
             ticket = {
               "work"               : "write_to_hsm",
               "priority"           : 5,
