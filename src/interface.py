@@ -399,6 +399,8 @@ class Interface:
                 if not self.test_mode:
                     sys.stderr.write("bytecount may only be specified in test mode\n")
                     sys.exit(-1)
+                if value[-1]=='L':
+                    value=value[:-1]
                 self.bytes = int(value)
             elif opt == "--get_crcs":
                 self.get_crcs=value
