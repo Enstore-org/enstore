@@ -1660,11 +1660,11 @@ def outputfile_check(inputlist, outputlist, e):
     # Make sure we can open the files. If we can't, we bomb out to user
     for i in range(len(inputlist)):
 
-        #If output location is /dev/null, skip the checks.
-        if outputlist[i] == "/dev/null":
-            continue
+            #If output location is /dev/null, skip the checks.
+            if outputlist[i] == "/dev/null":
+                continue
 
-        try:
+        #try:
 
             #check to make sure that the filename string doesn't have any
             # wackiness to it.
@@ -1833,17 +1833,17 @@ def outputfile_check(inputlist, outputlist, e):
             except ValueError:
                 pass  #There is no error.
 
-        except KeyboardInterrupt:
-            raise sys.exc_info()
-        except EncpError:
-            raise sys.exc_info()
-            #msg = sys.exc_info()[1]
-            #size = get_file_size(inputlist[i])
-            #print_data_access_layer_format("", outputlist[i], size,
-            #                               {'status':(msg.type, msg.strerror)})
-            #quit()
-        except (OSError, IOError):
-            raise sys.exc_info()
+        #except KeyboardInterrupt:
+        #    raise sys.exc_info()
+        #except EncpError:
+        #    raise sys.exc_info()
+        #    #msg = sys.exc_info()[1]
+        #    #size = get_file_size(inputlist[i])
+        #    #print_data_access_layer_format("", outputlist[i], size,
+        #    #                               {'status':(msg.type, msg.strerror)})
+        #    #quit()
+        #except (OSError, IOError):
+        #    raise sys.exc_info()
 
 #######################################################################
 
@@ -5186,12 +5186,12 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
             #Check to make sure that the file was successfully
             # written to tape.
-            if fc_reply.get('deleted', None) == None:
-                status = (e_errors.USERERROR,
-                      "Requesting file (%s) with unknown status."
-                      % (generate_location_cookie(number),))
-                raise EncpError(None, status[1], status[0],
-                                {'volume' : e.volume})
+            #if fc_reply.get('deleted', None) == None:
+            #    status = (e_errors.USERERROR,
+            #          "Requesting file (%s) with unknown status."
+            #          % (generate_location_cookie(number),))
+                #raise EncpError(None, status[1], status[0],
+                #                {'volume' : e.volume})
                 #print_data_access_layer_format(
                 #    filename, filename, 0,
                 #    {'status' : status, 'volume' : e.volume})
