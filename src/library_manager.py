@@ -1211,7 +1211,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
         
     def write_to_hsm(self, ticket):
-        if ticket.has_key('vc') and ticket['vc'].has_key['file_family_width']:
+        if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
