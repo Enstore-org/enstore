@@ -278,7 +278,7 @@ class Mover:
 	ticket["fc"]["sanity_cookie"] = sanity_cookie
 	ticket["fc"]["complete_crc"] = complete_crc
 	ticket = fc.new_bit_file(ticket)
-        ticket["volume_clerk"] = self.vticket
+        ticket["vc"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',
@@ -375,7 +375,7 @@ class Mover:
 
         # add some info to user's ticket
         #ticket["complete_crc"] = complete_crc
-        ticket["volume_clerk"] = self.vticket
+        ticket["vc"] = self.vticket
         minfo = {}
         for k in ['config_host', 'config_port', 'device', 'driver_name',
                   'library', 'library_device', 'library_manager_host',

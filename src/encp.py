@@ -195,7 +195,7 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
                                "file_family"        : file_family[i],\
                                "file_family_width"  : width[i],\
                                "pnfs_info"          : pinfo[i],\
-                               "info"               : uinfo,\
+                               "uinfo"              : uinfo,\
                                "unique_id"          : unique_id[i]
                                }
 
@@ -543,7 +543,7 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
                     repr(binfo['fc']['external_label']))
-        vinfo.append(binfo['volume_clerk'])
+        vinfo.append(binfo['vc'])
         finfo.append(binfo['fc'])
         label = binfo['fc']['external_label']
         volume.append(label)

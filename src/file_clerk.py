@@ -266,7 +266,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                     "library="+repr(library))
 
         # copy all volume information we have to user's ticket
-        ticket["volume_clerk"] = vticket
+        ticket["vc"] = vticket
 
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
