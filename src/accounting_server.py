@@ -78,7 +78,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		return
 
 	# turn on/off the debugging
-	def debug(self, ticket):
+	def debugging(self, ticket):
 		self.debug = ticket.get('level', 0)
 		print 'debug =', self.debug
 

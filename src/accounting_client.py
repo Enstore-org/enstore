@@ -57,7 +57,7 @@ class accClient(generic_client.GenericClient):
 
 	def debug(self, level = 0):
 		ticket = {
-			'work': 'debug',
+			'work': 'debugging',
 			'level': level}
 		self.send2(ticket)
 
