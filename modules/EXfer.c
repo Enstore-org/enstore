@@ -6,9 +6,7 @@
 
 #include <Python.h>		/* all the Py.... stuff */
 
-#ifdef NO_READ
-# include <sys/stat.h>		/* fstat, struct stat */
-#endif
+#include <sys/stat.h>		/* fstat, struct stat */
 #include <sys/types.h>		/* read/write */
 #include <sys/wait.h>		/* waitpid */
 #include <stdio.h>		/* fread/fwrite */
@@ -20,21 +18,15 @@
 #include <assert.h>             /* assert */
 #include <errno.h>
 #include <signal.h>		/* sigaction() and struct sigaction */
-#include <ftt.h>		/* ftt_read/write */
 
 #include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
 
-#define CKALLOC(malloc_call) if ( !(malloc_call) ) {PyErr_NoMemory(); return NULL;} 
-
-/*
- *  Module description:
- *      Two methods:
- *	    1)  (dat_byts,dat_CRC,san_CRC) = obj.to_HSM(  frmDriverObj, to_DriverObj
- *						         , crc_fun, sanity_byts, header )
- *	    2)  (dataCRC,sanitySts) = obj.frmHSM(  frmDriverObj, to_DriverObj
- *						 , dataSz, sanitySz, sanityCRC )
- */
-static char EXfer_Doc[] =  "EXfer is a module which Xfers data";
+#if 0
+# define PRINTF printf
+#else
+  static int dummy;
+# define PRINTF dummy = 0 && printf
+#endif
 
 enum e_mtype
 {   WrtSiz = 1			/* mtype must be non-zero */
@@ -77,7 +69,7 @@ raise_exception( char *msg )
     if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
 #   endif
 
-    sprintf( buf, "%s - %s", msg, strerror(i) );
+    sprintf( buf, "(pid %d) %s - %s", getpid(), msg, strerror(i) );
     v = Py_BuildValue( "(is)", i, buf );
     if (v != NULL)
     {   PyErr_SetObject( EXErrObject, v );
@@ -99,10 +91,11 @@ raise_exception( char *msg )
 
 static char		*g_shmaddr_p;
 static int		 g_shmsize;
-static struct sigaction	 g_oldSigAct_s;
+static struct sigaction	 g_oldSigAct_sa[32];
 static int		 g_shmid;
 static int		 g_semid;
 static int		 g_msgqid;
+static int		 g_pid=0;
 
 static void
 send_writer(  int	mtype
@@ -118,14 +111,19 @@ send_writer(  int	mtype
  re_snd:
     sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
     if ((sts==-1) && (errno==EINTR))
-    {   printf( "redoing reader snd after interruption\n" );
+    {   PRINTF(  "EXfer (pid=%d) - redoing reader snd after interruption\n"
+	       , getpid() );
 	goto re_snd;
     }
-    if (sts == -1) perror( "reader_error" ); /* can not do much more */
+    if (sts == -1)
+    {   perror( "EXfer: fatal reader (send_writer) error" );
+	/* can not do much more, but lets try exitting */
+	exit( 1 );
+    }
     return;
 }
 
-static void
+static int
 do_read(  int 		rd_fd
 	, int 		no_bytes
 	, int 		blk_size 
@@ -152,11 +150,12 @@ do_read(  int 		rd_fd
 	/* gain access to *blk* of shared mem */
  semop_try:
 	sts = semop( g_semid, &sops_rd_wr2rd, 1 );
-	if (0 && (sts==-1) && (errno==EINTR))
-	{   printf( "interrupted system call; assume debugger attach???\n" );
+	if ((sts==-1) && (errno==EINTR))
+	{   PRINTF(  "(pid=%d) interrupted system call; assume ctl-Z OR debugger attach???\n"
+		   , getpid() );
 	    goto semop_try;
 	}
-	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
+	if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
 
 	/* Do not worry about reading an exact block as this is sending to
 	   tape. Note: sts may be less than blk_size when reading from net,
@@ -165,8 +164,8 @@ do_read(  int 		rd_fd
 	   blocksize - this would allow reader to further ahead of writer. */
 	sts = read(  rd_fd, g_shmaddr_p+shm_off
 		   , (no_bytes<blk_size)?no_bytes:blk_size );
-	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
-	if (sts == 0) { send_writer( Eof, errno, 0 ); exit( 1 ); }
+	if (sts == -1) { send_writer( Err, errno, 0 ); return (1); }
+	if (sts == 0) { send_writer( Eof, errno, 0 ); return (1); }
 
 	*read_bytes_ip += sts;
 
@@ -188,8 +187,7 @@ do_read(  int 		rd_fd
 
     send_writer( DatCrc, crc_i, 0 );
 
-    exit (0);
-    return;
+    return (0);
 }
 
 static void
@@ -209,15 +207,35 @@ g_ipc_cleanup( void )
 static void
 fd_xfer_SigHand( int sig )
 {
-    printf( "fd_xfer_SigHand called\n" );
+    printf( "fd_xfer_SigHand (pid=%d) called (sig=%d)\n", getpid(), sig );
 
-    g_ipc_cleanup();
+#   if 0
+       SIGPIPE      13        A      Broken pipe: write to pipe with no readers
+       #define EPIPE           32      /* Broken pipe */
+#   endif
 
-    if (  (g_oldSigAct_s.sa_handler!=SIG_DFL)
-	&&(g_oldSigAct_s.sa_handler!=SIG_IGN) )
-	(g_oldSigAct_s.sa_handler)( sig );
-    else
+    /*          2                 13                15  */
+    if ((sig==SIGINT) || (sig==SIGPIPE) || (sig==SIGTERM))
+    {   /* only clean up when we are dead */
+	/* do not clean up on SIGTSTP (when we are suspended) */
+	g_ipc_cleanup();
+
+	if (g_pid)
+	{   int sts;
+	    printf(  "(pid=%d) attempt kill -9 of forked process %d\n"
+		   , getpid(), g_pid );
+	    kill( g_pid, 9 );
+	    waitpid( g_pid, &sts, 0 );
+	}
 	exit( (1<<8) | sig );
+    }
+
+
+    if (  (g_oldSigAct_sa[sig].sa_handler!=SIG_DFL)
+	&&(g_oldSigAct_sa[sig].sa_handler!=SIG_IGN) )
+	(g_oldSigAct_sa[sig].sa_handler)( sig );
+    else
+	raise( sig );
 
     return;
 }
@@ -227,7 +245,7 @@ fd_xfer( fr_fd, to_fd, no_bytes, blk_siz, crc_fun[, crc, shm] )";
 
 static PyObject *
 EXfd_xfer(  PyObject	*self
-	 , PyObject	*args )
+	  , PyObject	*args )
 {							/* @-Public-@ */
 	int		 fr_fd;
 	int		 to_fd;
@@ -239,10 +257,9 @@ EXfd_xfer(  PyObject	*self
 
 	int		 crc_i;
 	int		 sts;
-	struct sigaction newSigAct_s;
+	struct sigaction newSigAct_sa[32];
 	int		 rd_ahead_i;
 	PyObject	*rr;
-	int		 pid;
 	struct msqid_ds	 msgctl_s;
 	struct sembuf	 sops_wr_wr2rd;  /* allows read */
 	int		 dummy=0;
@@ -260,12 +277,32 @@ EXfd_xfer(  PyObject	*self
     if ((crc_obj_tp==Py_None) || PyInt_Check(crc_obj_tp)) crc_obj_tp = 0;
 
     /* set up the signal handler b4 we get the ipc stuff */
-    newSigAct_s.sa_handler = fd_xfer_SigHand;
-    newSigAct_s.sa_flags   = 0;
-    sigemptyset( &newSigAct_s.sa_mask );
+    newSigAct_sa[0].sa_handler = fd_xfer_SigHand;
+    newSigAct_sa[0].sa_flags   = 0 | SA_ONESHOT;
+    sigemptyset( &(newSigAct_sa[0].sa_mask) );
 #   define DOSIGACT 1
 #   if DOSIGACT == 1
-    sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );
+    /*sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );*/
+    {   int ii;
+	/* do not include SIGPIPE -- we will not get EPIPE if it is included */
+	int sigs[] = { SIGINT, SIGTERM };
+	for (ii=0; ii<(sizeof(sigs)/sizeof(sigs[0])); ii++)
+	{   
+	    newSigAct_sa[sigs[ii]] = newSigAct_sa[0];
+	    sts = sigaction(  sigs[ii], &(newSigAct_sa[sigs[ii]])
+			    , &(g_oldSigAct_sa[sigs[ii]]) );
+	    if (sts == -1)
+		printf( "(pid=%d) error with sig %d\n", getpid(), sigs[ii] );
+	    else if (g_oldSigAct_sa[sigs[ii]].sa_handler == SIG_IGN)
+	        PRINTF( "(pid=%d) sig %d was ignored\n", getpid(), sigs[ii] );
+	    else if (g_oldSigAct_sa[sigs[ii]].sa_handler == SIG_DFL)
+	        PRINTF(  "(pid=%d) sig %d had default handler\n", getpid()
+		       , sigs[ii] );
+	    else
+	        PRINTF(  "(pid=%d) sig %d had non-default handler\n", getpid()
+		       , sigs[ii] );
+	}
+    }
 #   endif
 
     /* NOTE: FOR THE MOVER, A PARENT PROCESS WILL PASS A SHM OBJECT SO IT
@@ -288,10 +325,10 @@ EXfd_xfer(  PyObject	*self
     }
     else /* SPECIFIC/SPECIAL SHM INITIALIZED WITH SEM AND MSG */
     {   struct s_IPCshmgetObject *s_p = (struct s_IPCshmgetObject *)shm_obj_tp;
-	rd_ahead_i = (s_p->i_p[0]-(8*sizeof(int))) / blk_size; /* do integer arithmatic */
+	rd_ahead_i = (s_p->i_p[0]-(10*sizeof(int))) / blk_size; /* do integer arithmatic */
 	g_shmsize = blk_size * rd_ahead_i;
 	g_shmid = s_p->i_p[1];
-	g_shmaddr_p = (char *)&(s_p->i_p[8]);
+	g_shmaddr_p = (char *)&(s_p->i_p[10]);
 	g_msgqid = s_p->i_p[3];
 	g_semid  = s_p->i_p[2];
 	read_bytes_ip  = &(s_p->i_p[4]);
@@ -325,8 +362,11 @@ EXfd_xfer(  PyObject	*self
     sops_wr_wr2rd.sem_op  = 1;  /* reader dec's, writer inc's */
 
     /* fork off read (from) */
-    if ((pid=fork()) == 0)
-	do_read(  fr_fd, no_bytes, blk_size, crc_obj_tp, crc_i, read_bytes_ip );
+    if ((g_pid=fork()) == 0)
+    {   PRINTF( "hello from reading forked process %d\n", getpid() );
+	sts = do_read(  fr_fd, no_bytes, blk_size, crc_obj_tp, crc_i, read_bytes_ip );
+	exit( sts );
+    }
     else
     {   int		 writing_flg=1;
 	struct s_msg	 msg_s;
@@ -337,10 +377,16 @@ EXfd_xfer(  PyObject	*self
 	    sts = msgrcv(  g_msgqid, (struct s_msg *)&msg_s
 			     , sizeof(struct s_msgdat), 0, 0 );
 	    if ((sts==-1) && (errno==EINTR))
-	    {   /*printf( "redoing writer rcv after interruption\n" );*/
+	    {   PRINTF(  "EXfer - (pid=%d) redoing writer rcv after interruption\n"
+		       , getpid() );
 		goto re_rcv;
 	    }
-	    if (sts == -1) return (raise_exception("fd_xfer - writer msgrcv"));
+	    if (sts == -1)
+	    {   if (!shm_obj_tp) g_ipc_cleanup();
+		kill( g_pid, 9 );
+		waitpid( g_pid, &sts, 0 );
+		return (raise_exception("fd_xfer - writer msgrcv"));
+	    }
 
 	    switch (msg_s.mtype)
 	    {
@@ -351,26 +397,36 @@ EXfd_xfer(  PyObject	*self
 		    sts = write( to_fd, msg_s.md.c_p, msg_s.md.data );
 		    if (sts == -1)
 		    {   if (!shm_obj_tp) g_ipc_cleanup();
+			kill( g_pid, 9 );
+			waitpid( g_pid, &sts, 0 );
 			return (raise_exception("fd_xfer - write"));
 		    }
 		    *write_bytes_ip += sts;
 		} while (sts != msg_s.md.data);
 
-		do
-		{   sts = semop( g_semid, &sops_wr_wr2rd, 1 );
-		} while (0 && (sts==-1) && (errno==EINTR)); /* gdb looks like cntl-C */
+ re_semop:
+		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
+		if ((sts==-1) && (errno==EINTR))
+		{   PRINTF(  "EXfer - (pid=%d) redoing writer semop after interruption\n"
+			   , getpid() );
+		    goto re_semop;
+		}
 		if (sts == -1)
 		{   if (!shm_obj_tp) g_ipc_cleanup();
+		    kill( g_pid, 9 );
+		    waitpid( g_pid, &sts, 0 );
 		    return (raise_exception("fd_xfer - write - semop"));
 		}
 		break;
 	    case Err:
 		if (!shm_obj_tp) g_ipc_cleanup();
+		waitpid( g_pid, &sts, 0 );
 		errno = msg_s.md.data;
 		return (raise_exception("fd_xfer - read error"));
 		break;
 	    case Eof:
 		if (!shm_obj_tp) g_ipc_cleanup();
+		waitpid( g_pid, &sts, 0 );
 		return (raise_exception("fd_xfer - read EOF unexpected"));
 		break;
 	    default:		/* assume DatCrc */
@@ -382,14 +438,21 @@ EXfd_xfer(  PyObject	*self
     }
     /* == DONE WITH THE WORK - CLEANUP ======================================*/
 
-    if (!shm_obj_tp) g_ipc_cleanup();
-
-#   if DOSIGACT == 0
+#   if DOSIGACT == 1
     /* MUST DO IN FORKED PROCESS ALSO??? */
-    sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );
+    /*sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );*/
+    {   int ii;
+	int sigs[] = { SIGINT, SIGTERM };
+	for (ii=0; ii<(sizeof(sigs)/sizeof(sigs[0])); ii++)
+	{   sts = sigaction( sigs[ii], &(g_oldSigAct_sa[sigs[ii]]),(void *)0 );
+	    if (sts == -1)
+		printf( "(pid=%d) error with sig %d\n", getpid(), sigs[ii] );
+	}
+    }
 #   endif
 
-    if (waitpid(pid,&sts,0) == -1)
+    if (!shm_obj_tp) g_ipc_cleanup();
+    if (waitpid(g_pid,&sts,0) == -1)
 	return (raise_exception("fd_xfer - waitpid"));
 
     if (crc_obj_tp)
@@ -416,6 +479,8 @@ static PyMethodDef EXfer_Methods[] = {
     { "fd_xfer",  EXfd_xfer,  1, EXfd_xfer_Doc},
     { 0, 0}        /* Sentinel */
 };
+
+static char EXfer_Doc[] =  "EXfer is a module which Xfers data";
 
 /******************************************************************************
     Module initialization.   Python call the entry point init<module name>
