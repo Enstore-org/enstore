@@ -418,6 +418,8 @@ class Interface:
 		self.html_file = value
 	    elif opt == "--input_dir":
 		self.input_dir = value
+	    elif opt == "--url":
+		self.url = value
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)

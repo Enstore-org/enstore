@@ -13,19 +13,19 @@ TMP = ".tmp"
 # exist) with the name *_stamp.jpg, to serve as a stamp file on 
 # the web page and create a ps file (if it does not exist) with the
 # name *.ps.
-def find_jpg_files((jpgs, stamps, pss, input_dir), dirname, names):
+def find_jpg_files((jpgs, stamps, pss, input_dir, url), dirname, names):
     (tjpgs, tstamps, tpss) = enstore_plots.find_files(names)
     dir = string.split(dirname, input_dir)[-1]
     # when we add the found file to the list of files, we need to add the
     # directory that it was found in to the name
     for file in tjpgs:
-        jpgs.append("%s/%s"%(dir, file))
+        jpgs.append("%s%s/%s"%(url, dir, file))
     for file in tstamps:
-        stamps.append("%s/%s"%(dir, file))
+        stamps.append("%s%s/%s"%(url, dir, file))
     for file in tpss:
-        pss.append("%s/%s"%(dir, file))
+        pss.append("%s%s/%s"%(url, dir, file))
 
-def do_the_walk(input_dir):
+def do_the_walk(input_dir, url):
     # walk the directory tree structure and return a list of all jpg, stamp
     # and ps files
     jpgs = []
@@ -34,7 +34,10 @@ def do_the_walk(input_dir):
     # make sure the input directory contains the ending / in it
     if input_dir[-1] != "/":
         input_dir = "%s/"%(input_dir,)
-    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, input_dir))
+    if url[-1] != "/":
+        url = "%s/"%(url,)
+    os.path.walk(input_dir, find_jpg_files, (jpgs, stamps, pss, input_dir,
+                                             url))
     jpgs.sort()
     stamps.sort()
     pss.sort()
@@ -51,17 +54,18 @@ class PlotPageInterface(generic_client.GenericClientInterface):
 	self.dir = "/fnal/ups/prd/www_pages/enstore"
 	self.input_dir = "%s/CRONS"%(self.dir,)
 	self.html_file = "%s/cron_pics.html"%(self.dir,)
+        self.url = "CRONS/"
 	generic_client.GenericClientInterface.__init__(self)
 
     def options(self):
 	return self.help_options() +\
 	       ["input_dir=", "description=", "title=",
-		"html_file=", "title_gif="]
+		"html_file=", "title_gif=", "url="]
 
 def do_work(intf):
     # this is where the work is really done
     # get the list of stamps and jpg files
-    (jpgs, stamps, pss) = do_the_walk(intf.input_dir)
+    (jpgs, stamps, pss) = do_the_walk(intf.input_dir, intf.url)
     html_page = enstore_html.EnPlotPage(intf.title, intf.title_gif, 
 					intf.description)
     html_page.body(jpgs, stamps, pss)
