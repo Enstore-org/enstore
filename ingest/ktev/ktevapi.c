@@ -8,7 +8,7 @@
 #include <errno.h>
 #include "dcap.h"
 
-#define PNFS_ROOT getenv("DCACHE_ROOT")?getenv("DCACHE_ROOT"):"/pnfs/ktev/migrated_from_dlt/"
+#define PNFS_ROOT getenv("DCACHE_ROOT")?getenv("DCACHE_ROOT"):"/pnfs/ktev/migrated_from_dlt"
 #define FILENAME_LEN 1024
 #define O_BINARY 0
 /* for getopt */
