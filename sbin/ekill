@@ -20,10 +20,13 @@ if [ `$UNAME` != "Linux" ]; then
     exit 1
 fi
 
-$PS axwww | $EGREP "$lookfor"|$EGREP -v "grep|ekill"| while read pid line; do
-    $ECHO killing $SIG $pid $line
-    if [ $CHECK -eq 0 ]; then echo -n $KILL $SIG $pid; $KILL $SIG $pid;
-        if [ $? -ne 0 ]; then echo ' FAILURE'; else echo ' OK'; fi
+$PS axwww | $EGREP "$lookfor"|$EGREP -v "grep"| while read pid line; do
+# do not kill ourselves
+    if [ $pid -ne $$ ]; then
+      $ECHO killing $SIG $pid $line
+      if [ $CHECK -eq 0 ]; then echo -n $KILL $SIG $pid; $KILL $SIG $pid;
+          if [ $? -ne 0 ]; then echo ' FAILURE'; else echo ' OK'; fi
+      fi
     fi
 done;
 
