@@ -1,8 +1,151 @@
 <CENTER><B><I><U><FONT COLOR="#000099"><FONT SIZE=+4>IMPLEMENTATION</FONT></FONT></U></I></B></CENTER>
 
 
+There will be 4 major phases:
 
-this is not here
+1. Manuals, Policies, and Guidelines
+2. Study, Decide on Changes, and Document.
+3. Recreate Baseline System - has at least the functionality of the
+   prototype (most likely more) and has (at least) hooks/structure for all
+   required features .
+4. Parallel - continuous strain testing and feature enabling
+
+
+
+Effort estimate - estimates based on prototype project
+
+   Task
+  -----
+        manual/policies/guides
+    1) 	packaging (i.e. encp separate/special)                          2 MW
+    2)	coding standards                                                2 MW
+    3)	design review, code walk-through procedures                     2 MW
+    4)	initial tools (make/build, release/distribute procedures)       2 MW
+    5)	testing/integration plan                                        2 MW
+    6)	bug reporting/tracking procedure                                2 MW
+
+        design documents
+    7)  base test/debug framework (essential to test/integration plan^) 3 MW
+    8)  options/switchs (config server vs others servers vs encp)       2 MW
+    9)  base client server frame work (protocol,etc)                    3 MW
+    10) base error handling philosophy                                  2 MW
+    11) base database framework (include fault tolerent and backup)     2 MW
+    12) encp                                                            2 MW
+    13) admin tools (includes configuration of pnfs, web status)        4 MW
+    14) config server                                                   2 MW
+    15) volume server                                                   2 MW
+    16) file server                                                     2 MW
+    17) library manager                                                 2 MW
+    18) mover and wrappering                                            2 MW
+    19) media changer                                                   2 MW
+    20) log server                                                      2 MW
+
+    21) design reviews                                                  3 MW
+
+    22) design review analysis                                          1 MW
+    23) resultant interation (specifically, msg flow diagrams)          4 MW
+
+    24) build test stand based on plan (includes setup of pnfs)         2 MW
+
+        actual coding (referencing prototype)
+    25) create stubs to aid parallel devel where possible               2 MW
+    26) base test/debug framework                                       2 MW
+    27) options/switchs (config server vs others servers vs encp)       1 MW
+    28) base client server frame work                                   2 MW
+    29) base error handling philosophy                                  3 MW
+    30) base database framework (include fault tolerent and backup)     1 MW
+    31) encp                                                            1 MW
+    32) admin tools (includes configuration of pnfs, web status)        8 MW
+    33) config server                                                   1 MW
+    34) volume server                                                   1 MW
+    35) file server                                                     1 MW
+    36) library manager                                                 2 MW
+    37) mover and wrappering                                            4 MW
+    38) media changer                                                   1 MW
+    39) log server                                                      1 MW
+
+    40) code walkthroughs                                               2 MW
+    41) resultant interation                                            4 MW
+
+    42) initial integration                                             6 MW
+    43) resultant interation (includes additional admin tools)          8 MW
+    44) document update                                                 4 MW
+    45) final testing/interations (includes reports,etc.               12 MW
+        release
+								     ---------
+total								      121 MW
+
+allowing a scaling factor of 0.7, as specified by the run II steering
+committee, the effort needed to complete the project is 121/0.7=173 FTE
+weeks, or 3.3 FTE years.
+
+
+Pert Chart
+worker A
+       B
+       C
+       D
+
+           J J   A    S   O   N    D   J   F   M    A   M             
+           u u   u    e   c   o    e   a   e   a    p   a             
+           n l   g    p   t   v    c   n   b   r    r   y             
+           22012201123012201120012301220112001200122011201123         
+           29630730741741852962963074184185185218529529630741         
+                                                                      
+Task                1         2         3         4         5         
+----       12345678901234567890123456789012345678901234567890         
+ 1         A                                                          
+ 2         B                                                          
+ 3          B                                                         
+ 4          A                                                         
+ 5           A                                                        
+ 6           B                                                        
+ 7            AA                                                      
+ 8            B                                                       
+ 9              AA                                                    
+10             BB                                                     
+11             CC                                                     
+12                A                                                   
+13                BBBB                                                
+14                C                                                   
+15                D                                                   
+16                 C                  2                               
+17                 D                                                  
+18                 A                  w                               
+19                  C                 e                               
+20                  A                 e                               
+21                   **               k                               
+22                     *                                              
+23                      ****          C                               
+24              --     -B             h                               
+25                          CC        r                               
+26                          A         i                               
+27                          B         s                               
+28                           AA       t                               
+29                           B        m                               
+30                           C        a                               
+31                             A      s                               
+32                             BBBB                                   
+33                             C      b                               
+34                             D      r                               
+35                              C     e                               
+36                              D     a                               
+37                              A     k                               
+38                               C                                    
+39                               A                                    
+40                                **                                  
+41                                  *  ***                            
+42                                        ****                        
+43                                            ******                  
+44                                              ****                  
+45                                                  ++++++            
+
+* = most, if not all people involved (possibly a fraction of the time such
+    that schedule optimization is not possible
++ = most, if not all people involved (possibly a fraction of the time but
+    at least some schedule optimization is possible
+
+
 
 </BODY>
 </HTML>
