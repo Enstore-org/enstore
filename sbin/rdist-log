@@ -8,6 +8,7 @@ gang=`gang`
 thisNode=${gang}srv2
 rdistNode=${gang}srv3.fnal.gov
 filePath='/diska'
+ENSTORE=/home/enstore/enstore
 
 # bin/$RCSfile$  $Revision$
 
@@ -24,7 +25,8 @@ doit() { echo "$1"
 
 if [ `uname -n | grep -c ${thisNode}` -ne 0 ]; then
 
- cmd="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh  -l -p -o -g -D -t -x --delete --force ${filePath}/enstore-log/LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
+ cmd="/usr/bin/rsync -e $ENSTORE/sbin/enrsh -rlpgtx --delete --blocking-io \
+      ${filePath}/enstore-log/LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
  doit "$cmd"
 
 else
