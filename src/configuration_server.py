@@ -53,6 +53,12 @@ class ConfigurationDict(DispatchingWorker) :
         f.close()
         # ok, we read entire file - now set it to real dictionary
         self.configdict=copy.deepcopy(xconfigdict)
+        for key in self.configdict.keys():
+              for insidekey in self.configdict[key].keys():
+                  if insidekey == 'host':
+                     self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
+                     print self.configdict[key]['hostip'], self.configdict[key]['host']
+                     break
         return "ok"
 
      # even if there is an error - respond to caller so he can process it
@@ -131,6 +137,8 @@ class ConfigurationDict(DispatchingWorker) :
            sortedkeyinside = self.configdict[key].keys()
            sortedkeyinside.sort()
            for key2 in sortedkeyinside:
+              if key2 == 'hostip':
+                  continue
               count3 = count3 + 1
               if count3 != 1:
                  formatted= formatted + "\n"
@@ -165,6 +173,7 @@ class ConfigurationDict(DispatchingWorker) :
             out_ticket = {"status" : self.load_config(configfile,list)}
         except KeyError:
             out_ticket = {"status" : "Configuration Server: no such name"}
+
         self.reply_to_caller(out_ticket)
         return
 
