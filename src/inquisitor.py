@@ -824,9 +824,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		# make a list of the library managers that we will have to 
 		# check.
 		lm = self.get_server(server.library)
-		Trace.trace(enstore_constants.INQWORKDBG, 
-			    "CBW: bad mover %s with lm %s"%(server.name, lm.name))
-
+		if lm:
+		    Trace.trace(enstore_constants.INQWORKDBG, 
+				"CBW: bad mover %s with lm %s"%(server.name, lm.name))
+		else:
+		    # we do not have information on this lm yet.
+		    return
 	elif enstore_functions.is_library_manager(server.name):
 	    lm = server
 	    Trace.trace(enstore_constants.INQWORKDBG, 
