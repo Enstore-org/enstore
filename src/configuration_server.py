@@ -31,7 +31,7 @@ class ConfigurationDict(DispatchingWorker) :
                 break
             # strip the line - this includes blank space and NL characters
             nextline = string.strip(nextline)
-            if len(nextline) == 0 :
+            if len(nextline) == 0 or nextline[0] == '#':
                 continue
             line = line+nextline
             # are we at end of line or is there a continuation character "\"
