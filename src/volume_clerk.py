@@ -240,7 +240,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # only allow deleted volume to be erased
         if vol[-8:] != '.deleted':
-            error_msg = 'try to erase undeleted volume %s'%(vol)
+            error_msg = 'trying to erase a undeleted volume %s'%(vol)
             Trace.log(e_errors.ERROR, error_msg)
             return e_errors.ERROR, error_msg
 
@@ -266,10 +266,140 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-         ticket['status'] = self.__erase_volume(vol)
-         self.reply_to_caller(ticket)
-         return
-            
+        ticket['status'] = self.__erase_volume(vol)
+        self.reply_to_caller(ticket)
+        return
+
+    # has_undeleted_file(vol) -- check if vol has undeleted file
+    # this is served by file_clerk
+
+    def has_undeleted_file(self, vol):
+        fcc = file_clerk_client.FileClient(self.csc)
+        r = fcc.has_undeleted_file(vol)
+        del fcc
+        if r['status'][1]:
+            return 1
+        return 0
+
+    # __delete_volume(vol) -- delete a volume
+
+    def __delete_volume(self, vol):
+        # check existence of the volume
+        try:
+            record = self.dict[vol]
+        except KeyError, detail:
+            msg = "Volume Clerk: no such volume %s" % (detail)
+            Trace.log(e_errors.ERROR, msg)
+            return e_errors.ERROR, msg
+
+        # check if it has been deleted
+        if vol[-8:] == '.deleted' or record['external_label'][-8:] == '.deleted':
+            return e_errors.OK, 'volume %s has been deleted already'%(vol)
+
+        # check if all files are deleted
+        if self.has_undeleted_file(vol):
+            msg = 'can not delete non-empty volume %s'%(vol)
+            Trace.log(e_errors.ERROR, msg)
+            return e_errors.ERROR, msg
+
+        # check its state
+        ret = self.get_media_changer_state(record["library"],
+                                           record["external_label"],
+                                           record["media_type"])
+
+        if ret != 'unmounted' and ret != '' and ret != 'E':
+            return e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'. state %s"%(ret)
+
+        # delete the volume
+        # check if <vol>.deleted exists, if so, erase it.
+
+        if self.dict.has_key(vol+'.deleted'):
+            # erase it
+            self.__erase_volume(vol+'.deleted')
+
+        # check if it is never written, if so, erase it
+        if record['sum_wr_access']:
+	    status = self.__rename_volume(vol, vol+'.deleted')
+            if status[0] == e_errors.OK:
+                record = self.dict[vol+'.deleted']
+                record['system_inhibit'][0] = e_errors.DELETED
+                self.dict[vol+'.deleted'] = record
+            else: # don't do anything further
+                return status
+        else:    # never written
+            del self.dict[vol]
+            # take care of bfid_db
+            self.bfid_db.delete_all_bfids(vol)
+            stutus = e_errors.OK, None
+
+        # get storage group and take care of quota
+
+        library = record['library']
+        sg = volume_family.extract_storage_group(record['volume_family'])
+        if self.quota_enabled(library, sg):
+            vol_count = self.sgdb.get_sg_counter(library, sg) - 1
+            Trace.trace(21, "delvol: volume_counter %s" % (vol_count))
+            if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
+            if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
+
+        return status
+
+    # delete_volume(vol) -- server version of __erase_volume()
+
+    def delete_volume(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = self.__delete_volume(vol)
+        self.reply_to_caller(ticket)
+        return
+
+    # __restore_volume(vol) -- restore a deleted volume
+
+    def __restore_volume(self, vol):
+
+        # only allow deleted volume to be restored
+        if vol[-8:] != '.deleted':
+            error_msg = 'trying to restore a undeleted volume %s'%(vol)
+            Trace.log(e_errors.ERROR, error_msg)
+            return e_errors.ERROR, error_msg
+
+        # check if another vol exists
+        vol = vol[:-8]
+        if self.dict.has_key(vol):
+            # there is vol, check if it has been written
+            record = self.dict[vol]
+            if record['sum_wr_access']:
+                error_msg = 'volume %s already exists, can not restore %.deleted'%(vol, vol)
+                Trace.log(e_errors.ERROR, error_msg)
+                return e_errors.ERROR, error_msg
+            else:    # never written, just erase it
+                del self.dict[vol]
+
+        return self.__rename_volume(vol+'.deleted', vol)
+
+    # restore_volume(vol) -- server version of __restore_volume()
+
+    def restore_volume(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = self.__restore_volume(vol)
+        self.reply_to_caller(ticket)
+        return
+
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
      try:
