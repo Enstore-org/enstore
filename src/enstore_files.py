@@ -271,6 +271,10 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 	self.filelist = []
 	self.docs_to_install = []
 
+    def remove_server(self, key):
+        if self.text.has_key(key):
+            del self.text[key]
+
     def dont_monitor(self, key, host):
         self.text[key] = {}
         self.text[key][enstore_constants.STATUS] = [enstore_constants.NOT_MONITORING,
