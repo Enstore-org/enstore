@@ -30,6 +30,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 	self.print_id="CONFIG_DICT"
         self.serverlist = {}
     def read_config(self, configfile):
+        self.configdict={}
         try:
             f = open(configfile,'r')
         except:
