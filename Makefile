@@ -63,7 +63,7 @@ all: proddir_is_set
 	for d in $(SUBDIRS); do (cd $$d; $(MAKE) install); done
 
 cvswebtags: FORCE
-	find . -name '*.[ch]' -exec ctags -txw {} \; | \
+	find ftt_lib ftt_test  -name '*.[ch]' -exec ctags -txw {} \; | \
 		grep -v '^if ' > cvswebtags
 
 clean:
