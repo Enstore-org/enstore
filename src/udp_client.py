@@ -143,7 +143,7 @@ def protocolize( self, text ):
     # lcl_number = self.number + 1
     # note: do str here; elsewhere causes problems (precision is 1ms -
     # this should be OK)
-    lcl_number = str(time.time())
+    lcl_number = "%.6f"%time.time()
 
     # CRC text
     body = `(self.ident, lcl_number, text)`
@@ -248,6 +248,7 @@ class UDPClient:
 
 		# now (after receive), check...
 		if number != self.number :
+                    print type(number), type(self.number)
 		    msg="UDPClient.send: stale_number=%s number=%s" %\
 			 (number,self.number)
 		    Trace.trace(21,'send stale='+repr(number)+' want='+\
