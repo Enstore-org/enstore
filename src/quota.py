@@ -53,7 +53,18 @@ def show_query_result(res):
 			print format[i]%(r[i]),
 		# mark if the numbers are not quite right
 		if (r[-2] and r[-1] > r[-2]) or r[-2] > r[-3] or r[-3] > r[-4]:
-			print "*"
+			print "*",
+		else:
+			print " ",
+		# mark for approaching quota limit
+		if r[-2]:
+			ds = r[-2] - r[-1]
+			if ds <= 0:
+				print "!!!"
+			elif ds < 3 or ds < r[-2] * 0.05:
+				print "!"
+			else:
+				print
 		else:
 			print
 
