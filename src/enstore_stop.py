@@ -206,6 +206,7 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
                      option.VALUE_NAME:"just",
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_TYPE:option.STRING,
+                     option.VALUE_LABEL:"server name",                     
 		     option.USER_LEVEL:option.ADMIN,
                      }
         }

@@ -77,6 +77,11 @@ def is_in_cluster():
         csc = get_csc()
         kcs = csc.get('known_config_servers', 3, 3)
 
+    #If there wasn't config server information assume it wasn't a production
+    # system.
+    if not kcs:
+        return 0
+
     #Simple loop to determine if the system is a production system.
     for cluster in kcs.keys():
         if cluster == socket.gethostname()[:len(cluster)]:
@@ -104,21 +109,27 @@ def check_user():
             print "You should run this as user enstore."
             sys.exit(1)
             
-def check_csc(csc):
+def check_csc(csc, intf, cmd):
 
     info = csc.get("configuration_server", 5, 3)
     if not info.get('host', None) in this_host() and \
            not info.get('hostip', None) in this_host():
         return
 
-    rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
+    if intf.nocheck:
+        rtn = {'status':("nocheck","nocheck")}
+    else:
+        print "Checking configuration server."
+        
+        rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
 
     if not e_errors.is_ok(rtn):
         if csc.server_address[0] in this_host():
             #Start the configuration server.
             print "Starting configuration server: %s:%s" % csc.server_address
-            os.system("python $ENSTORE_DIR/src/configuration_server.py "\
-                      "--config-file $ENSTORE_CONFIG_FILE &")
+            os.system(cmd)
+            #    "python $ENSTORE_DIR/src/configuration_server.py "\
+            #          "--config-file $ENSTORE_CONFIG_FILE &")
 
             #Check the restart csc.
             rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
@@ -131,23 +142,27 @@ def check_csc(csc):
     else:
         print "Configuration server found: %s:%s" % csc.server_address
 
-def check_db(csc, name, cmd):
+def check_db(csc, name, intf, cmd):
 
     info = csc.get("volume_clerk", 5, 3)
     if not info.get('host', None) in this_host() and \
            not info.get('hostip', None) in this_host():
         return
 
-    print "Checking %s." % name
+    if intf.nocheck:
+        rtn = 0
+    else:
+        print "Checking %s." % name
 
-    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
+        rtn = os.popen("ps -elf | grep %s | grep -v grep" % name).readlines()
+    
 
     if not rtn:
         print "Starting %s." % name
         os.system(cmd)
 
 #If the event relay responded to alive messages, this would not be necessary.
-def check_event_relay(csc, cmd):
+def check_event_relay(csc, intf, cmd):
 
     info = csc.get("event_relay", 5, 3)
     if not info.get('host', None) in this_host() and \
@@ -157,17 +172,26 @@ def check_event_relay(csc, cmd):
     erc = event_relay_client.EventRelayClient(event_relay_host=info['hostip'],
                                               event_relay_port=info['port'])
 
-    print "Checking event_relay."
-
-    rtn = erc.alive()
+    if intf.nocheck:
+        rtn = 1
+    else:
+        print "Checking event_relay."
+        
+        rtn = erc.alive()
 
     if rtn:
         print "Starting event_relay."
         os.system(cmd)
+
+        #Check the restart csc.
+        rtn = csc.alive("event_relay", 3, 3)
+        if not e_errors.is_ok(rtn):
+            print "Server %s not started." % ("event_relay",)
+            sys.exit(1)
     else:
         print "Found event_relay."
 
-def check_server(csc, name, cmd):
+def check_server(csc, name, intf, cmd):
     
     #Initialize, send and receive alive responce.
     u = udp_client.UDPClient()
@@ -176,20 +200,24 @@ def check_server(csc, name, cmd):
            not info.get('hostip', None) in this_host():
         return
 
-    print "Checking %s." % name
-
-    #Send and receive responce.
-    try:
-        rtn = u.send({'work':"alive"}, (info['hostip'], info['port']), 3, 3)
-    except errno.errorcode[errno.ETIMEDOUT]:
-        rtn = {'status':(e_errors.TIMEDOUT, errno.errorcode[errno.ETIMEDOUT])}
+    if intf.nocheck:
+        rtn = {'status':("nocheck","nocheck")}
+    else:
+        print "Checking %s." % name
+        
+        #Send and receive responce.
+        try:
+            rtn = u.send({'work':"alive"},
+                         (info['hostip'], info['port']), 3, 3)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            rtn = {'status':(e_errors.TIMEDOUT,
+                             errno.errorcode[errno.ETIMEDOUT])}
         
     #Process responce.
     if not e_errors.is_ok(rtn):
         #Start the server.
         print "Starting %s: %s:%s" % (name, info['hostip'], info['port'])
         os.system(cmd)
-        
         
         #Check the restart csc.
         rtn = csc.alive(name, 3, 3)
@@ -206,6 +234,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         self.name = "START"
         self.just = None
+        self.nocheck = None
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -259,8 +288,16 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
                      option.VALUE_NAME:"just",
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_TYPE:option.STRING,
+                     option.VALUE_LABEL:"server name",
 		     option.USER_LEVEL:option.ADMIN,
-                     }
+                     },
+        option.NOCHECK:{option.HELP_STRING:"do not check if server is"
+                        " already running.",
+                        option.DEFAULT_NAME:"nocheck",
+                        option.VALUE_USAGE:option.IGNORED,
+                        option.DEFAULT_TYPE:option.STRING,
+                        option.USER_LEVEL:option.ADMIN,
+                        }
         }
 
 def do_work(intf):
@@ -270,7 +307,9 @@ def do_work(intf):
     csc = get_csc()
     
     if intf.should_start("configuration_server"):
-        check_csc(csc)
+        check_csc(csc, intf,
+                  "python $ENSTORE_DIR/src/configuration_server.py "\
+                  "--config-file $ENSTORE_CONFIG_FILE &")
 
     rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
     if not e_errors.is_ok(rtn):
@@ -293,20 +332,21 @@ def do_work(intf):
     #Start the event relay.
 
     if intf.should_start("event_relay"):
-        check_event_relay(csc, "python $ENSTORE_DIR/src/event_relay.py &")
+        check_event_relay(csc, intf,
+                          "python $ENSTORE_DIR/src/event_relay.py &")
 
     #Start the Berkley DB dameons.
     if intf.should_start("db_checkpoint"):
-        check_db(csc, "db_checkpoint",
+        check_db(csc, "db_checkpoint", intf,
                  "db_checkpoint -h %s  -p 5 &" % db_dir)
     if intf.should_start("db_deadlock"):
-        check_db(csc, "db_deadlock",
+        check_db(csc, "db_deadlock", intf,
                  "db_deadlock -h %s  -t 1 &" % db_dir)
         
     for server in ["log_server", "alarm_server", "volume_clerk", "file_clerk",
                    "inquisitor", "ratekeeper"]:
         if intf.should_start(server):
-            check_server(csc, server,
+            check_server(csc, server, intf,
                          "python $ENSTORE_DIR/src/%s.py &" % server)
 
     #Get the library names.
@@ -316,20 +356,20 @@ def do_work(intf):
     #Libraries.
     if intf.should_start("library"):
         for library in libraries:
-            check_server(csc, library,
+            check_server(csc, library, intf,
                    "python $ENSTORE_DIR/src/library_manager.py %s &" % library)
     elif intf.just[-16:] == ".library_manager":
-        check_server(csc, intf.just,
+        check_server(csc, intf.just, intf,
                  "python $ENSTORE_DIR/src/library_manager.py %s &" % intf.just)
 
     #Media changers.
     if intf.should_start("media"):
         for library in libraries:
             media = csc.get_media_changer(library)
-            check_server(csc, media,
+            check_server(csc, media, intf,
                      "python $ENSTORE_DIR/src/media_changer.py %s &" % media)
     elif intf.just[-14:] == ".media_changer":
-        check_server(csc, intf.just,
+        check_server(csc, intf.just, intf,
                  "python $ENSTORE_DIR/src/media_changer.py %s &" % intf.just)
 
     #Movers.
@@ -337,10 +377,10 @@ def do_work(intf):
         for library in libraries:
             for mover in csc.get_movers(library):
                 mover = mover['mover']
-                check_server(csc, mover,
+                check_server(csc, mover, intf,
                     "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, mover))
     elif intf.just[-6:] == ".mover":
-        check_server(csc, intf.just,
+        check_server(csc, intf.just, intf,
                 "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, intf.just))
 
 if __name__ == '__main__':
