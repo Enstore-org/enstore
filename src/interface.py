@@ -117,50 +117,50 @@ class Interface:
         return [""]
 
     def help_options(self):
-	return ["help", "usage_line"]
+        return ["help", "usage_line"]
 
     def config_options(self):
-	return ["config_host=", "config_port="]
+        return ["config_host=", "config_port="]
 
     def alive_rcv_options(self):
-	return ["timeout=","retries="]
+        return ["timeout=","retries="]
 
     def alive_options(self):
-	return ["alive"]+self.alive_rcv_options()
+        return ["alive"]+self.alive_rcv_options()
 
     def trace_options(self):
         return ["do_print=", "dont_print=", "do_log=", "dont_log=", "do_alarm=", "dont_alarm="]
     
     def format_options(self, opts, prefix):
-	# put the options in alphabetical order and add a "--" to the front of
-	# each
-	opts.sort()
-	nopts = ""
-	for opt in opts:
-	    nopts = nopts+prefix+"--"+opt
-	return nopts
+        # put the options in alphabetical order and add a "--" to the front of
+        # each
+        opts.sort()
+        nopts = ""
+        for opt in opts:
+            nopts = nopts+prefix+"--"+opt
+        return nopts
 
     def missing_parameter(self, param):
         Trace.trace(13,"ERROR: missing parameter %s"%(param,))
         sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
 
     def parameters(self):
-	return " "
+        return " "
 
     def help_prefix(self):
-	return sys.argv[0]+" [opts] "
+        return sys.argv[0]+" [opts] "
 
     def help_suffix(self):
-	return "\n\n\t where 'opts' are:\n"
+        return "\n\n\t where 'opts' are:\n"
 
     def help_line(self):
         return self.help_prefix()+self.parameters()+self.help_suffix()+self.format_options(
             self.options(), "\n\t\t")
 
     def check_port(self, port):
-	# bomb out if port isn't numeric
+        # bomb out if port isn't numeric
         if type(port) == type('string'):
-	    self.config_port = int(port)
+            self.config_port = int(port)
         else:
             self.config_port = port
 
@@ -187,7 +187,7 @@ class Interface:
             self.check_port(value)
 
     def strip(self, value):
-	return value
+        return value
 
     # This is a dummy options(), the derived class should supply a real
     # one
@@ -204,8 +204,8 @@ class Interface:
             Trace.trace(9, "ERROR: getopt error %s"%(detail,))
             sys.stderr.write("error: %s\n"%(detail,))
             self.print_help()
-	    sys.exit(1)
-	    
+            sys.exit(1)
+            
         for (opt,value) in optlist :
             # keep a list of the options entered without the leading "--"
             self.options_list.append(string.replace(opt, "-", ""))
@@ -216,16 +216,16 @@ class Interface:
                 self.parse_config_host(value)
             elif opt == "--config_port" :
                 self.parse_config_port(value)
-	    elif opt == "--bfids" :
-        	self.bfids = 1
+            elif opt == "--bfids" :
+                self.bfids = 1
             elif opt == "--bfid" :
                 self.bfid = value
             elif opt == "--list" :
                 self.list = value
             elif opt == "--deleted" :
                 self.deleted = value
-	    elif opt == "--backup":
-	        self.backup = 1
+            elif opt == "--backup":
+                self.backup = 1
             elif opt == "--config_file" :
                 self.config_file = value
                 # bomb out if we can't find the file
@@ -369,8 +369,8 @@ class Interface:
                 self.get_last_logfile_name = 1
             elif opt == "--data_access_layer":
                 self.data_access_layer = 1
-	    elif opt == "--use_IPC":
-		self.use_IPC = 1
+            elif opt == "--use_IPC":
+                self.use_IPC = 1
             elif opt == "--logfile_dir":
                 self.logfile_dir = value
             elif opt == "--start_time":
@@ -380,13 +380,13 @@ class Interface:
             elif opt == "--plot":
                 self.plot = 1
             elif opt == "--get_queue":
-	        self.get_queue=value
+                self.get_queue=value
             elif opt == "--host":
-	        self.host=value
+                self.host=value
             elif opt == "--ephemeral":
-	        self.output_file_family="ephemeral"
+                self.output_file_family="ephemeral"
             elif opt == "--file_family":
-	        self.output_file_family=value
+                self.output_file_family=value
             elif opt == "--raise" :
                 self.alarm = 1
             elif opt == "--resolve" :
@@ -430,43 +430,43 @@ class Interface:
                 self.start_draining = value
             elif opt == "--stop_draining":
                 self.stop_draining = 1
-	    elif opt == "--prefix":
-		self.prefix = value
-	    elif opt == "--web_host":
-		self.web_host = value
-	    elif opt == "--caption_title":
-		self.caption_title = value
-	    elif opt == "--title":
-		self.title = value
-	    elif opt == "--title_gif":
-		self.title_gif = value
-	    elif opt == "--output":
-		self.output = value
-	    elif opt == "--description":
-		self.description = value
-	    elif opt == "--html_file":
-		self.html_file = value
-	    elif opt == "--html_gen_host":
-		self.html_gen_host = value
-	    elif opt == "--html":
-		self.html = 1
-	    elif opt == "--up":
-		self.up = value
-	    elif opt == "--down":
-		self.down = value
-	    elif opt == "--outage":
-		self.outage = value
-	    elif opt == "--nooutage":
-		self.nooutage = value
-	    elif opt == "--time":
-		self.time = value
-	    elif opt == "--input_dir":
-		self.input_dir = value
-	    elif opt == "--url":
-		self.url = value
+            elif opt == "--prefix":
+                self.prefix = value
+            elif opt == "--web_host":
+                self.web_host = value
+            elif opt == "--caption_title":
+                self.caption_title = value
+            elif opt == "--title":
+                self.title = value
+            elif opt == "--title_gif":
+                self.title_gif = value
+            elif opt == "--output":
+                self.output = value
+            elif opt == "--description":
+                self.description = value
+            elif opt == "--html_file":
+                self.html_file = value
+            elif opt == "--html_gen_host":
+                self.html_gen_host = value
+            elif opt == "--html":
+                self.html = 1
+            elif opt == "--up":
+                self.up = value
+            elif opt == "--down":
+                self.down = value
+            elif opt == "--outage":
+                self.outage = value
+            elif opt == "--nooutage":
+                self.nooutage = value
+            elif opt == "--time":
+                self.time = value
+            elif opt == "--input_dir":
+                self.input_dir = value
+            elif opt == "--url":
+                self.url = value
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)
             elif opt == "--usage_line" :
-	        self.print_usage_line()
+                self.print_usage_line()
                 sys.exit(0)
