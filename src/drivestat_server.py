@@ -63,6 +63,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			drive_sn = ticket['drive_sn']
 			drive_vendor = ticket['drive_vendor']
 			product_type = ticket['product_type']
+			firmware_version = ticket['firmware_version']
 			host = ticket['host']
 			logical_drive_name = ticket['logical_drive_name']
 			stat_type = ticket['stat_type']
@@ -93,6 +94,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			drive_sn,
 			drive_vendor,
 			product_type,
+			firmware_version,
 			host,
 			logical_drive_name,
 			stat_type,
