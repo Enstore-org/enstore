@@ -859,6 +859,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             result = pipeObj.fromchild.readlines()  # result has returned string
             if len(result) > 1:
                 Trace.alarm(e_errors.ERROR,"mover is already running, can not restart: %s"%(result,))
+                # remove when problem is resoved
+                threads = threading.enumerate()
+                for thread in threads:
+                    if thread.isAlive():
+                        thread_name = thread.getName()
+                        Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
+                    else:
+                        Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
+                ########
+
                 time.sleep(2)
                 sys.exit(-1)
             del(pipeObj)
