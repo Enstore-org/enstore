@@ -1607,8 +1607,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                  alive_retries=NOVALUE, max_encp_lines=NOVALUE, refresh=NOVALUE):
 	global server_map
 	InquisitorMethods.__init__(self)
-        import pdb
-        pdb.set_trace()
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
         self.alarmc.rcv_timeout = 15
