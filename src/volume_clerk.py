@@ -845,7 +845,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
 								       vol_fam)
                 ticket["status"] = (e_errors.NOVOLUME, msg)
-                Trace.log(e_errors.ERROR,msg)
+                Trace.alarm(e_errors.ERROR,msg)
                 self.reply_to_caller(ticket)
                 return
 
@@ -893,7 +893,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
-                        Trace.log(e_errors.ERROR,msg)
+                        Trace.alarm(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
 
@@ -921,7 +921,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
 							       vol_fam)
         ticket["status"] = (e_errors.NOVOLUME, msg)
-        Trace.log(e_errors.ERROR,msg)
+        Trace.alarm(e_errors.ERROR,msg)
         self.reply_to_caller(ticket)
         return
 
@@ -1572,8 +1572,8 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
-        # self.bfid_db=bfid_db.BfidDb(dbHome)
-        self.bfid_db=newBfidDB(dbHome)
+        self.bfid_db=bfid_db.BfidDb(dbHome)
+        # self.bfid_db=newBfidDB(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
 
         self.noaccess_cnt = 0
