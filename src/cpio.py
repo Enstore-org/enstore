@@ -213,7 +213,7 @@ def headers( format,            # either "new" or "CRC"
                                                len(fname)+1, crc]), '') + "%s\0" % fname
 
             pad = (4-(len(head)%4)) %4
-            heads.append(head + "\0"*pad)
+            heads.append(head + "\0"*int(pad))
 
         # create the trailer as well
         heads.append("070701"   
@@ -253,9 +253,9 @@ def trailers( siz, head_crc, data_crc, trailer ):
         padt = (512-(size%512)) % 512
 
         # ok, send it back to so he can write it out
-        return("\0"*padd +
-               head_crc + hex8(data_crc) + "\0"*padc +
-               trailer + "\0"*padt )
+        return("\0"*int(padd) +
+               head_crc + hex8(data_crc) + "\0"*int(padc) +
+               trailer + "\0"*int(padt) )
 
 
 # given a buffer pointing to beginning of header, return crc

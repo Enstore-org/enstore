@@ -201,8 +201,8 @@ def trailers(blocksize, siz, trailer):
         padt = (blocksize-(size%blocksize)) % blocksize
 
         # ok, send it back to so he can write it out
-        #return("\0"*padd + trailer + "\0"*padt )
-        return(trailer + "\0"*padt )
+
+        return(trailer + "\0"*int(padt) )
 
 
 ###############################################################################

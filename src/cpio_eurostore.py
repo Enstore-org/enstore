@@ -206,8 +206,8 @@ def trailers(blocksize, siz, header2, trailer):
 
 
         # ok, send it back to so he can write it out
-        #return("\0"*padd + trailer + "\0"*padt )
-        return(header2 + trailer + "\0"*pad )
+
+        return(header2 + trailer + "\0"*int(pad) )
 
 
 ###############################################################################
