@@ -5,8 +5,7 @@ import popen2
 import time
 import os
 
-#syslog="/var/log/messages"
-syslog="/home/moibenko/enstore/src/fake_log"
+syslog="/var/log/messages"
 def match_syslog(match):
     #if self.watch_syslog:
     now = time.time()
@@ -17,7 +16,7 @@ def match_syslog(match):
         return
     
     syslog_updated = stats[9] # time when syslog has been updated 
-    if now - syslog_updated > 6000.:
+    if now - syslog_updated > 300.:
         return
     year = time.localtime(now)[0]
     cmd = 'tail %s | egrep "%s"'%(syslog, match)
