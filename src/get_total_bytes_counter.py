@@ -17,7 +17,7 @@ LIBRARIES = {CDF : ["cdf"],
 	     STK : ["9940", "eagle"]
 	     }
 
-def go(system, vq_file_name, vq_output_file):
+def go(system, vq_file_name, vq_output_file, vq_output_file2):
 
     if system and system in LIBRARIES.keys():
 	vq_libs = LIBRARIES[system]
@@ -46,6 +46,9 @@ def go(system, vq_file_name, vq_output_file):
 	# output the file that has the number of bytes in it.
 	vq_file.close()
 	output_file = open(vq_output_file, 'w')
+	output_file.write("%.3f TB\n"%(total_bytes/1099510000000.0))
+	output_file.close()
+	output_file = open(vq_output_file2, 'w')
 	output_file.write("%.3f\n"%(total_bytes))
 	output_file.close()
 
@@ -56,6 +59,7 @@ if __name__ == "__main__":
     argc = len(sys.argv)
     if argc > 1:
 	vq_output_file = sys.argv[1]
+        vq_output_file2 = "%s2"%(vq_output_file,)
 
 	# get the system from the args
 	if argc > 2:
@@ -72,7 +76,7 @@ if __name__ == "__main__":
 	    dirs = inventory.inventory_dirs()
 	    vq_file_name = inventory.get_vq_format_file(dirs[0])
 
-	go(system, vq_file_name, vq_output_file)
+	go(system, vq_file_name, vq_output_file, vq_output_file2)
     else:
 	# this is an error we need to be given the file to write
 	pass

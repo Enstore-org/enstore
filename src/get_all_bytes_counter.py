@@ -56,7 +56,7 @@ def get_remote_file(node, file, newfile):
             os.kill(pid, signal.SIGKILL)
             return 1
 
-CTR_FILE = "/fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html"
+CTR_FILE = "/fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html2"
 NODES = ["d0ensrv2", "cdfensrv2", "stkensrv2"]
 TOTAL_FILE = "enstore_all_bytes"
 TOTAL_BYTES_FILE = "enstore_all_bytes.bytes"
