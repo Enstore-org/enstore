@@ -127,14 +127,14 @@ class FTTDriver(driver.Driver):
                     pass
                 else:
                     Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.errno))
-                    raise
+                    raise ftt.FTTError, detail
         else:
             try:
                 self.ftt.skip_fm(target-current-1)
                 self.ftt.skip_fm(1)
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.errno))
-                raise
+                raise ftt.FTTError, detail
         current = self.tell()
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
