@@ -78,7 +78,7 @@ def newLog(inFile):
                     updList("MSG", "negative_stat", tmpLines[count])
                 elif string.find(lowLine, "keep request") >= 0 and string.find(lowLine, "with failure") >= 0:
                     updList("MSG", "keep_req_failure", tmpLines[count])
-                elif re.match("the . no longer", lowLine[38:]) >= 0 and len(string.split(lowLine[38:])) == 4:
+                elif re.match("the . no longer", lowLine[38:]) >= 0 and len(string.split(string.rstrip(lowLine[38:]))) == 4:
                     updList("MSG", lowLine[38:53], tmpLines[count])
                 else:
                     tempLine = lowLine[38:]
