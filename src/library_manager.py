@@ -43,6 +43,27 @@ def convert_version(version):
             dig=dig*10+(ord(ch)-ord('0'))
     return dig
     
+def get_storage_group(dict):
+    sg = dict.get('storage_group', None)
+    if not sg:
+	vf = dict.get('volume_family', None)
+	if vf:
+	    sg = volume_family.extract_storage_group(vf)
+    return sg
+
+def log_q_message(dict, q_txt):
+    sg = get_storage_group(dict)
+    if sg:
+	# this message is used to create a plot. do not change the format of the message.
+	Trace.log(e_errors.INFO, 
+		  "%s request added to %s queue for storage group : %s"%(Trace.MSG_ADD_TO_LMQ,
+									 q_txt, sg))
+
+def log_add_to_pending_queue(dict):
+    log_q_message(dict, enstore_constants.PENDING)
+    
+def log_add_to_wam_queue(dict):
+    log_q_message(dict, enstore_constants.WAM)
     
 ## Trace.trace for additional debugging info uses bits >= 11
 
@@ -1061,7 +1082,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['lm'] = {'address':self.server_address }
         # set up priorities
         ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
-        # put ticket into request queue
+	log_add_to_pending_queue(ticket['vc'])
+	# put ticket into request queue
         rq, status = self.pending_work.put(ticket)
         ticket['status'] = (status, None)
                 
@@ -1139,6 +1161,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         else:
             # set up priorities
             ticket['encp']['basepri'],ticket['encp']['adminpri'] = self.pri_sel.priority(ticket)
+	    log_add_to_pending_queue(ticket['vc'])
             # put ticket into request queue
             rq, status = self.pending_work.put(ticket)
             ticket['status'] = (status, None)
@@ -1242,6 +1265,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         w['mover'] = mticket['mover']
         Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
+	log_add_to_wam_queue(w['vc'])
         self.work_at_movers.append(w)
         #work = string.split(w['work'],'_')[0]
         Trace.log(e_errors.INFO,"IDLE:sending %s to mover"%(w,))
@@ -1353,6 +1377,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.pending_work.delete(rq)
             w['times']['lm_dequeued'] = time.time()
             w['mover'] = mticket['mover']
+	    log_add_to_wam_queue(w['vc'])
             self.work_at_movers.append(w)
             self.reply_to_caller(w)
             #self.udpc.send_no_wait(w, mticket['address']) 
