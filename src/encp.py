@@ -910,7 +910,7 @@ def max_attempts(library, encp_intf):
                                      enstore_constants.DEFAULT_ENCP_RETRIES)
     if encp_intf.max_resubmit == None:
         encp_intf.max_resubmit = lm.get('max_encp_resubmits',
-                                enstore_constants.DEFAULT_ENCP_RESUBMITIONS)
+                                enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
 
 ############################################################################
 
