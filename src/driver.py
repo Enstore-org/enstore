@@ -140,11 +140,7 @@ class GenericDriver:
 	return self.shm.offget( 6 )
 
     def rewind(self):
-        self.cur_loc_cookie=int2loc( self, (0,0,0) )# partition, blk offset, filemarks
-        if debug_paranoia:   print "Calling ftt.rewind"
-        r=FTT.rewind()
-        if debug_paranoia:   print "ftt.rewind returned",r
-        return r
+        self.cur_loc_cookie=self.LOC_SPEC%0
 
     def skip_fm(self, skip):
         #XXX what to do for non-FTT driver?
