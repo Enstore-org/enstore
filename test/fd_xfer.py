@@ -58,13 +58,16 @@ t1 = time.time()
 
 bytes = statinfo[stat.ST_SIZE]
 
+hsm_driver = driver.FTTDriver()
+#hsm_driver = driver.NullDriver()
+
 loop = 1
 while loop <= loops:
     print '%s: start loop %s'%(tt(),loop)
 
     if do_robot:
 	print "%s:         ejecting... "%tt(),;sys.stdout.flush()
-	os.system( "mt -f %s offline"%tapedev )
+        hsm_driver.offline( tapedev )
 	print "\n%s:         dismounting... "%tt(),;sys.stdout.flush()
 	os.system( 'rsh %s ". /usr/local/etc/setups.sh;setup enstore;dasadmin dismount -d %s"'%(dasnod,drvdesig) )
 	print "%s:         mounting... "%tt(),;sys.stdout.flush()
@@ -75,8 +78,6 @@ while loop <= loops:
 	print
 
     fo = open( infile, 'r' )
-    hsm_driver = driver.FTTDriver()
-    #hsm_driver = driver.NullDriver()
 
     # THE BIND ##################################################################
     print "%s:         sw_mount... "%tt(),; sys.stdout.flush()
