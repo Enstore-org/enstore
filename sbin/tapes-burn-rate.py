@@ -2,6 +2,7 @@
 
 import os
 import string
+import sys
 
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
@@ -23,15 +24,51 @@ href="http://miscomp.fnal.gov/misweb/cgi/misweb.pl\
 &pagerows=500000\
 &maxrows=500000"
 
-for cmd in 'wget -O drivestat.html "%s"' % (href,), \
+
+for cmd in \
+           'wget -O drivestat.html "%s"' % (href,),\
            'wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
            'wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           'wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"':
+           'wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+           'wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+           'wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+           'wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
     print cmd
     os.system(cmd)
 
-TAPES = {}
+QUOTAS = {}
+for thefile in 'cdfen','d0en','stken':
+    print 'processing',thefile,'quotas'
+    f = open(thefile+".quotas","r")
+    while 1:
+        line = f.readline()
+        if not line: break
+        if len(line) <= 1:
+            continue
+        if string.find(line,'----------') >= 0:
+            break
+        if string.find(line,'----------') >= 0 or string.find(line,'Date this') >= 0 or string.find(line,'Storage Group') >= 0:
+            continue
+        if string.find(line,'null') >= 0 or string.find(line,'NULL') >=0:
+            continue
+        if string.find(line,'emergency') >= 0:
+            try:
+                (c,l,sg,e,ra,aa,q,a,bv,wv,dv,su,af,df,uf) = line.split()
+            except:
+                print 'can not parse', line,len(line)
+                continue
+        else:
 
+            try:
+                (c,l,sg,ra,aa,q,a,bv,wv,dv,su,af,df,uf) = line.split()
+            except:
+                print 'can not parse', line,len(line)
+                continue
+
+        QUOTAS[l+'.'+sg] = (wv,bv,su)
+    f.close()
+
+TAPES = {}
 for thefile in 'cdfen','d0en','stken':
     print 'processing',thefile,'volumes'
     f = open(thefile+".volumes","r")
@@ -89,7 +126,13 @@ for g in group_fd.keys():
 d1='01-JAN-02'
 d2='01-APR-02'
 for g in group_fd.keys():
-    cmd = "./tapes-plot-sg.py %s %s %s" % (g,d1,d2)
+    if QUOTAS.has_key(g):
+        (wv,bv,su) = QUOTAS[g]
+    elif g == "CD-bought":
+        (wv,bv,su) = QUOTAS['none.blank-9940']
+    else:
+        (wv,bv,su) = ('?','?','?')
+    cmd = "./tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
     print cmd
     os.system(cmd)
 

@@ -11,15 +11,37 @@ suffix = string.find(thefile,'.tapes')
 if suffix > 0:
     thefile = thefile[0:suffix]
 
+# ok, this stinks, and I never ANY arguments at all & it kept growing!
 try:
     day1 = sys.argv[2]
     try:
         day2 = sys.argv[3]
+        try:
+            wv = sys.argv[4]
+            try:
+                bv = sys.argv[5]
+                try:
+                    su = sys.argv[6]
+                except:
+                    su = ""
+            except:
+                bv = ""
+                su = ""
+        except:
+            wv = ""
+            bv = ""
+            su = ""
     except:
         day2 = None
+        wv = ""
+        bv = ""
+        su = ""
 except:
     day1 = None
     day2 = None
+    wv = ""
+    bv = ""
+    su = ""
 
 f = open(thefile+".tapes","r")
 o = open(thefile+".data", "w")
@@ -52,7 +74,7 @@ o.close()
 g = open(thefile+".gnuplot", "w")
 g.write('set terminal postscript color solid\n')
 g.write('set output "%s.ps"\n' % (thefile,))
-g.write('set title "%s"\n' % (thefile,))
+g.write('set title "%s   TapesUsed=%s (%s)   TapesBlank=%s  "\n' % (thefile,wv,su,bv))
 g.write('set ylabel "Gigabytes Written"\n')
 g.write('set xdata time\n')
 g.write('set timefmt "%d-%b-%y"\n')
@@ -65,9 +87,9 @@ elif day1 != None:
     g.write('set xrange["%s":]\n' % (day1,))
 #g.write('plot "%s.data" using 1:2 with impulses linewidth 10 \n' % (thefile))
 #g.write('plot "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with steps\n' % (thefile,thefile))
-g.write('set log y\n')
+#g.write('set log y\n')
 #g.write('replot\n')
-g.write('plot "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with steps\n' % (thefile,thefile))
+g.write('plot "%s.data" using 1:3 with impulses linewidth 10, "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with lines\n' % (thefile,thefile,thefile))
 g.close()
 
 #           'gv %s.ps' % (thefile,),
