@@ -2021,10 +2021,10 @@ class File:
 				self.pnfs_id, self.pnfs_vid, self.bfid,\
 				self.drive = map(string.strip, f.readlines())
 				f.close()
-				if p_path != self.path:
-					print 'different paths'
-					print '\t f>', self.path
-					print '\t 4>', p_path
+				# if p_path != self.path:
+				#	print 'different paths'
+				#	print '\t f>', self.path
+				#	print '\t 4>', p_path
 			else:
 				self.volume = ""
 				self.location_cookie = ""
