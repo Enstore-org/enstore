@@ -42,6 +42,7 @@ import Tkinter
 import tkFont
 import entv
 import threading
+import re
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
@@ -1015,18 +1016,51 @@ class MoverDisplay(Tkinter.Toplevel):
 class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
-    def __init__(self, master, title, window_width, window_height,
-                 canvas_width=None, canvas_height=None, **attributes):
+    def __init__(self, title="", window_width=None, window_height=None,
+                 geometry=None, x_position=None, y_position=None,
+                 **attributes):
 
+        tk = Tkinter.Tk()
+        #Don't draw the window until all geometry issues have been worked out.
+        tk.withdraw()
+
+        #Use the geometry argument first.
+        if geometry != None:
+            window_width = int(re.search("^[0-9]+", geometry).group(0))
+            window_height = re.search("[x][0-9]+", geometry).group(0)
+            window_height = int(window_height.replace("x", " "))
+            x_position = re.search("[+][0-9]+[+]", geometry).group(0)
+            x_position = int(x_position.replace("+", ""))
+            y_position = re.search("[+][0-9]+$", geometry).group(0)
+            y_position = int(y_position.replace("+", ""))
+        
         #If the initial size is larger than the screen size, use the
         #  screen size.
-        tk = Tkinter.Tk()
-        window_width = min(tk.winfo_screenwidth(), window_width)
-        window_height= min(tk.winfo_screenheight(), window_height)
+        if window_width != None and window_height != None:
+            window_width = min(tk.winfo_screenwidth(), window_width)
+            window_height= min(tk.winfo_screenheight(), window_height)
+        else:
+            window_width = 0
+            window_height = 0
+        if x_position != None and y_position != None:
+            x_position = max(min(tk.winfo_screenwidth(), x_position), 0)
+            y_position = max(min(tk.winfo_screenheight(), y_position), 0)
+        else:
+            x_position = 0
+            y_position = 0
 
-        #Initialzie the window.
-        Tkinter.Canvas.__init__(self, master, width=window_width,
-                                height=window_height)
+        #Recompile the geometry string.
+        geometry = "%sx%s+%s+%s" % (window_width, window_height,
+                                    x_position, y_position)
+
+        #Remember the unframed geometry.  This is used when determining the
+        # correct geometry to write to the .entvrc file.
+        self.unframed_geometry = geometry
+
+        #Set the geometry of the cavas and its toplevel window.
+        Tkinter.Canvas.__init__(self, master=tk, height=window_height,
+                                width=window_width)
+        tk.winfo_toplevel().winfo_toplevel().geometry(geometry)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 ##        if canvas_width is None:
@@ -1087,7 +1121,12 @@ class Display(Tkinter.Canvas):
         self.bind('<Button-3>', self.reinititalize)
         self.bind('<Configure>', self.resize)
         self.bind('<Destroy>', self.window_killed)
+        self.bind('<Visibility>', self.visibility)
         self.bind('<Button-2>', self.print_canvas)
+
+        #Clear the window for drawing to the screen.
+        self.winfo_toplevel().deiconify()
+        self.update()
 
     def toggle_animation(self):
         #Toggle the animation flag variable.  (on or off)
@@ -1194,6 +1233,47 @@ class Display(Tkinter.Canvas):
     def window_killed(self, event):
         self.stopped = 1
 
+        new_position = self.unframed_geometry.split("+", 1)[1]
+        new_size = self.unframed_geometry.split("+")[0]
+
+        geometry = self.winfo_toplevel().geometry()
+        size = geometry.split("+")[0]
+        position = geometry.split("+", 1)[1]
+
+        initial_framed_size= self.framed_geometry.split("+")[0]
+        initial_framed_position= self.framed_geometry.split("+", 1)[1]
+        
+        ###If the user never repositioned the window then the value returned
+        ### from self.winfo_toplevel().geometry() points to the top left of the
+        ### canvas (aka top left of framed window).
+
+        ###If the user moved the window, then the value returned from
+        ### self.winfo_toplevel().geometry() contains the unframed window
+        ### geometry.  If this is different than the initial framed geometry
+        ### then we know the user moved the window and to set self.geometry
+        ### to tell the calling code (aka entv.py) to save the geometry.
+        if position != initial_framed_position:
+            new_position = position
+
+        ###The size doesn't seem to change with respect to the window being
+        ### framed or unframed...
+        if size != initial_framed_size:
+            new_size = size
+
+        #By setting this everytime, this will force entv to rewrite the
+        # .entvrc file everytime.  This will also help correct errors in
+        # the .entvrc file.
+        self.geometry = "%s+%s" % (new_size, new_position)
+        
+
+    def visibility (self, event):
+        #The current framed geometry.
+        geometry = self.winfo_toplevel().geometry()
+
+        ###The following records the initial framed geometry of the window.
+        if not hasattr(self, "framed_geometry"):
+            self.framed_geometry = geometry
+        
     #########################################################################
 
     def reposition_canvas(self):
@@ -1302,24 +1382,191 @@ class Display(Tkinter.Canvas):
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
     #########################################################################
+
+    def quit_command(self, command_list):
+        self.stopped = 1
+
+    def title_command(self, command_list):
+        #title = command[6:]
+        title = string.join(command_list[1:])
+        title=string.replace (title, '\\n', '\n')
+        self.title_animation = Title(title, self)
     
+    def client_command(self, command_list):
+        ## For now, don't draw waiting clients (there are just
+        ## too many of them)
+        return
+            
+        client_name = normalize_name(command_list[1])
+        client = self.clients.get(client_name) 
+        if client is None: #it's a new client
+            client = Client(client_name, self)
+            self.clients[client_name] = client
+            client.waiting = 1
+            client.draw()
+    
+    def connect_command(self, command_list):
+
+        now = time.time()
+
+        mover = self.movers.get(command_list[1])
+        if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
+            Trace.trace(1,
+                "Cannot connect to mover that is %s." % (mover.state,))
+            return
+
+        client_name = normalize_name(command_list[2])
+        client = self.clients.get(client_name)
+        if not client: ## New client, we must add it
+            client = Client(client_name, self)
+            self.clients[client_name] = client
+        else:
+            client.waiting = 0
+            client.update_state() #change fill color if needed
+        client.draw()
+        #First test if a connection is already present.
+        if self.connections.get(mover.name, None):
+            connection = self.connections[mover.name]
+            connection.undraw()
+            connection.__init__(mover, client, self)
+        #If not create a new connection.
+        else:
+            connection = Connection(mover, client, self)
+            self.connections[mover.name] = connection
+            connection.update_rate(0)
+        connection.draw() #Either draw or redraw correctly.
+        ###What are these for?
+        mover.t0 = now
+        mover.b0 = 0
+        mover.connection = connection
+                
+    def disconnect_command(self, command_list):
+        Trace.trace(1, "mover %s is disconnecting from %s" %
+                    (command_list[1], command_list[2]))
+        
+        mover = self.movers.get(command_list[1])
+
+        #Remove all references to the connection.
+        mover.connection = None
+        try:
+            del self.connections[mover.name]
+        except KeyError:
+            pass
+
+        #Remove the progress bar.
+        #mover.t0 = time.time()
+        #mover.b0 = 0
+        mover.draw_progress(None)
+                
+    def loaded_command(self, command_list):
+
+        mover = self.movers.get(command_list[1])
+        
+        if mover.state in ['IDLE']:
+            Trace.trace(1, "An idle mover cannot have tape...ignore")
+            return
+        load_state = command_list[0] #=='loaded'
+        what_volume = command_list[2]
+        mover.load_tape(what_volume, load_state)
+        
+    def state_command(self, command_list):
+        
+        mover = self.movers.get(command_list[1])
+
+        what_state = command_list[2]
+        try:
+            time_in_state = int(float(command_list[3]))
+        except:
+            time_in_state = 0
+        mover.update_state(what_state, time_in_state)
+        mover.draw()
+        if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
+            msg="Need to disconnect because mover state changed to: %s"
+            if mover.connection: #no connection with mover object
+                Trace.trace(1, msg % (what_state,))
+                del self.connections[mover.name]
+                mover.connection=None
+                        
+    def unload_command(self, command_list):
+
+        mover = self.movers.get(command_list[1])
+        
+        # Ignore the passed-in volume name, unload
+        ## any currently loaded volume
+        mover.unload_tape()
+
+    def transfer_command(self, command_list):
+
+        mover = self.movers.get(command_list[1])
+        
+        num_bytes = my_atof(command_list[2])
+        total_bytes = my_atof(command_list[3])
+        if total_bytes==0:
+            percent_done = 100
+        else:
+            percent_done = abs(int(100 * num_bytes/total_bytes))
+        mover.draw_progress(percent_done)
+        rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
+        if mover.connection:
+            mover.connection.update_rate(rate)
+            mover.connection.client.last_activity_time = time.time()
+
+    def movers_command(self, command_list):
+        self.mover_names = command_list[1:]
+        self.create_movers(self.mover_names)
+
+    #########################################################################
+
     def queue_command(self, command):
         display_lock.acquire()
         self.command_queue.append(command)
         display_lock.release()
+        #      connect MOVER_NAME CLIENT_NAME
+        #      disconnect MOVER_NAME CLIENT_NAME
+        #      loaded MOVER_NAME VOLUME_NAME
+        #      loading MOVER_NAME VOLUME_NAME
+        #      #moveto MOVER_NAME VOLUME_NAME
+        #      #remove MOVER_NAME VOLUME_NAME
+        #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
+        #      unload MOVER_NAME VOLUME_NAME
+    comm_dict = {'quit' : {'function':quit_command, 'length':1},
+                 'title' : {'function':title_command, 'length':1},
+                 'client' : {'function':client_command, 'length':2},
+                 'connect' : {'function':connect_command, 'length':3,
+                              'mover_check':1},
+                 'disconnect' : {'function':disconnect_command, 'length':3,
+                              'mover_check':1},
+                 'loaded' : {'function':loaded_command, 'length':3,
+                              'mover_check':1},                             
+                 'loading' : {'function':loaded_command, 'length':3,
+                              'mover_check':1},                              
+                 'state' : {'function':state_command, 'length':3,
+                              'mover_check':1},                            
+                 'unload': {'function':unload_command, 'length':3,
+                              'mover_check':1},                            
+                 'transfer' : {'function':transfer_command, 'length':3,
+                              'mover_check':1},                               
+                 'movers' : {'function':movers_command, 'length':2}}
 
     def get_valid_command(self, command):
-        comm_dict = {'quit' : 1, 'client' : 1, 'connect' : 1, 'disconnect' : 1,
-                     'loading' : 1, 'title' : 1, 'loaded' : 1, 'state' : 1,
-                     'unload': 1, 'transfer' : 1, 'movers' : 1}
 
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
         if not words: #input was blank, nothing to do!
             return []
 
-        if words[0] not in comm_dict.keys():
+        if words[0] not in self.comm_dict.keys():
             #print "just passing"
+            return []
+
+        if len(words) < self.comm_dict[words[0]]['length']:
+            Trace.trace(1, "Insufficent length for %s command." % (words[0],))
+            return []
+
+        if self.comm_dict[words[0]].get('mover_check', None) and \
+           not self.movers.get(words[1]):
+            #This is an error, a message from a mover we never heard of
+            Trace.trace(1, "Don't recognize mover, continuing ....")
             return []
 
         return words
@@ -1328,18 +1575,18 @@ class Display(Tkinter.Canvas):
         ## Accept commands of the form:
         # 1 word:
         #      quit
-        #      robot
+        #      #robot
         #      title
         # 2 words:
-        #     delete MOVER_NAME
+        #      #delete MOVER_NAME
         #      client CLIENT_NAME
         # 3 words:
         #      connect MOVER_NAME CLIENT_NAME
         #      disconnect MOVER_NAME CLIENT_NAME
         #      loaded MOVER_NAME VOLUME_NAME
         #      loading MOVER_NAME VOLUME_NAME
-        #      moveto MOVER_NAME VOLUME_NAME
-        #      remove MOVER_NAME VOLUME_NAME
+        #      #moveto MOVER_NAME VOLUME_NAME
+        #      #remove MOVER_NAME VOLUME_NAME
         #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
         #      unload MOVER_NAME VOLUME_NAME
         # 4 words:
@@ -1347,162 +1594,12 @@ class Display(Tkinter.Canvas):
         # (N) number of words:
         #      movers M1 M2 M3 ...
 
-        now = time.time()
-    
+        #Words is a list of the split string command.
         words = self.get_valid_command(command)
 
         if words:
-            if words[0]=='quit':
-                self.stopped = 1
-                return
-
-            if words[0]=='title':
-                title = command[6:]
-                title=string.replace (title, '\\n', '\n')
-                self.title_animation = Title(title, self)
-                return
-
-            # command needs (N) words
-            if words[0]=='movers':
-                self.mover_names = words[1:]
-                self.create_movers(self.mover_names)
-                return
+            apply(self.comm_dict[words[0]]['function'], (self, words,))
             
-            # command does not require a mover name, will only put clients
-            # in a queue
-            if words[0]=='client':
-                ## For now, don't draw waiting clients (there are just
-                ## too many of them)
-                return
-            
-                client_name = normalize_name(words[1])
-                client = self.clients.get(client_name) 
-                if client is None: #it's a new client
-                    client = Client(client_name, self)
-                    self.clients[client_name] = client
-                    client.waiting = 1
-                    client.draw()
-                return
-
-            ###################################################################
-            #                                                                 #
-            #            all following commands have the name of the mover    #
-            #            in the 2nd field                                     #
-            #                                                                 #
-            ###################################################################
-            mover_name = words[1]
-            mover = self.movers.get(mover_name)
-            if not mover:
-                #This is an error, a message from a mover we never heard of
-                Trace.trace(1, "Don't recognize mover, continueing ....")
-                return
-
-            if words[0]=='disconnect':
-                #Ignore the passed-in client name, disconnect from
-                ## any currently connected client
-                if not mover.connection:
-                    Trace.trace(1, "Mover is not connected")
-                    return
-                
-                Trace.trace(1, "mover %s is disconnecting" % (mover_name,))
-
-                #Remove all references to the connection.
-                del self.connections[mover.name]
-                mover.connection = None
-
-                #Remove the progress bar.
-                #mover.t0 = time.time()
-                #mover.b0 = 0
-                mover.draw_progress(None)
-                
-                return
-
-            # command requires 3 words
-            if len(words) < 3:
-                Trace.trace(1, "Bad command: %s" % (command,))
-                return
-            
-            if words[0]=='state':
-                what_state = words[2]
-                try:
-                    time_in_state = int(float(words[3]))
-                except:
-                    time_in_state = 0
-                mover.update_state(what_state, time_in_state)
-                mover.draw()
-                if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
-                    msg="Need to disconnect because mover state changed to: %s"
-                    if mover.connection: #no connection with mover object
-                        Trace.trace(1, msg % (what_state,))
-                        del self.connections[mover.name]
-                        mover.connection=None
-                return
-        
-            if words[0]== 'connect':
-                if mover.state in ['ERROR', 'IDLE', 'OFFLINE']:
-                    Trace.trace(1,
-                        "Cannot connect to mover that is %s." % (mover.state,))
-                    return
-
-                client_name = normalize_name(words[2])
-                client = self.clients.get(client_name)
-                if not client: ## New client, we must add it
-                    client = Client(client_name, self)
-                    self.clients[client_name] = client
-                else:
-                    client.waiting = 0
-                    client.update_state() #change fill color if needed
-                client.draw()
-                #First test if a connection is already present.
-                if self.connections.get(mover.name, None):
-                    connection = self.connections[mover.name]
-                    connection.undraw()
-                    connection.__init__(mover, client, self)
-                #If not create a new connection.
-                else:
-                    connection = Connection(mover, client, self)
-                    self.connections[mover.name] = connection
-                    connection.update_rate(0)
-                connection.draw() #Either draw or redraw correctly.
-                ###What are these for?
-                mover.t0 = now
-                mover.b0 = 0
-                mover.connection = connection
-                return
-
-            if words[0] in ['loading', 'loaded']:
-                if mover.state in ['IDLE']:
-                    Trace.trace(1, "An idle mover cannot have tape...ignore")
-                    return
-                load_state = words[0] #=='loaded'
-                what_volume = words[2]
-                mover.load_tape(what_volume, load_state)
-                return
-        
-            if words[0]=='unload': # Ignore the passed-in volume name, unload
-                                   ## any currently loaded volume
-                mover.unload_tape()
-                return
-
-            # command requires 4 words
-            if len(words)<4: 
-                Trace.trace(1, "Bad command: %s" % (command,))
-                return
-        
-            if words[0]=='transfer':
-                num_bytes = my_atof(words[2])
-                total_bytes = my_atof(words[3])
-                if total_bytes==0:
-                    percent_done = 100
-                else:
-                    percent_done = abs(int(100 * num_bytes/total_bytes))
-                mover.draw_progress(percent_done)
-                rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
-                if mover.connection:
-                    mover.connection.update_rate(rate)
-                    mover.connection.client.last_activity_time = time.time()
-                return
-
     #########################################################################
             
     def display_idle(self):

@@ -28,11 +28,16 @@ import errno
 import Tkinter
 import Trace
 
+#########################################################################
+# Globals
+#########################################################################
+
 _rexec = rexec.RExec()
 def eval(stuff):
     return _rexec.r_eval(stuff)
 
 TEN_MINUTES=600   #600seconds = 10minutes
+DEFAULT_BG_COLOR = '#add8e6'   #light blue
 
 status_thread = None
 messages_thread = None
@@ -47,6 +52,10 @@ stop_now = 0
 
 #A lock to allow only one thread at a time access the display class instance.
 #display_lock = threading.Lock()
+
+#########################################################################
+# common support functions
+#########################################################################
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -123,6 +132,14 @@ def get_csc():
 
     return _csc
 
+def get_config():
+    global _config_cache
+    if _config_cache:
+        return _config_cache
+    csc = get_csc()
+    _config_cache = csc.dump()
+    return _config_cache
+
 def get_system_name():
     csc = get_csc()
     try:
@@ -149,15 +166,123 @@ def get_system_name():
     #return event_relay_addr, system_name
     return system_name
 
-def get_config():
-    global _config_cache
-    if _config_cache:
-        return _config_cache
-    csc = get_csc()
-    _config_cache = csc.dump()
-    return _config_cache
+#########################################################################
+# .entrc file related functions
+#########################################################################
 
-def get_mover_list():
+def get_entvrc_filename():
+    return os.environ["HOME"] + "/.entvrc"
+
+def get_entvrc():
+        #Variables and files to look for.
+    f = open(get_entvrc_filename())
+    lines = []
+    for line in f.readlines():
+        lines.append(line.strip())
+
+    ###Don't remove blank lines and command lines from the output.  This
+    ### output is used by the set_entvrc function which will use these
+    ### extraneous lines.
+
+    return lines
+
+def get_geometry():
+    try:
+        csc = get_csc()
+        for line in get_entvrc():
+            if line[0] == "#": #Skip comment lines.
+                continue
+            words = line.split()
+            if socket.getfqdn(words[0])==socket.getfqdn(csc.server_address[0]):
+                geometry = words[1]
+                try:
+                    background = words[2]
+                except IndexError:
+                    background = DEFAULT_BG_COLOR
+                break
+        else:
+            #If it wasn't found raise this to set the defaults.
+            raise IndexError(words[0])
+    except (IOError, IndexError):
+        geometry = "700x1600+0+0"
+        background = DEFAULT_BG_COLOR
+
+    return geometry, background
+
+def set_geometry(geometry):
+    try:
+        csc = get_csc()
+        #Do this now to save the time to do the conversion for every line.
+        csc_server_name = socket.getfqdn(csc.server_address[0])
+
+        #Get the current .entvrc file data if possible.
+        try:
+            data = get_entvrc()
+        except (OSError, IOError), msg:
+            #If the file exists but still failed to open (ie permissions)
+            # then skip this step.
+            if msg.errno != errno.ENOENT:
+                Trace.trace(1, str(msg))
+                return
+            #But if it simply did not exist, then prepare to create it.
+            else:
+                data = []
+
+        #use a temporary file incase something goes wrong.
+        tmp_filename = get_entvrc_filename() + ".tmp"
+        tmp_file = open(tmp_filename, "w")
+
+        #Make sure this gets written to file if not already there.
+        new_line_written = 0
+
+        #Loop through any existing data from the file.
+        for line in data:
+            #Split the line into its individual words.
+            words = line.split()
+
+            #If the line is empty, write an empty line and continue.
+            if not words:
+                tmp_file.write("\n")   #Skip empty lines.
+                continue
+
+            #If this is the correct line to update; update it.
+            if socket.getfqdn(words[0]) == csc_server_name:
+                #We can't assume a user that puts together there own
+                # .entvrc file will do it correctly.
+                try:
+                    background = words[2]
+                except IndexError:
+                    background = DEFAULT_BG_COLOR
+
+                #Write the new geometry to the .entvrc file.
+                tmp_file.write("%-25s %-20s %-10s\n" %
+                               (csc_server_name, geometry, background))
+
+                new_line_written = 1
+            else:
+                tmp_file.write(line + "\n")
+
+        #If the enstore system entv display is not found, add it at the end.
+        if not new_line_written:
+            tmp_file.write("%-25s %-20s %-10s\n" %
+                           (csc_server_name, geometry, DEFAULT_BG_COLOR))
+            
+        tmp_file.close()
+
+        entv_file = open(get_entvrc_filename(), "a")
+        os.unlink(get_entvrc_filename())
+        os.link(tmp_filename, get_entvrc_filename())
+        os.unlink(tmp_filename)
+                  
+    except (IOError, IndexError, OSError), msg:
+        Trace.trace(1, str(msg))
+        pass #If the line isn't there to begin with don't change anything.
+
+#########################################################################
+# entv functions
+#########################################################################
+
+def get_mover_list(fullnames=None):
     movers = []
     csc = get_csc()
 
@@ -171,7 +296,10 @@ def get_mover_list():
             raise exc, msg, tb
         try:
             for mover in mover_list:
-                movers = movers + [mover['mover']]
+                if not fullnames:
+                    movers = movers + [mover['mover'][:-6]]
+                else:
+                    movers = movers + [mover['mover']]
         except:
             exc, msg, tb = sys.exc_info()
             Trace.trace(1, "No movers found: %s" % str(msg))
@@ -207,23 +335,25 @@ def handle_status(mover, status):
 
     return [mover_state]
 
-###
-### The following functions run in there own thread.
-###
+#########################################################################
+# The following functions run in their own thread.
+#########################################################################
 
 def request_mover_status(display):
     global stop_now
 
     csc = get_csc()
     config = get_config()
-    movers = get_mover_list()
+    movers = get_mover_list(1)
 
     for mover in movers:
         #Get the mover client and the mover status.
         mov = mover_client.MoverClient(csc, mover)
         status = mov.status(rcv_timeout=5, tries=1)
 
-        #If the user said it needs to die, then die.
+        #If the user said it needs to die, then die.  Don't wait for all of
+        # the movers to be contacted.  If there is a known problem then this
+        # could possibly take a while to time out with each of the movers.
         if stop_now or display.stopped:
             return
 
@@ -232,6 +362,7 @@ def request_mover_status(display):
         if not commands:
             continue
         for command in commands:
+            #Queue the command.
             display.queue_command(command)
 
 def handle_messages(display):
@@ -289,9 +420,10 @@ def handle_messages(display):
     erc.unsubscribe()
     erc.sock.close()
 
-###
-###  main
-###
+#########################################################################
+#  main
+#########################################################################
+
 def main():
     global status_thread, messages_thread
     global stop_now
@@ -307,21 +439,22 @@ def main():
     
     system_name = get_system_name()
 
-    display = enstore_display.Display(master=None, title=system_name,
-                                      window_width=700, window_height=1600,
-                                      canvas_width=1000, canvas_height=2000,
-                                      background='#add8e6')
+    geometry, background = get_geometry()
+
+    display = enstore_display.Display(title=system_name,
+                                      geometry=geometry, background=background)
 
     while ( not display.stopped or display.attempt_reinit() ) and not stop_now:
 
         display.reinit()
 
         #initalize the movers.
-        movers = get_mover_list()
-        movers_command = "movers"
-        for mover in movers:
-            movers_command = movers_command + " " + mover[:-6]
-
+        movers = get_mover_list(0)
+        #movers_command = "movers"
+        #for mover in movers:
+        #    movers_command = movers_command + " " + mover[:-6]
+        movers_command = "movers " + string.join(movers, " ")
+            
         #Inform the display the names of all the movers.
         display.handle_command(movers_command)
 
@@ -340,6 +473,9 @@ def main():
 
         #Loop until user says don't.
         display.mainloop()
+
+        if hasattr(display, "geometry") and display.geometry != None:
+            set_geometry(display.geometry)
 
         Trace.trace(1, "waiting for threads to stop")
         status_thread.join()
