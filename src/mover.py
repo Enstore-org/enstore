@@ -99,6 +99,10 @@ class Mover:
             self.device = mconfig["device"]
             self.library = mconfig["library"]
             self.media_changer = mconfig["media_changer"]
+	    try:
+		self.address = (mconfig["hostip"],mconfig["port"])
+	    except:
+		self.address = ()
 
             # get (possibly new) info asssociated with our volume manager
             lconfig = self.csc.get_uncached(self.library)
@@ -528,15 +532,15 @@ class Mover:
 	
     # create ticket that says we are idle
     def idle_mover_next(self):
-        self.next_libmgr_request = {"work"  : "idle_mover",
-                                    "mover" : self.name }
-
+        self.next_libmgr_request = {  "work"   : "idle_mover"
+                                    , "mover"  : self.name 
+				    , "address": self.address }
 
     # create ticket that says we have bound volume x
     def have_bound_volume_next(self):
-        self.next_libmgr_request = {}
-        self.next_libmgr_request["work"] = "have_bound_volume"
-        self.next_libmgr_request["mover"] = self.name
+        self.next_libmgr_request = {  "work"   : "have_bound_volume"
+                                    , "mover"  : self.name 
+				    , "address": self.address }
         # copy volume information about the volume to our ticket
         for k in self.vticket.keys():
             self.next_libmgr_request[k] = self.vticket[k]
@@ -545,9 +549,10 @@ class Mover:
     # create ticket that says we need to unbind volume x
     def unilateral_unbind_next(self,ticket):
         self.unbind_volume(ticket)
-        self.next_libmgr_request = {"work"           : "unilateral_unbind",
-                                    "external_label" : self.external_label,
-                                    "mover"          : self.name }
+        self.next_libmgr_request = {  "work"   : "unilateral_unbind"
+                                    , "mover"  : self.name 
+				    , "address": self.address
+				    , "external_label" : self.external_label }
 
 
 if __name__ == "__main__":
