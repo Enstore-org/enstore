@@ -1174,7 +1174,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
         #If route_server.process_request() fails it returns None.
         if not route_ticket:
             continue
-        #If route_server.process_request() returns
+        #If route_server.process_request() returns incorrect value.
         elif route_ticket == type({}) and hasattr(route_ticket, 'unique_id') \
            and route_ticket['unique_id'] not in unique_id_list:
             continue
