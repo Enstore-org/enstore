@@ -54,6 +54,7 @@ create index file_volume_idx on file(volume);
 create index file_pnfs_path_idx on file(pnfs_path);
 create index file_pnfs_id_idx on file(pnfs_id);
 create index file_deleted_idx on file(deleted);
+create index file_location_cookie_idx on file(location_cookie);
 
 create table sg_count (
 	library		varchar(16),
