@@ -1,4 +1,4 @@
-<MA-config Update="600" Name="AgentPingEnstore">
+<MA-config Update="600" Name="AgentPingEnstore" Type="Daemon">
 <ItemList Name="Enstore">
 	<Item Name="STKEN"/>
 	<Item Name="D0EN"/>
@@ -7,7 +7,7 @@
         <ServiceType Name="0x0"/>>
         <ServiceType Name="24x7"/>
 </ServiceClass>
-   <NCS Heartbeat="1200" Port="19997" Host="ngop" Type="Daemon"/>
+   <NCS Heartbeat="1200" Port="19997" Host="ngop"/>
    <For Each="Item" In="ItemList" Name="Enstore" Var="{%C}">
 
    <System Name="Ping" Cluster="{%C}">
