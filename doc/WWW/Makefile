@@ -47,6 +47,7 @@ PIC_GIF_FILES = \
 	./test_nodes.gif \
 	./test-stand.gif \
 	./write.gif \
+	./test-configuration.gif \
 	./test-network.gif
 PIC_PS_FILES = \
 	./desy.ps \
@@ -59,6 +60,7 @@ PIC_PS_FILES = \
 	./test_nodes.ps \
 	./test-stand.ps \
 	./write.ps \
+	./test-configuration.ps \
 	./test-network.ps
 
 #
