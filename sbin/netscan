@@ -26,6 +26,7 @@ right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
 right_file /home/enstore/enstore/etc/hosts.allow /etc/hosts.allow
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
+right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 
 if [ "`/usr/sbin/xntpdc -p|grep ^\*|wc|awk '{print $1}'`" != "1" ]; then 
     echo NO TIME SYNC
