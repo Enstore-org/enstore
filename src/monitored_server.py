@@ -68,7 +68,7 @@ class MonitoredServer:
 	else:
 	    self.__dict__[attr] = value
 
-    def check_recent_alive(self):
+    def check_recent_alive(self, event_relay):
 	if self.alive_interval == NO_HEARTBEAT:
 	    # fake that everything is ok as we are not checking this server anyway
 	    rtn = NO_TIMEOUT
@@ -80,7 +80,12 @@ class MonitoredServer:
 		past_interval = now - self.last_alive
 
 	    if past_interval > self.hung_interval:
-		rtn = HUNG
+		# we can only determine REALLY if we are hung, if we know that the
+		# event relay is still alive.  determine that first
+		if event_relay.is_dead(now):
+		    rtn = HUNG
+		else:
+		    rtn = TIMEDOUT
 	    elif past_interval > self.twice_alive_interval:
 		rtn = TIMEDOUT
 	    else:
