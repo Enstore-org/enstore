@@ -2422,9 +2422,17 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
     succeded_ids = []
     failed_ids = []
     for req in succeded_requests:
-        succeded_ids.append(req['unique_id'])
+        try:
+            succeded_ids.append(req['unique_id'])
+        except KeyError:
+            sys.stderr.write("Error obtaining unique id list of successes..")
+            sys.stderr.write(pprint.pformat(req))
     for req in failed_requests:
-        failed_ids.append(req['unique_id'])
+        try:
+            failed_ids.append(req['unique_id'])
+        except KeyError:
+            sys.stderr.write("Error obtaining unique id list of failures.")
+            sys.stderr.write(pprint.pformat(req))
 
     #For each transfer that failed without even succeding to open a control
     # socket, print out their data access layer.
