@@ -16,8 +16,8 @@ class Mover :
         def __init__(self, config_host="localhost", config_port=7500):
             self.config_host = config_host
             self.config_port = config_port
-	    csc = configuration_client(self.config_host,self.config_port)
-	    u = UDPClient()
+	    self.csc = configuration_client(self.config_host,self.config_port)
+	    self.u = UDPClient()
 
         def move_forever(self, name) :
                 self.name = name
@@ -32,7 +32,7 @@ class Mover :
 
 
         def send_vol_manager(self) :
-                ticket = u.send(self.next_volmgr_request,
+                ticket = self.u.send(self.next_volmgr_request,
                                 (self.library_manager_host,
                                  self.library_manager_port)
                                 )
@@ -49,8 +49,8 @@ class Mover :
                 # this is useful when a "library" is really one robot
                 # with multiple uses, or when we need to manually load balance
                 # movers attacke to virtual library....
-                csc = configuration_client(self.config_host,self.config_port)
-                mconfig = csc.get(self.name)
+                self.csc = configuration_client(self.config_host,self.config_port)
+                mconfig = self.csc.get(self.name)
                 if mconfig["status"] != "ok" :
                         raise "could not start mover up:" + mconfig["status"]
                 self.library_device = mconfig["library_device"]
@@ -59,8 +59,8 @@ class Mover :
                 self.library = mconfig["library"]
 
                 # now get info asssociated with our volume manager
-                csc = configuration_client(self.config_host,self.config_port)
-                lconfig = csc.get_uncached(self.library + ".library_manager")
+                self.csc = configuration_client(self.config_host,self.config_port)
+                lconfig = self.csc.get_uncached(self.library + ".library_manager")
                 self.library_manager_host = lconfig["host"]
                 self.library_manager_port = lconfig["port"]
 
@@ -70,7 +70,7 @@ class Mover :
 
         def bind_volume(self, ticket) :
                 self.external_label = ticket["external_label"]
-                ss = VolumeClerkClient(csc)
+                ss = VolumeClerkClient(self.csc)
                 vticket = ss.inquire_vol(self.external_label)
                 if vticket["status"] != "ok" :
                         self.unilateral_unbind_next()
@@ -142,7 +142,7 @@ class Mover :
 
                 if ticket["external_label"] != self.external_label :
                         raise "volume manager and I disagree on volume"
-                ss = VolumeClerkClient(csc)
+                ss = VolumeClerkClient(self.csc)
                 vticket = ss.set_writing(self.external_label)
                 if ticket["status"] != "ok" :
                         raise "volume clerk forgot about this volume"
@@ -176,7 +176,7 @@ class Mover :
                 eod_cookie = self.driver.get_eod_cookie()
                 remaining_bytes = self.driver.get_eod_remaining_bytes()
 
-                ss = VolumeClerkClient(csc)
+                ss = VolumeClerkClient(self.csc)
 
                 if bytes_recvd != ticket["size_bytes"] :
                         user_send_error = 1
@@ -221,7 +221,7 @@ class Mover :
 
                 # tell file clerk server
 
-                fc = FileClerkClient(csc)
+                fc = FileClerkClient(self.csc)
                 fticket = fc.new_bit_file(
                         file_cookie,
                         ticket["external_label"], 0, 0)
@@ -247,7 +247,7 @@ class Mover :
         def read_from_hsm(self, ticket) :
                 if ticket["external_label"] != self.external_label :
                         raise "volume manager and I disagree on volume"
-                ss = VolumeClerkClient(csc)
+                ss = VolumeClerkClient(self.csc)
                 vticket = ss.inquire_vol(self.external_label)
                 if ticket["status"] != "ok" :
                         raise "volume clerk forgot about this volume"
