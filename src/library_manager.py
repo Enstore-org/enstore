@@ -27,7 +27,7 @@ import volume_family
 def p(*args):
     print args
 
-Trace.trace = p
+#Trace.trace = p
 
 ## Trace.trace for additional debugging info uses bits >= 11
 
@@ -571,7 +571,7 @@ class LibraryManagerMethods:
         self.init_request_selection()
         # for tape positioning optimization check what was
         # a last work for this volume
-        if last_work == 'read_from_hsm':
+        if last_work == 'read':
             # see if there is another work for this volume
             # rq may be request for another volume in case
             # if it is an administration priority request
@@ -579,7 +579,7 @@ class LibraryManagerMethods:
             rq = self.pending_work.get(v["external_label"], current_location, use_admin_queue=0)
             if not rq:
                rq = self.pending_work.get(v['volume_family'], use_admin_queue=0) 
-        elif last_work == 'write_to_hsm':
+        elif last_work == 'write':
             # see if there is another work for this volume family
             # rq may be request for another volume in case
             # if it is an administration priority request
@@ -999,7 +999,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # we have a volume already bound - any more work??
     def mover_bound_volume(self, mticket):
 	Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
-        last_work = mticket['last_work']
+        last_work = mticket['operation']
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
