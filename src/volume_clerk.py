@@ -820,7 +820,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     ret_stat = (record['system_inhibit'][0], None)
                 elif (record['system_inhibit'][1] != 'none' and
                       record['system_inhibit'][1] != 'readonly' and
-                      record['system_inhibit'][1] != 'full'):
+                      record['system_inhibit'][1] != 'full' and
+                      record['system_inhibit'][1] != 'migrated'):
                     ret_stat = (record['system_inhibit'][1], None)
                 # if user_inhibit is NOT in one of the following 
                 # states it is NOT available for reading
@@ -836,6 +837,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 Trace.trace(35, "is_vol_available: writing")
                 if record['system_inhibit'][0] != 'none':
                     ret_stat = (record['system_inhibit'][0], None)
+                elif (record['system_inhibit'][1] == 'migrated'):
+                    # treated as readonly
+                    ret_stat = ('readonly', None)
                 elif (record['system_inhibit'][1] == 'readonly' or
                       record['system_inhibit'][1] == 'full'):
                     ret_stat = (record['system_inhibit'][1], None)
@@ -1699,7 +1703,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                                 pass
                     else:
                         if (ticket["in_state"] == "full" or
-                            ticket["in_state"] == "readonly"):
+                            ticket["in_state"] == "readonly" or
+                            ticket["in_state"] == "migrated"):
                             index = 1
                         else: index = 0
                         if value["system_inhibit"][index] == ticket["in_state"]:
