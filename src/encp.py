@@ -1476,7 +1476,11 @@ def outputfile_check(inputlist, outputlist, e):
             # These function will raise an EncpError on an error.
             if e.intype == "hsmfile": #READS
                 try:
-                    filesystem_check(outputlist[i], inputlist[i])
+                    #If the user did not bypass the check of the
+                    # maximum filesize the filesystem allows, check if
+                    # the filesystem can handle the size of all the files.
+                    if e.bypass_filesystem_max_filesize_check == 0:
+                        filesystem_check(outputlist[i], inputlist[i])
                 except EncpError, msg:
                     #If the volume is being read in, the filesize may not
                     # be known yet.  Don't fail these but continue to fail
@@ -5562,6 +5566,10 @@ class EncpInterface(option.Interface):
         self.volume = None         # True if it is to read an entire volume.
         self.list = None           # Used for "get" only.
 
+        #Sometimes the kernel lies about the max size of files supported
+        # by the filesystem; skip the test if that is needed.
+        self.bypass_filesystem_max_filesize_check = 0
+
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
         # parse the options
@@ -5597,6 +5605,12 @@ class EncpInterface(option.Interface):
                             "The amount of data to transfer at one time in "
                             "bytes. (default = 256k)",
                             option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_TYPE:option.INTEGER,
+                            option.USER_LEVEL:option.USER,},
+        option.BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK:{option.HELP_STRING:
+                            "Skip the check for the max filesize a file"
+                            " system supports.",
+                            option.VALUE_USAGE:option.IGNORED,
                             option.VALUE_TYPE:option.INTEGER,
                             option.USER_LEVEL:option.USER,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
