@@ -151,6 +151,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
             #If the split strings don't contain the fields we are looking for
             # then ignore them.
+            if len(words) < 5: #Don't crash if an old mover is sending.
+                continue
             if words[0] != 'transfer' or words[4] != 'network':
                 continue
 
