@@ -961,7 +961,7 @@ def read_from_hsm(input, output,
 	    # wait for hours....
 
 	    if submitted != 0:
-		files_left, brcvd = read_hsm_files(listen_socket, submitted,
+		files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
 						   files_left, request_list,
 						   tinfo, 
 						   chk_crc, data_access_layer, 
@@ -970,7 +970,9 @@ def read_from_hsm(input, output,
 		if verbose: print "FILES_LEFT ", files_left
 		if files_left > 0:
 		    retry_flag = 1
-	    else: files_left = 0
+	    else: 
+		files_left = 0
+		error = 1
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
@@ -997,6 +999,7 @@ def read_from_hsm(input, output,
         pprint.pprint(done_ticket)
 
     Trace.trace(6,"}read_from_hsm "+msg)
+    sys.exit(error)
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
@@ -1214,6 +1217,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
     bytes = 0
     control_socket_closed = 0
     data_path_socket_closed = 1
+    error = 0
     
     for waiting in range(0,submitted):
         if verbose>1:
@@ -1253,6 +1257,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
         # ok, we've been called back with a matched id - how's the status?
         if ticket["status"][0] != e_errors.OK :
+	    error = 1
 	    # print error to stdout in data_access_layer format
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
                                            requests[j]['file_size'],
@@ -1330,6 +1335,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 			    str(sys.exc_info()[1]))
 		if verbose > 1: traceback.print_exc()
 		if err_msg.args[0] == "fd_xfer - read EOF unexpected":
+		    error = 1
 		    data_path_socket.close()
 		    try:
 			done_ticket = callback.read_tcp_socket(control_socket,
@@ -1385,7 +1391,6 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		    pass
 		else:
 		    requests[j]['retry'] = requests[j]['retry']+1
-		    print "retrying",requests[j]['retry'] 
 		    pass
 		continue
 
@@ -1416,6 +1421,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
         # make sure the mover thinks the transfer went ok
         if done_ticket["status"][0] != e_errors.OK:
+	    error = 1
 	    os.remove(tempname)
 	    # print error to stdout in data_access_layer format
 	    print_data_access_layer_format(requests[j]['infile'], requests[j]['outfile'], 
@@ -1461,6 +1467,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         # verify that the crc's match
         if chk_crc != 0 :
             if done_ticket["fc"]["complete_crc"] != mycrc :
+		error = 1
 		# print error to stdout in data_access_layer format
 		done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
 		print_data_access_layer_format(requests[j]['infile'], 
@@ -1551,7 +1558,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
     if not data_path_socket_closed: data_path_socket.close(); _f_.close()
     if not control_socket_closed: control_socket.close()
     Trace.trace(7,"}read_hsm_files. files left=:"+repr(files_left))
-    return files_left, bytes
+    return files_left, bytes, error
 	    
 ##############################################################################
    # A call back for sort, highest file location should be first.
