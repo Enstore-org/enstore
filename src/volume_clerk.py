@@ -389,6 +389,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             record['wrapper']='null'
         # write the ticket out to the database
         self.dict[external_label] = record
+        Trace.log(e_errors.INFO, "volume has been modifyed %s" % (record,))
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
