@@ -11,84 +11,28 @@ RM    = rm -f
 LINK  = ln -s
 MV    = mv
 
-TARGET = ktevV0 ktev_test 
+CFLAGS = -g
+INC = -I$(DCAP_DIR)/include -I.
+LIBS = -L$(DCAP_DIR)/lib -L. -ldcap libktev.a
+LIB_SRC = ktevapi.c
+LIB_OBJS = ${LIB_SRC:.c=.o}
 
-all $(TARGET):
 
-	@if  [ ! -f .depend ]; then \
-		touch .depend;  \
-		$(MAKE) depend; \
-	fi
+#ktev_main: libktev.a ktev_main.o
+#	$(CC) $(LIBS) -o $@ ktev_main.o libktev.a libdcap.a
+ktev_main: libktev.so ktev_main.o
+	cc -o $@ ktev_main.o $(LIBS) -lc 
 
-	@case `uname` in \
-		SunOS) \
-			$(MAKE) -f Makefile.sun $@ ; \
-			;; \
-		Linux) \
-			$(MAKE) -f Makefile.linux $@ ; \
-			;; \
-		IRIX*) \
-			$(MAKE) -f Makefile.sgi $@ ; \
-			;; \
-		AIX) \
-			$(MAKE) -f Makefile.alpha $@ ; \
-			;; \
-                OSF1) \
-                        $(MAKE) -f Makefile.alpha $@ ; \
-                        ;; \
-		CYGWIN*) \
-			$(MAKE) -f Makefile.w32 $@ ;\
-			;; \
-		*) \
-			echo "Don't know your machine type" \
-			;; \
-	esac
+ktev_main.o: ktev_main.c $(LIB_SRC)
+	 $(CC) $(CFLAGS) $(INC) -c ktev_main.c
 
-release:
-	@VER=`cat dcap_version.c | grep version`; \
-	echo "Last version: $$VER"; \
-	echo "Enter new version name:"; \
-	read version; \
-	$(RM) -f dcap_version.c; \
-	echo "" > dcap_version.c; \
-	echo "#define VER(a) #a \" \" __DATE__ \" \" __TIME__;" >> dcap_version.c; \
-	echo "" >> dcap_version.c; \
-	echo "const char *getDcapVersion()" >> dcap_version.c; \
-	echo "{" >> dcap_version.c; \
-	echo "	return VER( $$version );" >> dcap_version.c; \
-	echo "}" >> dcap_version.c; \
-	echo "" >> dcap_version.c; \
-	cvs commit; \
-	cvs tag -c -b $$version;
+libktev.so: libktev.a
+	ld -shared -o $@ $(OBJS) $(LIBS) -lc
+libktev.a: $(LIB_OBJS)
+	ar cr $@ $(LIB_OBJS)
 
-install: rebuild dirs
-	@VER=`./version.sh`; \
-	$(MV) libdcap.so libdcap$$VER.so; \
-	$(RM) $(BIN_PATH)/lib/libdcap.so; \
-	$(LINK) libdcap$$VER.so $(BIN_PATH)/lib/libdcap.so; \
-	$(CP) libdcap$$VER.so $(BIN_PATH)/lib/; \
-	$(MV) libpdcap.so libpdcap$$VER.so; \
-	$(RM) $(BIN_PATH)/lib/libpdcap.so; \
-	$(LINK) libpdcap$$VER.so $(BIN_PATH)/lib/libpdcap.so; \
-	$(CP) libpdcap$$VER.so $(BIN_PATH)/lib/; \
-	$(CP) dccp $(BIN_PATH)/bin/; \
-	$(CP) dcap.h $(BIN_PATH)/include/; \
-	$(CP) dcap_errno.h $(BIN_PATH)/include/; \
-	$(CP) dc_hack.h $(BIN_PATH)/include/; \
-	$(CP) dccp.c $(BIN_PATH)/sources/;
-
-dirs:
-	@./mkdirs.sh $(BIN_PATH)/bin/
-	@./mkdirs.sh $(BIN_PATH)/lib
-	@./mkdirs.sh $(BIN_PATH)/include/
-	@./mkdirs.sh $(BIN_PATH)/sources/
-
-rebuild: cleanall all
-	@echo "Compilation Done."
+$(LIB_OBJS): $(LIB_SRC) ktevapi.h
+	$(CC) $(CFLAGS) $(INC) -c $(LIB_SRC)
 
 clean:
-	@rm -f *.o *.BAK core	
-
-cleanall: clean	
-	@rm -f $(TARGET) libdcap*.so libpdcap*.so dcap.h \
-	.depend debug_map.h  debug_level.h mapfile
+	rm -f *.o *.BAK libktev.a *.so core
