@@ -877,16 +877,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	                         einfo[enstore_status.ETIME][(ind+1):]
 	        data.append([string.replace(einfo[enstore_status.ETIME], \
 	                     LOG_PREFIX, ""), einfo[enstore_status.EBYTES]])
-	self.make_plot_file(lfd+"/bpt.pts", data)
-	self.gnuplot(lfd, lfd+"/bpt.gnuplot")
+	pts_file = lfd+"/bpt.pts"
+	self.make_plot_file(pts_file, data)
+	self.gnuplot(lfd, lfd+"/bpt.gnuplot", pts_file, self.html_dir)
 	ret_ticket = { 'plot_bpt' : len(lines), \
 	               'status'   : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
         Trace.trace(10,"}plot_bpt ")
 
     # run gnuplot on the file to create a plot
-    def gnuplot(self, dir, cmds):
-	os.system("cd "+dir+"; gnuplot "+cmds)
+    def gnuplot(self, dir, cmds, pts_file, output_dir):
+	os.system("cd "+dir+"; gnuplot "+cmds+";cp "+pts_file+".ps "+\
+	          output_dir)
 
     # make the file with the plot points in them
     def make_plot_file(self, filename, data):
@@ -1000,10 +1002,11 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	# be in the configuration file.
 	if html_file == "":
 	    try:
-	        inq_file = keys['html_file']
-	        html_file = inq_file+"/"+status_html_file_name()
-	        encp_file = inq_file+"/"+encp_html_file_name()
+	        self.html_dir = keys['html_file']
+	        html_file = self.html_dir+"/"+status_html_file_name()
+	        encp_file = self.html_dir+"/"+encp_html_file_name()
 	    except:
+	        self.html_dir = default_dir
 	        html_file = default_status_html_file()
 	        encp_file = default_encp_html_file()
 
