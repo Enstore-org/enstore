@@ -792,7 +792,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "get new state from %s"%(mover.name,))
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
-	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
+	mover.server_status = self.mover_state[mover.name].get(enstore_constants.STATE, "")
         if enstore_functions.is_timedout(self.mover_state[mover.name]):
             self.serverfile.output_etimedout(mover.host, TIMED_OUT_SP,
 					     time.time(), mover.name,
