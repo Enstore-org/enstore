@@ -9,7 +9,7 @@ static char rcsid[] = "@(#)$Id$";
 #include <string.h>
 #include <ctype.h>
 #include <ftt_private.h>
-
+#include <errno.h>		/* errno */
 
 int
 ftt_status(ftt_descriptor d, int time_out) {
@@ -68,27 +68,27 @@ int
 ftt_set_hwdens(ftt_descriptor d, int hwdens) {
    struct mtop buf;
    static int recursing = 0;
-   int res;
+   int res=0;
    
    if ( !recursing ) {
        recursing = 1;
-       if (ftt_open_dev(d)) {
-            recursing = 0;
+       res = ftt_open_dev(d);
+       recursing = 0;
+       if (res > 0) {
 
 	    buf.mt_op = MTSETDENSITY;
 	    buf.mt_count = hwdens;
 	    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-#ifdef 1
+#if 1
 	    res = ftt_translate_error(d,FTT_OPN_STATUS,
 				    "an MTIOCTOP/MTSETDENSITY ioctl()", res,
 				"an ftt_open_dev",1);
-	    return res;
 #else
-	    return 0;
+	    res = 0;
 #endif
        }
    }
-   return -1;
+   return res;
 }
 
 int
@@ -105,18 +105,27 @@ ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 	*/
 	return 0;
     }
-    DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
+    DEBUG1(stderr,"entering ftt_set_blocksize %d\n", blocksize);
     recursing = 1;
-    if (0 > (res = ftt_open_dev(d))) { 
+    res = ftt_open_dev(d);
+    recursing = 0;
+    if (0 > res) { 
 	return res;
     }
-    recursing = 0;
 
     buf.mt_op = MTSETBLK;
     buf.mt_count = blocksize;
     res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
 
-#if 1
+#if 0
+/*  Note: currently (7-8-99) ftt_open_dev (which get called before any
+    operation) will always call this ftt_set_blocksize function. If there
+    is no tape in the driver (a DLT7000, for example), the ioctl can
+    return a 'No medium found' error which will cause the ftt_open_dev to
+    fail.  There needs to be a way to disable the setting of blocksize;
+    ftt_open_dev should succeed so the ftt_status, for example, can be
+    invoked. BUT, currently, ftt_status checks/tries-to-set the blocksize
+    also. */
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCTOP/MTSETBLK ioctl()", res,
 				"an ftt_open_dev",1);
@@ -146,7 +155,7 @@ ftt_get_hwdens(ftt_descriptor d, char *devname) {
     if (res < 0) return res;
 
     res = ioctl(d->file_descriptor, MTIOCGET, &buf);
-#ifdef 1
+#if 1
     res = ftt_translate_error(d,FTT_OPN_STATUS,
 				"an MTIOCGET ioctl()", res,
 				"an ftt_open_dev",1);
