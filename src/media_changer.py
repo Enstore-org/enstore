@@ -65,11 +65,13 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
+        Trace.trace(10, '>mount')
         ticket["function"] = "mount"
         return self.DoWork( self.load, ticket)
 
     # wrapper method for client - server communication
     def unloadvol(self, ticket):
+        Trace.trace(10, '>dismount')
         ticket["function"] = "dismount"
         return self.DoWork( self.unload, ticket)
 
@@ -102,7 +104,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	    pass
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
+    def prepare(seelf):
+        pass
+
     def DoWork(self, function, ticket):
+
+        Trace.trace(10, '>dowork')
         self.logc.send(log_client.INFO, 2,"REQUESTED "+ticket['function']+" "  +\
                                           ticket['vol_ticket']['external_label']+" "  +\
                                           ticket['drive_id']+" "  +\
@@ -122,13 +129,23 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             pipe = os.pipe()
             # if in child process
             if not os.fork() :
+                Trace.trace(10, '>forked')
                 os.close(pipe[0])
-                # do the work
+                # do the work, if this is a mount, dismount first
+                if ticket['function'] == "mount":
+                    Trace.trace(10, '>dismount for mount')
+		    sts=self.prepare(
+                        ticket['vol_ticket']['external_label'],
+                        ticket['drive_id'],
+                        ticket['vol_ticket']['media_type'])
+
+                Trace.trace(10, '>>> '+ticket['function'])
                 sts = function(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
                 # send status back to MC parent via pipe to dispatching_worker
+                Trace.trace(10, '<<< sts'+repr(sts))
                 ticket["work"]="WorkDone"
                 ticket["status"]=sts
                 os.write(pipe[1], repr(('0','0',ticket) ))
@@ -141,6 +158,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 os.close(pipe[1])
                 # add entry to outstanding work 
                 self.work_list.append(ticket)
+                Trace.trace(10, '<<< Parent')
     
 
     def WorkDone(self, ticket):
@@ -156,6 +174,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                                           repr(ticket['status']) )
         # report back ito original client - probably a mover
         self.reply_with_address(ticket)
+        Trace.trace(10, '<<< WorkDone')
 
 # EMASS robot loader server
 class EMASS_MediaLoader(MediaLoaderMethods) :
@@ -165,7 +184,8 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
         import EMASS
         self.load=EMASS.mount
-        self.unload=EMASS.dismount
+        self.prepare=EMASS.dismount
+
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods) :
@@ -176,6 +196,7 @@ class STK_MediaLoader(MediaLoaderMethods) :
         import STK
         self.load=STK.mount
         self.unload=STK.dismount
+        self.prepare=STK.dismount
 
 # Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods) :
