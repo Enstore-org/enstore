@@ -1,16 +1,13 @@
 
 
 """
-There are 2 problems with this routine.
-1. Not all reply_to_callers go into same dict (mover, for example is different)
-2. The 'I already answered that' in the udp causes problems.
+There is 1 problems with this routine.
+1. The 'I already answered that' in the udp causes problems.
 """
 
 from SocketServer import *
 
 dict = {}
-
-jdebug=0
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
@@ -34,7 +31,6 @@ class DispatchingWorker:
             # UDPClient resends messages if it doesn't get a response from us
             # see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            if jdebug : print "idn=",idn," number=",number, "ticket=",ticket
             exec ("list = " + repr(dict[idn]))
             if list[0] == number :
                 self.reply_with_list(list)
@@ -76,6 +72,6 @@ class DispatchingWorker:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list) :
-        #dict[self.current_id] = list                                                  UNCOMMENT ME AND ERRORS HAPPEN
-        if jdebug: print "RL", self.current_id, list,"\n",dict
+        dict[self.current_id] = list
         self.socket.sendto(`list`, self.reply_address)
+
