@@ -10,6 +10,9 @@ Revision history:-
 Include files:-
 ===============
 */
+
+/* $Id$ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +34,7 @@ int getopt();
    exit(1);                                     \
    }
  
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
  
 int 		opt;			/* command line option */
