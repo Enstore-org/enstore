@@ -1352,9 +1352,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      ticket, e.max_retry)
-        if result_dict['status'] == e_errors.RETRY:
+        if result_dict['status'][0] == e_errors.RETRY:
             continue
-        elif result_dict['status'] in e_errors.non_retriable_errors:
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return ticket
 
         #This should be redundant error check.
@@ -1378,9 +1378,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             status_ticket = (e_errors.IOERROR, detail)
             result_dict = handle_retries([work_ticket], work_ticket,
                                          status_ticket, e.max_retry)
-            if result_dict['status'] == e_errors.RETRY:
+            if result_dict['status'][0] == e_errors.RETRY:
                 continue
-            elif result_dict['status'] in e_errors.non_retriable_errors:
+            elif result_dict['status'][0] in e_errors.non_retriable_errors:
                 return combine_dict(result_dict, work_ticket)
 
         if e.verbose > 1:
@@ -1415,9 +1415,9 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             
                 result_dict = handle_retries([work_ticket], work_ticket,
                                              status_ticket, e.max_retry)
-                if result_dict['status'] == e_errors.RETRY:
+                if result_dict['status'][0] == e_errors.RETRY:
                     continue
-                elif result_dict['status'] in e_errors.non_retriable_errors:
+                elif result_dict['status'][0] in e_errors.non_retriable_errors:
                     return combine_dict(result_dict, work_ticket)
 
         tstring = '%s_elapsed_time' % work_ticket['unique_id']
@@ -1435,16 +1435,19 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             control_socket.close()
             data_path_socket.close()
             in_file.close()
+            #done_ticket['fc'] = work_ticket['fc']
+            #done_ticket['status'] = (e_errors.WRITE_ERROR,
+            #                         "selective CRC check error")
         except (socket.error, OSError):
-            print "Error closeing something"
+            #print "Error closeing something"
             pass
 
         #Verify that everything is ok.
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e.max_retry)
-        if result_dict['status'] == e_errors.RETRY:
+        if result_dict['status'][0] == e_errors.RETRY:
             continue
-        elif result_dict['status'] in e_errors.non_retriable_errors:
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
 
         if e.verbose > 1:
@@ -1459,16 +1462,29 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         # contains new ['fc'] fields.
         done_ticket = combine_dict(done_ticket, work_ticket)
 
-        delete_at_exit.unregister(done_ticket['outfile']) #localname
-
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
         #These four functions write errors/warnings to the log file and put an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-        set_outfile_permissions(done_ticket) #Writes errors to log file.
-        set_pnfs_settings(done_ticket, client, e.verbose) #Tell pnfs file stats
         verify_file_size(done_ticket) #make sure file size is same.
+
+        #Verify that the file transfered in tacted.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, e.max_retry)
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            return combine_dict(result_dict, work_ticket)
+        
+        set_outfile_permissions(done_ticket) #Writes errors to log file.
+        ###What kind of check should be done here?
+
+        set_pnfs_settings(done_ticket, client, e.verbose) #Tell pnfs file stats
+
+        #Remove the new file from the list of those to be deleted should
+        # encp stop suddenly.  (ie. crash or control-C).
+        delete_at_exit.unregister(done_ticket['outfile']) #localname
 
         if e.verbose > 1:
             print "File status after verification: %s   elapsed=%s" % \
@@ -1479,6 +1495,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
     #If we get out of the while loop, then return error.
     msg = "Failed to write file %s." % work_ticket['outfile']
     done_ticket = {'status':(e_errors.TOO_MANY_RETRIES, msg)}
+    return done_ticket
 
 ############################################################################
 
@@ -1973,9 +1990,9 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
                 if e.verbose > 2: print "RETRY COUNT:", request['retry']
 
         result_dict = handle_retries(requests, request, request, e.max_retry)
-        if result_dict['status'] == e_errors.RETRY:
+        if result_dict['status'][0]== e_errors.RETRY:
             continue
-        elif result_dict['status'] in e_errors.non_retriable_errors:
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
             continue
 
@@ -2074,7 +2091,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             result_dict = handle_retries(requests, requests[j],
                                         done_ticket, e.max_retry)
 
-            if result_dict['status'] in e_errors.non_retriable_errors:
+            if result_dict['status'][0] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
             
             try:
@@ -2122,9 +2139,9 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         #Verfy that the final responce from the mover is that everything is ok.
         result_dict = handle_retries(requests, requests[j],
                                      done_ticket, e.max_retry)
-        if result_dict['status'] == e_errors.RETRY:
+        if result_dict['status'][0] == e_errors.RETRY:
             continue
-        elif result_dict['status'] in e_errors.non_retriable_errors:
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
             continue
 
@@ -2138,14 +2155,29 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         #Combine the request and done_ticket into one ticket for simplicity.
         done_ticket = combine_dict(done_ticket, requests[j])
         
-        delete_at_exit.unregister(done_ticket['outfile']) #localname
-
-        #These four functions write errors/warnings to the log file and put an
+        #These functions write errors/warnings to the log file and put an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-        set_outfile_permissions(done_ticket) #Writes errors to log file.
         bytes = bytes + verify_file_size(done_ticket) #Verify size is the same.
-    
+
+        #Verfy that the file transfered in tacted.
+        result_dict = handle_retries(requests, requests[j],
+                                     done_ticket, e.max_retry)
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            files_left = result_dict['queue_size']
+            continue
+
+        #This function writes errors/warnings to the log file and puts an
+        # error status in the ticket.
+        set_outfile_permissions(done_ticket) #Writes errors to log file.
+        ###What kind of check should be done here?
+
+        #Remove the new file from the list of those to be deleted should
+        # encp stop suddenly.  (ie. crash or control-C).
+        delete_at_exit.unregister(done_ticket['outfile']) #localname
+
         # remove file requests if transfer completed succesfuly.
         del(requests[j])
         if files_left > 0:
@@ -2545,6 +2577,7 @@ def main():
         pass
 
     Trace.trace(10,"encp finished at %s"%(time.time(),))
+    quit(0) #Remove zero length file for transfers that failed.
 
 if __name__ == '__main__':
 
