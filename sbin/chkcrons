@@ -49,6 +49,7 @@ for i in *; do
      then 
 	lastweek=$last6months; 
      elif [ "$f" = "backupSystem2Tape" ];
+     then
         lastweek=$lastmonth;
      else
 	lastweek=$last1week; 
