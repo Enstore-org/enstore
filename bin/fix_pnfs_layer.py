@@ -78,12 +78,14 @@ def compare(bfinfo, l4):
         return 1
     return 0
 
-def compare_all(bfinfo, l4):
+def compare_all(bfinfo, file_family, l4):
     keys = l4.keys()
     #keys=['external_label','location_cookie','size'] 
     for key in keys:
         if key != 'file_family':
             if bfinfo[key] != l4[key]: break
+        else:
+            if file_family != l4[key]: break
     else:
         return 1
     return 0
@@ -194,9 +196,9 @@ if __name__ == "__main__":
             sys.exit(0)
     print "Layer 1 OK"        
     l4 = get_l4(file)
-    if not compare_all(bfinfo, l4):
+    ff = readtag(file,'file_family')
+    if not compare_all(bfinfo, ff, l4):
         # find what is a file family
-        ff = readtag(file,'file_family')
         print "l4 %s bfinfo %s"%(l4, bfinfo)
         print "file family",ff
         if interactive:
