@@ -308,6 +308,14 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def close( self ):
+	if self.mode == 'r':
+	    FTT.skip_fm( 1 )
+	    # this is making an assumption and should be changed to use
+	    # FTT.get_stats() (which is broken as of 2-25-99) and setting
+	    # the block_loc (in addition to the file location)
+	    pp,bb,ff = loc2int( self, self.cur_loc_cookie )
+	    self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
+	    pass
 	return FTT.close()
 
     def flush( self ):
