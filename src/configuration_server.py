@@ -319,7 +319,19 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
 	self.reply_to_caller(ret)
 	Trace.trace(6,"}get_movers"+repr(ret))
 
-
+    #get list of library managers
+    def get_library_managers(self, ticket):
+        Trace.trace(6,"{get_library_managers")
+        ret = {}
+        for key in self.configdict.keys():
+            index = string.find (key, ".library_manager")
+            if index != -1:
+                library_name = key[:index]
+                item = self.configdict[key]
+                ret[library_name] = {'address':(item.host,item.port)}
+        self.reply_to_caller(ret)
+        Trace.trace(6,"}get_library_managers"+repr(ret))
+                           
     def reply_configdict( self, ticket ):
         Trace.trace(6,"{reply_configdict "+repr(ticket))
         out_ticket = {"status" : (e_errors.OK, None), "list" : self.configdict }
