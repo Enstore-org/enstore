@@ -75,6 +75,12 @@ def find_ifconfig_command():
 
 
 def interface_name(ip):
+    if not ip:
+        return
+    if ip[0] not in string.digits:
+        ip = name_to_address(ip)
+    if not ip:
+        return
     if not ifinfo or not ifinfo.has_key(ip):
         find_ifconfig_command()
         if not ifconfig_command:
