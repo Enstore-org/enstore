@@ -19,7 +19,13 @@ import getpass
 #
 #	return error message or None
 #
-#	Most of the errors are handled by m2prob
+#	Most of the errors are handled by m2probe
+#
+#	example:
+#
+#	dump_code('/dev/rmt/tps3d0n', '/tmp', ['MartinD@Exabyte.COM'],
+#		['enstore_admin@fnal.gov'], 'This is mover XXX')
+#
 
 def dump_code(device, path=None, sendto=None, notify=None, comment=None):
 
