@@ -41,6 +41,7 @@ class MonitoredServer:
 	# set this to now because we will check this before any of the servers 
 	# heartbeats have been forwarded to us
 	self.last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
+	self.output_last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.restart_thread = None          # thread id if trying to restart server
 	self.config = config                # config file dictionary for this server
 	self.hung_interval = hung_interval  # wait this long if server appears hung
@@ -84,6 +85,7 @@ class MonitoredServer:
 
     def is_alive(self):
 	self.last_alive = time.time()
+	self.output_last_alive = self.last_alive
 	self.restart_failed = 0
 
     def cant_restart(self):
