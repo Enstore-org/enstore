@@ -2,6 +2,7 @@
 # system import
 import time
 import string
+import errno
 
 import rexec
 _rexec = rexec.RExec()
