@@ -75,7 +75,7 @@ DEFAULT_OVERRIDE_INTERVAL = 86400   # (1 day) how long something needs to be
 OVERRIDE_UPDATE_INTERVAL = 3600     # (1 hr) how often it checks the override file
 
 MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', enstore_constants.DEAD]
-VOLUME_STATES = ['full', 'readonly']
+VOLUME_STATES = ['full', 'readonly', 'migrated']
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
