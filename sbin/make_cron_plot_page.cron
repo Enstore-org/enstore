@@ -1,1 +1,0 @@
-0 3 * * * $ENSTORE_SBIN/ecron -p make_cron_plot_page make_cron_plot_page  > /dev/null 2> /dev/null
