@@ -243,11 +243,12 @@ def update_cached_routes():
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
+    ip = socket.gethostbyname(dest)
     route_table = get_routes()
     for route in route_table:
         #Since netstat -rn gives the numerical address, coversions are not
         # necessary.
-        if route['Destination'] == dest:
+        if route['Destination'] == ip:
             return 1
 
     return 0
@@ -266,9 +267,8 @@ def runon_cpu(interface):
     if cpu is not None:
         err = runon.runon(cpu)
         if err:
-            Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu, err))
-        else:
-            Trace.log(e_errors.INFO, "runon(%s)" % (cpu,))
+            sys.stdout.write("runon(%s): failed, err=%s" % (cpu,err))
+            #Trace.log(e_errors.ERROR, "runon(%s): failed, err=%s" % (cpu,err))
 
 ##############################################################################
 # The following two functions manipulate the routing table.
