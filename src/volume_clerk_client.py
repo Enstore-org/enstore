@@ -337,6 +337,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
         x = self.send(ticket)
         return x
 
+    # this many bytes left - read the database
+    def get_remaining_bytes(self, external_label):
+        ticket= { 'work'            : 'get_remaining_bytes',
+                  'external_label'  : external_label }
+        x = self.send(ticket)
+        return x
+
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
                             wr_err,rd_err,wr_access,rd_access, bfid):
