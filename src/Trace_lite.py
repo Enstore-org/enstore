@@ -75,7 +75,10 @@ set_alarm_func( default_alarm_func )
 
 
 pid = os.getpid()
-usr = pwd.getpwuid(os.getuid())[0]
+try:
+    usr = pwd.getpwuid(os.getuid())[0]
+except:
+    usr = "unknown"
 
 def default_log_func( time, pid, name, args ):
     severity = args[0]

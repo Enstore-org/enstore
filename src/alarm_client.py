@@ -39,7 +39,10 @@ class AlarmClient(generic_client.GenericClient):
         # get another alarm client
         self.is_alarm = 1
         generic_client.GenericClient.__init__(self, csc, MY_NAME)
-        self.uid = pwd.getpwuid(os.getuid())[0]
+        try:
+            self.uid = pwd.getpwuid(os.getuid())[0]
+        except:
+            self.uid = "unknown"
         self.u = udp_client.UDPClient()
         ticket = self.csc.get(MY_SERVER)
         self.server_address = (ticket['hostip'], ticket['port'])

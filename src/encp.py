@@ -1730,8 +1730,14 @@ def clients(config_host,config_port,verbose):
     uinfo = {}
     uinfo['uid'] = os.getuid()
     uinfo['gid'] = os.getgid()
-    uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
-    uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    try:
+        uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
+    except:
+        uinfo['gname'] = 'unknown'
+    try:
+        uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
+    except:
+        uinfo['uname'] = 'unknown'
     uinfo['machine'] = os.uname()
     uinfo['fullname'] = "" # will be filled in later for each transfer
 

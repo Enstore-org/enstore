@@ -62,7 +62,10 @@ def default_alarm_func( time, pid, name, args ):
 set_alarm_func( default_alarm_func )
 
 pid = os.getpid()
-usr = pwd.getpwuid(os.getuid())[0]
+try:
+    usr = pwd.getpwuid(os.getuid())[0]
+except:
+    usr = "unknown"
 def default_log_func( time, pid, name, args ):
     severity = args[0]
     msg = args[1]
@@ -74,3 +77,4 @@ set_log_func( default_log_func )
 
 
 # let user turn this on manully... sys.setprofile(Ptrace.profile)
+

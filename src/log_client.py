@@ -60,7 +60,10 @@ class LoggerClient(generic_client.GenericClient):
         self.is_logger = 1
         generic_client.GenericClient.__init__(self, csc, i_am_a)
         self.log_name = i_am_a
-        self.uname = pwd.getpwuid(os.getuid())[0]
+        try:
+            self.uname = pwd.getpwuid(os.getuid())[0]
+        except:
+            self.uname = 'unknown'
         self.log_priority = 7
 	lticket = self.csc.get( servername )
 	self.logger_address = (lticket['hostip'], lticket['port'])
