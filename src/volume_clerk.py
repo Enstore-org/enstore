@@ -1,6 +1,7 @@
 import sys
 import time
 import copy
+import callback
 from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
@@ -579,15 +580,43 @@ class VolumeClerkMethods(DispatchingWorker) :
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket) :
      try:
-         self.reply_to_caller({"status" : "ok",\
-                               "vols"  :repr(dict.keys()) })
-
+         self.reply_to_caller({"status" : "ok"}
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
          return
+
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            return
+        self.get_user_sockets(ticket)
+        rticket = {}
+        rticket["status"] = "ok"
+        rticket["vols"] = repr(dict.keys())
+        callback.write_tcp_socket(self.data_socket,rticket,
+                                  "volume_clerk get_vols, datasocket")
+        self.data_socket.close()
+        callback.write_tcp_socket(self.control_socket,ticket,
+                                  "volume_clerk get_vols, controlsocket")
+        self.control_socket.close()
+        sys.exit(0)
+
+
+    # get a port for the data transfer
+    # tell the user I'm your library manager and here's your ticket
+    def get_user_sockets(self, ticket) :
+        volume_clerk_host, volume_clerk_port, listen_socket =\
+                           callback.get_callback()
+        listen_socket.listen(4)
+        ticket["volume_clerk_callback_host"] = volume_clerk_host
+        ticket["volume_clerk_callback_port"] = volume_clerk_port
+        self.control_socket = callback.user_callback_socket(ticket)
+        data_socket, address = listen_socket.accept()
+        self.data_socket = data_socket
+        listen_socket.close()
 
 
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
