@@ -276,8 +276,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # create the suspect volume row - it is a separate table
     def suspect_volume_row(self, lm):
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect Volumes", 
-						color=BRICKRED)))
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Suspect%sVolumes"%(NBSP,), 
+						color=BRICKRED, html_escape='OFF')))
 	tr.append(HTMLgen.TD(string.join(self.data_dict[lm][enstore_status.SUSPECT_VOLS],
 					 ", "), align="LEFT", colspan=4))
 	return tr
@@ -303,7 +303,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
 				  align="LEFT", bgcolor=YELLOW, width="100%")
 	for qelem in self.data_dict[lm][queue]:
-	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(intro, color=BRICKRED)))
+	    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(intro, color=BRICKRED, html_escape='OFF')))
 	    if qelem.has_key(enstore_status.MOVER):
 		tr.append(HTMLgen.TD(qelem[enstore_status.MOVER]))
 	    else:
@@ -314,22 +314,23 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(qelem[enstore_status.PORT]))
 	    table.append(tr)
 	    if qelem.has_key(enstore_status.DEVICE):
-		tr = HTMLgen.TR(self.spacer_data("Device Label"))
+		tr = HTMLgen.TR(self.spacer_data("Device%sLabel"%(NBSP,)))
 		tr.append(HTMLgen.TD(qelem[enstore_status.DEVICE]))
 	    else:
 		tr = HTMLgen.TR(self.empty_data())
 		tr.append(self.empty_data())
-	    tr.append(HTMLgen.TD(HTMLgen.Font("File Family", color=BRICKRED)))
+	    tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily"%(NBSP,), color=BRICKRED,
+					      html_escape='OFF')))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.FILE_FAMILY]))
 	    if qelem.has_key(enstore_status.FILE_FAMILY_WIDTH):
-		tr.append(HTMLgen.TD(HTMLgen.Font("File Family Width",
-						  color=BRICKRED)))
+		tr.append(HTMLgen.TD(HTMLgen.Font("File%sFamily%sWidth"%(NBSP, NBSP),
+						  color=BRICKRED, html_escape='OFF')))
 		tr.append(HTMLgen.TD(qelem[enstore_status.FILE_FAMILY_WIDTH]))
 	    else:
 		tr.append(self.empty_data())
 		tr.append(self.empty_data())
 	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("Job Submitted"))
+	    tr = HTMLgen.TR(self.spacer_data("Job%sSubmitted"%(NBSP,)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.SUBMITTED]))
 	    if qelem.has_key(enstore_status.DEQUEUED):
 		tr.append(HTMLgen.TD(HTMLgen.Font("Dequeued", color=BRICKRED)))
@@ -338,8 +339,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		tr.append(self.empty_data())
 		tr.append(self.empty_data())
 	    if qelem.has_key(enstore_status.MODIFICATION):
-		tr.append(HTMLgen.TD(HTMLgen.Font("File Modified",
-						  color=BRICKRED)))
+		tr.append(HTMLgen.TD(HTMLgen.Font("File%sModified"%(NBSP,),
+						  color=BRICKRED, html_escape='OFF')))
 		tr.append(HTMLgen.TD(qelem[enstore_status.MODIFICATION]))
 	    else:
 		tr.append(self.empty_data())
@@ -362,9 +363,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(qelem[enstore_status.AGETIME]))
 	    table.append(tr)
 	    if qelem[enstore_status.WORK] == enstore_status.READ:
-		tr = HTMLgen.TR(self.spacer_data("Read from"))
+		tr = HTMLgen.TR(self.spacer_data("Read%sfrom"%(NBSP,)))
 	    else:
-		tr = HTMLgen.TR(self.spacer_data("Write to"))
+		tr = HTMLgen.TR(self.spacer_data("Write%sto"%(NBSP,)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.FILE], colspan=3))
 	    tr.append(HTMLgen.TD(HTMLgen.Font("Bytes", color=BRICKRED)))
 	    tr.append(HTMLgen.TD(qelem[enstore_status.BYTES]))
@@ -373,7 +374,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    tr.append(HTMLgen.TD(qelem[enstore_status.ID], colspan=5))
 	    table.append(tr)
 	    if qelem.has_key(enstore_status.REJECT_REASON):
-		tr = HTMLgen.TR(self.spacer_data("Reason for Pending"))
+		tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
 		tr.append(HTMLgen.TD(qelem[enstore_status.REJECT_REASON], colspan=5))
 		table.append(tr)
 	    table.append(self.empty_row(6))
@@ -388,7 +389,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	if self.data_dict[lm].has_key(enstore_status.WORK) and \
 	   not self.data_dict[lm][enstore_status.WORK] == \
 	       enstore_status.NO_WORK:
-	    row = self.lm_queue_rows(lm, enstore_status.WORK, "Work for")
+	    row = self.lm_queue_rows(lm, enstore_status.WORK, "Work%sfor"%(NBSP,))
 	else:
 	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_status.NO_WORK,
 						     color=BRICKRED), 
@@ -404,7 +405,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	   not self.data_dict[lm][enstore_status.PENDING] == \
 	       enstore_status.NO_PENDING:
 	    row = self.lm_queue_rows(lm, enstore_status.PENDING,
-				     "Pending Work")
+				     "Pending%sWork"%(NBSP,))
 	else:
 	    row = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(enstore_status.NO_PENDING,
 						     color=BRICKRED),
@@ -453,13 +454,14 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def add_bytes_eod_info(self, moverd, tr, mvkey):
 	if moverd.has_key(enstore_status.EOD_COOKIE):
 	    tr.append(HTMLgen.TD(moverd[mvkey]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("EOD Cookie", color=BRICKRED),
+	    tr.append(HTMLgen.TD(HTMLgen.Font("EOD%sCookie"%(NBSP,), color=BRICKRED,
+					      html_escape='OFF'),
 				 align="CENTER"))
 	    tr.append(HTMLgen.TD(moverd[enstore_status.EOD_COOKIE]))
 	elif moverd.has_key(enstore_status.LOCATION_COOKIE):
 	    tr.append(HTMLgen.TD(moverd[mvkey]))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Location Cookie", 
-					      color=BRICKRED),
+	    tr.append(HTMLgen.TD(HTMLgen.Font("Location%sCookie"%(NBSP,), 
+					      color=BRICKRED, html_escape='OFF'),
 				 align="CENTER"))
 	    tr.append(HTMLgen.TD(moverd[enstore_status.LOCATION_COOKIE]))
 	else:
@@ -498,39 +500,39 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	       (len(moverd[enstore_status.STATUS]) == 5 and \
 	       not (moverd[enstore_status.STATUS][4] == enstore_status.NO_INFO or
 		    moverd[enstore_status.STATUS][0] == 'timed out')):
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Completed Transfers",
-							color=BRICKRED)))
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Complete%sTransfers"%(NBSP,),
+							color=BRICKRED, html_escape='OFF')))
 		tr.append(HTMLgen.TD(moverd[enstore_status.COMPLETED], colspan=3, 
 				     align="LEFT"))
 		mv_table = HTMLgen.TableLite(tr, cellspacing=0, cellpadding=0,
 					     align="LEFT", bgcolor=YELLOW)
-		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current State",
-							color=BRICKRED)))
+		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sState"%(NBSP,),
+							color=BRICKRED, html_escape='OFF')))
 		tr.append(HTMLgen.TD(moverd[enstore_status.STATE], colspan=3, 
 				     align="LEFT"))
 		mv_table.append(tr)
 		mv_table.append(self.empty_row(4))
 		if moverd.has_key(enstore_status.LAST_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last Read (bytes)",
-							    color=BRICKRED),
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sRead%s(bytes)"%(NBSP, NBSP),
+							    color=BRICKRED, html_escape='OFF'),
 					       align="CENTER"))
 		    self.add_bytes_volume_info(moverd, tr, 
 					       enstore_status.LAST_READ)
 		    mv_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last Write (bytes)",
-						      color=BRICKRED),
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Last%sWrite%s(bytes)"%(NBSP, NBSP),
+						      color=BRICKRED, html_escape='OFF'),
 					       align="CENTER"))
 		    self.add_bytes_eod_info(moverd, tr, enstore_status.LAST_WRITE)
 		    mv_table.append(tr)
 		    self.add_files(moverd, mv_table)
 		elif moverd.has_key(enstore_status.CUR_READ):
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current Read (bytes)",
-							    color=BRICKRED),
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sRead%s(bytes)"%(NBSP, NBSP),
+							    color=BRICKRED, html_escape='OFF'),
 					       align="CENTER"))
 		    self.add_bytes_volume_info(moverd, tr, enstore_status.CUR_READ)
 		    mv_table.append(tr)
-		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current Write (bytes)",
-						      color=BRICKRED),
+		    tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Current%sWrite%s(bytes)"%(NBSP, NBSP),
+						      color=BRICKRED, html_escape='OFF'),
 					 align="CENTER"))
 		    self.add_bytes_eod_info(moverd, tr, enstore_status.CUR_WRITE)
 		    mv_table.append(tr)
