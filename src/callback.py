@@ -21,6 +21,9 @@ try:
 except ImportError:
     import socket
 
+
+HUNT_PORT_LOCK = "/tmp/enstore/hunt_port_lock"
+
 # see if we can bind to the selected tcp host/port
 def try_a_port(host, port) :
     Trace.trace(16,'{try_a_port host='+repr(host)+" port="+repr(port))
@@ -46,7 +49,8 @@ def get_callback_port(start,end):
     # waiters so that they will be services in the order of arrival.
     # Because we use file locks instead of semaphores, the system will
     # properly clean up, even on kill -9s.
-    lockf = open ("/var/lock/hsm/lockfile", "w")
+    #lockf = open ("/var/lock/hsm/lockfile", "w")
+    lockf = open (HUNT_PORT_LOCK, "w")
     Trace.trace(20,"get_callback_port - trying to get lock")
     lockfile.writelock(lockf)  #holding write lock = right to hunt for a port.
     Trace.trace(20,"get_callback_port - got the lock - hunting for port")

@@ -16,3 +16,5 @@ QUALIFIERS = ""
         envSet(TRACE_KEY, "/tmp/enstore/$meme/trace.$tracehost")
         envUnset(tracehost)
         envUnset(meme)
+	execute("touch /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
+	execute("chmod go+rw /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
