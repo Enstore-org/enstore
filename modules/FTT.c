@@ -242,11 +242,17 @@ FTT_read(  PyObject *self
 	 , PyObject *args )
 {
 	int		no_bytes;
+	PyObject        *no_bytes_obj;
 	PyObject	*ret_tp;
 	int		sts;	/* general status */
 
-    sts = PyArg_ParseTuple( args, "i", &no_bytes );
+    sts = PyArg_ParseTuple( args, "O", &no_bytes_obj );
+
     if (!sts) return (NULL);
+
+    if (PyLong_Check(no_bytes_obj)) no_bytes = PyLong_AsUnsignedLong(no_bytes_obj);
+    else if (PyInt_Check(no_bytes_obj)) no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
+    else return(raise_exception("FTT_read - invalid no_bytes param"));
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_read device not opened"));
 
@@ -437,7 +443,7 @@ send_writer(  enum e_mtype	mtype
 
 static int
 do_read(  int 		rd_fd
-	, int 		no_bytes
+	, unsigned int	no_bytes
 	, int 		blk_size /* is g_blocksize */
 	, int           crc_flag
 	, unsigned int	crc_i
@@ -454,7 +460,7 @@ do_read(  int 		rd_fd
     sops_rd_wr2rd.sem_flg = 0;  /* default - block behavior */
 
     /* (nice the reading to make sure writing has higher priority???) */
-    nice( 10 );
+    nice( 10 ); /*XXX is this really a good idea */
 
     /* first copy the g_buf_bytes into the shm */
     {   int ii=g_buf_bytes;
