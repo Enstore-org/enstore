@@ -91,7 +91,7 @@ def empty_socket( sock ):
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock==errno.ECONNREFUSED:
                     Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
-                    self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
+                    generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR empty_socket")
                     reply , server = sock.recvfrom(TRANSFER_MAX)
                     badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
                 if badsock != 0:
@@ -121,7 +121,7 @@ def send_socket( sock, message, address ):
             badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock==errno.ECONNREFUSED:
                 Trace.trace(0,"ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
-		self.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
+		generic_cs.enprint("ECONNREFUSED: Redoing sendto. POSSIBLE ERROR send_socket")
                 sock.sendto( message, address )
                 badsock = sock.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
             if badsock != 0:
@@ -175,7 +175,7 @@ def wait_rsp( sock, address, rcv_timeout ):
 	badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
         if badsock==errno.ECONNREFUSED:
             Trace.trace(0,"ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
-            self.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
+            generic_cs.enprint("ECONNREFUSED: Redoing recvfrom. POSSIBLE ERROR wait_rsp")
             reply , server = sock.recvfrom( TRANSFER_MAX )
             badsock = sock.getsockopt( socket.SOL_SOCKET, socket.SO_ERROR )
 	if badsock != 0:
