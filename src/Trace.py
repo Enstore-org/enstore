@@ -209,9 +209,9 @@ def set_log_func(func):
 # defaults (templates) -- called from trace
 
 def default_alarm_func(time, pid, name, root_error, severity, args):
-    lvl = args[0]
-    msg = args[1]
     print "default alarm_func", args
+    #lvl = args[0]
+    #msg = args[1]
     return None
 set_alarm_func(default_alarm_func)
 
