@@ -232,7 +232,10 @@ def close_descriptors(*fds):
     # contain itegers or class instances with a "close" function attribute.
     for fd in fds:
         if hasattr(fd, "close"):
-            apply(getattr(fd, "close"))
+	    try:
+		apply(getattr(fd, "close"))
+	    except (OSError, IOError):
+		pass
         else:
             try:
                 os.close(fd)
@@ -1399,6 +1402,14 @@ def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
         else:
             EXfer_ticket = {'status':(e_errors.IOERROR, str(msg))}
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
+
+    try:
+	#Cleanup the tcp static routes.
+	# (udp is handled in the udp_client module)
+	host_config.unset_route(request['mover']['callback_addr'][0])
+    except (OSError, IOError, KeyError), msg:
+	Trace.log(e_errors.WARNING,
+		  "Unable to cleanup routing table: %s" % (str(msg),))
 
     # File has been read - wait for final dialog with mover.
     Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"

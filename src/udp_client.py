@@ -176,7 +176,7 @@ class UDPClient:
         tsd.send_done[dst] = 1
 
         #set up the static route before sending.
-	# outgoing interface_ip is tsg.host and destination is address[0].
+	# outgoing interface_ip is tsg.host and destination is dst[0].
 	host_config.setup_interface(dst[0], tsd.host)
 
         n_sent = 0
@@ -193,6 +193,9 @@ class UDPClient:
                     rcvd_txn_id, out, t = self._eval_reply(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
+			#Before returning the error, we should clean up the
+			# changes to the routing table.
+			host_config.unset_route(dst[0])
                         return out
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
@@ -208,9 +211,15 @@ class UDPClient:
                     Trace.log(e_errors.INFO, message)
                     rcvd_txn_id=None
             else: # we got a good reply
+		#Before returning the error, we should clean up the
+		# changes to the routing table.
+		host_config.unset_route(dst[0])
                 return out
-
-        ##if we got here, it's because we didn't receive a response to the message we sent.
+	    
+        #If we got here, it's because we didn't receive a response to the
+	# message we sent.  Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(dst[0])
         raise errno.errorcode[errno.ETIMEDOUT]
         
     # send message without waiting for reply and resend
@@ -222,7 +231,13 @@ class UDPClient:
 	# outgoing interface_ip is tsg.host and destination is address[0].
 	host_config.setup_interface(address[0], tsd.host)
 
-        return tsd.socket.sendto( message, address )
+        reply = tsd.socket.sendto( message, address )
+	
+	#Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(address[0])
+
+	return reply
 
     # send message, return an ID that can be used in the recv_deferred function
     def send_deferred(self, data, address) :
@@ -235,6 +250,11 @@ class UDPClient:
 	host_config.setup_interface(address[0], tsd.host)
 
         bytes_sent = tsd.socket.sendto( message, address )
+	
+	#Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(address[0])
+
         if bytes_sent < 0:
             return -1
         return txn_id

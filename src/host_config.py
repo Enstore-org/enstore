@@ -173,12 +173,13 @@ def set_route(dest, interface_ip):
 	return
 
     for interface in get_interfaces():
-	if dest == config['interface'][interface]['ip']:
+    	if interface_ip == config['interface'][interface]['ip']:
+    	    gateway = config['interface'][interface]['gw']
 	    break
     else:
 	return
 
-    err=enroute.routeAdd(dest, interface_ip)
+    err=enroute.routeAdd(dest, gateway)
     if err == 5: #Return code if route selection is not supported.
         pass
     elif err:
@@ -189,12 +190,6 @@ def unset_route(dest):
     config = get_config()
     if not config:
         return
-
-    for interface in get_interfaces():
-	if dest == config['interface'][interface]['ip']:
-	    break
-    else:
-	return
 
     err=enroute.routeDel(dest)
     if err == 5: #Return code if route selection is not supported.
