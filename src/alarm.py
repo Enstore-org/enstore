@@ -20,6 +20,7 @@ class GenericAlarm:
 
     def __init__(self):
         self.timedate = time.time()
+        self.id = self.timedate
         self.host = ""
         self.pid = -1
         self.uid = ""
@@ -39,15 +40,6 @@ class GenericAlarm:
     # output the alarm
     def __repr__(self):
         # first format the dictionary containing the extra stuff
-        rest = ""
-        if not self.alarm_info == {}:
-            keys = self.alarm_info.keys()
-            keys.sort()
-            for key in keys:
-                if key == TEXTKEY:
-                    rest = rest+" "+self.alarm_info[key]
-                else:
-                    rest = rest+" "+key+" = "+repr(self.alarm_info[key])
 
         # do not let the severity (which is actually a number), point outside
         # of the dictionary
@@ -62,11 +54,10 @@ class GenericAlarm:
             host = string.split(self.host,".")
             return string.join((host[0], "Enstore", repr(self.severity), \
                                 self.short_text(), "\n"))
-        else:    
-            return string.join((repr(self.timedate), \
-                                self.host, repr(self.pid), self.uid, \
-                                e_errors.sevdict[self.severity], self.source, \
-                                self.root_error, rest, "\n"))
+        else:
+            return repr([self.timedate, self.host, self.pid, self.uid,
+                         e_errors.sevdict[self.severity], self.source,
+                         self.root_error, self.alarm_info])
 
     # format the alarm as a simple, short text string to use to signal
     # that there is something wrong that needs further looking in to
@@ -83,6 +74,10 @@ class GenericAlarm:
         else:
             str = str+self.root_error
         return str
+
+    # return the alarms unique id
+    def get_id(self):
+        return self.id
 
 class Alarm(GenericAlarm):
 
@@ -110,25 +105,7 @@ class AsciiAlarm(GenericAlarm):
 
     def __init__(self, text):
         GenericAlarm.__init__(self)
-        # this alarm is formatted as a simple ascii text line.  we must
-        # parse this line to pull out the alarm info.  the line should be
-        # formatted as follows -
-        #     date_time node pid uid severity server text
-        ntext = string.strip(text)
-        fields = string.split(ntext, " ", 7)
-        self.timedate = string.atof(fields[0])
-        self.host = fields[1]
-        self.pid = string.atoi(fields[2])
-        self.uid = fields[3]
-        keys = e_errors.sevdict.keys()
-        for key in keys:
-            if e_errors.sevdict[key] == fields[4]:
-                self.severity = key
-                break
-        self.source = fields[5]
-        self.root_error = fields[6]
 
-        if len(fields) == 8:
-            self.alarm_info[TEXTKEY] = fields[7]
-        else:
-            self.alarm_info = {}
+        [self.timedate, self.host, self.pid, self.uid,
+         e_errors.sevdict[self.severity], self.source, self.root_error,
+         self.alarm_info] = eval(text)
