@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -u  # force better programming and ability to use check for not set
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -17,45 +17,34 @@ CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -clpogtx --blocking
 
 # $Id$
 
-#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`gang`
-if [ "$gang" = rip ]; then  basenode=rip2; else basenode=${gang}srv1; fi
+node=`hostname -s`
+gang=`$ENSTORE_DIR/sbin/gang`
+if [ "$gang" = rip ]; then basenode=rip2; else basenode=${gang}srv1; fi
 
-if $FIX; then
-    $FIXIT    d0ensrv1:/usr/local/etc/farmlets/d0en*	/usr/local/etc/farmlets/
-    $FIXIT   stkensrv1:/usr/local/etc/farmlets/stken*	/usr/local/etc/farmlets/
-    $FIXIT   cdfensrv1:/usr/local/etc/farmlets/cdfen*	/usr/local/etc/farmlets/
-    $FIXIT ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/
-fi
-
-NSAM=9999
-NSTK=9999
-NCDF=9999
-NENS=9999
-
-SAM="`$CHECK    d0ensrv1:/usr/local/etc/farmlets/d0en*    /usr/local/etc/farmlets/ 2>/dev/null`"
-STK="`$CHECK   stkensrv1:/usr/local/etc/farmlets/stken*   /usr/local/etc/farmlets/ 2>/dev/null`"
-CDF="`$CHECK   cdfensrv1:/usr/local/etc/farmlets/cdfen*   /usr/local/etc/farmlets/ 2>/dev/null`"
-ENS="`$CHECK ${basenode}:/usr/local/etc/farmlets/enstore* /usr/local/etc/farmlets/ 2>/dev/null`"
-
-NSAM=`echo "$SAM"|awk '/Number of files transferred:/ {print $NF}'`
-NSTK=`echo "$STK"|awk '/Number of files transferred:/ {print $NF}'`
-NCDF=`echo "$CDF"|awk '/Number of files transferred:/ {print $NF}'`
-NENS=`echo "$ENS"|awk '/Number of files transferred:/ {print $NF}'`
-
-#if [ -z "$NSAM" -o -z "$NSTK" -o -z "$NCDF" -o -z "$NENS" ]; then
-#    enstore alarm --raise --severity "A" --root-error "farmlet kerberos trouble"
-#    /usr/bin/Mail -s "$node farmlet kerberos trouble" bakken berman < /dev/null
-#fi
-
-if [ "$NSAM" != 0 ]; then echo "$SAM"; fi
-if [ "$NSTK" != 0 ]; then echo "$STK"; fi
-if [ "$NCDF" != 0 ]; then echo "$CDF"; fi
-if [ "$NENS" != 0 ]; then echo "$ENS"; fi
+for farm in d0en stken cdfen enstore
+do
+  farmsrv=${farm}srv1
+  case $farm in
+       d0en) tag=SAM ;;
+      stken) tag=STK ;;
+      cdfen) tag=CDF ;;
+    enstore) tag=ENS; farmsrv=$basenode ;;
+  esac
+  if [ $node != $farmsrv ]
+  then
+    $FIX && $FIXIT $farmsrv:/usr/local/etc/farmlets/${farm}* /usr/local/etc/farmlets/
+    ckOut="`$CHECK $farmsrv:/usr/local/etc/farmlets/${farm}* /usr/local/etc/farmlets/ 2>/dev/null`"
+    nft=`echo "$ckOut" | awk '/Number of files transferred:/ {print $NF}'`
+    [ -z "$nft" ] || [ "$nft" -ne 0 ] && echo "$ckOut"
+  fi
+  # for now, ignore unresponsive farm server
+  # later, don't ignore consecutive failures
+  eval N${tag}='${nft:-0}'
+done
 
 rc=0
 
-if [ "$NSAM" != 0 -o  "$NSTK" != 0 -o "$NCDF" != 0 -o "$NENS" != 0 ]; then
+if [ "$NSAM" -ne 0 -o "$NSTK" -ne 0 -o "$NCDF" -ne 0 -o "$NENS" -ne 0 ]; then
     msg="BAD CONFIGURATION: Farmlet mismatch NSAM=$NSAM NSTK=$NSTK NCDF=$NCDF NENS=$NENS"
     echo $msg
     if [ $ALARM -eq 1 ]; then
@@ -71,7 +60,7 @@ fi
 ## now check the cron.x jobs and make sure they match, too
 #for f in /etc/cron.*; do
 #  CHK="`$CHECK ${basenode}:$f/ $f/ 2>/dev/null`"
-#  NCHK=`echo "$CHK"|awk '/Number of files transferred:/ {print $NF}'`
+#  NCHK=`echo "$CHK" | awk '/Number of files transferred:/ {print $NF}'`
 #  if [ $NCHK != 0 ]; then echo $f "$CHK"
 #    msg="BAD CONFIGURATION: Directory $f NCHK=$NCHK"
 #    echo $msg
