@@ -127,7 +127,7 @@ if __name__ == "__main__":		# main
 
 	import interface
 	import configuration_client
-	import socket
+	import hostaddr
 
 	intf = interface.Interface()
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":		# main
 		(intf.config_host,
 		intf.config_port)).get('backup')
 
-	local_host = socket.gethostname()
+	local_host = hostaddr.gethostinfo()[0]
 	try:
 		bckHost = backup_config['host']
 	except:

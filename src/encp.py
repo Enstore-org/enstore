@@ -30,7 +30,7 @@ import EXfer
 import interface
 import e_errors
 import access
-
+import hostaddr
 import library_manager_client
 
 data_access_layer_format = "INFILE=%s\n"+\
@@ -95,7 +95,7 @@ def write_to_hsm(input, output, output_file_family='',
     encp["agetime"] = agetime
 
     pid = os.getpid()
-    thishost = socket.gethostname()
+    thishost = hostaddr.gethostinfo()[0]
     # create the time subticket
     times = {}
     times["t0"] = tinfo["abs_start"]
@@ -1089,7 +1089,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
     times = {}
     times["t0"] = tinfo["abs_start"]
     pid = os.getpid()
-    thishost = socket.gethostname()
+    thishost = hostaddr.gethostinfo()[0]
 
     for i in range(0,ninput):
         if requests[i]['volume']==vol:
@@ -1783,7 +1783,7 @@ def pnfs_information(filelist,nfiles):
 # generate the full path name to the file
 
 def fullpath(filename):
-    machine = socket.gethostbyaddr(socket.gethostname())[0]
+    machine = hostaddr.gethostinfo()[0]
     dirname, file = os.path.split(filename)
 
     # if the directory is empty - get the users current working directory

@@ -16,6 +16,7 @@ import interface
 import Trace
 import checksum
 import cleanUDP
+import hostaddr
 
 TRANSFER_MAX=16384
 
@@ -37,7 +38,7 @@ def try_a_port(host, port) :
 
 # try to get a port from a range of possibilities
 def get_client() :
-    (hostname,ha,hi) = socket.gethostbyaddr(socket.gethostname())
+    (hostname,ha,hi) = hostaddr.gethostinfo()
     host = hi[0]
     port1 = 7600
     port2 = 8000

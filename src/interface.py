@@ -6,17 +6,7 @@ import sys
 # enstore imports
 import Trace
 import e_errors
-
-# Import SOCKS module if it exists, else standard socket module socket
-# This is a python module that works just like the socket module, but uses the
-# SOCKS protocol to make connections through a firewall machine.
-# See http://www.w3.org/People/Connolly/support/socksForPython.html or
-# goto www.python.org and search for "import SOCKS"
-try:
-    import SOCKS
-    socket = SOCKS
-except ImportError:
-    import socket
+import hostaddr
 
 def getenv(var, default=None):
     val = os.environ.get(var)
@@ -94,7 +84,7 @@ def dash_to_underscore(s):
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
         if host == 'localhost' :
-            self.check_host(socket.gethostname())
+            self.check_host(hostaddr.gethostinfo()[0])
         else:            
             self.check_host(host)
 
@@ -104,8 +94,7 @@ class Interface:
         self.parse_options()
 
     def check_host(self, host):
-        (self.config_hostname, self.ca, self.ci) = socket.gethostbyaddr(host)
-        self.config_host = self.ci[0]
+        self.config_host = hostaddr.name_to_address(host)
 
     def charopts(self):
         if 0: print self # lint fix

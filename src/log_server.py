@@ -36,7 +36,7 @@ import string
 import dispatching_worker
 import generic_server
 import e_errors
-import socket
+import hostaddr
 import Trace
 
 """Logger Class. Instance of this class is a log server. Multiple instances
@@ -105,10 +105,7 @@ class Logger(  dispatching_worker.DispatchingWorker
     def log_message(self, ticket) :
         tm = time.localtime(time.time()) # get the local time
 	# take care of case where we can't figure out the host name
-	try:
-	    host = socket.gethostbyaddr(self.reply_address[0])[0]
-	except:
-	    host = str(sys.exc_info()[1])
+        host = hostaddr.address_to_name(self.reply_address[0])
         # format log message
         message = "%.2d:%.2d:%.2d %-8s %s\n" % \
                   (tm[3], tm[4], tm[5],
@@ -185,7 +182,6 @@ class LoggerInterface(generic_server.GenericServerInterface):
 
 
 if __name__ == "__main__" :
-    import socket
     Trace.init(string.upper(MY_NAME))
     Trace.trace(6,"log server called with args "+repr(sys.argv))
 

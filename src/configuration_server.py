@@ -5,8 +5,8 @@
 import sys
 import string
 import types
-import socket
 import os
+import traceback
 
 # enstore imports
 import dispatching_worker
@@ -14,7 +14,7 @@ import generic_server
 import interface
 import Trace
 import e_errors
-import traceback
+import hostaddr
 
 MY_NAME = "CONFIG_SERVER"
 
@@ -69,7 +69,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 		self.configdict[key]['status'] = (e_errors.OK, None)
 	    for insidekey in self.configdict[key].keys():
 		if insidekey == 'host':
-		    self.configdict[key]['hostip'] = socket.gethostbyname(self.configdict[key]['host'])
+		    self.configdict[key]['hostip'] = hostaddr.name_to_address(
+                        self.configdict[key]['host'])
 		    if not self.configdict[key].has_key('port'):
 			self.configdict[key]['port'] = -1
 		    # check if server is already configured
