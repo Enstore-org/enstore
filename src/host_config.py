@@ -254,7 +254,9 @@ def is_route_in_table(dest):
         if route['Destination'] == ip:
             return 1
         #Test to see if the subnet route already exists.
-        if route['Destination'].split(".")[:-1] == ip.split(".")[:-1]:
+        rt = string.join(route['Destination'].split(".")[:3], ".")
+        sn = string.join(ip.split(".")[:-1], ".")
+        if rt == route['Destination'] and rt == sn:
             return 1
     return 0
 
