@@ -70,7 +70,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # check if library key is valid library manager name
         llm = self.csc.get_library_managers(ticket)
-        if not(llm.has_key(ticket['library'])):
+
+        # "shelf" library is a special case
+        if ticket['library']!='shelf' and not llm.has_key(ticket['library']):
             Trace.log(e_errors.INFO,
                       " vc.addvol: Library Manager does not exist: %s " \
                       % ticket['library'])
