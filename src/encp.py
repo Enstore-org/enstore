@@ -300,38 +300,31 @@ def elapsed_string():
 
 ############################################################################
 
-def is_brand(brand):
-    if type(brand) == types.StringType:
-        if len(brand) == 4 and brand.isalnum():
-            return 1
-
-    return 0
-
 def is_bfid(bfid):
 
     if type(bfid) == types.StringType:
+
+        #Older files that do not have bfid brands should only be digits.
+        result = re.search("^[0-9]{13,15}$", bfid)
+        if result != None:
+            return 1
+        
         #The only part of the bfid that is of constant form is that the last
         # n characters are all digits.  There are no restrictions on what
         # is in a brand or how long it can be (though there should be).
         # Since, the bfid is based on its creation time, as time passes the
         # number of digits in a bfid will grow.  (Assume 14 as minumum).
-        #
-        #Encp can only handle these problems if the first four characters
-        # are the brand and are only alphanumeric.  The remaining characters
-        # must only be digits.
-        #
-        #Older files that do not have bfid brands should only be digits.
-        
-        if len(bfid) >= 18 and is_brand(bfid[:4]) and bfid[4:].isdigit():
+        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}$", bfid)
+        if result != None:
             return 1
-        elif len(bfid) >= 14 and bfid.isdigit():
+
+        #Some older files (year 2000) have a long() "L" appended to
+        # the bfid.  This seems to be consistant between the file
+        # database and layers one & four.  So, return true in these cases.
+        result = re.search("^[0-9]{13,15}L{1}$", bfid)
+        if result != None:
             return 1
-        elif len(bfid) >= 14 and bfid[:-1].isdigit() and bfid[-1] == "L":
-            #Some older files (year 2000) have a long() "L" appended to
-            # the bfid.  This seems to be consistant between the file
-            # database and layers one & four.  So, return true in these cases.
-            return 1
-            
+
     return 0
 
 def is_volume(volume):
@@ -376,17 +369,26 @@ def extract_brand(bfid):
 
     if type(bfid) != types.StringType:
         return None
-        
-    #Newer files have brands.  See is_bfid() for comments.
-    if len(bfid) >= 18:
-        if is_brand(bfid[:4]) and bfid[4:].isdigit():
-            return bfid[:4]
-        else:
-            return None
-    #Older files may not have a brand.
-    elif len(bfid) >= 14:
-        if bfid.isdigit():
-            return ""
+
+    #Older files that do not have bfid brands should only be digits.
+    #
+    #Some older files (year 2000) have a long() "L" appended to
+    # the bfid.  This seems to be consistant between the file
+    # database and layers one & four.  So, return true in these cases.
+    result = re.search("^[0-9]{13,15}L{0,1}$", bfid)
+    if result != None:
+        return ""
+
+    #The only part of the bfid that is of constant form is that the last
+    # n characters are all digits.  There are no restrictions on what
+    # is in a brand or how long it can be (though there should be).
+    # Since, the bfid is based on its creation time, as time passes the
+    # number of digits in a bfid will grow.  (Assume 14 as minumum).
+    result = re.search("[0-9]{13,15}$", bfid)
+    if result != None:
+        brand = bfid[:-(len(result.group()))]
+        if brand.isalnum():
+            return brand
 
     return None
 
@@ -1049,6 +1051,7 @@ def __get_csc(parameter=None):
     #Set some default values.
     bfid = None
     volume = None
+    address = None
     
     #Due to branding we need to figure out which system is the correct one.
     # Should only matter for reads.  On a success, the variable 'brand' should
@@ -1066,6 +1069,11 @@ def __get_csc(parameter=None):
     elif is_volume(parameter):  #If passed a volume.
         volume = parameter
 
+    elif type(parameter) == types.TupleType and len(parameter) == 2 \
+             and type(parameter[0]) == types.StringType \
+             and type(parameter[1]) == types.IntType:
+        address = parameter
+
     #Remember this for comparisons later.
     #old_csc = __csc
 
@@ -1076,6 +1084,9 @@ def __get_csc(parameter=None):
     
     elif volume:  #If passed a volume.
         csc = _get_csc_from_volume(volume)
+
+    elif address: #If passed the address of the correct config server.
+        csc = configuration_client.ConfigurationClient(address)
 
     else:
         if __csc != None:
@@ -1373,6 +1384,7 @@ def __get_vcc(parameter = None):
             return __vcc, None
 
     #Loop through systems for the tape that matches the one we're looking for.
+    vcc_test = None
     for server in config_servers.keys():
         try:
             #Get the next configuration client.
@@ -1383,7 +1395,6 @@ def __get_vcc(parameter = None):
             vcc_test = volume_clerk_client.VolumeClerkClient(
                 csc_test, logc = __logc, alarmc = __alarmc,
                 rcv_timeout=5, rcv_tries=2)
-
             if vcc_test.server_address == None:
                 #If we failed to find this volume clerk, move on to the
                 # next one.
@@ -1412,7 +1423,7 @@ def __get_vcc(parameter = None):
 
     __vcc = vcc
     
-    if vcc_test.server_address != None and volume != None:
+    if vcc_test and vcc_test.server_address != None and volume != None:
         #If the vcc has been initialized correctly; use it.
         volume_info = __vcc.inquire_vol(volume, 5, 20)
     else:
@@ -1765,7 +1776,8 @@ def clients(intf):
 
     # get a configuration server client
     try:
-        csc, config = __get_csc()
+        csc, config = __get_csc((intf.enstore_config_host,
+                                 intf.enstore_config_port))
     except EncpError, msg:
         return {'status' : (msg.type, str(msg))}
 
@@ -7222,6 +7234,10 @@ class EncpInterface(option.Interface):
         self.list = None           # Used for "get" only.
         self.skip_deleted_files = None # Used for "get" only.
 
+        #Values for specifying which enstore system to contact.
+        self.enstore_config_host = enstore_functions2.default_host()
+        self.enstore_config_port = enstore_functions2.default_port()
+
         #Sometimes the kernel lies about the max size of files supported
         # by the filesystem; skip the test if that is needed.
         self.bypass_filesystem_max_filesize_check = 0
@@ -7580,11 +7596,17 @@ class EncpInterface(option.Interface):
             sys.exit(1)
 
         #Determine whether the files are in /pnfs or not.
-        p = []
+        p = []  #p stands for is_pnfs_file?
+        m = []  #m stands for which_machine?
         for i in range(0, self.arglen):
             #Get fullpaths to the files.
-            unused, fullname, unused, unused = fullpath(self.args[i])
+            #machine, fullname, unused, unused = fullpath(self.args[i])
+            protocol, host, port, fullname, dirname, basename = \
+                      enstore_functions2.fullpath2(self.args[i])
+
+            #Store the name into this list.
             self.args[i] = fullname
+            
             #If the file is a pnfs file, store a 1 in the list, if not store
             # a zero.  All files on the hsm system have /pnfs/ in there name.
             # Most have /pnfs/ at the very beginning, but automounted pnfs
@@ -7648,12 +7670,19 @@ class EncpInterface(option.Interface):
             else:
                 p.append(0) #Assume local file.
 
+            #Do the same for which node as we do for is pnfs file.
+            m.append((host, port))
+
         #Initialize some important values.
 
         #The p# variables are used as holders for testing if all input files
         # are unixfiles or hsmfiles (aka pnfs files).
         p1 = p[0]
         p2 = p[self.arglen - 1]
+        #The m# variables are used to determine if all of the input files
+        # are on the same node (enstore system).
+        m1 = m[0]
+        m2 = m[self.arglen - 1]
 
         #Also, build two new lists of input and output files.  The output
         # list should always be 1 in length.  A simple, assignment is not
@@ -7667,6 +7696,10 @@ class EncpInterface(option.Interface):
         # makes sure that all input files are either unix or pnfs files.
         # The check to prevent unix to unix or pnfs to pnfs copies is done
         # later on in the code.
+        #It is also checked to make sure that no duplicate files are listed.
+        #
+        #Also, check that all the files match in terms of which node they
+        # are_on/should_go_to.
         for i in range(1, len(self.args) - 1):
             if p[i] != p1:
                 msg = "Not all input_files are %s files"
@@ -7681,6 +7714,31 @@ class EncpInterface(option.Interface):
                 delete_at_exit.quit()
             else:
                 self.input.append(self.args[i]) #Do this way for a copy.
+
+            if m[i][0] != m1[0]:
+                msg = "Not all input_files are on node %s."
+                print_error(e_errors.USERERROR, msg % m1[0])
+                delete_at_exit.quit()
+
+        #We need to check to make sure that only one enstore system has
+        # been specified.
+        this_host = socket.gethostbyname_ex(socket.getfqdn())
+        this_host_list = [this_host[0]] + this_host[1] + this_host[2]
+        #If we are writing to enstore and don't use the default destination.
+        if m1[0] in this_host_list and m2[0] not in this_host_list:
+            self.enstore_config_host = m2[0]
+            if m2[1] != None:
+                self.enstore_config_port = int(m2[1])
+        #If we are reading from enstore and don't use the default source.
+        if m1[0] not in this_host_list and m2[0] in this_host_list:
+            self.enstore_config_host = m1[0]
+            if m1[1] != None:
+                self.enstore_config_port = int(m1[1])
+        #If two remote address are given, this is an error.
+        if m1[0] not in this_host_list and m2[0] not in this_host_list:
+            msg = "Not able to perform remote site to remote site transfer."
+            print_error(e_errors.USERERROR, msg)
+            delete_at_exit.quit()
 
         #Assign the collection of types to these variables.
         if p1 == 1:
