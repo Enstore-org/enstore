@@ -880,20 +880,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.trace(20,  "volume family %s pool %s wrapper %s veto %s exact %s" %
                     (vol_fam, pool,wrapper, vol_veto_list, exact_match))
 
-        # handle exact match -- close all that do not fit
-        if exact_match:
-            q = "update volume set system_inhobit_1 = 'full' \
-                 where \
-                    library = '%s' and \
-                    storage_group = '%s' and \
-                    file_family = '%s' and \
-                    wrapper = '%s' and \
-                    system_inhibit_1 = 'none' and \
-                    remaining_bytes < %d \
-                    %s ;"%(library, storage_group, file_family, wrapper,
-                    required_bytes, vito_q)
-            res = self.dict.db.query(q)
-
         # special treatment for Disk Mover
         if type_of_mover == 'DiskMover':
             mover_ip_map = mover.get('ip_map', '')
@@ -910,32 +896,34 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     user_inhibit_0 = 'none' and \
                     user_inhibit_1 = 'none' \
                     %s\
-                order by declared limit 1;"%(mover_ip_map, library,
+                order by declared ;"%(mover_ip_map, library,
                     storage_group, file_family, wrapper, vito_q)
+        else: # normal case
+            q = "select * from volume \
+                where \
+                    library = '%s' and \
+                    storage_group = '%s' and \
+                    file_family = '%s' and \
+                    wrapper = '%s' and \
+                    system_inhibit_0 = 'none' and \
+                    system_inhibit_1 = 'none' and \
+                    user_inhibit_0 = 'none' and \
+                    user_inhibit_1 = 'none' and \
+                    remaining_bytes >= %d \
+                    %s\
+                order by declared ;"%(library, storage_group,
+                    file_family, wrapper, required_bytes, vito_q)
         res = self.dict.db.query(q).dictresult()
         if len(res):
-            return res[0]
-        else:
-            return {}
-
-        # normal case
-        q = "select * from volume \
-            where \
-                library = '%s' and \
-                storage_group = '%s' and \
-                file_family = '%s' and \
-                wrapper = '%s' and \
-                system_inhibit_0 = 'none' and \
-                system_inhibit_1 = 'none' and \
-                user_inhibit_0 = 'none' and \
-                user_inhibit_1 = 'none' and \
-                remaining_bytes >= %d \
-                %s\
-            order by declared limit 1;"%(library, storage_group,
-                file_family, wrapper, required_bytes, vito_q)
-        res = self.dict.db.query(q).dictresult()
-        if len(res):
-            return res[0]
+            if exact_match:
+                for v in res:
+                    if self.is_volume_full(v,min_remaining_bytes):
+                        Trace.trace(30, "full")
+                    else:
+                        return v
+                return {}
+            else:
+                return res[0]
         else:
             return {}
 
@@ -2073,7 +2061,7 @@ class VolumeClerk(VolumeClerkMethods):
             jouHome = dbHome
 
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
-        self.dict = edb.VolumeDB()
+        self.dict = edb.VolumeDB(jou=jouHome)
         self.sgdb = esgdb.SGDb(self.dict.db)
         # rebuild it if it was not loaded
         if len(self.sgdb) == 0:

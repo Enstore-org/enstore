@@ -192,8 +192,8 @@ class DbTable:
 		return
 
 class FileDB(DbTable):
-	def __init__(self, host='localhost', database=default_database):
-		DbTable.__init__(self, host, database, table='file', pkey='bfid', auto_journal = 1)
+	def __init__(self, host='localhost', jou='.', database=default_database):
+		DbTable.__init__(self, host, database, jouHome=jou, table='file', pkey='bfid', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
                 		bfid, crc, deleted, drive, \
@@ -244,8 +244,8 @@ class FileDB(DbTable):
 			}
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', database=default_database):
-		DbTable.__init__(self, host, database, table='volume', pkey='label', auto_journal = 1)
+	def __init__(self, host='localhost', jou='.', database=default_database):
+		DbTable.__init__(self, host, database, jouHome=jou, table='volume', pkey='label', auto_journal = 1)
 		self.retrieve_query = "\
         		select \
 				label, block_size, capacity_bytes, \
