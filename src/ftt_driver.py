@@ -273,12 +273,15 @@ class FTTDriver(driver.Driver):
             Trace.log(25, "rewinding tape to check volume label")
             
             self.rewind()
-
+            self.set_mode(compression = 0, blocksize = 0)
+            
             if self.fd is None:
                 return {0:e_errors.READ_BADSWMOUNT, 1:e_errors.WRITE_BADSWMOUNT}[mode], None
             nbytes=self.read(buf, 0, 80)
             if nbytes != 80:
+                Trace.trace(25, "read %s bytes checking label" % nbytes)
                 return {0:e_errors.READ_VOL1_READ_ERR, 1:e_errors.WRITE_VOL1_READ_ERR}[mode], None
+            Trace.trace(25, "verify_label: read %s" % buf)
             if buf[:4] != "VOL1":
                 return {0:e_errors.READ_VOL1_MISSING, 1:e_errors.WRITE_VOL1_MISSING}[mode], None
             s = string.split(buf[4:])
