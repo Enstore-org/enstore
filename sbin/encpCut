@@ -1,6 +1,10 @@
 #!/bin/sh
+set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-set -u  # force better programming AND ABILITY TO USE CHECK FOR NOT SET
+
+# sbin/$RCSfile$  $Revision$
+
+# script to cut the encp product from the enstore sources
 
 # based on copCut which is based almost entirely on Ron R's dscCut
 
@@ -226,7 +230,7 @@ for try in list doit; do
 
         1) echo "Step $Step cvs directory check for `pwd` starting at `date`"
            if [ "$try" = "doit" ] ; then
-	      cd $ENSTORE_DIR
+              cd $ENSTORE_DIR
               cvs_nq_update=`cvs -nq update 2>&1`
               check_status $? "cvs -nq update: $cvs_nq_update"
               if echo "$cvs_nq_update" | fgrep '[server aborted]' >/dev/null ; then
@@ -266,9 +270,9 @@ for try in list doit; do
 
         5) echo "Step $Step install ${product} into $INSTALLDIR starting at `date`"
            if [ "$try" = "doit" ] ; then
-	      cd $ENSTORE_DIR/src/ENCPBIN
+              cd $ENSTORE_DIR/src/ENCPBIN
               # check if directory doesn't exist
-              if [ ! -d $INSTALLDIR ] ; then 
+              if [ ! -d $INSTALLDIR ] ; then
                  echo "$INSTALLDIR does not exist... making it"
                  mkdir -p $INSTALLDIR
                  check_status $? "mkdir -p $INSTALLDIR"
