@@ -20,6 +20,21 @@ import e_errors
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"
 
+def capacity_str(x):
+    x=1.0*x
+    neg=x<0
+    x=abs(x)
+        
+    for suffix in ('B ', 'KB', 'MB', 'GB'):
+        if 0<x<1024:
+            break
+        x=x/1024
+    if neg:
+        x = -x
+    return "%6.2f%s"%(x,suffix)
+
+    
+
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
 
@@ -148,10 +163,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            Trace.trace(12,"vcc.get_vols: "\
-                  +"1st (pre-work-read) volume clerk callback on socket "\
-                  +str(address)+" failed to setup transfer: "\
-                  +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to setup transfer: "\
@@ -176,26 +187,24 @@ class VolumeClerkClient(generic_client.GenericClient,\
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            Trace.trace(12,"vcc.get_vols "
-                        "2nd (post-work-read) volume clerk callback on socket "
-                        +str(address)+", failed to transfer: "
-                        +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
 
         if volumes.has_key("header"):        # full info
-            print "%-10s  %-8s %-12s %-17s %17s %012s %-012s"%\
-                  ("label","avail.","mount state",
-                   "system_inhibit","user_inhibit",
-                   "library","    file_family")
+            print "%-10s  %-8s %-12s %-17s %17s %012s %-012s"%(
+                "label","avail.","mount state",
+                "system_inhibit","user_inhibit",
+                "library","    file_family")
             for v in volumes["volumes"]:
-                print "%-10s  %-6.2gGB %-12s (%-08s %08s) (%-08s %08s) %-012s %012s"%\
-                      (v['volume'],v['bytes_left'],v['at_mover'][0],
-                       v['system_inhibit'][0],v['system_inhibit'][1],
-                       v['user_inhibit'][0],v['user_inhibit'][1],
-                       v['library'],v['file_family'])
+                print "%-10s"%v['volume'],
+                print capacity_str(v['remaining_bytes']),
+                print " %-12s (%-08s %08s) (%-08s %08s) %-012s %012s"%(
+                    v['at_mover'][0],
+                    v['system_inhibit'][0],v['system_inhibit'][1],
+                    v['user_inhibit'][0],v['user_inhibit'][1],
+                    v['library'],v['file_family'])
         else:
             vlist = ''
             for v in volumes.get("volumes",[]):
@@ -217,8 +226,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            Trace.log( e_errors.ERROR,
-		       'vcc.remove_deleted_vols: sending ticket: %s'%(ticket,) )
             raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket %s"%(ticket,)
 
         # We have placed our request in the system and now we have to wait.
@@ -238,10 +245,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            Trace.trace(12,"vcc.remove_deleted_vols: "\
-                  +"1st (pre-work-read) volume clerk callback on socket "\
-                  +str(address)+" failed to setup transfer: "\
-                  +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to setup transfer: "\
@@ -266,10 +269,6 @@ class VolumeClerkClient(generic_client.GenericClient,\
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            Trace.trace(12,"vcc.remove_deleted_vols "
-                        "2nd (post-work-read) volume clerk callback on socket "
-                        +str(address)+", failed to transfer: "
-                        +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +str(address)+", failed to transfer: "\
