@@ -266,7 +266,8 @@ def log_closed(bfid1, bfid2):
 #    or alike, to give it a private process space.. 
 def run_encp(args):
 	# build command line
-	cmd = "encp"
+	# use lowest priority and do not count against fair share
+	cmd = "encp --priority 0 --ignore-fair-share"
 	for i in args:
 		cmd = cmd + " " + i
 	cmd = cmd + " >/dev/null 2>1"
@@ -418,6 +419,10 @@ def swap_metadata(bfid1, src, bfid2, dst):
 		return "%s and %s have different crc"%(bfid1, bfid2)
 	if f1['sanity_cookie'] != f2['sanity_cookie']:
 		return "%s and %s have different sanity_cookie"%(bfid1, bfid2)
+
+	# check if p1 is writable
+	if not os.access(src, os.W_OK):
+		return "%s is not writable"%(src)
 
 	# swapping metadata
 	m1 = {'bfid': bfid2, 'pnfsid':f1['pnfsid'], 'pnfs_name0':f1['pnfs_name0']}
