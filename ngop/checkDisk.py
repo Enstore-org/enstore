@@ -31,7 +31,8 @@ FULL95 = {"cachen1a" : ["/diska"],
           "fcdfdata011" : ["/export"],
           "fcdfdata012" : ["/export"],
           "ketchup" : ["/data1", "/data2"],
-          "mustard" : ["/data1", "/data2"]}
+          "mustard" : ["/data1", "/data2"],
+          "cmsdcdr1" : ["/", "/data"]}
 FULL95_VAL = 95
 FULL95_KEYS = FULL95.keys()
 
