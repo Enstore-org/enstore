@@ -12,7 +12,9 @@ QUALIFIERS = ""
         pathPrepend( PATH, ${UPS_PROD_DIR}/bin )
 
         # dot, tgif and htmldoc are for generating documenation only
+	# dot and graphviz are the same product with different names!
         setupOptional("dot")
+	setupOptional("graphviz")
         setupOptional("tgif")
         setupOptional("htmldoc")
 
