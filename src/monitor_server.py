@@ -78,7 +78,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker):
             use_multiple=0,
             fixed_ip=ticket['remote_interface'],verbose=0)
         ticket['mover']={'callback_addr': (localhost,localport)}
-        callback.send_to_user_callback(ticket)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(ticket['callback_addr'])
+        callback.write_tcp_obj(sock,ticket)
+        sock.close()
+
         xfer_sock, address = well_known_sock.accept()
         well_known_sock.close()
         sendstr = "S"*ticket['block_size']
