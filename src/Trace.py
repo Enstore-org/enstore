@@ -37,15 +37,24 @@ print_levels = {}
 log_levels = {}
 alarm_levels = {}
 
-def do_print(level):
-    print_levels[level]=1
+def do_print(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        print_levels[level]=1
 
-def dont_print(level):
-    if print_levels.has_key(level):
-        del print_levels[level]
+def dont_print(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        if print_levels.has_key(level):
+            del print_levels[level]
 
 def do_log(level):
-    log_levels[level]=1
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        log_levels[level]=1
 
 def dont_log(level):
     if level<5:
@@ -53,14 +62,20 @@ def dont_log(level):
     if log_levels.has_key(level):
         del log_levels[level]
 
-def do_alarm(level):
-    log_levels[level]=1
+def do_alarm(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        log_levels[level]=1
     
-def dont_alarm(level):
-    if level==0:
-        raise "Not allowed"
-    if alarm_levels.has_key(level):
-        del alarm_levels[level]
+def dont_alarm(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        if level==0:
+            raise "Not allowed"
+        if alarm_levels.has_key(level):
+            del alarm_levels[level]
 
 
 def init(name):
