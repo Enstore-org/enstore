@@ -1300,7 +1300,7 @@ class encp(interface.Interface):
         except:
             # not specified - try to get it from the environment
             try:
-                self.config_host =dbHome=os.environ['ENSTORE_CONFIG_HOST']
+                self.config_host = os.environ['ENSTORE_CONFIG_HOST']
             except:
                 print "ERROR: config_host not specified and ENSTORE_CONFIG_HOST",\
                       " is not defined in the environment"
@@ -1313,7 +1313,7 @@ class encp(interface.Interface):
         except:
             # not specified - try to get it from the environment
             try:
-                self.config_port =dbHome=os.environ['ENSTORE_CONFIG_PORT']
+                self.config_port = os.environ['ENSTORE_CONFIG_PORT']
             except:
                 print "ERROR: config_host not specified and ENSTORE_CONFIG_PORT",\
                       " is not defined in the environment"
