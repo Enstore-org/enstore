@@ -7,7 +7,7 @@ import mimetools
 import MimeWriter
 import smtplib
 
-__doc__ = '''
+"""
 enmail.py -- a collection of mail tools
 
 It contains the following routines:
@@ -36,32 +36,34 @@ mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
 mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
 
 	The same as mail_bin(), except it only sends plain message
-'''
-
+"""
 
 # mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
-#
-#	The mail is sent in MIME format.
-#	msg is the text body and file will be an attachment in base64
-#	to_add is either an e-mail address or a list of them
-#
-#	If the mailing is successful, it returns None.
-#	Otherwise, it returns the error message in string format
-#
-#    example:
-#
-#	enmail('enstore@fnal.gov', 'enstore_admin@fnal.gov',
-#		'a dump file', 'my.dmp', 'This is taken today')
-#	-- or--
-#
-#	enmail('enstore@fnal.gov', ['jon@fnal.gov', 'don@fnal.gov'],
-#		'a dump file', 'my.dmp', 'This is taken today')
-#
-#	Initially, this is for sending M2 dump through e-mail.
-#	Yet it is general enoguh to have its own existence
-
 
 def mail_bin(from_add, to_add, subject, file, msg):
+
+	"""
+	mail_bin(from_add, to_add, subject, file, msg) -- mail a binary file
+
+	The mail is sent in MIME format.
+	msg is the text body and file will be an attachment in base64
+	to_add is either an e-mail address or a list of them
+
+	If the mailing is successful, it returns None.
+	Otherwise, it returns the error message in string format
+
+	example:
+
+	enmail('enstore@fnal.gov', 'enstore_admin@fnal.gov',
+		'a dump file', 'my.dmp', 'This is taken today')
+	-- or--
+
+	enmail('enstore@fnal.gov', ['jon@fnal.gov', 'don@fnal.gov'],
+		'a dump file', 'my.dmp', 'This is taken today')
+
+	Initially, this is for sending M2 dump through e-mail.
+	Yet it is general enoguh to have its own existence
+	"""
 
 	outf = StringIO.StringIO()		# fake a file in memory
 	mwf = MimeWriter.MimeWriter(outf)
@@ -131,6 +133,24 @@ def mail_bin(from_add, to_add, subject, file, msg):
 # mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
 
 def mail(from_add, to_add, subject, msg):
+
+	"""
+	mail(from_add, to_add, subject, msg) -- s aimple mail through SMTP
+
+	to_add is either an e-mail address or a list of them
+
+	If the mailing is successful, it returns None.
+	Otherwise, it returns the error message in string format
+
+    	example:
+
+	enmail('enstore@fnal.gov', 'enstore_admin@fnal.gov',
+		'test', 'This is a test')
+	-- or--
+
+	enmail('enstore@fnal.gov', ['jon@fnal.gov', 'don@fnal.gov'],
+		'test', 'This is a test')
+	"""
 
 	mesg = 'Subject: '+subject+'\r\n\r\n'+msg
 
