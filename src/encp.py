@@ -1380,12 +1380,12 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                 str(sys.exc_info()[1]))
                     if verbose > 1: traceback.print_exc()
 
-                    if err_msg.args[0] == 'fd_xfer - write' and err_msg.args[1]==errno.ENOSPC:
+                    if err_msg.args[1]==errno.ENOSPC:
                         print_data_access_layer_format(
                             requests[j]['infile'], requests[j]['outfile'], requests[j]['file_size'],
                             {'status':("ENOSPC", "No space left on device")})
                         jraise(errno.errorcode[errno.ENOSPC], "no space left on device");
-                        
+                    ###XXX we shouldn't be matching literal strings here... this is really wrong                        
                     if err_msg.args[0] == "fd_xfer - read EOF unexpected":
                         error = 1
                         data_path_socket.close()
@@ -1702,7 +1702,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 # log the error to the logger, print it to the console and exit
 
 def jraise(errcode,errmsg,exit_code=1) :
-    format = "Fatal error:"+str(errcode)+str(errmsg)+" Exit code:"+\
+    format = "Fatal error:"+str(errcode)+" "+str(errmsg)+" Exit code:"+\
 	     str(exit_code)
     x=sys.stdout;sys.stdout=sys.stderr
     print format
@@ -1712,7 +1712,7 @@ def jraise(errcode,errmsg,exit_code=1) :
     except:
         pass
     # this error used to be a 0
-    Trace.trace(6,"encp.jraise and exitting with code="+
+    Trace.trace(6,"encp.jraise and exiting with code="+
                 repr(exit_code))
     sys.stdout=x
     sys.exit(exit_code)
