@@ -20,7 +20,7 @@ fi
 
 # we have nameserver lookup troubles - skip this step and use the numeric ip's
 
-adic2=131.225.164.19          
+adic2=131.225.164.19
 
 rip1=131.225.164.1
 rip2=131.225.164.2
@@ -34,7 +34,7 @@ fntt=131.225.164.13
 
 ripsgi=131.225.164.16
 
-samson=131.225.165.8           
+samson=131.225.165.8
 
 d0enmvr1=131.225.164.24
 d0enmvr2=131.225.164.25
@@ -47,24 +47,40 @@ d0ensrv4=131.225.164.84
 d0ensrv5=131.225.164.85
 d0ensrv6=131.225.164.86
 
-d0enmvr4a=131.225.164.104         
-d0enmvr5a=131.225.164.105         
-d0enmvr6a=131.225.164.106         
-d0enmvr7a=131.225.164.107         
-d0enmvr8a=131.225.164.108         
-d0enmvr9a=131.225.164.109         
-d0enmvr10a=131.225.164.110         
-d0enmvr11a=131.225.164.111         
-d0enmvr12a=131.225.164.112         
-d0enmvr13a=131.225.164.113         
-d0enmvr14a=131.225.164.114         
-d0enmvr15a=131.225.164.115         
-d0enmvr16a=131.225.164.116         
-d0enmvr17a=131.225.164.117         
-d0enmvr18a=131.225.164.118         
+d0enmvr4a=131.225.164.104
+d0enmvr5a=131.225.164.105
+d0enmvr6a=131.225.164.106
+d0enmvr7a=131.225.164.107
+d0enmvr8a=131.225.164.108
+d0enmvr9a=131.225.164.109
+d0enmvr10a=131.225.164.110
+d0enmvr11a=131.225.164.111
+d0enmvr12a=131.225.164.112
+d0enmvr13a=131.225.164.113
+d0enmvr14a=131.225.164.114
+d0enmvr15a=131.225.164.115
+d0enmvr16a=131.225.164.116
+d0enmvr17a=131.225.164.117
+d0enmvr18a=131.225.164.118
 
-dasnode=$d0ensrv3
+stkensrv1=131.225.13.1
+stkensrv2=131.225.13.2
+stkensrv3=131.225.13.3
+stkensrv4=131.225.13.4
+stkenmvr1a=131.225.13.5
+stkenmvr1b=131.225.13.6
+stkenmvr2a=131.225.13.7
+stkenmvr2b=131.225.13.8
+stkenmvr3a=131.225.13.9
+stkenmvr3b=131.225.13.10
+stkenmvr4a=131.225.13.11
+stkenmvr4b=131.225.13.12
+stkenmvr5a=131.225.13.13
+stkenmvr5b=131.225.13.14
+fntt=131.225.13.15
 
+dasnode=$d0ensrv4
+acsssnode=$fntt
 
 # these drive nodes should be looked up in the config file!
 
@@ -87,6 +103,17 @@ dc26node=$d0enmvr8a
 dc27node=$d0enmvr8a
 dc28node=$d0enmvr7a
 dc29node=$d0enmvr7a
+
+ea11node=$stkenmvr1a
+ea12node=$stkenmvr1a
+ea21node=$stkenmvr2a
+ea22node=$stkenmvr2a
+ea31node=$stkenmvr3a
+ea0node=$ea11node
+ea1node=$ea12node
+ea2node=$ea21node
+ea3node=$ea22node
+ea4node=$ea31node
 
 
 # these devives should be looked up in the config file!
@@ -111,6 +138,28 @@ de14device=/dev/rmt/tps3d3n
 dm18device=/dev/rmt/tps3d1n
 dm19device=/dev/rmt/tps3d2n
 
+ea11device=/dev/rmt/tps0d1n
+ea12device=/dev/rmt/tps3d1n
+ea21device=/dev/rmt/tps0d1n
+ea22device=/dev/rmt/tps3d1n
+ea31device=/dev/rmt/tps0d1n
+ea0device=$ea11device
+ea1device=$ea12device
+ea2device=$ea21device
+ea3device=$ea22device
+ea4device=$ea31device
+
+EA11="0,0,10,0"
+EA12="0,0,10,1"
+EA21="0,0,10,2"
+EA22="0,0,10,3"
+EA31="0,0,10,4"
+EA0="$EA11"
+EA1="$EA12"
+EA2="$EA21"
+EA3="$EA22"
+EA4="$EA31"
+
 
 #===================================================
 
@@ -125,14 +174,23 @@ if [ "$drive" = "mount" ]; then
     media_type=`echo $2 | tr '[a-z]' '[A-Z]'`
     label=$3
     drive=`echo $4 | tr  '[a-z]' '[A-Z]'`
-    cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
-    echo $cmd
-    mount_node=`eval $cmd`; echo $mount_node
-    cmd="rsh $mount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin mount -t $media_type $label $drive; echo \$?\""
-    echo $cmd
-    x=`eval $cmd`; echo $x
-    stat=`echo $x | awk '{print $NF}'`;
-    exit $stat
+    if [ "$media_type" = "STK" -o "$media_type" = "EAGLE" ]; then
+      drv=`eval echo \\$$drive`
+      rsh $acsssnode -l acsss "echo mount $label $drv | /export/home/ACSSS/bin/cmd_proc" < /dev/null
+      exit $?
+    # rwquery
+    #    show the status of drives 1 and 3
+    #rsh fntt -l acsss "echo query drive  0,0,9,1 0,0,9,3 | /export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null
+    else
+      cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
+      echo $cmd
+      mount_node=`eval $cmd`; echo $mount_node
+      cmd="rsh $mount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin mount -t $media_type $label $drive; echo \$?\""
+      echo $cmd
+      x=`eval $cmd`; echo $x
+      stat=`echo $x | awk '{print $NF}'`;
+      exit $stat
+    fi
   fi
 
 elif [ "$drive" = "dismount" ]; then
@@ -141,14 +199,22 @@ elif [ "$drive" = "dismount" ]; then
     exit 1
   else
     drive=`echo $2 | tr  '[a-z]' '[A-Z]'`
-    cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
-    echo $cmd
-    dismount_node=`eval $cmd`; echo $mount_node
-    cmd="rsh $dismount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin dismount -d $drive; echo \$?\""
-    echo $cmd
-    x=`eval $cmd`; echo $x
-    stat=`echo $x | awk '{print $NF}'`;
-    exit $stat
+    # this is terrible - need better way to specify stk or aml/2
+    if [ "$drive" = "STK" -o "$drive" = "EAGLE" ]; then
+      drive=`echo $3 | tr  '[a-z]' '[A-Z]'`
+      drv=`eval echo \\$$drive`
+      rsh $acsssnode -l acsss "echo dismount 0 $drv force | /export/home/ACSSS/bin/cmd_proc" < /dev/null
+      exit $?
+    else
+      cmd="rsh $dasnode \". /usr/local/etc/setups.sh; setup aci;  dasadmin listd2 | grep $drive | sed -e 's/.*client: //' -e 's/ .*//'\""
+      echo $cmd
+      dismount_node=`eval $cmd`; echo $mount_node
+      cmd="rsh $dismount_node \". /usr/local/etc/setups.sh; setup aci;  dasadmin dismount -d $drive; echo \$?\""
+      echo $cmd
+      x=`eval $cmd`; echo $x
+      stat=`echo $x | awk '{print $NF}'`;
+      exit $stat
+    fi
   fi
 fi
 
@@ -217,8 +283,11 @@ case $drive in
   dm18) cmd="rsh $dm18node 'mt -f $dm18device $command 2>&1; echo \$?'" ;;
   dm19) cmd="rsh $dm19node 'mt -f $dm19device $command 2>&1; echo \$?'" ;;
 
-  stk1) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d1n $command 2>&1; echo \$?'" ;;
-  stk2) cmd="rsh $rip9   'mt -f /dev/rmt/tps2d2n $command 2>&1; echo \$?'" ;;
+  ea11|ea0) cmd="rsh $ea11node   'mt -f $ea11device $command 2>&1; echo \$?'" ;;
+  ea12|ea1) cmd="rsh $ea12node   'mt -f $ea12device $command 2>&1; echo \$?'" ;;
+  ea21|ea2) cmd="rsh $ea21node   'mt -f $ea21device $command 2>&1; echo \$?'" ;;
+  ea22|ea3) cmd="rsh $ea22node   'mt -f $ea22device $command 2>&1; echo \$?'" ;;
+  ea31|ea4) cmd="rsh $ea31node   'mt -f $ea31device $command 2>&1; echo \$?'" ;;
 
     *)  cmd="echo $drive does not exists in `basename $0`; echo 1"
 
