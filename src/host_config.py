@@ -174,7 +174,11 @@ def get_netstat_r():
     # truncate long user names.  This avoid having to convert a truncated
     # hostname to the desired ip address.
     netstat_cmd = multiple_interface._find_command("netstat")
-    p = os.popen(netstat_cmd + " -rn", 'r')
+    if os.uname()[0] == "Linux":
+        netstat_cmd = netstat_cmd + " -rne"
+    else:
+        netstat_cmd = netstat_cmd + " -rn"
+    p = os.popen(netstat_cmd, "r")
 
     data = p.readlines()
     status = p.close()
@@ -187,8 +191,7 @@ def get_netstat_r():
 
     #Determine the number of columns in the output.
     for line in data:
-        line = line.strip()
-        titles = simplify.sub( ' ', line).split(" ")
+        titles = simplify.sub( ' ', line.strip()).split(" ")
         #On all of the observed platforms there is a title line that contains
         # as the first non-whitespace characters "Destination".
         if titles[0] == "Destination":
@@ -198,12 +201,24 @@ def get_netstat_r():
         return None
 
     output = []
+    dotted_decimal = re.compile("([0-9]{1,3}.){0,3}[0-9]{1,3}")
+    flags = re.compile("[UHGRDMACS]")
     #Strip out the valid lines of the table.
     for line in data:
-        line = line.strip()
-        info = simplify.sub( ' ', line).split(" ")
+        info = simplify.sub( ' ', line.strip()).split(" ")
+        #If the line begins with xxx.xxx.xxx.xxx format, use it.
         #Look for lines that have the same number of columns as the title line.
-        if len(info) == columns and info != titles:
+        #If the destination is default
+        #Skip the title line however.
+        if ( len(info) == columns or \
+             dotted_decimal.match(info[0]) or \
+             info[0] == "default" ) \
+             and info != titles:
+            #Pad the possiblity of empty columns before the "Flags" column.
+            flags_index = titles.index("Flags")
+            while not flags.match(info[flags_index]):
+                info.insert(2, "")
+            #Create the dictionary for this route in the routing table.
             tmp = {}
             for i in range(len(titles)):
                 tmp[titles[i]] = info[i]
