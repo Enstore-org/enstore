@@ -8,7 +8,8 @@ import time
 OK = 0
 FAIL = 1
 
-dir="/home/aik/tape_inventory_010723/"
+#tdir="/home/aik/tape_inventory_010723/"
+tdir=/diska/tape_inventory/"
 
 def generate_volume_list(volume_file):
     f=open(volume_file, 'r')
@@ -28,8 +29,8 @@ def generate_volume_list(volume_file):
     return volume_list
 
 def readlayer(fullname,layer,ferr):
-    (dir,fname)=os.path.split(fullname)
-    fname = "%s/.(use)(%s)(%s)"%(dir,layer,fname)
+    (fdir,fname)=os.path.split(fullname)
+    fname = "%s/.(use)(%s)(%s)"%(fdir,layer,fname)
     try:
         f = open(fname,'r')
         l = f.readlines()
@@ -64,7 +65,7 @@ def check_volume(label):
     fcount = 0
     ferrname = label+".err" 
     
-    f=open(dir+label,'r')
+    f=open(tdir+label,'r')
     ferr = open(ferrname,'w')
     
     lines=f.readlines()
@@ -212,7 +213,7 @@ def check_volume(label):
 t1 = time.time()
 flog = open("AUDIT.log","w")
 
-volume_list=generate_volume_list(dir+"VOLUMES_DEFINED")
+volume_list=generate_volume_list(tdir+"VOLUMES_DEFINED")
 #volume_list= ["VO0185",]
 #volume_list= ["VO1059","VO1060","VO1061","VO1062","VO1063","VO1064",]
 #volume_list= ["VO1002",]
