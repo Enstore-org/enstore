@@ -32,7 +32,7 @@ def default_host():
 
 def default_port():
     val, used_default = getenv('ENSTORE_CONFIG_PORT', default=DEFAULT_PORT)
-    val = string.atoi(val)
+    val = int(val)
     if used_default:
         global used_default_config_port
         used_default_config_port = 1
@@ -148,7 +148,7 @@ class Interface:
     def check_port(self, port):
 	# bomb out if port isn't numeric
         if type(port) == type('string'):
-	    self.config_port = string.atoi(port)
+	    self.config_port = int(port)
         else:
             self.config_port = port
 
@@ -283,11 +283,11 @@ class Interface:
             elif opt == "--alive" :
                 self.alive = 1
             elif opt == "--alive_rcv_timeout" :
-                self.alive_rcv_timeout = string.atoi(value)
+                self.alive_rcv_timeout = int(value)
             elif opt == "--alive_retries" :
-                self.alive_retries = string.atoi(value)
+                self.alive_retries = int(value)
             elif opt == "--timeout" :
-                self.timeout = string.atoi(value)
+                self.timeout = int(value)
             elif opt == "--get_timeout" :
                 self.get_timeout = 1
             elif opt == "--reset_timeout" :
@@ -297,9 +297,9 @@ class Interface:
             elif opt == "--timestamp" :
                 self.timestamp = 1
             elif opt == "--max_ascii_size" :
-                self.max_ascii_size = string.atoi(value)
+                self.max_ascii_size = int(value)
             elif opt == "--max_encp_lines" :
-                self.max_encp_lines = string.atoi(value)
+                self.max_encp_lines = int(value)
             elif opt == "--get_max_encp_lines" :
                 self.get_max_encp_lines = 1
             elif opt == "--get_max_ascii_size" :
@@ -307,29 +307,29 @@ class Interface:
             elif opt == "--crc":
                 self.chk_crc = 1
             elif opt == "--pri" :
-                self.pri = string.atoi(value)
+                self.pri = int(value)
             elif opt == "--delpri" :
-                self.delpri = string.atoi(value)
+                self.delpri = int(value)
             elif opt == "--agetime" :
-                self.agetime = string.atoi(value)
+                self.agetime = int(value)
             elif opt == "--delayed_dismount" :
-                self.delayed_dismount = string.atoi(value)
+                self.delayed_dismount = int(value)
             elif opt == "--dump":
                 self.dump = 1
             elif opt == "--verbose" :
                 if value == "":
                     self.verbose = self.verbose | 1
                 else:
-                    self.verbose = self.verbose | string.atoi(value)
+                    self.verbose = self.verbose | int(value)
             elif opt == "--status":
                 self.status = 1
             elif opt == "--local_mover":
                 self.local_mover = 1
-                self.enable = string.atoi(value)
+                self.enable = int(value)
             elif opt == "--maxwork":
-                self.maxwork = string.atoi(value)
+                self.maxwork = int(value)
             elif opt == "--refresh":
-                self.refresh = string.atoi(value)
+                self.refresh = int(value)
             elif opt == "--get_refresh":
                 self.get_refresh = 1
             elif opt == "--get_logfile_name":
@@ -356,13 +356,13 @@ class Interface:
             elif opt == "--alarm" :
                 self.alarm = 1
             elif opt == "--resolve" :
-                self.resolve = string.atof(value)
+                self.resolve = float(value)
             elif opt == "--patrol_file" :
                 self.patrol_file = 1
             elif opt == "--root_error" :
                 self.root_error = value
             elif opt == "--severity" :
-                self.severity = string.atoi(value)
+                self.severity = int(value)
             elif opt == "--mc" :
                 self.mcs = string.split(value, ",")
             elif opt == "--keep" :
@@ -371,6 +371,17 @@ class Interface:
                 self.keep_dir = value
             elif opt == "--out_dir" :
                 self.out_dir = value
+            elif opt == "--test_mode":
+                file = globals().get('__file__', "")
+                if file == "<frozen>":
+                    print "test-mode not allowed in frozen binary"
+                    sys.exit(-1)
+                self.test_mode = 1
+            elif opt == "--bytes":
+                if not self.test_mode:
+                    print "bytecount may only be specified in test mode"
+                    sys.exit(-1)
+                self.bytes = int(value)
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)
