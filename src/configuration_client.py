@@ -1,8 +1,11 @@
+# system imports
 import pdb
 import sys
 import time
-from udp_client import UDPClient
 import errno
+
+# enstore imports
+import udp_client
 from base_defaults import default_host, default_port, BaseDefaults
 import Trace
 
@@ -60,7 +63,7 @@ class configuration_client(BaseDefaults) :
             print "Connecting to configuration server at ",\
 	        self.config_host, self.config_port
         self.config_address=(self.config_host,self.config_port)
-        self.u = UDPClient()
+        self.u = udp_client.UDPClient()
 
     # get rid of all cached values - go back to server for information
     def clear(self):
