@@ -14,17 +14,27 @@ TMP_DIR = "/tmp/enstore"
 TIMEOUT = 3
 RETRIES = 2
 
-def find_libtppy(enstore_setups):
-    es = string.strip(enstore_setups)
-    es = string.split(es, "\"")
-    for item in es:
-	# look for the setup for the libtppy product as we must add something
+def add_dir_to_ppath(setups, product):
+    plen = len(product)
+    for item in setups:
+	# look for the setup for the product as we must add something
 	# here to sys.path too
-	if item[0:7] == "libtppy":
-	    libtppy_dir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR %s"%(item,)).readlines()
-	    libtppy_dir = string.strip(libtppy_dir[0])
-	    libtppy_dir = string.replace(libtppy_dir, "\"", "")
-	    sys.path.append("%s/lib"%(libtppy_dir,))
+	if item[0:plen] == product:
+	    pdir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR %s"%(item,)).readlines()
+	    pdir = string.strip(pdir[0])
+	    pdir = string.replace(pdir, "\"", "")
+	    return pdir
+    return None
+
+def find_libtppy(enstore_setups):
+    dir = add_dir_to_ppath(enstore_setups, "libtppy")
+    if not dir is None:
+	sys.path.append("%s/lib"%(dir,))
+
+def find_htmlgen(enstore_setups):
+    dir = add_dir_to_ppath(enstore_setups, "HTMLgen")
+    if not dir is None:
+	sys.path.append("%s"%(dir,))
 
 def set_trace_key():
     # get who we are
@@ -42,15 +52,17 @@ def set_trace_key():
     os.environ["TRACE_KEY"] = "%s/%s"%(us_dir, "trace.cgi")
 
 def find_enstore():
-    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
-#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore efb;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
+#    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore").readlines()
+    enstore_info = os.popen(". /usr/local/etc/setups.sh;setup enstore efb;ups list -K @PROD_DIR enstore;echo $ENSTORE_CONFIG_PORT;echo $ENSTORE_CONFIG_HOST;ups list -K action=setup enstore efb").readlines()
     enstore_dir = string.strip(enstore_info[0])
     enstore_dir = string.replace(enstore_dir, "\"", "")
     enstore_src = "%s/src"%(enstore_dir,)
     enstore_modules = "%s/modules"%(enstore_dir,)
     sys.path.append(enstore_src)
     sys.path.append(enstore_modules)
-    find_libtppy(enstore_info[3])
+    es = string.split(string.strip(enstore_info[3]), "\"")
+    find_libtppy(es)
+    find_htmlgen(es)
 
     # fix up the config host and port to give to the command
     config_host = string.strip(enstore_info[2])
