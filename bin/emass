@@ -5,7 +5,7 @@ if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 # test/$RCSfile$  $Revision$
 
 aits="DM05-CA2901 DM06-CA2902 DM07-CA2903 DM08-CA2904"
-mammoths="DC12-CA2251"
+mammoths="DC11-CA2251 DC12-CA2252"
 dlts="DE13-CA2501 DE14-CA2502 DE15-CA2503 DE16-CA2504"
 
 dm=1 # dismount flag
