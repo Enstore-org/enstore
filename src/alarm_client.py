@@ -118,6 +118,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.get_patrol_file = 0
         self.client_name = ""
+        self.message = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
