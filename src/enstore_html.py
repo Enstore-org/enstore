@@ -1,8 +1,11 @@
-#
-# enstore import
+# $Id$
+
+import setpath
+
 import string
 import calendar
 import time
+setpath.addpath("$HTMLGEN_DIR")
 import HTMLgen
 import types
 import os
