@@ -508,6 +508,41 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
         return
 
+    # rename volume and volume map
+    # this version rename volume for all files in it
+
+    def rename_volume2(self, ticket):
+        try:
+            label = ticket["external_label"]
+            set_deleted = ticket[ "set_deleted"]
+            restore_volmap = ticket["restore"]
+            restore_dir = ticket["restore_dir"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        bfids = self.get_all_bfids(external_label)
+
+        for bfid in bfids:
+            record = self.dict[bfid] 
+            # replace old volume name with new one
+            record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
+                                                record["external_label"], 
+                                                label)
+            ticket["pnfs_mapname"] = record["pnfs_mapname"]
+            record["external_label"] = label
+            record["deleted"] = set_deleted
+            self.dict[bfid] = record 
+ 
+        # and return to the caller
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
+        return
+
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -539,32 +574,34 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         callback.write_tcp_obj(self.data_socket,ticket)
 
-        # see if index file exists
-
-        if self.dict.inx.has_key('external_label'):
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                callback.write_tcp_raw(self.data_socket, pkey+'\n')
-                key, pkey = c.nextDup()
-            c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                callback.write_tcp_raw(self.data_socket, bfid+'\n')
+        bfids = self.get_all_bfids(external_label)
+        for bfid in bfids:
+            callback.write_tcp_raw(self.data_socket, bfid+'\n')
         # finishing up
         callback.write_tcp_raw(self.data_socket, "")
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         return
+
+    # get_all_bfids(external_label) -- get all bfids of a particular volume
+
+    def get_all_bfids(self, external_label):
+        bfids = []
+        if self.dict.inx.has_key('external_label'):
+            # now get a cursor so we can loop on the database quickly:
+            c = self.dict.inx['external_label'].cursor()
+            key, pkey = c.set(external_label)
+            while key:
+                bfids.append(pkey)
+                key, pkey = c.nextDup()
+            c.close()
+        else:  # use bfid_db
+            try:
+                bfids = self.bfid_db.get_all_bfids(external_label)
+            except:
+                bfids = None
+        return bfids
 
     def tape_list(self,ticket):
         try:
