@@ -41,7 +41,8 @@ config_host, config_port = enstore_utils_cgi.find_enstore()
 os.environ['ENSTORE_CONFIG_HOST'] = config_host
 os.environ['ENSTORE_CONFIG_PORT'] = config_port
 print '<h1><font color=#aa0000>', volume, '</font></h1>'
-res1 = os.popen('enstore vol --gvol '+volume).readlines()
+# res1 = os.popen('enstore vol --gvol '+volume).readlines()
+res1 = os.popen('enstore info --gvol '+volume).readlines()
 
 # extract information
 for i in res1:
@@ -66,7 +67,8 @@ for i in res1:
         # system_inhibit = string.replace(string.replace(v[2:-3], "'", ""), ', ', '+')
 
 fileout = []
-res = os.popen('enstore file --list '+volume).readlines()
+# res = os.popen('enstore file --list '+volume).readlines()
+res = os.popen('enstore info --list '+volume).readlines()
 res = res[2:]	# get rid of header
 total = 0L
 

@@ -33,7 +33,8 @@ elif cluster == "cdfen":
 
 catalog = {}
 
-cmd = '. /usr/local/etc/setups.sh; setup enstore; enstore vol --labels'
+# cmd = '. /usr/local/etc/setups.sh; setup enstore; enstore vol --labels'
+cmd = '. /usr/local/etc/setups.sh; setup enstore; enstore info --labels'
 # cmd = 'enstore vol --labels'
 
 for i in os.popen(cmd).readlines():
