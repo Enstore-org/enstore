@@ -75,7 +75,7 @@ create table state_type (
 
 create table state (
 	time		timestamp without time zone default now(),
-	volume		int not null references volume(id),
+	volume		int not null references volume(id) on delete cascade,
 	type		int references state_type(id),
 	value		varchar
 );
