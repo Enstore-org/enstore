@@ -13,8 +13,8 @@ Help = "tdb.Help"
 
 
 WHICH_OFF = 0
-WHICH_TRACE_CALL = 1
-WHICH_TRACE_ALL  = 2
+WHICH_TRACE_ALL = 1
+WHICH_TRACE_CALL  = 2
 WHICH_PDB        = 3
 
 
@@ -188,10 +188,11 @@ class Tdb(threading.Thread) :
         self.writeln("***** Quitting the debugger crashes the program** ")
         self.writeln("***** This is as far as I am ** ")
         tdb.onoff(WHICH_PDB, self.inFile, self.outFile)
-        sys.stdin = self.inFile
-        saved_stdout = sys.stdout
+        #sys.stdin = self.inFile
+        #saved_stdout = sys.stdout
         import os  #hack -- dup "works" clobbering sys.stdin did not
         os.dup2(self.outFile.fileno(), sys.stdout.fileno())
+        os.dup2(self.inFile.fileno(),  sys.stdin.fileno() )
         pdb.set_trace()
         while 1:
             time.sleep(1000)
