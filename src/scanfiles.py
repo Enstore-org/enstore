@@ -18,6 +18,8 @@ ff = {}
 
 def usage():
     print "usage: %s path [path2 [path3 [ ... ]]]"%(sys.argv[0])
+    print "usage: %s --help"%(sys.argv[0])
+    print "usage: %s --infile file"%(sys.argv[0])
 
 def error(s):
     print 'Error:  ', s
@@ -160,6 +162,13 @@ if __name__ == '__main__':
         usage()
         sys.exit(0)
 
+    if len(sys.argv) == 3 and sys.argv[1] == '--infile':
+        f = open(sys.argv[2])
+        list = map(string.strip, f.readlines())
+        f.close()
+    else:
+        list = sys.argv[1:]
+
     intf = option.Interface()
     fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
     generic_client.init_done = 0
@@ -167,5 +176,6 @@ if __name__ == '__main__':
 
     ff = {}
 
-    for i in sys.argv[1:]:
-        check_file(i)
+    for i in list:
+        if i[:2] != '__':
+            check_file(i)
