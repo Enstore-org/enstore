@@ -71,10 +71,15 @@ class Logger(  dispatching_worker.DispatchingWorker
     # log the message recieved from the log client
     def log_message(self, ticket) :
         tm = time.localtime(time.time()) # get the local time
+	# take care of case where we can't figure out the host name
+	try:
+	    host = socket.gethostbyaddr(self.reply_address[0])[0]
+	except:
+	    host = str(sys.exc_info()[1])
         # format log message
         message = "%.2d:%.2d:%.2d %-8s %s\n" % \
                   (tm[3], tm[4], tm[5],
-                   socket.gethostbyaddr(self.reply_address[0])[0],
+                   host,
                    ticket['message'])
 
         if list:
