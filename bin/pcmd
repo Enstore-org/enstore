@@ -81,6 +81,7 @@ pinfo_helper()  { choice=$1
                     elif [ $c -eq $choice ] ; then echo $x; break
                     elif [ $c -eq $choice ] ; then echo $x; break
                     elif [ $c -eq $choice ] ; then echo $x; break
+                    elif [ $c -eq $choice ] ; then echo $x; break
                     echo "parse-error"; break
                     fi
                   done ; }
@@ -91,6 +92,7 @@ pinfo()     { bfid=`pbfid $@`
               cookie="`pinfo_helper 2`"
               file_family="`pinfo_helper 3`"
               orig_name="`pinfo_helper 4`"
+              map_file="`pinfo_helper 5`"
               if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
                    `echo $SHELL | grep -c /sh`   -ne 0 -o \
                    `echo $SHELL | grep -c /ksh`  -ne 0 -o \
@@ -99,13 +101,15 @@ pinfo()     { bfid=`pbfid $@`
 volume=\"$volume\";
 cookie=\"$cookie\";
 file_family=\"$file_family\";
-orig_name=\"$orig_name\";"
+orig_name=\"$orig_name\";
+map_file=\"$map_file\";"
               else
               echo "set bfid=\"$bfid\";
 set volume=\"$volume\";
 set cookie=\"$cookie\";
 set file_family=\"$file_family\";
-set orig_name=\"$orig_name\";"
+set orig_name=\"$orig_name\";
+set map_file=\"$map_file\";"
                fi; }
 
 pls()       { eval ls -alsF `p_use $@` ; }
