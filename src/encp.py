@@ -68,12 +68,14 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if not ticket['status'] == "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
-              +p.library+".library_manager at "+\
-              vticket['host']+"/"+repr(vticket['port'])+\
-              ", ticket[\"status\"]="+ticket["status"]
+              +p.library+".library_manager at "\
+              +vticket['host']+"/"+repr(vticket['port'])\
+              +", ticket[\"status\"]="+ticket["status"]
+    print "Q'd:",unixfile, ticket["library"], ticket["file_family"]\
+          ,ticket["file_family_width"],ticket["size_bytes"]
 
     # We have placed our work in the system and now we have to wait for
-    # resources. All we  need to do is  wait for the system to call us back,
+    # resources. All we  need to do is wait for the system to call us back,
     # and make sure that is it calling _us_ back, and not some sort of old
     # call-back to this very same port. It is dicey to time out, as it
     # is probably legitimate to wait for hours....
@@ -84,7 +86,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
             listen_socket.close()
             break
         else:
-            print ("imposter called us back, trying again")
+            print ("encp write_to_hsm: imposter called us back, trying again")
             control_socket.close()
     ticket = new_ticket
     if not ticket["status"] == "ok" :
@@ -110,10 +112,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
     done_ticket = a_to_dict(control_socket.recv(10000))
     control_socket.close()
     if done_ticket["status"] == "ok" :
-        p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"],\
-                          pprint.pformat(done_ticket))
-        print p.pnfsFilename, p.bit_file_id, p.file_size,\
-              done_ticket["external_label"],done_ticket["bof_space_cookie"]
+        p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
+                          ,pprint.pformat(done_ticket))
+        print p.pnfsFilename, p.bit_file_id, p.file_size\
+              ,done_ticket["external_label"],done_ticket["bof_space_cookie"]
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\
               +"2nd (post-file-send) mover callback on socket at "\
@@ -124,37 +126,45 @@ def write_to_hsm(unixfile, pnfsfile, u, csc) :
 
 def read_from_hsm(pnfsfile, outfile, u, csc) :
 
+    # first check the input pnfs file - this will also provide the bfid
     p = pnfs.pnfs(pnfsfile)
     if p.exists != pnfs.exists :
-        raise errorcode[ENOENT],"encp.read_from_hsm: "+pnfsfile+" does not exist"
+        raise errorcode[ENOENT],"encp.read_from_hsm: "\
+              +pnfsfile+" does not exist"
 
+    # Make sure we can open the unixfile. If we can't, we bomb out to user
+    # Note that the unix file remains open
     f = open(outfile,"w")
-    host, port, listen_socket = get_callback()
-    uqid = time.time()
 
+    # get a port to talk on and listen for connections
+    host, port, listen_socket = get_callback()
+    listen_socket.listen(4)
+
+    # generate the work ticket
     ticket = {"work"               : "read_from_hsm",
               "bfid"               : p.bit_file_id,
               "user_callback_port" : port,
               "user_callback_host" : host,
-              "unique_id"          : uqid
+              "unique_id"          : time.time()
               }
-    listen_socket.listen(4)
 
+    # ask configuration server what port the file clerk is using
     fticket = csc.get("file_clerk")
+
+    # send work ticket to file clerk who sends it to right library manger
     ticket = u.send(ticket, (fticket['host'], fticket['port']))
     if not ticket['status'] == "ok" :
-        raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to file_clerk at "+\
-              fticket['host']+"/"+repr(fticket['port'])+\
-              ", ticket[\"status\"]="+ticket["status"]
+        raise errorcode[EPROTO],"encp.read_from_hsm: from u.send to "\
+              +"file_clerk at "+fticket['host']+"/"+repr(fticket['port'])\
+              +", ticket[\"status\"]="+ticket["status"]
+    print "Q'd:",p.pnfsFilename, ticket["bfid"], p.file_size\
+              ,ticket["external_label"],ticket["bof_space_cookie"]
 
-    # so, we have placed our work in the system.
-    # and now we have to wait for resources. All we
-    # need to do is
-    # wait for the system to call us back, and make
-    # sure that is it calling _us_ back, and not some
-    # sort of old call-back to this very same port.
-    # It is dicey to time out, as it is probably legitimate
-    # to wait for hours....
+    # We have placed our work in the system and now we have to wait for
+    # resources. All we  need to do is wait for the system to call us back,
+    # and make sure that is it calling _us_ back, and not some sort of old
+    # call-back to this very same port. It is dicey to time out, as it
+    # is probably legitimate to wait for hours....
     while 1 :
         control_socket, address = listen_socket.accept()
         new_ticket = a_to_dict(control_socket.recv(10000))
@@ -162,15 +172,17 @@ def read_from_hsm(pnfsfile, outfile, u, csc) :
             listen_socket.close()
             break
         else:
-            print ("imposter called us back, trying again")
+            print ("encp read_from_hsm: imposter called us back, trying again")
             control_socket.close()
-
-    # if the system has called us back with our own
-    # unique id, call back the mover on the mover's port.
-    # and send the file on that port.
     ticket = new_ticket
     if not ticket["status"] == "ok" :
-        raise ticket["status"]
+        raise errorcode[EPROTO],"encp.read_from_hsm: "\
+              +"1st (pre-file-read) mover callback on socket at "\
+              +repr(address)+", failed to setup transfer: "\
+              +"ticket[\"status\"]="+ticket["status"]
+
+    # If the system has called us back with our own  unique id, call back
+    # the mover on the mover's port and read the file on that port.
     data_path_socket = mover_callback_socket(ticket)
     l = 0
     while 1:
@@ -179,22 +191,27 @@ def read_from_hsm(pnfsfile, outfile, u, csc) :
         if len(buf) == 0 : break
         f.write(buf)
     data_path_socket.close()
+    f.close()
 
-
-    # Final dialog with the mover. We know the file has
-    # hit some sort of media....
+    # File has been read - wait for final dialog with mover.
     done_ticket = a_to_dict(control_socket.recv(10000))
     control_socket.close()
     if not done_ticket["status"] == "ok" :
-        raise errorcode[EPROTO],"encp.read_from_hsm: from control socket at "+repr(address)+\
-              "  failed to transfer:  ticket[\"status\"]="+ticket["status"]
+        raise errorcode[EPROTO],"encp.read_from_hsm: "\
+              +"2nd (post-file-read) mover callback on socket at "\
+              +repr(address)+", failed to transfer: "\
+              +"ticket[\"status\"]="+ticket["status"]
+    pprint.pprint(ticket)
 
 ##############################################################################
 
 if __name__  ==  "__main__" :
+
+    # register as a udp clien
     csc = configuration_server_client()
     u = UDPClient()
 
+    # all files on the hsm system have /pnfs/ as the 1st part of their name
     p1 = string.find(sys.argv[1],"/pnfs/")
     p2 = string.find(sys.argv[2],"/pnfs/")
 
@@ -208,11 +225,14 @@ if __name__  ==  "__main__" :
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
-        print "encp copies to/from hsm. It is not involved in copying  "+sys.argv[1]," to ",sys.argv[2]
+        print "encp copies to/from hsm. It is not involved in copying "\
+              +sys.argv[1]," to ",sys.argv[2]
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==0 and p2==0 :
-        print "encp hsm to hsm is not functional. copy hsmfile to local disk and them back to hsm"
+        print "encp hsm to hsm is not functional. "\
+              +"copy hsmfile to local disk and them back to hsm"
 
     else:
-        print "ERROR: Can not process arguments "+sys.argv[1]," to ",sys.argv[2]
+        print "ERROR: Can not process arguments "\
+              +sys.argv[1]," to ",sys.argv[2]
