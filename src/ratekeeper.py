@@ -229,7 +229,7 @@ if __name__ == "__main__":
     ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
     
     ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
-    ratekeeper_host = ratekeep.get('host','MISSING') #Info about local node.
+    ratekeeper_host = ratekeep.get('hostip', ratekeep.get('host','MISSING'))
     ratekeeper_port = ratekeep.get('port','MISSING')
     ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
     event_relay_host = ratekeep.get('event_relay_host','MISSING')

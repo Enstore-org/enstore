@@ -13,10 +13,10 @@ MY_SERVER = "ratekeeper"
 class RatekeeperClient(generic_client.GenericClient):
 
     def __init__(self, csc, server_address):
+        generic_client.GenericClient.__init__(self, csc, MY_NAME)
         self.u = udp_client.UDPClient()
         self.timeout = 10
         self.ratekeeper_addr = server_address
-        generic_client.GenericClient.__init__(self, csc, MY_NAME)
 
     # send Active Monitor probe request
     def send_ticket (self, ticket):
