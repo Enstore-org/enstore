@@ -526,7 +526,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             if v["user_inhibit"] != ("none",  "none"):
                 continue
             if v["system_inhibit"] != ("none", "none"):
-
+                continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
                 continue
