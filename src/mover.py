@@ -450,6 +450,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             self.send_client_done(self.current_work_ticket, msg)
         self.reset()
         self.update()
+        self.reset_interval_timer()
         
     def transfer_complete(self):
         if verbose: print "transfer complete"
@@ -509,7 +510,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.reset()
 
         self.update()
-
+        self.reset_interval_timer()
 
         
     def reset(self):
