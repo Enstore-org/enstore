@@ -724,7 +724,33 @@ class HTMLLogFile(EnStatusFile, EnHTMLFile):
         if self.filedes:
             self.filedes.write(self.header)
 
+    # format the log files and write them to the file
+    def write(self, logfile_dir, logfiles, log_dirs):
+        # first we will create links in the file to all log file directories
+        # that have been specified in the configuration file with the
+        # name format robot_xxxx_dir, where 'xxxx' becomes the name of the
+        # link
+        if self.filedes:
+            if log_dirs:
+                dir_keys = log_dirs.keys()
+                dir_keys.sort()
+                self.filedes.write("<H1><FONT SIZE=+3>Other Log Files</FONT></H1>\n")
+                for dir in dir_keys:
+                    self.filedes.write('<A HREF="%s"><B>%s Log Files</B></A>\n'% \
+                                       (log_dirs[dir], dir))
+                self.filedes.write('<BR><BR><HR><BR>\n')
 
+            # now output the enstore log files and their sizes
+            if logfiles:
+                log_keys = logfiles.keys()
+                log_keys.sort()
+                self.filedes.write("<H1><FONT SIZE=+3>Enstore Log Files</FONT></H1>\n")
+                self.filedes.write('<TABLE BGCOLOR="#DFDFF0" NOSAVE >\n')
+                self.filedes.write('<TR><TD><B>FILE</B></TD><TD ALIGN=CENTER><B>SIZE</B></TD></TR>\n')
+                for log in log_keys:
+                    self.filedes.write('<TR><TD><A HREF="%s/%s"><B>%s</B></A></TD><TD>%s</TD></TR>\n'%(logfile_dir, log, log, logfiles[log]))
+                self.filedes.write('</TABLE>\n')
+                    
 class EnDataFile(EnFile):
 
     # make the data file by grepping the inFile.  fproc is any further
@@ -920,9 +946,7 @@ class EnPatrolFile(EnFile):
     # rm the file
     def remove(self):
         try:
-            if self.real_file_name:
-                filedes = open(self.real_file_name)
-                filedes.close()
+            if self.real_file_name and os.path.exists(self.real_file_name):
                 os.system("rm "+self.real_file_name)
         except IOError:
             # file does not exist
