@@ -191,10 +191,22 @@ class MonitoredInquisitor(MonitoredServer):
 	MonitoredServer.__init__(self, config, enstore_constants.INQUISITOR)
 
 
+class MonitoredAccountingServer(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.ACCOUNTING_SERVER)
+
+
 class MonitoredAlarmServer(MonitoredServer):
 
     def __init__(self, config):
 	MonitoredServer.__init__(self, config, enstore_constants.ALARM_SERVER)
+
+
+class MonitoredDrivestatServer(MonitoredServer):
+
+    def __init__(self, config):
+	MonitoredServer.__init__(self, config, enstore_constants.DRIVESTAT_SERVER)
 
 
 class MonitoredLogServer(MonitoredServer):

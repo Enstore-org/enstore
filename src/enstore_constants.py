@@ -236,7 +236,7 @@ MOVER = "mover"
 NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
-                    EVENT_RELAY, FILE_CLERK, INQUISITOR,
+                    DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INQUISITOR,
 		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER ]
 
 # Trace.trace output levels used by the inquisitor

@@ -1591,6 +1591,14 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.ratekeeper = monitored_server.MonitoredRatekeeper(cdict)
 	self.servers_by_name[enstore_constants.RATEKEEPER] = self.ratekeeper
 
+        cdict = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
+        self.accounting_server = monitored_server.MonitoredAccountingServer(cdict)
+	self.servers_by_name[enstore_constants.ACCOUNTING_SERVER] = self.accounting_server
+
+        cdict = self.config_d.get(enstore_constants.DRIVESTAT_SERVER, {})
+        self.drivestat_server = monitored_server.MonitoredDrivestatServer(cdict)
+	self.servers_by_name[enstore_constants.DRIVESTAT_SERVER] = self.drivestat_server
+
         for server_key in self.server_d.keys():
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)
