@@ -23,6 +23,8 @@ ALL = "all"
 NOTIFY = "notify"
 UNSUBSCRIBE = "unsubscribe"
 DUMP = "dump"
+DO_PRINT = "do_print"
+DONT_PRINT = "dont_print"
 MAX_TIMEOUTS = 20
 LOG_NAME = "EVRLY"
 YES = 1
@@ -61,8 +63,13 @@ class Relay:
 	### debugger messages
 	csc = (option.default_host(), option.default_port())
 	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
+	self.do_print = 0
 	Trace.init(LOG_NAME)
             
+    def ev_print(self, msg):
+	if self.do_print:
+	    print msg
+
     def dump(self):
 	# dump our brains
 	print "%s"%(time.strftime("%s%s%s"%("%Y-%b-%d", " ", 
@@ -136,6 +143,10 @@ class Relay:
 
 		elif tok[0] == DUMP:
 		    self.dump()
+		elif tok[0] == DO_PRINT:
+		    self.do_print = YES
+		elif tok[0] == DONT_PRINT:
+		    self.do_print = 0
 		else:
 		    self.send_message(msg, tok[0], now)
 	except:
@@ -154,18 +165,23 @@ class Relay:
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
         for addr, (t0, filter_d) in self.clients.items():
+	    self.ev_print("%s %s %s"%(time.ctime(now), addr, filter_d))
             if now - t0 > self.client_timeout:
+		self.ev_print("    cleaning up %s"%(addr,))
 		self.cleanup(addr, YES)
             else:
                 # client wants the message if there is no filter or if
                 # the filter contains the message type in its dict.
                 if (not filter_d) or filter_d.has_key(msg_type):
                     try:
+			self.ev_print("    sending %s to %s"%(msg, addr))
                         self.send_socket.sendto(msg, addr)
 		    except socket.error, detail:
 			extra = "%s"%(detail,)
+			self.ev_print("    ERROR: %s"%(detail,))
 			self.handle_error(addr, msg, extra)
                     except:
+			self.ev_print("    ERROR: unknown")
 			self.handle_error(addr, msg)
 if __name__ == '__main__':
     R = Relay()

@@ -17,6 +17,8 @@ UNLOAD = "unload"
 LOADED = "loaded"
 ENCPXFER = "encp_xfer"
 DUMP = "dump"
+DOPRINT = "do_print"
+DONTPRINT = "dont_print"
 
 MSG_FIELD_SEPARATOR = " "
 
@@ -269,6 +271,32 @@ class EventRelayDumpMsg(EventRelayMsg):
 	self.extra_info = ""
 
 
+# Message format:  do_print
+class EventRelayDoPrintMsg(EventRelayMsg):
+
+    def decode(self, msg):
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
+
+    def encode(self):
+	self.type = DOPRINT
+	self.extra_info = ""
+
+
+# Message format:  dont_print
+class EventRelayDontPrintMsg(EventRelayMsg):
+
+    def decode(self, msg):
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
+
+    def encode(self):
+	self.type = DONTPRINT
+	self.extra_info = ""
+
+
 # list of supported messages
 SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      UNSUBSCRIBE : EventRelayUnsubscribeMsg,
@@ -282,7 +310,9 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      UNLOAD : EventRelayUnloadMsg,
 		      LOADED : EventRelayLoadedMsg,
 		      ENCPXFER : EventRelayEncpXferMsg,
-		      DUMP : EventRelayDumpMsg
+		      DUMP : EventRelayDumpMsg,
+		      DOPRINT : EventRelayDoPrintMsg,
+		      DONTPRINT : EventRelayDontPrintMsg
 		      }
 
 

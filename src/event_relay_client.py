@@ -121,3 +121,16 @@ class EventRelayClient:
 	self.dump_msg = event_relay_messages.EventRelayDumpMsg(self.host, self.port)
 	self.dump_msg.encode()
 	self.send(self.dump_msg)
+
+    def do_print(self):
+	# send the do_print request to the event relay
+	self.doprint_msg = event_relay_messages.EventRelayDoPrintMsg(self.host, self.port)
+	self.doprint_msg.encode()
+	self.send(self.doprint_msg)
+
+    def dont_print(self):
+	# send the dont_print request to the event relay
+	self.dontprint_msg = event_relay_messages.EventRelayDontPrintMsg(self.host, self.port)
+	self.dontprint_msg.encode()
+	self.send(self.dontprint_msg)
+
