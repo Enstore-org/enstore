@@ -416,6 +416,8 @@ class EnStatus:
                     got_vol = 0
             else:
                 got_vol = 0
+        else:
+            got_vol = 0
 
         if got_vol:
             v = ",  Volume : "+ticket['tape']
