@@ -218,6 +218,20 @@ def generate_unique_id():
     _counter = _counter + 1
     return ret
 
+def extract_brand(bfid):
+    #Newer files have brands.
+    if len(bfid) == 19:
+        if bfid[4:].isdigit() and bfid[:4].isalpha():
+            return bfid[:4]
+        else:
+            return None
+    #Older files may not have a brand.
+    elif len(bfid) == 14:
+        if bfid.isdigit():
+            return ""
+
+    return None
+
 def combine_dict(*dictionaries):
     new = {}
     for i in range(0, len(dictionaries)):
@@ -1216,8 +1230,18 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
 	    start_time = time.time()
 	    while(time.time() - start_time < 10):
 
-		host_config.update_cached_routes()
-		route_list = host_config.get_routes()
+                try:
+                    host_config.update_cached_routes()
+                    route_list = host_config.get_routes()
+                except (OSError, IOError), msg:
+                    Trace.log(e_errors.ERROR, str(msg))
+                    raise EncpError(getattr(msg,"errno",None),
+                                    str(msg), e_errors.OSERROR)
+                if not route_list:
+                    Trace.log(e_errors.ERROR, str(msg))
+                    raise EncpError(None, "netstat output is empty",
+                                    e_errors.OSERROR)
+                    
 		for route in route_list:
 		    if route_ticket['mover_ip'] == route['Destination']:
 			break
@@ -1230,6 +1254,7 @@ def open_routing_socket(route_server, unique_id_list, encp_intf):
                 #This is were the interface selection magic occurs.
                 host_config.setup_interface(route_ticket['mover_ip'], ip)
             except (OSError, IOError, socket.error), msg:
+                Trace.log(e_errors.ERROR, str(msg))
                 raise EncpError(getattr(msg,"errno",None),
                                 str(msg), e_errors.OSERROR)
 
@@ -2400,15 +2425,26 @@ def verify_write_request_consistancy(request_list, e):
         tags = ["file_family", "wrapper", "file_family_width",
                 "storage_group", "library"]
         for key in tags:
-            #check for values that contain letters, digits and _.
-            if not charset.is_in_charset(str(request['vc'][key])):
-                msg="Pnfs tag, %s, contains invalid characters." % (key,)
-                request['status'] = (e_errors.USERERROR, msg)
-
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'],
-                                               request)
+            try:
+                #check for values that contain letters, digits and _.
+                if not charset.is_in_charset(str(request['vc'][key])):
+                    raise EncpError(None,
+                                    "Pnfs tag, %s, contains invalid "
+                                    " characters." % (key,),
+                                    e_errors.PNFS_ERROR)
+            except (ValueError, AttributeError, TypeError,
+                    IndexError, KeyError), msg:
+                    msg = "Error checking tag %s: %s" % (key, str(msg))
+                    request['status'] = (e_errors.USERERROR, msg)
+                    print_data_access_layer_format(request['infile'],
+                                                   request['outfile'],
+                                                   request['file_size'],
+                                                   request)
+                    quit() #Harsh, but necessary.
+            except EncpError, msg:
+                print_data_access_layer_format(
+                    request['infile'],request['outfile'],request['file_size'],
+                    {'status':(msg.type, msg.strerror)})
                 quit() #Harsh, but necessary.
 
         #Verify that the file family width is in fact a non-
@@ -3092,11 +3128,19 @@ def verify_read_request_consistancy(requests_per_vol, e):
     for vol in vols:
         request_list = requests_per_vol[vol]
 
-        #Only aquire the first loop.  This might be a performance hit for
-        # a large number of requests otherwise.
-        if not bfid_brand:
-            bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
-
+        try:
+           #Only aquire the first loop.  This might be a performance hit for
+           # a large number of requests otherwise.
+           if not bfid_brand:
+               bfid_brand = requests_per_vol[vol][0]['fc']['bfid']
+        except (ValueError, AttributeError, TypeError,
+                IndexError, KeyError), msg:
+            msg = "Error insuring consistancy with request list for " \
+                  "volume %s." % (vol,)
+            status = (e_errors.EPROTO, msg)
+            print_data_access_layer_format("", "", 0, {'status':status})
+            quit() #Harsh, but necessary.
+            
         for request in request_list:
 
             #Verify that everything with the files (existance, permissions,
@@ -3104,19 +3148,30 @@ def verify_read_request_consistancy(requests_per_vol, e):
             inputfile_check(request['infile'])
             outputfile_check(request['infile'], request['outfile'],e.put_cache)
 
-            #Verify that file clerk and volume clerk returned the same
-            # external label.
-            if request['vc']['external_label'] != \
-               request['fc']['external_label']:
-                msg = "Volume and file clerks returned conflicting volumes." \
-                      " VC_V=%s  FC_V=%s"%\
-                      (request['vc']['external_label'],
-                       request['fc']['external_label'])
-                request['status'] = (e_errors.USERERROR, msg)
-
-                print_data_access_layer_format(request['infile'],
-                                               request['outfile'],
-                                               request['file_size'], request)
+            try:
+                #Verify that file clerk and volume clerk returned the same
+                # external label.
+                if request['vc']['external_label'] != \
+                   request['fc']['external_label']:
+                    raise EncpError(None,
+                                    "Volume and file clerks returned " \
+                                    "conflicting volumes. VC_V=%s  FC_V=%s" % \
+                                    (request['vc']['external_label'],
+                                     request['fc']['external_label']),
+                                    e_errors.EPROTO)
+            except EncpError:
+                    request['status'] = (e_errors.USERERROR, msg)
+                    print_data_access_layer_format(request['infile'],
+                                                   request['outfile'],
+                                                   request['file_size'],
+                                                   request)
+                    quit() #Harsh, but necessary.
+            except (ValueError, AttributeError, TypeError,
+                    IndexError, KeyError), msg:
+                print_data_access_layer_format("", "", 0, {'status':
+                                "Unrecoverable read list consistancy error " \
+                                "for volume %s on external_label check." %
+                                (vol,)})
                 quit() #Harsh, but necessary.
 
             #If no layer 4 is present, then report the error, raise an alarm,
@@ -3132,6 +3187,25 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
+            #Get the database information.
+            try:
+                db_volume = request['fc']['external_label']
+                db_location_cookie = request['fc']['location_cookie']
+                db_size = long(request['fc']['size'])
+                db_file_family = volume_family.extract_file_family(
+                    request['vc']['volume_family'])
+                db_pnfs_name0 = request['fc']['pnfs_name0']
+                db_pnfsid = request['fc']['pnfsid']
+                db_bfid = request['fc']['bfid']
+            except (ValueError, AttributeError, TypeError,
+                    IndexError, KeyError), msg:
+                request['status'] = (e_errors.KEYERROR,
+                                     "Unable to obtain database information: "\
+                                     + str(msg))
+                print_data_access_layer_format(request['infile'],
+                                               request['outfile'],
+                                               request['file_size'], request)
+                quit() #Harsh, but necessary.
             
             if (p.volume == pnfs.UNKNOWN or
                 p.location_cookie == pnfs.UNKNOWN or
@@ -3160,34 +3234,31 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
             #If there is a layer 4, but the data does not match that in
             # the file and volume clerk databases, then raise alarm and exit.
-            elif (request['fc']['external_label'] != p.volume or
-                  not same_cookie(request['fc']['location_cookie'],
-                                  p.location_cookie) or
-                  long(request['fc']['size']) != long(p.size) or
-                  volume_family.extract_file_family(
-                                request['vc']['volume_family']) != p.origff or
-                  request['fc']['pnfs_name0'] != p.origname or
+            elif (db_volume != p.volume or
+                  not same_cookie(db_location_cookie, p.location_cookie) or
+                  long(db_size) != long(p.size) or
+                  db_file_family != p.origff or
+                  db_pnfs_name0 != p.origname or
                   #Mapfile no longer used.
-                  request['fc']['pnfsid'] != p.pnfsid_file or
+                  db_pnfsid != p.pnfsid_file or
                   #Volume map file id no longer used.
-                  request['fc']['bfid'] != p.bfid
+                  db_bfid != p.bfid
                   #Origdrive not always recored.
                   ):
                 rest = {'infile':request['infile'],
                         'outfile':request['outfile'],
                         'bfid':request['bfid'],
-                        'db_volume':request['fc']['external_label'],
+                        'db_volume':db_volume,
                         'pnfs_volume':p.volume,
-                        'db_location_cookie':request['fc']['location_cookie'],
+                        'db_location_cookie':db_location_cookie,
                         'pnfs_location_cookie':p.location_cookie,
-                        'db_size':long(request['fc']['size']),
+                        'db_size':long(db_size),
                         'pnfs_size':long(p.size),
-                        'db_file_family':volume_family.extract_file_family(
-                             request['vc']['volume_family']),
+                        'db_file_family':db_file_family,
                         'pnfs_file_family':p.origff,
-                        'db_pnfsid':request['fc']['pnfsid'],
+                        'db_pnfsid':db_pnfsid,
                         'pnfs_pnfsid':p.pnfsid_file,
-                        'db_bfid':request['fc']['bfid'],
+                        'db_bfid':db_bfid,
                         'pnfs_bfid':p.bfid,
                         'status':"Probable database conflict with pnfs."}
                 Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
@@ -3200,7 +3271,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
             #Test to verify that all the brands are the same.  If not exit.
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
-            if request['fc']['bfid'][:4] != bfid_brand[:4]:
+            if extract_brand(db_bfid) != extract_brand(bfid_brand):
                 msg = "All bfids must have the same brand."
                 request['status'] = (e_errors.USERERROR, msg)
                 print_data_access_layer_format(request['infile'],
@@ -3344,6 +3415,12 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             print_data_access_layer_format(
                 ifullname, ofullname, file_size,
                 {'status':(detail.type, detail.strerror)})
+            quit()
+        except (ValueError, AttributeError, TypeError,
+                IndexError, KeyError), msg:
+            print_data_access_layer_format(
+                ifullname, ofullname, file_size,
+                {'status':(e_errors.EPROTO, str(msg))})
             quit()
 
         Trace.message(TICKET_LEVEL, "FILE CLERK:")
@@ -3972,25 +4049,6 @@ def main():
     encp_start_time = time.time()
     tinfo = {'encp_start_time':encp_start_time,
              't0':int(encp_start_time)}
-
-    #If verbosity is turned on get the user name.
-    try:
-        user_name = pwd.getpwuid(os.geteuid())[0]
-    except (OSError, KeyError):
-        user_name = os.geteuid()
-    try:
-        real_name = pwd.getpwuid(os.getuid())[0]
-    except (OSError, KeyError):
-        real_name = os.getuid()
-
-    #Create the logfile user name string.
-    if user_name == real_name:
-        log_name = user_name
-    else:
-        log_name = "%s(%s)" % (user_name, real_name)
-    #Other strings for the log file.
-    command_line = string.join(sys.argv)
-    version = encp_client_version().strip()
     
     Trace.init("ENCP")
 
@@ -4009,16 +4067,72 @@ def main():
     for x in xrange(1, e.verbose+1):
         Trace.do_message(x)
 
+        #If verbosity is turned on get the user name(s).
+    try:
+        user_name = pwd.getpwuid(os.geteuid())[0]
+    except (OSError, KeyError):
+        user_name = os.geteuid()
+    try:
+        real_name = pwd.getpwuid(os.getuid())[0]
+    except (OSError, KeyError):
+        real_name = os.getuid()
+
+    #If verbosity is turned on get the group name(s).
+    try:
+        user_group = grp.getgrgid(os.geteuid())[0]
+    except (OSError, KeyError):
+        user_group = os.geteuid()
+    try:
+        real_group = grp.getgrgid(os.getuid())[0]
+    except (OSError, KeyError):
+        real_group = os.getuid()
+
+    #If verbosity is turned on and the transfer is a write to enstore,
+    # output the tag information.
+    t=pnfs.Tag(os.path.dirname(e.output[0]))
+    try:
+        library = t.get_library()
+    except (OSError, IOError, KeyError, TypeError):
+        library = "Unknown"
+    try:
+        storage_group = t.get_storage_group()
+    except (OSError, IOError, KeyError, TypeError):
+        storage_group = "Unknown"
+    try:
+        file_family = t.get_file_family()
+    except (OSError, IOError, KeyError, TypeError):
+        file_family = "Unknown"
+    try:
+        file_family_wrapper = t.get_file_family_wrapper()
+    except (OSError, IOError, KeyError, TypeError):
+        file_family_wrapper = "Unknown"
+    try:
+        file_family_width = t.get_file_family_width()()
+    except (OSError, IOError, KeyError, TypeError):
+        file_family_width = "Unknown"
+        
+    #Other strings for the log file.
+    start_line = "Start time: %s" % time.ctime(encp_start_time)
+    command_line = "Command line: %s" % (string.join(sys.argv),)
+    version_line = "Version: %s" % (encp_client_version().strip(),)
+    id_line = "User: %s(%d)  Group: (%s)%d  Euser: (%s)%d  Egroup: (%s)%d" %\
+              (real_name, os.getuid(), real_group, os.getgid(),
+               user_name, os.geteuid(), user_group, os.getegid())
+    tag_line = "Library: %s  Storage Group: %s  File Family: %s  " \
+               "FF Wrapper: %s  FF Width: %s" % \
+               (library, storage_group,
+                file_family, file_family_wrapper, file_family_width)
+
     #Print this information to make debugging easier.
-    Trace.message(DONE_LEVEL, 'Start time: %s' % time.ctime(encp_start_time))
-    Trace.message(DONE_LEVEL, 'User: %s' % log_name)
-    Trace.message(DONE_LEVEL, 'Command line: %s' % string.join(sys.argv))
-    Trace.message(DONE_LEVEL, 'Version: %s' % encp_client_version())
+    Trace.message(DONE_LEVEL, start_line)
+    Trace.message(DONE_LEVEL, id_line)
+    Trace.message(DONE_LEVEL, command_line)
+    Trace.message(DONE_LEVEL, version_line)
+    if e.outtype == "hsmfile":
+        Trace.message(DONE_LEVEL, tag_line)
 
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
-    id_line = "UID: %d  GID: %d EUID: %d EGID: %d" % \
-              (os.getuid(), os.getgid(), os.geteuid(), os.getegid())
     Trace.message(CONFIG_LEVEL, id_line)
 
     #Some globals are expected to exists for normal operation (i.e. a logger
@@ -4029,9 +4143,12 @@ def main():
 
     # convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
-    Trace.log(e_errors.INFO,
-                'encp version %s, user: %s, command line: "%s"' %
-                (version, log_name, command_line))
+    if e.outtype == "hsmfile":  #write
+        Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
+                  (version_line, id_line, tag_line, command_line))
+    else:                       #read
+        Trace.log(e_errors.INFO, "%s  %s  %s" %
+                  (version_line, id_line, command_line))
 
     if e.data_access_layer:
         global data_access_layer_requested
