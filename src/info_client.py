@@ -500,6 +500,77 @@ class infoClient(generic_client.GenericClient):
 			return done_ticket
 		return ticket
 
+	def query_db(self, q):
+		host, port, listen_socket = callback.get_callback()
+		listen_socket.listen(4)
+		ticket = {"work"	  : "query_db",
+			  "query"         : q,
+			  "callback_addr" : (host, port)}
+		# send the work ticket to the file clerk
+		ticket = self.send(ticket)
+		if ticket['status'][0] != e_errors.OK:
+			return ticket
+
+		r, w, x = select.select([listen_socket], [], [], 15)
+		if not r:
+			listen_socket.close()
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+		control_socket, address = listen_socket.accept()
+		if not hostaddr.allow(address):
+			listen_socket.close()
+			control_socket.close()
+			raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+		ticket = callback.read_tcp_obj(control_socket)
+		listen_socket.close()
+		
+		if ticket["status"][0] != e_errors.OK:
+			return ticket
+		
+		data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		data_path_socket.connect(ticket['info_clerk_callback_addr'])
+  
+		ticket= callback.read_tcp_obj(data_path_socket)
+		result = callback.read_tcp_obj_new(data_path_socket)
+		ticket['result'] = result
+		data_path_socket.close()
+
+		# Work has been read - wait for final dialog with file clerk
+		done_ticket = callback.read_tcp_obj(control_socket)
+		control_socket.close()
+		if done_ticket["status"][0] != e_errors.OK:
+			return done_ticket
+		return ticket
+
+def show_query_result(result):
+	width = []
+	w = len(result['fields'])
+	for i in range(w):
+		width.append(len(result['fields'][i]))
+
+	for r in result['result']:
+		for i in range(w):
+			l1 = len(str(r[i]))
+			if l1 > width[i]:
+				width[i] = l1
+
+	format = []
+	for i in range(w):
+		format.append("%%%ds "%(width[i]))
+
+	ll = 0
+	for i in range(w):
+		ll = ll + width[i]
+	ll = ll + 2*(w - 1)
+
+	for i in range(w):
+		print format[i]%(result['fields'][i]),
+	print
+	print "-"*ll
+	for r in result['result']:
+		for i in range(w):
+			print format[i]%(r[i]),
+		print
 
 class InfoClientInterface(generic_client.GenericClientInterface):
 
@@ -523,6 +594,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.history = None
 		self.write_protect_status = None
 		self.show_bad = 0
+		self.query = ''
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
@@ -578,6 +650,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_USAGE:option.REQUIRED,
 				option.VALUE_LABEL:"volume_name",
 				option.USER_LEVEL:option.USER},
+		option.QUERY:{option.HELP_STRING:"query database",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"query",
+				option.USER_LEVEL:option.ADMIN},
 		option.LABELS:{
 				option.HELP_STRING:"list all volume labels",
 				option.DEFAULT_VALUE:option.DEFAULT,
@@ -766,6 +843,13 @@ def do_work(intf):
 		if ticket['status'][0] == e_errors.OK:
 			for f in ticket['bad_files']:
 				print f['label'], f['bfid'], f['size'], f['path']
+	elif intf.query:
+		ticket = ifc.query_db(intf.query)
+		if ticket['status'][0] == e_errors.OK:
+			if ticket['result']['status'][0] != e_errors.OK:
+				ticket['status'] = ticket['result']['status']
+			else:
+				show_query_result(ticket['result'])
 	elif intf.ls_sg_count:
 		ticket = ifc.list_sg_count()
 		sgcnt = ticket['sgcnt']

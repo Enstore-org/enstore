@@ -580,6 +580,52 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.control_socket.close()
 		return
 
+	def query_db(self, ticket):
+		try:
+			q = ticket["query"]
+			# only select is allowed
+			qu = string.upper(q)
+			query_parts = string.split(qu)
+
+			if query_parts[0] != "SELECT" or "INTO" in query_parts:
+				msg = "only simple select statement is allowed"
+				ticket["status"] = (e_errors.ERROR, msg)
+			else:
+				ticket["status"] = (e_errors.OK, None)
+			self.reply_to_caller(ticket)
+		except KeyError, detail:
+			msg = "Info Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			####XXX client hangs waiting for TCP reply
+			return
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		result = {}
+		try:
+			res = self.db.query(q)
+			result['result'] = res.getresult()
+			result['fields'] = res.listfields()
+			result['ntuples'] = res.ntuples()
+			result['status'] = (e_errors.OK, None)
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			msg = 'query_db(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+			result['status'] = (e_errors.ERROR, msg)
+
+		# finishing up
+
+		callback.write_tcp_obj_new(self.data_socket, result)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close()
+		return
+
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
