@@ -77,7 +77,11 @@ class GenericDriver:
         return ret
 
     def int2loc( self, offset):
-        s="%12s"%offset
+        if offset in (None, 'None', 'none'):
+            offset2 = 0
+        else:
+            offset2 = offset        
+        s="%12s"%offset2
         if s[-1]=='L':
             s=s[:-1]
         s='0'*(12-len(s))+s
