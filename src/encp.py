@@ -87,7 +87,7 @@ def jraise(errcode,errmsg,exit_code=1) :
 # log the error to the logger and print it to the stderr
 
 def print_error(errcode,errmsg,fatal=0) :
-    format = str(errcode)+str(errmsg)
+    format = str(errcode)+" "+str(errmsg)
     if fatal:
         format = "Fatal error: "+format
     else:
@@ -966,7 +966,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 
 
 		print_error('EPROTO',
-                            ' encp.write_to_hsm: 2nd (post-file-send) mover callback on socket %s, failed to transfer:\
+                            'encp.write_to_hsm: 2nd (post-file-send) mover callback on socket %s, failed to transfer:\
  done_ticket["status"]=%s'%(address,done_ticket['status']),
                             fatal=(retry<2))
 		retry = retry - 1
@@ -1243,7 +1243,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 					 rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
 					 lmticket)
 	  print_error("EPROTO",
-		      " submit_read_requests. lmget failed %s"%(lmticket["status"],),
+		      "submit_read_requests. lmget failed %s"%(lmticket["status"],),
                       fatal=0)
 	  continue
 
@@ -1262,7 +1262,7 @@ def submit_read_requests(requests, client, tinfo, vols, ninput, verbose,
 					 ticket)
 
 	  print_error('EPROTO',
-		      ' encp.read_from_hsm: from u.send to LM at %s:%s,  ticket["status"]=%s'
+		      'encp.read_from_hsm: from u.send to LM at %s:%s,  ticket["status"]=%s'
                       %(lmticket['hostip'],lmticket['port'],ticket["status"]),
 		      fatal=0)          
 	  continue
@@ -1363,13 +1363,14 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		if files_left > 0:
 		    files_left = files_left - 1
 
-		print_error (errno.errorcode[errno.EPROTO],' encp.read_from_hsm: 1st (pre-file-read)\
+		print_error (errno.errorcode[errno.EPROTO],
+                             'encp.read_from_hsm: 1st (pre-file-read)\
  mover callback on socket %s failed to setup transfer, ticket["status"]=%s' %(address, ticket["status"]),
                              fatal=0)
 
 		continue
 
-            print_error (errno.errorcode[errno.EPROTO],' encp.read_from_hsm: 1st (pre-file-read)\
+            print_error (errno.errorcode[errno.EPROTO],'encp.read_from_hsm: 1st (pre-file-read)\
  mover callback on socket %s failed to setup transfer, ticket["status"]=%s' %(address, ticket["status"]),
                              fatal=0)
 
@@ -1473,14 +1474,14 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                             if files_left > 0: files_left = files_left - 1
 
                             print_error ('EPROTO',
-                                         ' encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
+                                         'encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
  failed to transfer,  done_ticket["status"]=%s' %(address, done_ticket["status"]),
                                          fatal=1)
 
                             error=1
                             break
                         print_error ('EPROTO',
-                                     ' encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
+                                     'encp.read_from_hsm: 2nd (post-file-send) mover callback on socket %s\
  failed to transfer,  done_ticket["status"]=%s' %(address, done_ticket["status"]),
                                      fatal=1)
                         pass
@@ -1532,7 +1533,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 		if files_left > 0:
 		    files_left = files_left - 1
 
-		print_error ('EPROTO', ' encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
+		print_error ('EPROTO',
+                             'encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
  failed to transfer, done_ticket["status"]=%s' %(address, done_ticket["status"]),
                              fatal=1)
 
@@ -1540,7 +1542,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 
 
 
-            print_error ('EPROTO', ' encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
+            print_error ('EPROTO', 'encp.read_from_hsm: 2nd (post-file-read) mover callback on socket %s\
  failed to transfer, done_ticket["status"]=%s' %(address, done_ticket["status"]),
                          fatal=1)
 
@@ -1570,7 +1572,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
                                                done_ticket)
 
                 print_error('EPROTO',
-                       " encp.read_from_hsm: CRC's mismatch: %s %s"%
+                       "encp.read_from_hsm: CRC's mismatch: %s %s"%
                             (mover_crc, mycrc),fatal=0)
 
 		# no retry for this case
