@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
 
     ip_list = get_all_ips()
-    ip_list = ["localhost"] #TEST FIXTURE
+    ##ip_list = ["localhost"] #TEST FIXTURE
     msport = 9999
     for ip in ip_list:
         msc = MonitorServerClient((ip, msport))
