@@ -8,6 +8,8 @@ import pprint
 def formatedf(file):
 	bfid = file.get('bfid', None)
 	complete_crc = file.get('complete_crc', 0)
+	if complete_crc == None:
+		complete_crc = 0
 	deleted = 'u'
 	if file.has_key('deleted'):
 		if file['deleted'] == 'no':
