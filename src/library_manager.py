@@ -115,6 +115,7 @@ class AtMovers:
             vols.append(rec[1])
             if self.at_movers.has_key(rec[0]): ### DBG: REMOVE
                 Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]]['volume_status'][0][1],))
+                Trace.trace(12,"busy_volumes: rec %s" % (self.at_movers[rec[0]],))
             if self.at_movers.has_key(rec[0]):
                 if self.at_movers[rec[0]]['volume_status'][0][1] == 'none':
                     # system inhibit
@@ -417,6 +418,7 @@ class LibraryManagerMethods:
                 self.continue_scan = 1
                 return rq, key_to_check
             else:
+                rq.ticket["status"] = v["status"]
                 external_label = v["external_label"]
         else:
            external_label = self.process_for_bound_vol 
@@ -519,13 +521,19 @@ class LibraryManagerMethods:
                                         (self.name, self.lm_lock))
                         return  None, (e_errors.NOWORK, None)
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
-                    w['status'] = ret['status']
+                    #w['status'] = ret['status']
                     if ret['status'][0] != e_errors.VOL_SET_TO_FULL:
+                        w['status'] = ret['status']
                         self.pending_work.delete(rq)
                         self.send_regret(w)
                     Trace.log(e_errors.ERROR,
                               "next_work_any_volume: cannot do the work for %s status:%s" % 
                               (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
+                    return None, (e_errors.NOWORK, None)
+            else:
+                if (w['work'] == 'write_to_hsm' and
+                    (w['status'][0] == e_errors.VOL_SET_TO_FULL or
+                     w['status'][0] == 'full')):
                     return None, (e_errors.NOWORK, None)
             return (rq, rq.ticket['status'])
         return (None, (e_errors.NOWORK, None))
@@ -1269,6 +1277,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         elif  (status[0] == e_errors.NOWORK or
                status[0] == e_errors.VOL_SET_TO_FULL or
                status[0] == 'full'):
+            if (status[0] == e_errors.VOL_SET_TO_FULL or
+                status[0] == 'full'):
+                # update at_movers information
+                vol_stat = mticket['volume_status']
+                s1 = vol_stat[1]
+                mticket['volume_status'] = (status, s1)
+                Trace.trace(11, "mover_bound_volume: update at_movers %s"%(status,))
+                self.volumes_at_movers.put(mticket)
             # do not dismount
             return
         else:
