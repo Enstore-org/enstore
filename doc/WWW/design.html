@@ -1501,10 +1501,99 @@ following reports using this information:<BR>
 <LI>a <a href="#inquisitor_plot_btd">plot of total bytes transferred/day</a>
 </UL>
 
+The reports are updated periodically based on 
+<a href="#inquisitor_config">timeout values</a> in the Enstore
+config file directing the Inquisitor to gather
+each servers' information on a specific frequency.  Each Enstore server may have
+its own unique timeout value specified for it.  For example, the Inquisitor
+may be instructed to gather information from the file_clerk every 60 seconds but
+from the log_server every 135 seconds.  However the plots are not updated
+automatically and may be updated by a user initiated command or by a cron job
+for example.  This information is obtained from the log files.
+<p>
+The inquisitor will listen for command
+line requests sent to it and will periodically check to see if it is time to
+update information for any of the servers that it is monitoring.  If so, then the
+server in question is contacted and the resulting information is formated for
+output to the various reports. The possible information gathered from each of the
+servers and which report it ends up in are listed below.  In addition to
+gathering information of each Enstore server, the Inquisitor will collect
+information from the log files on encp commands and report on the blocksizes
+set in the Enstore config file.
 
-<h3><a name="inquisitor_cmds">
+<P>
+<TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR VALIGN=CENTER NOSAVE>
+<TD NOSAVE><B>SERVER</B></TD>
+<TD NOSAVE><B>INFORMATION GATHERED</B></TD>
+<TD NOSAVE><B>REPORTS EFFECTED</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>blocksizes</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>&nbsp;</TD>
+<TD NOSAVE>encp command history</TD>
+<TD NOSAVE>encp html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>admin_clerk</TD>
+<TD NOSAVE>alive status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>config_server</TD>
+<TD NOSAVE>alive status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>file_clerk</TD>
+<TD NOSAVE>alive status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>inquisitor</TD>
+<TD NOSAVE>alive status<br>refetch config file from config server</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>library manager(s)</TD>
+<TD NOSAVE>alive status<br>suspect volume list<br>mover list<br>work queues</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>logserver</TD>
+<TD NOSAVE>alive_status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>media changer(s)</TD>
+<TD NOSAVE>alive status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>mover(s)</TD>
+<TD NOSAVE>alive status<br>mover activity status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>volume_clerk</TD>
+<TD NOSAVE>alive status</TD>
+<TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
+</TR>
+</TABLE>
+<P>
+
+Since the Inquisitor can request a new config file from the config_server 
+periodically, it is possible to dynamically change the way information is
+displayed and the type of information that is displayed without restarting the
+Inquisitor.
+
+<h4><a name="inquisitor_cmds">
 1.3.8.1 Command Line Control of the Inquisitor 
-</h3>
+</h4>
 Inquisitor functionality may be controlled through a command line interface using
 <B>ecmd</B>.  A summary of the supported commands is given below.  In addition
 to the following commands, the Inquisitor command line interface supports the
@@ -1630,9 +1719,9 @@ general commands supported by all other servers; <i>alive</i>,
 </TR>
 </TABLE>
 
-<h3><a name="inquisitor_config">
+<h4><a name="inquisitor_config">
 1.3.8.2 Inquisitor Config File Values
-</h3>
+</h4>
 The Inquisitor looks for the following values in the Inquisitor section of the
 Enstore config file. The default value is used if the dictionary element is not
 found. Dictionary elements with no default must be specified in the Enstore 
@@ -1747,25 +1836,25 @@ configdict['inquisitor']   = { 'host':'rip6',          \
                                'timeouts' : { 'ait.library_manager': 15} }
 </PRE>
 
-<h3><a name="inquisitor_outputs">
+<h4><a name="inquisitor_outputs">
 1.3.8.3 Example Inquisitor Reports
-</h3>
+</h4>
 These examples reflect a running system on the <i>rip</i> cluster.
-<h3><a name="inquisitor_ascii_status">
+<h4><a name="inquisitor_ascii_status">
 1.3.8.3.1 Example Ascii Status File
-</h3>
-<h3><a name="inquisitor_html_status">
+</h4>
+<h4><a name="inquisitor_html_status">
 1.3.8.3.2 Example Html Status Snapshot File
-</h3>
-<h3><a name="inquisitor_encp_status">
+</h4>
+<h4><a name="inquisitor_encp_status">
 1.3.8.3.3 Example Encp History Snapshot File
-</h3>
-<h3><a name="inquisitor_plot_ita">
+</h4>
+<h4><a name="inquisitor_plot_ita">
 1.3.8.3.4 Example Individual Transfer Activity Plot
-</h3>
-<h3><a name="inquisitor_plot_btd">
+</h4>
+<h4><a name="inquisitor_plot_btd">
 1.3.8.3.5 Example Bytes Transferred/Day Plot
-</h3>
+</h4>
 
 <h2><a name="db">
 2 Databases in Enstore
