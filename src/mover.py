@@ -1034,7 +1034,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.maybe_clean()
             self.idle()
-        self.schedule_update(3)
+        #give encp a chance to submit another request with low latency
+        self.schedule_update(time.time() + 3)
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -1063,7 +1064,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
 
-        self.schedule_update(3)
+        #give encp a chance to submit another request with low latency
+        self.schedule_update(time.time() + 3)
 
             
     def maybe_clean(self):
