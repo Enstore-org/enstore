@@ -39,12 +39,16 @@ else:
             if test & my_mode == 0:
                 continue
             other_mask, group_mask, user_mask = stat_masks[test]
-            other_ok = file_mode & other_mask 
-            group_ok = file_mode & group_mask and my_gid==file_gid
-            user_ok = file_mode & user_mask and my_uid==file_uid
-            if not (other_ok or group_ok or user_ok):
-                return 0
-        #all tests passwd
+            if file_uid==my_uid:
+                if not (file_mode & user_mask):
+                    return 0
+            elif file_gid==my_gid:
+                if not (file_mode & group_mask):
+                    return 0
+            else:
+                if not (file_mode & other_mask):
+                    return 0
+        #all tests passed
         return 1
 
 if __name__ == '__main__':
