@@ -636,14 +636,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	return
 
     def handle_timeout( self ):
-	print "timed out"
-	for lib in libm_config_dict.keys():
-	    lib_config = libm_config_dict[lib]
-	    lm_address = ( lib_config['hostip'], lib_config['port'] )
-	    next_req_to_lm = get_state_build_next_lm_req( self, posix.WNOHANG )
-	    print "next_req_to_lm =",next_req_to_lm
-	    do_next_req_to_lm( self, next_req_to_lm, lm_address )
-	    pass
         return
 
     pass
