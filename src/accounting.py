@@ -159,6 +159,33 @@ class accDB:
 
 		self.insert('encp_xfer', xfer)
 
+	def log_encp_error(self, date, node, pid, username, src, dst,
+		size, encp_id, version, type, error):
+		if type(date) != type(""):
+			date = time2timestamp(date)
+
+		en_error = {
+			'date'		: date,
+			'node'		: node,
+			'pid'		: pid,
+			'username'	: username,
+			'version'	: version,
+			'error'		: error}
+
+		if src:
+			en_error['src'] = src
+		if dst:
+			en_error['dst'] = dst
+		if size:
+			en_error['size'] = size
+		else:
+			en_error['size'] = -1
+		if encp_id:
+			en_error['encp_id'] = encp_id
+		
+
+		self.insert('encp_error', en_error)
+			
 	# This pair of function need a unique tag to work
 	# The calling function should provide such a tag
 	# A simple key is host_ip.pid.time

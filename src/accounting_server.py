@@ -265,6 +265,30 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if self.debug:
 			print time.ctime(st), 'encp_xfer\t', dt
 
+	# log_encp_error(....)
+	def log_encp_error(self, ticket):
+		st = time.time()
+		# Trace.log(e_errors.INFO, `ticket`)
+		try:
+			self.accDB.log_encp_xfer(
+				ticket['date'],
+				ticket['node'],
+				ticket['pid'],
+				ticket['username'],
+				ticket['src'],
+				ticket['dst'],
+				ticket['size'],
+				ticket['encp_id'],
+				ticket['version'],
+				ticket['type'],
+				ticket['error'])
+		except:
+			e, v = sys.exc_info()[:2]
+			Trace.log(e_errors.ERROR, err_msg('log_encp_error()', ticket, e, v))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'encp_error\t', dt
+
 	# log_start_event
 	def log_start_event(self, ticket):
 		st = time.time()
