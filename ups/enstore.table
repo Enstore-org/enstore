@@ -84,6 +84,10 @@ QUALIFIERS = ""
 	execute("touch /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
 	execute('sh -c "chmod go+rw /tmp/enstore/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
 
+	# create an encp link in the bin area
+	# this provides compatibility with the encp product and allows people to just say "encp" and not "ecmd encp"
+	execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.py $ENSTORE_DIR/bin/encp; fi"',NO_UPS_ENV)
+	
         # default "control" environmental variables
         envSet(ENSTORE_CONFIG_FILE, "${UPS_PROD_DIR}/etc/pcfarm.conf")
         envSet(ENSTORE_CONFIG_PORT, 7500)
