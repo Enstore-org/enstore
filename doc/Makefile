@@ -15,10 +15,10 @@ SHELL = /bin/sh
 .ps.gif:
 	@convert $*.ps $@
 
-WWW  = ./www/
-WWW_NEW = ./www_new/
-BIN  = ../bin/
-SRC  = ../src/
+WWW  = ./www
+WWW_NEW = ./www_new
+BIN  = ../bin
+SRC  = ../src
 SRCWWW = $(WWW)
 
 ENSTORE_HOME = /usr/hppc_home/www/enstore
