@@ -597,15 +597,90 @@ exacerbate: automouting works fine if the mountpoint is only 1 level deep -
 but if one tries to mount deeper in a mounted tree, the automounter will
 not work properly.  To circumvent this difficulty, one needs to employ a
 link gambit, provided by Ramon Pasetes of the OSS Department.  The solution
-uses an intermediate node where the filesystem are mounted in the 1st
+uses an intermediate link where the filesystem are mounted in the 1st
 level, a series of links that make it make the file system appear to be
 mounted as deep as it need be, and an export map to get the mountpoints to
-the client machines. Here, as an example of this solution, is the current
-auto.pnfs indirect maps that the OSS department are using for the Run II
-farm nodes:
+the client machines.
+<p>
+Here, as an example of this solution.  The example is the current
+automounting maps that the OSS department are using for the Run II
+farm nodes, but applied to a test node called airedale.
 <p>
 
-INSERT FARM MAP
+Here is the auto.master entry for pnfs:
+<pre>
+/pnfs   /etc/auto.pnfs    -hard,intr,noac
+</pre>
+<p>
+And here is the auto.pnfs map:
+<pre>
+d0sam           pcfarm9:/d0sam
+#
+enstore         pcfarm9:/enstore
+#
+grau            airedale:/Pnfs/grau        ro  [OSS uses node fnpca]
+grau-ait        rip6:/grau-ait
+grau-dlt        rip6:/grau-dlt
+grau-mammoth    rip6:/grau-mammoth
+#
+rip6            rip6:/rip6disk1
+#
+sam             airedale:/Pnfs/sam         ro  [OSS uses node fnpca]
+sam-ait         samson:/sam-ait
+sam-dlt         samson:/sam-dlt
+sam-mammoth     samson:/sam-mammoth
+sam-red20       samson:/sam-red20
+sam-red50       samson:/sam-red50
+samson          samson:/samson
+#
+stk             airedale:/Pnfs/stk         ro  [OSS uses node fnpca]
+stk-red20       rip6:/stk-red20
+stk-red50       rip6:/stk-red50
+</pre>
+<p>
+Here is the /etc/export file:                  [OSS exports to the required nodes]
+<pre>
+/Pnfs/grau	airedale.fnal.gov
+/Pnfs/sam	airedale.fnal.gov
+/Pnfs/stk	airedale.fnal.gov
+</pre>
+<p>
+And finally, here are the intermediate links:
+<pre>
+airedale# ls -alsFgR /Pnfs 
+/Pnfs:
+total 5
+   1 drwxrwxr-x   5 root     root         1024 Feb  8 11:05 ./
+   1 drwxr-xr-x  30 root     root         1024 Feb  8 10:38 ../
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 10:39 grau/
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 11:05 sam/
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 11:27 stk/
+
+/Pnfs/grau:
+total 2
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 10:39 ./
+   1 drwxrwxr-x   5 root     root         1024 Feb  8 11:05 ../
+   0 lrwxrwxrwx   1 root     root           14 Feb  8 10:39 ait -> /pnfs/grau-ait/
+   0 lrwxrwxrwx   1 root     root           14 Feb  8 10:39 dlt -> /pnfs/grau-dlt/
+   0 lrwxrwxrwx   1 root     root           18 Feb  8 10:39 mammoth -> /pnfs/grau-mammoth/
+
+/Pnfs/sam:
+total 2
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 11:05 ./
+   1 drwxrwxr-x   5 root     root         1024 Feb  8 11:05 ../
+   0 lrwxrwxrwx   1 root     root           13 Feb  8 11:04 ait -> /pnfs/sam-ait/
+   0 lrwxrwxrwx   1 root     root           13 Feb  8 11:04 dlt -> /pnfs/sam-dlt/
+   0 lrwxrwxrwx   1 root     root           17 Feb  8 11:04 mammoth -> /pnfs/sam-mammoth/
+   0 lrwxrwxrwx   1 root     root           15 Feb  8 11:05 red20 -> /pnfs/sam-red20/
+   0 lrwxrwxrwx   1 root     root           15 Feb  8 11:05 red50 -> /pnfs/sam-red50/
+
+/Pnfs/stk:
+total 2
+   1 drwxrwxr-x   2 root     root         1024 Feb  8 11:27 ./
+   1 drwxrwxr-x   5 root     root         1024 Feb  8 11:05 ../
+   0 lrwxrwxrwx   1 root     root           15 Feb  8 11:26 red20 -> /pnfs/stk-red20/
+   0 lrwxrwxrwx   1 root     root           15 Feb  8 11:27 red50 -> /pnfs/stk-red50/
+</pre>
 
 <p>
 
