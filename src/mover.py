@@ -1464,6 +1464,35 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = MOUNT_WAIT
         self.current_volume = volume_label
 
+
+        # XXX DEBUG Block of code to get more info on why label is missing on some mounts
+        if not self.vol_info.get('external_label'):
+            Trace.log(e_errors.ERROR, "mount_volume: no external label in vol_info.  volume_label=%s" % (volume_label,))
+            if self.vcc:
+                if self.current_volume:
+                    v = self.vcc.inquire_vol(self.current_volume)
+                    if type(v) is type({}) and v.has_key('status') and v['status'][0]==e_errors.OK:
+                        self.vol_info.update(v)
+                    else:
+                        Trace.log(e_errors.ERROR, "mount_volume: inquire_vol(%s)->%s" %
+                                  (self.current_volume, v))
+                else:
+                    Trace.log(e_errors.ERROR, "mount_volume: no self.current_volume self.current_volue=%s volume_label=%s" %
+                              (self.current_volume,volume_label))
+            else:
+                Trace.log(e_errors.ERROR, "mount_volume: no self.vcc")
+
+        if not self.vol_info.get('external_label'):
+            if self.current_volume:
+                self.vol_info['external_label'] = self.current_volume
+            else:
+                self.vol_info['external_label'] = "Unknown"
+
+        if not self.vol_info.get('media_type'):
+            self.vol_info['media_type'] = self.media_type #kludge
+        # XXX END DEBUG Block of code to get more info on why label is missing on some mounts
+
+
         Trace.notify("loading %s %s" % (self.shortname, volume_label))        
         Trace.log(e_errors.INFO, "mounting %s"%(volume_label,),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
