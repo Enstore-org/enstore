@@ -100,8 +100,11 @@ class FTTDriver(driver.Driver):
                     self.ftt = ftt.open(self.device, ftt.RDONLY)
                 elif detail.errno == ftt.SUCCESS: ###XXX hack - why are we getting this?
                     Trace.log(e_errors.INFO, "CGW: got SUCCESS on open, why?")
-                    self.ftt.rewind()
-                    self.ftt.close_dev()
+                    try:
+                        self.ftt.rewind()
+                        self.ftt.close_dev()
+                    except:
+                        pass
                     time.sleep(5)
                 else:
                     break
@@ -259,7 +262,7 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
-            self.ftt.rewind() #XXX clears previous errors and makes unload succeed...
+            self.rewind() #XXX clears previous errors and makes unload succeed...
             self.ftt.unload()
             return 0
         except ftt.FTTError, detail:
