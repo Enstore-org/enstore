@@ -153,7 +153,7 @@ class UDPClient:
             if badsock != 0 :
                 Trace.trace(0,"send post send"+ \
                             repr(errno.errorcode[badsock]))
-                print "udp_client send, post-sendto error:", \
+                print "udp_client send, post-sendto ",address," error:", \
                   errno.errorcode[badsock]
 
             # check for a response
