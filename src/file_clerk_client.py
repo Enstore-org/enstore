@@ -307,9 +307,15 @@ def do_work(intf):
             tape = ticket['tape_list']
             for key in tape.keys():
                 record = tape[key]
+                deleted = 'unknown'
+                if record.has_key('deleted'):
+                    if record['deleted'] == 'yes':
+                        deleted = 'deleted'
+                    else:
+                        deleted = 'active'
                 print "%10s %s %10i %22s %7s %s\n" % (intf.list,
                     record['bfid'], record['size'],
-                    record['location_cookie'], record['deleted'],
+                    record['location_cookie'], deleted,
                     record['pnfs_name0'])
 
     elif intf.list_active:
