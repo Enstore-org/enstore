@@ -28,15 +28,15 @@ def hex8(x):
     return '0'*(8-l)+s
 
 # get an unused tcp port for control communication
-def get_callback(verbose=0):
+def get_callback(verbose=0, ip=None):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     config = host_config.get_config()
-    ip = None
-    if config:
-        ip = config.get('hostip')
-    if not ip:
-        hostname, junk, ips = hostaddr.gethostinfo()
-        ip = ips[0]
+    if ip is None:
+        if config:
+            ip = config.get('hostip')
+        if not ip:
+            hostname, junk, ips = hostaddr.gethostinfo()
+            ip = ips[0]
     s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s
