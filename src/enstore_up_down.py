@@ -153,8 +153,9 @@ class EnstoreServer:
 	else:
 	    enprint("%s  BAD STATUS %s"%(self.format_name, ticket['status']))
 	    self.set_status(enstore_constants.DOWN)
-	    self.sendmail("%s is not alive (config node - %s)"%(self.format_name,
-								self.config_host))
+	    self.sendmail("%s  BAD STATUS %s (config node - %s)"%(self.format_name,
+								  ticket['status'],
+								  self.config_host))
 
     def known_down(self):
 	self.status = enstore_constants.DOWN
