@@ -53,7 +53,7 @@ class InquisitorPlots:
 	mountfile.open('r')
 	mountfile.timed_read(self.start_time, self.stop_time)
 	# now pull out the info we are going to plot from the lines
-	mountfile.parse_data(self.media_changer)
+	mountfile.parse_data(self.media_changer, prefix)
         mountfile.close()
         mountfile.cleanup(self.keep, self.keep_dir)
 
@@ -105,7 +105,7 @@ class InquisitorPlots:
 	encpfile.open('r')
 	encpfile.timed_read(self.start_time, self.stop_time)
 	# now pull out the info we are going to plot from the lines
-	encpfile.parse_data(self.media_changer)
+	encpfile.parse_data(self.media_changer, prefix)
         encpfile.close()
         encpfile.cleanup(self.keep, self.keep_dir)
 

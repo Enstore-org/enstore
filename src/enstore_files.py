@@ -585,19 +585,17 @@ class EnMountDataFile(EnDataFile):
 
     # pull out the plottable data from each line that is from one of the
     # specified movers
-    def parse_data(self, mcs):
+    def parse_data(self, mcs, prefix):
         for line in self.lines:
             minfo = self.parse_line(line)
             if minfo and (not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs)):
                 self.data.append([minfo[MDEV], minfo[MPID], minfo[MVOLUME],
-                                  string.replace(minfo[0],
-                                                 enstore_constants.LOG_PREFIX,
-                                                 ""), minfo[MSTART]])
+                                  string.replace(minfo[0], prefix, ""), minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 
     # pull out the plottable data from each line
-    def parse_data(self, mcs):
+    def parse_data(self, mcs, prefix):
         for line in self.lines:
             encp_line = enstore_status.EncpLine(line)
             if encp_line.valid:
@@ -605,9 +603,7 @@ class EnEncpDataFile(EnDataFile):
 		    # remove the directory and the log prefix to get just the
 		    # date and time
                     etime = enstore_functions.strip_file_dir(encp_line.time)
-                    self.data.append([string.replace(etime, 
-                                                     enstore_constants.LOG_PREFIX, 
-						     ""), 
+                    self.data.append([string.replace(etime, prefix, ""), 
                                       encp_line.bytes, encp_line.direction])
 
 class EnSgDataFile(EnDataFile):
