@@ -38,6 +38,10 @@ rm_tmp_files() {
     rm -f $exit_code_ftp
     rm -f $output_gridftp
     rm -f $exit_code_gridftp
+    rm -f ${output_gridftp}_3
+    rm -f ${exit_code_gridftp}_3
+    rm -f ${output_gridftp}_1
+    rm -f ${exit_code_gridftp}_1
     rm -f $output_srm
     rm -f $exit_code_srm
 }
