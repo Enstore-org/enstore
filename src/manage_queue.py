@@ -543,7 +543,7 @@ class Request_Queue:
                     else: rq = self.adm_queue.get()
                     self.adm_pri_t0 = now
                     if rq:
-                        Trace.trace(21, "admin_queue=1")
+                        Trace.trace(21, "admin_queue=1 %s"% (rq.ticket['unique_id']))
                         self.admin_rq_returned = 1
                         return rq
 
@@ -573,7 +573,7 @@ class Request_Queue:
                 else: rq = self.adm_queue.get()
                 #rq = self.adm_queue.get()
                 if rq:
-                    Trace.trace(21, "admin_queue=1")
+                    Trace.trace(21, "admin_queue=1 %s"% (rq.ticket['unique_id']))
                     self.admin_rq_returned = 1
                     return rq
             
