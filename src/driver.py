@@ -123,9 +123,18 @@ class  RawDiskDriver(GenericDriver) :
 
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
+        #print "opening file"
         self.df = open(device, "a+")
         self.set_eod(eod_cookie)
         self.blocksize = 4096
+
+    def load(self):
+        pass
+
+    def unload(self):
+        #print "closing file"
+        self.df.close()
+
 
     def set_eod(self, eod_cookie) :
         # When a volume is ceated, the system sets EOD cookie to "none"
@@ -137,13 +146,15 @@ class  RawDiskDriver(GenericDriver) :
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
+        #print "   open_file_read"
         self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
         self.left_to_read = self.pastbyte - self.firstbyte
 
     def close_file_read(self) :
-        self.df.close()
+        #print "   close_file_read"
+        pass
 
     def read_block(self):
         # no file marks on a disk, so use the information
@@ -156,13 +167,15 @@ class  RawDiskDriver(GenericDriver) :
             raise "assert error"
         return buf
 
+    # we cannot auto sense a floppy, so we must trust the user
     def open_file_write(self):
-        # we cannot auto sense a floppy, so we must trust the user
+        #print "   open_file_write"
         self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
 
     def close_file_write(self):
+        #print "   close_file_write"
         first_byte = self.eod
         last_byte = self.df.tell()
 
@@ -180,13 +193,11 @@ class  RawDiskDriver(GenericDriver) :
         else:
             self.eod = last_byte
 
-        self.df.close()
+        #self.df.close()                  # belongs in unload
         return `(first_byte, last_byte)`  # cookie describing the file
 
     # write a block of data to already open file: user has to handle exceptions
     def write_block(self, data):
-        #print "write error"
-        #raise "write error"
         if len(data) > self.remaining_bytes :
             format="NoSpace Len "+repr(len(data))+ \
                      "Remain "+repr(self.remaining_bytes)

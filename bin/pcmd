@@ -13,7 +13,7 @@ p_use()     { uj="Usage:  p_use filename [container number]"
 pcat()      { eval cat  `p_use $@` ; }
 pmore()     { eval more `p_use $@` ; }
 
-pdir()      { eval ls -alsF `p_use $@` ; }
+pls()       { eval ls -alsF `p_use $@` ; }
 
 pecho()     { uj="Usage:  pecho text file [container number]"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi

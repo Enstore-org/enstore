@@ -26,7 +26,7 @@ while /bin/true; do
     cat $write_list | while read f; do
         if [ -r $ENSTORE_DIR/test/writestop ] ; then exit 2; fi
         fb=`basename $f`
-        output=$base/$fb`date +"%b%d%H%M%S"`$p
+        output=$base/${fb}__`date +"%b%d%H%M%S"`$p
         ecmd encp $f $output
         if [ $? -eq 2 ] ; then
             exit 2

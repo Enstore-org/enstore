@@ -25,8 +25,20 @@ while /bin/true; do
         if [ -r $ENSTORE_DIR/test/readstop ] ; then exit 2; fi
         fb=`basename $f`
         fo=$fb.out.$$
+        fc=$ENSTORE_DIR/test/data/`echo $f | eval sed -e s@$base/@@ | sed -e s/__.*//`
+        #echo $fc
         ecmd encp $f $fo
-        rm -f $fo
+        if [ -r $fc ] ; then
+           cmp $fo $fc
+           if [ $? -ne 0 ] ; then
+              echo "difference between $fc and $fo"
+           else
+              #echo "                  $fc and $fo ok"
+              rm -f $fo
+           fi
+        else
+           rm -f $fo
+        fi
     done
     if [ $? -eq 2 ] ; then
        echo "FINISHED $base"
