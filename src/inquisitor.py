@@ -591,6 +591,22 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.send_reply(ticket)
         Trace.trace(10,"}set_maxi_size")
 
+    # set a new refresh value for the html file
+    def set_refresh(self, ticket):
+        Trace.trace(10,"{set_refresh "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+        self.htmlfile.set_refresh(ticket['refresh'])
+	self.send_reply(ticket)
+        Trace.trace(10,"}set_refresh")
+
+    # return the current refresh value
+    def get_refresh(self, ticket):
+        Trace.trace(10,"{get_refresh "+repr(ticket))
+        ticket["status"] = (e_errors.OK, None)
+        ticket["refresh"] = self.htmlfile.get_refresh()
+	self.send_reply(ticket)
+        Trace.trace(10,"}get_refresh")
+
     # timestamp the current ascii file, and open a new one
     def do_timestamp(self, ticket):
         Trace.trace(10,"{do_timestamp "+repr(ticket))

@@ -217,6 +217,10 @@ class Interface:
                     self.verbose = self.verbose | string.atoi(value)
             elif opt == "--status":
                 self.status = 1
+            elif opt == "--refresh":
+                self.refresh = string.atoi(value)
+            elif opt == "--get_refresh":
+                self.get_refresh = 1
             elif opt == "--d0sam":
                 # if d0sam has been requested, just add 4096 to verbose option
                 self.verbose = self.verbose | 0x1000 

@@ -98,6 +98,21 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}get_max_ascii_size")
 	return s
 
+    def refresh (self, value):
+	Trace.trace(16,"{refresh")
+	# tell the inquisitor to set the value for the html file refresh
+	s = self.send({"work"     : "set_refresh" ,\
+	               "refresh"  : value })
+        Trace.trace(16,"}refresh")
+	return s
+
+    def get_refresh (self):
+	Trace.trace(16,"{get_refresh")
+	# tell the inquisitor to return the current html file refresh value
+	s = self.send({"work"       : "get_refresh" } )
+        Trace.trace(16,"}get_refresh")
+	return s
+
     def get_timeout (self, server=""):
 	Trace.trace(16,"{get_timeout")
 	t = {"work"       : "get_timeout" }
@@ -127,6 +142,8 @@ class InquisitorClientInterface(interface.Interface):
 	self.verbose = 0
 	self.got_server_verbose = 0
 	self.dump = 0
+	self.refresh = 0
+	self.get_refresh = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -154,6 +171,7 @@ class InquisitorClientInterface(interface.Interface):
                ["timeout=", "get_timeout", "reset_timeout"] +\
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size", "dump"] +\
+	       ["refresh=", "get_refresh"] +\
                self.help_options()
 
 
@@ -194,6 +212,15 @@ if __name__ == "__main__" :
     elif intf.get_timeout:
         ticket = iqc.get_timeout(intf.server)
 	generic_cs.enprint(ticket['timeout'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+
+    elif intf.get_refresh:
+        ticket = iqc.get_refresh()
+	generic_cs.enprint(ticket['refresh'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+
+    elif intf.refresh:
+        ticket = iqc.refresh(intf.refresh)
 	msg_id = generic_cs.CLIENT
 
     elif intf.reset_timeout:

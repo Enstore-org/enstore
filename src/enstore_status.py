@@ -20,8 +20,9 @@ ascii_file = 0
 html_file = 1
 force = 1
 
-html_header = "<title>Inquisitor</title>\n"+\
-              "<meta http-equiv=\"Refresh\" content=\"5\">\n"+\
+html_header1 = "<title>Inquisitor</title>\n"+\
+              "<meta http-equiv=\"Refresh\" content=\""
+html_header2 = "\">\n"+\
               "<body bgcolor=\"FFFFFF\">\n<pre>\n"
 
 class EnstoreStatus:
@@ -30,10 +31,15 @@ class EnstoreStatus:
         Trace.trace(10,'{__init__ essfile '+file+"  "+repr(fileType))
         self.file_name = file 
 	self.file_type = fileType
+	self.refresh = 10
 	self.max_ascii_size = max_ascii_size
-	self.header = html_header
+	self.set_header()
 	self.text = {}
         Trace.trace(10,'}__init__')
+
+    # set the header
+    def set_header(self):
+	self.header = html_header1+repr(self.refresh)+html_header2
 
     # write the header to the file
     def write_header(self):
@@ -381,3 +387,12 @@ class EnstoreStatus:
     # get the timestamp value
     def get_max_ascii_size(self):
 	return self.max_ascii_size
+
+    # reset the refresh
+    def set_refresh(self, value):
+	self.refresh = value
+	self.set_header()
+
+    # return the current refresh value
+    def get_refresh(self):
+	return self.refresh
