@@ -2827,20 +2827,20 @@ class EnStatusOnlyPage(EnSaagPage):
         # first check the time.  if it is 10 minutes different than ours, enstore is
         # assumed to be down
         etime = enstore_functions2.unformat_time(eftime)
-        if time.time() - etime > 600 and override == enstore_constants.NONE:
+        if time.time() - etime > 600 and override == enstore_constants.ENONE:
             # the time is too far off, make the enstore ball red
             status = enstore_constants.DOWN
         # use the functions already provided so, need to format things a little
-        if offline == enstore_constants.NONE:
+        if offline == enstore_constants.ENONE:
             offline_d = {}
         else:
             offline_d = {enstore_constants.ENSTORE : offline}
-        if outage == enstore_constants.NONE:
+        if outage == enstore_constants.ENONE:
             outage_d = {}
         else:
             outage_d = {enstore_constants.ENSTORE : outage}
         enstat_d = {enstore_constants.ENSTORE : status}
-        if not web_address == enstore_constants.NONE:
+        if not web_address == enstore_constants.ENONE:
             enstat_d[enstore_constants.URL] = "%s/enstore/%s"%(web_address,
                                                                enstore_constants.SAAGHTMLFILE)
         if not self.check_for_red(enstat_d, table, 0):

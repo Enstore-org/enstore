@@ -949,11 +949,11 @@ class EnstoreStatusFile(EnFile):
 	self.do_write("status=%s"%([enstat[enstore_constants.ENSTORE],
 				    enstat[enstore_constants.TIME],
 				    offline_d.get(enstore_constants.ENSTORE, 
-						  enstore_constants.NONE),
+						  enstore_constants.ENONE),
 				    outage_d.get(enstore_constants.ENSTORE, 
-						 enstore_constants.NONE),
+						 enstore_constants.ENONE),
 				    override_d.get(enstore_constants.ENSTORE, 
-						   enstore_constants.NONE),
+						   enstore_constants.ENONE),
 				    enstore_functions.get_www_host()],))
 
 class EnstoreBpdFile(EnDataFile):
