@@ -22,7 +22,7 @@ import Trace
 import e_errors
 import configuration_client
 import volume_family
-import sg_db
+import sgdb
 import enstore_constants
 import monitored_server
 import file_clerk_client
@@ -1743,6 +1743,86 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.log(e_errors.INFO, "stop listing all volumes")
         return
 
+    # The following are for the sgdb
+    def __rebuild_sg_counts(self):
+        self.sgdb.clear()
+        c = self.dict.newCursor()
+        k, v = c.first()
+        while k:
+            try:
+                sg = string.split(v['volume_family'], '.')[0]
+                self.sgdb.inc_sg_counter(v['library'], sg)
+            except:
+                pass
+            k, v = c.next()
+        c.close()
+
+    def rebuild_sg_count(self, ticket):
+        self.__rebuild_sg_counts()
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def set_sg_count(self, ticket):
+        try:
+            lib = ticket['library']
+            sg = ticket['storage_group']
+            count = ticket['count']
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+	ticket['count'] = self.sgdb.set_sg_counter(lib, sg, count)
+        if ticket['count'] == -1:
+            ticket['status'] = (e_errors.ERROR, "failed to set %s.%s"%(lib,sg))
+        else:
+            ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def get_sg_count(self, ticket):
+        try:
+            lib = ticket['library']
+            sg = ticket['storage_group']
+        except KeyError, detail:
+            msg= "Volume Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+	ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
+        if ticket['count'] == -1:
+            ticket['status'] = (e_errors.ERROR, "failed to get %s.%s"%(lib,sg))
+        else:
+            ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+    def list_sg_count(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+        c = self.sgdb.dict.newCursor()
+        sgcnt = {}
+        k, v = c.first()
+        while k:
+            sgcnt[k] = v
+            k, v = c.next()
+        c.close()
+
+        try:
+            if not self.get_user_sockets(ticket):
+                return
+            ticket["status"] = (e_errors.OK, None)
+            callback.write_tcp_obj(self.data_socket, ticket)
+            callback.write_tcp_obj_new(self.data_socket, sgcnt)
+            self.data_socket.close()
+            callback.write_tcp_obj(self.control_socket, ticket)
+            self.control_socket.close()
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.handle_error(exc,msg,tb)
+        return
+
     def __get_vol_list(self):
         return self.dict.keys()
 
@@ -1979,7 +2059,7 @@ class VolumeClerk(VolumeClerkMethods):
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
-        self.sgdb = sg_db.SGDb(dbHome)
+        self.sgdb = sgdb.SGDb(dbHome)
 
         self.noaccess_cnt = 0
         self.max_noaccess_cnt = self.keys.get('max_noaccess_cnt', 2)

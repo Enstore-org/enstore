@@ -358,6 +358,72 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket['volumes'] = volumes.get('volumes',{})
         return ticket
 
+    # rebuild sg scounts
+    def rebuild_sg_count(self):
+        return(self.send({'work':'rebuild_sg_count'}))
+
+    # set sg count
+    def set_sg_count(self, lib, sg, count=0):
+        ticket = {'work':'set_sg_count',
+                  'library': lib,
+                  'storage_group': sg,
+                  'count': count}
+        return(self.send(ticket))
+
+    # get sg count
+    def get_sg_count(self, lib, sg):
+        ticket = {'work':'get_sg_count',
+                  'library': lib,
+                  'storage_group': sg}
+        return(self.send(ticket))
+
+    # list all sg counts
+    def list_sg_count(self):
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"          : "list_sg_count",
+                  "callback_addr" : (host, port)}
+
+        ticket = self.send(ticket,30,1)
+        if ticket['status'][0] != e_errors.OK:
+            Trace.log( e_errors.ERROR,
+                       'vcc.list_sg_count: sending ticket: %s'%(ticket,) )
+            return ticket
+
+        r,w,x = select.select([listen_socket], [], [], 15)
+        if not r:
+            raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+        
+        control_socket, address = listen_socket.accept()
+        
+        if not hostaddr.allow(address):
+            control_socket.close()
+            listen_socket.close()
+            raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+        
+        ticket = callback.read_tcp_obj(control_socket)
+
+        listen_socket.close()
+
+        if ticket["status"][0] != e_errors.OK:
+            return ticket
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
+        ticket= callback.read_tcp_obj(data_path_socket)
+        sgcnt = callback.read_tcp_obj_new(data_path_socket)
+        data_path_socket.close()
+
+        # Work has been read - wait for final dialog with volume clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            return done_ticket
+
+        ticket['sgcnt'] = sgcnt
+        return ticket
+
     # get a list of all volumes
     def get_vol_list(self):
         # get a port to talk on and listen for connections
@@ -370,7 +436,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         ticket = self.send(ticket,30,1)
         if ticket['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
-                       'vcc.get_vol_liat: sending ticket: %s'%(ticket,) )
+                       'vcc.get_vol_list: sending ticket: %s'%(ticket,) )
             return ticket
 
         r,w,x = select.select([listen_socket], [], [], 15)
@@ -668,6 +734,10 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 	self.trim_obsolete = None
         self.show_quota = 0
         self.bypass_label_check = 0
+        self.ls_sg_count = 0
+        self.rebuild_sg_count = 0
+        self.set_sg_count = None
+        self.get_sg_count = None
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -722,6 +792,33 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_LABEL:"volume_name",
                         option.VALUE_TYPE:option.STRING,
                         option.VALUE_USAGE:option.REQUIRED}]},
+        option.GET_SG_COUNT:{
+                    option.HELP_STRING: 'check allocated count for lib,sg',
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"library",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{
+                        option.VALUE_NAME:"storage_group",
+                        option.VALUE_LABEL:"storage_group",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED}]},
+        option.SET_SG_COUNT:{
+                    option.HELP_STRING: 'set allocated count of lib,sg',
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"library",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{
+                        option.VALUE_NAME:"storage_group",
+                        option.VALUE_LABEL:"storage_group",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED},
+                       {option.VALUE_NAME:"count",
+                        option.VALUE_LABEL:"count",
+                        option.VALUE_TYPE:option.INTEGER,
+                        option.VALUE_USAGE:option.REQUIRED},
+                        ]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -895,6 +992,18 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.USER},
+        option.REBUILD_SG_COUNT:{
+                     option.HELP_STRING:"rebuild sg count db",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.LIST_SG_COUNT:{
+                     option.HELP_STRING:"list all sg counts",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.USER},
         option.VOL1OK:{option.HELP_STRING:
                        "reset cookie to '0000_000000000_0000001'",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -956,6 +1065,25 @@ def do_work(intf):
                                              1) #first_found
     elif intf.assign_sg and intf.volume:
         ticket = vcc.assign_sg(intf.volume, intf.assign_sg)
+    elif intf.rebuild_sg_count:
+        ticket = vcc.rebuild_sg_count()
+    elif intf.ls_sg_count:
+        ticket = vcc.list_sg_count()
+        sgcnt = ticket['sgcnt']
+        sk = sgcnt.keys()
+        sk.sort()
+        print "%12s %16s %10s"%('library', 'storage group', 'allocated')
+        print '='*40
+        for i in sk:
+            lib, sg = string.split(i, ".")
+            print "%12s %16s %10d"%(lib, sg, sgcnt[i])
+    elif intf.get_sg_count:
+        ticket = vcc.get_sg_count(intf.get_sg_count, intf.storage_group)
+        print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
+    elif intf.set_sg_count:
+        ticket = vcc.set_sg_count(intf.set_sg_count, intf.storage_group, intf.count)
+        print "%12s %16s %10d"%(ticket['library'], ticket['storage_group'], ticket['count'])
+
     elif intf.touch:
         ticket = vcc.touch(intf.touch)
     elif intf.trim_obsolete:

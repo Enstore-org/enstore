@@ -184,6 +184,7 @@ GET_LOGFILES = "get-logfiles"                #log
 GET_MAX_ENCP_LINES = "get-max-encp-lines"    #inquisitor
 GET_QUEUE = "get-queue"                      #library
 GET_REFRESH = "get-refresh"                  #inquisitor
+GET_SG_COUNT = "get-sg-count"                #volume
 GET_SUSPECT_VOLS = "get-suspect-vols"        #library
 GET_UPDATE_INTERVAL = "get-update-interval"  #inquisitor
 GET_WORK = "get-work"                        #library, media
@@ -206,6 +207,7 @@ LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs
 LIST = "list"                                #volume, file
+LIST_SG_COUNT = "ls-sg-count"                #volume
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 KEEP = "keep"                                #plotter
@@ -249,6 +251,7 @@ PTS_DIR = "pts_dir"                          #plotter
 PTS_NODES = "pts_nodes"                      #plotter
 RAISE = "raise"                              #alarm
 READ_ONLY = "read-only"                      #volume
+REBUILD_SG_COUNT = "rebuild-sg-count"        #volume
 RECYCLE = "recycle"                          #volume
 RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
@@ -263,6 +266,7 @@ SAAG_STATUS = "saagstatus"                   #inquisitor
 SENDTO = "sendto"                            #mover
 SET_CRCS = "set-crcs"                        #file
 SET_COMMENT = "set-comment"                  #volume
+SET_SG_COUNT = "set-sg-count"                #volume
 SEVERITY = "severity"                        #alarm
 SG = "sg"                                    #plotter
 SHOW = "show"                                #configuration, inquisitor, media
@@ -333,12 +337,12 @@ valid_option_list = [
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_ASSERTS, GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME,
     GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE, GET_REFRESH, GET_SUSPECT_VOLS,
-    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED, GVOL,
+    GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED, GVOL, GET_SG_COUNT,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
     KEEP, KEEP_DIR,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
     MOVERS_FILE,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NOT_ALLOWED, NO_MAIL, NO_PLOT_HTML,
@@ -346,11 +350,12 @@ valid_option_list = [
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OVERRIDE,
     PARENT, PATH, PLOT, PNFS_STATE, POSITION, PREFIX, PRIORITY, PTS_DIR, PTS_NODES,
     RAISE, READ_ONLY, RECURSIVE, RECYCLE, REFRESH, RESET_LIB, RESOLVE,
-    RESTORE, RESTORE_ALL, RETRIES,
+    RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SET_CRCS, SET_COMMENT, SEVERITY, SG,
     SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA, SIZE, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
+    SET_SG_COUNT,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
     TEST, TIME, TIMEOUT, TITLE, TITLE_GIF, TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
