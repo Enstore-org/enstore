@@ -35,8 +35,14 @@ def go():
     print "Content-type: text/html"
     print
 
+    # first determine if a request from this node is allowed to happen
+    # the node had better be listed in a file called enstore_user_nodes.txt
+    # which is located in the current directory
+
     # now start the real html
     print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
+    print os.environ["REMOTE_HOST"]
+    print os.environ["REMOTE_ADDR"]
     try:
         # get the data from the form
         form = cgi.FieldStorage()
@@ -95,7 +101,6 @@ def go():
         print cmd
         print "<BR><P><HR><P><PRE>"
         file = tempfile.mktemp()
-        #rtn = os.system(". /usr/local/etc/setups.sh;PRODUCTS=/usr/hppc_home/berman/upsdb:$PRODUCTS;. `ups setup myen`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
         rtn = os.system(". /usr/local/etc/setups.sh;. `ups setup enstore`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
 
         # now read in the file and output the results
