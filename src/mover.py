@@ -882,6 +882,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
 	    pass
 	dispatching_worker.DispatchingWorker.__init__( self, server_address)
+	self.last_status_tick = {}
 	#print time.time(),'ronDBG - MoverServer init timerTask rcv_timeout is',self.rcv_timeout
 	#timer_task.TimerTask.__init__( self, self.rcv_timeout )
 	timer_task.TimerTask.__init__( self, 5 )
@@ -910,20 +911,25 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 
     def status( self, ticket ):
 	tick = { 'status'       : (e_errors.OK,None),
-		 'state'        : self.client_obj_inst.state,
+		 #
 		 'crc_func'     : str(self.client_obj_inst.crc_func),
+		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
+		 'state'        : self.client_obj_inst.state,
 		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
 		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
 		 'wr_bytes'     : self.client_obj_inst.hsm_driver.wr_bytes_get(),
-		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
 		 # from "work ticket"
-		 'mode'         : self.client_obj_inst.mode,
 		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
-		 'tape'         : self.client_obj_inst.tape,
 		 'files'        : self.client_obj_inst.files,
+		 'mode'         : self.client_obj_inst.mode,
+		 'tape'         : self.client_obj_inst.tape,
+		 'time_stamp'   : time.time(),
 		 # just include total "work ticket"
-		 'work_ticket'  : self.client_obj_inst.work_ticket }
+		 'work_ticket'  : self.client_obj_inst.work_ticket,
+		 'zlast_status' : self.last_status_tick }
 	self.reply_to_caller( tick )
+	self.last_status_tick = tick	# remember - duplicate reference -- 
+	del self.last_status_tick['zlast_status'] # must del after send
 	return
 
     def quit(self,ticket):		# override dispatching_worker -
