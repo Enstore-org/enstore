@@ -157,7 +157,7 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
 def alarm(severity, root_error, rest={}):
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
-        alarm_func(time.time, os.getpid(), logname, root_error, severity,
+        alarm_func(time.time(), os.getpid(), logname, root_error, severity,
 		   rest)
     if print_levels.has_key(severity):
         try:
