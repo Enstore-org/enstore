@@ -107,13 +107,17 @@ class cleanUDP :
 		return self.socket.recv(bufsize)
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
-	def recvfrom(self, bufsize) :
-		for n in range(0, self.retry_max - 1) :
+	def recvfrom(self, bufsize, rcv_timeout=10) :
+		data = ''
+		for n in range(self.retry_max) :
 			try:
-				return self.socket.recvfrom(bufsize)
+				r,junk,junk=select.select([self.socket],[],[],rcv_timeout)
+				if r:
+					data=self.socket.recvfrom(bufsize)
+					return data
 			except socket.error:
 				self.logerror("recvfrom", n)
-		return self.socket.recvfrom(bufsize)
+		return data
 
 
 	def send(self, s, addr) : 
