@@ -150,6 +150,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"external_label",
                       option.USER_LEVEL:option.ADMIN,
+                      option.FORCE_SET_DEFAULT:option.FORCE,
                       option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
@@ -171,6 +172,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"external_label",
                       option.USER_LEVEL:option.ADMIN,
+                      option.FORCE_SET_DEFAULT:option.FORCE,
                       option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
@@ -220,6 +222,7 @@ def do_work(intf):
         vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
         vol_ticket = vcc.inquire_vol(intf.volume)
         ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive)
+        del vcc
     elif intf._import:
         ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
     elif intf._export:
