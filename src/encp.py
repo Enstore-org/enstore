@@ -1431,12 +1431,16 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
             exc, msg, tb = sys.exc_info()
+            #Return the entire ticket.  Make sure it has valid data, otherwise
+            # just having the 'status' field could cause problems in
+            # handle_retries().
+            ticket = work_ticket.copy()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket = {'status':(e_errors.RESUBMITTING, None)}
+                ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
-                ticket = {'status':(msg.type, str(msg))}                
+                ticket['status'] = (msg.type, str(msg))        
             else:
-                ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+                ticket['status'] = (e_errors.NET_ERROR, str(msg))
                 
             #Since an error occured, just return it.
             return None, None, ticket
@@ -1484,11 +1488,11 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
-                ticket = {'status':(e_errors.RESUBMITTING, None)}
+                ticket['status'] = (e_errors.RESUBMITTING, None)
             elif hasattr(msg, "type"):
-                ticket = {'status':(msg.type, str(msg))}                
+                ticket['status'] = (msg.type, str(msg))
             else:
-                ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+                ticket['status'] = (e_errors.NET_ERROR, str(msg))
                 
             #Since an error occured, just return it.
             return None, None, ticket
@@ -1504,7 +1508,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                   (control_socket.getsockname(),
                    control_socket.getpeername(),
                    ticket.get('unique_id', "Unknown")))
-        
+
         #verify that the id is one that we are excpeting and not one that got
         # lost in the ether.
         for i in range(0, len(work_tickets)):
@@ -1551,7 +1555,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
-            ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+            ticket['status'] = (e_errors.NET_ERROR, str(msg))
             #Trace.log(e_errors.INFO, str(msg))
             
             #Since an error occured, just return it.
@@ -1971,7 +1975,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
     
-    resubmits = request_list[0].get('resubmits', 0)
+    resubmits = request_dictionary.get('resubmits', 0)
+    #The following is 
+    try:
+        resubmits = request_list[0].get('resubmits', 0)
+    except:
+        exc, msg, tb = sys.exc_info()
+        sys.stderr.write("Warning: %s %s\n" % str(exc), str(msg))
+        sys.stderr.write("Using %s for resubmits value.\n" % resubmits)
+        Trace.log(e_errors.ERROR, "Warning: %s %s" % str(exc), str(msg))
+        Trace.log(e_errors.ERROR, "Using %s for resubmits value."%resubmits)
+        Trace.log(e_errors.ERROR, "request_list: %s" % str(request_list))
+        Trace.log(e_errors.ERROR, traceback.format_exception(exc, msg, tb))
     
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
 
