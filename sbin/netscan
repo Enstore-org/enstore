@@ -23,6 +23,7 @@ setup enstore
 # . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
 # . Check that web servers are running on right nodes and not elsewhere
 # . Check that rc.local contains boot_cleanup
+# . Check the /etc/krb5.keytab for legal values.
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -56,6 +57,7 @@ DATE="/bin/date"
 CAT="/bin/cat"
 SORT="/bin/sort"
 UNIQ="/usr/bin/uniq"
+CUT="/usr/bin/cut"
 DF="/bin/df"
 SED="/bin/sed"
 RPM="/bin/rpm"
@@ -65,6 +67,7 @@ FARMLETS="/home/enstore/enstore/sbin/farmlets"
 KILL="/bin/kill"
 SLEEP="/bin/sleep"
 MKDIR="/bin/mkdir"
+KTUTIL="/usr/krb5/sbin/ktutil"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
@@ -127,12 +130,12 @@ filecheck() { thefile=${2:-/var/spool/cron/root}
 # function to check for allowed services and complain if not allowed
 allow() { tt=$1
           for i in $ALLOW; do
-            t=`$ECHO $i | cut -f1 -d,`
+            t=`$ECHO $i | $CUT -f1 -d,`
             if [ $t != $tt ]; then continue; fi
-            a=`$ECHO $i | cut -f2 -d,`
-            b=`$ECHO $i | cut -f3 -d,`
-            c=`$ECHO $i | cut -f4 -d,`
-            p=`$ECHO $i | cut -f5 -d,`
+            a=`$ECHO $i | $CUT -f2 -d,`
+            b=`$ECHO $i | $CUT -f3 -d,`
+            c=`$ECHO $i | $CUT -f4 -d,`
+            p=`$ECHO $i | $CUT -f5 -d,`
             if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
                  psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
@@ -481,6 +484,74 @@ case $node in
     fi
     ;;
 esac
+
+# make sure the keys are right
+keys="`$ECHO 'rkt /etc/krb5.keytab
+l' |$KTUTIL|$EGREP -v '^ktutil|^---'|$AWK '{print $NF}'`"
+nkeys=`$ECHO $keys |$WC -w|$SED -e 's/ //g'`
+if [ `echo $keys | $EGREP -c 'PILOT'` -ne 0 ]; then mkeys=4; else mkeys=2;fi
+if [ $mkeys -ne $nkeys ]; then
+   msg="Wrong number of keys in /etc/krb5.keytab"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "Number of keys in /etc/krb5.keytab, ok"
+fi
+for key in $keys; do
+  kind=`$ECHO $key | $CUT -f1 -d/`
+  whose=`$ECHO $key| $CUT -f2 -d/`
+  whose_n=`$ECHO $whose|$CUT -f1 -d@`
+  whose_d=`$ECHO $whose|$CUT -f2 -d@`
+  BAD=0
+  if [ `echo $kind | $EGREP -c 'ftp|host'` -ne 1 ]; then  BAD=1; fi
+  if [ "$whose_n" != "$node.fnal.gov" ]; then BAD=2; fi
+  if [ `echo $whose_d | $EGREP -c 'FNAL.GOV|PILOT.GOV'` -ne 1 ]; then BAD=3; fi
+  #echo $kind $whose_n $whose_d $BAD
+  if [ $BAD -ne 0 ]; then
+    msg="BAD key in /etc/krb5.keytab, bad type $BAD"
+    logit "$msg"
+    if [ $ALARM -eq 1 ]; then
+       enstore alarm --raise --severity "A" --root-error "$msg"
+    fi
+  fi
+done
+
+keys="`$ECHO 'rkt /local/ups/kt/enstorekt
+l' |$KTUTIL|$EGREP -v '^ktutil|^---'|$AWK '{print $NF}'`"
+nkeys=`$ECHO $keys |$WC -w|$SED -e 's/ //g'`
+if [ `echo $keys | $EGREP -c 'PILOT'` -ne 0 ]; then mkeys=2; else mkeys=1;fi
+if [ $mkeys -ne $nkeys ]; then
+   msg="Wrong number of keys in /local/ups/kt/enstorekt"
+   logit "$msg"
+   if [ $ALARM -eq 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "Number of keys in /local/ups/kt/enstorekt, ok"
+fi
+for key in $keys; do
+  kind1=`$ECHO $key | $CUT -f1 -d/`
+  kind2=`$ECHO $key | $CUT -f2 -d/`
+  whose=`$ECHO $key| $CUT -f3 -d/`
+  whose_n=`$ECHO $whose|$CUT -f1 -d@`
+  whose_d=`$ECHO $whose|$CUT -f2 -d@`
+  BAD=0
+  if [ "$kind1" != "enstore" ]; then  BAD=4; fi
+  if [ "$kind2" != "cd" ]; then  BAD=5; fi
+  if [ "$whose_n" != "$node.fnal.gov" ]; then BAD=6; fi
+  if [ `echo $whose_d | $EGREP -c 'FNAL.GOV|PILOT.GOV'` -ne 1 ]; then BAD=7; fi
+  #echo $kind1 $kind2 $whose_n $whose_d $BAD
+  if [ $BAD -ne 0 ]; then
+    msg="BAD key in /local/ups/kt/enstorekt, bad type $BAD"
+    logit "$msg"
+    if [ $ALARM -eq 1 ]; then
+       enstore alarm --raise --severity "A" --root-error "$msg"
+    fi
+  fi
+done
+
 
 # get open files - twice - get ps in between - only take connections that survive past this
 # otherwise it is impossible to compare and see if they are allowed.
