@@ -1,0 +1,36 @@
+#!/bin/sh 
+#
+#  The passed in file, contains 1 or more lines each of which is the name of a file
+#  Read in the contents of the passed in file and construct another file that is the union of the
+#  files mentioned in the passed in file.
+#
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+if [ "$#" != "1" ];
+then
+   # we need the name of the file listing the files to include
+   echo "\nERROR: please enter a file name as 1st parameter.\n"
+   exit 1
+fi
+
+real_output="$ENSTORE_DIR/etc/enstore_system.html"
+tmp_output=${real_output}.tmp
+
+if [ -f $1 ];
+then
+  # get rid of any old enstore_system.html's in this directory
+  rm -f $tmp_output
+  # start out with an empty file
+  touch $tmp_output
+  # now fill the file
+  for file in `cat $1`;
+  do
+     cat $file >> $tmp_output
+  done
+  # now create the real file
+  mv $tmp_output $real_output
+else
+  echo "\nERROR: entered file does not exist or is not a normal file.\n"
+  exit 1
+fi
