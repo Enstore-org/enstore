@@ -34,17 +34,14 @@ class ConfigurationClient(generic_client.GenericClient):
     # get value for requested item from server, store locally in own cache
     def get_uncached(self, key, timeout=0, retry=0):
         request = {'work' : 'lookup', 'lookup' : key }
-        self.cache[key] = self.send(request, timeout, retry)
-
-        return self.cache[key]
+        ret = self.send(request, timeout, retry)
+        return ret
 
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
         if key=='configuration_server':
             ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
         else:
-            ret = self.cache.get(key, None)
-        if ret is None:
             ret = self.get_uncached(key, timeout, retry)
         return ret
 
