@@ -130,7 +130,7 @@ def parse_encp_line(line):
 	except ValueError:
 	    # we do not handle this formatting
 	    return []
-	return [etime, enode, euser, estatus, tt, erate[1], "%s %s"%(erate[4], erate[5]), erate[7], mc, erate[4]]
+	return [etime, enode, euser, estatus, tt, erate[0], "%s %s"%(erate[3], erate[4]), erate[6], mc, erate[3]]
     else:
 	return [etime, enode, euser, estatus, erest]
 	
