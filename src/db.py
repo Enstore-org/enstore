@@ -43,7 +43,7 @@ class DbTable:
     try:
 	self.dbHome=configuration_client.ConfigurationClient(\
 		interface.default_host(),\
-		string.atoi(interface.default_port()), 3).get('database')['db_dir']
+		interface.default_port(), 3).get('database')['db_dir']
     except:
 	self.dbHome=os.environ['ENSTORE_DIR']
     dbEnvSet={'create':1,'init_mpool':1, 'init_lock':1, 'init_txn':1}
@@ -264,7 +264,7 @@ def do_backup(name):
      try:
          dbHome = configuration_client.ConfigurationClient(\
 		interface.default_host(),\
-		string.atoi(interface.default_port()), 3).get('database')['db_dir']
+		interface.default_port(), 3).get('database')['db_dir']
      except:
          dbHome = os.environ['ENSTORE_DIR']
      os.chdir(dbHome)

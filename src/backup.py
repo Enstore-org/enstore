@@ -114,7 +114,7 @@ if __name__=="__main__":
     try:
 	dbHome = configuration_client.ConfigurationClient(\
 			interface.default_host(),\
-			string.atoi(interface.default_port()), 3).get('database')['db_dir']
+			interface.default_port(), 3).get('database')['db_dir']
     except:
 	dbHome=os.environ['ENSTORE_DIR']
     try:
@@ -127,7 +127,7 @@ if __name__=="__main__":
 
     backup_config = configuration_client.ConfigurationClient(\
                         interface.default_host(),\
-                        string.atoi(interface.default_port()), 3).get('backup')
+                        interface.default_port(), 3).get('backup')
 
     try:
         bckHome = backup_config['dir']
