@@ -46,6 +46,7 @@ IDLE, MOUNT_WAIT, SEEK, ACTIVE, HAVE_BOUND, DISMOUNT_WAIT, DRAINING, OFFLINE, CL
 
 _state_names=['IDLE', 'MOUNT_WAIT', 'SEEK', 'ACTIVE', 'HAVE_BOUND', 'DISMOUNT_WAIT',
              'DRAINING', 'OFFLINE', 'CLEANING', 'ERROR']
+
 assert len(_state_names)==10
 
 def state_name(state):
@@ -398,7 +399,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.current_work_ticket:
             try:
                 Trace.trace(10, "handle error: calling transfer failed, str(msg)=%s"%(str(msg),))
-                self.transfer_failed((str(exc), str(msg)))
+                self.transfer_failed(exc, msg)
             except:
                 pass
                 
@@ -470,11 +471,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
             except Exceptions.exception, detail:
-                self.transfer_failed(str(detail))
+                self.transfer_failed(e_errors.READ_ERROR, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
-                self.transfer_failed(None)
+                self.transfer_failed(e_errors.READ_ERROR, None)
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
@@ -524,10 +525,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except exceptions.Exception, detail:
-                self.transfer_failed(e_errors.WRITE_ERROR)
+                self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written != nbytes:
-                self.transfer_failed(e_errors.WRITE_ERROR)
+                self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
@@ -555,10 +556,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_read = self.buffer.block_read(nbytes, driver)
             except exceptions.Exception, detail:
-                self.transfer_failed(e_errors.READ_ERROR)
+                self.transfer_failed(e_errors.READ_ERROR, detail)
                 break
             if bytes_read <= 0:
-                self.transfer_failed(e_errors.READ_ERROR)
+                self.transfer_failed(e_errors.READ_ERROR, detail)
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 b0 = self.buffer._buf[0]
@@ -593,10 +594,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except exceptions.Exception, detail:
-                self.transfer_failed(detail)
+                self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written < 0:
-                self.transfer_failed(e_errors.EPROTO) #???
+                self.transfer_failed(e_errors.WRITE_ERROR, detail)
                 break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
@@ -766,9 +767,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         return 1
             
-    def transfer_failed(self, msg=None):
-        Trace.log(e_errors.ERROR, "transfer failed %s" %( msg,))
+    def transfer_failed(self, exc=None, msg=None):
+        Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
 
+        self.last_error = exc, msg
+        
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s" % (msg,))
             return
@@ -849,7 +852,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if fcc_reply['status'][0] != e_errors.OK:
             Trace.log( e_errors.ERROR,
                        "cannot assign new bfid")
-            self.transfer_failed((e_errors.ERROR,"Cannot assign new bit file ID"))
+            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
             #XXX exception?
             return 0
         ## HACK: restore crc's before replying to caller
@@ -1040,7 +1043,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             self.tape_driver.seek(location, eot_ok)
         except exceptions.Exception, detail:
-            self.transfer_failed((e_errors.ERROR, 'positioning error %s' % (detail,)))
+            self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,))
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
@@ -1061,7 +1064,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.run_in_thread('tape_thread', self.read_tape)
             self.run_in_thread('net_thread', self.write_client)
         else:
-            self.transfer_failed((e_errors.ERROR, "invalid mode %s" % (self.mode,)))
+            self.transfer_failed(e_errors.ERROR, "invalid mode %s" % (self.mode,))
                 
     def status( self, ticket ):
         now = time.time()
