@@ -2248,7 +2248,7 @@ class EnPlotPage(EnBaseHtmlDoc):
             if self.outofdate and stamp[1] < self.yesterday:
                 trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA), html_escape='OFF'))
             else:
-                trps.append(text, html_escape='OFF')
+                trps.append(HTMLgen.TD(text, html_escape='OFF'))
 	    if ps:
 		# we have a corresponding ps file
 		trps2.append(HTMLgen.TD(HTMLgen.Href(ps_file, POSTSCRIPT)))
