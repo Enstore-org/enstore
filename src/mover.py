@@ -1399,11 +1399,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         save_state = self.state
         if not self.do_eject:
             self.current_volume = None
+            self.volume_family = None
             if after_function:
                 after_function()
-            else:
-                if save_state not in (DRAINING, OFFLINE):
-                    self.idle()
 
         self.state = DISMOUNT_WAIT
         have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
@@ -1446,9 +1444,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_volume = None
             if after_function:
                 after_function()
-            else:
-                if save_state not in (DRAINING, OFFLINE):
-                    self.idle()
+
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
         elif status[-1] == "the drive did not contain an unloaded volume" and not have_tape:
