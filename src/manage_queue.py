@@ -7,7 +7,7 @@ import time
 import Trace
 import e_errors
 
-MAX_PRI=1000
+MAX_PRI=1000001
 
 # comparison functions
 def compare_priority(r1,r2):

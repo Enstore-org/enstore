@@ -16,7 +16,7 @@ import traceback
 import e_errors
 import Trace
 
-MAX_REG_PRIORITY = 100
+MAX_REG_PRIORITY = 1000001
 
 class PriSelector:
 
@@ -119,7 +119,7 @@ class PriSelector:
         if cur_pri >= self.max_reg_pri:
             if daq_enabled:
                 cur_adm_pri = cur_pri / self.max_reg_pri + cur_adm_pri
-            cur_pri = cur_pri % self.max_reg_pri
+            cur_pri = self.max_reg_pri
         return cur_pri, cur_adm_pri
 
     
