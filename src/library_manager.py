@@ -2192,7 +2192,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(11,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
         if ((mticket['state'] == mover_constants.OFFLINE) or # mover finished request and went offline
-            (mticket['status'][0] == e_errors.ENCP_GONE)):
+            ((mticket['status'][0] == e_errors.ENCP_GONE) and mticket['state'] != 'HAVE_BOUND'):
             self.volumes_at_movers.delete(mticket)
             return
         if mticket.has_key('returned_work') and mticket['returned_work']:
@@ -2224,7 +2224,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                     and mticket['status'][1] and
                                     mticket['status'][1] == 'FTT_EBLANK') 
                 if ((len(vol['movers']) >= self.max_suspect_movers and not ftt_eblank_error) or
-                    (len(vol['movers']) >= self.max_suspect_movers + 3 and ftt_eblank_error)):
+                    (len(vol['movers']) >= self.max_suspect_movers + 5 and ftt_eblank_error)):
 
                     if w:
                         w['status'] = (e_errors.NOACCESS, None)
