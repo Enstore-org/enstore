@@ -44,6 +44,8 @@
 		         definitions from this file should be used. */
 #endif /* __osf__ */
 
+#include <sys/sysmp.h>
+
 /***************************************************************************
  constants and macros
 **************************************************************************/
@@ -178,6 +180,9 @@ struct transfer
   bool threaded;          /*is true if using threaded implementation*/
   
   pthread_t thread_id;    /*the thread id (if doing MT transfer)*/
+#ifdef __sgi
+  int cpu_affinity;           /*NICs are tied to CPUs on IRIX nodes*/
+#endif
   short int done;         /*is zero initially, set to one when the (transfer)
 			    thread exits and he main thread sets it to -1 when
 			    it has collected the thread*/
@@ -1916,9 +1921,93 @@ static void do_read_write_threaded(struct transfer *reads,
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
   struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
   struct monitor monitor_info;  /* Stuct pointing to both transfer stucts. */
+  pthread_attr_t read_attr;     /* Set any non-default thread attributes. */
+  pthread_attr_t write_attr;    /* Set any non-default thread attributes. */
 
+  /* Set the values for passing to the monitor thread. */
   monitor_info.read_info = reads;
   monitor_info.write_info = writes;
+
+  /* Initialize the thread attributes to the system defaults. */
+
+  /* Initialize the read thread attributes. */
+  if((p_rtn = pthread_attr_init(&read_attr)) != 0)
+  {
+    pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
+    return;
+  }
+  
+  /* Initialize the write thread attributes. */
+  if((p_rtn = pthread_attr_init(&write_attr)) != 0)
+  {
+    /*pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
+    pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    return;
+  }
+
+#if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
+  /* On IRIX/SGI, one can set a thread to run on a specifid CPU.  Posix
+     says pthread_attr_setscope() only support PTHREAD_SCOPE_PROCESS and 
+     PTHREAD_SCOPE_SYSTEM.  IRIX by default uses
+     PTHREAD_SCOPE_PROCESS.  To change this to PTHREAD_SCOPE_SYSTEM requires
+     root privledge.  IRIX supports a non-standerd scope called
+     PTHREAD_SCOPE_BOUND_NP (6.5.9 kernels and later) that does not need
+     root privledge to set.  The pthread_setrunon_np() function requires
+     that a process have PTHREAD_SCOPE_SYSTEM or PTHREAD_SCOPE_BOUND_NP
+     scope to set the cpu affinity. 
+
+     For the purpose of thorough documentation the following functions set
+     cpu/processor affinity on various architectures.  In all cases there
+     is an equivalent 'get' functionality.
+     
+     IRIX:
+     sysmp() with MP_SETMUSTRUN command  (If setting current process root 
+                                          privledge not needed)
+     pthread_setrunon_np() (about privledges; see above)
+
+     Linux (2.5.8 and later kernels):
+     sched_setaffinity() (If setting current process root privledge not needed)
+
+     SunOS:
+     processor_bind() (If setting current process root privledge not needed)
+     [See processor_bind() for get functionality too.]
+
+     OSF1:
+     bind_to_cpu()    (If setting current process root privledge not needed)
+     bind_to_cpu_id() (If setting current process root privledge not needed)
+     [See getsysinfo() with GSI_CURRENT_CPU command for get functionality.]
+  */
+
+  /* Set the read thread scope to allow pthread_setrunon_np() to work. */
+  if((p_rtn = pthread_attr_setscope(&read_attr, PTHREAD_SCOPE_BOUND_NP)) != 0)
+  {
+    pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
+    return;
+  }
+
+  /* Set the read thread scope to allow pthread_setrunon_np() to work. */
+  if((p_rtn = pthread_attr_setscope(&read_attr, PTHREAD_SCOPE_BOUND_NP)) != 0)
+  {
+    pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
+		       "pthread_attr_init failed", 0.0, __FILE__, __LINE__);
+    /*pack_return_values(writes, 0, p_rtn, THREAD_ERROR,
+      "pthread_attr_init failed", 0.0, __FILE__, __LINE__);*/
+    return;
+  }
+
+  /* Remember the affinity for use later.  If no cpu affinity exists, the
+     return value is -1. Since, the process is not threaded yet, we don't 
+     need to worry about the thread calls yet. */
+  reads->cpu_affinity = writes->cpu_affinity = sysmp(MP_GETMUSTRUN);
+#endif /* PTHREAD_SCOPE_BOUND_NP */
 
   /* Do stuff to the file descriptors. */
 
@@ -1995,7 +2084,7 @@ static void do_read_write_threaded(struct transfer *reads,
   /* Get the threads going. */
 
   /* Start the thread that 'writes' the file. */
-  if((p_rtn = pthread_create(&(writes->thread_id), NULL,
+  if((p_rtn = pthread_create(&(writes->thread_id), &write_attr,
 			     &thread_write, writes)) != 0)
   {
     pack_return_values(reads, 0, p_rtn, THREAD_ERROR,
@@ -2006,7 +2095,7 @@ static void do_read_write_threaded(struct transfer *reads,
   }
 
   /* Start the thread that 'reads' the file. */
-  if((p_rtn = pthread_create(&(reads->thread_id), NULL,
+  if((p_rtn = pthread_create(&(reads->thread_id), &read_attr,
 			     &thread_read, reads)) != 0)
   {
     /* Don't let this thread continue on forever. */
@@ -2450,6 +2539,9 @@ static void* thread_read(void *info)
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
   sigset_t sigs_to_block;       /* Signal set of those to block. */
+#if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
+  int cpu_error;                /* If setrunon fails remember the error. */
+#endif /* PTHREAD_SCOPE_BOUND_NP */
 
   /* Block this signal.  Only the main thread should use/recieve it. */
   if(sigemptyset(&sigs_to_block))
@@ -2501,6 +2593,17 @@ static void* thread_read(void *info)
 		       __FILE__, __LINE__);
     return NULL;
   }
+
+#if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
+  /* Make sure that the cpu affinity that the main thread may have is applied
+     to the thread FD that is a socket. */
+  if(read_info->cpu_affinity >= 0 && S_ISSOCK(file_info.st_mode))
+  {
+    if((cpu_error = pthread_setrunon_np(read_info->cpu_affinity)) != 0)
+      fprintf(stderr, "CPU affinity non-fatal error: %s\n",
+	      strerror(cpu_error));
+  }
+#endif /* PTHREAD_SCOPE_BOUND_NP */
 
   while(read_info->bytes > 0)
   {
@@ -2706,6 +2809,9 @@ static void* thread_write(void *info)
   double corrected_time = 0.0;  /* Corrected return time. */
   double transfer_time = 0.0;   /* Runing transfer time. */
   sigset_t sigs_to_block;       /* Signal set of those to block. */
+#if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
+  int cpu_error;                /* If setrunon fails remember the error. */
+#endif /* PTHREAD_SCOPE_BOUND_NP */
 
   /* Block this signal.  Only the main thread should use/recieve it. */
   if(sigemptyset(&sigs_to_block) < 0)
@@ -2756,6 +2862,17 @@ static void* thread_write(void *info)
 		       "fstat failed", 0.0, __FILE__, __LINE__);
     return NULL;
   }
+
+#if defined ( __sgi ) && defined ( PTHREAD_SCOPE_BOUND_NP )
+  /* Make sure that the cpu affinity that the main thread may have is applied
+     to the thread FD that is a socket. */
+  if(write_info->cpu_affinity >= 0 && S_ISSOCK(file_info.st_mode))
+  {
+    if((cpu_error = pthread_setrunon_np(write_info->cpu_affinity)) != 0)
+      fprintf(stderr, "CPU affinity non-fatal error: %s\n",
+	      strerror(cpu_error));
+  }
+#endif /* PTHREAD_SCOPE_BOUND_NP */
 
   while(write_info->bytes > 0)
   {
