@@ -13,6 +13,9 @@
 
 #define BUF_SIZE 1048576L
 
+
+extern unsigned int adler32(unsigned int, char *, unsigned int);
+
 int main(int argc, char **argv)
 {
     /*Declare variables.*/
@@ -24,7 +27,7 @@ int main(int argc, char **argv)
     char buf[BUF_SIZE];         /*the data buffer*/
 
     /*Make sure the user entered a file to check.*/
-    if (!argv[1])
+    if( (argc < 1) || (!argv[1]) )
     {
 	printf("Usage %s <file_name>\n", argv[0]);
 	exit(1);
@@ -68,4 +71,6 @@ int main(int argc, char **argv)
     
     /*Print the caclulated CRC.*/
     printf("CRC %u\n", crc);
+
+    return 0;
 }
