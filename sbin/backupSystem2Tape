@@ -7,8 +7,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`echo $node | cut -c1-4`
-if [ "$gang" = "stke" ]; then gang=stken; fi
+gang=`gang`
 
 cd /diskc/enstore/$gang
 today=`date +"%Y-%m-%d-%H"`
