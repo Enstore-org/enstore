@@ -1374,6 +1374,8 @@ class Display(Tkinter.Canvas):
         
         title = entvrc_info.get('title', "")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
+        self.library_colors = entvrc_info.get('library_colors', {})
+        self.client_colors = entvrc_info.get('client_colors', {})
 
         Tkinter.Canvas.__init__(self, master=master)
                                 #height=window_height,
