@@ -1557,7 +1557,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.DOESNOTEXIST, "Volume not found")
             self.reply_to_caller(ticket)
             return
-        Trace.log(e_errors.INFO, "romoving active volume %s , mover %s" %
+        Trace.log(e_errors.INFO, "removing active volume %s , mover %s" %
                   (mover['external_label'],mover['mover'])) 
         self.volumes_at_movers.delete({'mover': mover['mover']})
         ticket['status'] = (e_errors.OK, None)
