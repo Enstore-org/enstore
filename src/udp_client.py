@@ -246,7 +246,7 @@ class UDPClient:
 	message, self.number = protocolize( self, text )
 
         # send the udp message
-	send_socket( self.socket, message, address )
+	return send_socket( self.socket, message, address )
 
 class UDPClientInterface(interface.Interface):
 
