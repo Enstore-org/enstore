@@ -342,20 +342,11 @@ class Mover:
                     font = self.font, text=self.state, fill=self.state_color)
 
     def draw_timer(self):
-        #if self.timer_display:
-        #    self.display.itemconfigure(self.timer_display,
-        #                               text=self.timer_string)
-        #else:
-        #    self.timer_display = self.display.create_text(
-        #        self.x + self.timer_offset.x, self.y + self.timer_offset.y,
-        #        text = self.timer_string, fill = self.timer_color,
-        #        font = self.font)
-        try:
-            self.display.delete(self.timer_display)
-        except TclError:
-            pass
-        
-        self.timer_display = self.display.create_text(
+        if self.timer_display:
+            self.display.itemconfigure(self.timer_display,
+                                       text=self.timer_string)
+        else:
+            self.timer_display = self.display.create_text(
                 self.x + self.timer_offset.x, self.y + self.timer_offset.y,
                 text = self.timer_string, fill = self.timer_color,
                 font = self.font)
@@ -864,22 +855,13 @@ class Connection:
     #########################################################################
         
     def draw(self):
-        #Draw or update the line.
-        #if self.line:
-        #    self.display.coords(self.line, tuple(self.path))
-        #    self.display.itemconfigure(self.line,dashoffset = self.dashoffset)
-        #else:
-        #    self.line = self.display.create_line(self.path, dash='...-',
-        #                                         width=2, smooth=1,
-        #                                         dashoffset = self.dashoffset)
-        #After analyzing the profile output, this appears to work faster.
-        try:
-            self.display.delete(self.line)
-        except TclError:
-            pass
-        self.line = self.display.create_line(self.path, dash='...-',
-                                             width=2, smooth=1,
-                                             dashoffset = self.dashoffset)
+        if self.line:
+            self.display.coords(self.line, tuple(self.path))
+            self.display.itemconfigure(self.line,dashoffset = self.dashoffset)
+        else:
+            self.line = self.display.create_line(self.path, dash='...-',
+                                                 width=2, smooth=1,
+                                                 dashoffset = self.dashoffset)
 
     def undraw(self):
         try:
@@ -1074,8 +1056,26 @@ class Display(Tkinter.Canvas):
 ##        self.pack(side=Tkinter.LEFT)
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
-        Tkinter.Tk.title(self.master, title)
+        self.animate = 1 #Animate the connections.
+
+        #The toplevel widget the canvas created.
+        toplevel = self.winfo_toplevel()
+        #Various toplevel window attributes.
+        toplevel.title(title)
         self.configure(attributes)
+        #Menubar attributes.
+        self.menubar = Tkinter.Menu(master=self.master)
+        #Options menu.
+        self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
+        self.option_menu.add_checkbutton(label="Animate",
+                                         #indicatoron=1, #Tkinter.YES,
+                                         #offvalue=0, onvalue=1,
+                                         #variable=self.animate)
+                                         command=self.toggle_animation)
+        self.menubar.add_cascade(label="options", menu=self.option_menu)
+        toplevel.config(menu=self.menubar)
+
+        #With the window attributes created, pack them in.
         self.pack(expand=1, fill=Tkinter.BOTH)
         self.width  = int(self['width'])
         self.height = int(self['height'])
@@ -1087,6 +1087,13 @@ class Display(Tkinter.Canvas):
         self.bind('<Configure>', self.resize)
         self.bind('<Destroy>', self.window_killed)
         self.bind('<Button-2>', self.print_canvas)
+
+    def toggle_animation(self):
+        #Toggle the animation flag variable.  (on or off)
+        self.animate = (not self.animate)
+
+        if self.animate:  #If turn on, schedule the next animation.
+            self.after_animation_id = self.after(30, self.connection_animation)
 
     def __del__(self):
         self.connections = {}        
@@ -1234,6 +1241,11 @@ class Display(Tkinter.Canvas):
         
     #Called from self.after().
     def connection_animation(self):
+
+        #If the user turned off animation, don't do it.
+        if not self.animate:
+            return
+        
         now = time.time()
         #### Update all connections.
         for connection in self.connections.values():
