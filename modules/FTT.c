@@ -436,7 +436,7 @@ do_read(  int 		rd_fd
 	, int 		no_bytes
 	, int 		blk_size /* is g_blocksize */
 	, PyObject	*crc_obj_tp
-	, int		crc_i
+	, unsigned int	crc_i
 	, int		*read_bytes_ip )
 {
 	struct sembuf	 sops_rd_wr2rd;
@@ -496,10 +496,11 @@ do_read(  int 		rd_fd
 	    /* do not crc g_buf_bytes */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
-		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
-					   , g_shmaddr_p+shm_off+g_buf_bytes
-					   , shm_bytes-g_buf_bytes
-					   , crc_i );
+		rr = PyObject_CallFunction(  crc_obj_tp, "Os#i"
+					     , PyLong_FromLong(crc_i)
+					     , g_shmaddr_p+shm_off+g_buf_bytes
+					     , shm_bytes-g_buf_bytes
+					     , shm_bytes-g_buf_bytes );
 		if (PyLong_Check(rr))
 		    crc_i = PyLong_AsLong( rr );
 		else if (PyInt_Check(rr))
@@ -535,10 +536,11 @@ do_read(  int 		rd_fd
 	    /* some or all of g_buf_bytes are to be crc-ed */
 	    if (crc_obj_tp)
 	    {   PyObject	*rr;
-		rr = PyObject_CallFunction(  crc_obj_tp, "s#i"
-					   , g_shmaddr_p+shm_off
-					   , user_bytes
-					   , crc_i );
+		rr = PyObject_CallFunction(  crc_obj_tp, "Os#i"
+					     , PyLong_FromLong(crc_i)
+					     , g_shmaddr_p+shm_off
+					     , user_bytes
+					     , user_bytes );
 		if (PyLong_Check(rr))
 		    crc_i = PyLong_AsLong(rr);
 		else if (PyInt_Check(rr))
@@ -631,7 +633,7 @@ FTT_fd_xfer(  PyObject *self
 	PyObject	*crc_tp;    /*  /  */
 	PyObject	*shm_tp;    /* /   */
 
-	int		 crc_i;
+	unsigned int	 crc_i;
 	int		 sts;	/* general status */
 	struct sigaction newSigAct_sa[32];
 	int		 rd_ahead_i;
@@ -822,7 +824,7 @@ FTT_fd_xfer(  PyObject *self
 		return (raise_exception("fd_xfer - read EOF unexpected"));
 	    default:		/* assume DatCrc */
 		writing_flg = 0;	/* DONE! */
-		crc_i = msg_s.md.data;
+		crc_i = (unsigned int)msg_s.md.data;
 		break;
 	    }
 	}
@@ -846,7 +848,7 @@ FTT_fd_xfer(  PyObject *self
 	return (raise_exception("fd_xfer - waitpid"));
 
     if (crc_fun_tp)
-	rr = Py_BuildValue( "i", crc_i );
+	rr = PyLong_FromLong(crc_i);
     else
 	rr = Py_BuildValue( "" );
     return (rr);

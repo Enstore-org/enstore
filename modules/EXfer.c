@@ -111,7 +111,7 @@ raise_exception( char *msg )
  *
  * DESCRIPTION:		read data from 1st fd, write to second
  *
- * RETURN VALUE:	int - crc
+ * RETURN VALUE:	long - crc
  *
  *****************************************************************************/
 
@@ -154,7 +154,7 @@ do_read(  int 		rd_fd
 	, int 		no_bytes
 	, int 		blk_size 
 	, PyObject	*crc_obj_tp
-	, int		crc_i
+	, unsigned int	crc_i
 	, int		*read_bytes_ip )
 {
 	struct sembuf	 sops_rd_wr2rd;
@@ -206,8 +206,8 @@ do_read(  int 		rd_fd
 
 	if (crc_obj_tp)
 	{   PyObject	*rr;
-	    rr = PyObject_CallFunction(  crc_obj_tp, "s#i", g_shmaddr_p+shm_off
-				       , sts, crc_i );
+	    rr = PyObject_CallFunction(  crc_obj_tp, "Os#i", PyLong_FromLong(crc_i)
+					 ,g_shmaddr_p+shm_off, sts, sts );
 	    if (PyLong_Check(rr))
 		crc_i = PyLong_AsLong(rr);
 	    else if (PyInt_Check(rr))
@@ -295,7 +295,7 @@ EXfd_xfer(  PyObject	*self
 	PyObject	*crc_tp=Py_None;/* optional, ref. FTT.fd_xfer */
 	PyObject	*shm_obj_tp=0;  /* optional, ref. FTT.fd_xfer */
 
-	int		 crc_i;
+	unsigned int     crc_i;
 	int		 sts;
 	struct sigaction newSigAct_sa[32];
 	int		 rd_ahead_i;
@@ -471,7 +471,7 @@ EXfd_xfer(  PyObject	*self
 		return (raise_exception("fd_xfer - read EOF unexpected"));
 	    default:		/* assume DatCrc */
 		writing_flg = 0;	/* DONE! */
-		crc_i = msg_s.md.data;
+		crc_i = (unsigned int)msg_s.md.data;
 		break;
 	    }
 	}
@@ -496,7 +496,7 @@ EXfd_xfer(  PyObject	*self
 	return (raise_exception("fd_xfer - waitpid"));
 
     if (crc_obj_tp)
-	rr = Py_BuildValue( "i", crc_i );
+	rr = PyLong_FromLong( crc_i );
     else
 	rr = Py_BuildValue( "" );
     return (rr);
