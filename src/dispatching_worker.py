@@ -74,7 +74,6 @@ class DispatchingWorker:
 
         self.interval_func = None #function to call periodically
         self.last_interval = 0
-        self.one_shot = None
         
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
@@ -96,9 +95,6 @@ class DispatchingWorker:
     def reset_interval_timer(self):
         self.last_interval = time.time()
 
-    def schedule_update(self, when):
-        self.one_shot = when
-        
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
                              
@@ -144,11 +140,8 @@ class DispatchingWorker:
         request, client_address = self.get_request()
         now=time.time()
 
-        if self.interval_func and (now-self.last_interval >= self.interval
-                                   or (self.one_shot and now>=self.one_shot)):
+        if self.interval_func and now-self.last_interval >= self.interval:
             self.last_interval=now
-            if now >= self.one_shot:
-                self.one_shot=None
             self.interval_func()
 
         if request == '':
@@ -206,10 +199,7 @@ class DispatchingWorker:
 
             rcv_timeout = self.rcv_timeout
             if self.interval_func:
-                now = time.time()
-                time_left = self.interval - (now-self.last_interval)
-                if self.one_shot:
-                    time_left = self.one_shot - now
+                time_left = self.interval - (time.time()-self.last_interval)
                 if time_left<0:
                     time_left=0
                 rcv_timeout = min(rcv_timeout, time_left)
