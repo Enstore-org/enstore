@@ -121,21 +121,23 @@ class MonitorServerClient:
         except:
             pass
         
+        rate = "%.4g" % ((block_count * block_size) / elapsed / (1024*1024))
         reply = self._send_measurement (
             {
             'work' : 'recieve_measurement',
             
             'measurement' : (
             time.asctime(time.localtime(time.time())), 
-            callback_addr,
-            remote_addr,
+            string.replace(callback_addr, ".fnal.gov", ""),
+            string.replace(remote_addr, ".fnal.gov", ""),
             block_count,
             block_size,
-            elapsed,
-            "%5.3f" % ((block_count * block_size) / elapsed / (1024*1024))
+            "%.4g" % elapsed,
+            rate
             )
             }
             )
+        return rate
 
     def flush_measurements(self):
         reply = self._send_measurement (
@@ -236,7 +238,7 @@ if __name__ == "__main__":
         if vetos.is_vetoed_item(ip):
             print "Skipping %s : %s" % vetos.veto_info(ip)
             break
-        print "trying", ip
+        print "Trying", socket.gethostbyaddr(ip), 
         msc = MonitorServerClient(
             (ip,                      config['server_port']),
             (config['html_gen_host'], config['server_port']),
@@ -245,8 +247,8 @@ if __name__ == "__main__":
             config['block_count']
             )
         measurement=msc.monitor_one_interface(ip)
-        pprint.pprint(measurement)
-        msc.send_measurement(measurement)
+        #pprint.pprint(measurement)
+        print "  Success.  Network rate measured at ",msc.send_measurement(measurement)," MB/S"
     msc.flush_measurements()
         
     
