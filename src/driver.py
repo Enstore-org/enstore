@@ -27,7 +27,7 @@ class GenericDriver:
         self.wr_access = 0
         self.rd_access = 0
 
-    def load(self):
+    def load( self, eod_cookie ):
         pass
 
     def unload(self):
@@ -72,9 +72,6 @@ class  FTTDriver(GenericDriver) :
         self.blocksize = 65536
         #ETape.ET_Rewind("", self.device)
         self.set_position()
-
-    def load(self):
-        pass
 
     # This may be a mixin where the position is determined from the drive
     def set_position(self):
@@ -138,21 +135,22 @@ class  RawDiskDriver(GenericDriver) :
 
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
-        #print "opening file"
-        self.df = open(device, "a+")
-        # new volumes for disk, don't start at 0 offset - set eod to end
-        if eod_cookie == "none":
-            eod_cookie = repr(self.df.tell())
-            #print "adjusted eod from none to ",eod_cookie
-        self.set_eod(eod_cookie)
         self.blocksize = 4096
+        #self.df = open(self.device, "a+")	# need to open so we can "tell"
+        #self.set_eod( repr(self.df.tell()) )
 
-    def load(self):
+    def __del__( self ):
+	#self.df.close()
+	pass
+
+    def load( self, eod_cookie ):
+	self.df = open(self.device, "a+")
+	self.set_eod( repr(self.df.tell()) )
         pass
 
-    def unload(self):
-        #print "closing file"
-        self.df.close()
+    def unload( self ):
+	self.df.close()
+	pass
 
     # read file -- use the "cookie" to not walk off the end, since we have
     # no "file marks" on a disk
@@ -230,9 +228,9 @@ class  DelayDriver(RawDiskDriver) :
     crude delays modeled on no particular tape drive.
 
     """
-    def load(self):
-        time.sleep(10)                   # load time 10 seconds
-	RawDiskDriver.load(self)
+    def load( self, eod_cookie ):
+        time.sleep( 10 )                   # load time 10 seconds
+	RawDiskDriver.load( self, eod_cookie )
 
     def unload(self):
 	time.sleep(self.firstbyte/20E6)   # rewind time @ 20MB/sec
@@ -295,7 +293,7 @@ if __name__ == "__main__" :
         print "Creating RawDiskDriver device",device, "with",size,"bytes"
     rdd = RawDiskDriver (device,eod_cookie,size)
     #rdd = DelayDriver (device,eod_cookie,size)
-    rdd.load()
+    rdd.load( eod_cookie )
 
     cookie = {}
 
