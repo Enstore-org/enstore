@@ -107,6 +107,9 @@ COMMON:
                 setupOptional("ximagetools")
                 setupOptional("imagemagick")
 
+		# used to generate the plots of mounts etc.
+                setupOptional("gnuplot v3_6")
+
                 # we use the pylint tool in the gadfly product
                 setupRequired("gadfly v1_0")
 
