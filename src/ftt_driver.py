@@ -87,6 +87,11 @@ class FTTDriver(driver.Driver):
                 Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.errno))
                 if detail.errno == ftt.EBUSY:
                     time.sleep(5)
+                elif detail.errno == ftt.EROFS:
+                    ###XXX HACK!
+                    Trace.log(e_errors.ERROR, "ftt open dev: %s %s: reopening read-only" %(detail, detail.errno))
+                    self.ftt.close()
+                    self.ftt = ftt.open(self.device, FTT_RDONLY)
                 else:
                     break
                 
