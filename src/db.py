@@ -278,6 +278,34 @@ class DbTable:
      Trace.log(e_errors.INFO, repr(cmd))
      os.system(cmd)
      os.chdir(cwd)
+			
+  # cross_check() cross check journal dictionary and database
+
+  def cross_check(self):
+
+        error = 0
+
+        # check if the items in db has the same value of that
+        # in journal dictionary
+
+        for i in self.dict.keys():
+            if not self.has_key(i):
+                print 'M> key('+i+') is not in database'
+                error = error + 1
+            elif `self.dict[i]` != `self.__getitem__(i)`:
+                print 'C> database and journal disagree on key('+i+')'
+                print 'C>  journal['+i+'] =', self.dict[i]
+                print 'C> database['+i+'] =', self.__getitem__(i)
+                error = error + 1
+#        # check if the deleted items are still in db
+#
+#        for i in self.deletes:
+#            if self.has_key(i):
+#                print 'D> database['+i+'] should be deleted'
+#                error = error + 1
+
+        return error
+
 
 def do_backup(name, dbHome, jouHome):
      cwd=os.getcwd()
