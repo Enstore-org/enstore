@@ -204,7 +204,7 @@ class FileClient(generic_client.GenericClient,
 
     # This is only to be used internally
     def exist_bfids(self, bfids = []):
-        if not bfids:
+        if bfids == None:
             bfids = self.bfid
         r = self.send({"work" : "exist_bfids",
                        "bfids": bfids} )
