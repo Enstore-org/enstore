@@ -11,7 +11,6 @@ import sys
 import generic_client
 import backup_client
 import udp_client
-import db
 import callback
 import Trace
 import e_errors
