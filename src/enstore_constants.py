@@ -237,6 +237,7 @@ STORAGE_GROUP = 'storage_group'
 MOVER_DOWN_PERCENTAGE = 'mover_down_percentage'
 ADMIN_QUEUE = "admin_queue"
 WRITE_QUEUE = "write_queue"
+READ_QUEUE = "read_queue"
 
 NO_INFO = "------"
 NO_WORK = "No work at movers"
