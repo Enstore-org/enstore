@@ -120,6 +120,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 					       monitored_server.DEFAULT_HUNG_INTERVAL)
 
     def mark_event_relay(self, state):
+	Trace.trace(enstore_constants.INQSERVERDBG, "mark event relay as %s"%(state,))
 	self.serverfile.output_etimedout(self.erc.event_relay_addr[0], 
 					 self.erc.event_relay_addr[1], state,
 					 time.time(), enstore_constants.EVENT_RELAY, 
@@ -127,6 +128,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     def mark_server(self, state, server):
 	if server.no_thread():
+	    Trace.trace(enstore_constants.INQSERVERDBG, "mark server %s as %s"%(server.name,
+										state,))
 	    self.serverfile.output_etimedout(server.host, server.port, state, 
 					     time.time(), server.name, 
 					     server.output_last_alive)
@@ -263,6 +266,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     def make_server_status_html_file(self):
 	if self.new_server_status:
+	    Trace.trace(enstore_constants.INQFILEDBG, "make new html server status file")
 	    self.serverfile.open()
 	    self.serverfile.write()
 	    self.serverfile.close()
@@ -271,6 +275,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # create an html file that has a link to all of the current log files
     def make_log_html_file(self):
+	Trace.trace(enstore_constants.INQFILEDBG, "make new log file")
 	log_dirs = self.inquisitor.user_log_dirs
         # add the web host to the dict of log directories if not already there
 	try: 
@@ -314,6 +319,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
 
     def update_config_page(self, config):
+	Trace.trace(enstore_constants.INQFILEDBG, "make new html config file")
         self.configfile.open()
 	self.configfile.write(config)
 	self.configfile.close()
@@ -374,6 +380,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
+	Trace.trace(enstore_constants.INQSERVERDBG, "get new suspect vol list from %s"%(key,))
 	state = safe_dict.SafeDict(lm.get_suspect_volumes())
 	self.serverfile.output_suspect_vols(state, key)
 	if enstore_functions.is_timedout(state):
@@ -382,6 +389,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), key, time):
+	Trace.trace(enstore_constants.INQSERVERDBG, "get new work queue from %s"%(key,))
 	state = safe_dict.SafeDict(lm.getwork())
 	self.serverfile.output_lmqueues(state, key)
 	if enstore_functions.is_timedout(state):
@@ -390,6 +398,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # get the library manager state and output it
     def lm_state(self, lm, (host, port), key, time):
+	Trace.trace(enstore_constants.INQSERVERDBG, "get new state from %s"%(key,))
 	state = safe_dict.SafeDict(lm.get_lm_state())
 	self.serverfile.output_lmstate(state, key)
 	if enstore_functions.is_timedout(state):
@@ -410,6 +419,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # get the movers' status
     def mover_status(self, movc, (host, port), key, time):
+	Trace.trace(enstore_constants.INQSERVERDBG, "get new state from %s"%(key,))
 	state = safe_dict.SafeDict(movc.status(self.alive_rcv_timeout, 
 					      self.alive_retries))
 	self.serverfile.output_moverstatus(state, key)
@@ -438,6 +448,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # update any encp information from the log files
     def make_encp_html_file(self, now):
+	Trace.trace(enstore_constants.INQFILEDBG, "make new html encp file")
 	self.last_encp_update = now
 	self.encp_xfer_but_no_update = 0
         encplines = []
@@ -497,6 +508,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                not self.server_d[server].name == enstore_constants.INQUISITOR:
 		    rtn = 0
 		    break
+	if rtn == 1:
+	    Trace.trace(enstore_constants.INQSERVERDBG, "all servers have timed out")
 	return rtn
 
     def ping_event_relay(self, servers_timed_out):
@@ -523,6 +536,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	now = time.time()
         mongo_time_out = self.all_servers_timed_out()
 	if self.event_relay.doPing() or mongo_time_out:
+	    Trace.trace(enstore_constants.INQSERVERDBG, "pinging the event relay")
 	    self.ping_event_relay(mongo_time_out)
 
     # examine each server we are monitoring to see if we have received an alive from
@@ -645,6 +659,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # our client said to update the enstore system status information
     def update(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "update work from user")
 	self.periodic_tasks(self, USER)
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
@@ -654,6 +669,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	keys.sort()
 	for skey in keys:
 	    server = self.server_d[skey]
+	    print server.name
 	    print repr(server)
 	print repr(self.event_relay)
 	if self.plot_thread and self.plot_thread.isAlive():
@@ -665,12 +681,14 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # spill our guts
     def dump(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "dump work from user")
         ticket["status"] = (e_errors.OK, None)
 	self.do_dump()
 	self.send_reply(ticket)
 
     # set the timeout for the periodic_tasks function
     def set_update_interval(self,ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "update_interval work from user")
         ticket["status"] = (e_errors.OK, None)
         self.update_interval = ticket["update_interval"]
 	self.remove_interval_func(self.periodic_tasks)
@@ -678,18 +696,21 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.send_reply(ticket)
 
     def get_update_interval(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "get_update_interval work from user")
         ret_ticket = { 'update_interval' : self.update_interval,
                        'status'      : (e_errors.OK, None) }
 	self.send_reply(ret_ticket)
 
     # update the inq status and exit
     def update_and_exit(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "update_and_exit work from user")
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
 	self.update_exit(0)
 
     # set a new refresh value for the html files
     def set_refresh(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "set_refresh work from user")
         ticket["status"] = (e_errors.OK, None)
         self.serverfile.set_refresh(ticket['refresh'])
         self.encpfile.set_refresh(ticket['refresh'])
@@ -697,18 +718,21 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 
     # return the current refresh value
     def get_refresh(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "get_refresh work from user")
         ticket["status"] = (e_errors.OK, None)
         ticket["refresh"] = self.serverfile.get_refresh()
 	self.send_reply(ticket)
 
     # set a new max encp lines displayed value
     def set_max_encp_lines(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "set_max_encp_lines work from user")
         ticket["status"] = (e_errors.OK, None)
 	self.max_encp_lines = ticket['max_encp_lines']
 	self.send_reply(ticket)
 
     # return the current number of displayed encp lines
     def get_max_encp_lines(self, ticket):
+	Trace.trace(enstore_constants.INQWORKDBG, "get_max_encp_lines work from user")
         ticket["status"] = (e_errors.OK, None)
         ticket["max_encp_lines"] = self.max_encp_lines
 	self.send_reply(ticket)
