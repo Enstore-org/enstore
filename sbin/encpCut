@@ -151,7 +151,7 @@ fi
 #### dadburned getopts does not work on OSF1, so parse opts manually############
 
 gotc=
-
+QUALIFIERS=""
 opt=""
 if [ $# -gt 0 ] ; then
    for optarg in $@ ; do
