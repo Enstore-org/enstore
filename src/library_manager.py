@@ -1343,7 +1343,7 @@ if __name__ == "__main__":
 
     # get a library manager
     lm = LibraryManager(intf.name, (intf.config_host, intf.config_port))
-
+    lm.handle_generic_commands(intf)
 
     while 1:
         try:
