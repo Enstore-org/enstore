@@ -25,6 +25,7 @@ case $node in
                  d0enmvr13a d0enmvr13b d0enmvr14a d0enmvr14b d0enmvr15a d0enmvr15b \
                  d0enmvr16a d0enmvr16b d0enmvr17a d0enmvr17b d0enmvr18a d0enmvr18b \
                  d0enmvr19a d0enmvr19b d0enmvr20a d0enmvr20b \
+                 d0enmvr21a d0enmvr21b d0enmvr22a d0enmvr22b \
                  rip8"
           ;;
        *) gang=UNKNOWN
@@ -64,7 +65,7 @@ add*)
     /sbin/route add -host stkensrv4 eth0
 
     x=1
-    while [ $x -le 20 ]; do
+    while [ $x -le 22 ]; do
       /sbin/route add -host d0enmvr${x}a  eth0
       /sbin/route add -host d0enmvr${x}b $eth1
       x=`expr $x + 1`
@@ -127,7 +128,7 @@ del*)
     /sbin/route del stkensrv4
 
     x=1
-    while [ $x -le 20 ]; do
+    while [ $x -le 22 ]; do
       /sbin/route del d0enmvr${x}a
       /sbin/route del d0enmvr${x}b
       x=`expr $x + 1`
@@ -292,10 +293,10 @@ test*)
     node=`uname -n| sed -e 's/.fnal.gov//'`
     if [ $gang = "d0en" ];then
       num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-      max=20
+      max=22
     elif [ $gang = "stken" ]; then
       num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-      max=5
+      max=6
     fi
     num1=`expr $num + 1`
 
@@ -342,10 +343,10 @@ ifconfig)
       server=0
       if [ $gang = "d0en" ];then
         num=`echo $node | sed -e 's/d0enmvr//' -e 's/a//' -e 's/b//'`
-        max=20
+        max=22
       elif [ $gang = "stken" ]; then
         num=`echo $node | sed -e 's/stkenmvr//' -e 's/a//' -e 's/b//'`
-        max=5
+        max=6
       fi
       node0=`echo $node | sed -e "s/a\$//" -e "s/b\$//"`
     fi
