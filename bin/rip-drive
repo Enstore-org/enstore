@@ -21,8 +21,8 @@ case $drive in
   dm06) cmd="rsh rip2 'mt -f /dev/rmt/tps2d4 $command'" ;;
   dm07) cmd="rsh rip2 'mt -f /dev/rmt/tps2d1 $command'" ;;
   dm08) cmd="rsh rip2 'mt -f /dev/rmt/tps2d3 $command'" ;;
-  dm11) cmd="rsh rip2 'mt -f /dev/rmt/tps2d5 $command'" ;;
-  dm12) cmd="rsh rip2 'mt -f /dev/rmt/tps2d6 $command'" ;;
+  dc11) cmd="rsh rip2 'mt -f /dev/rmt/tps2d5 $command'" ;;
+  dc12) cmd="rsh rip2 'mt -f /dev/rmt/tps2d6 $command'" ;;
   de13) cmd="rsh rip1 'mt -f /dev/rmt/tps2d1 $command'" ;;
   de14) cmd="rsh rip1 'mt -f /dev/rmt/tps2d2 $command'" ;;
   de15) cmd="rsh rip1 'mt -f /dev/rmt/tps2d3 $command'" ;;
