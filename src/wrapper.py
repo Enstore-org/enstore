@@ -12,7 +12,7 @@ def create_wrapper_dict(ticket):
 
     # values needed for the cern wrapper
     ticket_mover = ticket[MOVER]
-    wrapper_d[cern_wrapper.ENCPVERSION] = ticket['version']
+    wrapper_d[cern_wrapper.ENCPVERSION] = ticket[cern_wrapper.ENCPVERSION]
     wrapper_d[cern_wrapper.BLOCKLEN] = None                                                   ####
     wrapper_d[cern_wrapper.COMPRESSION] = ticket_mover[cern_wrapper.COMPRESSION]
     mnode = ticket_mover[cern_wrapper.MOVERNODE]
