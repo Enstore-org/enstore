@@ -22,6 +22,7 @@ import volume_clerk_client
 import file_clerk_client
 import library_manager_client
 import media_changer_client
+import alarm_client
 import mover_client
 import dispatching_worker
 import interface
@@ -81,7 +82,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     server_keyword = 'server'
     did_it = 0
     timed_out = 1
-    ac_prefix =   "admin clerk     : "
+    ala_prefix =  "alarm server    : "
     fc_prefix =   "file clerk      : "
     logc_prefix = "log server      : "
     in_prefix =   "inquisitor      : "
@@ -372,6 +373,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.do_alive_check(key, time, self.vcc, self.vc_prefix)
         Trace.trace(12,"}update_volume_clerk ")
 
+    # get the information from the alarm server
+    def update_alarm_server(self, key, time):
+        Trace.trace(12,"{update_alarm_server "+repr(self.asciifile.file_name))
+	self.do_alive_check(key, time, self.alc, self.ala_prefix)
+        Trace.trace(12,"}update_alarm_server ")
+
     # get the information about the blocksizes
     def update_blocksizes(self, key, time):
         Trace.trace(12,"{update_blocksizes "+repr(self.asciifile.file_name))
@@ -600,7 +607,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def serve_forever(self) :
 	Trace.trace(4,"{serve_forever "+repr(self.rcv_timeout))
 
-	# get a file clerk client, volume clerk client, admin clerk client.
+	# get a file clerk client, volume clerk client, alarm client.
 	# connections to library manager client(s), media changer client(s)
 	# and a connection to the movers will be gotten dynamically.
 	# these will be used to get the status
@@ -610,6 +617,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.fcc = file_clerk_client.FileClient(self.csc, self.verbose)
 	self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
 	                                                 self.verbose)
+        self.alc = alarm_client.AlarmClient(self.csc, self.verbose)
 
 	# get all the servers we are to keep tabs on
 	self.prepare_keys()
