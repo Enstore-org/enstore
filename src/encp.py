@@ -2171,19 +2171,20 @@ def get_finfo(inputfile, outputfile, e):
 #This function takes as parameters...
 def get_winfo(pinfo, uinfo, finfo):
 
-    # create the wrapper subticket - copy all the user info 
-    # into for starters
+    # create the wrapper subticket - copy all the pnfs info 
+    # into it for starters
     wrapper = {}
 
-    #store the file information in the the wrapper
-    for key in finfo.keys():
-        wrapper[key] = finfo[key]
-    
     # store the pnfs information info into the wrapper
     for key in pinfo.keys():
         wrapper[key] = pinfo[key]
 
-    # the user key takes precedence over the pnfs key
+    # store the file information into the wrapper - finfo['mode'] should
+    # override the pinfo['mode'] key when present for writes.
+    for key in finfo.keys():
+        wrapper[key] = finfo[key]
+
+    # the user keys takes precedence over the pnfs keys
     for key in uinfo.keys():
         wrapper[key] = uinfo[key]
         
