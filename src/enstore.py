@@ -150,50 +150,6 @@ class UserOptions(GenericUserOptions):
 
 class EnstoreInterface(UserOptions):
 
-    def print_valid_servers(self):
-        servers = self.get_valid_servers()
-        print "\nERROR: Allowed servers/commands are : "
-        for server in servers:
-            print "\t%s"%server
-
-    def print_valid_options(self, server):
-        opts = self.get_valid_options()
-        print "\nERROR: Allowed options for %s are : "
-        for opt in opts:
-            print "\t%s"%opt
-
-    def print_usage_line(self, server, intf):
-        if self.user_mode:
-            # only print the options we support
-            intf.print_usage_line(self.get_valid_options(server))
-        else:
-            intf.print_usage_line()
-
-    def print_help(self):
-        cmd = "enstore"
-        if not self.user_mode:
-            print "\n%s start   [--just server --ping]"%cmd
-            print   "%s stop    [--just server --xterm server]"%cmd
-            print   "%s restart [--just server --xterm server]"%cmd
-            print   "%s ping    [timeout_seconds]"%cmd
-            print   "%s qping   [timeout_seconds]"%cmd
-            print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%cmd
-            print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
-            print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
-            print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
-            print "\n%s emass              (lists current mount state & queue list on emass robot)"%cmd
-        print "\n"
-        servers = self.get_valid_servers()
-        for server in servers:
-            # print the usage line for each server
-            print "%s %s "%(cmd, server),
-            intf = self.get_server_intf(server)
-            if not intf == None:
-                self.print_usage_line(server, intf)
-
-
-class EnstoreServerInterface(EnstoreInterface):
-
     def __init__(self):
         # the user can enter the least amount of text that uniquely
         # identifies the desired server. (e.g. - i for inquisitor).  so get
@@ -244,7 +200,48 @@ class EnstoreServerInterface(EnstoreInterface):
                 self.matched_server = server
         return total_matches
 
-class Enstore(EnstoreServerInterface):
+    def print_valid_servers(self):
+        servers = self.get_valid_servers()
+        print "\nERROR: Allowed servers/commands are : "
+        for server in servers:
+            print "\t%s"%server
+
+    def print_valid_options(self, server):
+        opts = self.get_valid_options()
+        print "\nERROR: Allowed options for %s are : "
+        for opt in opts:
+            print "\t%s"%opt
+
+    def print_usage_line(self, server, intf):
+        if self.user_mode:
+            # only print the options we support
+            intf.print_usage_line(self.get_valid_options(server))
+        else:
+            intf.print_usage_line()
+
+    def print_help(self):
+        cmd = "enstore"
+        if not self.user_mode:
+            print "\n%s start   [--just server --ping]"%cmd
+            print   "%s stop    [--just server --xterm server]"%cmd
+            print   "%s restart [--just server --xterm server]"%cmd
+            print   "%s ping    [timeout_seconds]"%cmd
+            print   "%s qping   [timeout_seconds]"%cmd
+            print "\n%s Estart   farmlet   (global Enstore start on all farmlet nodes)"%cmd
+            print   "%s Estop    farmlet   (global Enstore stop on all farmlet nodes)"%cmd
+            print   "%s Erestart farmlet   (global Enstore restart on all farmlet nodes)"%cmd
+            print "\n%s Esys     farmlet   (global Enstore-associated ps on all farmlet nodes)"%cmd
+            print "\n%s emass              (lists current mount state & queue list on emass robot)"%cmd
+        print "\n"
+        servers = self.get_valid_servers()
+        for server in servers:
+            # print the usage line for each server
+            print "%s %s "%(cmd, server),
+            intf = self.get_server_intf(server)
+            if not intf == None:
+                self.print_usage_line(server, intf)
+
+class Enstore(EnstoreInterface):
 
     def __init__(self, mode):
         self.user_mode = mode
@@ -307,7 +304,7 @@ class Enstore(EnstoreServerInterface):
             else:
                 # it was not one of the above commands.  assume it was a server
                 # request.
-                EnstoreServerInterface.__init__(self)
+                EnstoreInterface.__init__(self)
                 if self.matched_server == "":
                     rtn = 1
                 else:
