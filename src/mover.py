@@ -961,6 +961,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, msg)
 
     def send_client_done( self, ticket, status, error_info=None):
+        
         ticket['status'] = (status, error_info)
         callback.write_tcp_obj( self.control_socket, ticket)
         self.control_socket.close()
@@ -1005,8 +1006,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self):
         self.dismount_time = None
         if self.do_eject:
-            self.tape_driver.open(self.device, mode=0, retry_count=2)
-            self.tape_driver.eject()
+            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
+            if have_tape == 1:
+                self.tape_driver.eject()
+            else:
+                Trace.log(e_errors.ERROR, "dismount volume, have_tape=%s" % (have_tape,))
             self.tape_driver.close()
         self.state = DISMOUNT_WAIT
         vol_info = self.vol_info.copy()
