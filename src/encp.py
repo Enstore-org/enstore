@@ -1045,15 +1045,6 @@ def write_to_hsm(input_files, output, output_file_family='',
                                                  outputlist[i],
                                                  fsize,
                                                  done_ticket)
-                
-                       done_ticket["fc"]["external_label"],
-                       done_ticket["mover"]["device"],
-                       done_ticket["times"]["transfer_time"],
-                       done_ticket["times"]["seek_time"],
-                       done_ticket["times"]["mount_time"],
-                       done_ticket["times"]["in_queue"],
-                       time.time()-done_ticket["times"]["t0"],
-                       e_errors.OK)
 
             Trace.log(e_errors.INFO, format%("write_to_hsm",
                                              inputlist[i], outputlist[i],
