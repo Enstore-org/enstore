@@ -36,7 +36,8 @@ def try_a_port(host, port) :
 # get an unused tcp port for communication
 def get_callback_port(start,end):
     Trace.trace(16,"{get_callback_port")
-    (host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    (host_name,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    host = ci[0]
 
     # First acquire the hunt lock.  Once we have it, we have the exlusive right
     # to hunt for a port.  Hunt lock will (I hope) properly serlialze the

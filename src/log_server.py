@@ -142,7 +142,8 @@ if __name__ == "__main__" :
     try:
 	config_host = os.environ['ENSTORE_CONFIG_HOST']
     except:
-	(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+	(config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+        config_host = ci[0]
     try:
 	config_port = os.environ['ENSTORE_CONFIG_PORT']
     except:

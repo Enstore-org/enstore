@@ -337,7 +337,8 @@ if __name__ == "__main__":
     Trace.trace(1,"file clerk called with args "+repr(sys.argv))
 
     # defaults
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    config_host = ci[0]
     config_port = "7500"
     config_list = 0
 

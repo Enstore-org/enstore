@@ -25,8 +25,9 @@ class Interface:
 
     def __init__(self, host=default_host(), port=default_port()):
         if host == "localhost" :
-            (self.config_host, self.ca, self.ci) = \
+            (self.config_hostname, self.ca, self.ci) = \
                 socket.gethostbyaddr(socket.gethostname())
+            self.config_host = self.ci[0]
         else:            
 	    self.config_host = host
 

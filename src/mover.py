@@ -66,7 +66,8 @@ class Mover:
         # when we need to manually load balance movers attached to virtual
         # library.  So we need to keep track of configuration server.
         if config_host == "localhost":
-            (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+            (config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+            config_host = ci[0]
         self.config_host = config_host
         self.config_port = config_port
         self.csc = configuration_client.ConfigurationClient(self.config_host,self.config_port, 0)
@@ -567,7 +568,8 @@ if __name__ == "__main__":
     try:
 	config_host = os.environ['ENSTORE_CONFIG_HOST']
     except:
-	(config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+	(config_hostname,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+        config_host = ci[0]
     try:
 	config_port = os.environ['ENSTORE_CONFIG_PORT']
     except:

@@ -37,7 +37,8 @@ def try_a_port(host, port) :
 # try to get a port from a range of possibilities
 def get_client() :
     Trace.trace(20,'{get_client')
-    (host,ha,hi) = socket.gethostbyaddr(socket.gethostname())
+    (hostname,ha,hi) = socket.gethostbyaddr(socket.gethostname())
+    host = hi[0]
     port1 = 7600
     port2 = 7700
     while  1:
