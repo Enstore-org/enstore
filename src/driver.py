@@ -281,12 +281,12 @@ class  FTTDriver(GenericDriver) :
 	    # mt returns 0 upon success or 2 if no tape in device (i.e did
 	    # not need to offline)
 	    if stat == 0 or stat == 2: break
-	    Trace.log( errors.WARNING, 'offline returned status=%s'%stat )
+	    Trace.log( e_errors.WARNING, 'offline returned status=%s'%stat )
 	    time.sleep( 1 )
 	    x = x - 1;
 	    pass
 	if x == 0:
-	    Trace.log( errors.ERROR, 'offline giving up after 2 tries' )
+	    Trace.log( e_errors.ERROR, 'offline giving up after 2 tries' )
 	    raise "driver_ERROR"
 	return None
 
