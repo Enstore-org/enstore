@@ -33,6 +33,7 @@ MOVERALLOWEDDOWN = [7, 120]
 mail_sent = 0
 prefix = ""
 do_output = 0
+no_mail = 0
 SYSTEM = 'system'
 ALLOWED_DOWN = 'allowed_down'
 TRIES = 1
@@ -349,6 +350,7 @@ class UpDownInterface(generic_client.GenericClientInterface):
         self.do_parse = flag
         self.restricted_opts = opts
 	self.summary = do_output
+	self.no_mail = 0
 	self.html = 0
 	generic_client.GenericClientInterface.__init__(self)
 
@@ -357,7 +359,7 @@ class UpDownInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.help_options() + ["summary", "html"]
+            return self.help_options() + ["summary", "html", "no-mail"]
 
 def do_real_work():
     sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file()
@@ -481,7 +483,7 @@ def do_real_work():
 	    server.is_alive()
 	    ok_movers, bad_movers = server.mover_status()
 	    if bad_movers > ok_movers:
-		enprint("LOW CAPACITY: Found, %s of %s movers not responding"%(bad_movers, 
+		enprint("LOW CAPACITY: Found, %s of %s movers not responding or in a bad state"%(bad_movers, 
 									server.num_movers))
 		server.writemail("Found LOW CAPACITY movers for %s"%(server.name,))
 		server.status = enstore_constants.WARNING
@@ -527,21 +529,22 @@ def do_real_work():
             need_to_send = 1
             os.system('cat "%s" >> "%s"' % (server.mail_file, summary_file))
             server.remove_mail()
-    if need_to_send:
-        os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, summary_file))
+    if (not no_mail) and need_to_send:
+	os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, summary_file))
     os.system("rm %s"%(summary_file,))
     
     enprint("Finished checking Enstore... system is defined to be %s"%(stat,))
     return (rtn, summary_d)
 
 def do_work(intf):
-    global prefix, do_output
+    global prefix, do_output, no_mail
 
     # see if we are supposed to output well-formed html or not
     if intf.html:
 	prefix = "<LI>"
 
     do_output = intf.summary
+    no_mail = intf.no_mail
 
     rtn, summary_d = do_real_work()
     return (rtn)

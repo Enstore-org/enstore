@@ -477,3 +477,5 @@ class Interface:
                 self.web_host = value
 	    elif opt == "--subscribe":
 		self.subscribe = 1
+	    elif opt == "--no-mail":
+		self.no_mail = 1
