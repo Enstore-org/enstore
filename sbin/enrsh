@@ -46,13 +46,22 @@ if [ -d $krbdir ]; then
 
    else
       # this is someone else
+      OLDKRB5CCNAME=$KRB5CCNAME
       KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
-      ${krbdir}/kcron
-      ${krbdir}/rsh -f "$@"
-      # if got an error, maybe the remote node is not kerberized and does not
-      # accept the -f flag. try rsh without it.
-      if [ $? -eq 1 ]; then ${krbdir}/rsh "$@"; fi
-      ${krbdir}/kdestroy
+      ${krbdir}/kcron 2> /dev/null
+      ${krbdir}/rsh -f "$@" 2> /dev/null
+      # if got an error, maybe the user did not do kcroninit so lets use the
+      # original credentials cache to get the ticket
+      if [ $? -eq 1 ];
+      then
+	KRB5CCNAME=$OLDKRB5CCNAME
+	${krbdir}/rsh -f "$@" 2> /dev/null
+	# if got an error again, maybe the remote node is not kerberized and does not
+	# accept the -f flag. try rsh without it.
+	if [ $? -eq 1 ]; then ${krbdir}/rsh "$@" 2> /dev/null; fi
+      fi
+      # only destroy the ticket if we obtained one using kcron
+      if [ "$KRB5CCNAME" != "$OLDKRB5CCNAME" ]; then ${krbdir}/kdestroy; fi;
    fi
 
 else
