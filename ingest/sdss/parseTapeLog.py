@@ -3,7 +3,8 @@ import sys
 
 #def makeTapelogFilename(tapeLabel, filemark, run, frame, ccd):
 def makeTapelogFilename(run, frame, ccd):
-    return "idTapeLog-00" + run + "-" + ccd + "-000" + frame + ".fit"
+    return "idTapeLog-%06d-%02d-%04d.fit"%(run, ccd, frame)
+    #return "idTapeLog-00" + run + "-" + ccd + "-000" + frame + ".fit"
     
 #def makeTarlogFilename(tapeLabel, filemark, contents, id):
 def makeTarlogFilename(contents, id):
