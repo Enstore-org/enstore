@@ -101,7 +101,7 @@ class cpio :
             head = \
                  "070701" +\
                  "%08x" % inode +\
-                 "%08x" % (mode & 07777) +\
+                 "%08x" % mode +\
                  "%08x" % uid +\
                  "%08x" % gid +\
                  "%08x" % nlink +\
@@ -210,6 +210,7 @@ class cpio :
             length = len(b)
             if length == 0 :
                 break
+            size = size + length
             data_size = data_size + length
             # we need a complete crc of the data in the file
             data_crc = apply(self.crc_fun,(b,data_crc))

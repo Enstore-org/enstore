@@ -366,8 +366,8 @@ class Mover :
         self.wrapper = cpio.cpio(self.driver,self,binascii.crc_hqx)
 
         (bytes_sent, complete_crc, recorded_crc, match) = self.wrapper.read()
-        #print "cpio.read returned: ",\
-        #      bytes_sent, complete_crc, recorded_crc, match
+        print "cpio.read returned: ",\
+              bytes_sent, complete_crc, recorded_crc, match
 
         if 0:
             # read the file from hsm and send to user

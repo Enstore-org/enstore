@@ -2,7 +2,11 @@ import sys
 from errno import *
 import pprint
 import posix
-import ETape
+try:
+    import ETape
+except:
+    print "ETape unavailable!"
+
 
 class GenericDriver:
 
@@ -161,6 +165,7 @@ class  RawDiskDriver(GenericDriver) :
         if self.first_write_block :
             self.first_write_block = 0
             self.eod = self.df.tell() - len(data)
+
 if __name__ == "__main__" :
     import getopt
     import socket
