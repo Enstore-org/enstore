@@ -10,6 +10,10 @@ import select
 import errno
 import socket
 import cPickle
+import rexec
+
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
 
 # enstore imports
 import Trace
@@ -110,7 +114,6 @@ def read_tcp_raw(sock):
         Trace.trace(6,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
         return ""
     return msg
-
 
 
 def read_tcp_obj(sock) :

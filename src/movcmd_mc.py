@@ -6,6 +6,10 @@ import os
 import string
 import sys
 
+import rexec
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
+
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 

@@ -15,6 +15,8 @@ try:
 except ImportError:
     thread_support=0
 
+import rexec
+
 # enstore imports
 import setpath
 import e_errors
@@ -63,6 +65,7 @@ class UDPClient:
     def __init__(self):
         self.tsd = {} #Thread-specific data
         self._os = os
+        self.rexec = rexec.RExec()
         self.reinit()
 
     def reinit(self):
@@ -118,7 +121,7 @@ class UDPClient:
         
     def _eval_reply(self, reply): #private to send
         try:
-            number, out, t = eval(reply) #XXX
+            number, out, t = self.rexec.r_eval(reply) #XXX
             # catch any error and keep going. server needs to be robust
         except:
             exc,msg,tb=sys.exc_info()

@@ -3,6 +3,10 @@
 import time
 import string
 
+import rexec
+def eval(text):
+    return rexec.RExec().r_eval(text)
+
 # enstore imports
 import enstore_functions
 import e_errors

@@ -8,6 +8,10 @@ import time
 import errno
 import socket
 import pprint
+import rexec
+
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
 
 # enstore imports
 import callback
@@ -17,6 +21,8 @@ import backup_client
 import udp_client
 import Trace
 import e_errors
+
+
 
 MY_NAME = "VOLUME_C_CLIENT"
 MY_SERVER = "volume_clerk"

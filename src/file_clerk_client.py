@@ -7,6 +7,9 @@ import string
 import errno
 import sys
 import socket
+import rexec
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
 
 # enstore imports
 import setpath

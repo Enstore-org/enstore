@@ -16,6 +16,10 @@ import enstore_constants
 import mover_constants
 import safe_dict
 
+import rexec
+def eval(stuff):
+    return rexec.RExec().r_eval(stuff)
+
 YES = 1
 NO = 0
 
