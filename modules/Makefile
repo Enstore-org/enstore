@@ -1,3 +1,4 @@
+SHELL=/bin/sh
 #############################################################
 #
 #  $Id$
@@ -11,6 +12,10 @@ all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t
 # an appropriate Makefile (in a subdirectory) .   We copy it to
 # ../Makefile.modules for the Modules: target
 # The ACI/EMASS products are only made if they are setup
+
+POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
+
+TR=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-ltr"; else echo ""; fi`
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
@@ -68,7 +73,7 @@ ecrc: ecrc.c
 	cp ecrc ../sbin
 
 ddencp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread
+	$(CC) -I. -DSTAND_ALONE -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(TR)
 	cp $(@) ../bin
 
 installpyc:
@@ -80,9 +85,9 @@ installpyc:
 	done
 
 clean:
-	-rm Makefile.modules
-	-rm -f *.o *.so *.a *~ *# so_locations sedscript enroute2 m2probe t_rand t_read
+	-rm -rf Makefile.modules
+	-rm -rf *.o *.so *.a *~ *# so_locations sedscript enroute2 m2probe t_rand t_read
 	-rm -rf mksetup
-	-rm -rf tape_copy tape_write
+	-rm -rf tape_copy tape_write ddencp t_rand t_read ecrc
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
 	cd SWIG && make clean
