@@ -190,6 +190,7 @@ if [ $problem -gt 5 -o $problem -lt -5 ] ; then
 fi
 if [ $problem -ne 0 ] ; then
    echo "" >$procMail
+   echo "  RC = $problem">>$procMail
    echo "  The Enstore ecron Scheduler found a problem running task !!! $procName $* !!! " >>$procMail
    echo "  Uname      :" `uname -a`  >>$procMail
    echo "  Date       :" `date`      >>$procMail
@@ -200,7 +201,7 @@ if [ $problem -ne 0 ] ; then
    echo "  -------------------- start of messages ---------------------- ">>$procMail
    cat $procOutput >>$procMail 2>/dev/null
    echo "  -------------------- end of messages   ---------------------- ">>$procMail
-   sendMail $procMail emergency "Enstore ecron Scheduler: $procName $* "
+   sendMail $procMail emergency "ecron rc=$problem: $procName $* "
 fi
 
 quit "" $problem
