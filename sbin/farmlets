@@ -5,6 +5,11 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-a" ] ; then ALARM=1;       shift; else ALARM=0;        fi
 if [ "${1:-}" = "-f" ] ; then FIX=/bin/true; shift; else FIX=/bin/false; fi
 
+set +u
+. /usr/local/etc/setups.sh
+setup enstore
+set -u
+
 UPDATE="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x"
 CHECK="/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -I -c -r -l -p -o -g -D -x --delete --dry-run --stats"
 
