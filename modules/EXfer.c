@@ -490,11 +490,15 @@ static void* thread_read(void *info)
   int block_size = read_info->block_size;  /* Bytes to transfer at one time. */
   struct timeval timeout = read_info->timeout; /* Time to wait for data. */
   int bytes_to_transfer;        /* Bytes to transfer in a single loop. */
-  int sts;                      /* Return value from various C system calls. */
+  int bytes_transfered;         /* Bytes left to transfer in a sub loop. */
+  int sts = 0;                  /* Return value from various C system calls. */
   int bin = 0;                  /* The current bin (bucket) to use. */
   unsigned int crc_ui = 0;      /* Calculated checksum. */
   fd_set fds;                   /* For use with select(2). */
   int p_rtn;                    /* Pthread return value. */
+#ifdef DEBUG
+  char debug_print;             /* Specifies what transfer occured.  W or w */
+#endif
   struct timeval start_time;    /* Start of time the thread is active. */
   struct timeval end_time;      /* End of time the thread is active. */
   struct timeval start_wait;    /* Begin waiting for condition variable. */
@@ -549,61 +553,85 @@ static void* thread_read(void *info)
 				__FILE__, __LINE__);
     }
 
-    /* Wait for there to be data on the descriptor ready for reading. */
-    errno = 0;
-    FD_ZERO(&fds);
-    FD_SET(rd_fd,&fds);
-    timeout.tv_sec = read_info->timeout.tv_sec;
-    timeout.tv_usec = read_info->timeout.tv_usec;
-    sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
-    if (sts == -1)
-    {
-      set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, READ_ERROR, bytes, "fd read error", 
-				corrected_time, 0.0, __FILE__, __LINE__);
-    }
-    if (sts == 0)
-    {
-      set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout", 
-				corrected_time, 0.0, __FILE__, __LINE__);
-    }
-
     /* Dertermine how much to read. Attempt block size read. */
     bytes_to_transfer = (bytes<block_size)?bytes:block_size;
+    bytes_transfered = 0;
 
-    /* Read in the data. */
-    errno = 0;
-    sts = read(rd_fd, (buffer+bin*block_size), bytes_to_transfer);
-    if (sts == -1)
+    while(bytes_to_transfer > 0)
     {
-      set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, READ_ERROR, bytes, "fd read error",
-				corrected_time, 0.0, __FILE__, __LINE__);
-    }
-    if (sts == 0)
-    {
-      set_done_flag(&read_done);
-      corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
-      return pack_return_values(0, errno, TIMEOUT_ERROR, bytes, "fd timeout",
-				corrected_time, 0.0, __FILE__, __LINE__);
-    }
-    /* Calculate the crc (if applicable). */
-    switch (crc_flag)
-    {
-    case 0:  
-      break;
-    case 1:  
-      crc_ui = adler32(crc_ui, (buffer+bin*block_size), sts);
-      break;
-    default:  
-      crc_ui = 0; 
-      break;
-    }
+      /* Wait for there to be data on the descriptor ready for reading. */
+      errno = 0;
+      FD_ZERO(&fds);
+      FD_SET(rd_fd,&fds);
+      timeout.tv_sec = read_info->timeout.tv_sec;
+      timeout.tv_usec = read_info->timeout.tv_usec;
+      sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
+      if (sts == -1)
+      {
+	set_done_flag(&read_done);
+	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
+	return pack_return_values(0, errno, READ_ERROR, bytes,
+				  "fd read error", corrected_time, 0.0,
+				  __FILE__, __LINE__);
+      }
+      if (sts == 0)
+      {
+	set_done_flag(&read_done);
+	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
+	return pack_return_values(0, errno, TIMEOUT_ERROR, bytes,
+				  "fd timeout", corrected_time, 0.0,
+				  __FILE__, __LINE__);
+      }
 
+      /* Read in the data. */
+      errno = 0;
+      sts = read(rd_fd, (buffer + (bin * block_size) + bytes_transfered),
+		 bytes_to_transfer);
+
+      if (sts == -1)
+      {
+	set_done_flag(&read_done);
+	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
+	return pack_return_values(0, errno, READ_ERROR, bytes,
+				  "fd read error", corrected_time, 0.0,
+				  __FILE__, __LINE__);
+      }
+      if (sts == 0)
+      {
+	set_done_flag(&read_done);
+	corrected_time = elapsed_time(&start_time, &end_time) - wait_time;
+	return pack_return_values(0, errno, TIMEOUT_ERROR, bytes,
+				  "fd timeout", corrected_time, 0.0,
+				  __FILE__, __LINE__);
+      }
+
+      /* Calculate the crc (if applicable). */
+      switch (crc_flag)
+      {
+      case 0:  
+	break;
+      case 1:  
+	crc_ui = adler32(crc_ui,
+			(buffer + (bin * block_size) + bytes_transfered), sts);
+	break;
+      default:  
+	crc_ui = 0; 
+	break;
+      }
+
+      /* Update this nested loop's counting variables. */
+      bytes_transfered += sts;
+      bytes_to_transfer -= sts;
+
+#ifdef DEBUG
+      /* Print r if entire bin is transfered, R if bin partially transfered. */
+      debug_print = (sts < bytes_to_transfer) ? 'R' : 'r';
+      pthread_mutex_lock(&print_lock);
+      print_status(stderr, debug_print, bytes - bytes_transfered, crc_ui);
+      pthread_mutex_unlock(&print_lock);
+#endif /*DEBUG*/
+    }
+    
     /* Obtain the mutex lock for the specific buffer bin that is needed to
        clear the bin for writing. */
     if((p_rtn = pthread_mutex_lock(&buffer_lock[bin])) != 0)
@@ -614,7 +642,7 @@ static void* thread_read(void *info)
 				"mutex lock failed", corrected_time, 0.0, 
 				__FILE__, __LINE__);
     }
-    stored[bin] = sts; /* Store the number of bytes in the bin. */
+    stored[bin] = bytes_transfered; /* Store the number of bytes in the bin. */
     /* If other thread sleeping, wake it up. */
     if((p_rtn = pthread_cond_signal(&next_cond)) != 0)
     {
@@ -624,13 +652,6 @@ static void* thread_read(void *info)
 				"waiting for condition failed",
 				corrected_time, 0.0, __FILE__, __LINE__);
     }
-
-#ifdef DEBUG
-    pthread_mutex_lock(&print_lock);
-    print_status(stderr, 'r', bytes, crc_ui);
-    pthread_mutex_unlock(&print_lock);
-#endif
-
     /* Release the mutex lock for this bin. */
     if((p_rtn = pthread_mutex_unlock(&buffer_lock[bin])) != 0)
     {
@@ -643,7 +664,7 @@ static void* thread_read(void *info)
     /* Determine where to put the data. */
     bin = (bin + 1) % ARRAY_SIZE;
     /* Determine the number of bytes left to transfer. */
-    bytes -= sts;
+    bytes -= bytes_transfered;
   }
 
   /* Get the time that the thread finished to work on reading. */
@@ -818,7 +839,11 @@ static void* thread_write(void *info)
 	crc_ui=0; 
 	break;
       }
-      
+
+      /* Update this nested loop's counting variables. */
+      bytes_transfered += sts;
+      bytes_to_transfer -= sts;
+
 #ifdef DEBUG
       /* Print w if entire bin is transfered, W if bin partially transfered. */
       debug_print = (sts < bytes_to_transfer) ? 'W' : 'w';
@@ -826,10 +851,6 @@ static void* thread_write(void *info)
       print_status(stderr, debug_print, bytes - bytes_transfered, crc_ui);
       pthread_mutex_unlock(&print_lock);
 #endif /*DEBUG*/
-
-      /* Update this nested loop's counting variables. */
-      bytes_transfered += sts;
-      bytes_to_transfer -= sts;
     }
 
     /* Obtain the mutex lock for the specific buffer bin that is needed to
@@ -892,11 +913,11 @@ static void* thread_write(void *info)
 
 #ifdef DEBUG
 static void print_status(FILE* fp, char name, long long bytes,
-			 unsigned long crc_ui)
+			 unsigned int crc_ui)
 {
   int i;
 
-  fprintf(stderr, "%cbytes: %15lld crc: %10lu | ", name, bytes, crc_ui);
+  fprintf(stderr, "%cbytes: %15lld crc: %10u | ", name, bytes, crc_ui);
 
   for(i = 0; i < ARRAY_SIZE; i++)
   {
