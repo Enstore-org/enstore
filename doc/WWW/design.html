@@ -3859,20 +3859,37 @@ This plot shows mount latencies.
 <h3><a name="alarm_server">
 1.3.9 Alarm Server
 </h3>
-*** Plans are to create an Alarm Server which will monitor the information
-gathered by the Inquisitor and react to error conditions.  This includes using
-existing tools like Patrol to help recognize and recover from errors. Patrol was
-developed at SLAC and enhanced and modified at DESY.  It is currently in use at
-these institutions and at Fermilab.  We have begun investigating its use in
-association with the Enstore system. ***
-<p>
-*** Monitoring and recording of a variety of information is being 
-investigated. This will allow system statistics to be kept. ***
+The Alarm Server records alarms raised by another server.  Currently, alarms
+are raised when the following conditions are detected -
+<ul>
+<li>
+</ul>
+Since Enstore attempts error recovery whenever possible,
+it is expected that raised alarms will need human intervention to correct the
+problem.
+
+
+
+'Raising' an
+alarm means, the following - <br>
+<ul>
+<li>logging the alarm
+<li>adding the alarm to the ascii alarm file
+<li>adding the alarm to the Patrol alarm file
+</ul>
+Patrol was developed at SLAC and enhanced and modified at DESY.  It is 
+currently in use at these institutions and at Fermilab.  We have begun 
+investigating its use in association with the Enstore system. 
 <p>
 <center><img src="patrol-status.gif"></center>
 <p>
 <div align=right><a href="patrol-status.ps">(also available in Postscript)</a><div align=left>
 <p>
+1.3.9.1 Command Line Control of the Alarm Server
+1.3.9.2 Alarm Server Config file Values
+1.3.9.3 Ascii Alarm File
+1.3.9.4 Patrol Alarm File
+
 <p>
 
 
