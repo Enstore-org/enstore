@@ -205,6 +205,9 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             system_enabled(p) # make sure system still enabled before submitting
             Trace.trace(7,"write_to_hsm q'ing:"+repr(work_ticket))
             ticket = u.send(work_ticket, (vticket['hostip'], vticket['port']))
+	    if list > 3:
+		print "ENCP: write_to_hsm LM returned"
+		pprint.pprint(ticket)
             if ticket['status'] != "ok" :
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
@@ -231,11 +234,16 @@ def write_to_hsm(input, output, config_host, config_port, list, chk_crc,t0=0):
             # some sort of old call-back to this very same port. It is dicey
             # to time out, as it is probably legitimate to wait for hours....
 
+	    #sys.exit(1)
+
             while 1 :
                 Trace.trace(10,"write_to_hsm listening for callback")
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp write_to_hsm, mover call back")
+		if list > 3:
+		    print "ENCP:write_to_hsm MV called back with"
+		    pprint.pprint(ticket)
                 callback_id = ticket['unique_id']
                 # compare strings not floats (floats fail comparisons)
                 if str(unique_id[i])==str(callback_id):
@@ -592,6 +600,9 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 # send ticket to file clerk who sends it to right library manger
                 Trace.trace(7,"read_from_hsm q'ing:"+repr(work_ticket))
                 ticket = u.send(work_ticket, (fticket['hostip'], fticket['port']))
+		if list > 3:
+		    print "ENCP:read_from_hsm FC read_from_hsm returned"
+		    pprint.pprint(ticket)
                 if ticket['status'] != "ok" :
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.read_from_hsm: from"\
@@ -643,6 +654,9 @@ def read_from_hsm(input, output, config_host, config_port,list, chk_crc, t0=0):
                 control_socket, address = listen_socket.accept()
                 ticket = callback.read_tcp_socket(control_socket,\
                              "encp read_from_hsm, mover call back")
+		if list > 3:
+		    print "ENCP:read_from_hsm MV called back with"
+		    pprint.pprint(ticket)
                 callback_id = ticket['unique_id']
                 forus = 0
                 for j in range(0,ninput):
