@@ -28,40 +28,13 @@ class InquisitorPlots:
 	self.plothtmlfile.close()
 	self.plothtmlfile.install()
 
-    #  make all the plots
-    def plot(self, ticket):
-	# make sure we do not have a thread doing this already
-	if self.plot_thread and self.plot_thread.isAlive():
-	    self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
-	else:
-	    # find out where the log files are located
-	    if ticket.has_key(LOGFILE_DIR):
-		lfd = ticket[LOGFILE_DIR]
-	    else:
-		t = self.csc.get("log_server")
-		if enstore_functions.is_timedout(t):
-		    return
-		lfd = t["log_file_path"]
-
-	    out_dir = ticket.get("out_dir", lfd)
-
-	    keep = ticket.get("keep", 0)
-	    pts_dir = ticket.get("keep_dir", "")
-
-	    # create a thread to deal with this.
-	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
-	    Trace.log(e_errors.INFO, "Creating plots in thread")
-	    self.plot_thread = threading.Thread(group=None, 
-						target=self.plot_function,
-						name=PLOTTHRNAME, args=plot_args)
-	    self.plot_thread.setDaemon(1)	    
-	    self.plot_thread.start()
-
     # plot thread
     def plot_function(self, ticket, lfd, keep, pts_dir, out_dir):
 	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
 	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
 	ret_ticket = { 'status'   : (e_errors.OK, None) }
+	# update the inquisitor plots web page
+	self.make_plot_html_page()
 	self.send_reply(ret_ticket)
 
     # make the mount plots (mounts per hour and mount latency
@@ -154,3 +127,31 @@ class InquisitorPlots:
             bpdfile.cleanup(keep, pts_dir)
             xferfile.cleanup(keep, pts_dir)
 
+    #  make all the plots
+    def plot(self, ticket):
+	# make sure we do not have a thread doing this already
+	if self.plot_thread and self.plot_thread.isAlive():
+	    self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
+	else:
+	    # find out where the log files are located
+	    if ticket.has_key(LOGFILE_DIR):
+		lfd = ticket[LOGFILE_DIR]
+	    else:
+		t = self.csc.get("log_server")
+		if enstore_functions.is_timedout(t):
+		    return
+		lfd = t["log_file_path"]
+
+	    out_dir = ticket.get("out_dir", lfd)
+
+	    keep = ticket.get("keep", 0)
+	    pts_dir = ticket.get("keep_dir", "")
+
+	    # create a thread to deal with this.
+	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
+	    Trace.log(e_errors.INFO, "Creating plots in thread")
+	    self.plot_thread = threading.Thread(group=None, 
+						target=self.plot_function,
+						name=PLOTTHRNAME, args=plot_args)
+	    self.plot_thread.setDaemon(1)	    
+	    self.plot_thread.start()
