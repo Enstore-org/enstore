@@ -31,8 +31,9 @@ backup_flag=1
 #	is thus returned by Jcursor.current() & Jcursor.next() methods.
 #	When there is no more common indexed key, Jcursor.next() returns
 #	None, None and sets the current() to None, None, too. When
-#	initialized, Jcursor.current() points to the first common index
-#	keyed value.
+#	initialized, Jcursor.current() points to None. The first call
+#	to Jcursor.next() will set it to the first common index keyed
+#	value. Jcursor can not be traversed backward ...
 
 class Jcursor:
 	def __init__(self, primary, curlist):
@@ -40,14 +41,8 @@ class Jcursor:
 		self.curlist = curlist
 		key, value = curlist[0].current()
 		# got to find the first one at init
-		self.crnt = value
-		max = advance_all(self.crnt, self.curlist)
-		while max > self.crnt:
-			self.crnt = max
-			max = advance_all(self.crnt, self.curlist)
-			if max == None:
-				break
-		self.crnt = max
+		self.crnt = None
+		self.end = 0	# this is ugly
 
 	def current(self):
 		if self.crnt:
@@ -56,9 +51,15 @@ class Jcursor:
 			return None, None
 
 	def next(self):
-		key, value = self.curlist[0].nextDup()
+		if self.end:
+			return None, None
+		if self.crnt:	# not the first time
+			key, value = self.curlist[0].nextDup()
+		else:		# this first time
+			key, value = self.curlist[0].current()
 		self.crnt = value
 		if self.crnt == None:
+			self.end = 1
 			return None, None
 		max = advance_all(self.crnt, self.curlist)
 		while max > self.crnt:
@@ -68,6 +69,7 @@ class Jcursor:
 				break
 		self.crnt = max
 		if self.crnt == None:
+			self.end = 1
 			return None, None
 		else:
 			return self.crnt, self.primary[self.crnt]
