@@ -262,7 +262,8 @@ class VolumeClerkMethods(DispatchingWorker) :
         if len(vol) != 0:
             label = vol['external_label']
             vol["file_family"] = file_family
-            print "Assigning blank volume",label,"to family",file_family
+            print "Assigning blank volume",label,"to family",file_family,\
+		  "in",library,"library"
             dict[label] = copy.deepcopy(vol)
             vol["status"] = "ok"
             self.reply_to_caller(vol)
