@@ -34,7 +34,7 @@ if [ $changes -ne 0 ]; then
       echo enstore alarm --raise --severity "A" --root-error "$msg"
            enstore alarm --raise --severity "A" --root-error "$msg"
    fi
-   if [ "$mailto" -nes "" ]; then
+   if [ "$mailto" != "" ]; then
       /usr/bin/Mail -s "$gang not running latest production code.  Developer Primary check and fix and restart." $mailto <${out}_1
    fi
 fi
