@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import file_clerk_client
-import volume_clerk_client
+import info_client
 import option
 import pnfs
 import sys
@@ -13,8 +12,7 @@ import e_errors
 import string
 import time
 
-fcc = None
-vcc = None
+infc = None
 ff = {}
 
 def usage():
@@ -68,7 +66,7 @@ def check(f):
             msg.append('missing layer 4')
             if age < 3600:
                 warn.append('younger than 1 hour (%d)'%(age))
-            fr = fcc.bfid_info(bfid)
+            fr = infc.bfid_info(bfid)
             if fr['status'][0] != e_errors.OK:
                 msg.append('not in db')
                 return msg, warn
@@ -86,7 +84,7 @@ def check(f):
                 msg.append('no pnfs id in db')
             return msg, warn
 
-    fr = fcc.bfid_info(bfid)
+    fr = infc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
 	return msg, warn
@@ -116,7 +114,7 @@ def check(f):
         if ff.has_key(fr['external_label']):
             file_family = ff[fr['external_label']]
         else:
-            vol = vcc.inquire_vol(fr['external_label'])
+            vol = infc.inquire_vol(fr['external_label'])
             if vol['status'][0] != e_errors.OK:
                 msg.append('missing vol '+fr['external_label'])
                 return msg, warn
@@ -136,7 +134,7 @@ def check(f):
     # drive
     try:
         if fr.has_key('drive'):	# some do not have this field
-            if pf.drive != fr['drive']:
+            if fr['drive'] != '' and pf.drive != fr['drive']:
                 if pf.drive != 'imported' and pf.drive != "missing" \
                     and fr['drive'] != 'unknown:unknown':
                     msg.append('drive(%s, %s)'%(pf.drive, fr['drive']))
@@ -219,9 +217,7 @@ if __name__ == '__main__':
         list = sys.argv[1:]
 
     intf = option.Interface()
-    fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
-    generic_client.init_done = 0
-    vcc = volume_clerk_client.VolumeClerkClient((intf.config_host, intf.config_port))
+    infc = info_client.infoClient((intf.config_host, intf.config_port))
 
     ff = {}
 
