@@ -85,7 +85,7 @@ def configure(configuration = None):
     thisnode = hostaddr.gethostinfo(1)
     mynode = thisnode[2][0]
     if mynode != backup_node:
-        print timeofday.tod(),"ERROR Backups are stored",backup_node,
+        print timeofday.tod(),"ERROR Backups are stored", backup_node,
         print ' you are on',mynode,' - database check is not possible'
         sys.exit(1)
         
@@ -109,15 +109,15 @@ def configure(configuration = None):
 
     #Return the directory the backup file is in and the directory the backup
     # file will be ungzipped and untared to, respectively.
-    return backup_dir, check_dir, current_dir
+    return backup_node, backup_dir, check_dir, current_dir
 
 
 
-def check_backup(backup_dir):
+def check_backup(backup_node, backup_dir):
     # backups are saved in separate files - get the most recent one
     bdirs = os.listdir(backup_dir)
     if len(bdirs) == 0:
-        print timeofday.tod(),"ERROR NO Backups found on ",backup_node,
+        print timeofday.tod(),"ERROR NO Backups found on ", backup_node,
         print " directory", backup_dir, " Are the backups running?"
         sys.exit(1)
     bdirs.sort()
@@ -190,8 +190,8 @@ if __name__ == "__main__":
     print timeofday.tod(), 'Checking Enstore on',config,'with timeout of',
     print timeout,'and tries of',tries
 
-    (backup_dir, check_dir, current_dir) = configure(1) #non-None argument!
-    extract_backup(check_dir, check_backup(backup_dir))
+    (backup_node, backup_dir, check_dir, current_dir) = configure(1) #non-None argument!
+    extract_backup(check_dir, check_backup(backup_node, backup_dir))
     check_files(check_dir)
     clean_up(current_dir)
     
