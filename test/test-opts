@@ -1,0 +1,147 @@
+# test various options to make sure they still work
+# parameter descriptions:
+#	if present: $1 = name of library manager
+#                   $2 = name of media changer
+#                   $3 = name of mover
+#                   $4 = do not test anyone except libman, mover or medch.
+
+# parse args
+if [ ${1:-"none"} != 'none' ];
+  then libman=$1;
+  else libman=""
+fi
+if [ ${2:-"none"} != 'none' ];
+  then medch=$2;
+  else medch=""
+fi
+if [ ${3:-"none"} != 'none' ];
+  then mover=$3;
+  else mover=""
+fi
+if [ ${4:-"none"} = 'none' ];
+  then dotest=1;
+  else dotest=0
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING ADMIN CLERK"
+  cmd="ecmd acc --help";echo "$cmd";$cmd
+  cmd="ecmd acc --alive";echo "$cmd";$cmd
+  cmd="ecmd acc --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd acc --alive --verbose=32";echo "$cmd";$cmd
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING CONFIG"
+  cmd="ecmd config --help";echo "$cmd";$cmd
+  cmd="ecmd config --alive";echo "$cmd";$cmd
+  cmd="ecmd config --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd config --alive --verbose=32";echo "$cmd";$cmd
+  cmd="ecmd config --alive --verbose=36";echo "$cmd";$cmd
+  cmd="ecmd config --get_keys";echo "$cmd";$cmd
+  cmd="ecmd config --dict";echo "$cmd";$cmd
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING FILE CLERK"
+  cmd="ecmd fcc --help";echo "$cmd";$cmd
+  cmd="ecmd fcc --alive";echo "$cmd";$cmd
+  cmd="ecmd fcc --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd fcc --alive --verbose=32";echo "$cmd";$cmd
+  cmd="ecmd fcc --bfids";echo "$cmd";$cmd
+  cmd="ecmd fcc --bfid=`a=\`ecmd fcc --bfids\`;echo $a|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING INQUISITOR"
+  cmd="ecmd inq --help";echo "$cmd";$cmd
+  cmd="ecmd inq --alive";echo "$cmd";$cmd
+  cmd="ecmd inq --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd inq --alive --verbose=32";echo "$cmd";$cmd
+  cmd="ecmd inq --get_timeout";echo "$cmd";$cmd
+  cmd="ecmd inq --get_timeout inquisitor";echo "$cmd";a=`$cmd`
+  let b=a+5
+  cmd="ecmd inq --timeout=$b inquisitor";echo "$cmd";$cmd
+  cmd="ecmd inq --get_timeout inquisitor";echo "$cmd";c=`$cmd`
+  if [ "$c" != "$b" ]
+  then
+    echo "ERROR: TIMEOUTS do not match ($b, $c)"
+  fi
+  cmd="ecmd inq --timeout=$a inquisitor";echo "$cmd";$cmd
+  cmd="ecmd inq --get_max_ascii_size";echo "$cmd";a=`$cmd`
+  let b=a+20
+  cmd="ecmd inq --max_ascii_size=$b";echo "$cmd";$cmd
+  cmd="ecmd inq --get_max_ascii_size";echo "$cmd";c=`$cmd`
+  if [ "$c" != "$b" ]
+  then
+    echo "ERROR: MAX_ASCII_SIZE does not match ($b, $c)"
+  fi
+  cmd="ecmd inq --max_ascii_size=$a";echo "$cmd";a=`$cmd`
+  cmd="ecmd inq --timestamp --verbose=2";echo "$cmd";$cmd
+  cmd="ecmd inq --update --verbose=2";echo "$cmd";$cmd
+  cmd="ecmd inq --update config_server";echo "$cmd";$cmd
+
+fi
+
+if [ "$libman" != "" ]
+then
+  echo "======================================================================"
+  echo "TESTING LIBRARY MANAGER"
+  cmd="ecmd lmc --help";echo "$cmd";$cmd
+  cmd="ecmd lmc --alive $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --alive --verbose=1 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --alive --verbose=32 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --getwork --verbose=2 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --getmoverlist --verbose=2 $libman";echo "$cmd";$cmd
+  cmd="ecmd lmc --get_suspect_vols --verbose=2 $libman";echo "$cmd";$cmd
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING LOGGER"
+  cmd="ecmd log --help";echo "$cmd";$cmd
+  cmd="ecmd log --alive";echo "$cmd";$cmd
+  cmd="ecmd log --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd log --alive --verbose=32";echo "$cmd";$cmd
+fi
+
+if [ "$medch" != "" ]
+then
+  echo "======================================================================"
+  echo "TESTING MEDIA CHANGER"
+  cmd="ecmd mcc --help";echo "$cmd";$cmd
+  cmd="ecmd mcc --alive $medch";echo "$cmd";$cmd
+  cmd="ecmd mcc --alive --verbose=1 $medch";echo "$cmd";$cmd
+  cmd="ecmd mcc --alive --verbose=32 $medch";echo "$cmd";$cmd
+fi
+
+if [ "$mover" != "" ]
+then
+  echo "======================================================================"
+  echo "TESTING MOVER"
+  cmd="ecmd mov --help";echo "$cmd";$cmd
+  cmd="ecmd mov --alive $mover";echo "$cmd";$cmd
+  cmd="ecmd mov --alive --verbose=1 $mover";echo "$cmd";$cmd
+  cmd="ecmd mov --alive --verbose=32 $mover";echo "$cmd";$cmd
+fi
+
+if [ $dotest -eq 1 ]
+then
+  echo "======================================================================"
+  echo "TESTING VOLUME CLERK"
+  cmd="ecmd vcc --help";echo "$cmd";$cmd
+  cmd="ecmd vcc --alive";echo "$cmd";$cmd
+  cmd="ecmd vcc --alive --verbose=1";echo "$cmd";$cmd
+  cmd="ecmd vcc --alive --verbose=32";echo "$cmd";$cmd
+  cmd="ecmd vcc --vols";echo "$cmd";$cmd
+  cmd="ecmd vcc --vol=`ecmd vcc --vols|cut -f1 -d,|sed s/\'//g`";echo "$cmd";$cmd
+fi
