@@ -746,6 +746,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 for i in range(ATTEMPTS):
                     try:
                         self.pstat = os.stat(os.path.dirname(self.filepath))
+                        break
                     except OSError, msg2:
                         time.sleep(1)
                 else:
