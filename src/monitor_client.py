@@ -43,7 +43,6 @@ class MonitorServerClient:
         self.block_size = block_size
         self.block_count = block_count
 	self.summary = summary
-        Trace.trace(10,'__init__ u='+str(self.u))
 
     # send Active Monitor probe request
     def _send_probe (self, ticket):

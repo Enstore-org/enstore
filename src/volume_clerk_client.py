@@ -49,7 +49,6 @@ class VolumeClerkClient(generic_client.GenericClient,
 	else:
             self.server_addr = (ticket['hostip'],ticket['port'])
 
-        Trace.trace(10,'__init__ u='+str(self.u))
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket,  rcv_timeout=0, tries=0):
