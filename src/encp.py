@@ -414,11 +414,20 @@ def write_to_hsm(input, output,
 				       data_path_socket.fileno(), 
 				       fsize, bufsize, crc_fun )
                 #retry = 0
-            except:
+            except (EXfer.error), err_msg:
                 Trace.trace(0,"write_to_hsm EXfer error:"+\
 			    str(sys.argv)+" "+\
                             str(sys.exc_info()[0])+" "+\
                             str(sys.exc_info()[1]))
+		if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
+		    # assume network error
+		    print_d0sam_format(inputlist[i], outputlist[i],
+				       file_size[i], done_ticket)
+		    # exit here
+		    jraise(errno.errorcode[errno.EPROTO],
+			   " encp.write_to_hsm: nerwork problem "+\
+			   err_msg)
+		    
                 print "Error with encp EXfer - continuing"
                 traceback.print_exc()
                 retry = retry - 1
