@@ -42,6 +42,9 @@ TRUE = 1
 FALSE = 0
 WAIT_THIS_AMOUNT = 120
 
+LOW_CAPACITY = 0
+SUFFICIENT_CAPACITY = 1
+
 def sortit(adict):
     keys = adict.keys()
     keys.sort()
@@ -288,8 +291,10 @@ class LibraryManager(EnstoreServer):
 		ok_movers = ok_movers + 1
 	    else:
 		bad_movers = bad_movers + 1
-
-	return ok_movers, bad_movers
+	if bad_movers > ok_movers:
+	    return LOW_CAPACITY, bad_movers, ok_movers
+	else:
+	    return SUFFICIENT_CAPACITY, bad_movers, ok_movers
 
     def is_alive(self):
 	# now that we know this lm is alive we need to examine its state
@@ -305,6 +310,12 @@ class LibraryManager(EnstoreServer):
 	else:
 	    self.in_bad_state = 0
 	    EnstoreServer.is_alive(self)
+
+    def get_enstore_state(self, state):
+	if self.mover_status()[0] == LOW_CAPACITY:
+	    return state | enstore_constants.DOWN
+	else:
+	    return EnstoreServer.get_enstore_state(self, state)
 
 class MediaChanger(EnstoreServer):
 
@@ -481,8 +492,8 @@ def do_real_work():
     for server in total_lms:
 	if not server.name in total_servers_names:
 	    server.is_alive()
-	    ok_movers, bad_movers = server.mover_status()
-	    if bad_movers > ok_movers:
+	    state, bad_movers, ok_movers = server.mover_status()
+	    if state == LOW_CAPACITY:
 		enprint("LOW CAPACITY: Found, %s of %s movers not responding or in a bad state"%(bad_movers, 
 									server.num_movers))
 		server.writemail("Found LOW CAPACITY movers for %s"%(server.name,))
