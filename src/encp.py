@@ -1073,10 +1073,12 @@ def get_csc(parameter=None):
         er_info = config.get(enstore_constants.EVENT_RELAY)
         er_addr = (er_info['hostip'], er_info['port'])
         csc.new_config_obj.enable_caching(er_addr)
-        
-    __csc = csc
-    __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                        logc = __logc, alarmc = __alarmc)
+
+    if __csc != csc:
+        __csc = csc
+        __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            logc = __logc, alarmc = __alarmc)
+            
     return csc  #Nothing valid, just return the default csc.
 
 # parameter: can be a dictionary containg a 'bfid' item or a bfid string
@@ -1118,15 +1120,11 @@ def __get_fcc(parameter = None):
                 rcv_timeout=5, rcv_tries=2)
             return __fcc, None
     
-
     #First check that the cached version matches the bfid brand.
     if __fcc != None:
         file_info = __fcc.bfid_info(bfid, 5, 3)
         if e_errors.is_ok(file_info):
             return __fcc, file_info
-        #__fcc_brand = __fcc.get_brand()
-        #if bfid[:len(__fcc_brand)] == __fcc_brand:
-        #    return __fcc
 
     #Next check the fcc associated with the cached csc.
     if __csc != None:
@@ -1140,9 +1138,6 @@ def __get_fcc(parameter = None):
             if e_errors.is_ok(file_info):
                 __fcc = fcc
                 return __fcc, file_info
-            #fcc_brand = fcc.get_brand()
-            #if bfid[:len(fcc_brand)] == fcc_brand:
-            #    return __fcc
 
     #Before checking other systems, check the default system.
     config_host = enstore_functions2.default_host()
@@ -1160,14 +1155,6 @@ def __get_fcc(parameter = None):
             __acc = accounting_client.accClient(__csc, logname = 'ENCP',
                                             logc = __logc, alarmc = __alarmc)
             return __fcc, file_info
-        #fcc_brand = fcc.get_brand(5, 3)
-        #if not is_brand(fcc_brand):
-        #    Trace.log(e_errors.WARNING,
-        #              "File clerk (%s) returned invalid brand: %s\n"
-        #              % (fcc.server_address, fcc_brand))
-        #elif bfid[:len(fcc_brand)] == fcc_brand:
-        #    __fcc = fcc
-        #return __fcc
 
     #Get the list of all config servers and remove the 'status' element.
     config_servers = csc.get('known_config_servers', {})
@@ -1206,34 +1193,13 @@ def __get_fcc(parameter = None):
                         logc = __logc, alarmc = __alarmc)
                     return __fcc, file_info
         
-		#system_brand = fcc_test.get_brand(5, 2)
-		#if not is_brand(system_brand):
-		#    Trace.log(e_errors.WARNING,
-		#	      "File clerk (%s) returned invalid brand: %s\n"
-		#	      % (fcc_test.server_address, system_brand))
-		#If things match then use this system.
-		#if bfid[:len(system_brand)] == system_brand:
-		#    if fcc.get_brand(5, 2) != system_brand:
-		#	brand = extract_brand(bfid)
-		#	msg = "Using %s based on brand %s." %  \
-		#	      (system_brand, brand)
-		#	Trace.log(e_errors.INFO, msg)
-                #
-		#    __csc = csc_test  #Set global for performance reasons.
-		#    __fcc = fcc_test
-		#    return __fcc
-
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
-    __csc = csc
-    __fcc = file_clerk_client.FileClient(
-        __csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
-    __acc = accounting_client.accClient(__csc, logname = 'ENCP',
-                                        logc = __logc, alarmc = __alarmc)
+    __fcc = fcc
 
     if __fcc.server_address != None and bfid != None:
         #If the fcc has been initialized correctly; use it.
