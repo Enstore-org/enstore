@@ -781,7 +781,7 @@ def create_wrapper_dict(ticket):
 def vol_labels(vol_label, ticket={}, own_id=OWNER):
     vol1 = VOL1(volume_id=vol_label, owner_id=own_id)
     uvl1 = UVL1()
-    uvl2 = UVL2(ticket.get(DECLARATION_DATE, " "),
+    uvl2 = UVL2(ticket.get(DECLARATION_DATE, -1),
                 ticket.get(VOLUME_FAMILY, " "))
     return "%s%s%s"%(vol1, uvl1, uvl2)
 
