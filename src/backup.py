@@ -27,7 +27,6 @@ hst_local="" # quiet lint
 def get_size(dbFile):
 
     cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep keys | awk '{print $1}'"
-    print "<"+cmd+">"
     nkeys = os.popen(cmd).readline()[:-1]
     size = os.stat(dbFile)[stat.ST_SIZE]
 
