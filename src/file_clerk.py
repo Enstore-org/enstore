@@ -34,7 +34,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record = {}
         record["external_label"]   = ticket["fc"]["external_label"]
         ###########################################################################TEMPORARY##########
-        record["bof_space_cookie"] = ticket["fc"]["bof_space_cookie"] #delete this line
         try:
             record["location_cookie"] = ticket["fc"]["location_cookie"]
             record["size"] = ticket["fc"]["size"]
@@ -65,6 +64,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      except:
          Trace.trace(0,"}new_bit_file "+str(sys.exc_info()[0])+\
                      str(sys.exc_info()[1]))
+	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          self.enprint(ticket, generic_cs.PRETTY_PRINT)
          self.reply_to_caller(ticket)
