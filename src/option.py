@@ -137,6 +137,8 @@ BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
 BUFFER_SIZE = "buffer-size"                  #encp
+BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK = "bypass-filesystem-max-filesize-check"
+                                             #encp
 BYPASS_LABEL_CHECK = "bypass-label-check"    #volume
 CAPTION_TITLE = "caption-title"              #enstore_make_log_plot
 CAT = "cat"                                  #pnfs
@@ -354,7 +356,8 @@ TEST = "test"                                #option
 # in check.
 valid_option_list = [
     ADD, AGE_TIME, ALIVE, ALL, ARRAY_SIZE, ASSIGN_SG,
-    BACKUP, BFID, BFIDS, BUFFER_SIZE, BYPASS_LABEL_CHECK,
+    BACKUP, BFID, BFIDS, BUFFER_SIZE,
+    BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CLIENT_NAME,
     COMMANDS_FILE, CONDITION, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,
