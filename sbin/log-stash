@@ -56,7 +56,11 @@ if [ -z "${2-}" ] ; then
   fi
 else
   LOGS=$2
-  RPTS=/junk/doesnot/exist
+  if [ -z "${3-}" ] ; then
+    RPTS=/junk/doesnot/exist
+  else
+    RPTS=$3
+  fi
 fi
 
 cd $LOGS
