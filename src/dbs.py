@@ -26,9 +26,7 @@ CMDc = ";echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; se
 CMD1 = "%s%s%s"%(CMDa, "database", CMDb)
 #CMD1 = "%s%s%s"%(CMDa, "database", CMDc)
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2a = "|tee /dev/console>>\\\\\\$F"
-CMD2b = ";date>>\\\\\\$F) 1>&- 2>&- <&- &"
-CMD2 = "%s%s"%(CMD2a, CMD2b)
+CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
 
 def send_dbs_cmd(intf, farmlet, db):
     # build the command and send it to the correct node
@@ -42,9 +40,10 @@ def send_dbs_cmd(intf, farmlet, db):
 	    db = ""
     if intf.all:
             cmd = "%s --all "%cmd
-    cmd = "%s %s %s%s"%(CMD1, cmd, db, CMD2b)
+    cmd = "%s %s %s%s"%(CMD1, cmd, string.join(db), CMD2)
     # we need just the node name part of the host name
     node = string.split(farmlet, ".", 1)
+    print cmd
     return os.system('/usr/local/bin/rgang %s \"%s\"'%(node[0], cmd))
 
 # compare the 2 input nodes to see if they are the same.  one may be of the 
