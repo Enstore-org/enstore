@@ -285,7 +285,7 @@ class LibraryManagerMethods(DispatchingWorker) :
         # else, it is the user's responsibility to retry
         w = get_work_at_movers (ticket["external_label"])
         if w:
-            work_awaiting_movers.remove(w)
+            work_at_movers.remove(w)
 
         self.reply_to_caller({"work" : "nowork"})
 
