@@ -128,6 +128,12 @@ class EnstoreServer:
 
     def is_really_down(self):
         rc = 0
+        if self.seen_down_d.get(self.format_name, 0) > self.allowed_down:
+            rc = 1
+        return rc
+
+    def need_to_send_mail(self):
+        rc = 0
         if (self.seen_down_d.get(self.format_name, 0) % self.allowed_down) == 0:
             rc = 1
         return rc
@@ -135,7 +141,7 @@ class EnstoreServer:
     def writemail(self, message):
         # we only send mail if the server has been seen down more times than it is allowed
         # to be down in a row.
-        if self.seen_down_d.has_key(self.format_name) and self.is_really_down():
+        if self.seen_down_d.has_key(self.format_name) and self.need_to_send_mail():
             # see if this server is known to be down, if so, then do not send mail
             if not self.offline_d.has_key(self.format_name):
                 # first get a tempfile
