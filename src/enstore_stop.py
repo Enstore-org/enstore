@@ -459,10 +459,11 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["accounting_server", "monitor_server"]
+    non_default_names = ["monitor_server"]
 
     complete_names = [
         "accounting_server",
+        "drivestat_server",
         "configuration_server",
         "event_relay",
         "log_server",
@@ -552,6 +553,7 @@ def do_work(intf):
     #Stop the servers.
     for server in [ enstore_constants.LOG_SERVER,
                     enstore_constants.ACCOUNTING_SERVER,
+                    enstore_constants.DRIVESTAT_SERVER,
                     enstore_constants.ALARM_SERVER,
                     enstore_constants.FILE_CLERK,
                     enstore_constants.VOLUME_CLERK,

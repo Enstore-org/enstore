@@ -66,10 +66,11 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["accounting_server", "monitor_server"]
+    non_default_names = ["monitor_server"]
 
     complete_names = [
         "accounting_server",
+        "drivestat_server",
         "configuration_server",
         "event_relay",
         "log_server",
