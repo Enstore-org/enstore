@@ -525,38 +525,79 @@ def get_enstore_canonical_path(filepath):
 # effective ID.
 def e_access(path, mode):
     
-    #Translate the access() mode values to stat() mode values.
-    if mode == os.F_OK:
-        t_mode = 0
-    elif mode == os.R_OK:
-        t_mode = stat.S_IRUSR
-    elif mode == os.W_OK:
-        t_mode = stat.S_IWUSR
-    elif mode == os.X_OK:
-        t_mode = stat.S_IXUSR
-    else:
-        return 0
-
     #Test for existance.
     try:
-        stat_mode = os.stat(path)[stat.ST_MODE]
-
-        #If the existance of the file is all that matters, then handle it.
-        if t_mode == 0:
-            return 1
+        file_stats = os.stat(path)
+        stat_mode = file_stats[stat.ST_MODE]
     except OSError, detail:
         return 0
 
-    #Need to break down the mode returned from os.stat().  This loop determines
-    # the number of bytes to shift the mode.
-    for i in range(32):
-        if (t_mode >> i) % 2: #Stop when the right most bit is 1.
-            break
+    # Need to check for each type of access permission.
+
+    if mode == os.F_OK:
+        # In order to get this far, the file must exist.
+        return 1
+
+    elif mode == os.R_OK:  #Check for read permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            return 1
+        #Anyone can read this file.
+        elif (stat_mode & stat.S_IROTH):
+            return 1
+        #This is the files owner.
+        elif (stat_mode & stat.S_IRUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            return 1
+        #The user has group access.
+        elif (stat_mode & stat.S_IRGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            return 1
+        else:
+            return 0
+
+    elif mode == os.W_OK:  #Check for write permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            return 1
+        #Anyone can write this file.
+        elif (stat_mode & stat.S_IWOTH):
+            return 1
+        #This is the files owner.
+        elif (stat_mode & stat.S_IWUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            return 1
+        #The user has group access.
+        elif (stat_mode & stat.S_IWGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            return 1
+        else:
+            return 0
+    
+    elif mode == os.X_OK:  #Check for execute permissions.
+        #If the user is user root.
+        if os.geteuid() == 0:
+            return 1
+        #Anyone can execute this file.
+        elif (stat_mode & stat.S_IXOTH):
+            return 1
+        #This is the files owner.
+        elif (stat_mode & stat.S_IXUSR) and \
+           file_stats[stat.ST_UID] == os.geteuid():
+            return 1
+        #The user has group access.
+        elif (stat_mode & stat.S_IXGRP) and \
+           (file_stats[stat.ST_GID] == os.geteuid() or
+            file_stats[stat.ST_GID] in os.getgroups()):
+            return 1
+        else:
+            return 0
+        
     else:
         return 0
-
-    return (stat_mode >> i) % 2
-
+    
 ############################################################################
 
 #Return the correct configuration server client based on the 'brand' (if
