@@ -5,9 +5,10 @@ typedef struct ET_descriptor
 {
 	ftt_descriptor ftt_desc;
 	char *buffer;
-	char *bufptr;
 	int block_size;
-        int hadeof;
+	char *bufptr;		/* buffer to build output block - write only */
+        int hadeof;		/* seen an eof on this file - read only */
+        long filesize;		/* # of bytes */
 } ET_descriptor;
 
 #define CKALLOC(malloc_call) if ( !(malloc_call) ) {PyErr_NoMemory(); return NULL;} 
@@ -66,6 +67,7 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
   CKALLOC( ET_desc->buffer = malloc( ET_desc->block_size ) );
 
   ET_desc->hadeof = 0;
+  ET_desc->filesize = 0;
 /*
 	Open the FTT way
 */
@@ -112,6 +114,7 @@ static PyObject* ET_ReadBlock(PyObject *self, PyObject *args)
      return raise_ftt_exception("ET_ReadBlock", ET_desc);
   if (len == 0)
      ET_desc->hadeof = 1;
+  ET_desc->filesize += len;
   return Py_BuildValue("s#", ET_desc->buffer, len);
 }
 /* = = = = = = = = = = = = = = -  ET_CloseRead  = = = = = = = = = = = = = = - */
@@ -135,10 +138,11 @@ static PyObject* ET_CloseRead(PyObject *self, PyObject *args)
   sts=ftt_get_stats(ET_desc->ftt_desc, stbuff);
   if (sts <0)
     return raise_ftt_exception("ET_CloseRead_stats", ET_desc);
-  ErrDict = Py_BuildValue ("{s:s,s:s,s:s}", 
-    "Remain", ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
-    "Nread", ftt_extract_stats(stbuff,FTT_N_READS),
-    "Rerrors", ftt_extract_stats(stbuff,FTT_READ_ERRORS)
+  ErrDict = Py_BuildValue ("(s,s,s,i)", 
+     ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
+     ftt_extract_stats(stbuff,FTT_N_READS),
+     ftt_extract_stats(stbuff,FTT_READ_ERRORS),
+     ET_desc->filesize
     );
   sts=ftt_free_stat(stbuff);
 /*
@@ -175,6 +179,7 @@ static PyObject* ET_OpenWrite(PyObject *self, PyObject *args)
 */
   CKALLOC( ET_desc->buffer = malloc( ET_desc->block_size ) );
   ET_desc->bufptr =  ET_desc->buffer;
+  ET_desc->filesize =0;
 /*
 	Open the ftt file
 */
@@ -206,6 +211,7 @@ static PyObject* ET_WriteBlock(PyObject *self, PyObject *args)
   int partlen;
 
   PyArg_ParseTuple(args, "ls#", &ET_desc, &data_buff, &length);
+  ET_desc->filesize += length;
   while (length > 0)
   {
     if (ET_desc->bufptr + length < ET_desc->buffer + ET_desc->block_size) 
@@ -267,10 +273,11 @@ static PyObject* ET_CloseWrite(PyObject *self, PyObject *args)
   if (sts < 0)
     return raise_ftt_exception("ET_ClosePartial", ET_desc);
 
-  ErrDict = Py_BuildValue ("{s:s,s:s,s:s}", 
-    "Remain", ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
-    "NWrite", ftt_extract_stats(stbuff,FTT_N_WRITES),
-    "WErrors", ftt_extract_stats(stbuff,FTT_WRITE_ERRORS)
+  ErrDict = Py_BuildValue ("(s,s,s,i)", 
+    ftt_extract_stats(stbuff,FTT_REMAIN_TAPE),
+    ftt_extract_stats(stbuff,FTT_N_WRITES),
+    ftt_extract_stats(stbuff,FTT_WRITE_ERRORS),
+    ET_desc->filesize
     );
 /*
 	Close the drive
