@@ -46,6 +46,7 @@ class MoverClient(generic_client.GenericClient):
             import socket
         import callback
         import e_errors
+        import errno
         import time
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
