@@ -388,7 +388,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                             record["media_type"])
         # the following code is robot type dependent!!!!!
         if not force and ret != 'unmounted' and ret != '' and ret != 'E':
-           ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'")
+           ticket["status"] = (e_errors.CONFLICT,"volume state must be unmounted or '' or 'E'. state %s" %
+                               (ret,))
            self.reply_to_caller(ticket)
            return
         if record.has_key('non_del_files'):
