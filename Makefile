@@ -48,7 +48,7 @@ ADDDIRS =.
 ADDFILES=
 ADDEMPTY=
   ADDCMD=
-   LOCAL=/fnal/ups/$(PROD)/$(VERS)/$(OS)$(CUST)$(QUALS)
+   LOCAL=/fnal/ups/prd/$(PROD)/$(VERS)/$(OS)$(CUST)$(QUALS)
  DOCROOT=/afs/fnal/files/docs/products/$(PROD)
 
 PREFIX=$(DEFAULT_PREFIX)
