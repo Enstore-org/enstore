@@ -27,38 +27,27 @@ error = -1
 
 class pnfs :
     # initialize - we will be needing all these things soon, get them now
-    def __init__(self,pnfsFilename,all=0) :
-        self.pnfsFilename = pnfsFilename
+    def __init__(self,pnfsFilename,all=0,timeit=1) :
         t1 = time.time()
+        self.pnfsFilename = pnfsFilename
         (dir,file) = os.path.split(pnfsFilename)
-        print "path.split:",time.time()-t1
         if dir == '' :
             dir = '.'
         self.dir = dir
         self.file = file
         self.exists = unknown
-        t1 = time.time()
         self.check_valid_pnfsFilename()
-        print "check_valid:",time.time()-t1
-        t1 = time.time()
-        self.statinfo()
-        print "stattime:",time.time()-t1
+        self.pstatinfo()
         self.rmajor = 0
         self.rminor = 0
-        t1 = time.time()
         self.get_bit_file_id()
-        print "get_bit_file_id:",time.time()-t1
-        t1 = time.time()
         self.get_library()
-        print "get_library:",time.time()-t1
-        t1 = time.time()
         self.get_file_family()
-        print "get_file_family:",time.time()-t1
-        t1 = time.time()
         self.get_file_family_width()
-        print "get_file_family_width:",time.time()-t1
         if all :
             self.get_pnfs_info()
+        if timeit != 0:
+            print "pnfs__init__ dt:",time.time()-t1
 
     # list what is in the current object
     def dump(self) :
@@ -70,7 +59,6 @@ class pnfs :
     def jon1(self) :
         if self.valid == valid :
             self.set_bit_file_id("1234567890987654321",123)
-            self.statinfo()
         else:
             raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
@@ -82,7 +70,7 @@ class pnfs :
             self.set_library("activelibrary")
             self.set_file_family("raw")
             self.set_file_family_width(2)
-            self.statinfo()
+            self.pstatinfo()
         else:
             raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
                   +self.pnfsfile+" is an invalid pnfs filename"
@@ -111,7 +99,6 @@ class pnfs :
     def check_valid_pnfsFilename(self) :
         try :
             f = open(self.dir+'/.(const)('+self.file+')','r')
-            self.const = f.readlines()
             f.close()
             self.valid = valid
         except :
@@ -131,22 +118,37 @@ class pnfs :
                     f.close()
                 else :
                     raise sys.exc_info()[0],sys.exc_info()[1]
-
+            self.pstatinfo()
 
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
     def utime(self) :
         if self.valid == valid and self.exists == exists :
-            # not clear if this is needed to flush cache or not????
-            #self.get_showid()
             try :
                 t = int(time.time())
                 os.utime(self.pnfsFilename,(t,t))
             except os.error :
-                pass
+                print "can not utime:",sys.exc_info()[0],sys.exc_info()[1]
+            self.pstatinfo()
+
+
+    # delete a pnfs file including its metadata
+    def rm(self) :
+        if self.valid == valid and self.exists == exists :
+            self.writelayer(1,"")
+            self.writelayer(2,"")
+            self.writelayer(3,"")
+            # It would be better to move the file to some trash space.
+            # I don't know how right now.
+            os.remove(self.pnfsFilename)
+            self.exists = unknown
+            self.utime()
+            self.pstatinfo()
+
+    ##########################################################################
 
     # lock/unlock the file
-    # this doesn't work - no nfs locks available ???
+    # this doesn't work - no nfs locks available
     def readlock(self) :
         if self.valid == valid and self.exists == exists :
             try :
@@ -180,17 +182,6 @@ class pnfs :
 
             f.close()
 
-    # delete a pnfs file including its metadata
-    def rm(self) :
-        if self.valid == valid and self.exists == exists :
-            self.writelayer(1,"")
-            self.writelayer(2,"")
-            # It would be better to move the file to some trash space.
-            # I don't know how right now.
-            os.remove(self.pnfsFilename)
-            self.exists = unknown
-            self.statinfo()
-
     ##########################################################################
 
     # write a new value to the specified file layer (1-7)
@@ -200,11 +191,12 @@ class pnfs :
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','w')
             f.write(value)
             f.close()
+            self.utime()
+            self.pstatinfo()
 
     # read the value stored in the requested file layer
     def readlayer(self,layer) :
         if self.valid == valid and self.exists == exists :
-            self.statinfo()
             f = open(self.dir+'/.(use)('+repr(layer)+')('+self.file+')','r')
             l = f.readlines()
             f.close()
@@ -226,7 +218,6 @@ class pnfs :
     # read the value stored in the requested tag
     def readtag(self,tag) :
         if self.valid == valid :
-            self.statinfo()
             f = open(self.dir+'/.(tag)('+tag+')','r')
             t = f.readlines()
             f.close()
@@ -238,166 +229,101 @@ class pnfs :
 
     # get all the extra pnfs information
     def get_pnfs_info(self) :
-        if self.valid == valid :
-            self.get_id()
-            self.get_showid()
-            self.get_nameof()
-            self.get_parent()
-            self.get_cursor()
-            self.get_counters()
-            self.get_info()
-
-    # get the numeric pnfs id of the file
-    def get_id(self) :
         if self.valid == valid and self.exists == exists :
+
+            # get the numeric pnfs id of the file
+            f = open(self.dir+'/.(const)('+self.file+')','r')
+            self.const = f.readlines()
+            f.close()
+
+            # get the numeric pnfs id of the file
             f = open(self.dir+'/.(id)('+self.file+')','r')
             i = f.readlines()
             f.close()
             self.id = regsub.sub("\012","",i[0])
-            return
 
-    # get the showid information
-    def get_showid(self) :
-        if self.valid == valid and self.exists == exists :
-            try:
-                id = self.id
-            except :
-                self.get_id()
+            # get the showid information
             f = open(self.dir+'/.(showid)('+self.id+')','r')
             self.showid = f.readlines()
             f.close()
-            return
 
-    # get the nameof information
-    def get_nameof(self) :
-        if self.valid == valid and self.exists == exists :
-            try:
-                id = self.id
-            except :
-                self.get_id()
+            # get the nameof information
             f = open(self.dir+'/.(nameof)('+self.id+')','r')
             self.nameof = f.readlines()
             f.close()
-            return
 
-    # get the showid information
-    def get_parent(self) :
-        if self.valid == valid and self.exists == exists :
-            try:
-                id = self.id
-            except :
-                self.get_id()
+            # get the showid information
             f = open(self.dir+'/.(parent)('+self.id+')','r')
             self.parent = f.readlines()
             f.close()
-            return
 
-    # get the cursor information
-    def get_cursor(self) :
-        if self.valid == valid :
-            try:
-                id = self.id
-            except :
-                self.get_id()
+            # get the cursor information
             f = open(self.dir+'/.(get)(cusor)','r')
             self.cursor = f.readlines()
             f.close()
-            return
 
-    # get the cursor information
-    def get_counters(self) :
-        if self.valid == valid :
-            try:
-                id = self.id
-            except :
-                self.get_id()
+            # get the cursor information
             f = open(self.dir+'/.(get)(counters)','r')
             self.counters = f.readlines()
             f.close()
-            return
+
 
     ##########################################################################
 
     # get the stat of file, or if non-existant, its directory
     def get_stat(self) :
         if self.valid == valid :
+            # first the file itself
             try :
-                self.utime()
-                self.stat = os.stat(self.pnfsFilename)
+                self.pstat = os.stat(self.pnfsFilename)
                 self.exists = exists
-                try:
-                    code_dict = Devcodes.MajMin(self.pnfsFilename)
-                except:
-                    code_dict={"Major":0,"Minor":0}
-                self.major = code_dict["Major"]
-                self.minor = code_dict["Minor"]
+            # if that fails, try the directory
             except os.error :
                 if sys.exc_info()[1][0] == errno.ENOENT :
                     try :
-                        self.stat = os.stat(self.dir)
+                        self.pstat = os.stat(self.dir)
                         self.exists = direxists
-                        try:
-                            code_dict = Devcodes.MajMin(self.dir)
-                        except:
-                            code_dict={"Major":0,"Minor":0}
-                        self.major = code_dict["Major"]
-                        self.minor = code_dict["Minor"]
                     except :
-                        self.stat = (error,repr(sys.exc_info()[1])\
+                        self.pstat = (error,repr(sys.exc_info()[1])\
                                      ,"directory: "+self.dir)
                         self.exists = invalid
-                        self.major,self.minor = (0,0)
-
                 else :
-                    self.stat = (error,repr(sys.exc_info()[1])\
+                    self.pstat = (error,repr(sys.exc_info()[1])\
                                  ,"file: "+self.pnfsFilename)
                     self.exists = invalid
                     self.major,self.minor = (0,0)
 
         else :
-            self.stat = (error,invalid)
+            self.pstat = (error,invalid)
             self.exists = invalid
 
     ##########################################################################
 
-    # set a new file size
-    # the file needs to exist before you call this
-    # you can't change the file size if it is not 0
     def set_file_size(self,size) :
         if self.valid == valid and self.exists == exists :
-            self.statinfo()
             if self.file_size != 0 :
                 try :
                     os.remove(self.dir+'/.(fset)('+self.file+')(size)')
-                    self.statinfo()
+                    self.utime()
+                    self.pstatinfo()
                 except os.error :
                     print "enoent path taken again!"
                     if sys.exc_info()[1][0] == errno.ENOENT :
-                        self.statinfo()
                         # maybe this works??
                         f = open(self.dir+'/.(fset)('\
                                  +self.file+')(size)('+repr(size)+')','w')
                         f.close()
-                        self.statinfo()
+                        self.utime()
+                        self.pstatinfo()
                     else :
                         raise sys.exc_info()[0],sys.exc_info()[1]
-            if self.file_size != 0 :
-                print "can not set file size to 0 - oh well!"
+                if self.file_size != 0 :
+                    print "can not set file size to 0 - oh well!"
             f = open(self.dir+'/.(fset)('+self.file+')(size)('\
                      +repr(size)+')','w')
             f.close()
-            self.statinfo()
-
-    # get the size of the file from the stat member
-    # this routine does not call stat - use statinfo to get updated info
-    def get_file_size(self) :
-        if self.valid == valid and self.exists == exists :
-            try :
-                self.file_size = self.stat[stat.ST_SIZE]
-            except :
-                self.file_size = error
-        else :
-            self.file_size = error
+            self.utime()
+            self.pstatinfo()
 
     ##########################################################################
 
@@ -405,34 +331,15 @@ class pnfs :
     def chmod(self,mode) :
         if self.valid == valid and self.exists == exists :
             os.chmod(self.pnfsFilename,mode)
-            self.statinfo()
-
-    # get the mode of stat member
-    # this routine does not call stat - use statinfo to get updated info
-    def get_mode(self) :
-        if self.stat[0] != error :
-            try :
-                # always return mode as if it were a file, not directory, so
-                #  it can use used in enstore cpio creation  (we will be
-                #  creating a file in this directory)
-                # real mode is available in self.stat for people who need it
-                self.mode = (self.stat[stat.ST_MODE] % 0777) | 0100000
-                self.mode_octal = repr(oct(self.mode))
-            except :
-                self.mode = 0
-                self.mode_octal = 0
-        else :
-            self.mode = 0
-            self.mode_octal = 0
-
-
-    ##########################################################################
+            self.utime()
+            self.pstatinfo()
 
     # change the ownership of the existing file
     def chown(self,uid,gid) :
         if self.valid == valid and self.exists == exists :
             os.chown(self.pnfsFilename,uid,gid)
-            self.statinfo()
+            self.utime()
+            self.pstatinfo()
 
     ##########################################################################
 
@@ -441,7 +348,6 @@ class pnfs :
         if self.valid == valid :
             if self.exists == direxists :
                 self.touch()
-                self.statinfo()
             self.writelayer(1,value)
             self.get_bit_file_id()
             if size != 0 :
@@ -527,15 +433,18 @@ class pnfs :
     ##########################################################################
 
     # update all the stat info on the file, or if non-existant, its directory
-    def statinfo(self,update=1) :
+    def pstatinfo(self,update=1) :
         if update :
             self.get_stat()
-        self.get_uid()
-        self.get_uname()
-        self.get_gid()
-        self.get_gname()
-        self.get_mode()
-        self.get_file_size()
+        self.pstat_decode()
+
+        try:
+            code_dict = Devcodes.MajMin(self.pnfsFilename)
+        except:
+            code_dict={"Major":0,"Minor":0}
+        self.major = code_dict["Major"]
+        self.minor = code_dict["Minor"]
+
         command="if test -w "+self.dir+"; then echo ok; else echo no; fi"
         writable = os.popen(command,'r').readlines()
         if "ok\012" == writable[0]:
@@ -546,51 +455,50 @@ class pnfs :
     ##########################################################################
 
     # get the uid from the stat member
-    def get_uid(self) :
-        if self.stat[0] != error :
+    def pstat_decode(self) :
+        if self.valid == valid and self.pstat[0] != error :
             try :
-                self.uid = self.stat[stat.ST_UID]
+                self.uid = self.pstat[stat.ST_UID]
             except :
                 self.uid = error
-        else :
-            self.uid = error
-
-    # get the username from the uid member
-    def get_uname(self) :
-        if self.stat[0] != error :
             try :
                 self.uname = pwd.getpwuid(self.uid)[0]
             except :
                 self.uname = unknown
-        else :
-            self.uname = unknown
-
-    ##########################################################################
-
-    # get the gid from the stat member
-    def get_gid(self) :
-        if self.stat[0] != error :
             try :
-                self.gid = self.stat[stat.ST_GID]
+                self.gid = self.pstat[stat.ST_GID]
             except :
                 self.gid = error
-        else :
-            self.gid = error
-
-    # get the group name of the gid member
-    def get_gname(self) :
-        if self.stat[0] != error :
             try :
                 self.gname = grp.getgrgid(self.gid)[0]
             except :
                 self.gname = unknown
+            try :
+                # always return mode as if it were a file, not directory, so
+                #  it can use used in enstore cpio creation  (we will be
+                #  creating a file in this directory)
+                # real mode is available in self.stat for people who need it
+                self.mode = (self.pstat[stat.ST_MODE] % 0777) | 0100000
+                self.mode_octal = repr(oct(self.mode))
+            except :
+                self.mode = 0
+                self.mode_octal = 0
+            if self.exists == exists :
+                try :
+                    self.file_size = self.pstat[stat.ST_SIZE]
+                except :
+                    self.file_size = error
+            else :
+                self.file_size = error
+
         else :
+            self.uid = error
+            self.uname = unknown
+            self.gid = error
             self.gname = unknown
-
-    ##########################################################################
-
-
-
+            self.mode = 0
+            self.mode_octal = 0
+            self.file_size = error
 
 ##############################################################################
 
@@ -633,7 +541,7 @@ if __name__ == "__main__" :
 
     elif test :
 
-        base = "/pnfs/user/test1"
+        base = "/pnfs/enstore/test1"
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test" :
             count = count+1;
