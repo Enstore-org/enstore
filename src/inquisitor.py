@@ -1068,6 +1068,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             mlatfile.install(self.html_dir)
             mlatfile.cleanup(keep, pts_dir)
 
+	    # now save any new mount count data for the continuing total count. and create the
+	    # overall total mount plot
+	    mpdfile = enstore_plots.MpdDataFile(out_dir)
+            mpdfile.open()
+            mpdfile.plot(mphfile.total_mounts)
+            mpdfile.close()
+	    mpdfile.install(self.html_dir)
+
     # make the total transfers per unit of time and the bytes moved per day
     # plot
     def encp_plot(self, ticket, lfd, keep, pts_dir, out_dir):

@@ -86,27 +86,27 @@ class EnFile:
 
     def __init__(self, file):
         self.file_name = file 
-	self.filedes = 0
+	self.openfile = 0
 
     def open(self, mode='w'):
 	try:
-            self.filedes = open(self.file_name, mode)
+            self.openfile = open(self.file_name, mode)
             Trace.trace(10,"%s open "%(self.file_name,))
         except IOError:
-            self.filedes = 0
+            self.openfile = 0
             Trace.log(e_errors.WARNING,
                       "%s not openable for %s"%(self.file_name, mode))
 
     # write it to the file
     def write(self, data):
-        if self.filedes:
-            self.filedes.write(str(data))
+        if self.openfile:
+            self.openfile.write(str(data))
 
     def close(self):
 	Trace.trace(10,"enfile close %s"%(self.file_name,))
-	if self.filedes:
-	    self.filedes.close()
-	    self.filedes = 0
+	if self.openfile:
+	    self.openfile.close()
+	    self.openfile = 0
 
     # remove the file
     def cleanup(self, keep, pts_dir):
@@ -131,7 +131,7 @@ class EnStatusFile(EnFile):
         Trace.trace(12,"open %s"%(self.file_name,))
         # try to open status file for append
         EnFile.open(self, 'a')
-        if not self.filedes:
+        if not self.openfile:
             # could not open for append, try to create it
             EnFile.open(self, 'w')
 
@@ -157,10 +157,10 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 
     # write the status info to the file
     def write(self):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnSysStatusPage(self.refresh)
 	    doc.body(self.text)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLEncpStatusFile(EnStatusFile):
 
@@ -170,7 +170,7 @@ class HTMLEncpStatusFile(EnStatusFile):
 
     # output the encp info
     def write(self, lines):
-        if self.filedes:
+        if self.openfile:
 	    # break up each line into it's component parts and format it
 	    eline = []
 	    for line in lines:
@@ -184,44 +184,44 @@ class HTMLEncpStatusFile(EnStatusFile):
 	    else:
 		doc = enstore_html.EnEncpStatusPage(self.refresh)
 		doc.body(eline)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLLogFile(EnFile):
 
     # format the log files and write them to the file, include a link to the
     # page to search the log files
     def write(self, http_path, logfiles, user_logs, host):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnLogPage()
 	    doc.body(http_path, logfiles, user_logs, host)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLConfigFile(EnFile):
 
     # format the config entry and write it to the file
     def write(self, cdict):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnConfigurationPage()
 	    doc.body(cdict)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLPlotFile(EnFile):
 
     # format the config entry and write it to the file
     def write(self, jpgs, stamps, pss):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnPlotPage()
 	    doc.body(jpgs, stamps, pss)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLMiscFile(EnFile):
 
     # format the file name and write it to the file
     def write(self, data):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnMiscPage()
 	    doc.body(data)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class EnDataFile(EnFile):
 
@@ -246,9 +246,9 @@ class EnDataFile(EnFile):
 
     def read(self, max_lines):
 	i = 0
-	if self.filedes:
+	if self.openfile:
             while i < max_lines:
-                l = self.filedes.readline()
+                l = self.openfile.readline()
                 if l:
 		    # THIS IS A KLUDGE - do not use any error lines which have a status=ok in 
 		    # them.  remove the following if block and this comment to get rid of the
@@ -272,10 +272,10 @@ class EnDataFile(EnFile):
         if not stop_time and not start_time:
             do_all = TRUE
 	# read it in.  only save the lines that match the desired time frame
-        if self.filedes:
+        if self.openfile:
             try:
                 while TRUE:
-                    line = self.filedes.readline()
+                    line = self.openfile.readline()
                     if not line:
                         break
                     else:
@@ -371,10 +371,10 @@ class HtmlAlarmFile(EnFile):
 
     # format the file name and write it to the file
     def write(self, data, www_host):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnAlarmPage()
 	    doc.body(data, www_host)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class HTMLPatrolFile(EnFile):
 
@@ -392,10 +392,10 @@ class HTMLPatrolFile(EnFile):
 
     # format the file name and write it to the file
     def write(self, data):
-        if self.filedes:
+        if self.openfile:
 	    doc = enstore_html.EnPatrolPage()
 	    doc.body(data)
-            self.filedes.write(str(doc))
+            self.openfile.write(str(doc))
 
 class EnAlarmFile(EnFile):
 
@@ -406,17 +406,17 @@ class EnAlarmFile(EnFile):
             EnFile.open(self, mode)
         else:
             EnFile.open(self, "a")
-            if not self.filedes:
+            if not self.openfile:
                 # the open for append did not work, now try write
                 EnFile.open(self, "w")
 
     # read lines from the file
     def read(self):
         enAlarms = {}
-        if self.filedes:
+        if self.openfile:
             try:
                 while TRUE:
-                    line = self.filedes.readline()
+                    line = self.openfile.readline()
                     if not line:
                         break
                     else:
@@ -428,10 +428,10 @@ class EnAlarmFile(EnFile):
                 
     # write the alarm to the file
     def write(self, alarm):
-        if self.filedes:
+        if self.openfile:
             line = repr(alarm)+"\n"
             try:
-                self.filedes.write(line)
+                self.openfile.write(line)
             except IOError:
                 pass
 
@@ -452,10 +452,10 @@ class EnPatrolFile(EnFile):
 
     # write out the alarm
     def write(self, alarm):
-        if self.filedes:
+        if self.openfile:
             # tell the alarm that this is going to patrol so the alarm
             # can add the patrol expected header
-            self.filedes.write(alarm.prepr())
+            self.openfile.write(alarm.prepr())
 
     # rm the file
     def remove(self):

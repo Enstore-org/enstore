@@ -106,9 +106,9 @@ class EnPlot(enstore_files.EnFile):
 	# make a jpg version of the file including a postage stamp sized one
 	convert_to_jpg(self.psfile, "%s/%s"%(dir, self.name))
 
-    def open(self):
+    def open(self, mode='w'):
 	Trace.trace(10,"enfile open "+self.file_name)
-	self.filedes = open(self.ptsfile, 'w')
+	self.openfile = open(self.ptsfile, mode)
 
     def cleanup(self, keep, pts_dir):
         if not keep:
@@ -123,11 +123,11 @@ class EnPlot(enstore_files.EnFile):
 class MphGnuFile(enstore_files.EnFile):
 
     def write(self, gnuinfo):
-	self.filedes.write("set terminal postscript color\n"+ \
+	self.openfile.write("set terminal postscript color\n"+ \
 	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
 	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
 	for info in gnuinfo:
-	    self.filedes.write("set output '"+info[3]+ \
+	    self.openfile.write("set output '"+info[3]+ \
 			       "'\nset title 'Mount Count For "+info[0]+ \
 	                       " (Total = "+info[1]+") "+plot_time()+"'\nplot '"+info[2]+ \
 	                       "' using 1:2 t '' with impulses lw 20\n")
@@ -163,6 +163,7 @@ class MphDataFile(EnPlot):
 	ndata = {}
 	gnuinfo = []
 	self.psfiles = []
+	self.total_mounts = {}
 	for [dev, time, strt] in data:
 	    if strt == enstore_files.MMOUNT:
 	        # this was the record of the mount having been done
@@ -192,6 +193,10 @@ class MphDataFile(EnPlot):
 	        gnuinfo.append([day, repr(total), fn, self.psfile])
 		self.psfiles.append((self.psfile, day))
 	        pfile.close()
+
+		# save the info in order to use it to update the file containing the
+		# information on total mounts/day that have been done up to this day.
+		self.total_mounts[day] = total
 	else:
 	    # we must create our gnu plot command file too
 	    gnucmds = MphGnuFile(self.gnufile)
@@ -199,10 +204,85 @@ class MphDataFile(EnPlot):
 	    gnucmds.write(gnuinfo)
 	    gnucmds.close()
 
+
+class MpdGnuFile(enstore_files.EnFile):
+
+    def write(self, outfile, ptsfile, total_mounts):
+	self.openfile.write("set terminal postscript color\n"+ \
+			    "set xlabel 'Date'\n"+\
+			    "set timefmt \"%Y-%m-%d\"\n"+ \
+			    "set yrange [0 : ]\n"+ \
+			    "set xrange [ : ]\n"+ \
+			    "set xdata time\n"+ \
+			    "set format x \"%Y-%m-%d\"\n"+ \
+			    "set ylabel 'Mounts'\n"+\
+			    "set grid\n"+ \
+			    "set output '"+outfile+"'\n"+\
+			    "set title 'Cumulative Mount Counts (Total = "+\
+			    total_mounts+") "+plot_time()+"'\n"+\
+			    "plot '"+ptsfile+"' using 1:2 t '' with impulses lw 20\n")
+
+class MpdDataFile(EnPlot):
+
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.MPD_FILE)
+
+    def get_all_mounts(self, new_mounts_d):
+	today = time.strftime("%Y-%m-%d",time.localtime(time.time()))
+	mounts_l = []
+	total_mounts = 0
+	if self.openfile:
+	    mounts_l = self.openfile.readlines()
+	    for line in mounts_l:
+		[day, count] = string.split(string.strip(line))
+		if new_mounts_d.has_key(day):
+		    # if this is today replace the old count with the new value
+		    if day == today:
+			mounts_l.remove(line)
+			mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+			total_mounts = total_mounts + new_mounts_d[day]
+		    else:
+			total_mounts = total_mounts + string.atoi(count)
+		    del new_mounts_d[day]
+		else:
+		    total_mounts = total_mounts + string.atoi(count)
+
+	# now add to the list any of the new days that were not present in the old list
+	for day in new_mounts_d.keys():
+	    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
+	    total_mounts = total_mounts + new_mounts_d[day]
+	return (mounts_l, total_mounts)
+
+    def open(self):
+	if os.path.isfile(self.ptsfile):
+	    EnPlot.open(self, 'r')
+
+    # make the mounts per day plot file
+    def plot(self, new_mounts_d):
+	# the data passed to us is a dict of total mount counts for the days that
+	# were just plotted.  in effect this is new data that must be merged in with the
+	# the data currently in the total mount count file.  we will read in the current
+	# data and add any new stuff to it.  if the file contains data for today, we will
+	# overwrite it with our new data which is presumed to be more recent.
+	(mounts_l, total_mounts) = self.get_all_mounts(new_mounts_d)
+	if self.openfile:
+	    self.openfile.close()
+	self.openfile = open(self.ptsfile, 'w')
+	for line in mounts_l:
+	    self.openfile.write(line)
+	# don't need to close the file as it is closed by the caller
+
+	# now create the gnuplot command file
+	gnucmds = MpdGnuFile(self.gnufile)
+	gnucmds.open('w')
+	gnucmds.write(self.psfile, self.ptsfile, repr(total_mounts))
+	gnucmds.close()
+
+
 class MlatGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile):
-	self.filedes.write("set output '"+outfile+"\n"+ \
+	self.openfile.write("set output '"+outfile+"\n"+ \
                            "set terminal postscript color\n"+ \
                            "set title 'Mount Latency in Seconds "+plot_time()+"'\n"+ \
                            "set xlabel 'Date'\n"+ \
@@ -242,7 +322,7 @@ class MlatDataFile(EnPlot):
 	        if not last_mount_req == "":
 	            # we have recorded a mount req 
 	            ltnc = self.latency(last_mount_req, time)
-	            self.filedes.write(time+" "+repr(ltnc)+"\n")
+	            self.openfile.write(time+" "+repr(ltnc)+"\n")
 
 	            # initialize so any trailing requests are not plotted
 	            last_mount_req == ""
@@ -272,7 +352,7 @@ class MlatDataFile(EnPlot):
 class XferGnuFile(enstore_files.EnFile):
 
     def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
-	self.filedes.write("set output '"+outfile2+"'\n"+ \
+	self.openfile.write("set output '"+outfile2+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Individual Transfer Activity "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
@@ -308,10 +388,10 @@ class XferDataFile(EnPlot):
 	for [xpt, ypt, type] in data:
 	    if type == "to":
 		# this was a write request
-		self.filedes.write("%s %s %s\n"%(xpt, ypt, ypt))
+		self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
 	    else:
 		# this was a read request
-		self.filedes.write("%s %s 0 %s\n"%(xpt, ypt, ypt))
+		self.openfile.write("%s %s 0 %s\n"%(xpt, ypt, ypt))
 
 	# we must create our gnu plot command file too
 	gnucmds = XferGnuFile(self.gnufile)
@@ -329,7 +409,7 @@ class XferDataFile(EnPlot):
 class BpdGnuFile(enstore_files.EnFile):
 
     def write(self, outfile, ptsfile, total, meansize, xfers):
-	self.filedes.write("set output '"+outfile+"'\n"+ \
+	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day "+plot_time()+"'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
@@ -389,12 +469,12 @@ class BpdDataFile(EnPlot):
 	total = 0
 	for key in keys:
 	    if not ndata[key] == 0:
-	        self.filedes.write(key+" "+repr(ndata[key])+" "+\
+	        self.openfile.write(key+" "+repr(ndata[key])+" "+\
 	                                   repr(smallest[key])+" "+\
 	                                   repr(largest[key])+" "+\
 	                                   repr(mean[key]/ctr[key])+"\n")
 	    else:
-	        self.filedes.write(key+" "+repr(ndata[key])+"\n")
+	        self.openfile.write(key+" "+repr(ndata[key])+"\n")
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
 	    total = total + ndata[key]
