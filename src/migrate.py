@@ -745,6 +745,24 @@ def final_scan_volume(vol):
 		else:
 			error_log(MY_TASK, "failed to resotre volume_family of", vol, "to", vf)
 			local_error = local_error + 1
+		# set comment
+		q = "select distinct va.label \
+			from volume va, volume vb, file fa, file fb, \
+			migration \
+			 where fa.volume = va.id and fb.volume = vb.id \
+				and fa.bfid = migration.src_bfid \
+				and fb.bfid = migration.dst_bfid \
+				and vb.label = '%s';"%(vol)
+		res = db.query(q).getresult()
+		vol_list = ""
+		for i in res:
+			vol_list = vol_list + ' ' + i[0]
+		if vol_list:
+			res = vcc.set_comment(vol, "migrated from"+vol_list)
+			if res['status'][0] == e_errors.OK:
+				ok_log(MY_TASK, 'set comment of %s to "migrated from%s"'%(vol, vol_list))
+			else:
+				error_log(MY_TASK, 'failed to set comment of %s to "migrated from%s"'%(vol, vol_list))
 	return local_error
 
 # migrate(file_list): -- migrate a list of files
