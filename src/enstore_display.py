@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 from Tkinter import *
 from tkFont import Font
 
@@ -57,21 +56,21 @@ def strip_domain(hostname):
     return string.join(parts,'.')
 
 #######################################################################################
-#MOST OF THE FUNCTIONS WILL BE HANDLED BY THE MOVER.
-#IT'S FUNCTIONS INCLUDES:
-#     DRAW() - DRAWS MOST FEATURES ON THE MOVERS
-#     UPDATE_STATE() - AS THE STATE OF THE MOVERS CHANGE, DISPLAY FOR STATE WILL BE UPDATED
-#     UPDATE_TIMER() - TIMER ASSOCIATED W/STATE, WILL UPDATE FOR EACH STATE
-#     LOAD_TAPE() - TAPE GETS LOADED ONTO MOVER:
-#                                  GRAY INDICATES ROBOT RECOGNIZES TAPE AND LOADED IT
-#                                  ORANGE INDICATES WHEN CLIENT ACTUALLY RECOGNIZES TAPE     
-#     UNLOAD_TAPE() - WILL UNLOAD TAPE TO SIDE OF EACH MOVER, READY FOR ROBOT TO REMOVE F/SCREEN
-#     SHOW_PROGRESS() - INDICATES PROGRESS OF EACH DATA TRANSFER; IS IT ALMOST COMPLETE?
-#     TRANSFER_RATE() - RATE AT WHICH TRANSFER BEING SENT; CALCULATES A RATE
-#     UNDRAW() - UNDRAWS THE FEATURES FROMTHE MOVERS
-#     POSITION() - CALCULATES THE POSITION FOR EACH MOVER
-#     REPOSITION() - REPOSITION EACH FEATURE AFTER SCREEN HAS BEEN MOVED
-#     __DEL__() - CALLS UNDRAW() MODULE AND DELETES FEATURES
+#Most Of The Functions Will Be Handled By The Mover.
+# Its  functions include:
+#     draw() - Draws Most Features On The Movers
+#     update_state() - As The State Of The Movers Change, Display For State Will Be Updated
+#     update_timer() - Timer Associated W/State, Will Update For Each State
+#     load_tape() - Tape Gets Loaded Onto Mover:
+#                                  Gray Indicates Robot Recognizes Tape And Loaded It
+#                                  Orange Indicates When Client Actually Recognizes Tape     
+#     unload_tape() - Will Unload Tape To Side Of Each Mover, Ready For Robot To Remove F/Screen
+#     show_progress() - Indicates Progress Of Each Data Transfer; Is It Almost Complete?
+#     transfer_rate() - Rate At Which Transfer Being Sent; Calculates A Rate
+#     undraw() - Undraws The Features Fromthe Movers
+#     position() - Calculates The Position For Each Mover
+#     reposition() - Reposition Each Feature After Screen Has Been Moved
+#     __del__() - Calls undraw() Module And Deletes Features
 #
 ######################################################################################
 
@@ -90,7 +89,10 @@ class Mover:
         self.timer_string = '00:00:00'
         self.last_activity_time = now
         self.connection = None
+        self.client = None
         self.rate = 0.0
+        self.t0 = 0
+        self.b0 = 0
         self.x, self.y = 0, 0 # Not placed yet
         self.volume = None
         #These 3 pieces make up the progress gauge display
@@ -138,13 +140,13 @@ class Mover:
         self.display.delete(self.timer_display)
         self.timer_display = self.display.create_text(x+100, y+22, text=self.timer_string,fill='white')
 
-    def load_tape(self, volume_name,load_state):
+    def load_tape(self, volume_name):
         self.volume = Volume(volume_name, self.display)
         self.volume.x, self.volume.y = self.x + 5, self.y + 2
-        self.volume.draw(load_state)
+        self.volume.draw()
 
     def unload_tape(self, volume):
-        if self.volume and volume != self.volume.name: 
+        if not self.volume or volume != self.volume.name: 
             print "Mover does not have this tape : ", volume
         else:
             k=self.index
@@ -155,7 +157,7 @@ class Mover:
             x,y=coord.real,coord.imag
             self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
             self.volume.moveto(self.volume.x, self.volume.y)
-            self.volume.draw(load_state='loaded')
+            self.volume.draw()
 
     def robot_move(self, volume_name, robot_command):
         robot=self.display.robot
@@ -171,7 +173,7 @@ class Mover:
             x,y=coord.real, coord.imag
             self.volume.x, self.volume.y = scale_to_display(x, y, self.display.width, self.display.height)
             self.volume.moveto(self.volume.x-100, self.volume.y)
-            self.volume.draw(load_state='loaded')
+            self.volume.draw()
         robot.x, robot.y = scale_to_display(x, y, self.display.width, self.display.height)
         robot.moveto(robot.x, robot.y)
         robot.draw()
@@ -223,7 +225,6 @@ class Mover:
         self.display.delete(self.outline)
         self.display.delete(self.label)
         self.display.delete(self.state_display)
-        self.display.delete(self.tape_slot)
         self.display.delete(self.progress_bar_bg)
         self.display.delete(self.progress_bar)
         self.display.delete(self.progress_percent_display)
@@ -271,8 +272,7 @@ class Volume:
         self.display = display
         self.loaded = 0
     
-    def draw(self,load_state):
-        self.loaded=load_state
+    def draw(self):
         x, y = self.x, self.y
         if self.loaded:
             tape_color = 'orange'
@@ -576,6 +576,16 @@ class Display(Canvas):
 
         if words[0]=='client':
             client_name = words[1]
+            ##XXX we are working around a bug in the library manager.
+            # Remove this code once library manager sends correct message
+            if client_name[0] == '(':
+                client_name = client_name[2:-2]
+                try:
+                    client_name = socket.gethostbyaddr(client_name)[0]
+                    client_name = strip_domain(client_name)
+                except:
+                    print "Can't resolve address", client_name
+            #XXX end hack
             client = self.clients.get(client_name) 
             if client is None: #new client
                 client = Client(client_name, self)
@@ -655,14 +665,14 @@ class Display(Canvas):
             if volume is None:
                 volume=Volume(what_volume,self)
                 self.volumes[what_volume]=volume
-                mover.load_tape(what_volume,0)
+                mover.load_tape(what_volume)
             else:
                 print "!!! Error !!!  Volume already exists."
             return
 
         if words[0]=='loaded':
             what_volume = words[2]
-            mover.load_tape(what_volume,1)
+            mover.load_tape(what_volume)
             return
         
         if words[0]=='unload':
@@ -690,8 +700,10 @@ class Display(Canvas):
             percent_done = abs(int(100 * num_bytes/total_bytes))
             mover.show_progress(percent_done)
             rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
-            mover.connection.update_rate(rate)
-            mover.client.last_activity_time = time.time()
+            if mover.connection:
+                mover.connection.update_rate(rate)
+            if mover.client:
+                mover.client.last_activity_time = time.time()
 
             
     def mainloop(self):
