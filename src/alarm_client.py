@@ -50,8 +50,6 @@ class AlarmClient(generic_client.GenericClient):
         self.rcv_tries = rcv_tries
 	Trace.set_alarm_func( self.alarm_func )
 	self.alarm_func_lock = Lock() 
-
-
         
     def alarm_func(self, time, pid, name, args):
 	# prevent infinite recursion (i.e if some function call by this
