@@ -652,6 +652,9 @@ def do_real_work():
     if enstore_constants.ENSTORE in override_d_keys:
 	summary_d[enstore_constants.ENSTORE] = enstore_functions.override_to_status(\
 	    override_d[enstore_constants.ENSTORE])
+	if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
+	    # it was overridden
+	    reason.append("overriden to %s"%(override_d[enstore_constants.ENSTORE]))
 
     if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	stat = "DOWN"
