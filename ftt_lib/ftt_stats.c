@@ -247,8 +247,9 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 	case 0:  /* child */
 		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf);
 		close(1);
-		dup(fileno(d->async_pf));
+		dup2(fileno(d->async_pf),1);
 		execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
 
 	default: /* parent */
