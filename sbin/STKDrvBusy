@@ -3,6 +3,21 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+case $gang in
+  stken) robot="PowderHorn 9310"
+	 silo_node=fntt
+	 copy_node=stkensrv4
+          ;;
+  cdfen) robot="PowderHorn 9310"
+	 silo_node=fntt2
+	 copy_node=cdfensrv4
+          ;;
+   d0en*) robot="UNKNOWN"
+          ;;
+       *) robot="UNKNOWN"
+          ;;
+esac
 
 busy=/home/enstore/STK_DRIVE_UTILIZATION
 busy_d0=/home/enstore/STK_DRIVE_UTILIZATION_D0
@@ -10,6 +25,7 @@ busy_cdf=/home/enstore/STK_DRIVE_UTILIZATION
 
 command=${1:-plot}
 getnode=stkensrv4
+getnode_cdf=cdfensrv4
 plotnode=stkensrv2
 plotnode_d0=d0ensrv2
 plotnode_cdf=cdfensrv2
@@ -23,7 +39,7 @@ case $command in
         if [ $node = $getnode ] ; then
          dinfo=/tmp/dinfo
          rm -f $dinfo
-         /usr/bin/rsh fntt -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
+         /usr/bin/rsh $silo_node -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
          n9840=`grep " 9840"  $dinfo | grep -c "in use"`
          a9840=`grep " 9840"  $dinfo | grep -c "online"`
          n9940_stk=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "in use"`
@@ -33,8 +49,16 @@ case $command in
          echo "$now $n9840 $a9840 $n9940_stk $a9940_stk">>$busy
          echo "$now $n9940_d0e $a9940_d0e">>$busy_d0
 
+        elif [ $node = $getnode_cdf ] ; then
+         dinfo=/tmp/dinfo
+         rm -f $dinfo
+         /usr/bin/rsh $silo_node -l acsss "echo query drive  all|/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" </dev/null >$dinfo
+         n9940_cdf=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "in use"`
+         a9940_cdf=`grep "T9940"  $dinfo | grep "   0, 0," | grep -c "online"`
+         echo "$now 0 0 $n9940_cdf $a9940_cdf">>$busy_cdf
+
         else
-         echo \"$0 $command\" can only be run on $getnode because that is the only one that can talk to fntt
+         echo \"$0 $command\" can only be run on $getnode or $getnode_cdf because that is the only one that can talk to fntt or fntt2
         fi
         ;;
 
@@ -108,7 +132,7 @@ plot \"$busy_d0\" using 1:2 t \"9940 in use\" w impulses" >$pltcmd
 
 
         elif [ $node = $plotnode_cdf ] ; then
-         enrcp $getnode:$busy_cdf $busy_cdf
+         enrcp $getnode_cdf:$busy_cdf $busy_cdf
          plot9940=/fnal/ups/prd/www_pages/enstore/9940_Utilization
          pltcmd=/tmp/stkdu.gnu
 
