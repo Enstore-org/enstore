@@ -72,6 +72,7 @@ QUALIFIERS=""
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
                 envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/`${UPS_PROD_DIR}/ups/chooseConfig file`)
+		envSet(ACI_TIMEOUT_MOVE, 300)
                 exeActionRequired(COMMON_SETUP)
         ACTION=DECLARE
                 execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
