@@ -1,3 +1,4 @@
+import time
 from configuration_client import configuration_client
 from udp_client import UDPClient
 
@@ -123,13 +124,17 @@ class VolumeClerkClient :
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, vol_veto_list,first_found) :
+	t1=time.time()
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'file_family'         : file_family,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
-        return self.send(ticket)
+        oticket = self.send(ticket)
+	print "nwv dt=",time.time-t1
+	return oticket
+
 
     # check on alive status
     def alive(self):

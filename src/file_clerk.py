@@ -36,14 +36,14 @@ class FileClerkMethods(DispatchingWorker) :
         ticket["bfid"] = bfid
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
-	return
+        return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-	 return
+         return
 
 
     # To read from the hsm, we need to verify that the bit file id is ok,
@@ -107,30 +107,30 @@ class FileClerkMethods(DispatchingWorker) :
         u = UDPClient()
         ticket = u.send(ticket, (vmticket['host'], vmticket['port']))
         self.reply_to_caller(ticket)
-	return
+        return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-	 return
+         return
 
 
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket) :
      try:
-	self.reply_to_caller({"status" : "ok",\
-			      "bfids"  :repr(dict.keys()) })
-	return
+        self.reply_to_caller({"status" : "ok",\
+                              "bfids"  :repr(dict.keys()) })
+        return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-	 return
+         return
 
 
     # return all info about a certain bfid - this does everything that the
@@ -185,24 +185,29 @@ class FileClerkMethods(DispatchingWorker) :
 
         ticket["status"] = "ok"
         self.reply_to_caller(ticket)
-	return
+        return
 
      # even if there is an error - respond to caller so he can process it
      except:
          ticket["status"] = sys.exc_info()[0]+sys.exc_info()[1]
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-	 return
+         return
 
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
     def unique_bit_file_id(self) :
+     try:
         bfid = time.time()
         bfid = long(bfid)*100000
         while dict.has_key(repr(bfid)) :
             bfid = bfid + 1
         return repr(bfid)
+     # even if there is an error - respond to caller so he can process it
+     except:
+         print "can not generate a bit file id!!",sys.exc_info()[0]+sys.exc_info()[1]
+         sys.exit(1)
 
 
 class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
