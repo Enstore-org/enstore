@@ -903,7 +903,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    self.reply_to_caller({"work" : "nowork"})
 		    return
 		else:
-		   w['vc']['at_mover'] = v['at_mover'] 
+		   w['vc']['at_mover'] = v['at_mover']
+            elif vol_info['at_mover'][0] == 'mounted':
+                # no work for this mover
+                self.reply_to_caller({"work" : "nowork"})
+                # volume is mounted on a different mover,
+                # summon it
+                Trace.trace(11,"volume %s mounted, trying to summon %s"%\
+                            (w['fc']['external_label'],vol_info['at_mover'][1])) 
+                mv = find_mover_by_name(vol_info['at_mover'][1], movers)
+                if mv:
+                    summon_mover(self, mv, w)
+                return
 	    else:
                 Trace.log(e_errors.INFO,
                           "Cannot satisfy request. Vol %s is %s"%\
@@ -1146,8 +1157,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		for rq in self.summon_queue:
                     Trace.trace(13,"force_summon.summon_q: %s........work:%s"\
                                 %(rq, work))
-		    if rq["work_ticket"]["unique_id"] == work["unique_id"]:
-			break
+                    if (rq.has_key("work_ticket") and
+                        rq["work_ticket"].has_key("unique_id")):
+                        if rq["work_ticket"]["unique_id"] == work["unique_id"]:
+                            break
 		else:
 		    # find the next idle mover
 		    if work["fc"].has_key("external_label"):
