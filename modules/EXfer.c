@@ -11,6 +11,7 @@
 #include <sys/sem.h>		/* semxxx */
 #include <sys/msg.h>		/* msg{snd,rcv} */
 #include <Python.h>		/* all the Py.... stuff */
+#include <assert.h>             /* assert */
 #if 1
 # include <ftt.h>		/* ftt_read/write */
 #else
@@ -115,7 +116,7 @@ EXto_HSM(  PyObject	*self
 	char		*dat_buf;
 	int		dat_buf_byts;
 	/**/		/**/
-	int		inc_size;
+	int		inc_size=512;   /* default for now -- override below */
 	int		shmid, semid, msgqid;
 	int		sts;
 	char		*shmaddr;
@@ -125,7 +126,7 @@ EXto_HSM(  PyObject	*self
 	struct s_msg	msgbuf_s;	/* for reader and writer */
 	int		ahead_idx = 0;
 	int		writing_flg=1;
-#       define RD_AHEAD	50
+	int             rd_ahead=50;    /* arbitrary default */
 
 
     /*  Parse the arguments */
@@ -179,8 +180,10 @@ EXto_HSM(  PyObject	*self
     /* create private (to be inherited by child) shm seg */
     /* there does not seem to be a 4M size limitation */
     /* try 10x buffering */
-    shmid = shmget( IPC_PRIVATE, inc_size*RD_AHEAD, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
-    printf( "EXfer shmid = %d\n", shmid );
+    assert( inc_size < 0x400000 );
+    rd_ahead = 0x400000 / inc_size;
+    shmid = shmget( IPC_PRIVATE, inc_size*rd_ahead, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
+    printf( "EXfer to_HSM shmid=%d (size=inc*%d=%d bytes)\n", shmid, rd_ahead, inc_size*rd_ahead );
     shmaddr = shmat( shmid, 0, 0 );	/* no addr hint, no flags */
     printf( "EXfer shmaddr=%p\n", shmaddr );
     if (shmaddr == (char *)-1)
@@ -190,7 +193,7 @@ EXto_HSM(  PyObject	*self
     msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
     msgbuf_s.mtype = WrtSiz;
     msgctl( msgqid, IPC_STAT, &msgctl_s );
-    msgctl_s.msg_qbytes = (RD_AHEAD+1) * sizeof(msgbuf_s.data);
+    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.data);
     msgctl( msgqid, IPC_SET, &msgctl_s );
 
     /* create 1 semaphore for writer-to-allow-read   */
@@ -201,7 +204,7 @@ EXto_HSM(  PyObject	*self
 
     /* init wr2rd */
     idx = sops_wr_wr2rd.sem_op;		/* save */
-    sops_wr_wr2rd.sem_op  = RD_AHEAD;
+    sops_wr_wr2rd.sem_op  = rd_ahead;
     semop( semid, &sops_wr_wr2rd, 1 );
     sops_wr_wr2rd.sem_op  = idx;	/* restore to saved */
 
@@ -272,7 +275,7 @@ EXto_HSM(  PyObject	*self
 		}
 	    }    
 
-	    if (++ahead_idx == RD_AHEAD) ahead_idx = 0;
+	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    shm_byts = dat_byts = 0;	/* the same from now on */
 	    crc_p = shmaddr + (inc_size*ahead_idx);
 	}
@@ -302,7 +305,7 @@ EXto_HSM(  PyObject	*self
 	    *filesize_p += msgbuf_s.data;
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
-	    if (++ahead_idx == RD_AHEAD) ahead_idx = 0;
+	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    break;
 	case SanCrc:
 	    san_crc = msgbuf_s.data;
@@ -368,7 +371,7 @@ EXusrTo_(  PyObject	*self
 	struct s_msg	msgbuf_s;	/* for reader and writer */
 	int		ahead_idx = 0;
 	int		writing_flg=1;
-#       define RD_AHEAD	50
+	int             rd_ahead=50;    /* arbitrary default */
 
 
     printf( "EXfer.usrTo_ --- \n" );
@@ -391,8 +394,10 @@ EXusrTo_(  PyObject	*self
     /* create private (to be inherited by child) shm seg */
     /* there does not seem to be a 4M size limitation */
     /* try 10x buffering */
-    shmid = shmget( IPC_PRIVATE, inc_size*RD_AHEAD, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
-    printf( "EXfer shmid = %d\n", shmid );
+    assert( inc_size < 0x400000 );
+    rd_ahead = 0x400000 / inc_size;
+    shmid = shmget( IPC_PRIVATE, inc_size*rd_ahead, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
+    printf( "EXfer usrTo_ shmid=%d (size=inc*%d=%d bytes)\n",shmid,rd_ahead,inc_size*rd_ahead);
     shmaddr = shmat( shmid, 0, 0 );	/* no addr hint, no flags */
     printf( "EXfer shmaddr=%p\n", shmaddr );
     if (shmaddr == (char *)-1)
@@ -402,7 +407,7 @@ EXusrTo_(  PyObject	*self
     msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
     msgbuf_s.mtype = WrtSiz;
     msgctl( msgqid, IPC_STAT, &msgctl_s );
-    msgctl_s.msg_qbytes = (RD_AHEAD+1) * sizeof(msgbuf_s.data);
+    msgctl_s.msg_qbytes = (rd_ahead+1) * sizeof(msgbuf_s.data);
     msgctl( msgqid, IPC_SET, &msgctl_s );
 
     /* create 1 semaphore for writer-to-allow-read   */
@@ -413,7 +418,7 @@ EXusrTo_(  PyObject	*self
 
     /* init wr2rd */
     idx = sops_wr_wr2rd.sem_op;		/* save */
-    sops_wr_wr2rd.sem_op  = RD_AHEAD;
+    sops_wr_wr2rd.sem_op  = rd_ahead;
     semop( semid, &sops_wr_wr2rd, 1 );
     sops_wr_wr2rd.sem_op  = idx;	/* restore to saved */
 
@@ -462,7 +467,7 @@ EXusrTo_(  PyObject	*self
 		dat_crc = PyInt_AsLong( attrObj_p );
 	    }
 
-	    if (++ahead_idx == RD_AHEAD) ahead_idx = 0;
+	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    shm_byts = dat_byts = 0;	/* the same from now on */
 	    crc_p = shmaddr + (inc_size*ahead_idx);
 	}
@@ -492,7 +497,7 @@ EXusrTo_(  PyObject	*self
 	    *filesize_p += msgbuf_s.data;
 	    /*printf( "EXfer writer recvd %d bytes from reader\n", msgbuf_s.data );*/
 	    if (semop(semid,&sops_wr_wr2rd,1) == -1) perror( "semop - read" );
-	    if (++ahead_idx == RD_AHEAD) ahead_idx = 0;
+	    if (++ahead_idx == rd_ahead) ahead_idx = 0;
 	    break;
 	case SanCrc:
 	    san_crc = msgbuf_s.data;
