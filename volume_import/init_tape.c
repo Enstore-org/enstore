@@ -26,7 +26,7 @@ match_opt(char *optname, char *arg)
     char *cp;
 
     /* be friendly about _ vs - */
-    for (cp=arg; *cp; ++cp)
+    for (cp=arg; *cp && *cp!='='; ++cp)
 	if (*cp=='_')
 	    *cp = '-';
 
