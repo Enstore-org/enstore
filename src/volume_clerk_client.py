@@ -119,7 +119,7 @@ def sumup(a):
 def check_label(label):
     # cehck the length and suffix 'L1'
     if len(label) == 8:
-        if label[-2:] != 'L1':
+        if label[-2:] != 'L1' and label[-2:] != 'L2':
             return 1
     elif len(label) != 6:
             return 1
@@ -1323,7 +1323,7 @@ def do_work(intf):
     elif intf.add:
         if not intf.bypass_label_check:
             if check_label(intf.add):
-                print 'Error: "%s" is not a valid label of format "AAXX99{L1}" '%(intf.add)
+                print 'Error: "%s" is not a valid label of format "AAXX99{L1|L2}" '%(intf.add)
                 sys.exit(1)
 
         #print intf.add, repr(intf.args)
