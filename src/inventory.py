@@ -326,10 +326,7 @@ def print_volumes_defind_status(volume_list, output_file):
     
 def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quotas):
 
-    if quotas:
-        order = quotas.get('order', {})
-    else:
-        order = {}
+    order = quotas.get('order', {})
     vq_file = open(output_file, "w")
 
     vq_file.write("Date this listing was generated: %s\n" % \
@@ -744,6 +741,8 @@ def inventory(output_dir, cache_dir):
     # csc = configuration_client.ConfigurationClient()
     # quotas = csc.get('quotas',timeout=15,retry=3)
     quotas = eq.quota_enabled()
+    if quotas == None:
+        quotas = {}
 
     unchanged = []
 
