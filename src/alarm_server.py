@@ -7,7 +7,6 @@ import string
 # enstore imports
 import setpath
 import dispatching_worker
-import interface
 import enstore_files
 import generic_server
 import event_relay_client
@@ -261,12 +260,6 @@ class AlarmServerInterface(generic_server.GenericServerInterface):
     def valid_dictionaries(self):
         return (self.help_options,)
 
-"""
-    # define the command line options that are valid
-    def options(self):
-        return (self.config_options() + 
-                self.help_options() )
-"""
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))

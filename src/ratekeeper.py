@@ -12,7 +12,6 @@ import threading
 
 import dispatching_worker
 import generic_server
-import interface
 import configuration_client
 import timeofday
 import udp_client
@@ -212,13 +211,6 @@ class RatekeeperInterface(generic_server.GenericServerInterface):
 
     def valid_dictionaries(self):
         return (self.help_options,)
-
-"""
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+\
-               ["host="]
-"""
 
 
 if __name__ == "__main__":

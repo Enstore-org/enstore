@@ -12,13 +12,13 @@ import select
 
 # enstore imports
 import generic_client
-import interface  #Should be removed???
 import option
 import udp_client
 import Trace
 import callback
 import e_errors
 import hostaddr
+import option
 
 MY_NAME = "CONFIG_CLIENT"
 MY_SERVER = "configuration_server"
@@ -121,44 +121,6 @@ class ConfigurationClient(generic_client.GenericClient):
                    'keyValue': keyValue }
         return self.send(request, timeout, retry)
         
-#class ConfigurationClientInterface(generic_client.GenericClientInterface):
-#    def __init__(self, flag=1, opts=[]):
-#        # fill in the defaults for the possible options
-#        self.do_parse = flag
-#        self.restricted_opts = opts
-#        self.config_file = ""
-#        self.show = 0
-#        self.load = 0
-#        self.alive_rcv_timeout = 0
-#        self.alive_retries = 0
-#        self.summary = 0
-#        generic_client.GenericClientInterface.__init__(self)
-#
-#        # if we are using the default host and port, warn the user
-#        interface.check_for_config_defaults()
-#
-#    # define the command line options that are valid
-#    def options(self):
-#        if self.restricted_opts:
-#            return self.restricted_opts
-#        else:
-#            return self.client_options()+[
-#                "config-file=","summary","show","load"]
-#
-#    #  define our specific help
-#    def parameters(self):
-#        return "element"
-#
-#    # parse the options like normal but see if we have a server
-#    def parse_options(self):
-#        interface.Interface.parse_options(self)
-#        # see if we have an element 
-#        if self.show:
-#            if len(self.args) < 1 :
-#                # no parameter, show all
-#                self.element = ""
-#            else:
-#                self.element = self.args[0]
 
 class ConfigurationClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
@@ -174,7 +136,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         generic_client.GenericClientInterface.__init__(self)
 
         # if we are using the default host and port, warn the user
-        interface.check_for_config_defaults()
+        option.check_for_config_defaults()
 
     def valid_dictionaries(self):
         return (self.help_options, self.alive_options, self.trace_options,

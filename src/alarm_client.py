@@ -8,7 +8,6 @@ import errno
 # enstore imports
 import generic_client
 import udp_client
-#import interface
 import option
 import enstore_constants
 import Trace
@@ -92,35 +91,7 @@ class AlarmClient(generic_client.GenericClient):
     def get_patrol_file(self):
         ticket = {'work' : 'get_patrol_filename'}
         return self.send(ticket, self.rcv_timeout, self.rcv_tries)
-"""
-class AlarmClientInterface(generic_client.GenericClientInterface,\
-                           interface.Interface):
 
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        # fill in the defaults for the possible options
-        # we always want a default timeout and retries so that the alarm
-        # client/server communications does not become a weak link
-        self.alive_rcv_timeout = RCV_TIMEOUT
-        self.alive_retries = RCV_TRIES
-        self.alarm = 0
-        self.resolve = 0
-        self.dump = 0
-        self.severity = e_errors.DEFAULT_SEVERITY
-        self.root_error = e_errors.DEFAULT_ROOT_ERROR
-        generic_client.GenericClientInterface.__init__(self)
-        interface.Interface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options() + [
-                "raise", "severity=", "root-error=",
-                "resolve=", "dump"]
-"""
 class AlarmClientInterface(generic_client.GenericClientInterface):
 
 

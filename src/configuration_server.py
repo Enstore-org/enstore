@@ -19,7 +19,6 @@ import generic_server
 import event_relay_client
 import event_relay_messages
 import enstore_constants
-import interface
 import option
 import Trace
 import e_errors
@@ -255,7 +254,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
-    def __init__(self, csc, configfile=interface.default_file()):
+    def __init__(self, csc, configfile=enstore_constants.DEFAULT_CONF_FILE):
 	self.running = 0
 	self.print_id = MY_NAME
         print csc
@@ -299,11 +298,6 @@ class ConfigurationServerInterface(generic_server.GenericServerInterface):
                             }
         }
 
-"""
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+["config-file="]
-"""
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
