@@ -3159,13 +3159,24 @@ def submit_one_request(ticket):
     if resubmits:
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(resubmits))
 
-    #Put in the log file a message connecting filenames to unique_ids.
-    msg = "Sending request to LM: uninque_id: %s inputfile: %s outputfile: %s"\
-          % (ticket['unique_id'], ticket['infile'], ticket['outfile'])
-    Trace.log(e_errors.INFO, msg)
+    #Determine the type of transfer.
+    if is_write(ticket):
+        transfer_type = "write"
+        filename = ticket['outfile']
+    else:
+        transfer_type = "read"
+        filename = ticket['infile']
 
+    #Put in the log file a message connecting filenames to unique_ids.
+    msg = "Sending %s %s request to LM: uninque_id: %s inputfile: %s " \
+          "outputfile: %s" \
+          % (filename, transfer_type, ticket['unique_id'],
+             ticket['infile'], ticket['outfile'])
+    Trace.log(e_errors.INFO, msg)
+    #Tell the user what the current state of the transfer is.
     Trace.message(TRANSFER_LEVEL,
-                  "Submitting request to LM." + elapsed_string())
+                  "Submitting %s %s request to LM.%s" % \
+                  (filename, transfer_type, elapsed_string()))
     Trace.message(TICKET_LEVEL, "SUBMITTING TICKET: ")
     Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
@@ -5048,12 +5059,12 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
 ############################################################################
 
-def submit_write_request(work_ticket, tinfo, encp_intf):
+def submit_write_request(work_ticket, encp_intf):
 
-    Trace.message(TRANSFER_LEVEL, 
-                  "Submitting %s write request.  elapsed=%s" % \
-                  (work_ticket['outfile'],
-                   time.time() - tinfo['encp_start_time']))
+    #Trace.message(TRANSFER_LEVEL, 
+    #              "Submitting %s write request.  elapsed=%s" % \
+    #              (work_ticket['outfile'],
+    #               time.time() - tinfo['encp_start_time']))
 
     # send the work ticket to the library manager
     while encp_intf.max_retry == None or \
@@ -5148,42 +5159,36 @@ def stall_write_transfer(data_path_socket, e):
 
 def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
+    Trace.message(TICKET_LEVEL, "WORK_TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
+
+    #Trace.message(TRANSFER_LEVEL,
+    #              "Sending ticket to library manager,  elapsed=%s" %
+    #              (time.time() - tinfo['encp_start_time'],))
+        
+    #Send the request to write the file to the library manager.
+    done_ticket = submit_write_request(work_ticket, e)
+
+    Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+    
+    work_ticket = combine_dict(done_ticket, work_ticket)
+
+    #handle_retries() is not required here since submit_write_request()
+    # handles its own retrying when an error occurs.
+    if not e_errors.is_ok(work_ticket):
+        return work_ticket
+
+    Trace.message(TRANSFER_LEVEL,
+               "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
+                  (work_ticket['infile'], work_ticket['vc']['library'],
+                   work_ticket['vc']['file_family'],
+                   long(work_ticket['file_size']),
+                   time.time() - tinfo['encp_start_time']))
+    
     #Loop around in case the file transfer needs to be retried.
     while e.max_retry == None or \
               work_ticket['resend'].get('retry', 0) <= e.max_retry:
-
-        Trace.message(TICKET_LEVEL, "WORK_TICKET")
-        Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
-
-        Trace.message(TRANSFER_LEVEL,
-                      "Sending ticket to library manager,  elapsed=%s" %
-                      (time.time() - tinfo['encp_start_time'],))
-        
-        #Send the request to write the file to the library manager.
-        done_ticket = submit_write_request(work_ticket, tinfo, e)
-
-        Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
-        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-
-        work_ticket = combine_dict(done_ticket, work_ticket)
-
-        #handle_retries() is not required here since submit_write_request()
-        # handles its own retrying when an error occurs.
-        if not e_errors.is_ok(work_ticket):
-            #exit_status = 1
-            #continue
-            return work_ticket
-
-        Trace.message(TRANSFER_LEVEL,
-              "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
-                      (work_ticket['infile'], work_ticket['vc']['library'],
-                       work_ticket['vc']['file_family'],
-                       long(work_ticket['file_size']),
-                       time.time() - tinfo['encp_start_time']))
-        
-        #Trace.message(TRANSFER_LEVEL,
-        #              "Waiting for mover to call back.   elapsed=%s" % \
-        #              (time.time() - tinfo['encp_start_time'],))
 
         #Wait for the mover to establish the control socket.  See if the
         # id matches one the the tickets we submitted.  Establish data socket
@@ -6549,7 +6554,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 #######################################################################
 
 # submit read_from_hsm requests
-def submit_read_requests(requests, tinfo, encp_intf):
+def submit_read_requests(requests, encp_intf):
     submitted = 0
 
     #Sort the requests by location cookie.
@@ -6560,9 +6565,9 @@ def submit_read_requests(requests, tinfo, encp_intf):
         # the transfer.
         
         while req.get('completion_status', None) == None:
-            Trace.message(TRANSFER_LEVEL, 
-                     "Submitting %s read request.  elapsed=%s" % \
-                     (req['outfile'], time.time() - tinfo['encp_start_time']))
+            #Trace.message(TRANSFER_LEVEL, 
+            #         "Submitting %s read request.  elapsed=%s" % \
+            #         (req['outfile'], time.time() - tinfo['encp_start_time']))
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
             
@@ -6585,8 +6590,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
     Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
     Trace.message(TICKET_LEVEL, pprint.pformat(requests))
 
-    Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
-                  (time.time() - tinfo['encp_start_time']))
+    Trace.message(TRANSFER_LEVEL, "Files queued." + elapsed_string())
 
     return submitted, ticket
 
@@ -7095,8 +7099,7 @@ def read_from_hsm(e, tinfo):
         #The return value is the number of files successfully submitted.
         # This value may be different from len(request_list).  The value
         # of request_list is not changed by this function.
-        submitted, reply_ticket = submit_read_requests(request_list,
-                                                       tinfo, e)
+        submitted, reply_ticket = submit_read_requests(request_list, e)
 
         #If at least one submission succeeded, follow through with it.
         if submitted > 0:
