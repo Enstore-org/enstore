@@ -58,7 +58,7 @@ def Select (R, W, X, timeout) :
 			    if obj.scrub() :
 				cleaned_r.append(obj)		
 			except: 
-			    Trace.trace( 6, "non clean UDP object" )
+			    #Trace.trace( 6, "non clean UDP object" )
 			    cleaned_r.append(obj)
 
 
