@@ -22,15 +22,15 @@ import enstore_functions
 MY_NAME = ".LM"
 
 class LibraryManagerClient(generic_client.GenericClient) :
-    def __init__(self, csc, name=""):
+    def __init__(self, csc, name="", rcv_timeout = 20, rcv_tries = 3):
         self.name=name
         self.log_name = "C_"+string.upper(string.replace(name,
                                                          ".library_manager",
                                                          MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
-        self.send_to = 20
-        self.send_tries = 2
-        self.server_address = self.get_server_address(self.name)
+        self.send_to = rcv_timeout
+        self.send_tries = rcv_tries
+        self.server_address = self.get_server_address(self.name, self.send_to, self.send_tries)
         if not self.server_address:
             print "%s does not exist"%(self.name)
             sys.exit(-1)

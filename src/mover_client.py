@@ -18,30 +18,31 @@ import udp_client
 import option
 import generic_client
 import Trace
-
+R_TO = 30
+R_T = 3
 class MoverClient(generic_client.GenericClient):
-    def __init__(self, csc, name=""):
+    def __init__(self, csc, name="", rcv_timeout = R_TO, rcv_tries = R_T):
         self.mover=name
         self.log_name = "C_"+string.upper(name)
         generic_client.GenericClient.__init__(self, csc, self.log_name)
-        self.server_address = self.get_server_address(self.mover)
+        self.server_address = self.get_server_address(self.mover, rcv_timeout, rcv_tries)
 
-    def status(self, rcv_timeout=0, tries=0):
+    def status(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "status"}, rcv_timeout, tries)
 
-    def clean_drive(self, rcv_timeout=0, tries=0):
+    def clean_drive(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work":"clean_drive"}, rcv_timeout, tries)
 
-    def start_draining(self, rcv_timeout=0, tries=0):
+    def start_draining(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "start_draining"}, rcv_timeout, tries)
 
-    def stop_draining(self, rcv_timeout=0, tries=0):
+    def stop_draining(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "stop_draining"}, rcv_timeout, tries)
 
-    def warm_restart(self, rcv_timeout=0, tries=0):
+    def warm_restart(self, rcv_timeout=R_TO, tries=R_T):
         return self.send({"work" : "warm_restart"}, rcv_timeout, tries)
 
-    def device_dump(self, sendto=[], notify=[], rcv_timeout=0, tries=0):
+    def device_dump(self, sendto=[], notify=[], rcv_timeout=R_TO, tries=R_T):
         # print "device_dump(self, sendto="+`sendto`+', notify='+`notify`+', rcv_timeout='+`rcv_timeout`+', tries='+`tries`+')'
         return self.send({"work" : "device_dump_S",
                           "sendto" : sendto,
