@@ -1,42 +1,123 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import sys
-import time
+#import time
 import errno
 import pprint
 import os
 import socket
 import select
+import types
 
 # enstore imports
 import generic_client
 import enstore_constants
 import option
-import udp_client
+#import udp_client
 import Trace
 import callback
 import e_errors
 import hostaddr
-import option
+import enstore_erc_functions
+import event_relay_client
+import event_relay_messages
 
-MY_NAME = "CONFIG_CLIENT"
+MY_NAME = enstore_constants.CONFIGURATION_CLIENT         #"CONFIG_CLIENT"
 MY_SERVER = enstore_constants.CONFIGURATION_SERVER
 
+class ConfigFlag:
+
+    MSG_YES = 1
+    MSG_NO = 0
+    DISABLE = 1
+    ENABLE = 0
+
+    def __init__(self):
+	self.new_config_file = self.MSG_NO
+        self.do_caching = self.DISABLE
+        self.erc = None
+
+    def is_caching_enabled(self):
+        return not self.do_caching
+
+    def new_config_msg(self):
+        #if self.do_caching == self.ENABLE:
+        self.new_config_file = self.MSG_YES
+
+    def reset_new_config(self):
+        #if self.do_caching == self.ENABLE:
+        self.new_config_file = self.MSG_NO
+
+        self.__recv_new_config_message()  #Must keep stale messages out.
+
+    def __recv_new_config_message(self):
+        return_status = 0
+        r = 1 #python true
+
+        if not self.erc:
+            return return_status    
+        
+        while r:
+            r, w, x = select.select([self.erc.sock], [], [], 0)
+
+            if r:
+                return_status = 1
+
+                enstore_erc_functions.read_erc(self.erc)
+
+        return return_status
+
+    def have_new_config(self):
+        #This must go first.  Must keep stale messages out.
+        if self.__recv_new_config_message():
+            self.new_config_file = self.MSG_YES #Set this.
+            return 1
+        elif self.do_caching == self.DISABLE:
+            return 1
+	elif self.new_config_file == self.MSG_YES:
+	    return 1
+	else:
+	    return 0
+
+    def disable_caching(self):
+        self.do_caching = self.DISABLE
+
+        self.erc = None
+
+    def enable_caching(self, er_addr):
+        #We only want 2-tuple address/port pairs.
+        if type(er_addr) != types.TupleType or len(er_addr) != 2:
+            return
+        
+        self.do_caching = self.ENABLE
+
+        self.erc = event_relay_client.EventRelayClient(
+            event_relay_host = er_addr[0], event_relay_port = er_addr[1])
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
+        
 class ConfigurationClient(generic_client.GenericClient):
 
     def __init__(self, address=None):
-        self.is_config = 1 #needed by generic client to handle csc
+        #self.is_config = 1 #needed by generic client to handle csc
         if address is None:
             address = (os.environ.get("ENSTORE_CONFIG_HOST", 'localhost'),
                        int(os.environ.get("ENSTORE_CONFIG_PORT", 7500)))
-        self.print_id = MY_NAME
+        #self.print_id = MY_NAME
 	flags = enstore_constants.NO_CSC | enstore_constants.NO_ALARM | \
 		enstore_constants.NO_LOG
-	generic_client.GenericClient.__init__(self, (), MY_NAME, address, flags=flags)
-	self.new_config_obj = None
+	generic_client.GenericClient.__init__(self, (), MY_NAME,
+                                              address, flags=flags,
+                                              server_name = MY_SERVER)
+        self.new_config_obj = ConfigFlag()
 	self.saved_dict = {}
+        self.have_complete_config = 0
 
     #Retrun these values when requested.
     def get_address(self):
@@ -74,12 +155,12 @@ class ConfigurationClient(generic_client.GenericClient):
 
     def do_lookup(self, key, timeout, retry):
 	request = {'work' : 'lookup', 'lookup' : key }
-	while 1:
-	    try:
-		ret = self.send(request, timeout, retry)
-		break
-	    except socket.error:
-		self.output_socket_error("get")
+	#while 1:
+	#    try:
+        ret = self.send(request, timeout, retry)
+	#	break
+	#    except socket.error:
+	#	self.output_socket_error("get")
 	self.saved_dict[key] = ret
 	Trace.trace(13, "Get %s config info from server"%(key,))
 	return ret
@@ -98,12 +179,14 @@ class ConfigurationClient(generic_client.GenericClient):
 	    if not self.new_config_obj or self.new_config_obj.have_new_config():
 		# clear out the cached copies
 		self.saved_dict = {}
+                #The config cache was just clobbered.
+                self.have_complete_config = 0
 		ret = self.do_lookup(key, timeout, retry)
 		if self.new_config_obj:
 		    self.new_config_obj.reset_new_config()
 	    else:
-		# there was no new config loaded, just return what we have.  if we
-		# do not have a stashed copy, go get it.
+                # there was no new config loaded, just return what we have.
+                # if we do not have a stashed copy, go get it.
 		if self.saved_dict.has_key(key):
 		    Trace.trace(13, "Returning %s config info from saved_dict"%(key,))
 		    Trace.trace(13, "saved_dict - %s"%(self.saved_dict,))
@@ -131,6 +214,8 @@ class ConfigurationClient(generic_client.GenericClient):
                    'callback_addr'  : (host,port)
                    }
         reply = self.send(request, timeout, retry)
+        if not e_errors.is_ok(reply):
+            return reply
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
             raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
@@ -145,6 +230,25 @@ class ConfigurationClient(generic_client.GenericClient):
             d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
         listen_socket.close()
         return d
+
+    # dump the configuration dictionary and save it too
+    def dump_and_save(self, timeout=0, retry=0):
+        if not self.new_config_obj or self.new_config_obj.have_new_config() \
+               or self.have_complete_config == 0:
+            config_ticket = self.dump(timeout = timeout, retry = retry)
+
+            if e_errors.is_ok(config_ticket):
+                self.saved_dict = config_ticket['dump'].copy()
+                self.saved_dict['status'] = (e_errors.OK, None)
+                self.have_complete_config = 1
+                if self.new_config_obj:
+                    self.new_config_obj.reset_new_config()
+
+                return self.saved_dict  #Success.
+            
+            return config_ticket  #An error occured.
+
+        return self.saved_dict #Used cached dictionary.
         
     # get all keys in the configuration dictionary
     def get_keys(self, timeout=0, retry=0):

@@ -1,6 +1,11 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 #system imports
 import sys
 import errno
@@ -62,10 +67,14 @@ class GenericClient:
     def __init__(self, csc, name, server_address=None, flags=0, logc=None,
                  alarmc=None, rcv_timeout=0, rcv_tries=0, server_name=None):
 
+        self.name = name    # Abbreviated client instance name
+                            # try to make it capital letters
+                            # not more than 8 characters long.
+        
 	if not flags & enstore_constants.NO_UDP and not self.__dict__.get('u', 0):
 	    self.u = udp_client.UDPClient()
 
-        if self.__dict__.get('is_config', 0):
+        if name == enstore_constants.CONFIGURATION_CLIENT:  #self.__dict__.get('is_config', 0):
             # this is the configuration client, we don't need this other stuff
             #self.csc = self
             csc = self
@@ -88,17 +97,22 @@ class GenericClient:
 			    int(os.environ['ENSTORE_CONFIG_PORT']))
 		self.csc = configuration_client.ConfigurationClient( def_addr )
 
-        if server_address:    
-            self.server_address = server_address
-        else:
-            self.server_address = self.get_server_address(
-                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
-                
-        # try to find the logname for this object in the config dict.  use
+        #Try to find the logname for this object in the config dict.  use
         # the lowercase version of the name as the server key.  if this
         # object is not defined in the config dict, then just use the
         # passed in name.
+        #This must be done after the self.csc is set.  Client's don't care,
+        # but this prevents servers from crashing.
         self.log_name = self.get_name(name)
+
+        if server_address:
+            self.server_address = server_address
+        elif server_name:
+            self.server_address = self.get_server_address(
+                server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+        else:
+            self.server_address = None
+
 	# get the log client
 	if logc:
 	    # we were given one, use it
@@ -108,11 +122,9 @@ class GenericClient:
 		import log_client
 		self.logc = log_client.LoggerClient(self._get_csc(),
                                                     self.log_name,
-                                                    #'log_server', 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
-
         
 	# get the alarm client
 	if alarmc:
@@ -130,7 +142,7 @@ class GenericClient:
     def _is_csc(self):
         #If the server requested is the configuration server,
         # do something different.
-        if self.__dict__.get('is_config', 0):
+        if self.name == enstore_constants.CONFIGURATION_CLIENT:  #self.__dict__.get('is_config', 0):
             return 1
         else:
             return 0
@@ -143,9 +155,9 @@ class GenericClient:
         else:
             return self.csc
 
-    def get_server_address(self, my_server,  rcv_timeout=0, tries=0):
-        #If the server address requested is the configuration server,
-        # do something different.
+    def get_server_configuration(self, my_server, rcv_timeout=0, tries=0):
+        #If the server config ticket requested is the configuration server
+        # or the monitor server, do something different.
         if my_server == enstore_constants.CONFIGURATION_SERVER or \
            self._is_csc():
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
@@ -163,10 +175,16 @@ class GenericClient:
         else:
             ticket = self.csc.get(my_server, rcv_timeout, tries)
 
-        #Check for errors.
-        if ticket['status'][0] != e_errors.OK:
+        return ticket
+
+    def get_server_address(self, my_server, rcv_timeout=0, tries=0):
+        if my_server == None:
+            #If the server name is invalid, don't bother continuing.
             return None
         
+        ticket = self.get_server_configuration(my_server,
+                                               rcv_timeout, tries)
+
         try:
             server_address = (ticket['hostip'], ticket['port'])
         except KeyError, detail:
@@ -183,7 +201,7 @@ class GenericClient:
         except:
             exc, msg = sys.exc_info()[:2]
             if exc == errno.errorcode[errno.ETIMEDOUT]:
-                x = {'status' : (e_errors.TIMEDOUT, msg)}
+                x = {'status' : (e_errors.TIMEDOUT, str(msg))}
             else:
                 x = {'status' : (str(exc), str(msg))}
         return x

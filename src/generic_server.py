@@ -1,7 +1,12 @@
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
+#
+# $Id$
 #
 # Generic server class for enstore
+#
+###############################################################################
 
 #system imports
 import sys
@@ -37,47 +42,43 @@ class GenericServerInterface(option.Interface):
         return (self.help_options, self.trace_options)
 
 
-class ErFlag:
-
-    MSG_YES = 1
-    MSG_NO = 0
-
-    def __init__(self):
-	self.new_config_file = self.MSG_NO
-
-    def new_config_msg(self):
-	self.new_config_file = self.MSG_YES
-
-    def reset_new_config(self):
-	self.new_config_file = self.MSG_NO
-
-    def have_new_config(self):
-	if self.new_config_file == self.MSG_NO:
-	    return 0
-	else:
-	    return 1
-
-
 class GenericServer(generic_client.GenericClient):
 
     def handle_er_msg(self, fd):
 	msg = enstore_erc_functions.read_erc(self.erc, fd)
 	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
-	    self.er_flag.new_config_msg()
+	    #self.er_flag.new_config_msg()
+            self.csc.new_config_obj.new_config_msg()
 	return msg
 
-    def __init__(self, csc, name, function=None, flags=0, logc=None, alarmc=None):
+    def __init__(self, csc, name, function=None, flags=0,
+                 logc=None, alarmc=None):
         # make pychecker happy
         self.socket = None
+
         # do this in order to centralize getting a log, alarm and configuration
         # client. and to record the fact that we only want to do it once.
         generic_client.GenericClient.__init__(self, csc, name, 
-					      flags=enstore_constants.NO_UDP | flags,
+				       flags=enstore_constants.NO_UDP | flags,
 					      logc=logc, alarmc=alarmc)
-	self.er_flag = ErFlag()
-	self.csc.new_config_obj = self.er_flag
+        
+        #Servers need to communicate with the event relay.  Instantiate the
+        # event relay client class to facilitate that communication.
 	self.erc = event_relay_client.EventRelayClient(self, function)
 
+        #We want the servers to cache the config file contents, because
+        # they can wait for the NEWCONFIGFILE message from the event relay.
+	#self.er_flag = generic_client.ErFlag()
+	#self.csc.new_config_obj = self.er_flag
+        try:
+            self.csc.new_config_obj.enable_caching(self.erc.event_relay_addr)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()
+        except:
+            pass
+
+
+    __pychecker__ = "no-override"
     def handle_generic_commands(self, intf):
         if intf.do_print:
             Trace.do_print(intf.do_print)
