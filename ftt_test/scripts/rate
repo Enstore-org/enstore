@@ -72,7 +72,8 @@ do
    etime=`echo $etime | cut -d':' -f2-`
 done
 let sec=sec+etime
-let rate=nblocks*blocksize/1024/sec
+let rate=blocksize/sec
+let rate=rate*nblocks/sec
 
 echo "$nblocks blocks with a blocksize of $blocksize bytes were transferred in $sec seconds"
 echo "for a rate of $rate kbytes/sec"
