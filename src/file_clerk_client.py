@@ -80,11 +80,9 @@ class FileClient(generic_client.GenericClient,
         
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['file_clerk_callback_addr'])
-        
-        data_path_socket = callback.file_server_callback_socket(ticket)
+
         ticket= callback.read_tcp_obj(data_path_socket)
 
-        
         bfids=''
         while 1:
             msg=callback.read_tcp_raw(data_path_socket)
