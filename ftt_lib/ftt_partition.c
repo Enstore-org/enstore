@@ -428,7 +428,7 @@ ftt_set_mount_partition(ftt_descriptor d, int partno) {
 
 
 int
-ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table pb) {
+ftt_format_ait(ftt_descriptor d, int on, ftt_partbuf pb) {
 
    int   res;
    int   i;

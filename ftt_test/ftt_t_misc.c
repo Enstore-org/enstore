@@ -228,7 +228,7 @@ static int 	onflag;			/* flag... */
 ftt_t_argt	argt[] = {
  	{"-on",	        FTT_T_ARGV_INT,		NULL,		&onflag},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
-extern ftt_partbuf *parttab;
+extern ftt_partbuf parttab;
 
 /* parse command line
    ------------------ */
