@@ -23,13 +23,13 @@ class Queue:
    # A call back for sort, highest priority should be first.
    def compare_priority(self,t1,t2):
       if t1["encp"]["curpri"] > t2["encp"]["curpri"]:
-         return -1
-      if t1["encp"]["curpri"] < t2["encp"]["curpri"]:
          return 1
+      if t1["encp"]["curpri"] < t2["encp"]["curpri"]:
+         return -1
       # if priority is equal, then time in rules
       if t1["times"]["t0"] > t2["times"]["t0"]:
-         return -1
-      return 1
+         return 1
+      return -1
    
    # Add work to the end of the set of jobs
    def insert_job(self,ticket):
