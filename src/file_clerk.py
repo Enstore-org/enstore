@@ -1239,7 +1239,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if bfid[0] in string.letters:
             brand = bfid[:4]
             sequence = long(bfid[4:]+'L')
-            while self.dict.has_key(self.brand+str(sequence))
+            while self.dict.has_key(self.brand+str(sequence)):
                 sequence = sequence + 1
             bfid = self.brand+str(sequence)
 
