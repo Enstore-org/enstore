@@ -3,7 +3,7 @@ spawn telnet adic2
 expect login:
 send enstore\r
 expect password:
-send "Adic 1stk\r"
+send "PUT PASSWORD HERE\r"
 expect \[<adic2>-C:\\\]
 send "cd das\r"
 expect \[<adic2>-C:\\das\]
