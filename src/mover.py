@@ -39,7 +39,7 @@ import hostaddr
 def print_args(*args):
     print args
 
-verbose=1
+verbose=0
     
 ##Trace.trace = print_args
 
@@ -504,28 +504,25 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_work_ticket = ticket
 
         
-        if not self.setup_transfer(ticket):
+        if not self.setup_transfer(ticket, mode=WRITE):
             return #XXX
 
 
         self.add_select_fd(self.net_driver, READ, self.read_client)
         self.state = ACTIVE        
-        self.mode = WRITE
         
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm( self, ticket ):
         if verbose: print "READ FROM HSM"
         self.current_work_ticket = ticket
         
-        if not self.setup_transfer(ticket):
+        if not self.setup_transfer(ticket, mode=READ):
             return #XXX
 
         self.add_select_fd( self.tape_driver, READ, self.read_tape)
         self.state = ACTIVE
-        self.mode = READ
 
-
-    def setup_transfer(self, ticket):
+    def setup_transfer(self, ticket, mode):
         if verbose: print "SETUP TRANSFER"
         if self.state not in (IDLE, HAVE_BOUND):
             if verbose: print "Not idle"
@@ -614,6 +611,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.client_filename = ticket['wrapper'].get('fullname','?')
         self.pnfs_filename = ticket['wrapper'].get('pnfsFilename', '?')
 
+        self.mode = mode
+        
         if self.mode == READ:
             self.files = (self.pnfs_filename, self.client_filename)
         elif self.mode == WRITE:
@@ -1047,7 +1046,7 @@ if __name__ == '__main__':
         try:
             mover.serve_forever()
         except:
-            raise #REMOVE
+            ### raise #REMOVE
             try:
                 exc, msg, tb = sys.exc_info()
                 print exc, msg, "restarting"
