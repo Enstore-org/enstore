@@ -178,7 +178,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                         bytes_sent = bytes_sent + data_sock.send(sendstr,
                                                          socket.MSG_DONTWAIT)
                     except socket.error, detail:
-                        reply['status'] = (CLIENT_CLOSED_CONECTION, detail[1])
+                        reply['status'] = (CLIENT_CLOSED_CONNECTION, detail[1])
                         self.reply_to_caller(reply)
                         data_sock.close()
                         print "Timing out after send."
