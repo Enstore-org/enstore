@@ -575,10 +575,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         callback.write_tcp_obj(self.data_socket,ticket)
 
         bfids = self.get_all_bfids(external_label)
-        for bfid in bfids:
-            callback.write_tcp_raw(self.data_socket, bfid+'\n')
-        # finishing up
-        callback.write_tcp_raw(self.data_socket, "")
+        callback.write_tcp_obj_new(self.data_socket, bfids)
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
@@ -604,6 +601,79 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return bfids
 
     def tape_list(self,ticket):
+        try:
+            external_label = ticket["external_label"]
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            ####XXX client hangs waiting for TCP reply
+            return
+
+        # fork as it may take quite a while to get the list
+        # if self.fork() != 0:
+        #    return
+
+        # get a user callback
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket,ticket)
+
+        # if index is available, use index, otherwise use bfid_db to be
+        # backward compatible
+
+        vol = {}
+        if self.dict.inx.has_key('external_label'):  # use index
+            # now get a cursor so we can loop on the database quickly:
+            c = self.dict.inx['external_label'].cursor()
+            key, pkey = c.set(external_label)
+            while key:
+                value = self.dict[pkey]
+                if value.has_key('deleted'):
+                    if value['deleted']=="yes":
+                        deleted = "deleted"
+                    else:
+                        deleted = " active"
+                else:
+                    deleted = "unknown"
+                if not value.has_key('pnfs_name0'):
+                    value['pnfs_name0'] = "unknown"
+                vol[pkey] = value
+                key,pkey = c.nextDup()
+            c.close()
+        else:  # use bfid_db
+            try:
+                bfid_list = self.bfid_db.get_all_bfids(external_label)
+            except:
+                msg = "File Clerk: no entry for volume %s" % external_label
+                ticket["status"] = (e_errors.KEYERROR, msg)
+                Trace.log(e_errors.ERROR, msg)
+                bfid_list = []
+            for bfid in bfid_list:
+                value = self.dict[bfid]
+                if value.has_key('deleted'):
+                    if value['deleted']=="yes":
+                        deleted = "deleted"
+                    else:
+                        deleted = " active"
+                else:
+                    deleted = "unknown"
+                if not value.has_key('pnfs_name0'):
+                     value['pnfs_name0'] = "unknown"
+                vol[bfid] = value
+
+        # finishing up
+
+        callback.write_tcp_obj_new(self.data_socket, vol)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close()
+        return
+
+    def tape_list_saved(self,ticket):
         try:
             external_label = ticket["external_label"]
             ticket["status"] = (e_errors.OK, None)
@@ -709,6 +779,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # if index is available, use index, otherwise use bfid_db to be
         # backward compatible
 
+        alist = []
         if self.dict.inx.has_key('external_label'):  # use index
             # now get a cursor so we can loop on the database quickly:
             c = self.dict.inx['external_label'].cursor()
@@ -717,7 +788,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 value = self.dict[pkey]
                 if not value.has_key('deleted') or value['deleted'] != "yes":
                     if value.has_key('pnfs_name0'):
-                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
+                        alist.append(value['pnfs_name0'])
                 key,pkey = c.nextDup()
             c.close()
         else:  # use bfid_db
@@ -732,11 +803,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 value = self.dict[bfid]
                 if not value.has_key('deleted') or value['deleted'] != "yes":
                     if value.has_key('pnfs_name0'):
-                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
+                        alist.append(value['pnfs_name0'])
 
         # finishing up
 
-        callback.write_tcp_raw(self.data_socket, "")
+        callback.write_tcp_obj_new(self.data_socket, alist)
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
