@@ -506,6 +506,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # from our internal dictionary and the output html file.
                 if not server.name == enstore_constants.CONFIG_SERVER:
                     self.stop_monitoring(server, skey)
+                    ##del self.server_d[skey]
+                    ##self.serverfile.remove_server(server.name)
         # check the new config for any new servers we need to add. only handle movers,
         # library managers and media changers for now.
         for skey in config.keys():
@@ -568,7 +570,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_suspect_vols(state, lib_man.name)
         if enstore_functions.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name,
+					     enstore_constants.NO_SUSPECT_VOLS,
+                                             time, lib_man.name,
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "suspect_vols - ERROR, timed out")
@@ -717,7 +720,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name,
+					     enstore_constants.NO_WORK_QUEUE,
+                                             time, lib_man.name,
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
@@ -760,7 +764,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmactive_volumes(lib_man.active_volumes, lib_man.name)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name,
+					     enstore_constants.NO_ACTIVE_VOLS,
+                                             time, lib_man.name,
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "active volumes - ERROR, timed out")
@@ -796,7 +801,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmstate(state, lib_man.name)
         if enstore_functions.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name,
+					     enstore_constants.NO_STATE,
+                                             time, lib_man.name,
 					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "lm_state - ERROR, timed out")
@@ -835,7 +841,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.default_active_volumes(lib_man)
         else:
             # there was an error, we do not have the lm_state information
-            self.serverfile.text[lib_man.name][enstore_constants.LMSTATE] = "TIMED OUT"
+            self.serverfile.text[lib_man.name][enstore_constants.LMSTATE] = enstore_constants.NO_STATE
             # also the suspect vols, work_queue and active_vols
             self.default_suspect_vols(lib_man)
             self.default_work_queue(lib_man)
@@ -852,7 +858,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
         if enstore_functions.is_timedout(self.mover_state[mover.name]):
-            self.serverfile.output_etimedout(mover.host, TIMED_OUT_SP,
+            self.serverfile.output_etimedout(mover.host, enstore_constants.NO_STATE,
 					     time.time(), mover.name,
 					     mover.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
@@ -1374,10 +1380,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		if num == 1:
 		    key = server_map[server]
 		elif not self.is_valid(key):
-		    # we could not find this server amongst the existing ones, maybe
-		    # it is an old one.  allow it to be marked UP or NOOVERRIDE or
-		    # NOOUTAGE as these mean removing the name from the corresponding
-		    # dictionary
+		    # we could not find this server amongst the existing
+                    # ones, maybe it is an old one.  allow it to be marked
+                    # UP or NOOVERRIDE or NOOUTAGE as these mean removing
+                    # the name from the corresponding dictionary.
 		    if func not in [UP, NOOVERRIDE, NOOUTAGE]:
 			key = None
 			error = e_errors.DOESNOTEXIST
