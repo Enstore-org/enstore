@@ -633,7 +633,7 @@ def do_work(intf):
     elif intf.read_only:
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
     elif intf.no_access:
-        ticket = vcc.set_system_set_system_notallowed(intf.no_access)  # name of this volume
+        ticket = vcc.set_system_notallowed(intf.no_access)  # name of this volume
     # D0_TEPM
     elif intf.atmover:
 	ticket = vcc.add_at_mover (intf.args[0])
