@@ -78,18 +78,20 @@ if __name__ == "__main__":
         if pid:
             sys.exit(0)
         
-    
+            
     Trace.init(MY_NAME)
     Trace.trace( 6, "called args="+repr(sys.argv) )
     import sys
 
     # get the interface
     intf = MonitorServerInterface()
-    # get amonitor server:
+    # get a monitor server:
     intf.config_host = "" #listen on all interfaces on this machine
     intf.config_port = 9999 #HACK -- should ger port from config server
     ms = MonitorServer((intf.config_host, intf.config_port))
-
+    sys.stdin.close()
+    sys.stdout.close()
+    sys.stderr.close()
     while 1:
         try:
             Trace.trace(6,"Monitor Server (re)starting")
@@ -97,7 +99,11 @@ if __name__ == "__main__":
 	except SystemExit, exit_code:
 	    sys.exit(exit_code)
         except:
-	    ms.serve_forever_error(MY_NAME)
+            exc,msg,tb=sys.exc_info()
+            format = "%s %s %s %s %s: serve_forever continuing" % (
+                timeofday.tod(),sys.argv,exc,msg,MY_NAME)
+            Trace.log(e_errors.ERROR, str(format))
+
             continue
 
     Trace.trace(6,"Monitor Server finished (impossible)")
