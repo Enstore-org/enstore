@@ -8,6 +8,7 @@
 import struct, fcntl, FCNTL
 
 # enstore imports
+import Trace
 
 def writelock(f):
 	Trace.trace(20,'{}writelock')

@@ -22,14 +22,21 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port()) :
+        Trace.trace(10,'{__init__ csc='+repr(csc)+' list='+repr(list)+\
+                    ' host='+repr(host)+' port='+repr(port))
         configuration_client.set_csc(self, csc, host, port, list)
         self.u = udp_client.UDPClient()
+        Trace.trace(10,'}__init__ u='+repr(self.u))
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket):
+        Trace.trace(16,'{send')
         vticket = self.csc.get("volume_clerk")
-        return  self.u.send(ticket, (vticket['host'], vticket['port']))
-
+        Trace.trace(16,'send to volume clerk '+\
+                    repr((vticket['host'], vticket['port'])))
+        x = self.u.send(ticket, (vticket['host'], vticket['port']))
+        Trace.trace(16,'}send '+repr(x))
+        return x
 
     # add a volume to the stockpile
     def addvol(self,
@@ -57,6 +64,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                wrapper = "cpio",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
                ):
+        Trace.trace(3,'add_vol label='+repr(external_label))
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -76,26 +84,32 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'sum_rd_access'   : sum_rd_access,
                    'wrapper'         : wrapper,
                    'blocksize'       : blocksize }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(3,'}add_vol '+repr(x))
+        return x
 
 
     # delete a volume from the stockpile
     def delvol(self, external_label):
+        Trace.trace(3,'del_vol label='+repr(external_label))
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label }
-        return  self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(3,'}del_vol '+repr(x))
+        return x
 
 
     # get a list of all volumes
     def get_vols(self):
+        Trace.trace(20,'{get_vols R U CRAZY?')
         import string
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-	user_info = {"callback_addr" : (host, port)}
-        ticket = {"work"               : "get_vols",
-                  "user_info"          : user_info,
-                  "unique_id"          : time.time() }
+        user_info = {"callback_addr" : (host, port)}
+        ticket = {"work"             : "get_vols",
+                  "user_info"        : user_info,
+                  "unique_id"        : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'] != "ok":
@@ -131,17 +145,11 @@ class VolumeClerkClient(generic_client.GenericClient,\
         data_path_socket = callback.volume_clerk_callback_socket(ticket)
         ticket= callback.read_tcp_socket(data_path_socket, "volume clerk"\
                   +"client get_vols, vc final dialog")
-#       workmsg=""
         while 1:
           msg=callback.read_tcp_buf(data_path_socket,"volume clerk "+"client get_vols, reading worklist")
           if len(msg)==0:
-#               pprint.pprint(workmsg)
                 break
-#         workmsg=workmsg+msg
-#         pprint.pprint(workmsg[:string.rfind(workmsg,',',0)])
-#         workmsg=msg[string.rfind(msg,',',0)+1:]
           pprint.pprint(msg)
-#       ticket['vols']=workmsg
         worklist = ticket
         data_path_socket.close()
 
@@ -155,41 +163,61 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   +"2nd (post-work-read) volume clerk callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
+        Trace.trace(20,'}get_vols')
         return worklist
 
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label):
+        Trace.trace(10,'inquire_vol label='+repr(external_label))
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
-        return  self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}inquire_vol '+repr(x))
+        return x
 
     # we are using the volume
     def set_writing(self, external_label):
+        Trace.trace(10,'set_writing label='+repr(external_label))
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}set_writing '+repr(x))
+        return x
 
     # we are using the volume
     def set_system_readonly(self, external_label):
+        Trace.trace(10,'set_system_readonly label='+repr(external_label))
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}set_system_readonly '+repr(x))
+        return x
 
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label):
+        Trace.trace(3,'clr_system_inhibit label='+repr(external_label))
         ticket= { 'work'           : 'clr_system_inhibit',
                   'external_label' : external_label }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(3,'}clr_system_inhibit '+repr(x))
+        return x
 
     # we are using the volume
     def set_hung(self, external_label):
+        Trace.trace(3,'set_hung label='+repr(external_label))
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(3,'}set_hung '+repr(x))
+        return x
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
                             wr_err,rd_err,wr_access,rd_access):
+        Trace.trace(10,'{set_remaining_bytes label='+repr(external_label)+\
+                    ' bytes='+repr(remaining_bytes)+ ' wr_err='+\
+                    repr(wr_err)+' rd_err='+repr(rd_err)+' wr_access='+\
+                    repr(wr_access)+' rd_access='+repr(rd_access))
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
@@ -198,21 +226,33 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'rd_err'          : rd_err,
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}set_remaining_bytes '+repr(x))
+        return x
+
 
     # update the counts in the database
     def update_counts(self, external_label, wr_err,rd_err,wr_access,rd_access):
+        Trace.trace(10,'{update_counts label='+repr(external_label)+' wr_err='+\
+                    repr(wr_err)+' rd_err='+repr(rd_err)+' wr_access='+\
+                    repr(wr_access)+' rd_access='+repr(rd_access))
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
                   'rd_err'          : rd_err,
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}update_counts '+repr(x))
+        return x
 
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, vol_veto_list,first_found):
+        Trace.trace(10,'{next_write_volume lib='+repr(library)+' bytes='+\
+                    repr(min_remaining_bytes)+' ff='+repr(file_family)+\
+                    " veto="+repr(vol_veto_list)+' first_found='+\
+                    repr(first_found))
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
@@ -220,11 +260,14 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
 
-        return self.send(ticket)
+        x = self.send(ticket)
+        Trace.trace(10,'}next_write_volume '+repr(x))
+        return x
 
 class VolumeClerkClientInterface(interface.Interface):
 
     def __init__(self):
+        Trace.trace(10,'{__init__ vcci')
         self.config_list = 0
         self.alive = 0
         self.clrvol = 0
@@ -238,16 +281,19 @@ class VolumeClerkClientInterface(interface.Interface):
 
         # parse the options
         self.parse_options()
+        Trace.trace(10,'}__init__ vcci')
 
     # define the command line options that are valid
     def options(self):
+        Trace.trace(20,'{}options')
         return self.config_options() + self.list_options()  +\
-	       ["config_list", "alive","clrvol", "backup" ] +\
+               ["config_list", "alive","clrvol", "backup" ] +\
                ["vols","nextvol","vol=","addvol","delvol" ] +\
-	       self.help_options()
+               self.help_options()
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
+        Trace.trace(16,'{parse_options')
         interface.Interface.parse_options(self)
         if self.nextvol:
             if len(self.args) < 3:
@@ -265,25 +311,31 @@ class VolumeClerkClientInterface(interface.Interface):
             if len(self.args) < 1 :
                 self.print_clr_inhibit_args()
                 sys.exit(1)
+        Trace.trace(16,'}parse_options')
 
     # print clr_inhibit arguments
     def print_clr_inhibit_args(self):
+        Trace.trace(20,'{}print_clr_inhibit_args')
         print "   clr_inhibit arguments: volume_name"
 
     # print addvol arguments
     def print_addvol_args(self):
+        Trace.trace(20,'{}print_addvol_args')
         print "   addvol arguments: library file_family media_type"\
               +", volume_name, volume_byte_capacity remaining_capacity"
 
     # print delvol arguments
     def print_delvol_args(self):
+        Trace(20,'{}print_delvol_args')
         print "   delvol arguments: volume_name"
 
     # print out our extended help
     def print_help(self):
+        Trace.trace(20,'{print_help')
         interface.Interface.print_help(self)
         self.print_addvol_args()
         self.print_delvol_args()
+        Trace.trace(16,'}print_help')
 
 
 if __name__ == "__main__":
