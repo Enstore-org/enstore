@@ -739,7 +739,8 @@ def clients():
 
     #While these servers are important, we should not fail the transfer
     # over them.
-    for server in [log_client.MY_SERVER, alarm_client.MY_SERVER]:
+    for server in [log_client.MY_SERVER, alarm_client.MY_SERVER,
+                   accounting_client.MY_SERVER]:
 
         Trace.message(CONFIG_LEVEL, "Contacting %s." % server)
 
