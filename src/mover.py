@@ -985,7 +985,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif state in (ACTIVE, SEEK, CLEANING, MOUNT_WAIT, DISMOUNT_WAIT):
             work = "mover_busy"
         elif state in (ERROR, OFFLINE):
-            work = "mover_error"
+            work = "mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
             if error_info is None:
                 status = self.last_error
             else:
