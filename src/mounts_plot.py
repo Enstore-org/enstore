@@ -38,9 +38,9 @@ mtsg = {}
 mtsh = {}
 
 def hist_key(n):
-	if n > high_water_mark:
-		return '>'+str(high_water_mark)
-	elif n > low_water_mark:
+	if n >= high_water_mark:
+		return '>='+str(high_water_mark)
+	elif n >= low_water_mark:
 		return str(low_water_mark)+'-'+str(high_water_mark-1)
 	else:
 		nb = n/step*step
@@ -61,9 +61,6 @@ if __name__ == '__main__':
 	hist_keys.append(k)
 	mtsh[k] = 0
 
-	print `mtsh.keys()`
-	print `hist_keys`
-
 	f = open(vf_file)
 	l = f.readline()
 	while l:
@@ -79,9 +76,9 @@ if __name__ == '__main__':
 					mtsg[sg].append(m)
 				else:
 					mtsg[sg] = [m]
-				if m > high_water_mark:
+				if m >= high_water_mark:
 					toh = toh + 1
-				if m > low_water_mark:
+				if m >= low_water_mark:
 					tol = tol + 1
 				k = hist_key(m)
 				mtsh[k] = mtsh[k]+1
