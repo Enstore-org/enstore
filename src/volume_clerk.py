@@ -181,6 +181,32 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(0,"}delvol "+repr(ticket["status"]))
             return
 
+        # get the current entry for the volume
+        try:
+            record = copy.deepcopy(dict[external_label])
+        except KeyError:
+            ticket["status"] = (e_errors.KEYERROR, \
+				"Volume Clerk: volume "+external_label\
+                               +" no such volume")
+	    self.enprint(ticket, generic_cs.PRETTY_PRINT)
+            self.reply_to_caller(ticket)
+            Trace.trace(0,"}delvol "+repr(ticket["status"]))
+            return
+
+        if record.has_key('non_del_files'):
+            if record['non_del_files']>0:
+                ticket["status"] = (e_errors.CONFLICT, 
+                                    "Volume Clerk: volume "+external_label
+                                    +" has "+repr(record['non_del_files'])+" active files")
+                self.logc.send(e_errors.INFO,8,
+                               "Volume Clerk: volume "+external_label
+                               +" has "+repr(record['non_del_files'])+" active files")
+                #self.enprint(ticket, generic_cs.PRETTY_PRINT)
+                self.reply_to_caller(ticket)
+                Trace.trace(0,"}delvol "+repr(ticket["status"]))
+                return
+                
+
         # delete if from the database
         try:
             del dict[external_label]
