@@ -956,8 +956,9 @@ class LibraryManagerMethods:
             elif rq.work == 'write_to_hsm':
                 rq, key = self.process_write_request(rq, requestor) 
                 if self.continue_scan:
-                    rq, status = self.check_write_request(external_label, rq, requestor)
-                    if rq and status[0] == e_errors.OK: break
+                    if rq:
+                        rq, status = self.check_write_request(external_label, rq, requestor)
+                        if rq and status[0] == e_errors.OK: break
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
                 break
