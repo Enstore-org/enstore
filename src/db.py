@@ -77,7 +77,8 @@ class Jcursor:
 	# need to close all related cursors
 	def close(self):
 		for c in self.curlist:
-			c.close()
+			if c:
+				c.close()
 
 	def __del__(self):
 		self.close()
