@@ -520,7 +520,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	qlen = len(qelems)
 	tr0 = None
 	# reemove the following line when the values come from the config file
-	max_queue_rows = 28
+	max_queue_rows = 30
 	if (not max_queue_rows == default_queue_rows) and (qlen > max_queue_rows):
 	    # we will need to cut short the number of queue elements that we output on 
 	    # the main status page, and add a link to point to the rest that will be
