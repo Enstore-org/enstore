@@ -703,7 +703,7 @@ def do_work(intf):
 if __name__ == "__main__" :
 
     # fill in interface
-    intf = UpDownInterface()
+    intf = UpDownInterface(user_mode=0)
  
     rtn = do_work(intf)
     sys.exit(rtn)
