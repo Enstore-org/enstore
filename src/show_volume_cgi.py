@@ -45,12 +45,14 @@ res1 = os.popen('enstore vol --gvol '+volume).readlines()
 
 # extract information
 for i in res1:
-    k, v = string.split(i, ':')
+    tk = string.split(i, ':')
+    k = tk[0]
+    v = tk[1]
     if k == " 'last_access'":
-        if int(v[-4:]) < 1970:
+        if int(tk[-1][-7:-3]) < 1970:
             la_time = '(never)'
         else:
-            la_time = v
+            la_time = string.join(tk[1:], ':')[2:-3]
     if k == " 'capacity_bytes'":
         capacity = long(v[:-2])
     if k == " 'remaining_bytes'":
