@@ -26,6 +26,7 @@ if ENSTORE_DIR:
 else:
     IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
 
+#print "IMAGE_DIR=", IMAGE_DIR
     
 from Tkinter import *
 from tkFont import Font
@@ -140,7 +141,6 @@ class Mover:
         self.timer_string = '00:00:00'
         self.last_activity_time = now
         self.connection = None
-        self.client = None
         self.rate = 0.0
         self.t0 = 0
         self.b0 = 0
@@ -155,6 +155,7 @@ class Mover:
         self.x, self.y = self.position(N)
         self.draw()
 
+ 
     def draw(self):
         x, y = self.x, self.y
         label_offset = XY(60, 40)
@@ -162,10 +163,10 @@ class Mover:
         percent_disp_offset = XY(60, 22)
         state_offset = XY(90, 8)
         timer_offset = XY(100, 22)
-
+        
         self.outline =  self.display.create_rectangle(x, y, x+self.width, y+self.height, fill='black')
         self.label = self.display.create_text(x+label_offset.x,  y+label_offset.y,  text=self.name)
-        img = find_image(self.state+'.gif')
+        img = find_image(self.state + '.gif')
         if img:
             self.state_display = self.display.create_image(x+img_offset.x, y+img_offset.y, anchor=NW, image=img)
         else:
@@ -246,7 +247,7 @@ class Mover:
             x, y = scale_to_display(coord.real. coord.imag, self.display.width, self.display.height)
         else:
             if ejected:
-                x, y = self.x+self.width+tape_offset.x, self.y+tape_offset.y
+                x, y = self.x+self.width+tape_offset.x, self.y+ tape_offset.y
             else:
                 x, y = self.x+ tape_offset.x, self.y+ tape_offset.y
         return x, y
@@ -336,10 +337,27 @@ class Mover:
             sys.exit(-1)
 
     
-    def reposition(self, N):
+    def reposition(self, N, state=None):
+        img_offset=XY(90, 2)
+        state_disp_offset=XY(90, 8)
+        
         self.undraw()
         self.x, self.y = self.position(N)
         self.draw()
+        #XXXXXXX
+        state = self.state
+        mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state, 'black')
+        if state  in ['ERROR', 'OFFLINE']:
+            self.undraw()
+            self.outline =  self.display.create_rectangle(self.x, self.y, self.x+self.width, self.y+self.height, fill=mover_color)
+
+        self.display.delete(self.state_display) # "undraw" the prev. state message
+        img = find_image(state+'.gif')
+        if img:
+            self.state_display = self.display.create_image(self.x+img_offset.x, self.y+img_offset.y, anchor=NW, image=img)
+        else:
+            self.state_display = self.display.create_text(self.x+state_disp_offset.x, self.y+state_disp_offset.y, text=self.state, fill='light blue')
+        
         if self.volume:
             x, y = self.volume_position(self.volume.ejected)
             self.volume.moveto(x,y)
@@ -403,6 +421,7 @@ class Volume:
         self.undraw()
 
     
+    
 class Client:
 
     def __init__(self, name, display):
@@ -451,13 +470,20 @@ class Client:
         self.x, self.y = scale_to_display(-0.9, self.index/10.,
                                           self.display.width, self.display.height)
         self.draw()
-        
+
+    def destroy(self):
+        #print "client has", sys.getrefcount(self)-1, "references"
+        del self.display.client_positions[self.index]
+        del self.display.clients[self.name]
+        #print "client", self.name, "still has", sys.getrefcount(self)-1, "references"
+    
     def __del__(self):
         self.undraw()
         
 class Connection:
     """ a line connecting a mover and a client"""
     def __init__(self, mover, client, display):
+        # we are passing instances of movers and clients
         self.mover = mover
         self.client = client
         self.display = display
@@ -467,9 +493,10 @@ class Connection:
         self.segment_start_time = 0
         self.segment_stop_time = 0
 
-    def draw(self, n_name=None, c_name=None):
+    def draw(self):
+        #print self.mover.name, " connecting to ", self.client.name
         mover_end = (self.mover.x,
-                     self.mover.y + self.mover.height/2.0) #middle of left side
+                     self.mover.y + self.mover.height/2.0) # middle of left side
         client_end = (self.client.x + self.client.width,
                       self.client.y + self.client.height/2.0) #middle of right side
         x_distance = mover_end[0] - client_end[0]
@@ -544,31 +571,33 @@ class Title:
 class Display(Canvas):
     """  The main state display """
     def __init__(self, master, title, window_width, window_height, canvas_width=None, canvas_height=None, **attributes):
-
+ 
+        
         if canvas_width is None:
             canvas_width = window_width
         if canvas_height is None:
             canvas_height = window_height
         ##** means "variable number of keyword arguments" (passed as a dictionary)
-        Canvas.__init__(self, master,width=window_width, height=window_height,
-                        scrollregion=(0, 0, canvas_width, canvas_height))
-        
-        if (window_width, window_height) != (canvas_width, canvas_height):
-            self.scrollX = Scrollbar(self, orient=HORIZONTAL)
-            self.scrollY = Scrollbar(self, orient=VERTICAL)
+        Canvas.__init__(self, master,width=window_width, height=window_height, scrollregion=(0, 0, canvas_width, canvas_height))
 
-            ##When the canvas changes size or moves, update the scrollbars
-            self['xscrollcommand']= self.scrollX.set
-            self['yscrollcommand'] = self.scrollY.set
+##        self.QUIT = Button(self, text='QUIT', background='blue', height=1, command=self.quit)
+##        self.QUIT.pack(side=BOTTOM, fill=BOTH)
 
-            ##When scrollbar clicked on, move the canvas
-            self.scrollX['command'] = self.xview
-            self.scrollY['command'] = self.yview
+        self.scrollX = Scrollbar(self, orient=HORIZONTAL)
+        self.scrollY = Scrollbar(self, orient=VERTICAL)
 
-            ##pack 'em up
-            self.scrollX.pack(side=BOTTOM, fill=X)
-            self.scrollY.pack(side=RIGHT, fill=Y)
-            self.pack(side=LEFT)
+       #When the canvas changes size or moves, update the scrollbars
+        self['xscrollcommand']= self.scrollX.set
+        self['yscrollcommand'] = self.scrollY.set
+
+        #When scrollbar clicked on, move the canvas
+        self.scrollX['command'] = self.xview
+        self.scrollY['command'] = self.yview
+
+        #pack 'em up
+        self.scrollX.pack(side=BOTTOM, fill=X)
+        self.scrollY.pack(side=RIGHT, fill=Y)
+        self.pack(side=LEFT)
 
         Tk.title(self.master, title)
         self.configure(attributes)
@@ -622,8 +651,8 @@ class Display(Canvas):
         #      title
         # 2 words:
         #     delete MOVER_NAME
+        #      client CLIENT_NAME
         # 3 words:
-        #      client MOVER-NAME CLIENT_NAME
         #      connect MOVER_NAME CLIENT_NAME
         #      disconnect MOVER_NAME CLIENT_NAME
         #      loaded MOVER_NAME VOLUME_NAME
@@ -631,7 +660,6 @@ class Display(Canvas):
         #      moveto MOVER_NAME VOLUME_NAME
         #      remove MOVER_NAME VOLUME_NAME
         #      state MOVER_NAME STATE_NAME
-        #      time MOVER_NAME TIME (### time mover has been in that state)
         #      unload MOVER_NAME VOLUME_NAME
         # 4 words:
         #      transfer MOVER_NAME nbytes total_bytes
@@ -644,15 +672,23 @@ class Display(Canvas):
         words = string.split(command)
         if not words: #input was blank, nothing to do!
             return
-        #"quit" is the only 1-word command
+        
         if words[0]=='quit':
             self.stopped = 1
             return
 
+        if words[0]=='title':
+            title = command[6:]
+            title=string.replace(title, '\\n', '\n')
+            self.title_animation = Title(title, self)
+            return
+
+        # command needs (N) words
         if words[0]=='movers':
             self.create_movers(words[1:])
             return
 
+        # command does not require a mover name, will only put clients in a queue
         if words[0]=='client':
             client_name = strip_domain(words[1])
             ##XXX we are working around a bug in the library manager.
@@ -664,7 +700,6 @@ class Display(Canvas):
                     client_name = strip_domain(client_name)
                 except:
                     print "Can't resolve address", client_name
-             
             #XXX end hack
             client = self.clients.get(client_name) 
             if client is None: #new client
@@ -673,25 +708,24 @@ class Display(Canvas):
                 client.waiting = 1
                 client.draw()
             return
-
-        if words[0]=='title':
-            title = command[6:]
-            title=string.replace(title, '\\n', '\n')
-            self.title_animation = Title(title, self)
-            return
             
-        # all following commands have the name of the mover in the 2nd field
+        #########################################################################
+        #                                                                                                                                              #
+        #              all following commands have the name of the mover in the 2nd field               #
+        #                                                                                                                                              #
+        #########################################################################
         mover_name = words[1]
         mover = self.movers.get(mover_name)
-  
+        if not mover:#This is an error, a message from a mover we never heard of
+            return
+        # command requires 2 words
         if words[0]=='delete':
             del self.movers[mover_name]
             return
 
+        # command requires 3 words
         if len(words) < 3:
             print "Error, bad command", command
-            return
-        if not mover:#This is an error, a message from a mover we never heard of
             return
 
         if words[0]=='state':
@@ -708,6 +742,7 @@ class Display(Canvas):
         
         if words[0]== 'connect':
             client_name = strip_domain(words[2])
+            #print "connecting with ",  client_name
             client = self.clients.get(client_name)
             if not client: ## New client, we must add it
                 client = Client(client_name, self)
@@ -729,17 +764,21 @@ class Display(Canvas):
         if words[0]=='disconnect':
             client_name = strip_domain(words[2])
             client = self.clients.get(client_name)
+            #print "disconnecting with ", client_name, sys.getrefcount(client)-1, "references"
+
             if not client: ## this client is not displayed
+                print "not displayed"
                 return
             if mover.connection:
+                mover.connection.client = None
+                mover.connection.mover = None
                 mover.connection = None
-            if mover.client:
-                mover.client = None
-                client.n_connections = client.n_connections - 1
+
+            client.n_connections = client.n_connections - 1
             mover.t0 = time.time()
             mover.b0 = 0
             mover.show_progress(None)
-            print words[1], " disconnecting from ", client_name
+            #print "refcount now=", sys.getrefcount(client)-1
             return
 
         if words[0] in ['loading', 'loaded']:
@@ -757,6 +796,7 @@ class Display(Canvas):
             mover.unload_tape(what_volume)
             return
 
+        # command requires 4 words
         if len(words)<4: 
             print "Error, bad command", command
             return
@@ -772,8 +812,8 @@ class Display(Canvas):
             rate = mover.transfer_rate(num_bytes, total_bytes) / (256*1024)
             if mover.connection:
                 mover.connection.update_rate(rate)
-            if mover.client:
-                mover.client.last_activity_time = time.time()
+                mover.connection.client.last_activity_time = time.time()
+         
 
             
     def mainloop(self):
@@ -816,15 +856,14 @@ class Display(Canvas):
                     mover.connection.animate(now)
 
             #### Check for unconnected clients
-            tmp_client_dict={}
-            t={}
             for client_name, client in self.clients.items():
-                if client.n_connections >0:
+                if client.n_connections > 0:
                     continue
-                if now - client.last_activity_time >  5 and client.waiting != 1: # grace period; ignores clients in queue
-                    del self.clients[client_name]
-                    del client
-
+                if now - client.last_activity_time >  5: # grace period
+                    #print "destroying client : ", client_name, "with", sys.getrefcount(client)-1, "references"
+                    client.destroy()
+                    client.undraw() #XXX This is wrong, wrong, wrong, but works for now!
+                    #print "done", sys.getrefcount(client)-1, "references left"
             #### Handle titling
             if self.title_animation:
                 if now > self.title_animation.stop_time:
