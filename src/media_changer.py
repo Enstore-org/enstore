@@ -559,7 +559,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
  
         retTicket = vcc.get_remaining_bytes(v['external_label'])
         remaining_bytes = retTicket['remaining_bytes']-1
-        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0',0,0,0,0,None)
+        vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
         return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):
