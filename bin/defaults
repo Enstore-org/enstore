@@ -1,0 +1,15 @@
+
+# this file needs to be sourced!
+
+# defaults first
+
+config_host=localhost
+config_port=7500
+config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
+
+# if the user has environmental variable set, use them - or else use the defaults
+
+if [ -n "${ENSTORE_CONFIG_HOST-}" ] ; then config_host=$ENSTORE_CONFIG_HOST; fi
+if [ -n "${ENSTORE_CONFIG_PORT-}" ] ; then config_port=$ENSTORE_CONFIG_PORT; fi
+if [ -n "${ENSTORE_CONFIG_FILE-}" ] ; then config_file=$ENSTORE_CONFIG_FILE; fi
+

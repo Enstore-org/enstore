@@ -3,13 +3,9 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
-# add getopts to check for host and port and file, yeah yeah
+. $ENSTORE_DIR/bin/defaults
 
-config_host=localhost
-config_port=7500
-config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
-
-# ok, this is terrible - but let's start always start up in the test area so files are created there
+# ok, this is terrible - but let's start always start up in the etc area so files are created there
 place=`pwd`
 cd $ENSTORE_DIR/etc
 
