@@ -70,7 +70,15 @@ Trace:	trace_1st Trace.so
 	@echo done with Trace # do not use default rule
 
 trace_1st:
-	make -f trace.mk trace.a all # add all for now
+	make -f trace.mk trace.a all # add all and mv traceShow to sbin for now
+	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
+	@mv traceShow ../sbin
+	@cd ../sbin;\
+	ln -fs traceShow traceInfo;\
+	ln -fs traceShow traceReset;\
+	ln -fs traceShow traceMode;\
+	ln -fs traceShow traceOn;\
+	ln -fs traceShow traceOff;
 
 Trace.so: trace.a Trace.c
 	rm -f Trace.so	# must force relink as $(LIBPL)/Makefile does not
@@ -112,5 +120,6 @@ installpyc:
 	  fi; \
 	done
 
-clean::
+clean:
 	-rm -f *.o *.so *~ *# so_locations
+	-make -f trace.mk clean
