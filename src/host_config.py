@@ -135,7 +135,7 @@ def set_route(interface_ip, dest):
 
     err=enroute.routeAdd(dest, interface_ip)
     if err:
-        Trace.log(e_errors.INFO, "set_route(%s, %s) failed"%(dest, interface_ip))
+        Trace.log(e_errors.ERROR, "set_route(%s, %s) failed"%(dest, interface_ip))
     return
 
     # The following is the previous code and is commented out
