@@ -7,6 +7,7 @@ if [ -z "${1:-}" ] ; then echo `date` Usage $0 volume; exit 1; fi
 
 tape=$1
 log=/tmp/$tape.migrate
+gotit=/tmp/$tape.gotit.$$
 status=/data1/status
 copy=$status/$tape.copy2b
 done=$status/$tape.done
@@ -41,14 +42,29 @@ echo `date` Starting to get files from $tape
 
 /data1/migrate_tape -l $tape >> $log 2>&1
 
-if [ `enstore vol --vol $tape| grep -c NOACCESS` -ne 0 ]; then
-    echo `date` Clearing NOACCESS from $tape assuming trouble reading on B drive
-    enstore vol --clear $tape
-fi
+rm -f $gotit
+max_try=5
+try=0
+while [ $try -le $max_try ]; do
+  try=`expr $try + 1`
+  if [ `enstore vol --vol $tape| grep -c NOACCESS` -ne 0 ]; then
+      echo `date` Clearing NOACCESS from $tape assuming trouble reading 
+      enstore vol --clear $tape
+  fi
 
-/data1/migrate_tape -0 -a -g -v $tape >> $log 2>&1
-/data1/migrate_tape -v $tape >> $log 2>&1
-rc=$?
-if [ $rc -eq 0 ]; then
-   touch $copy
+  /data1/migrate_tape -0 -a -g -v $tape >> $log 2>&1
+  /data1/migrate_tape -v $tape >> $log 2>&1
+  rc=$?
+  if [ $rc -eq 0 ]; then
+     touch $copy
+     touch $gotit
+     break
+  fi
+done
+
+if [ -r $gotit ]; then
+    rm $gotit
+    exit 0
+else
+    exit 1
 fi
