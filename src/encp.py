@@ -3492,7 +3492,8 @@ def set_pnfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
         fc_ticket["fc"]["drive"] = drive
 
-        csc = get_csc(ticket['volume']) #Always get the correct system.
+        volume_label = ticket.get('volume', None)
+        csc = get_csc(volume_label) #Get the correct system (if necessary).
         fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
