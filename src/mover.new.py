@@ -335,7 +335,6 @@ def forked_write_to_hsm( self, ticket ):
 				       file_bytes-san_bytes, self.san_func,
 				       san_crc )
 	    else: file_crc = san_crc
-	    if self.san_fun == None: file_crc = 0; san_src = 0
 	    
 	    Trace.trace( 11, 'done with rest' )
 	    wrapper.write_post_data( do, file_crc )
@@ -458,22 +457,33 @@ def forked_read_from_hsm( self, ticket ):
 	    wrapper = cpio.Cpio()
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
+	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...
+		crc_func = None
+	    else: crc_func = self.crc_func
 	    t0 = time.time()
             Trace.trace(11,'calling read_pre_data')
             wrapper.read_pre_data( do, None )
             Trace.trace(11,'calling fd_xfer -sanity size='+repr(ticket['fc']['sanity_cookie'][0]))
             san_crc = do.fd_xfer( self.usr_driver.fileno(),
 				  ticket['fc']['sanity_cookie'][0],
-				  ECRC.ECRC,
+				  self.san_func,
 				  0 )
+	    # check the san_crc!!!
+	    if     self.san_func != None \
+	       and ticket['fc']['sanity_cookie'][1] != None \
+	       san_crc != ticket['fc']['sanity_cookie'][1]:
+		pass
 	    if (ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]) > 0:
                 Trace.trace(11,'calling fd_xfer -rest size='+repr(ticket['fc']['size']-ticket['fc']['sanity_cookie'][0]))
 		user_file_crc = do.fd_xfer( self.usr_driver.fileno(),
 					    ticket['fc']['size']-ticket['fc']['sanity_cookie'][0],
-					    ECRC.ECRC,
-					    ticket['fc']['sanity_cookie'][1] )
+					    self.san_func, san_crc )
 	    else:
 		user_file_crc = san_crc
+		pass
+	    if     self.san_func != None \
+	       and ticket['fc']['complete_crc'] != None \
+	       and user_file_crc != ticket['fc']['complete_crc']:
 		pass
 	    tt = {'data_crc':ticket['fc']['complete_crc']}
             Trace.trace(11,'calling read_post_data')
