@@ -151,7 +151,6 @@ class ConfigurationClient(generic_client.GenericClient):
 	
     #get list of library managers
     def get_library_managers(self, ticket, timeout=0, retry=0):
-        ret = []
         request = {'work': 'get_library_managers'}
         while 1:
             try:
@@ -159,6 +158,16 @@ class ConfigurationClient(generic_client.GenericClient):
                 return x
             except socket.error:
 	        self.output_socket_error("get_library_managers")
+
+    #get list of media changers
+    def get_media_changers(self, ticket, timeout=0, retry=0):
+        request = {'work': 'get_media_changers'}
+        while 1:
+            try:
+                x = self.u.send(request, self.config_address, timeout, retry)
+                return x
+            except socket.error:
+	        self.output_socket_error("get_media_changers")
 
     # get the configuration dictionary element(s) that contain the specified
     # key, value pair
