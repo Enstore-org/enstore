@@ -1,3 +1,9 @@
+import os
+import getopt
+import sys
+import string
+import re
+
 def fix_cgi_url(web_dir, file, url, extra_dir=""):
     # edit the named file and change the url for the cgi script to the value in 'url'
     # we will need the name of the file to construct the name of the cgi file
@@ -43,20 +49,14 @@ def get_inputs():
             elif opt == "--cgi_url":
                 cgi_url = value
     else:
-        # nothing entered on the command line, we must prompt the user
-        web_dir = get_from_user("html web files directory")
-        cgi_url = get_from_user("cgi bin web url")
+        # nothing entered on the command line, assume a default
+        web_dir = "/fnal/ups/prd/www_pages/enstore"
+        cgi_url = "http://www-d0en.fnal.gof:/cgi-bin"
 
     return(web_dir, cgi_url)
 
 if __name__ == "__main__" :
     
-    import os
-    import getopt
-    import sys
-    import string
-    import re
-
     # make sure enstore has been set up
     if os.environ.get("ENSTORE_DIR", ""):
 	# process inputs, if there are any
