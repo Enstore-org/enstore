@@ -575,12 +575,12 @@ def do_work(intf):
                          "%s $ENSTORE_DIR/src/%s.py" % (python_binary,server,))
 
     #Start the Berkley DB dameons.
-    if intf.should_start(enstore_constants.VOLUME_CLERK) or \
-       intf.should_start(enstore_constants.FILE_CLERK):
-        check_db(csc, "db_checkpoint", intf,
-                 "db_checkpoint -h %s  -p 5 &" % db_dir)
-        check_db(csc, "db_deadlock", intf,
-                 "db_deadlock -h %s  -t 1 &" % db_dir)
+    #if intf.should_start(enstore_constants.VOLUME_CLERK) or \
+    #   intf.should_start(enstore_constants.FILE_CLERK):
+    #    check_db(csc, "db_checkpoint", intf,
+    #             "db_checkpoint -h %s  -p 5 &" % db_dir)
+    #    check_db(csc, "db_deadlock", intf,
+    #             "db_deadlock -h %s  -t 1 &" % db_dir)
 
     #Get the library names.
     libraries = csc.get_library_managers({}).keys()
