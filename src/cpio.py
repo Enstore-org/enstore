@@ -9,6 +9,7 @@ import errno
 import string
 import time
 import traceback
+import types
 
 # enstore imports
 import EXfer
@@ -283,13 +284,6 @@ class DiskDriver:
     states = ['open', 'closed']
 
     # Internal routine
-    def __repr__(self):
-        file = self._file_
-        return "<%s DiskDriver '%s', mode '%s' at %s>" % \
-               (self.states[file.closed], file.name, file.mode,
-                hex(id(self))[2:])
-
-    # Internal routine
     def __del__(self):
         self._file_.close()
 
@@ -300,7 +294,7 @@ class DiskDriver:
 
     # Initialization routines
     def fileopen(self, file):
-        if repr(type(file)) != "<type 'file'>":
+        if type(file) != types.FileType:
             raise TypeError, 'DiskDriver.fileopen() arg must be file object'
         self._file_  = file
         # Copy basic file methods
@@ -313,83 +307,74 @@ class DiskDriver:
     #
 
     # this is the name of the function that the wrapper uses to read
-    def read_block(self):
-        blocksize = 2**16
-        return self.read(blocksize)
+    def read(self,size):
+        return self._file_.read(size)
 
     # this is the name fo the funciton that the wrapper uses to write
-    def write_block(self,buffer):
-        return self.write(buffer)
-
-# Public routine to obtain a diskdriver object
-def diskdriver_open(name, mode='r', bufsize=-1):
-    return DiskDriver().open(name, mode, bufsize)
-
-
+    def write(self,buffer):
+        return self._file_.write(buffer)
 
 if __name__ == "__main__" :
     import sys
+    import getopt
     import Devcodes
-    Trace.init("CPIO")
 
-    fin  = diskdriver_open(sys.argv[1],"r")
-    fout = diskdriver_open(sys.argv[2],"w")
+    options = ["create","extract"]
+    optlist,args=getopt.getopt(sys.argv[1:], '', options)
+    (opt,val) = optlist[0]
+    if not optlist:
+	print "usage: cpio_eurostore" + " <"+repr(options)+"> infile outfile"
+	sys.exit(1)
 
-    statb = os.fstat(fin.fileno())
-    if not stat.S_ISREG(statb[stat.ST_MODE]) :
-        raise errno.errorcode[errno.EINVAL],\
-              "Invalid input file: can only handle regular files"
+    if not (opt == "--create" or opt == "--extract"):
+	print "usage: cpio_eurostore" + " <"+repr(options)+"> infile outfile"
+	sys.exit(1)
 
-    fast_write = 0 # needed for testing
-    wrapper = Wrapper(fin,fout,checksum.adler32,fast_write)
+    fin = DiskDriver()
+    fin.open(args[0],"r")
+    fout = DiskDriver()
+    fout.open(args[1],"w")
 
-    dev_dict = Devcodes.MajMin(fin._file_.name)
-    major = dev_dict["Major"]
-    minor = dev_dict["Minor"]
-    rmajor = 0
-    rminor = 0
-    sanity_bytes = 0
+    wrapper = Wrapper()
+	
+    if opt == "--create":
+	statb = os.fstat(fin.fileno())
+	if not stat.S_ISREG(statb[stat.ST_MODE]) :
+	    raise errno.errorcode[errno.EINVAL],\
+		  "Invalid input file: can only handle regular files"
+	fast_write = 0 # needed for testing
+	dev_dict = Devcodes.MajMin(fin._file_.name)
+	major = dev_dict["Major"]
+	minor = dev_dict["Minor"]
+	rmajor = 0
+	rminor = 0
+	sanity_bytes = 0
 
-    ticket = {'wrapper':{},'unifo':{}}
-    ticket['wrapper']['inode']       = statb[stat.ST_INO]
-    ticket['wrapper']['mode']        = statb[stat.ST_MODE]
-    ticket['wrapper']['uid']         = statb[stat.ST_UID]
-    ticket['wrapper']['gid']         = statb[stat.ST_GID]
-    ticket['wrapper']['mtime']       = statb[stat.ST_MTIME]
-    ticket['wrapper']['size_bytes']  = statb[stat.ST_SIZE]
-    ticket['wrapper']['major']       = major
-    ticket['wrapper']['minor']       = minor
-    ticket['wrapper']['rmajor']      = rmajor
-    ticket['wrapper']['rminor']      = rminor
-    ticket['wrapper']['pnfsFilename']= fin._file_.name
-    ticket["wrapper"]["sanity_size"] = sanity_bytes
-    (size,crc,sanity_cookie) = wrapper.write( ticket )
-    Trace.log(e_errors.INFO,
-              "Cpio.write returned: size: "+repr(size)+" crc: "+\
-              repr(crc)+" sanity_cookie: "+repr(sanity_cookie))
+	info = {'inode'       : statb[stat.ST_INO],
+		'mode'        : statb[stat.ST_MODE],
+		'uid'         : statb[stat.ST_UID],
+		'gid'         : statb[stat.ST_GID],
+		'mtime'       : statb[stat.ST_MTIME],
+		'size_bytes'  :  statb[stat.ST_SIZE],
+		'major'       : major,
+		'minor'       : minor,
+		'rmajor'      : rmajor,
+		'rminor'      : rminor,
+		'pnfsFilename': fin._file_.name,
+		'sanity_size' : sanity_bytes
+		}
+	wrapper.write_pre_data(fout, info)
+	buf = fin.read()
+	fout.write(buf)
+	wrapper.write_post_data(fout, 0)
+
+    elif opt == "--extract":
+	wrapper.read_pre_data(fin, None)
+	print "FILE SIZE", wrapper.file_size
+	if  wrapper.file_size > 0:
+	    buf = fin.read(wrapper.file_size)
+	    wrapper.read_post_data(fin,{'data_crc':0})
+	    fout.write(buf)
 
     fin.close()
     fout.close()
-
-    if size != statb[stat.ST_SIZE] :
-        raise IOError,"Size ERROR: Wrote "+repr(size)+" bytes, file was "\
-              +repr(statb[stat.ST_SIZE])+" bytes long"
-
-
-
-
-    fin  = diskdriver_open(sys.argv[2],"r")
-    fout = diskdriver_open(sys.argv[1]+".copy","w")
-
-    wrapper = Wrapper(fin,fout,checksum.adler32)
-    (read_size, read_crc) = wrapper.read(sanity_cookie)
-    Trace.log(e_errors.INFO,
-              "cpio.read returned: size: "+repr(read_size)+" crc: "+\
-              repr(read_crc))
-
-    fin.close()
-    fout.close()
-
-    if read_size != size :
-        raise IOError,"Size ERROR: Read "+repr(read_size)+" bytes, wrote "\
-              +repr(size)+" bytes"
