@@ -311,7 +311,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc =  udp_client.UDPClient()
         self.state = IDLE
-        self.last_error = ()
+        self.last_error = (e_errors.OK, None)
         if self.check_lockfile():
             self.state = OFFLINE
         self.current_location = 0L
@@ -971,7 +971,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%(exc, msg, traceback.format_tb(tb)))
             return None, None 
     
-    def format_lm_ticket(self, state=None, error_info=None, returned_work=None):
+    def format_lm_ticket(self, state=None, error_info=(e_errors.OK, None), returned_work=None):
         status = e_errors.OK, None
         work = None
         if state is None:
