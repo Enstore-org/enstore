@@ -23,7 +23,6 @@ from Tkinter import *
 from tkFont import Font
 
 debug = 1 
-DEFAULTPORT = 60126
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
@@ -477,9 +476,10 @@ class Title:
         
 class Display(Canvas):
     """  The main state display """
-    def __init__(self, master, **attributes):
+    def __init__(self, master, title, **attributes):
         ##** means "variable number of keyword arguments" (passed as a dictionary)
         Canvas.__init__(self, master)
+        Tk.title(self.master, title)
         self.configure(attributes)
         self.pack(expand=1, fill=BOTH)
         self.stopped = 0
@@ -494,11 +494,15 @@ class Display(Canvas):
         self.title_animation = None
         
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) #use IP addressing and UDP protocol
-        port = os.environ.get("ENSTORE_WATCH_PORT", DEFAULTPORT)
-        myaddr = ("", int(port)) # "" = local host
+
+        port=0
+        myaddr = (os.uname()[1], int(port))
         s.bind(myaddr)
         self.inputs = [s]
-        
+        if port==0:
+            host, port = s.getsockname()
+            print "addr=", host, port
+
     def create_movers(self, mover_names):
         #Create a Mover class instance to represent each mover.
         N = len(mover_names)
@@ -718,7 +722,12 @@ class Display(Canvas):
         
 
 if __name__ == "__main__":
-    display = Display(None, width=1000, height=700,
+    if len(sys.argv)>1:
+        title = sys.argv[1]
+    else:
+        title = "Enstore"
+    display = Display(master=None, title=title,
+                      width=1000, height=700,
                       background=rgbtohex(173, 216, 230))
     display.mainloop()
 
