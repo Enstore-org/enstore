@@ -21,26 +21,8 @@ tdb.mode = MODE_TRACE_ALL
 tdb.save_stdin= None
 tdb.save_stdout = None
 
-def setmode(newmode):
-    tdb.mode = newmode
-
-def saver(frame, type, arg) :
-    if tdb.mode is MODE_TRACE_ALL :
-        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
-        return saver
-    elif tdb.mode is MODE_TRACE_CALL :
-        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }       
-        return None
-    elif tdb.mode is MODE_PDB :
-        Tdb().set_trace()
-        return None
-    else :
-       print "impossible mode"
-
-def install():
-    sys.settrace(saver)
-
-
+def install(): pass #"forward declaration" to appease Lint
+    
 # This class alters the behavoir of the PDB.  We overide the thing that
 # is seen directly by  sys.settrace() in order to catch the bdbQuit exception
 # which is generted when the user types "Q' or Quit.  WE re-install the 
@@ -70,6 +52,26 @@ class Tdb(pdb.Pdb) :
 	tdb.mode = MODE_TRACE_ALL
 	return None	
 
+def setmode(newmode):
+    tdb.mode = newmode
+
+def saver(frame, type, arg) :
+    if tdb.mode is MODE_TRACE_ALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }
+        return saver
+    elif tdb.mode is MODE_TRACE_CALL :
+        tdb.simple = { 't': threading.currentThread(), 'frame' : frame }       
+        return None
+    elif tdb.mode is MODE_PDB :
+        Tdb().set_trace()
+        return None
+    else :
+       print "impossible mode"
+
+def install():
+    sys.settrace(saver)
+
+        
 # WARNING VOODOO Code around:
 # The python we are using when I developed this seems to have 
 # a buggy stdout when we run programs in the backgronnd.
