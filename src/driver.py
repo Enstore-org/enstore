@@ -82,7 +82,9 @@ class  FTTDriver(GenericDriver) :
         self.set_position()
 
     def load( self ):
+	# get the position from the drive
 	os.system("mt -t " + self.device + " rewind")
+	self.set_position()
 	return
 
     def unload(self):
