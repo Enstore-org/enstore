@@ -153,6 +153,9 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     def s_update_exit(self, the_signal, frame):
 	self.update_exit(0)
 
+    def ok_to_monitor(self, config_dict):
+	return not config_dict.has_key("inq_ignore")
+
     def is_server_known_down(self, server):
 	# check to see if the server is known to be down by enstore.
 	sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
@@ -303,20 +306,27 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		self.logfile.remove()
 
     def add_new_mv_lm_mc(self, key, config_d, event_relay_interval):
-	if enstore_functions.is_mover(key):
-	    self.server_d[key] = monitored_server.MonitoredMover(config_d[key], key)
+	if enstore_functions.is_mover(key):	
+	    cdict = config_d[key]
+	    if self.ok_to_monitor(cdict):
+		self.server_d[key] = monitored_server.MonitoredMover(cdict, key)
 	elif enstore_functions.is_media_changer(key):
-	    self.server_d[key] = monitored_server.MonitoredMediaChanger(config_d[key],
-									key)
+	    cdict = config_d[key]
+	    if self.ok_to_monitor(cdict):
+		self.server_d[key] = monitored_server.MonitoredMediaChanger(cdict,
+									    key)
 	elif enstore_functions.is_library_manager(key):
-	    self.server_d[key] = monitored_server.MonitoredLibraryManager(config_d[key],
-									  key)
+	    cdict = config_d[key]
+	    if self.ok_to_monitor(cdict):
+		self.server_d[key] = monitored_server.MonitoredLibraryManager(cdict,
+									      key)
 	else:
 	    # nothing to see here
 	    return
-	self.server_d[key].hung_interval = \
-				self.inquisitor.get_hung_interval(self.server_d[key].name)
-	event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[key].hung_interval = \
+				    self.inquisitor.get_hung_interval(self.server_d[key].name)
+	    event_relay_interval = max(event_relay_interval, self.server_d[key].hung_interval)
 
     def update_config_page(self, config):
 	Trace.trace(enstore_constants.INQFILEDBG, "make new html config file")
@@ -324,6 +334,13 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.configfile.write(config)
 	self.configfile.close()
 	self.configfile.install()
+
+    def stop_monitoring(self, server, skey):
+	# set this so if there is a thread attempting to restart this
+	# server, it will notice and abort the attempt.
+	server.delete_me()
+	del self.server_d[skey]
+	self.serverfile.remove_key(server.name)
 
     def update_variables_from_config(self, config):
 	self.inquisitor.update_config(config.get(self.inquisitor.name, {}))
@@ -334,19 +351,19 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    server = self.server_d[skey]
 	    new_server_config = config.get(server.name, {})
 	    if new_server_config:
-		server.update_config(new_server_config)
-		server.hung_interval = self.inquisitor.get_hung_interval(server.name)
-		self.event_relay.interval = max(self.event_relay.interval,
-					       server.hung_interval)
+		if self.ok_to_monitor(new_server_config):
+		    server.update_config(new_server_config)
+		    server.hung_interval = self.inquisitor.get_hung_interval(server.name)
+		    self.event_relay.interval = max(self.event_relay.interval,
+						    server.hung_interval)
+		else:
+		    # we should no longer be monitoring this server
+		    self.stop_monitoring(server, skey)
 	    else:
 		# this server no longer exists in the config file, get rid of it
 		# from our internal dictionary and the output html file.
 		if not server.name == enstore_constants.CONFIG_SERVER:
-		    # set this so if there is a thread attempting to restart this
-		    # server, it will notice and abort the attempt.
-		    server.delete_me()
-		    del(self.server_d[server.name])
-		    self.serverfile.remove_key(server.name)
+		    self.stop_monitoring(server, skey)
 	# check the new config for any new servers we need to add. only handle movers,
 	# library managers and media changers for now.
 	for skey in config.keys():
@@ -791,21 +808,31 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 				    config_d.get(enstore_constants.INQUISITOR, {}))
 	self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
 	event_relay_interval = 0
-	self.alarm_server = monitored_server.MonitoredAlarmServer(\
-				    config_d.get(enstore_constants.ALARM_SERVER, {}))
-	self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
-	self.log_server = monitored_server.MonitoredLogServer(\
-				    config_d.get(enstore_constants.LOG_SERVER, {}))
-	self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
-	self.file_clerk = monitored_server.MonitoredFileClerk(\
-				    config_d.get(enstore_constants.FILE_CLERK, {}))
-	self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
-	self.volume_clerk = monitored_server.MonitoredVolumeClerk(\
-				    config_d.get(enstore_constants.VOLUME_CLERK, {}))
-	self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
-	self.config_server = monitored_server.MonitoredConfigServer(\
-				    config_d.get(enstore_constants.CONFIG_SERVER, {}))
-	self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
+
+	cdict = config_d.get(enstore_constants.ALARM_SERVER, {})
+	self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
+
+	cdict = config_d.get(enstore_constants.LOG_SERVER, {})
+	self.log_server = monitored_server.MonitoredLogServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
+
+	cdict = config_d.get(enstore_constants.FILE_CLERK, {})
+	self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
+
+	cdict = config_d.get(enstore_constants.VOLUME_CLERK, {})
+	self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
+
+	cdict = config_d.get(enstore_constants.CONFIG_SERVER, {})
+	self.config_server = monitored_server.MonitoredConfigServer(cdict)
+	if self.ok_to_monitor(cdict):
+	    self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
 
 	for server_key in self.server_d.keys():
 	    server = self.server_d[server_key]
