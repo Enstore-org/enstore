@@ -10,7 +10,7 @@
 <li><a href="#assum">1.0.2 Assumptions and Constraints</a>
 <li><a href="#aintro">1.0.3 Components</a>
 <li><a href="#pnfs">1.1 The DESY <em>Pnfs</em> Namespace</a>
-<li><a href="#pserver">1.1.1 <em>Pnfs</em> Tests</a>
+<li><a href="#ptests">1.1.1 <em>Pnfs</em> Tests</a>
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
 <li><a href="#pcmd">1.1.4 pcmd: Enstore related <em>pnfs</em> commands</a>
@@ -20,6 +20,7 @@
 <li><a href="#encp_throttle">1.2.2 Throttling in <i>encp</i></a></li>
 <li><a href="#encp_list_from hsm">1.2.3 Specifying lists of files when reading from or writing to the HSM</a>
 <li><a href="#encp_queue">1.2.4 Encp Queues</a>
+<li><a href="#encp_client">1.2.5 Encp Client Installation</a>
 <li><a href="#servers">1.3 Enstore servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
@@ -741,8 +742,17 @@ user deletes his entry in <em>pnfs</em>, we still have the duplicate entry and c
 1.2 ENCP
 </h2>
 Reading and writing files means interacting with media.
-This is done with an Enstore provided utility, <em>encp</em>.
-<em>encp</em> is very similar to the <em>cp</em> command in UNIX.
+Most users will just want to get their data file and do their work. They do
+not want want all the "baggage" products (python, ftt libraries, libtp...)
+that is required to run a complete Enstore system.  To this end, we
+distribute a separate product, called <em>encp</em> along with
+Enstore. This product basically consists of 1 standalone binary executable,
+<em>encp</em> and one UPS table file. This executable, and the mounting of
+<em>pnfs</em> is the only thing that clients need to access their data on
+the robot.
+
+<em>Encp</em> is very similar to the <em>cp</em> command in UNIX, and we
+have tried to duplicate its behavior wherever possible.
 The syntax is:
 <pre>
 % encp [options] src_file dst_file
@@ -1191,8 +1201,83 @@ rip4.fnal.gov bakken /raid/1MB.trand /pnfs/grau/ait/jon2/1MB.trand M
 
 The 1st field in the output is the node name, the 2nd is the requester, the
 3rd is the input filename, and the 4th is the output filename.  The 5th and
-last field can have 2 values: "P" denotes a <u>P</u>ending transfer and "M"
+last field can have 2 values: "P" denotes a <u>P</u>ending transfer still
+in the library manager queues and "M"
 signifies a active transfer at a <u>M</u>over.
+
+<h3><a name="encp_client">
+1.2.4 <em>Encp</em> Client Installation
+</h3>
+
+<em>Encp</em> is distributed via the Fermilab UPD mechanism. It is a static
+binary product that does not depend on any other products or executable.
+The binary <em>encp</em> product is made using the standard Python freeze
+tool.  Basically, the Python freeze tool uses the regular Python parser to
+parse the Python code and all its modules to produce a binary that people who
+don't have Python can run.  <p>
+
+Typically 2 <em>encp</em> products are available in UPD, one for general
+use and one explicitly tailored for D0/SAM.
+<pre>
+$ upd list -a encp
+
+DATABASE=/ftp/upsdb 
+        Product=encp    Version=v0_11-sam       Flavor=Linux+2
+                Qualifiers=""   Chain=current
+
+        Product=encp    Version=v0_11   Flavor=Linux+2
+                Qualifiers=""   Chain=""
+</pre>
+
+
+
+
+The installation procedure is straightforward:
+<pre>
+$ upd install -G"-c" encp
+informational: beginning install of encp.
+informational: transferred /ftp/products/encp/v0_11/Linux+2/encp_v0_11_Linux+2
+        from fnkits.fnal.gov to
+        /home/products/encp/v0_11
+informational: transferred /ftp/products/encp/v0_11/Linux+2/encp_v0_11_Linux+2.table
+        from fnkits.fnal.gov:/ to
+        /home/products/upsdb/encp/v0_11.table.new
+informational: ups declare succeeded
+informational: ups declare succeeded
+</pre>
+
+And the entire product basically consists of the encp binary, pcmd (a <em>pnfs</em> script
+described in the <em>pnfs</em> section), and some UPS tables.  The <em>encp</em> binary is
+quite large since it is statically linked.
+<pre>
+$ ls
+     179 Nov 24 09:49 .manifest.encp
+ 2976514 Nov 24 09:24 encp*
+    1690 Nov 24 09:24 encp.table
+       9 Dec  2 15:20 enstore_variables.table -> rip.table
+   11313 Nov 24 09:24 pcmd*
+     398 Nov 24 09:24 rip.table
+     399 Nov 24 09:24 sam.table
+</pre>
+
+Two environmental variables, ENSTORE_CONFIG_PORT, and ENSTORE_CONFIG_HOST,
+control which Enstore system the <em>encp</em> requests go to. In order to
+allow a user allow a user to override the default control environmental
+variables distributed with the product, the <em>encp</em> product uses the
+UPS concept of "virtual" products.  The basic idea is that everything in
+the <em>encp</em> table file is general, and everything in the virtual
+product enstore_variables.table file is user/installation specific.
+
+Finally, when <em>encp</em> is setup, it creates a directory in the /tmp
+area where it stores debugging information and other non-user
+information. The user can ignore the files in the /tmp area. 
+
+As an aside, it should be noted that since development of Enstore is still
+rapid, no versions are cut.  The complete UPS product structure is
+finished.  For new installations, typically we CVS check code and issue one
+make command and the entire product is ready to be used.  We expect to cut
+versions of Enstore when it is appropriate. These versions will not be
+frozen, <it>i.e.</it>, they will need Python and the other dependent products.
 
 <hr>
 <h2><a name="servers">
