@@ -472,7 +472,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
             tmp_vol_info = self.vcc.inquire_vol( external_label )
             if tmp_vol_info['status'][0] != 'ok': return 'NOTAPE' # generic, not read or write specific
             open_flag = "a+"
-            if tmp_vol_info['system_inhibit'] in [ 'readonly', 'full']:
+            if tmp_vol_info['system_inhibit'][1] in [ 'readonly', 'full']:
                 open_flag = "r"
             # if there is a tape in the drive, eject it (then the robot can put it away and we can continue)
             # NOTE: can we detect "cleaning in progress" or "cleaning cartridge (as
@@ -1633,6 +1633,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         return None
 
     def sigint( self, sig, stack ):
+        import traceback
         del self.hsm_driver
         print 'Traceback (innermost last):'
         traceback.print_stack( stack )
