@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<doc editor="KIllustrator" mime="application/x-killustrator" >
+<doc editor="KIllustrator" mime="application/x-killustrator" comment="" keywords="" >
 <head>
 <layout format="a4" orientation="portrait" width="210" height="297" lmargin="0" tmargin="0" rmargin="0" bmargin="0" />
 <grid dx="20" dy="20" align="0" />
@@ -8,6 +8,6 @@
 </head>
 <text matrix="1 0 0 0 1 0 131 9 1" strokecolor="118 0 0" strokestyle="1" linewidth="1" fillstyle="0" align="0" >
 <font face="utopia" point-size="32" weight="75" italic="1" >
-Enstore Configuration</font>
+Encp Configuration</font>
 </text>
 </doc>
