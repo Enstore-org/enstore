@@ -49,7 +49,7 @@ IP address stored in the configuration item "html_gen_host"
 
 MY_NAME = "Monitor_Server"
 
-class MonitorServer(dispatching_worker.DispatchingWorker):
+class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
     def __init__(self, csc, html_dir, html_refresh_time):
 	self.running = 0
@@ -167,9 +167,3 @@ if __name__ == "__main__":
             continue
 
     Trace.trace(6,"Monitor Server finished (impossible)")
-
-
-
-
-
-
