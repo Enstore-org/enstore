@@ -769,9 +769,9 @@ class HTMLLogFile(EnHTMLFile, EnStatusFile):
             if log_dirs:
                 dir_keys = log_dirs.keys()
                 dir_keys.sort()
-                self.filedes.write("<H1><FONT SIZE=+3>Other Log Files</FONT></H1>\n")
+                self.filedes.write("<H1><FONT SIZE=+3>Other Log Files</FONT></H1>\n<BR>")
                 for dir in dir_keys:
-                    self.filedes.write('<A HREF="%s"><B>%s Log Files</B></A>\n'% \
+                    self.filedes.write('<A HREF="%s"><B>%s Log Files</B></A>\n<BR>'% \
                                        (log_dirs[dir], dir))
                 self.filedes.write('<BR><BR><HR><BR>\n')
 
