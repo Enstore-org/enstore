@@ -97,6 +97,23 @@ def get_argv3(default=" "):
     else:
         return default
 
+def prompt_user(command="", node=""):
+    sys.stdout.write("Please confirm: %s enstore on %s [y/n def:n] : "%(command, 
+									node))
+    return sys.stdin.readline()
+
+def no_argv_num(num):
+    if len(sys.argv) < num:
+	return 1
+    else:
+	return None
+
+def no_argv3():
+    return no_argv_num(3)
+
+def no_argv4():
+    return no_argv_num(4)
+
 def do_rgang_command(fdefault, command):
     farmlet = get_farmlet(fdefault)
     print 'rgang %s \"%s\"'%(farmlet, command)
@@ -386,8 +403,20 @@ class Enstore(EnstoreInterface):
             command="%s enstore-start %s%s"%(CMD1, get_argv3("enstore"), dbs.CMD2)
             rtn = do_rgang_command("enstore",command)
         elif not self.user_mode and arg1 == "Estop":
-            command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
-            rtn = do_rgang_command("enstore-down",command)
+	    argv3 = get_argv3("enstore-down")
+            command="%s enstore-stop %s%s"%(CMD1, argv3, dbs.CMD2)
+	    farmlet = "enstore-down"
+	    answer = "y"
+	    if no_argv3():
+		# make sure user wants to do this before continuing
+		answer = prompt_user(command="Stopping", node="all nodes")
+	    elif no_argv4():
+		answer = prompt_user(command="Stopping",
+				     node="farmlet %s"%(get_farmlet(farmlet),))
+	    if answer[0] == "y" or answer[0] == "Y":
+		rtn = do_rgang_command("enstore-down",command)
+	    else:
+		rtn = 0
         elif not self.user_mode and arg1 == "Erestart":
             command="%s enstore-stop %s%s"%(CMD1, get_argv3("enstore-down"), dbs.CMD2)
             rtn1 = do_rgang_command("enstore-down",command)
