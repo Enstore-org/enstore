@@ -10,13 +10,13 @@ import errno
 import exceptions
 import errno
 import sys
-import binascii
 import pprint
 
 # enstore imports
 import interface
 import timeofday
 import Trace
+import ECRC
 
 TRANSFER_MAX=16384
 
@@ -147,7 +147,7 @@ def protocolize( self, text ):
 
     # CRC text
     body = `(self.ident, lcl_number, text)`
-    crc = binascii.crc_hqx(body, 0)
+    crc = ECRC.ECRC(body, 0)
 
     # stringify message and check if it is too long
     message = `(body, crc)`

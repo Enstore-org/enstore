@@ -43,7 +43,7 @@ import time
 import timeofday
 import traceback
 import socket				# for init(config_host=="localhost"...)
-import binascii				# for crc
+import ECRC				# for crc
 import types				# see if library config is list
 import pprint
 import os				# os.environ
@@ -266,7 +266,7 @@ class Mover:
             self.logc.send(log_client.INFO,2,"CPIO")
 	    fast_write = 1
 	    t0 = time.time()
-            self.wrapper = cpio.Cpio(self, self.driver, binascii.crc_hqx, fast_write )
+            self.wrapper = cpio.Cpio(self, self.driver, ECRC.ECRC, fast_write )
 	    ticket['times']['transfer_time'] = time.time() - t0
 
 	    # now write the file
@@ -392,7 +392,7 @@ class Mover:
         complete_crc = 0
 
         # create the wrapper instance
-        self.wrapper = cpio.Cpio(self.driver,self,binascii.crc_hqx)
+        self.wrapper = cpio.Cpio(self.driver,self,ECRC.ECRC)
 
         # open the hsm file for reading and read it
         try:

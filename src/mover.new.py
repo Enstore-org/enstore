@@ -58,7 +58,7 @@ import driver
 
 import time				# .sleep
 import traceback			# print_exc == stack dump
-import binascii				# for crc
+import ECRC				# for crc
 import pprint				# hopefully get rid of this???
 import posix				# waitpid
 
@@ -307,7 +307,7 @@ def forked_write_to_hsm( self, ticket ):
 	    fast_write = 1
 
 	    # create the wrapper instance (could be different for different tapes)
-            wrapper = cpio.Cpio(  self.net_driver, self.hsm_driver, binascii.crc_hqx
+            wrapper = cpio.Cpio(  self.net_driver, self.hsm_driver, ECRC.ECRC
 				, fast_write )
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
@@ -417,7 +417,7 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
-	    wrapper = cpio.Cpio( self.hsm_driver, self.net_driver, binascii.crc_hqx )
+	    wrapper = cpio.Cpio( self.hsm_driver, self.net_driver, ECRC.ECRC )
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    t0 = time.time()
