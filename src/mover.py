@@ -116,7 +116,7 @@ def state_name(state):
 READ, WRITE, ASSERT = range(3)
 
 #error sources
-TAPE, ROBOT, NETWORK = ['TAPE', 'ROBOT', 'NETWORK']
+TAPE, ROBOT, NETWORK, DRIVE = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE']
 
 def mode_name(mode):
     if mode is None:
@@ -1836,7 +1836,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
                                 (self.current_volume,save_location))
 
-                    self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=TAPE)
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=DRIVE)
                     return
                 try:
                     location = cookie_to_long(self.vol_info['eod_cookie'])
@@ -1847,7 +1847,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
                                 (self.current_volume,save_location))
-                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
+                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     return
                 self.buffer.save_settings()
                 bytes_read = 0L
@@ -1887,7 +1887,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
                         failed = 1
                         break
                     except:
@@ -1897,13 +1897,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
                                      'external_label':self.current_work_ticket['vc']['external_label']})
-                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                        self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=DRIVE)
                         failed = 1
                         break
                     if b_read <= 0:
                         Trace.alarm(e_errors.ERROR, "selective CRC check read error")
                         self.transfer_failed(e_errors.WRITE_ERROR, "read returns %s" % (bytes_read,),
-                                             error_source=TAPE)
+                                             error_source=DRIVE)
                         failed = 1
                         break
                     if first_block:
@@ -1919,7 +1919,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
-                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=TAPE)
+                    self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
@@ -2837,6 +2837,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_dismount_function = self.offline
                 Trace.alarm(e_errors.ERROR, "tape thread is possibly stuck in D state")
                 self.log_state()
+            if error_source == DRIVE:
+                after_dismount_function = self.offline
+                Trace.alarm(e_errors.ERROR, "Possible drive failure")
 
             self.consecutive_failures = self.consecutive_failures + 1
             if self.consecutive_failures >= self.max_consecutive_failures:
