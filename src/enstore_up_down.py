@@ -104,7 +104,10 @@ class EnstoreServer:
 	    self.csc = None
 
     def is_really_down(self):
-	return self.seen_down_d[self.format_name] % self.allowed_down
+        rc = 0
+        if (self.seen_down_d[self.format_name] % self.allowed_down) == 0:
+            rc = 1
+        return rc
 
     def writemail(self, message):
         # we only send mail if the server has been seen down more times than it is allowed
