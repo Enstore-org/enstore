@@ -1471,7 +1471,7 @@ def max_attempts(csc, library, encp_intf):
     #    except TypeError:
     #        encp_intf.max_retry = None
     if encp_intf.use_max_resubmit:
-        resend['max_resubmits'] = encp_intf.max_resubmits
+        resend['max_resubmits'] = encp_intf.max_resubmit
     else:
         resend['max_resubmits'] = lm.get('max_encp_resubmits',
                                  enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
@@ -1548,7 +1548,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     seek_time = time_ticket.get('seek_time', 0)
     mount_time = time_ticket.get('mount_time', 0)
     in_queue = time_ticket.get('in_queue', 0)
-    unique_id = ticket.get('unique_id', "")
+    #unique_id = ticket.get('unique_id', "")
     now = time.time()
     total = now - time_ticket.get('encp_start_time', now)
     sts =  ticket.get('status', ('Unknown', None))
