@@ -154,12 +154,16 @@ static PyObject* dismount(PyObject *self, PyObject *args)
   */
   if (!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s))            /* get args */ 
   	return (NULL);
+/*         aci_dismount takes vol and media_type_s;  force 
   if (!(media_type = stoi_mediatype(media_type_s)))
+      return(Py_BuildValue("iis",ENOVOLUME, err_string[ENOVOLUME], err_string[ENOVOLUME]));
       return(Py_BuildValue("sis",
 		status_table[ENOVOLUME].status,
 		ENOVOLUME, 
 		status_table[ENOVOLUME].status_descrip));
   if  (stat = aci_dismount(vol,media_type))
+*/
+  if  (stat = aci_force(drive))
   {
      stat=d_errno;
      if (sizeof(status_table) < stat)
