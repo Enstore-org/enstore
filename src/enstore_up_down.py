@@ -672,6 +672,15 @@ def do_real_work():
                 Trace.alarm(e_errors.INFO, "%s - Ticket Generated"%(e_errors.ENSTOREBALLRED,),
                             {'Reason':repr(reason)}, "RedBall", remedy_type)
             else:
+                # we could not generate a ticket in the normal way because the alarm/log/config
+                # server is down.  fake it so the error is not missed.
+                host = os.uname()[1]
+                remedy_type = REMEDY_TYPE_D.get(host[0:2], "??")
+                import alarm
+                anAlarm = alarm.Alarm(host, e_errors.sevdict[e_errors.ERROR],
+                                      e_errors.ENSTOREBALLRED, 42, "UP_DOWN", "UP_DOWN",
+                                      "RedBall", remedy_type, {"Reason":reason})
+                anAlarm.ticket()
                 enprint("%s - LOG, ALARM, or CONFIG server not running, a ticket will NOT be generated!!!"%(e_errors.ENSTOREBALLRED,))
         else:
             enprint("%s - Enstore is marked down, a ticket will NOT be generated!!!"%(e_errors.ENSTOREBALLRED,))
