@@ -74,7 +74,7 @@ tar_script=/tmp/tar_script
 rm -f $tar_script
 echo 'nice -n 20 tar -l \
 --exclude="/lost+found/*" --exclude=/proc/ --exclude="/tmp/*" --exclude="/var/log/*" \
---exclude="/*\.jon*" --exclude="/*\.fnal\.gov\.startup"  \
+--exclude="/*\.jon*" --exclude="/*\.fnal\.gov\.startup"  --exclude=BITERROR --exclude=SEL \
 --exclude="/var/tmp/*" --exclude="/var/spool/mqueue/*" --exclude=.netscape \ ' >$tar_script
 users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
