@@ -166,17 +166,23 @@ case $cmd in
     ;;
 
   Estart)
-    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estart"
+    #if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estart"
+    # different mount point on fntt - hack in for now, this is bad.
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "~bakken/enstore/sbin/estart"
     stat=$?
     ;;
 
   Estop)
-    if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"
+    #if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/estop"
+    # different mount point on fntt - hack in for now, this is bad.
+    if [ -z "${1-}" ] ; then farmlet=enstore-down; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "~bakken/enstore/sbin/estop"
     stat=$?
     ;;
 
   Erestart)
-    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/erestart" 
+    #if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "$ENSTORE_DIR/sbin/erestart" 
+    # different mount point on fntt - hack in for now, this is bad.
+    if [ -z "${1-}" ] ; then farmlet=enstore; else farmlet=$1; fi; /usr/local/bin/rgang $farmlet "~bakken/enstore/sbin/erestart" 
     stat=$?
     ;;
 
