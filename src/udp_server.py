@@ -220,8 +220,10 @@ class UDPServer:
 			   self.reply_address)
 	del send_socket
 
-        Trace.trace(16, "udp_server (reply with interface): request_dict %s" %
-                    (self.request_dict[self.current_id],))
+        Trace.trace(16,
+              "udp_server (reply with interface %s): to %s: request_dict %s" %
+              (interface_ip, self.reply_address,
+               self.request_dict[self.current_id],))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
@@ -230,8 +232,8 @@ class UDPServer:
         self.server_socket.sendto(repr(self.request_dict[self.current_id]),
 				  self.reply_address)
 
-        Trace.trace(16, "udp_server (reply): request_dict %s" %
-                    (self.request_dict[self.current_id],))
+        Trace.trace(16, "udp_server (reply): to %s: request_dict %s" %
+                    (self.reply_address, self.request_dict[self.current_id],))
         
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
