@@ -5201,11 +5201,11 @@ interim, Enstore will make the following working assumptions:
 It is certainly  possible to import and export information by copying disk resident data
 from Enstore using the <em>encp</em> command. 
 However, given the need to move large amounts of data, and the wide spread
-use compatible tape drives and
+use of compatible tape drives and
 media, it is usually  more efficient to interchange tape volumes: that is, to write
 tapes outside of Enstore and import them into the system, and to write tapes
 inside of Enstore and remove them from the system. In this way, for example,
-Enstore can be used as a kind of tape copy facility (one that always copies from tape to disk to tape).
+Enstore can be used as a kind of tape copy facility.
 
 <p> What follows are draft design notions, importing and exporting are 
 not yet fully implemented.
@@ -5218,7 +5218,7 @@ not yet fully implemented.
 command line switch --ephemeral, which specifies a temporary, "ephemeral" file family. An
 ephemeral file family is a unique file family name created just for this <em>encp</em>
 command, with a file family width of exactly one. Under these conditions, files will
-be placed on tape volume in the order specified by the user. Once the data is written to the
+be placed on the tape volume in the order specified by the user. Once the data is written to the
 tape, the file family name is changed to the tape_label_name.ephemeral.
 
 <p>An experimenter wishing to build an exportable volumes would follow these steps:
