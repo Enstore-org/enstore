@@ -1,18 +1,21 @@
 #include <Python.h>
+#include <ftt.h>
 
+typedef struct {
+  ftt_descriptor	ftt_desc;
+  char *filename; 
+} ET_struct;
 /*
   Module description
 */
 static char ETape_Doc[] =  "ETape is a module which interfaces to ENSTORE TAPE drives";
 
+
 /*
-  CopyToTape Method description
+   Method implementations
 */
 static char ET_CopyToTape_Doc[] = "Copy data from an fd to tape";
 
-/*
-   Method implementation
-*/
 static PyObject*
 ET_CopyToTape(PyObject *self, PyObject *args)
 {
@@ -23,13 +26,41 @@ ET_CopyToTape(PyObject *self, PyObject *args)
   char *oname, *opathname;
   int sts = 0;
 
-  if (!PyArg_ParseTuple(args, "ss|O!", &iname, &ipathname,
+  if (!PyArg_ParseTuple(args, "OO", 
                               &PyFile_Type, &ifob))
       return NULL;
-  if (!PyArg_ParseTuple(args+1, "ss|O!", &oname, &opathname,
-                              &PyFile_Type, &ofob))
-  return Py_BuildValue("i",sts);
+  return Py_BuildValue("i",0);
+}
 
+static char ET_OpenRead_Doc[] = "Open a tape drive for reading";
+
+static PyObject*
+ET_OpenRead(PyObject *self, PyObject *args)
+{
+  char *iname;
+  ftt_descriptor ftt_desc;
+
+  if (!PyArg_ParseTuple(args, "s", &iname))
+      return NULL;
+    
+  ftt_desc = ftt_open(iname, FTT_RDONLY);
+
+  
+  return Py_BuildValue("i",0);
+}
+
+static char ET_OpenWrite_Doc[] = "Open a tape drive for writing";
+
+static PyObject*
+ET_OpenWrite(PyObject *self, PyObject *args)
+{
+  char *oname;
+
+  int sts;
+
+  if (!PyArg_ParseTuple(args, "s", &oname))
+      return NULL;
+  return Py_BuildValue("i",0);
 }
 
 /*
@@ -43,6 +74,8 @@ ET_CopyToTape(PyObject *self, PyObject *args)
          4 - method documentation string
 */
 static PyMethodDef ETape_Methods[] = {
+  { "OpenWrite", ET_OpenWrite, 1, ET_OpenWrite_Doc},
+  { "OpenRead", ET_OpenRead, 1, ET_OpenRead_Doc},
   { "CopyToTape", ET_CopyToTape, 1, ET_CopyToTape_Doc},
   {0,     0}        /* Sentinel */
 };
