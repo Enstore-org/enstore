@@ -1,5 +1,8 @@
 # @(#) $Id$
 # $Log$
+# Revision 1.1  2000/03/02 00:18:49  bakken
+# install here as temporary fix
+#
 # Revision 1.5  1999/11/22 20:23:49  huangch
 # check for None before closeing a cursor
 #
@@ -58,7 +61,7 @@ Dependent on the implementation, closing a persistent dictionary may
 or may not be necessary to flush changes to disk.
 """
 
-
+import sys
 import cPickle
 
 _CheckpointLockName = "__ckp_lock__"
@@ -138,7 +141,8 @@ class Shelf:
                 r= cPickle.loads(x)
             except:
                 print "Pickle load error", repr(x)
-                raise
+		exc, msg, tb = sys.exc_info()
+                raise exc, msg
             return r
         
 	def status(self):
