@@ -745,11 +745,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     # find volume that matches given volume family
     def find_matching_volume(self, library, vol_fam, pool,
                              wrapper, vol_veto_list, first_found,
-                             min_remaining_bytes, exact_match=1):
+                             min_remaining_bytes, exact_match=1,
+                             mover={}):
 
         # go through the volumes and find one we can use for this request
         vol = {}
-
+        type_of_mover = mover.get('mover_type','Mover')
+        if type_of_mover == 'DiskMover':
+          exact_match=1  
         Trace.trace(20,  "volume family %s pool %s wrapper %s veto %s exact %s" %
                     (vol_fam, pool,wrapper, vol_veto_list, exact_match))
 
@@ -775,6 +778,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if self.is_volume_full(v,min_remaining_bytes):
                     Trace.trace(30, "full")
                     continue
+                if type_of_mover == 'DiskMover':
+                    mover_ip_map = mover.get('ip_map', '')
+                    Trace.trace(30, "ip_map %s v %s"%(mover_ip_map,string.split(v['external_label'],':')[0])) 
+                    if mover_ip_map and mover_ip_map is string.split(v['external_label'],':')[0]:
+                        break
             else:
                 if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                     Trace.trace(30, "almost full")
@@ -804,8 +812,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 vol = v  
         c.close()
         return vol
-        
-    
+
     # check if quota is enabled in the configuration
     def quota_enabled(self, library, storage_group):
         q_dict = self.csc.get('quotas')
@@ -868,19 +875,33 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.trace(20, "next_write_volume %s %s" % (vol_fam, vol_fam))
 
         pool = vol_fam
+        mover_type = ticket['mover'].get('mover_type','Mover')
+        if mover_type == 'DiskMover':
+           use_exact_match = 1
+           first_found = 1
         vol = self.find_matching_volume(library, vol_fam, pool,
                                         wrapper_type, vol_veto_list,
-                                        first_found, min_remaining_bytes,exact_match=1)
+                                        first_found, min_remaining_bytes,exact_match=1,
+                                        mover=ticket['mover'])
         Trace.trace(20, "find matching volume returned %s" % (vol,))
 
         if use_exact_match:
             if not vol or len(vol) == 0:
                 # nothing was available at all
-                msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
-								       vol_fam)
-                ticket["status"] = (e_errors.NOVOLUME, msg)
-                Trace.alarm(e_errors.ERROR,msg)
-                self.reply_to_caller(ticket)
+                if mover_type == 'DiskMover':
+                    vol['external_label'] = None
+                    vol['volume_family'] = vol_fam
+                    vol['wrapper'] = wrapper_type
+                    Trace.log(e_errors.INFO, "Assigning fake volume %s from storage group %s to library %s, volume family %s"
+                      % (vol['external_label'], pool, library, vol_fam))
+                    vol["status"] = (e_errors.OK, None)
+                    self.reply_to_caller(vol)
+                else:
+                    msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
+                                                                           vol_fam)
+                    ticket["status"] = (e_errors.NOVOLUME, msg)
+                    Trace.alarm(e_errors.ERROR,msg)
+                    self.reply_to_caller(ticket)
                 return
 
         if not vol or len(vol) == 0:

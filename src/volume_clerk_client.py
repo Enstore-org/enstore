@@ -378,13 +378,17 @@ class VolumeClerkClient(generic_client.GenericClient,
         
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           volume_family, vol_veto_list,first_found, exact_match=0):
+                           volume_family, vol_veto_list,first_found, mover=None, exact_match=0):
+        mover_type = mover.get('mover_type','Mover')
+        if mover_type is 'DiskMover':
+            exact_match = 1
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'volume_family'       : volume_family,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found,
+                   'mover'               : mover,
                    'use_exact_match'     : exact_match}
 
         return self.send(ticket)
