@@ -324,15 +324,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # 'NONE', then, do not add a link to the file.  if the
                 # command is 'NONE', then do not execute anything.
                 if not self.cmds_to_do[hfile] == "NONE":
-                    os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
-						 self.html_dir, hfile))
-                    # now get the mod time of the file to tell the user so it
-                    # can be seen if the system call is really failing
-                    try:
-                        mod_time = os.stat("%s/%s"%(self.html_dir, hfile))[stat.ST_MTIME]
-                    except os.error:
-                        # the file does not exist
-                        pass
+		    # we do not want to hang in case the command hangs, so do a fork.
+		    pid = self.fork()
+                    if not pid:
+                        # we are the first child ############################
+			# fork a second time and then exit.  the 2nd child will
+			# actually do the work.  the 1st child (this one) exits
+			# immediately so that the 2nd child is inherited by the
+			# init process and does not become a zombie when it 
+			# exits.
+			pid2 = self.fork()        # getting the second child
+			print "forking misc child"
+			if not pid2:
+			    # we are the second child #######################
+			    os.system("%s > %s/%s 2>&1"%(self.cmds_to_do[hfile],
+							 self.html_dir, hfile))
+			    os._exit(0)   # second child
+			    # end of the second child ##################################
+			else:
+			    # add the second childs pid to the appropriate enstore file so the
+			    # child can be killed automatically
+			    os.system("tpid=`$ENSTORE_DIR/bin/en_get_pid_dir`;echo %s >> $tpid/`uname -n`-inquisitor_pids"%(pid2,))
+			    os._exit(0)   # first child
+		    else:
+			# we are the original parent.  now we must wait for the first
+			# child to exit so it does not become a zombie
+			os.waitpid(pid, 0)
 
                 if not hfile == "NONE":
 		    data.append(hfile)
