@@ -5,6 +5,7 @@ from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 from base_defaults import default_host, default_port, BaseDefaults
 from client_defaults import ClientDefaults
+import Trace
 
 class AdminClerkClient(BaseDefaults, ClientDefaults) :
 
@@ -145,6 +146,7 @@ class AdminClerkClient(BaseDefaults, ClientDefaults) :
         print "f(file_family),m(media_type),v(volume name for file table)"
 
 if __name__ == "__main__" :
+    Trace.init("admin cli")
     import sys
     import pprint
 

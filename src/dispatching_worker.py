@@ -24,13 +24,15 @@ dict = {}
 #    The second entry, dict[1], is the message, client number, ticket, and time
 #        which becomes list[0-2]
 def purge_stale_entries(dict):
-    Trace.trace(16,"{purge_stale_entries")
+    Trace.trace(20,"{purge_stale_entries")
     stale_time = time.time() - 600
+    count = 0
     for entry in dict.items():
         list = entry[1]
         if  list[2] < stale_time:
             del dict[entry[0]]
-    Trace.trace(16,"}purge_stale_entires")
+            count = count+1
+    Trace.trace(20,"}purge_stale_entries count=%d",count)
 
 import pdb
 def dodebug(a,b):
@@ -41,18 +43,20 @@ signal.signal(3,dodebug)
 
 # check for any children that have exitted (zombies) and collect them
 def collect_children():
-    Trace.trace(16,"{collect_children")
+    Trace.trace(20,"{collect_children")
+    count = 0
     try:
         pid, status = os.waitpid(0, os.WNOHANG)
         if (pid!=0):
             #print "Child reaped: pid=",pid," status=",status
-            Trace.trace(17,"collect_children reaped pid="+repr(pid))
+            count = count+1
+            Trace.trace(21,"collect_children reaped pid="+repr(pid))
     except os.error:
         if sys.exc_info()[1][0] != errno.ECHILD:
             Trace.trace(0,"collect_children "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
             raise sys.exc_info()[0],sys.exc_info()[1]
-    Trace.trace(16,"}collect_children")
+    Trace.trace(20,"}collect_children count=%d",count)
 
 # Generic request response server class, for multiple connections
 # This method overrides the process_request function in SocketServer.py
@@ -63,13 +67,15 @@ class DispatchingWorker:
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
         # the real info and work is in the ticket - get that
-        Trace.trace(16,"{process_request add="+repr(client_address)+\
-                    " req="+repr(request))
+        Trace.trace(5,"{process_request add="+repr(client_address))
 
         exec ( "idn, number, ticket = " + request)
         self.reply_address = client_address
         self.client_number = number
         self.current_id = idn
+
+        Trace.trace(6,"process_request idn="+repr(idn)+" number"+repr(number)+\
+                    " req="+repr(request))
 
         try:
 
@@ -78,6 +84,7 @@ class DispatchingWorker:
             # handled it if we have a record of it in our dict
             exec ("list = " + repr(dict[idn]))
             if list[0] == number:
+                Trace.trace(5,"}process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
                 return
 
@@ -89,6 +96,7 @@ class DispatchingWorker:
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             else:
+                Trace.trace(5,"}process_request "+repr(idn)+" old news")
                 return #old news, timing race....
 
         # on the very 1st request, we don't have anything to compare to
@@ -108,20 +116,20 @@ class DispatchingWorker:
             purge_stale_entries(dict)
 
         # call the user function
-        Trace.trace(16,"process_request function="+repr(function))
+        Trace.trace(6,"process_request function="+repr(function))
         exec ("self." + function + "(ticket)")
 
         # check for any zombie children and get rid of them
         collect_children()
-        Trace.trace(15,"}process_request")
+        Trace.trace(5,"}process_request idn="+repr(idn))
 
     # nothing like a heartbeat to let someone know we're alive
     def alive(self,ticket):
-        Trace.trace(16,"{alive address="+repr(self.server_address))
+        Trace.trace(10,"{alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = "ok"
         self.reply_to_caller(ticket)
-        Trace.trace(16,"}alive")
+        Trace.trace(10,"}alive")
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
@@ -136,15 +144,17 @@ class DispatchingWorker:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        Trace.trace(16,"{reply_to_caller number="+repr(self.client_number))
+        Trace.trace(18,"{reply_to_caller number="+repr(self.client_number)+\
+                    " id ="+repr(self.current_id))
         reply = (self.client_number, ticket, time.time())
         self.reply_with_list(reply)
-        Trace.trace(16,"}reply_to_caller number="+repr(self.client_number))
+        Trace.trace(18,"}reply_to_caller number="+repr(self.client_number))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
-        Trace.trace(16,"{reply_with_list")
+        Trace.trace(19,"{reply_with_list number="+repr(self.client_number)+\
+                    " id ="+repr(self.current_id))
         dict[self.current_id] = list
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0:
@@ -171,4 +181,4 @@ class DispatchingWorker:
                         repr(errno.errorcode[badsock]))
             print "dispatching_worker reply_with_list, post-sendto error:",\
                   errno.errorcode[badsock]
-        Trace.trace(16,"}reply_with_list")
+        Trace.trace(19,"}reply_with_list number="+repr(self.client_number))

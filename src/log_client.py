@@ -20,6 +20,7 @@ from udp_client import UDPClient
 import pprint
 from base_defaults import default_host, default_port, BaseDefaults
 from client_defaults import ClientDefaults
+import Trace
 
 # Severity codes
 ERROR=0
@@ -157,6 +158,7 @@ class LoggerClient(BaseDefaults, ClientDefaults):
 
 
 if __name__ == "__main__" :
+    Trace.init("log client")
     import getopt
     import socket
     import string

@@ -5,6 +5,7 @@ import callback
 import udp_client
 import base_defaults
 import client_defaults
+import Trace
 
 class LibraryManagerClient(base_defaults.BaseDefaults,\
                            client_defaults.ClientDefaults) :
@@ -112,6 +113,7 @@ class LibraryManagerClient(base_defaults.BaseDefaults,\
         return worklist
 
 if __name__ == "__main__" :
+    Trace.init("libm cli")
     import sys
     import pprint
 

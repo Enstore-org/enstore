@@ -7,6 +7,7 @@ from udp_client import UDPClient
 from db import do_backup
 from base_defaults import default_host, default_port, BaseDefaults
 from client_defaults import ClientDefaults
+import Trace
 
 class VolumeClerkClient(BaseDefaults, ClientDefaults) :
 
@@ -239,6 +240,7 @@ class VolumeClerkClient(BaseDefaults, ClientDefaults) :
         return self.send(ticket)
 
 if __name__ == "__main__" :
+    Trace.trace("VC client")
     import sys
     import pprint
 

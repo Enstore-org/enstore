@@ -4,6 +4,7 @@ import time
 from udp_client import UDPClient
 import errno
 from base_defaults import default_host, default_port, BaseDefaults
+import Trace
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses the
@@ -130,6 +131,7 @@ class configuration_client(BaseDefaults) :
 
 
 if __name__ == "__main__" :
+    Trace.init("config cli")
     import sys
     import pprint
 

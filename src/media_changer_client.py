@@ -10,6 +10,7 @@ from configuration_client import configuration_client, set_csc
 from udp_client import UDPClient
 from base_defaults import default_host, default_port, BaseDefaults
 from client_defaults import ClientDefaults
+import Trace
 
 class MediaLoaderClient(BaseDefaults, ClientDefaults):
     def __init__(self, csc=[], host=default_host(), port=default_port()) :
@@ -67,6 +68,7 @@ class MediaLoaderClient(BaseDefaults, ClientDefaults):
         return self.send(ticket)
 
 if __name__ == "__main__" :
+    Trace.init("medch cli")
     import sys
     import pprint
 

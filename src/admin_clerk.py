@@ -14,6 +14,8 @@ from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
 from db import dBTable
 import dbutil
+import Trace
+
 class AdminClerkMethods(DispatchingWorker) :
    def select(self,ticket):
         ticket["status"] = "ok"
@@ -134,6 +136,7 @@ class AdminClerkMethods(DispatchingWorker) :
 class AdminClerk(AdminClerkMethods, GenericServer, UDPServer) :
 	pass
 if __name__=="__main__":
+   Trace.init("adminclerk")
    import getopt 
    import string
    try:

@@ -6,6 +6,8 @@ from db import do_backup
 import callback
 import time
 import string
+import Trace
+
 class FileClerkClient(BaseDefaults, ClientDefaults) :
 
     def __init__(self, csc=[], host=default_host(), port=default_port()) :
@@ -131,6 +133,7 @@ class FileClerkClient(BaseDefaults, ClientDefaults) :
                           "bfid" : self.bfid } )
 
 if __name__ == "__main__" :
+    Trace.init("FC client")
     import sys
     import pprint
 
