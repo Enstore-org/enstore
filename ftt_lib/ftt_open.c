@@ -73,7 +73,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     /* find device type and os in table */
 
     ENTERING("ftt_open_logical");
-    PCKNULL("base name",basename);
+    PCKNULL("base name",name);
     PCKNULL("operating system name", os);
     PCKNULL("drive id prefix", drivid);
 

@@ -4,9 +4,11 @@ LIBS=`cat local/libs`
 
 SYSOBJ= ftt_scsi.o ftt_machdep.o
 
-SCSISRC= local/ftt_scsi.c
+SCSISRC= AIX/ftt_scsi.c IRIX+4/ftt_scsi.c IRIX+5/ftt_scsi.c OSF1/ftt_scsi.c \
+	SunOS/ftt_scsi.c VMS/ftt_scsi.c
 
-MACHDEPSRC=local/ftt_machdep.c
+MACHDEPSRC= AIX/ftt_machdep.c IRIX+4/ftt_machdep.c IRIX+5/ftt_machdep.c \
+		OSF1/ftt_machdep.c SunOS/ftt_machdep.c
 
 SUIDSRC= ftt_suid.c 
 SUIDOBJ= ftt_suid.o
