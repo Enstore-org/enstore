@@ -20,7 +20,7 @@ usage(void) {
    fprintf(stderr, "       ftt_suid -l blck basename  	 # locate to blk\n");
    fprintf(stderr, "       ftt_suid -L blck prt basename # locate w/partition\n");
    fprintf(stderr, "       ftt_suid -M prt basename      # set mount partition\n");
-   fprintf(stderr, "       ftt_suid -A basename          # Special AIT init\n");
+   fprintf(stderr, "       ftt_suid -A flag basename     # Special AIT init\n");
    exit(-1);
 }
 
@@ -59,13 +59,13 @@ main(int argc, char **argv) {
 		case 'v':
 	        case 'p':
 	        case 'u':
-	        case 'A':
 			if (argc != 3) {
 				usage();
 			}
 			command = argv[1][1];
 			basename = argv[2];
 			break;
+	        case 'A':
 		case 'C':
 		case 'b': 
 		case 'd': 
@@ -166,7 +166,10 @@ main(int argc, char **argv) {
                 ftt_set_mount_partition(d, arg);
 		break;
 	case 'A':
-		ftt_format_ait(d,1);
+		pb = ftt_alloc_parts();
+		ftt_undump_partitions(pb,stdin);
+		res = ftt_format_ait(d,arg,pb);
+		ftt_free_parts(pb);
 		break;
 	}
 	ftt_report(d);

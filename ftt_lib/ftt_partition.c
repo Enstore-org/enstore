@@ -25,6 +25,11 @@ ftt_extract_nparts(ftt_partbuf p) {
 }
 
 int 		
+ftt_set_maxparts(ftt_partbuf p, int n) {
+   p->max_parts = n;
+}
+
+int 		
 ftt_extract_maxparts(ftt_partbuf p) {
    return p->max_parts;
 }

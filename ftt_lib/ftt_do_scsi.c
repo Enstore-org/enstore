@@ -528,7 +528,7 @@ int ftt_inquire(ftt_descriptor d) {
 /*
  This is a guess at what we need to format an ait cartridge - does not work
 */
-int ftt_format_ait(ftt_descriptor d, int on) {
+int ftt_format_ait(ftt_descriptor d, int on, ftt_partition_table *pb) {
 
 # define MS31_LEN 22
 # define MS32_LEN 22
@@ -547,7 +547,6 @@ int ftt_format_ait(ftt_descriptor d, int on) {
     int res;
     int parttotal;
 
-    ftt_partition_table pb;
 
 
     ENTERING("ftt_ait_format");
@@ -580,34 +579,48 @@ int ftt_format_ait(ftt_descriptor d, int on) {
         res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, devbuf, MS31_LEN, 5, 0);
         if(res < 0) return res;
 
-        res = ftt_get_partitions(d,&pb);
-        if (res < 0) return res;
-	res = ftt_write_partitions(d,&pb);
+	res = ftt_write_partitions(d,pb);
 
     } else {
         ftt_close_dev(d);
         ftt_close_scsi_dev(d);
 	switch(ftt_fork(d)){
-
 	static char s1[10];
-
 	case -1:
 		return -1;
 
 	case 0:  /* child */
+		/* output -> async_pf */
 		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
+                fclose(d->async_pf_parent);
+
+		/* stdin <- pd[0] */
+                fclose(stdin);
+		close(pd[1]);
+		dup2(pd[0],0);
+                close(pd[0]);
+
+		sprintf(s1, "%d", compression);
+
 		if (ftt_debug) {
-		 execlp("ftt_suid", "ftt_suid", "-x", "-A", s1, d->basename, 0);
+		    execlp("ftt_suid", "ftt_suid", "-x",  "-A", s1, d->basename, 0);
 		} else {
-		 execlp("ftt_suid", "ftt_suid", "-A", s1, d->basename, 0);
+		     execlp("ftt_suid", "ftt_suid", "-A", s1, d->basename, 0);
 		}
-		ftt_eprintf("ftt_format_ait: exec of ftt_suid failed");
-		ftt_errno=FTT_ENOEXEC;
-		ftt_report(d);
+		break;
 
 	default: /* parent */
+		/* close the read end of the pipe... */
+                close(pd[0]);
+
+		/* send the child the partition data */
+		topipe = fdopen(pd[1],"w");
+		ftt_dump_partitions(p,topipe);
+  		fclose(topipe);
+
 		res = ftt_wait(d);
 	}
     }

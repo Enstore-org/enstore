@@ -96,11 +96,11 @@ typedef struct {
 
 extern ftt_partbuf 	ftt_alloc_parts();
 extern void 		ftt_free_parts(ftt_partbuf);
-
+extern int 		ftt_extract_maxparts(ftt_partbuf, int);
 extern int 		ftt_extract_nparts(ftt_partbuf);
-extern int 		ftt_extract_maxparts(ftt_partbuf);
 extern long 		ftt_extract_part_size(ftt_partbuf,int);
 extern int 		ftt_set_nparts(ftt_partbuf,int);
+extern int 		ftt_set_maxparts(ftt_partbuf);
 extern int 		ftt_set_part_size(ftt_partbuf,int,long);
 
 extern int		ftt_get_partitions(ftt_descriptor,ftt_partbuf);
