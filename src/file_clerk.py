@@ -16,7 +16,7 @@ import pprint
 import setpath
 import traceback
 import callback
-import volume_clerk_client
+# import volume_clerk_client
 import dispatching_worker
 import generic_server
 import event_relay_client
@@ -33,6 +33,10 @@ import pnfs
 MY_NAME = "file_clerk"
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
+
+    def __init__(self):
+        self.dict = None
+        return
 
     # set_brand(brand) -- set brand
 
@@ -167,7 +171,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
             if deleted == "no":
                 # restore pnfs entry
-                import pnfs
+                # import pnfs
                 map = pnfs.Pnfs(record["pnfs_mapname"])
                 status = map.restore_from_volmap(restore_dir)
                 del map
@@ -178,28 +182,31 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             # mod the delete state
             record["deleted"] = deleted
 
-            # become a client of the volume clerk and decrement the non-del files on the volume
-            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-            vticket = vcc.decr_file_count(record['external_label'],decr_count)
-            status = vticket["status"]
-            if status[0] != e_errors.OK: 
-                Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
-                return status, None, None 
+            # do not maintain non_del_files
+            #
+            # # become a client of the volume clerk and decrement the non-del files on the volume
+            # vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+            # vticket = vcc.decr_file_count(record['external_label'],decr_count)
+            # status = vticket["status"]
+            # if status[0] != e_errors.OK: 
+            #     Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
+            #     return status, None, None 
 
             # record our changes
             self.dict[bfid] = record 
 
             Trace.log(e_errors.INFO,
-                      "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
+                      "%s = %s flagged as deleted:%s  volume=%s   mapfile=%s" %
                       (bfid,record["pnfs_name0"],record["deleted"],
-                       record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
+                       record["external_label"], record["pnfs_mapname"]))
 
             # and return to the caller
             status = (e_errors.OK, None)
             fc = record
-            vc = vticket
+            # vc = vticket
             Trace.trace(12,'set_deleted_priv status %s'%(status,))
-            return status, fc, vc
+            # return status, fc, vc
+            return status, fc, None
 
         # if there is an error - log and return it
         except:
@@ -366,12 +373,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 record['deleted'] = 'no'
                 self.dict[bfid] = record
                 Trace.log(e_errors.INFO, "file %s has been restored"%(bfid))
-                # Take care of non_del_file count
-                vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                vticket = vcc.decr_file_count(record['external_label'], -1)
-                status = vticket["status"]
-                if status[0] != e_errors.OK: 
-                    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
+                # do not maintain non_del_files any more
+                # # Take care of non_del_file count
+                # vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                # vticket = vcc.decr_file_count(record['external_label'], -1)
+                # status = vticket["status"]
+                # if status[0] != e_errors.OK: 
+                #     Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
         else:
             status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
 
@@ -533,7 +541,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record["deleted"] = set_deleted
         if record["deleted"] == "no" and restore_volmap == "yes":
             # restore pnfs entry
-            import pnfs
+            # import pnfs
             map = pnfs.Pnfs(record["pnfs_mapname"])
             status = map.restore_from_volmap(restore_dir)
             del map
@@ -1147,6 +1155,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                                                   keys)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], 
                                                       keys['port']))
+        FileClerkMethods.__init__(self)
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
                                  self.alive_interval)
