@@ -329,9 +329,11 @@ class Buffer:
                         crc_error = 1
                 data_ptr = data_ptr + bytes_for_cs
             except:
+                Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 Trace.handle_error()
                 raise "CRC_ERROR"
             if crc_error:
+                Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise "CRC_ERROR"
         else:
            self.first_block = 0 
@@ -393,6 +395,7 @@ class Buffer:
                         Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
                                     (self.sanity_crc, self.sanity_bytes))
                 except:
+                    Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
                     raise "CRC_ERROR"
             self._freespace(data)
             
@@ -982,7 +985,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_read = self.buffer.stream_read(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
+                #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
                 return
             if bytes_read <= 0:  #  The client went away!
@@ -1022,6 +1025,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         defer_write = 1
         failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+            if self.tr_failed:
+                Trace.trace(8,"write_tape: tr_failed %s"%(self.tr_failed,))
+                break
             empty = self.buffer.empty()
             if (empty or
                 (defer_write and (self.bytes_read < self.bytes_to_read and self.buffer.low()))):
@@ -1062,7 +1068,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
+                #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
@@ -1075,6 +1081,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
+        if self.tr_failed:
+            Trace.trace(8,"write_tape: tr_failed %s"%(self.tr_failed,))
+            return
+
         Trace.notify("transfer %s %s %s media" % (self.shortname, self.bytes_written, self.bytes_to_write))
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
@@ -1141,14 +1151,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                         b_read = self.buffer.block_read(nbytes, driver)
                     except "CRC_ERROR":
                         exc, detail, tb = sys.exc_info()
-                        Trace.handle_error(exc, detail, tb)
+                        #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error")
                         self.transfer_failed(e_errors.CRC_ERROR, detail, error_source=TAPE)
                         failed = 1
                         break
                     except:
                         exc, detail, tb = sys.exc_info()
-                        Trace.handle_error(exc, detail, tb)
+                        #Trace.handle_error(exc, detail, tb)
                         Trace.alarm(e_errors.ERROR, "selective CRC check error")
                         self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                         failed = 1
@@ -1195,6 +1205,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         driver = self.tape_driver
         failed = 0
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
+            Trace.trace(8,"read_tape: tr_failed %s"%(self.tr_failed,))
+            if self.tr_failed:
+                break
             if self.buffer.full():
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -1212,12 +1225,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_read = self.buffer.block_read(nbytes, driver)
             except "CRC_ERROR":
+                Trace.alarm(e_errors.ERROR, "CRC error reading tape")
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 failed = 1
                 break
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
+                #Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 failed = 1
                 break
@@ -1249,11 +1263,15 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.empty():
                 self.buffer.write_ok.set()
+        Trace.trace(8,"read_tape: tr_failed %s"%(self.tr_failed,))
+        if self.tr_failed:
+            return
         if failed: return
         if do_crc:
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
+                Trace.alarm(e_errors.ERROR, "read_tape CRC error")
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
@@ -1304,12 +1322,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.stream_write(nbytes, driver)
             except "CRC_ERROR":
+                Trace.alarm(e_errors.ERROR, "CRC error in write client")
                 self.transfer_failed(e_errors.CRC_ERROR, None)
                 failed = 1
                 break
             except:
                 exc, detail, tb = sys.exc_info()
-                Trace.handle_error(exc, detail, tb)
+                #Trace.handle_error(exc, detail, tb)
                 if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
@@ -1342,6 +1361,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_client: calculated CRC %s File DB CRC %s"%
                             (self.buffer.complete_crc, self.file_info['complete_crc']))
                 if self.buffer.complete_crc != self.file_info['complete_crc']:
+                    Trace.alarm(e_errors.ERROR, "CRC error in write client")
                     self.transfer_failed(e_errors.CRC_ERROR, None)
                     return
                 
@@ -1376,6 +1396,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.unique_id = ticket['unique_id']
         Trace.trace(10, "setup transfer")
+        self.tr_failed = 0
         ## pprint.pprint(ticket)
         if save_state not in (IDLE, HAVE_BOUND):
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
@@ -1636,7 +1657,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.writefm()
                 except: 
                     exc, detail, tb = sys.exc_info()
-                    Trace.handle_error(exc, detail, tb)
+                    #Trace.handle_error(exc, detail, tb)
                     self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                     return 0
                 eod = 1
@@ -1671,6 +1692,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        if self.tr_failed:
+            return          ## this function has been alredy called in the other thread
+        self.tr_failed = 1
         broken = ""
         Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
             exc, msg, self.current_volume, self.current_location))
@@ -1681,6 +1705,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s, state=ERROR" % (msg,))
+            self.tr_failed = 0
             return
 
         self.timer('transfer_time')
@@ -1722,21 +1747,54 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
-        self.need_lm_update = (1, ERROR, 1, error_source)    
+        self.need_lm_update = (1, ERROR, 1, error_source)
 
         if broken:
             self.broken(broken)
+            self.tr_failed = 0
             return
         
         save_state = self.state
-        self.dismount_volume()
+        # get the current thread
+        cur_thread = threading.currentThread()
+        if cur_thread:
+            cur_thread_name = cur_thread.getName()
+        else:
+            cur_thread_name = None
+
+        dismount_allowed = 0
+        Trace.trace(8,"current thread %s"%(cur_thread_name,))
+        if cur_thread_name:
+            if cur_thread_name is 'tape_thread':
+                dismount_allowed = 1
+
+            elif cur_thread_name is 'net_thread':
+                # check if tape_thread is active before allowing dismount
+                Trace.trace(8,"checking thread %s"%('tape_thread',))
+                thread = getattr(self, 'tape_thread', None)
+                for wait in range(60):
+                    if thread and thread.isAlive():
+                        Trace.trace(8, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                        time.sleep(1)
+                    else:
+                        dismount_allowed = 1
+                        break
+                else:
+                    dismount_allowed = 1
+            else:
+                # Main thread ?
+                dismount_allowed = 1
+                
+        if dismount_allowed:
+            self.dismount_volume()
 
         if save_state == DRAINING:
             self.state = OFFLINE
         else:
             self.maybe_clean()
             self.idle()
-            
+        
+        self.tr_failed = 0   
         #self.delayed_update_lm() Why do we need delayed udpate AM 01/29/01
         #self.update_lm()
         #self.need_lm_update = (1, 0, None)    
