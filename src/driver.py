@@ -402,6 +402,11 @@ class  FTTDriver(GenericDriver) :
 	# operations. self.blocksize is passed back to parent (via code in
 	# mover).
 	FTT.set_blocksize( self.blocksize )
+        drive_mode = FTT.get_mode()
+        drive_block_size = 0 # 0 is variable block mode
+        dev_name = FTT.set_mode( drive_mode['density'],
+	 		         drive_mode['compression'],
+			         drive_block_size )
 	# verifiy location via FTT.stats???
 	return self
 
