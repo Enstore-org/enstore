@@ -1420,7 +1420,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	mover = HTMLgen.Href("%s#%s"%(enstore_functions2.get_mover_status_filename(),
 				      qelem[enstore_constants.MOVER]),
 			     qelem[enstore_constants.MOVER])
-	txt = "%s%s%susing%s%s%sfrom%s%s%sby%s%s"%(type, str(vol), NBSP, NBSP, 
+        ff = qelem[enstore_constants.VC][enstore_constants.FILE_FAMILY]
+	txt = "%s%s(%s)%susing%s%s%sfrom%s%s%sby%s%s"%(type, str(vol), ff, NBSP, NBSP, 
 						   str(mover), NBSP, NBSP,
 		       enstore_functions2.strip_node(qelem[enstore_constants.NODE]),
 						   NBSP, NBSP, 
