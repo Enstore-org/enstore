@@ -231,21 +231,24 @@ COMMON:
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/pnfs ];             then ln -s $ENSTORE_DIR/src/pnfs.py            $ENSTORE_DIR/bin/pnfs; fi"',            NO_UPS_ENV)
 		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/entv ];             then ln -s $ENSTORE_DIR/src/entv.py            $ENSTORE_DIR/bin/entv; fi"',            NO_UPS_ENV)
 		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volume_assert.py   $ENSTORE_DIR/bin/volume_assert; fi"',   NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/get ];    then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi"',   NO_UPS_ENV)
+		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.py   $ENSTORE_DIR/bin/ensync; fi"',		       NO_UPS_ENV)
+		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi"',		       NO_UPS_ENV)
+
 
         ###The next 2 stanzas should be deleted shortly...
 
-                # we need a file lock to serialize access to requesting ports
-                envSet(ENSTORE_TMP,"/tmp/enstore/`whoami`")
-                execute("mkdir -p $ENSTORE_TMP", NO_UPS_ENV)
-	        execute('sh -c "chmod 777 `dirname $ENSTORE_TMP` 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
-                execute("touch `dirname $ENSTORE_TMP`/hunt_port_lock",NO_UPS_ENV)
-                execute('sh -c "chmod 777 `dirname $ENSTORE_TMP`/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
-
-                # control where the trace file goes
-                execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
-                envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
-                envUnset(tracehost)
+        	# we need a file lock to serialize access to requesting ports
+        	envSet(ENSTORE_TMP,"/tmp/enstore/`whoami`")
+        	execute("mkdir -p $ENSTORE_TMP", NO_UPS_ENV)
+		execute('sh -c "chmod 777 `dirname $ENSTORE_TMP` 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
+        	#execute("touch `dirname $ENSTORE_TMP`/hunt_port_lock",
+		#NO_UPS_ENV)
+        	#execute('sh -c "chmod 777 `dirname $ENSTORE_TMP`/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
+		#
+        	# control where the trace file goes
+        	execute("uname -n | cut -d '.' -f 1", NO_UPS_ENV, tracehost)
+        	envSet(TRACE_KEY, "$ENSTORE_TMP/trace.$tracehost")
+        	envUnset(tracehost)
 
 
 END:
