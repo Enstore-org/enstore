@@ -1813,10 +1813,16 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         sys.stderr.write("cannot log error message %s\n" % (errmsg,))
         sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
-    acc = get_acc()
-    acc.log_encp_error(inputfile, outputfile, filesize, storage_group,
-                       unique_id, encp_client_version(),
-                       status, msg)
+
+    if not e_errors.is_ok(status):
+        #We need to filter out the situations where status is OK.
+        # On OK status printed out with the error data_access_layer format
+        # can occur with the use of --data-access-layer.  However, such
+        # success should not go into the encp_error table.
+        acc = get_acc()
+        acc.log_encp_error(inputfile, outputfile, filesize, storage_group,
+                           unique_id, encp_client_version(),
+                           status, msg)
 
 #######################################################################
 
@@ -5565,8 +5571,6 @@ def write_to_hsm(e, tinfo):
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
     try:
-        #request_list = create_write_requests(callback_addr, udp_callback_addr,
-        #                                     e, tinfo)
         request_list = create_write_requests(callback_addr, None, e, tinfo)
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
@@ -5580,10 +5584,6 @@ def write_to_hsm(e, tinfo):
         else:
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
-        #Print the error and exit.
-        #print_data_access_layer_format("", "", 0, e_ticket)
-        #delete_at_exit.quit()
-        #e_ticket['exit_status'] = 1
         return e_ticket, None
 
     #If this is the case, don't worry about anything.
@@ -5593,25 +5593,12 @@ def write_to_hsm(e, tinfo):
 
     #This will halt the program if everything isn't consistant.
     try:
-        #verify_write_file_consistancy(request_list, e)
         verify_write_request_consistancy(request_list)
     except EncpError, msg:
-        #msg.ticket['status'] = (msg.type, msg.strerror)
-        #print_data_access_layer_format("", "", 0, msg.ticket)
-        #delete_at_exit.quit()
-        #msg.ticket['exit_status'] = 1
-        #if not msg.ticket.get('status', None):
-        #    msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, request_list
 
     #Determine the name of the library.
     check_lib = request_list[0]['vc']['library'] + ".library_manager"
-
-    #Set the max attempts that can be made on a transfer.
-    #try:
-    #    max_attempts(check_lib, e)
-    #except EncpError, msg:
-    #    return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
@@ -5630,21 +5617,14 @@ def write_to_hsm(e, tinfo):
             except OSError, msg:
                 request_list[i]['status'] = (e_errors.OSERROR, msg.strerror)
                 return request_list[i], request_list
-                #print_data_access_layer_format(request['infile'], "",
-                #                               0, request)
-                #delete_at_exit.quit()
 
     work_ticket, index, copy = get_next_request(request_list)
 
     # loop on all input files sequentially
-    #for i in range(0,len(request_list)):
     while requests_outstanding(request_list):
 
-        #Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
         Trace.message(TO_GO_LEVEL,
                       "FILES LEFT: %s" % requests_outstanding(request_list))
-
-        #work_ticket = request_list[i]
 
         #Send (write) the file to the mover.
         done_ticket = write_hsm_file(listen_socket, work_ticket, tinfo, e)
@@ -5691,7 +5671,6 @@ def write_to_hsm(e, tinfo):
             exit_status = 1
             
         if not e_errors.is_ok(done_ticket):
-            #exit_status = 1
             continue
 
         # calculate some kind of rate - time from beginning 
@@ -5700,7 +5679,7 @@ def write_to_hsm(e, tinfo):
         # correct rate. I'm assuming that the overheads I've 
         # neglected are small so the quoted rate is close
         # to the right one.  In any event, I calculate an 
-        # overall rate at the end of all transfers
+        # overall rate at the end of all transfers.
         calculate_rate(done_ticket, tinfo)
 
     # we are done transferring - close out the listen socket
@@ -5718,12 +5697,16 @@ def write_to_hsm(e, tinfo):
         ff = string.split(done_ticket["vc"]["file_family"], ".")
         Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
 
-    #done_ticket = combine_dict(calc_ticket, done_ticket)
+    #List one ticket is the last request that was processed.
+    if e.data_access_layer:
+        list_done_ticket = combine_dict(calc_ticket, done_ticket)
+    else:
+        list_done_ticket = combine_dict(calc_ticket, {})
 
-    Trace.message(TICKET_LEVEL, "CALC TICKET")
-    Trace.message(TICKET_LEVEL, pprint.pformat(calc_ticket))
+    Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
-    return calc_ticket, request_list
+    return list_done_ticket, request_list
 
 #######################################################################
 #Support function for reads.
@@ -6992,7 +6975,7 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
     # before this, so it isn't a correct rate. I'm assuming that the
     # overheads I've neglected are small so the quoted rate is close
     # to the right one.  In any event, I calculate an overall rate at
-    # the end of all transfers
+    # the end of all transfers.
     calculate_rate(done_ticket, tinfo)
 
     #With the transfer a success, we can now add the ticket to the list
@@ -7081,9 +7064,6 @@ def read_from_hsm(e, tinfo):
     except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
         if isinstance(msg, EncpError):
             e_ticket = msg.ticket
-            #print "e_ticket['status']:", e_ticket['status']
-            #print 
-            #if e_ticket.get('status', None) == None:
             e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
             e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
@@ -7092,10 +7072,6 @@ def read_from_hsm(e, tinfo):
         else:
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
-        #Print the error and exit.
-        #print_data_access_layer_format("", "", 0, e_ticket)
-        #delete_at_exit.quit()
-        #e_ticket['exit_status'] = 1
         return e_ticket, None
 
     #If this is the case, don't worry about anything.
@@ -7105,14 +7081,10 @@ def read_from_hsm(e, tinfo):
 
     #This will halt the program if everything isn't consistant.
     try:
-        #verify_read_file_consistancy(requests_per_vol, e)
         if not e.volume: #Skip these tests for volume transfers.
             verify_read_request_consistancy(requests_per_vol, e)
     except EncpError, msg:
-        #msg.ticket['status'] = (msg.type, msg.strerror)
-        #print_data_access_layer_format("", "", 0, msg.ticket)
-        #delete_at_exit.quit()
-        #msg.ticket['exit_status'] = 1
+
         if not msg.ticket.get('status', None):
             msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, requests_per_vol
@@ -7120,12 +7092,6 @@ def read_from_hsm(e, tinfo):
     #Determine the name of the library.
     check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
                 ".library_manager"
-
-    #Set the max attempts that can be made on a transfer.
-    #try:
-    #    max_attempts(check_lib, e)
-    #except EncpError, msg:
-    #    return {'status' : (msg.type, str(msg))}
 
     #If we are only going to check if we can succeed, then the last
     # thing to do is see if the LM is up and accepting requests.
@@ -7171,21 +7137,10 @@ def read_from_hsm(e, tinfo):
                 #Since request_list contains all of the entires, submitted must
                 # also be passed so read_hsm_files knows how many elements of
                 # request_list are valid.
-                #requests_failed, brcvd, data_access_layer_ticket = read_hsm_file(
                 done_ticket = read_hsm_file(
                     listen_socket, request_list, tinfo, e)
 
-                #if len(requests_failed) > 0 or \
-                #   not e_errors.is_ok(data_access_layer_ticket['status'][0]):
-                #    #When delete_at_exit.quit() called, exit_status passed in.
-                #    exit_status = 1 
-                #    Trace.message(ERROR_LEVEL,
-                #                  "TRANSFERS FAILED: %s" % len(requests_failed))
-                #    Trace.message(TICKET_LEVEL, pprint.pformat(requests_failed))
                 #Sum up the total amount of bytes transfered.
-                #bytes = bytes + brcvd
-                #Set the value of bytes to the number of bytes transfered
-                # before the error occured.
                 exfer_ticket = done_ticket.get('exfer',
                                                {'bytes_transfered' : 0L})
                 bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
@@ -7262,12 +7217,16 @@ def read_from_hsm(e, tinfo):
     calc_ticket = calculate_final_statistics(bytes, number_of_files,
                                              exit_status, tinfo)
 
-    #done_ticket = combine_dict(calc_ticket, data_access_layer_ticket)
+    #Volume one ticket is the last request that was processed.
+    if e.data_access_layer:
+        list_done_ticket = combine_dict(calc_ticket, done_ticket)
+    else:
+        list_done_ticket = combine_dict(calc_ticket, {})
 
-    Trace.message(TICKET_LEVEL, "DONE TICKET")
-    Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+    Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
 
-    return calc_ticket, requests_per_vol
+    return list_done_ticket, requests_per_vol
 
 ##############################################################################
 ##############################################################################
@@ -8109,6 +8068,7 @@ def main(intf):
     else:
         emsg = "ERROR: Can not process arguments %s" % (intf.args,)
         done_ticket = {'status':("USERERROR", emsg)}
+
 
     return final_say(intf, done_ticket)
 
