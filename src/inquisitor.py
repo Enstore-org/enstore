@@ -1069,9 +1069,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             mlatfile.close()
             mlatfile.install(self.html_dir)
             mlatfile.cleanup(keep, pts_dir)
-	    del mphfile
-	    del mlatfile
-	del mountfile
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
@@ -1114,9 +1111,6 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # plotting needs the bpd data file
             bpdfile.cleanup(keep, pts_dir)
             xferfile.cleanup(keep, pts_dir)
-	    del bpdfile
-	    del xferfile
-	del encpfile
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
