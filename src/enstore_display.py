@@ -25,6 +25,8 @@ if ENSTORE_DIR:
     IMAGE_DIR=os.path.join(ENSTORE_DIR, 'etc', 'Images')
 else:
     IMAGE_DIR=os.path.normpath(os.path.join(os.getcwd(),'..','etc','Images'))
+
+#print "IMAGE_DIR=", IMAGE_DIR
     
 from Tkinter import *
 from tkFont import Font
@@ -154,7 +156,7 @@ class Mover:
         self.label = self.display.create_text(x+60, y+40, text=self.name)
         img = find_image(self.state+'.gif')
         if img:
-            self.state_display = self.display.create_image(x+90, y+8, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+90, y+2, anchor=NW, image=img)
         else:
             self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         self.timer_display = self.display.create_text(x+100, y+22, text='00:00:00',fill='white')
@@ -169,7 +171,7 @@ class Mover:
                                                               text = str(self.percent_done)+"%",
                                                               fill = 'green') #,font=8)
 
-    def update_state(self, state):
+    def update_state(self, state, time_in_state=0):
         mover_color=None
         if state == self.state:
             return
@@ -182,16 +184,16 @@ class Mover:
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
         if img:
-            self.state_display = self.display.create_image(x+90, y+8, anchor=NW, image=img)
+            self.state_display = self.display.create_image(x+90, y+2, anchor=NW, image=img)
         else:
             self.state_display = self.display.create_text(x+90, y+8, text=self.state, fill='light blue')
         now = time.time()
-        self.timer_started = now
+        self.timer_started = now - time_in_state
         if state != 'ACTIVE':
             self.show_progress(None)
-        self.update_timer(0)
+        self.update_timer(time_in_state)
         
-    def update_timer(self, seconds):
+    def update_timer(self, seconds):        
         x, y = self.x, self.y
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
@@ -215,12 +217,13 @@ class Mover:
             print "Mover does not have this tape : ", volume
             self.volume = None
             #del self.volume #XXX will this undraw it?
-            return
+            #return
         
         self.volume.loaded = 0
         self.volume.ejected = 1
         x, y = self.volume_position(ejected=1)
         self.volume.moveto(x, y)
+        return
 
     def volume_position(self, ejected=0):
         if layout==CIRCULAR:
@@ -590,6 +593,7 @@ class Display(Canvas):
         #      moveto MOVER_NAME VOLUME_NAME
         #      remove MOVER_NAME VOLUME_NAME
         #      state MOVER_NAME STATE_NAME
+        #      time MOVER_NAME TIME (### time mover has been in that state)
         #      unload MOVER_NAME VOLUME_NAME
         # 4 words:
         #      transfer MOVER_NAME nbytes total_bytes
@@ -650,9 +654,17 @@ class Display(Canvas):
             return
         if not mover:#This is an error, a message from a mover we never heard of
             return
+
         if words[0]=='state':
             what_state = words[2]
-            mover.update_state(what_state)
+            time_in_state = 0
+            if len(words) > 3:
+                try:
+                    time_in_state = int(float(words[3]))
+                except:
+                    print "bad numeric value", words[3]
+            
+            mover.update_state(what_state, time_in_state)
             return
         
         if words[0]== 'connect':
@@ -756,6 +768,7 @@ class Display(Canvas):
             ## Here is where we handle periodic things
             now = time.time()
             #### Update all mover timers
+            #This checks to see if the timer has changed at all.  If it has, it resets the timer for new state.
             for mover in self.movers.values():
                 seconds = int(now - mover.timer_started)
                 if seconds != mover.timer_seconds:
