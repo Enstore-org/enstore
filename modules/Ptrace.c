@@ -45,7 +45,6 @@ PyString_AsString_Safe(PyObject *s){
     } else return PyString_AsString(s);
 }
 
-
 static PyObject *
 raise_exception(  char		*method_name )
 {							/* @-Public-@ */
@@ -61,7 +60,10 @@ raise_exception(  char		*method_name )
 void
 print_type( PyObject *obj )
 {
-    printf("%s\n", PyString_AsString(PyObject_Repr(PyObject_Type(obj))));
+    PyObject *repr_o;
+    repr_o = PyObject_Repr(PyObject_Type(obj));
+    printf("%s\n", PyString_AsString_Safe(repr_o));
+    Py_XDECREF(repr_o);
 }
 
 /******************************************************************************
@@ -246,15 +248,18 @@ code_args_as_string(PyFrameObject *frame,
     char *varname;
     char *value;
     int i,wlen;
-    
-    buf[0] = '\0';
+    PyObject *varname_o;
+    PyObject *value_o;
 
+    buf[0] = '\0';
+    
     nargs = code->co_argcount;
     for (i=0;i<nargs;++i){
-        varname = PyString_AsString_Safe(PyObject_Repr(
-            PyTuple_GetItem(code->co_varnames,i)));
-        value = PyString_AsString_Safe(PyObject_Repr(
-            frame->f_localsplus[i]));
+	
+        varname_o = PyObject_Repr(PyTuple_GetItem(code->co_varnames,i));
+	varname = PyString_AsString_Safe(varname_o);
+	value_o = PyObject_Repr(frame->f_localsplus[i]);
+	value = PyString_AsString_Safe(value_o);
         wlen = strlen(varname)+strlen(value)+1;
 
         if (pos)
@@ -270,8 +275,12 @@ code_args_as_string(PyFrameObject *frame,
             pos+=wlen;
         } else {
 	    strcat(buf,"...");
+	    Py_XDECREF(varname_o);
+	    Py_XDECREF(value_o);
 	    break;
 	}
+	Py_XDECREF(varname_o);
+	Py_XDECREF(value_o);
     }
     return nargs;
 }
@@ -318,6 +327,7 @@ get_msg(  PyObject	*args
 	char            buf[201];
 	int             nargs;
 	char            *cp;
+	PyObject        *repr_o;
 
     sts = PyArg_ParseTuple( args, "OsO", &arg_frame, &arg_event, &arg_arg );
 
@@ -352,7 +362,6 @@ get_msg(  PyObject	*args
     cp = strrchr(from_source_file,'/');
     if (cp) from_source_file = cp+1;
 
-
     switch (arg_event[0])
     {
     case 'c':
@@ -363,20 +372,22 @@ get_msg(  PyObject	*args
 		  from_source_file, from_line_no);
 	break;
     case 'r':
+	repr_o = PyObject_Repr(arg_arg);
 	sprintf(  msg, "ret  %.50s.%.50s %.500s", module_name, 
 		  function_name, 
-		  PyString_AsString_Safe(PyObject_Repr(arg_arg)));
+		  PyString_AsString_Safe(repr_o));
+	Py_XDECREF(repr_o);
 	break;
     case 'e':
 	sprintf(  msg, "exc  %.50s.%.50s at %.50s:%d", 
 		  module_name, function_name, source_file,line_no );
 	break;
+
     default:			/* must be 'l' as in "line" */
 	sprintf(  msg, "line %.50s",
 		  function_name );
 	break;
     }
-
     return (1);
 }   /* get_msg */
 
