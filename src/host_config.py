@@ -83,7 +83,7 @@ def read_config_file(filename):
                     config[key] = value
                 else:
                     config[key] = config.get(key,{})
-                    subdict = {}
+                    subdict = {key:value}
                     config[key][value]=subdict
             else:
                 subdict[key]=value
