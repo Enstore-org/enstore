@@ -120,8 +120,16 @@ class LoggerClient(generic_client.GenericClient):
     # check on alive status
     def alive(self, rcv_timeout=0, tries=0):
         lticket = self.csc.get("logserver")
-        return  self.u.send({'work':'alive'},
-                            (lticket['hostip'], lticket['port']), rcv_timeout, tries)
+        try:
+            x = self.u.send({'work':'alive'},
+                            (lticket['hostip'], lticket['port']),
+                            rcv_timeout, tries)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(14,"}alive - ERROR, alive timed out")
+            x = {'status' : (e_errors.TIMEDOUT, None)}
+        else:
+            Trace.trace(10,'}alive '+repr(x))
+        return x
 
     # get the current log file name
     def get_logfile_name(self, rcv_timeout=0, tries=0):
