@@ -1202,7 +1202,7 @@ def status_to_request( client_obj_inst, exit_status ):
     elif m_err[exit_status] == e_errors.WRITE_ERROR:
 	next_req_to_lm = offline_drive( client_obj_inst, m_err[exit_status] )
     elif m_err[exit_status] == e_errors.READ_ERROR:
-	if self.read_error[1]:
+	if client_obj_inst.read_error[1]:
             next_req_to_lm = offline_drive( client_obj_inst,m_err[exit_status])
 	else:
 	    next_req_to_lm = unilateral_unbind_next( client_obj_inst,
