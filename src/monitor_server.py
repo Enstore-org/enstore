@@ -380,7 +380,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     # The other is 'measurement' and holds a 5-tuple.  See
     # _become_html_gen_host for more info on the 5 tuple.
     def recieve_measurement(self, ticket):
-        self.reply_to_caller({"status" : ('ok', "")})
+        self.reply_to_caller({"status" : (e_errors.OK, None)})
         self._become_html_gen_host(ticket) #setup for making html
         self.page.add_measurement(ticket["measurement"])
 
