@@ -1285,7 +1285,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if self.fork() != 0:
             return
         try:
-            import cPickle
             if not self.get_user_sockets(ticket):
                 return
             ticket["status"] = (e_errors.OK, None)
@@ -1335,8 +1334,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         msg["volumes"].append(dict)
 
                 key,value=self.dict.cursor("next")
-            to_send = cPickle.dumps(msg)
-            callback.write_tcp_raw(self.data_socket, to_send)
+            callback.write_tcp_obj_new(self.data_socket, msg)
             self.dict.cursor("close")
             self.data_socket.close()
 
