@@ -13,7 +13,7 @@ drive=`echo $1 | tr '[a-z]' '[A-Z]'`
 command="${2:-status}"
 
 eval `drive-config.py $drive`
-if [ $host == UNKNOWN -o $device == UNKNOWN ];then
+if [ $host = UNKNOWN -o $device = UNKNOWN ];then
   echo $drive $host $device
   exit 1
 fi
