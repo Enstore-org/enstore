@@ -146,7 +146,7 @@ def write_to_hsm(input, output, output_file_family='',
 	    if ninput > 1:
                 stati={}
                 msg=" only 1 file allowed with --ephemeral"
-                stati['status']=(e.errors.USERERROR, msg)
+                stati['status']=(e_errors.USERERROR, msg)
                 print_data_access_layer_format('','',0,stati)
 		jraise(errno.errorcode[errno.EPROTO],msg)
 	    else:
@@ -172,7 +172,7 @@ def write_to_hsm(input, output, output_file_family='',
 	    print "wrapper type=",ff_wrapper
             print "width=",width
             msg =  "library, file_family, width not all the same"
-            print_data_access_layer_format('','',0,{'status':(e.errors.USERERROR,msg)})
+            print_data_access_layer_format('','',0,{'status':(e_errors.USERERROR,msg)})
             jraise('EPROTO',msg)
 
 
@@ -1699,7 +1699,7 @@ def clients(config_host,config_port,verbose):
                           alive_retries)
     except:
         stati={}
-        stati["status"] = (e.errors.CONFIGDEAD,"Config at "+repr(config_host)+" port="+repr(config_port))
+        stati["status"] = (e_errors.CONFIGDEAD,"Config at "+repr(config_host)+" port="+repr(config_port))
     if stati['status'][0] != e_errors.OK:
         print_data_access_layer_format("","",0, stati)
         jraise(stati['status']," NO response on alive to config",1)
