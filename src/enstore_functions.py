@@ -6,6 +6,7 @@ import socket
 import tempfile
 import types
 import pwd
+import types
 
 import configuration_server
 import enstore_constants
@@ -159,7 +160,10 @@ def strip_file_dir(str):
 
 # remove the string .fnal.gov if it is in the input string
 def strip_node(str):
-    return string.replace(str, ".fnal.gov", "")
+    if type(str) == types.StringType:
+	return string.replace(str, ".fnal.gov", "")
+    else:
+	return str
 
 def is_this(server, suffix):
     stype = string.split(server, ".")
