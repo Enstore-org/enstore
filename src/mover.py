@@ -789,10 +789,16 @@ class Mover(dispatching_worker.DispatchingWorker,
     def position_media(self, verify_label=1):
         #At this point the correct volume is loaded; now position it
         label_tape = 0
-        Trace.trace(10, "position media")
-        have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
-        self.tape_driver.set_mode(compression = 0, blocksize = 0)
-        if have_tape != 1:
+        for retry in range(3):
+            Trace.trace(10, "position media")
+            have_tape = self.tape_driver.open(self.device, self.mode, retry_count=10)
+            self.tape_driver.set_mode(compression = 0, blocksize = 0)
+            if have_tape == 1:
+                break
+            else:
+                Trace.log(e_errors.INFO, "position media: rewind and retry")
+                self.tape_driver.rewind()
+        else:
             self.error("cannot open tape device for positioning")
             return
         
