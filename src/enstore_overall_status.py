@@ -16,6 +16,7 @@ DESTDIR = "/tmp/enstore_overall_status"
 MYNAME = "EN_OVERALL_STAT"
 LAST_STATUS_FILE = "last_status"
 LAST_STATUS = "%s/%s.py"%(DESTDIR, LAST_STATUS_FILE)
+LCL_HTML_DIR = "/export/hppc_home/www_enstore/"
 
 DOWN_L = [enstore_constants.DOWN,
 	  enstore_functions.format_time(time.time()),
@@ -73,7 +74,8 @@ def do_work():
     # do some setup first
     setup_for_files()
     keys = nodes.keys()
-    html_dir = enstore_functions.get_html_dir()
+    # we hard code the html_dir because we are no longer running on an enstore system
+    html_dir = "/local/ups/prd/www_pages/enstore/"
     file = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
     status_d = {}
     # get the last status of the enstore balls
@@ -105,7 +107,7 @@ def do_work():
 	set_last_status(last_status_d)
             
     # now create the web page
-    filename = "%s/%s"%(html_dir, enstore_constants.STATUSONLYHTMLFILE)
+    filename = "%s/%s"%(LCL_HTML_DIR, enstore_constants.STATUSONLYHTMLFILE)
     only_file = enstore_files.HtmlStatusOnlyFile(filename)
     only_file.open()
     only_file.write(status_d, nodes)
