@@ -40,7 +40,7 @@ else
 fi
 
 # check if config server is up
-udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout >/dev/null
+udp_sendWaitReply-withTimeout.sh $ENSTORE_CONFIG_HOST $ENSTORE_CONFIG_PORT $timeout --tries $tries>/dev/null
 if [ $? -ne 0 ] ; then echo "Configuration Server is Dead"; exit 1; fi
 
 python -c '
