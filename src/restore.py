@@ -25,9 +25,7 @@ class DbTable(db.DbTable):
 		jfile = self.jouHome+"/"+dbname+".jou"
 		cmd = "ls -1 "+jfile+".* 2>/dev/null"
 		jfiles = os.popen(cmd).readlines()
-		if jfiles:
-			jfiles.append(jfile+"\012")	# to be same as the rest
-
+		jfiles.append(jfile+"\012")	# to be same as the rest
 		self.dict = {}
 		for jf in jfiles:
 			jf = jf[:-1]		# trim \012
