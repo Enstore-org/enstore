@@ -86,9 +86,9 @@ class FileClient(generic_client.GenericClient,
         r = self.send(ticket)
         return r
 
-    def get_brand(self):
+    def get_brand(self, timeout=0, retry=0):
         ticket = {'work': 'get_brand'}
-        r = self.send(ticket)
+        r = self.send(ticket, timeout, retry)
         if r['status'][0] == e_errors.OK:
             return r['brand']
         else:
@@ -364,11 +364,11 @@ class FileClient(generic_client.GenericClient,
 
         return ticket
 
-    def bfid_info(self, bfid = None):
+    def bfid_info(self, bfid = None, timeout=0, retry=0):
         if not bfid:
             bfid = self.bfid
         r = self.send({"work" : "bfid_info",
-                       "bfid" : bfid } )
+                       "bfid" : bfid }, timeout, retry)
         try:
             del r['work']
         except: # something is wrong
