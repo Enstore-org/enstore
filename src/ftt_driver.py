@@ -230,6 +230,7 @@ class FTTDriver(generic_driver.Driver):
             #Trace.trace(42, "ftt.close_dev() done")
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.value))
+            r = -1
         Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
         return r
