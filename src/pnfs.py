@@ -295,9 +295,9 @@ class Pnfs:
 
     # get the total path of the id
     def get_path(self):
-        self.x=1
-        if 0:
-            print self.x
+        # not implemented
+        pass
+
     # get the cursor information
     def get_cursor(self):
         if self.valid == VALID and self.exists == EXISTS:

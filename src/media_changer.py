@@ -115,7 +115,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.reply_to_caller({'status' : (e_errors.OK, 0, None)})
 
     def getwork(self,ticket):
-        if 0: print ticket #lint fix
         result = []
         for i in self.work_list:
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
@@ -126,7 +125,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
              external_label,    # volume external label
              drive,             # drive id
              media_type):	# media type
-        if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
 	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
 	    # OUTPUT OF THE PRINTS GO TO THE TERMINAL
@@ -140,7 +138,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,  # volume external label
                drive,           # drive id
 	       media_type):     # media type
-        if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
             Trace.log(e_errors.INFO,
                       "remove tape "+external_label+" from drive "+drive)
@@ -151,22 +148,18 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     #def view(self,
     #           external_label,  # volume external label
     #       media_type):         # media type
-    #    if 0: print media_type #lint fix
     #    return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
     # getVolState in the drive;  default overridden for other media changers - to replace above tgj1
     def getVolState(self, ticket):
-        if 0: print media_type #lint fix
         return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
     # insert volume into the robot;  default overridden for other media changers
     def insert(self,ticket):
-        if 0: print media_type #lint fix
         return (e_errors.OK, 0, None, '') # return '' - no inserted volumes
 
     # eject volume from the robot;  default overridden for other media changers
     def eject(self,ticket):
-        if 0: print media_type #lint fix
         return (e_errors.OK, 0, None) 
 
     def robotHomeAndRestart(self,ticket):
@@ -190,7 +183,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                external_label,
                drive,
                media_type) :        
-        if 0: print external_label, drive, media_type, self.keys()
         pass
 
     def doWaitingInserts(self):
@@ -830,7 +822,6 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
 
     #  define our specific help
     def parameters(self):
-        if 0: print self.keys() #lint fix
         return "media_changer"
 
     # parse the options like normal but make sure we have a media changer

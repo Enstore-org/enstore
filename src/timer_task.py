@@ -47,7 +47,6 @@ class TimerTask:
 	return req, client_address
 
     def timer_que_get( self, ticket ):
-        if 0: print ticket #lint fix
 	out_ticket = {'status':(e_errors.OK,None)}
 	out_ticket['que'] = repr(timerTaskDict)
 	self.reply_to_caller( out_ticket )
@@ -77,7 +76,6 @@ def msg_cancel_tr( func, *args ):
     if found:
 	try:
 	    a= key
-	    if 0: print a #lint fix
 	except:
 	    return None
 	try:

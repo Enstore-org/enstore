@@ -8,7 +8,6 @@ import sys
 import string
 
 cursor_open = 0
-if 0: print cursor_open #quiet the linter
 
 # similar to db.DbTable, without automatic journaling and backup up.
 

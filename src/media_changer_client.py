@@ -156,7 +156,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                     "export"]
     #  define our specific help
     def parameters(self):
-        if 0: print self.keys() #lint fix
         return "media_changer"
 
     # parse the options like normal but make sure we have other args
