@@ -791,7 +791,7 @@ client_color d0cs400        #ff00ff
 
 client_color chutney        #ff8800
 client_color ketchup        #ff8800
-client_color cmsstor02      #ff8800
+client_color cmsstor01      #ff8800
 client_color cmsstor12      #ff8800
 client_color mayo           #0000dd
 client_color mustard        #0000dd
