@@ -47,11 +47,11 @@ python -c '
 import configuration_client
 csc=configuration_client.ConfigurationClient(("'$ENSTORE_CONFIG_HOST'"',$ENSTORE_CONFIG_PORT'))
 if "'$lookup'" != "0":
- t=csc.u.send({"work":"lookup","lookup": "'$lookup'"},csc.config_address'${2:+,$2}${3:+,$3}')
+ t=csc.u.send({"work":"lookup","lookup": "'$lookup'"},csc.server_address'${2:+,$2}${3:+,$3}')
  import pprint
  pprint.pprint(t)
 else:  
- t=csc.u.send({"work":"reply_serverlist"},csc.config_address'${2:+,$2}${3:+,$3}')
+ t=csc.u.send({"work":"reply_serverlist"},csc.server_address'${2:+,$2}${3:+,$3}')
  servers = t["server_list"]
  import string
  for key in servers.keys():
