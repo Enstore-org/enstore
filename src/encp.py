@@ -26,7 +26,6 @@ import fcntl, FCNTL
 import setpath 
 import Trace
 import pnfs
-#import pnfs_hack #TEMPORARY
 import callback
 import log_client
 import configuration_client
@@ -84,8 +83,6 @@ def encp_client_version():
 
 def quit(exit_code=1):
     delete_at_exit.delete()
-    #sys.stderr.write("Encp exiting with rc=%d\n"%exit_code)
-    #sys.stderr.flush()
     os._exit(exit_code)
 
 def print_error(errcode,errmsg):
@@ -316,17 +313,20 @@ def clients(config_host,config_port):
 # generate the full path name to the file
 
 def fullpath(filename):
-    machine = hostaddr.gethostinfo()[0]
     if not filename:
         return None, None, None, None
+
+    machine = hostaddr.gethostinfo()[0]
+
+    #Expand the path to the complete absolute path.
     filename = os.path.expandvars(filename)
     filename = os.path.expanduser(filename)
-    if filename[0]!='/':
-        filename = os.path.join(os.getcwd(), filename)
+    filename = os.path.abspath(filename)
     filename = os.path.normpath(filename)
-    dirname, file = os.path.split(filename)
-    filename = os.path.join(dirname,file)
-    return machine, filename, dirname, file
+
+    dirname, basename = os.path.split(filename)
+
+    return machine, filename, dirname, basename
 
 ##############################################################################
 
@@ -338,42 +338,35 @@ def inputfile_check(input_files, bytecount=None):
         inputlist=input_files
     else:
         inputlist = [input_files]
-    ninput = len(inputlist)
 
-    if bytecount != None and ninput != 1:
-        print_data_access_layer_format(inputlist[0],'',0,{'status':(
-            'EPROTO',"Cannot specify --bytes with multiple files")})
-        quit()
+    #if bytecount != None and ninput != 1:
+    #    print_data_access_layer_format(inputlist[0],'',0,{'status':(
+    #        'EPROTO',"Cannot specify --bytes with multiple files")})
+    #    quit()
 
     # we need to know how big each input file is
     file_size = []
 
     # check the input unix file. if files don't exits, we bomb out to the user
-    for i in range(0,ninput):
+    for i in range(0, len(inputlist)):
 
         # get fully qualified name
-        machine, fullname, dir, basename = fullpath(inputlist[i])
-        inputlist[i] = os.path.join(dir,basename)
+        machine, fullname, dirname, basename = fullpath(inputlist[i])
+        inputlist[i] = fullname
 
         # input files must exist
         if not os.access(inputlist[i], os.R_OK):
-            print_data_access_layer_format(inputlist[i], '',0,{'status':(
+            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
                 'USERERROR','Cannot read file %s'%(inputlist[i],))})
             quit()
 
-        # get the file size
+        #Since, the file exists, we can get its stats.
         statinfo = os.stat(inputlist[i])
 
-        if bytecount != None:
-            file_size.append(bytecount)
-        else:
-            file_size.append(statinfo[stat.ST_SIZE])
-
         # input files can't be directories
-        if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
-            print_data_access_layer_format(inputlist[i],'',0,{'status':(
-                'USERERROR',
-                'Not a regular file %s'%(inputlist[i],))})
+        if not stat.S_ISREG(statinfo[stat.ST_MODE]):
+            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+                'USERERROR', 'Not a regular file %s'%(inputlist[i],))})
             quit()
 
         # get the file size
@@ -400,32 +393,19 @@ def inputfile_check(input_files, bytecount=None):
 
 # check the output file list for consistency
 # generate names based on input list if required
+#"inputlist" is the list of input files.  "output" is a list with one element.
 
-def outputfile_check(inputlist,output):
+def outputfile_check(inputlist, output):
     # can only handle 1 input file copied to 1 output file
     # or multiple input files copied to 1 output directory or /dev/null
-
     if len(output)>1:
         print_data_access_layer_format('',output[0],0,{'status':(
             'USERERROR','Cannot have multiple output files')})
         quit()
 
     nfiles = len(inputlist)
-    # if user specified multiple input files, then output must be a directory or /dev/null
     outputlist = []
-    if nfiles!=1:
-        if not os.path.exists(output[0]):
-            print_data_access_layer_format('',output[0],0,{'status':(
-                'USERERROR','No such directory %s'%(output[0],))})
-            quit()
-
-        if output[0]!='/dev/null' and not os.path.isdir(output[0]):
-            print_data_access_layer_format('',output[0],0, {'status':(
-                'USERERROR','Not a directory %s'%(output[0],))})  
-            quit()
-
-    outputlist = []
-
+    
     # Make sure we can open the files. If we can't, we bomb out to user
     # loop over all input files and generate full output file names
     for i in range(nfiles):
@@ -433,36 +413,33 @@ def outputfile_check(inputlist,output):
 
         if outputlist[i] == '/dev/null':
             continue
-            
-        # see if output file exists as user specified
-        itexists = os.path.exists(outputlist[i]) 
         
-        if not itexists:
+        try:
+            imachine, ifullname, idir, ibasename = fullpath(inputlist[i])
             omachine, ofullname, odir, obasename = fullpath(outputlist[i])
-            if not os.path.exists(odir):
-                # directory doesn't exist - error
-                print_data_access_layer_format(inputlist[i], outputlist[i],0,{'status': (
-                    'USERERROR', "No such directory %s"%(odir,))})
-                quit()
 
-        else:
-            # if output file exists, then it must be a directory
-            if os.path.isdir(outputlist[i]):
-                omachine, ofullname, odir, obasename = fullpath(outputlist[i])
-                imachine, ifullname, idir, ibasename = fullpath(inputlist[i])
-                # take care of missing filenames (just directory or .)
-                if obasename=='.' or len(obasename)==0:
-                    outputlist[i] = os.path.join(odir,ibasename)
+            #In this if...elif...else determine if the user entered in
+            # valid file or directory names appropriately.
+            
+            if os.access(outputlist[i], os.W_OK):
+                #File or directory exists with write permissions.
+                if os.path.isdir(outputlist[i]):
+                    outputlist[i] = os.path.join(outputlist[i], ibasename)
                 else:
-                    outputlist[i] = os.path.join(ofullname,ibasename)
-                omachine, ofullname, odir, obasename = fullpath(outputlist[i])
-                # need to make sure generated filename doesn't exist
-                if os.path.exists(outputlist[i]):
-                    # generated filename already exists - error
-                    print_data_access_layer_format(inputlist[i], outputlist[i], 0, {'status': (
-                        'EEXIST', "File %s already exists"%(outputlist[i],))})
-                    quit()
-            # filename already exists - error
+                    #Non-directory that exists with permission.
+                    if len(inputlist) > 1:
+                        #With mulitiple input files, the output is wrong.
+                        raise e_errors.USERERROR, \
+                              'Not a directory %s' % (output[0],)
+                    else:
+                        #It is a file that already exists.
+                        raise e_errors.EEXIST, \
+                              "File %s already exists" % (outputlist[i],)
+            elif os.access(odir, os.W_OK) and len(inputlist) == 1:
+                #Output is not a directory.  If one level up (odir) is a
+                # valid directory and the number of input files is 1, then
+                # the full name is the valid name of a one file transfer.
+                outputlist[i] = ofullname
             else:
                 #only error conditions left
 
@@ -2464,6 +2441,15 @@ def main():
     Trace.trace(10,"encp finished at %s"%(time.time(),))
 
 if __name__ == '__main__':
+
+    for sig in range(signal.NSIG):
+        if sig not in (signal.SIGTSTP, signal.SIGCONT,
+                       signal.SIGCHLD, signal.SIGWINCH):
+            try:
+                signal.signal(sig, signal_handler)
+            except:
+                pass
+    
     try:
         main()
         quit(0)
