@@ -37,15 +37,15 @@ CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include `cat $$(FTT_DIR)/lib/libs`
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
                 ASHAREDMODULESOBS=$$OBS \
-                ASHAREDMODULESEXTRA=$$YOURLIBS \
-                'OPT=$(CFLAGS)' \
+                ASHAREDMODULESEXTRA="$$YOURLIBS" \
+                'OPT=$(CFLAGS) -lds' \
                 'srcdir=$(SRCDIR)' \
                 asharedmodule 
 
 
 
 # The libraries to use
-#YOURLIBS=$(OLIB)/libftt.a /usr/lib/libds.a
+YOURLIBS="$(OLIB)/libftt.a -lds"
 YOURLIBS=$(OLIB)/libftt.a 
 
 # If you have any Python modules, include them here, so that they
@@ -56,13 +56,13 @@ all:	EXfer ETape Devcodes
 
 ETape:
 	MODULE=ETape; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a "; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lds "; \
 	OBS=ETape.o ; \
 	$(MAKEIT)
 
 EXfer:
 	MODULE=EXfer; \
-	YOURLIBS="$(FTT_DIR)/lib/libftt.a "; \
+	YOURLIBS="$(FTT_DIR)/lib/libftt.a -lds "; \
 	OBS=EXfer.o ; \
 	$(MAKEIT)
 
