@@ -27,6 +27,7 @@ import enstore_files
 DEFAULT = "default"
 # default number of times in a row a server can be down before mail is sent
 DEFAULTALLOWEDDOWN = [2, 15]
+MOVERALLOWEDDOWN = [7, 120]
 mail_sent = 0
 prefix = ""
 do_output = 0
@@ -48,7 +49,7 @@ def get_allowed_down_index(server, allowed_down, index):
 	rtn = allowed_down[server][index]
     elif enstore_functions.is_mover(server):
 	rtn = allowed_down.get(enstore_constants.MOVER,
-                               DEFAULTALLOWEDDOWN)[index]
+                               MOVERALLOWEDDOWN)[index]
     elif enstore_functions.is_library_manager(server):
 	rtn = allowed_down.get(enstore_constants.LIBRARY_MANAGER,
                                DEFAULTALLOWEDDOWN)[index]
