@@ -127,7 +127,7 @@ class EnStatus:
 	for mover in work:
 	    # 'mover' not found in pending work
 	    dict = {enstore_constants.MOVER : mover.get('mover', " ")}
-	    dict[ID] = mover['unique_id']
+	    dict[enstore_constants.ID] = mover['unique_id']
 	    if mover.has_key(enstore_constants.REJECT_REASON):
 		dict[enstore_constants.REJECT_REASON] = mover[enstore_constants.REJECT_REASON][0]
 	    dict[enstore_constants.PORT] = mover['callback_addr'][1]
