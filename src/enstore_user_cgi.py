@@ -11,8 +11,6 @@ import tempfile
 import re
 import getpass
 
-ENSTORE_USER_NODES = "enstore_user_nodes.txt"
-FERMI_DOMAIN = "^131.225."
 TMP_DIR = "/tmp/enstore"
 
 def append_from_key(argv, value_text_key, form, alt_name=""):
@@ -38,17 +36,6 @@ def print_keys(keys, form):
         except AttributeError:
             print "No value for %s"%key
 
-def in_domain(host, domain):
-    m = re.search(domain, host)
-    if m is None:
-        return 0
-    else:
-        return 1
-
-def no_access(host):
-    print "<FONT SIZE=+3>Sorry, your host (%s) is not allowed to query Enstore.</FONT>"%host
-    print "</BODY></HTML>"
-        
 def find_libtppy(enstore_setups):
     es = string.strip(enstore_setups)
     es = string.split(es, "\"")
@@ -104,32 +91,6 @@ def go():
     # now start the real html
     print "<HTML><TITLE>Enstore Command Output</TITLE><BODY>"
 
-    # first determine if a request from this node is allowed to happen
-    # the node had better be listed in a file called enstore_user_nodes.txt
-    # which is located in the current directory
-    if posixpath.exists(ENSTORE_USER_NODES):
-        # read in the file
-        filedes = open(ENSTORE_USER_NODES)
-        # for each line in the file, see if the remote node is in the line
-        found_it = 0
-        host = os.environ["REMOTE_ADDR"]
-        while 1:
-            line = filedes.readline()
-            if not line:
-                break
-            else:
-                if in_domain(host, line):
-                    found_it = 1
-                    break
-        filedes.close()
-        if not found_it:
-            no_access(host)
-            raise SystemExit
-    else:
-        # the file did not exist, only allow addresses from *.fnal.gov
-        if not in_domain(os.environ["REMOTE_ADDR"], FERMI_DOMAIN):
-            no_access(os.environ["REMOTE_ADDR"])
-            raise SystemExit
     try:
         # get the data from the form
         form = cgi.FieldStorage()
