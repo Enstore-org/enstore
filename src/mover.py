@@ -321,6 +321,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
+
+        self.do_cleaning = 1
+        if self.config.has_key('do_cleaning'):
+            if self.config['do_cleaning'][0] in ('n','N'):
+                self.do_cleaning = 0
         
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.media_type = self.config.get('media_type', '8MM') #XXX
@@ -995,6 +1000,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 needs_cleaning = 1
 
         if needs_cleaning:
+            if not self.do_cleaning:
+                Trace.log(e_errors.INFO, "cleaning bit set but automatic cleaning disabled")
+                return
             Trace.log(e_errors.INFO, "initiating automatic cleaning")
             save_state = self.state
             if save_state == HAVE_BOUND:
