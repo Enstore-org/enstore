@@ -21,6 +21,8 @@ output() { tty -s
                  echo " < /dev/null > $1.out 2>&1"
 	       fi
              fi
+	   else
+	     echo " < /dev/null |tee /dev/tty > $1.out 2>&1"
            fi
          }
 
@@ -515,6 +517,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" != "" \) -a $ensto
         out=$PID_DIR/inquisitor
         rm -f $out
         cmd="python $ENSTORE_DIR/src/inquisitor.py `output $out`"
+	echo $cmd
         if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|inq' >/dev/null; then
             title="Enstore Inquisitor"
             eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
