@@ -7,7 +7,7 @@
 ###############################################################################
 
 # system imports
-#import socket
+import socket
 import time
 import os
 import errno
@@ -31,7 +31,44 @@ import udp_common
 #import hostaddr
 import host_config
 
-UDPError = "UDP Error"
+#UDPError = "UDP Error"
+class UDPError(socket.error):
+    def __init__(self, e_errno, e_message = None):
+
+        socket.error.__init__(self)
+
+        #If the only a message is present, it is in the e_errno spot.
+        if e_message == None:
+            self.errno = None
+            self.message = e_errno
+        #If both are there then we have both to use.
+        else:
+            self.errno = e_errno
+            self.message = e_message
+
+        #Generate the string that stringifying this obeject will give.
+        self._string()
+
+    def __str__(self):
+        self._string()
+        return self.strerror
+
+    def __repr__(self):
+        return "UDPError"
+
+    def _string(self):
+        if self.errno in errno.errorcode.keys():
+            errno_name = errno.errorcode[self.errno]
+            errno_description = os.strerror(self.errno)
+            self.strerror = "%s: [ ERRNO %s ] %s: %s" % (errno_name,
+                                                        self.errno,
+                                                        errno_description,
+                                                        self.message)
+        else:
+            self.strerror = self.message
+
+        return self.strerror
+
 
 TRANSFER_MAX=16384
 
@@ -70,10 +107,13 @@ class UDPClient:
         pid = self._os.getpid()
         tsd = Container()
         self.tsd[pid] = tsd
-        tsd.host, tsd.port, tsd.socket = udp_common.get_default_callback()
+        host, port, socket = udp_common.get_default_callback()
+        tsd.host = host
+        tsd.port = port
+        tsd.socket = socket
         tsd.txn_counter = 0L
         tsd.reply_queue = {}
-        tsd.ident = self._mkident(tsd.host, tsd.port, pid)
+        tsd.ident = self._mkident(host, port, pid)
         tsd.send_done = {}
         if thread_support:
             tsd.thread = threading.currentThread() 
