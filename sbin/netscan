@@ -38,6 +38,7 @@ EGREP="/bin/egrep"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"
+CAT="/bin/cat"
 RPM="/bin/rpm"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -102,8 +103,17 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     x=`$XNTPDC -p`
     logit "NO TIME SYNC"
     logit "$x"
-    enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+    if [ $QUIET -ne 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+    fi
 fi
+
+if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
+   logit "ONLY 1 PROCESSOR RUNNING"
+    if [ $QUIET -ne 1 ]; then
+      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING""
+    fi
+fi   
 
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
