@@ -476,6 +476,8 @@ def forked_read_from_hsm( self, ticket ):
 	    stats = self.hsm_driver.get_stats()
 	    # close hsm file
             do.close()
+	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
+	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
         except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
             logc.send( log_client.ERROR, 1, "Error writing to user"+str(ticket) )
 	    traceback.print_exc()
@@ -493,10 +495,6 @@ def forked_read_from_hsm( self, ticket ):
         self.net_driver.data_socket.close()
 
         # get the error/mount counts and update database
-	wr_err = stats['wr_err']
-	rd_err = stats['rd_err']
-	wr_access = stats['wr_access']
-	rd_access = stats['rd_access']
         xx = vcc.update_counts( self.vol_info['external_label'],
 				wr_err,rd_err,wr_access,rd_access )
 	self.vol_info.update( xx )
