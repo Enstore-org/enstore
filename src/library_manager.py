@@ -44,10 +44,17 @@ MB=1L<<20
 GB=1L<<30
 
 def convert_version(version):
-    dig=0
+    dig=0.
+    dash_cnt = 0
     for ch in version:
+        if ch == '_' or ch == '-':
+          dash_cnt = dash_cnt + 1  
         if ch.isdigit():
-            dig=dig*10+(ord(ch)-ord('0'))
+            if dash_cnt < 2:
+                dig=dig*10.+(ord(ch)-ord('0'))*1.
+            else:
+                dig = dig + (ord(ch)-ord('0'))*0.1
+                break
     return dig
     
 def get_storage_group(dict):
