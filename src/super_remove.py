@@ -147,6 +147,7 @@ if __name__ == '__main__':
 
 	# now, it is for real. Don't try this at home!
 
+	error = 0
 	volmapdir = '/tmp/none'
 	for i in file_list.keys():
 		fileInfo = file_list[i]
@@ -164,6 +165,7 @@ if __name__ == '__main__':
 				print 'done'
 			except:
 				print 'failed'
+				error = error + 1
 		if os.access(volmap, os.W_OK):
 			print 'removing', volmap, '...',
 			try:
@@ -171,6 +173,7 @@ if __name__ == '__main__':
 				print 'done'
 			except:
 				print 'failed'
+				error = error + 1
 
 	# now remove the volmap directory, too
 
@@ -181,6 +184,11 @@ if __name__ == '__main__':
 			print 'done'
 		except:
 			print 'failed'
+			error = error + 1
+
+	if error:
+		print 'having trouble with /pnfs permission ... stop'
+		sys.exit(1)
 
 	# run delfile to clean it up
 
