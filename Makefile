@@ -101,7 +101,7 @@ all: proddir_is_set build_prefix
 	done 
 
 clean:
-	for d in bin src test etc doc ups; do \
+	for d in bin src test etc doc modules ups; do \
 		(cd $$d; $(MAKE) $(MFLAGS) clean $(ENDBG);) \
 	done 
 	@ $(ENSTORE_DIR)/bin/enstoreClean
