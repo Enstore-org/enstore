@@ -166,7 +166,7 @@ main(int argc, char **argv) {
                 ftt_set_mount_partition(d, arg);
 		break;
 	case 'A':
-		ftt_format_ait(d);
+		ftt_format_ait(d,1);
 		break;
 	}
 	ftt_report(d);

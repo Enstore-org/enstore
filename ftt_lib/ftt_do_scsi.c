@@ -528,7 +528,7 @@ int ftt_inquire(ftt_descriptor d) {
 /*
  This is a guess at what we need to format an ait cartridge - does not work
 */
-int ftt_format_ait(ftt_descriptor d) {
+int ftt_format_ait(ftt_descriptor d, int on) {
 
 # define MS31_LEN 22
 # define MS32_LEN 22
@@ -567,7 +567,11 @@ int ftt_format_ait(ftt_descriptor d) {
         /* Set AIT MIC mode on device*/
         DEBUG2(stderr, "CALLING ----- mod_sel31 with\n");
         devbuf[0] = 0;
-        devbuf[4+8+2] = devbuf[4+8+2] | 0xc0;    /*AIT native,create opt dev area*/
+        if ( on ) {
+	    devbuf[4+8+2] = devbuf[4+8+2] | 0xc0;    /*AIT native,create opt dev area*/
+        } else {
+	    devbuf[4+8+2] = devbuf[4+8+2] & ~0xc0;    /*AIT native,create opt dev area*/
+        }
         res = ftt_do_scsi_command(d,"Mode select", mod_sel31, 6, devbuf, MS31_LEN, 5, 1);
         if(res < 0) return res;
 

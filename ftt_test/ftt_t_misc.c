@@ -224,7 +224,9 @@ int	ftt_t_format_ait (int argc, char **argv)
 int 		status;			/* status */
 int		estatus = 0;		/* expected status */
 static char	*estatus_str;		/* expected status string */
+int 		onflag = 1;		/* flag... */
 ftt_t_argt	argt[] = {
+ 	{"-on",	        FTT_T_ARGV_int,		NULL,		&onflag},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
 
 /* parse command line
@@ -235,7 +237,7 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
-status = ftt_format_ait(ftt_t_fd);
+status = ftt_format_ait(ftt_t_fd,onflag);
 FTT_T_CHECK_CALL (status,estatus);
 
 return 0;
