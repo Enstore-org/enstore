@@ -174,7 +174,7 @@ class MoverClient:
 
     def unbind_volume( self, ticket ):
 	# do any driver level rewind, unload, eject operations on the device
-	if mvr_config['do_eject'] == 'yes': self.hsm_driver.unload()
+	if mvr_config['do_eject'] == 'yes': self.hsm_driver.offline()
 
 	# now ask the media changer to unload the volume
 	rr = mcc.unloadvol( self.vol_info['external_label'], self.config['mc_device'] )
@@ -237,7 +237,7 @@ def bind_volume( self, ticket ):
 	    # SHULD I RETRY????????
 	    if rsp['status'][0] == "media_in_another_device": time.sleep (10)
 	    return 'TAPEBUSY' # generic, not read or write specific
-	sts = self.hsm_driver.load()# SOFTWARE "MOUNT"
+	sts = self.hsm_driver.sw_mount( ticket['fc']['external_label'] )
 	if str(sts) != '0' and str(sts) != 'None': return 'BADMOUNT' # generic, not read or write specific
 	pass
     elif ticket['fc']['external_label'] != self.vol_info['external_label']:

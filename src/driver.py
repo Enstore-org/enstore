@@ -36,10 +36,10 @@ class GenericDriver:
 	self.set_eod( eod_cookie )
 	pass
 
-    def load( self ):
+    def sw_mount( self, vol_label ):
 	# this
 	return
-    def unload(self): return
+    def offline( self ): return
 
     # blocksize is volume dependent
     def set_blocksize(self,blocksize):
@@ -81,13 +81,13 @@ class  FTTDriver(GenericDriver) :
         #ETape.ET_Rewind("", self.device)
         self.set_position()
 
-    def load( self ):
+    def sw_mount( self, vol_label ):
 	# get the position from the drive
 	os.system("mt -t " + self.device + " rewind")
 	self.set_position()
 	return
 
-    def unload(self):
+    def offline( self ):
 	os.system("mt -t " + self.device + " offline")
 	return
 
@@ -161,11 +161,12 @@ class  RawDiskDriver(GenericDriver) :
 	#self.df.close()
 	pass
 	
-    def load( self ):
+    def sw_mount( self, vol_label ):
 	#self.df = open(self.device, "a+")
+	self.vol_label = vol_label
         return
 	
-    def unload( self ):
+    def offline( self ):
 	#self.df.close()
 	return
 	
@@ -173,7 +174,7 @@ class  RawDiskDriver(GenericDriver) :
     # no "file marks" on a disk
     def open_file_read(self, file_location_cookie) :
         #print "   open_file_read"
-        self.df = open(self.device, "a+")
+        self.df = open( self.device+'.'+self.vol_label, "a+" )
         self.rd_access = self.rd_access+1
         self.firstbyte, self.pastbyte = eval(file_location_cookie)
         self.df.seek(self.firstbyte, 0)
@@ -198,7 +199,7 @@ class  RawDiskDriver(GenericDriver) :
     # we cannot auto sense a floppy, so we must trust the user
     def open_file_write(self):
         #print "   open_file_write"
-        self.df = open(self.device, "a+")
+        self.df = open( self.device+'.'+self.vol_label, "a+" )
         self.wr_access = self.wr_access+1
         self.df.seek(self.eod, 0)
         self.first_write_block = 1
@@ -222,7 +223,7 @@ class  RawDiskDriver(GenericDriver) :
         else:
             self.eod = last_byte
 
-        self.df.close()			# belongs in unload???
+        self.df.close()			# belongs in offline???
         return `(first_byte, last_byte)`  # cookie describing the file
 
     # write a block of data to already open file: user has to handle exceptions
@@ -248,14 +249,14 @@ class  DelayDriver(RawDiskDriver) :
     crude delays modeled on no particular tape drive.
 
     """
-    def load( self ):
-        time.sleep( 10 )                   # load time 10 seconds
-	RawDiskDriver.load( self )
+    def sw_mount( self, vol_label ):
+        time.sleep( 10 )                   # sw_mount time 10 seconds
+	RawDiskDriver.sw_mount( self, vol_label )
 
-    def unload(self):
+    def offline( self ):
 	time.sleep(self.firstbyte/20E6)   # rewind time @ 20MB/sec
-	time.sleep(10)			  # unload time -- 10 seconds
-        RawDiskDriver.unload(self)
+	time.sleep(10)			  # offline time -- 10 seconds
+        RawDiskDriver.offline( self )
 
     def open_file_read(self, file_location_cookie) :
         whereb4 = self.firstbyte
@@ -302,7 +303,7 @@ if __name__ == "__main__" :
         print "Creating RawDiskDriver device",intf.device, "with",intf.size,"bytes"
     rdd = RawDiskDriver (intf.device,intf.eod_cookie,intf.size)
     #rdd = DelayDriver (intf.device,intf.eod_cookie,intf.size)
-    rdd.load( intf.eod_cookie )
+    rdd.sw_mount( intf.eod_cookie, vol_label )
 
     cookie = {}
 
@@ -396,6 +397,6 @@ if __name__ == "__main__" :
             status = status|2
         rdd.close_file_read()
 
-    rdd.unload()
+    rdd.offline()
 
     sys.exit(status)
