@@ -66,7 +66,7 @@ def encp_client_version():
     return version_string
 
 #seconds to wait for mover to call back, before resubmitting req. to lib. mgr.
-mover_timeout = 15*60  #15 minutes
+mover_timeout = 20#15*60  #15 minutes
 
 data_access_layer_format = """INFILE=%s
 OUTFILE=%s
@@ -78,10 +78,9 @@ DRIVE_SN=%s
 TRANSFER_TIME=%.02f
 SEEK_TIME=%.02f
 MOUNT_TIME=%.02f
-QUEUE_TIME=%.02f
-TOTAL_TIME=%.02f
+QWAIT_TIME=%.02f
 TIME2NOW=%.02f
-STATUS=%s\n"""  #TIME2NOW is the old name for TOTAL_TIME
+STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 
 class Flag:
     def __init__(self):
@@ -139,10 +138,10 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     out.write(data_access_layer_format % (inputfile, outputfile, filesize,
                                           external_label,location_cookie,
                                           device, device_sn,
-                                          transfer_time, seek_time, mount_time, in_queue,
-                                          total, total, status))  #total is repeated because
-                                                            ## we have TOTAL_TIME and TIME2NOW which
-                                                            ## are two different names for the same thing.
+                                          transfer_time, seek_time,
+                                          mount_time, in_queue,
+                                          total, status))
+    
     out.write('\n')
     out.flush()
     if msg:
@@ -151,8 +150,10 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         sys.stderr.flush()
     
     try:
-        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+\
-                 "SEEK_TIME=%.02f MOUNT_TIME=%.02f QUEUE_TIME=%.02f TOTAL_TIME=%.02f STATUS=%s"
+        format = "INFILE=%s OUTFILE=%s FILESIZE=%d LABEL=%s LOCATION=%s " +\
+                 "DRIVE=%s DRIVE_SN=%s TRANSFER_TIME=%.02f "+ \
+                 "SEEK_TIME=%.02f MOUNT_TIME=%.02f QWAIT_TIME=%.02f " + \
+                 "TIME2NOW=%.02f STATUS=%s"
         msg_type=e_errors.ERROR
         if status == e_errors.OK:
             msg_type = e_errors.INFO
@@ -787,7 +788,8 @@ def write_to_hsm(input_files, output, output_file_family='',
                                "encp"               : encp,
                                "retry"              : retry,
                                "times"              : times,
-                               "unique_id"          : unique_id[i]
+                               "unique_id"          : unique_id[i],
+                               "client_crc"         : chk_crc
                                }
             # send the work ticket to the library manager
             reply_read=0
@@ -1223,78 +1225,84 @@ def write_to_hsm(input_files, output, output_file_family='',
 # submit read_from_hsm requests
 def submit_read_requests(requests, client, tinfo, verbose, retry_flag):
 
-  t2 = time.time() #--------------------------------------------Lap-Start
-  ninput = len(requests)
-  for rq in requests: 
-      msg="submit_read_requests: %s t2=%s"%(rq['infile'],t2)
-      if verbose>1:
-          print msg
-  Qd=""
-  submitted = 0
-  
-  for vol in vols:
-    # create the time subticket
+    t2 = time.time() #--------------------------------------------Lap-Start
+    ninput = len(requests)
+    for rq in requests: 
+        msg="submit_read_requests: %s t2=%s"%(rq['infile'],t2)
+        if verbose>1:
+            print msg
 
+
+    Qd=""
+    submitted = 0
+  
+    # create the time subticket
     times = {}
     times["t0"] = tinfo["abs_start"]
     pid = os.getpid()
     thishost = hostaddr.gethostinfo()[0]
 
     if not retry_flag:
-        for req in requests:
-
-            requests[i]['unique_id'] = generate_unique_id()
-            requests[i]['wrapper']['fullname'] = requests[i]['outfile']
-            requests[i]['wrapper']["sanity_size"] = 65536
-            requests[i]['wrapper']["size_bytes"] = requests[i]['file_size']
+        for req in range(len(requests)):
+            requests[req]['unique_id'] = generate_unique_id()
+            requests[req]['wrapper']['fullname'] = requests[req]['outfile']
+            requests[req]['wrapper']["sanity_size"] = 65536
+            requests[req]['wrapper']["size_bytes"] = requests[req]['file_size']
 
             ##XXX CGW: how does the uinfo value get into the dictionary here?  This looks like a bug.
             # store the pnfs information info into the wrapper
-            for key in requests[i]['pinfo'].keys():
+            for key in requests[req]['pinfo'].keys():
                 if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
-                    requests[i]['wrapper'][key] = requests[i]['pinfo'][key]
+                    requests[req]['wrapper'][key] = requests[req]['pinfo'][key]
 
-            if verbose > 1: print "RETRY_CNT=", requests[i]['retry']
+            if verbose > 1: print "RETRY_CNT=", requests[req]['retry']
 
-            requests[i]['work'] = 'read_from_hsm'
-            requests[i]['client'] = client['callback_addr']
-            requests[i]['times'] = times
-            
-  # submit requests
-  for req in requests:
-      Trace.trace(8,"submit_read_requests q'ing:%s"%(req,))
+            requests[req]['work'] = 'read_from_hsm'
+            #'callback_addr' doesn't really convey meaning as to what it is.
+            # Maybe something like 'client's_callback_addr' should be
+            # considered.  Just a thought.
+            requests[req]['callback_addr'] = client['callback_addr']
+            requests[req]['times'] = times
 
-      library = req['vc']['library']
-      if verbose > 3:
-          print "calling Config. Server to get LM info for", current_library
-      lmticket = client['csc'].get(library+".library_manager")
-      if lmticket["status"][0] != e_errors.OK:
-          pprint.pprint(lmticket)
-          print_data_access_layer_format(req["infile"], 
-                                         req["wrapper"]["fullname"], 
-                                         req["wrapper"]["size_bytes"],
-                                         lmticket)
-          print_error("EPROTO", "submit_read_requests. lmget failed %s"%(lmticket["status"],))
-          continue
+    # submit requests
+    for req in requests:
+        Trace.trace(8,"submit_read_requests q'ing:%s"%(req,))
+        
+        library = req['vc']['library']
+        if verbose > 3:
+            print "calling Config. Server to get LM info for", library
 
-      # send to library manager and tell user
-      ticket = client['u'].send(req,
-                                (lmticket['hostip'], lmticket['port']))
-      if verbose > 3:
-          print "ENCP:read_from_hsm. LM read_from_hsm returned"
-          pprint.pprint(ticket)
-      if ticket['status'][0] != "ok" :
-          print_data_access_layer_format(req['infile'], 
-                                         req["wrapper"]["fullname"], 
-                                         req["wrapper"]["size_bytes"],
-                                         ticket)
+        lmticket = client['csc'].get(library+".library_manager")
 
-          print_error('EPROTO',  'encp.read_from_hsm: from u.send to LM at %s:%s,  ticket["status"]=%s'
-                      %(lmticket['hostip'],lmticket['port'],ticket["status"]))
-          continue
-      submitted = submitted+1
+        if lmticket["status"][0] != e_errors.OK:
+            pprint.pprint(lmticket)
+            print_data_access_layer_format(req["infile"], 
+                                           req["wrapper"]["fullname"], 
+                                           req["wrapper"]["size_bytes"],
+                                           lmticket)
+            print_error("EPROTO", "submit_read_requests. lmget failed %s"%(lmticket["status"],))
+            continue
 
-  return submitted
+        # send to library manager and tell user
+        ticket = client['u'].send(req,
+                                  (lmticket['hostip'], lmticket['port']))
+        if verbose > 3:
+            print "ENCP:read_from_hsm. LM read_from_hsm returned"
+            pprint.pprint(ticket)
+        if ticket['status'][0] != "ok" :
+            print_data_access_layer_format(req['infile'], 
+                                           req["wrapper"]["fullname"], 
+                                           req["wrapper"]["size_bytes"],
+                                           ticket)
+
+            print_error('EPROTO',
+                        'encp.read_from_hsm: from u.send to LM at %s:%s,'
+                        'ticket["status"]=%s'  %
+                        (lmticket['hostip'],lmticket['port'],ticket["status"]))
+            continue
+        submitted = submitted+1
+
+    return submitted
 
 #############################################################################
 # read hsm files in the loop after read requests have been submitted
@@ -1322,7 +1330,8 @@ def read_hsm_files(listen_socket, submitted, requests,
         #   we submitted for the volume
         while 1 :
             Trace.trace(8,"read_hsm_files listening for callback")
-            read_fds,write_fds,exc_fds=select.select([listen_socket],[],[],
+            read_fds,write_fds,exc_fds=select.select([listen_socket], [],
+                                                     [listen_socket],
                                                      mover_timeout)
             if not read_fds:
                 #timed out!
@@ -1330,7 +1339,7 @@ def read_hsm_files(listen_socket, submitted, requests,
                 if verbose:
                     print msg
                 Trace.log(e_errors.INFO, msg)
-                return files_left, bytes, error
+                return requests, bytes, 1#error
                 
             control_socket, address = listen_socket.accept()
             control_socket_closed = 0
@@ -1440,11 +1449,10 @@ def read_hsm_files(listen_socket, submitted, requests,
                                        out_fd,
                                        requests[j]['file_size'], bufsize,
                                        crc_flag, 0)
-            except EXfer.error, msg: 
-
+            except EXfer.error, msg:
+                #Regardless of the type of error, make sure it gets logged.
                 Trace.log(e_errors.ERROR,"read_from_hsm EXfer error: %s" %
                           (msg,))
-
 
                 if msg.args[1]==errno.ENOSPC:
                     try:
@@ -1850,7 +1858,7 @@ def read_from_hsm(input_files, output,
         request['file_size'] = file_size[i]
         request['retry'] = 0
         request['unique_id'] = ''
-
+        request['client_crc'] = chk_crc
 
         wr = {}
         for key in client['uinfo'].keys():
@@ -1897,17 +1905,22 @@ def read_from_hsm(input_files, output,
         request_list = requests_per_vol[vol]
         files_left = len(request_list)
         while files_left:
-            
             submitted = submit_read_requests(request_list,
-                                                  client, tinfo, 
-                                                  verbose, 
-                                                  retry_flag)
+                                             client, tinfo, 
+                                             verbose, 
+                                             retry_flag)
+
             if verbose:
                 print "Queued", request_list
 
             if submitted != 0:
-                request_list, brcvd, error = read_hsm_files(listen_socket, submitted, request_list,
-                                                          tinfo, t0, chk_crc, maxretry, verbose)
+                requests_list, brcvd, error = read_hsm_files(listen_socket,
+                                                            submitted,
+                                                            request_list,
+                                                            tinfo, t0,
+                                                            chk_crc, maxretry,
+                                                            verbose)
+
                 files_left = len(request_list)
                 bytes = bytes + brcvd
                 if verbose: print "FILES_LEFT ", files_left
@@ -2152,9 +2165,10 @@ if __name__ == '__main__':
         quit(0)
     except SystemExit, msg:
         quit(1)
-    except:
-        exc, msg, tb = sys.exc_info()
-        sys.stderr.write("%s %s\n" % (exc, msg))
-        quit(1)
+    #except:
+        #exc, msg, tb = sys.exc_info()
+        #sys.stderr.write("%s\n" % (tb,))
+        #sys.stderr.write("%s %s\n" % (exc, msg))
+        #quit(1)
         
         
