@@ -132,7 +132,14 @@ case $gang in
 		   case $testToDo in
 			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
-			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
+			gridftp) dcache=cmsdcdr3 
+				dcache_saag_g=${dcache_saag}_3
+				wg_g=${wg}_3
+				`pageDcache_tests $- gridftp $test_file $dcache $dcache_saag_g $wg_g > ${output_gridftp}_3 2>&1; echo $? > ${exit_code_gridftp}_3`&
+				dcache=cmsdcdr1
+				dcache_saag_g=${dcache_saag}_1
+				wg_g=${wg}_1
+				`pageDcache_tests $- gridftp $test_file $dcache $dcache_saag_g $wg_g > ${output_gridftp}_1 2>&1; echo $? > ${exit_code_gridftp}_1`&
 			         ;;
 			srm) `pageDcache_tests $- srm $test_file $dcache $dcache_saag $ws $srm_port > $output_srm 2>&1; echo $? > $exit_code_srm`&
 			     ;;
