@@ -282,6 +282,48 @@ def get_queue_size(request_list):
 
     print queue_size
     return queue_size
+
+############################################################################
+
+#The os.access() and the access(2) C library routine use the real id when
+# testing for access.  This function does the same thing but for the
+# effective ID.
+def e_access(path, mode):
+    
+    #Translate the access() mode values to stat() mode values.
+    if mode == os.F_OK:
+        t_mode = 0
+    elif mode == os.R_OK:
+        t_mode = stat.S_IRUSR
+    elif mode == os.W_OK:
+        t_mode = stat.S_IWUSR
+    elif mode == os.X_OK:
+        t_mode == stat.S_IXUSR
+    else:
+        return 0
+
+    #Test for existance.
+    try:
+        stat_mode = os.stat(path)[stat.ST_MODE]
+
+        #If the existance of the file is all that matters, then handle it.
+        if t_mode == 0:
+            return 1
+    except OSError, detail:
+        return 0
+
+    #Need to break down the mode returned from os.stat().  This loop determines
+    # the number of bytes to shift the mode.
+    for i in range(32):
+        if (t_mode >> 1) % 2: #Stop when the right most bit is 1.
+            break
+        else:
+            t_mode = (t_mode >> 1) #Shift until the right most bit is 1.
+    else:
+        return 0
+
+    return (stat_mode >> i) % 2
+
 ############################################################################
 
 #Return the correct configuration server client based on the 'brand' (if
@@ -520,16 +562,18 @@ pnfs_is_automounted = 0
 #                             automatically mounted file system
 
 def access_check(path, mode):
+
     # if pnfs is not auto mounted, simply call os.access
     if not pnfs_is_automounted:
-        return os.access(path, mode)
+        #use the effective ids and not the reals used by os.access().
+        return e_access(path, mode)
 
     # automaticall retry 6 times, one second delay each
     for i in range(5):
-        if os.access(path, mode):
+        if e_access(path, mode):
             return 1
         time.sleep(1)
-    return os.access(path, mode)
+    return e_access(path, mode)
 
 #Make sure that the filename is valid.
 def filename_check(filename):
@@ -681,7 +725,7 @@ def inputfile_check(input_files):
                 raise EncpError(errno.ENOENT, inputlist[i], e_errors.USERERROR)
 
             # input files must have read permissions.
-            if not os.access(inputlist[i], os.R_OK):
+            if not access_check(inputlist[i], os.R_OK):
                 raise EncpError(errno.EACCES, inputlist[i], e_errors.USERERROR)
 
             #Since, the file exists, we can get its stats.
@@ -772,7 +816,7 @@ def outputfile_check(inputlist, output, dcache):
                     # basname included.
                     ofullname=os.path.join(ofullname, ibasename)
                     omachine, ofullname, odir, obasename = fullpath(ofullname)
-            elif not access_check(os.path.dirname(odir), os.F_OK):
+            elif not access_check(odir, os.F_OK):
                 #If the directory does not exist, raise error.
                 raise EncpError(errno.ENOENT, odir, e_errors.USERERROR)
 
@@ -3243,6 +3287,10 @@ def main():
 
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(e, "e"))
+    Trace.message(CONFIG_LEVEL, os.getuid())
+    Trace.message(CONFIG_LEVEL, os.getgid())
+    Trace.message(CONFIG_LEVEL, os.geteuid())
+    Trace.message(CONFIG_LEVEL, os.getegid())
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
