@@ -1,57 +1,17 @@
 <?xml version='1.0'?>
 <!DOCTYPE NGOPConfig SYSTEM "system.dtd">
 <NGOPConfig>
-  <System ID="Cronjob" Cluster="stkensrv0">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkensrv0"/>
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkensrv0"/>
-  </System>
-  <System ID="Cronjob" Cluster="stkensrv1">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkensrv1"/>
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkensrv1"/>
-  </System>
-  <System ID="Cronjob" Cluster="stkensrv2">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkensrv2"/>
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkensrv2"/>
-  </System>
-  <System ID="Cronjob" Cluster="stkensrv3">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkensrv3"/>
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkensrv3"/>
-  </System>
-  <System ID="Cronjob" Cluster="stkensrv4"> 
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkensrv4"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkensrv4"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr1a"> 
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkenmvr1a"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkenmvr1a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr2a">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkenmvr2a"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkenmvr2a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr3a">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkenmvr3a"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkenmvr3a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr4a">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkenmvr4a"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkenmvr4a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr5a">
-     <MonitoredElement ID="enstore" Type="Daemon" Host="stkenmvr5a"/> 
-     <MonitoredElement ID="root"    Type="Daemon" Host="stkenmvr5a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="stkenmvr6a">
-     <MonitoredElement ID="enstore"  Type="Daemon" Host="stkenmvr6a"/> 
-     <MonitoredElement ID="root"     Type="Daemon" Host="stkenmvr6a"/> 
-  </System>
-  <System ID="Cronjob" Cluster="rip9">
-     <MonitoredElement ID="enstore"  Type="Daemon" Host="rip9"/>
-     <MonitoredElement ID="root"     Type="Daemon" Host="rip9"/>
-  </System>
-  <System ID="Cronjob" Cluster="rip10">
-     <MonitoredElement ID="enstore"  Type="Daemon" Host="rip10"/>
-     <MonitoredElement ID="root"     Type="Daemon" Host="rip10"/>
-  </System>
+<ItemList Name="ENSTORE">
+  <Item Name="STK"/>
+  <Item Name="D0"/>
+</ItemList>
+<For Each="Item" In="ItemList" Name="ENSTORE" Var="{%S}">
+<For Each="Host" In="Cluster" Name="EN{%S}" Var="{%H}" Filename="fermi_hosts.xml">
+  <System Name="Cronjob" Cluster="{%H}">
+     <MonitoredElement Name="enstore" Type="Daemon" Host="{%H}"/>
+     <MonitoredElement Name="root"      Type="Daemon" Host="{%H}"/>
+  </System> 
+</For>
+</For>
 </NGOPConfig>
 
