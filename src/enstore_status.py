@@ -66,6 +66,12 @@ def encp_html_file_name():
 def default_encp_html_file():
     return default_dir+encp_html_file_name()
 
+def config_html_file_name():
+    return "config_"+inq_file_name()
+
+def default_config_html_file():
+    return default_dir+config_html_file_name()
+
 def status_html_file_name():
     return "status_"+inq_file_name()
 
@@ -700,7 +706,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
     def add_2nd_button(self):
         return status_html_file_name()+'">ENSTORE'
 
-class HTMLLogFile(EnStatusFile, EnHTMLFile):
+class HTMLLogFile(EnHTMLFile, EnStatusFile):
 
     html_header1 = "<title>Enstore Log Files</title>\n"+\
                    "<meta http-equiv=\"Refresh\" content=\""
@@ -745,6 +751,44 @@ class HTMLLogFile(EnStatusFile, EnHTMLFile):
                 for log in log_keys:
                     self.filedes.write('<TR><TD><A HREF="%s%s/%s"><B>%s</B></A></TD><TD>%s</TD></TR>\n'%(www_host, logfile_dir, log, log, logfiles[log]))
                 self.filedes.write('</TABLE>\n')
+                    
+class HTMLConfigFile(EnHTMLFile, EnStatusFile):
+
+    html_header1 = "<title>Enstore Configuration</title>\n"+\
+                   "<meta http-equiv=\"Refresh\" content=\""
+    html_header2 = "\">\n"+\
+                   "<body bgcolor=\""+BG_COLOR+"\">\n"+\
+                   "<H1>ENSTORE Configuration</H1>\n"+\
+                   '<TABLE BGCOLOR="#DFDFF0" NOSAVE >\n'+\
+                   '<TR><TD ALIGN=CENTER><B>ELEMENT</B></TD><TD ALIGN=CENTER><B>KEY</B></TD><TD ALIGN=CENTER><B>VALUE</B></TD></TR>\n'
+
+    def __init__(self, file, refresh):
+	EnStatusFile.__init__(self, file)
+	EnHTMLFile.__init__(self, refresh)
+	self.trailer = "</TABLE>\n</body>\n"
+
+    # open the file and write the header to the file
+    def open(self):
+        Trace.trace(12,"open "+self.header)
+	EnStatusFile.open(self)
+        if self.filedes:
+            self.filedes.write(self.header)
+
+    HTML_LINE = '<TR><TD>%s</TD><TD>%s</TD><TD>%s</TD></TR>\n'
+
+    # format the config entry and write it to the file
+    def write(self, element, dict):
+        if self.filedes:
+            element_written = 0
+            keys = dict.keys()
+            keys.sort()
+            for key in keys:
+                if not element_written:
+                    self.filedes.write(self.HTML_LINE%(element, key,
+                                                       dict[key]))
+                    element_written = 1
+                else:
+                    self.filedes.write(self.HTML_LINE%("&nbsp;", key, dict[key]))
                     
 class EnDataFile(EnFile):
 

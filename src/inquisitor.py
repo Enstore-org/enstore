@@ -223,6 +223,19 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.remove_key(key)
 	return ret
 
+    # look for all keys that are of the form robot_xxxx_log_dir and pull out
+    # the xxxx and create a dictionary of the corresponding values
+    def get_log_dirs(self, inq_dict):
+        self.log_dirs = {}
+        for key in inq_dict.keys():
+            if (type(inq_dict[key]) == types.StringType) and \
+               (key[0:6] == "robot_") and (key[-8:] == "_log_dir"):
+                if inq_dict[key][0:5] == "http:" or \
+                   inq_dict[key][0:5] == "file:":
+                    self.log_dirs[key[6:-8]] = inq_dict[key]
+                else:
+                    self.log_dirs[key[6:-8]] = self.www_host+inq_dict[key]
+
     # create an html file that has a link to all of the current log files
     def make_log_html_file(self):
         # first get a list of all of the log files and their sizes
@@ -238,13 +251,32 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # extension than the real one, we will mv the new one to the
                 # real name after its creation.
                 self.loghtmlfile.open()
-                self.loghtmlfile.write(self.logc.log_dir, logfiles,
+                self.loghtmlfile.write(self.http_log_file_path, logfiles,
                                        self.log_dirs, self.www_host)
                 self.loghtmlfile.close()
                 # now we must move the new file to it's real name
                 os.system('mv %s/%s%s %s/%s'%(self.logc.log_dir,
                                               LOGHTMLFILE_NAME, SUFFIX,
                                               self.html_dir, LOGHTMLFILE_NAME))
+
+    # update the file that contains the configuration file information
+    def make_config_html_file(self):
+        self.confightmlfile.open()
+	try:
+            # get a list of the servers/keys in the config dictionary
+	    csc_keys = self.csc.get_keys(self.alive_rcv_timeout, \
+	                                 self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(12,"make_config_html_file - ERROR, getting config dict timed out")
+	    return
+        # for each server, get its config dict element and output it
+        keys = csc_keys['get_keys']
+        keys.sort()
+	for a_key in keys:
+            self.confightmlfile.write(a_key, self.csc.get(a_key))
+        else:
+            self.confightmlfile.close()
+            self.move_file(1, self.confightmlfile_orig)
 
     # get the library manager suspect volume list and output it
     def suspect_vols(self, lm, (host, port), key, time):
@@ -394,6 +426,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(12,"update_inquisitor - ERROR, getting config dict timed out")
 	    return
 
+        # this will be used when creating the log html file
+        self.www_host = t.get('www_host', "file:")
+        self.http_log_file_path = t.get('http_log_file_path',
+                                        self.logc.log_dir)
+        
 	# just output our info, if we are doing this, we are alive.
         work_ticket = { 'work' : "alive",
                         'address' : (t['host'], t['port']), 
@@ -407,7 +444,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # update the web page that lists all the current log files
         self.make_log_html_file()
-        
+
 	# we need to update the dict of servers that we are keeping track of.
 	# however we cannot do it now as we may be in the middle of a loop
 	# reading the keys of this dict.  so we just record the fact that this
@@ -421,6 +458,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# any of the servers in case the info has changed.
 	self.csc.clear()
 
+        # update the configuration file web page
+        self.make_config_html_file()
+        
     # update any encp information from the log files
     def update_encp(self, key, time):
         if 0: print time # quiet lint
@@ -950,18 +990,12 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	keys = self.csc.get(self.name, use_once_timeout, use_once_retry)
 	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
-        # this will be used when creating the log html file
-        self.www_host = keys.get('www_host', "file:")
 
 	# initialize
 	self.doupdate_server_dict = 0
 	self.reset = {}
         self.update_request = {}
         self.forked = {}
-
-        # save all of the keys of the form robot_xxxx_log_dir, to be used to
-        # create the log web page
-        self.get_log_dirs(keys)
 
         # if no timeout was entered on the command line, get it from the 
         # configuration file.  this variable is used in dispatching worker to
@@ -1017,10 +1051,13 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                             enstore_status.status_html_file_name()
 	        encp_file = self.html_dir+"/"+\
                             enstore_status.encp_html_file_name()
+	        config_file = self.html_dir+"/"+\
+                            enstore_status.config_html_file_name()
 	    else:
 	        self.html_dir = enstore_status.default_dir
 	        html_file = enstore_status.default_status_html_file()
 	        encp_file = enstore_status.default_encp_html_file()
+	        config_file = enstore_status.default_config_html_file()
 
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
@@ -1042,6 +1079,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.loghtmlfile = enstore_status.HTMLLogFile(self.logc.log_dir+"/"+\
                                                       LOGHTMLFILE_NAME+SUFFIX,
                                                       refresh)
+        self.confightmlfile = enstore_status.HTMLConfigFile(config_file+SUFFIX,
+                                                            refresh)
+        self.confightmlfile_orig = config_file
 
 	# get the timeout for each of the servers from the configuration file.
 	self.last_update = {}
@@ -1075,16 +1115,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
 	# get all the servers we are to keep tabs on
 	self.prepare_keys()
-
-    # look for all keys that are of the form robot_xxxx_log_dir and pull out
-    # the xxxx and create a dictionary of the corresponding values
-    def get_log_dirs(self, inq_dict):
-        self.log_dirs = {}
-        for key in inq_dict.keys():
-            if (type(inq_dict[key]) == types.StringType) and \
-               (key[0:6] == "robot_") and (key[-8:] == "_log_dir"):
-                self.log_dirs[key[6:-8]] = inq_dict[key]
-
 
 class InquisitorInterface(generic_server.GenericServerInterface):
 
