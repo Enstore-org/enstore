@@ -135,6 +135,8 @@ FLAVOR=`$UPS_DIR/bin/ups flavor -3`
 case ${FLAVOR} in
         IRIX+6.5)
                 ;;
+	SunOS+5.7)
+		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
 esac
