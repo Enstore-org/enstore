@@ -684,14 +684,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     
     # get the bit file id
     def get_bit_file_id(self, filepath=None):
-        if filepath:
-            bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
-                                         filepath)[0]
-        else:
-            bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
-                                         self.filepath)[0]
-            self.bit_file_id = bit_file_id
-
+        try:
+            if filepath:
+                bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
+                                             filepath)[0]
+            else:
+                bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
+                                             self.filepath)[0]
+                self.bit_file_id = bit_file_id
+        except IndexError:
+            raise IOError(errno.EIO, "%s: Layer %d is empty" %
+                          (os.strerror(errno.EIO),
+                           enstore_constants.BFID_LAYER))
         return bit_file_id
 
     # get the cross reference layer
@@ -702,6 +706,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             xinfo = self.readlayer(enstore_constants.XREF_LAYER, filepath)
         else:
             xinfo = self.readlayer(enstore_constants.XREF_LAYER)
+
+        if len(xinfo) == 0:
+            raise IOError(errno.EIO, "%s: Layer %d is empty" %
+                          (os.strerror(errno.EIO),
+                           enstore_constants.XREF_LAYER))
 
         #Strip off whitespace from each line.
         xinfo = map(string.strip, xinfo[:10])
