@@ -1519,7 +1519,8 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		mover_d = self.data_dict[server]
 		name = self.server_url(server, enstore_functions.get_mover_status_filename(),
 				       server)
-		if mover_d.has_key(enstore_constants.STATE):
+		if mover_d.has_key(enstore_constants.STATE) and \
+                   mover_d[enstore_constants.STATE]:
 		    # append the movers state to its status information
 		    # if we are updating the web page faster that receiving the new
 		    # info, then we already have a correct status
