@@ -60,6 +60,7 @@ TIMED_OUT_SP = "    "
 DEFAULT_REFRESH = "60"
 ALIVE = "alive"
 NO_INFO_YET = "no info yet"
+SERVER_STATUS_THREAD_TO = 5.0
 
 USER = 0
 TIMEOUT=1
@@ -179,6 +180,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	self.logc = None
 	self.log_server = None
 	self.server_status_file_event = None
+	self.exit_now_event = None
         self.sent_stalled_mail = {}
 	self.servers_by_name = {}
 	self.override_mail_sent = {}
@@ -354,18 +356,27 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     server.restart_thread.setDaemon(1)
                     server.restart_thread.start()
 
+    # do the actual write in the thread
+    def do_server_status_write(self):
+	enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+				   "Starting write of status files")
+	self.serverfile_new.open()
+	self.serverfile_new.write()
+	self.serverfile_new.close()
+	self.serverfile_new.install()
+
     # this is the file writing thread
     def make_server_status_html_file(self):
 	while 1:
-	    self.server_status_file_event.wait(5.0)
-	    if self.server_status_file_event.isSet():
-		enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
-					   "Starting write of status files")
-		self.serverfile_new.open()
-		self.serverfile_new.write()
-		self.serverfile_new.close()
-		self.serverfile_new.install()
+	    self.server_status_file_event.wait(SERVER_STATUS_THREAD_TO)
+	    if self.server_status_file_event.isSet() or \
+	       self.exit_now_event.isSet():
+		self.do_server_status_write()
 		self.server_status_file_event.clear()
+	    if self.exit_now_event.isSet():
+		enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+					   "Exiting write of status files thread")
+		return
 
     # signal the thread that the server status file can be written
     def write_server_status_file(self):
@@ -770,12 +781,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def update_exit(self, exit_code):
         self.serverfile.output_alive(self.inquisitor.host,
                                      "exiting", time.time(), self.name)
-        # the above just stored the information, now write the page out
-        self.write_server_status_file()
+        # the above just stored the information, now write the page out and
+	# tell the thread to exit
+        enstore_functions.inqTrace(enstore_constants.INQTHREADDBG, 
+				   "setting exit event for threads")
+	self.exit_now_event.set()
+	self.write_server_status_file()
         # Don't fear the reaper!!
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				   "exiting inquisitor due to request")
         self.erc.unsubscribe()
+	self.server_status_file_thread.join()
         os._exit(exit_code)
 
     # update any encp information from the log files
@@ -1497,6 +1513,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         # update the encp page
         self.make_encp_html_file(time.time())
 
+	# this event is used to tell the threads to exit
+	self.exit_now_event = threading.Event()
+
 	# start the thread that will do the file writing
 	# sometimes it takes a very long time to output the server status file
 	# especially if the library manager queue is very large.  so do this
@@ -1508,7 +1527,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 							  target=self.make_server_status_html_file,
 							  name="MAKE_SERVER_STATUS_FILE",
 							  args=())
-	self.server_status_file_thread.setDaemon(1)
+	#self.server_status_file_thread.setDaemon(1)
 	self.server_status_file_thread.start()
 
 
