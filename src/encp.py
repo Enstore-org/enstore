@@ -787,10 +787,6 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             
         else: #Didn't find matching id.
             close_descriptors(control_socket)
-            #try:
-            #    control_socket.close()
-            #except socket.error:
-            #    pass
 
             list_of_ids = []
             for j in range(0, len(work_tickets)):
@@ -2815,7 +2811,7 @@ def main():
 
 if __name__ == '__main__':
 
-    for sig in range(signal.NSIG):
+    for sig in range(1, signal.NSIG):
         if sig not in (signal.SIGTSTP, signal.SIGCONT,
                        signal.SIGCHLD, signal.SIGWINCH):
             try:
