@@ -49,7 +49,7 @@ then
   # now fill the file
   for file in `cat $1`;
   do
-     eval cat $file >> $tmp_output
+    eval "if [ -e $file ]; then cat $file >> $tmp_output; fi"
   done
   # now create the real file
   mv $tmp_output $real_output
