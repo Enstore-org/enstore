@@ -546,7 +546,7 @@ def do_real_work():
 	rtn = 1
 	# the following line will set the alarm function
 	alc = alarm_client.AlarmClient(cs.csc)
-	Trace.init("Enstore Up Down")
+	Trace.init("Enstore_Up_Down")
 	Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
     else:
 	stat = "UP"
