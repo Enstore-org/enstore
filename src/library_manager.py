@@ -11,7 +11,6 @@ import errno
 
 # enstore imports
 import log_client
-import SocketServer
 import configuration_client
 import volume_clerk_client
 import callback
@@ -319,8 +318,7 @@ def send_regret(ticket):
 
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
-		     generic_server.GenericServer,
-                     SocketServer.UDPServer):
+		     generic_server.GenericServer):
 
     summon_queue = []   # list of movers being summoned
     max_summon_attempts = 3
@@ -333,7 +331,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	self.rcv_timeout = 10 # set receive timeout
 	Trace.trace(3,"}set_udp_client")
 
-    # overrides timeout handler from SocketServer
+    # overrides timeout handler from DispatchingWorker
     def handle_timeout(self):
 	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
@@ -845,8 +843,8 @@ if __name__ == "__main__":
 
     #  set ourself up on that port and start serving
     #methods =  LibraryManagerMethods()
-    #lm =  LibraryManager( (keys['hostip'], keys['port']), methods)
-    lm =  LibraryManager( (keys['hostip'], keys['port']), 'unused param')
+    #lm =  LibraryManager( (keys['hostip'], keys['port']))
+    lm =  LibraryManager( (keys['hostip'], keys['port']))
     lm.set_csc(csc)
     
     """ get initial list of movers potentially belonging to this

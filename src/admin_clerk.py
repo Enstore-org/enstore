@@ -10,7 +10,6 @@ import copy
 import traceback
 
 #enstore imports
-import SocketServer
 import timeofday
 import callback
 import log_client
@@ -143,8 +142,7 @@ class AdminClerkMethods(dispatching_worker.DispatchingWorker) :
         self.data_socket = data_socket
         listen_socket.close()
 
-class AdminClerk(AdminClerkMethods, generic_server.GenericServer,
-                 SocketServer.UDPServer) :
+class AdminClerk(AdminClerkMethods, generic_server.GenericServer) :
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port()):
@@ -156,8 +154,8 @@ class AdminClerk(AdminClerkMethods, generic_server.GenericServer,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("admin_clerk")
-        SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
-                                        AdminClerkMethods)
+        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
+	                                              keys['port']))
         # get a logger
         self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
                                             'logserver', 0)

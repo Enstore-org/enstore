@@ -22,7 +22,6 @@ import library_manager_client
 import media_changer_client
 import dispatching_worker
 import interface
-import SocketServer
 import generic_server
 import udp_client
 import Trace
@@ -425,9 +424,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(10,"}get_timeout")
 
 
-class Inquisitor(InquisitorMethods,
-                generic_server.GenericServer,
-                SocketServer.UDPServer):
+class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port(), timeout=-1, ascii_file="", \
@@ -441,8 +438,8 @@ class Inquisitor(InquisitorMethods,
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
 	keys = self.csc.get("inquisitor")
-	SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
-	                                InquisitorMethods)
+	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+	                                              keys['port']))
 
 	# initialize
 	self.doupdate_server_dict = 0

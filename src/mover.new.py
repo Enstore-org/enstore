@@ -46,7 +46,6 @@ MoverClient:
 """
 
 import generic_server
-import SocketServer
 import dispatching_worker
 import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
@@ -595,16 +594,11 @@ class Mover:
 
 # Gather everything together and add to the mess
 class MoverServer(  dispatching_worker.DispatchingWorker
-	     	  , generic_server.GenericServer, SocketServer.UDPServer ):
-    # NOTE: SocketServer.UDPServer.__init__ method is called by default.
-    # Of the two parameters, (server_address, RequestHandlerClass), the
-    # RequestHandlerClass becomes obsolete as the process_request method
-    # is overridden by DispatchingWorker method which does not use the
-    # store RequestHandlerClass
-    def __init__( self, server_address, RequestHandlerClass ):
+	     	  , generic_server.GenericServer ):
+    def __init__( self, server_address ):
 	self.client_obj_inst = MoverClient( mvr_config )
 	self.next_req_to_lm = idle_mover_next( self.client_obj_inst )# a "respone" to server being summoned
-	SocketServer.UDPServer.__init__( self, server_address, RequestHandlerClass )
+	dispatching_worker.DispatchingWorker.__init__( self, server_address)
 	return
 
     def set_timeout( self, ticket ):
@@ -650,7 +644,7 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	    logc.send( log_client.ERROR, 0, "FATAL ENSTORE - libman told busy mover to do work" )
 	    while 1: time.sleep( 1 )	# freeze
 	    pass
-	# Exceptions are caught (except block) in SocketServer.py.
+	# Exceptions are caught (except block) in dispatching_worker.py.
 	# The reply is the command (i.e the network is the computer).
 	client_function = rsp_ticket['work']
 	method = MoverClient.__dict__[client_function]
@@ -805,7 +799,7 @@ else:
     pass
 
 
-mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']), 0 )
+mvr_srvr =  MoverServer( (mvr_config['hostip'],mvr_config['port']) )
 mvr_srvr.rcv_timeout = 15
 
 Trace.init( "Mover" )

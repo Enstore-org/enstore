@@ -15,11 +15,13 @@ import os
 import dispatching_worker
 import generic_server
 import interface
-import SocketServer
 import Trace
 import e_errors
 
 class ConfigurationDict(dispatching_worker.DispatchingWorker):
+
+    def __init__(self):
+	pass
 
     # load the configuration dictionary - the default is a wormhole in pnfs
     def load_config(self, configfile,list=1):
@@ -291,8 +293,7 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(out_ticket)
 	 
 
-class ConfigurationServer(ConfigurationDict, generic_server.GenericServer, \
-                          SocketServer.UDPServer):
+class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
     def __init__(self, list=0, host=interface.default_host(), \
                  port=interface.default_port(), \
@@ -308,7 +309,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer, \
         cd =  ConfigurationDict()
 
         # default socket initialization - ConfigurationDict handles requests
-        SocketServer.UDPServer.__init__(self, (host, port), cd)
+        dispatching_worker.DispatchingWorker.__init__(self, (host, port))
 
         # now (and not before,please) load the config file user requested
         self.load_config(configfile,list)
@@ -349,6 +350,7 @@ if __name__ == "__main__":
     Trace.trace(1,"{called args="+repr(sys.argv))
     import sys
     import timeofday
+    import traceback
 
     # get the interface
     intf = ConfigurationServerInterface()

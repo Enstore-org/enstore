@@ -35,7 +35,6 @@ import pprint
 import traceback
 
 #enstore imports
-import SocketServer
 import configuration_client
 import dispatching_worker
 import generic_server
@@ -50,8 +49,7 @@ import Trace
    whole system.
 """
 class Logger(  dispatching_worker.DispatchingWorker
-	     , generic_server.GenericServer
-             , SocketServer.UDPServer ):
+	     , generic_server.GenericServer):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port(), test=0, list=0):
@@ -65,8 +63,8 @@ class Logger(  dispatching_worker.DispatchingWorker
         keys = self.csc.get("logserver")
         if list :
             pprint.pprint(keys)
-        SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
-                                        'unused param')
+        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
+	                                              keys['port']))
         if keys["log_file_path"][0] == '$':
 	    tmp = keys["log_file_path"][1:]
 	    try:

@@ -5,6 +5,9 @@
 import errno
 import time
 import os
+import traceback
+import select
+import ECRC
 import sys
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses
@@ -63,10 +66,121 @@ def collect_children():
     Trace.trace(20,"}collect_children count=%d",count)
 
 # Generic request response server class, for multiple connections
-# This method overrides the process_request function in SocketServer.py
-# Note that the UDPServer.get_request actually read the data from the socket
+# Note that the get_request actually read the data from the socket
 
 class DispatchingWorker:
+
+    socket_type = socket.SOCK_DGRAM
+
+    max_packet_size = 8192
+    
+    rcv_timeout = 60   # timeout for get_request in sec.
+
+    address_family = socket.AF_INET
+
+    def __init__(self, server_address):
+        """Constructor.  May be extended, do not override or will need to call
+	   directly.
+	"""
+        Trace.trace(10,"{__init__ add="+repr(server_address))
+        self.server_address = server_address
+        self.socket = socket.socket(self.address_family,
+                                    self.socket_type)
+        self.server_bind()
+        Trace.trace(10,"}__init__")
+
+    def server_bind(self):
+        """Called by constructor to bind the socket.
+
+        May be overridden.
+
+        """
+        Trace.trace(16,"{server_bind add="+repr(self.server_address))
+        self.socket.bind(self.server_address)
+        Trace.trace(16,"}server_bind")
+
+    def serve_forever(self):
+        """Handle one request at a time until doomsday."""
+        Trace.trace(4,"{serve_forever")
+        while 1:
+                self.handle_request()
+	Trace.trace(2,"}server_forever")
+
+    def handle_request(self):
+        """Handle one request, possibly blocking."""
+        Trace.trace(5,"{handle_request")
+        req, client_address = self.get_request()
+	if req == '':
+	    # nothing returned, must be timeout
+	    self.handle_timeout()
+	    return
+        exec("request, inCRC="+req)
+        # calculate CRC
+        crc = ECRC.ECRC(request, 0)
+        if (crc != inCRC) :
+            Trace.trace(0,"handle_request - bad CRC inCRC="+repr(inCRC)+\
+                        " calcCRC="+repr(crc))
+            print "BAD CRC"
+            print "received:"
+            print "request:", request
+            print "CRC: ", inCRC
+            print "calculated CRC:", crc
+            return
+	try:
+	    self.process_request(request, client_address)
+	except KeyboardInterrupt:
+	    traceback.print_exc()
+	except SystemExit, code:	# processing may fork (forked process will call exit)
+	    sys.exit( code )
+	except:
+	    self.handle_error(request, client_address)
+        Trace.trace(5,"}handle_request")
+
+    def get_request(self):
+        Trace.trace(5,"{get_request")
+	b = ""
+	addr = ()
+	req = (b,addr)
+	f = self.socket.fileno()
+	#print "select"
+	r, w, x = select.select([f],[],[f], self.rcv_timeout)
+	
+	if r:
+	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+	    if badsock != 0 :
+		print "DispatchingWorked get_request, pre-recvfrom error:",\
+		      errno.errorcode[badsock]
+		Trace.trace(0,"DispatchingWorker get_request pre-recv error "+\
+                        repr(errno.errorcode[badsock]))
+		#return 0
+	    else:
+		pass
+	
+	    req = self.socket.recvfrom(self.max_packet_size)
+	    #pprint.pprint(req)
+	    #print "P3"
+	    badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
+	    if badsock != 0 :
+		print "DispatchingWorker get_request, post-recvfrom error:",\
+		      errno.errorcode[badsock]
+		Trace.trace(0,"DispatchingWorker get_request post-recvfrom error "+\
+			    repr(errno.errorcode[badsock]))
+		Trace.trace(5,"}get_request"+repr(req))
+	return req
+
+    def handle_timeout(self):
+	# override this method for specific timeout hadling
+	#print "timeout handler"
+	pass
+
+    def fileno(self):
+        """Return socket file number.
+
+        Interface required by select().
+
+        """
+        Trace.trace(16,"{}fileno ="+self.socket.fileno())
+        return self.socket.fileno()
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
@@ -85,8 +199,8 @@ class DispatchingWorker:
 
         try:
 
-            # UDPClient resends messages if it doesn't get a response from us
-            # see it we've already handled this request earlier. We've
+            # UDPClient resends messages if it doesn't get a response
+            # from us, see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
             exec ("list = " + repr(request_dict[idn]))
             if list[0] == number:
@@ -131,8 +245,6 @@ class DispatchingWorker:
         Trace.trace(5,"}process_request idn="+repr(idn))
 
     def handle_error(self, request, client_address):
-	"""OVERRIDING SocketServer.handle_error
-	"""
 	Trace.trace(0,"{handle_error request="+repr(request)+" add="+\
 		    repr(client_address))
 	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback

@@ -18,7 +18,6 @@
 import os
 
 # enstore imports
-import SocketServer
 import configuration_client
 import dispatching_worker
 import generic_server
@@ -177,20 +176,17 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods,
-                      generic_server.GenericServer,
-                      SocketServer.UDPServer) :
+                      generic_server.GenericServer) :
     pass
 
 # Raw Disk media loaded server
 class RDD_MediaLoader(MediaLoaderMethods,
-                      generic_server.GenericServer,
-                      SocketServer.UDPServer) :
+                      generic_server.GenericServer) :
     pass
 
 # Raw Disk media loaded server
 class FTT_MediaLoader(FTT_MediaLoaderMethods,
-                      generic_server.GenericServer,
-                      SocketServer.UDPServer) :
+                      generic_server.GenericServer) :
     pass
 
 if __name__ == "__main__" :
@@ -254,14 +250,11 @@ if __name__ == "__main__" :
 
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if args[0] == 'STK.media_changer' :
-        mc =  STK_MediaLoader((mc_config['hostip'], mc_config['port']),
-                               STK_MediaLoaderMethods)
+        mc =  STK_MediaLoader((mc_config['hostip'], mc_config['port']))
     elif args[0] == 'FTT.media_changer' :
-        mc =  FTT_MediaLoader((mc_config['hostip'], mc_config['port']),
-                               FTT_MediaLoaderMethods)
+        mc =  FTT_MediaLoader((mc_config['hostip'], mc_config['port']))
     else :
-        mc =  RDD_MediaLoader((mc_config['hostip'], mc_config['port']),
-                               MediaLoaderMethods)
+        mc =  RDD_MediaLoader((mc_config['hostip'], mc_config['port']))
     mc.set_csc(csc)
 
     # create a log client

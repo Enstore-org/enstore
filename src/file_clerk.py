@@ -15,7 +15,6 @@ import log_client
 import configuration_client
 import volume_clerk_client
 import dispatching_worker
-import SocketServer
 import generic_server
 import interface
 import udp_client
@@ -299,8 +298,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 "stop_backup"  : 'yes' })
         Trace.trace(10,'}stop_backup')
 
-class FileClerk(FileClerkMethods, generic_server.GenericServer,
-                SocketServer.UDPServer):
+class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port()):
@@ -312,8 +310,8 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer,
 	#   get our port and host from the name server
 	#   exit if the host is not this machine
 	keys = self.csc.get("file_clerk")
-	SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
-	                                FileClerkMethods)
+	dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
+	                                              keys['port']))
         # get a logger
         self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
                                             'logserver', 0)

@@ -17,7 +17,6 @@ import timeofday
 import callback
 import log_client
 import traceback
-import SocketServer
 import configuration_client
 import dispatching_worker
 import generic_server
@@ -324,7 +323,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # supposed to return first blank volume found?
             if first_found:
                 v["file_family"] = file_family
-                logc.send(log_client.INFO,2,
+                self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = (e_errors.OK, None)
@@ -344,7 +343,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if len(vol) != 0:
             label = vol['external_label']
             vol["file_family"] = file_family
-            logc.send(log_client.INFO,2,
+            self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = (e_errors.OK, None)
@@ -356,7 +355,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # nothing was available at all
         ticket["status"] = (e_errors.NOVOLUME, \
 			    "Volume Clerk: no new volumes available")
-        logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
+        self.logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
         self.reply_to_caller(ticket)
         Trace.trace(0,"}delvol "+repr(ticket["status"]))
         return
@@ -367,7 +366,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         logc.send(log_client.ERROR,1, str(ticket) )
+         self.logc.send(log_client.ERROR,1, str(ticket) )
          self.reply_to_caller(ticket)
          return
 
@@ -779,8 +778,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.trace(5,'}stop_backup')
 
 class VolumeClerk(VolumeClerkMethods,\
-                  generic_server.GenericServer,\
-                  SocketServer.UDPServer):
+                  generic_server.GenericServer):
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
                  port=interface.default_port()):
         Trace.trace(10, '{__init__')
@@ -791,8 +789,8 @@ class VolumeClerk(VolumeClerkMethods,\
         #   get our port and host from the name server
         #   exit if the host is not this machine
         keys = self.csc.get("volume_clerk")
-        SocketServer.UDPServer.__init__(self, (keys['hostip'], keys['port']), \
-                                        VolumeClerkMethods)
+        dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
+	                                              keys['port']))
         # get a logger
         self.logc = log_client.LoggerClient(self.csc, keys["logname"], \
                                             'logserver', 0)
