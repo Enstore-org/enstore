@@ -14,7 +14,6 @@ import e_errors
 import timeofday
 import hostaddr
 import configuration_client
-import verify_db
 
 # path to database
 db_path = "/diskc/check-database"
