@@ -923,11 +923,11 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 			try:    os.system( '/usr/local/bin/traceMode 0' )
 			except: pass
 			if self.client_obj_inst.mode == 'w':
-			    msg = 'writing mover (rr=%d ww=%d) '%(rr,dd)
+			    msg = 'writing mover (rr=%d ww=%d) '%(rr,ww)
 			    if rr >= ww+bs: msg = msg + 'tape stall'
 			    else:              msg = msg + 'network stall'
 			else:
-			    msg = 'reading mover (rr=%d ww=%d) '%(rr,dd)
+			    msg = 'reading mover (rr=%d ww=%d) '%(rr,ww)
 			    if rr >= ww+bs: msg = msg + 'network stall'
 			    else:              msg = msg + 'tape stall'
 			    pass
