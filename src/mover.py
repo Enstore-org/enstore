@@ -799,11 +799,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             return 0
         
         self.buffer.set_blocksize(self.vol_info['blocksize'])
-        fam = self.vol_info.get("volume_family")
+        family = self.vol_info.get("volume_family")
         self.wrapper = None
         self.wrapper_type = None
-        if fam:
-            self.wrapper_type = volume_family.extract_wrapper(volume_family)
+        if family:
+            self.wrapper_type = volume_family.extract_wrapper(family)
+        else:
+            Trace.log(e_errors.ERROR, "no volume family for %s" % (volume_label,))
         try:
             self.wrapper = __import__(self.wrapper_type + '_wrapper')
         except ImportError, detail:
