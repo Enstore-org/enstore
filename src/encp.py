@@ -111,6 +111,7 @@ INFO_LEVEL     = 7
 CONFIG_LEVEL   = 8
 TIME_LEVEL     = 9
 TICKET_LEVEL   = 10
+TICKET_1_LEVEL = 11
 
 #This is the global used by print_data_access_layer_format().  It uses it to
 # determine whether standard out or error is used.
@@ -2960,7 +2961,11 @@ def calculate_rate(done_ticket, tinfo):
     # overheads I've neglected are small so the quoted rate is close
     # to the right one.  In any event, I calculate an overall rate at
     # the end of all transfers
-
+    
+    Trace.message(TICKET_1_LEVEL, "CALCULATING RATE FROM:")
+    Trace.message(TICKET_1_LEVEL, pprint.pformat(done_ticket))
+    Trace.message(TICKET_1_LEVEL, pprint.pformat(tinfo))
+    
     #calculate MB relatated stats
     bytes_per_MB = 1024 * 1024
     MB_transfered = float(done_ticket['file_size']) / float(bytes_per_MB)
