@@ -705,10 +705,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		break
         else:
             status = self.pending_work.insert_job(ticket)
-        if status:
-            if status == e_errors.INPROGRESS:
-              ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
-            else: ticket['status'] = (status, None)
+            if status:
+                if status == e_errors.INPROGRESS:
+                    ticket['status'] = (e_errors.INPROGRESS,"Operation in progress")
+                else: ticket['status'] = (status, None)
                 
         self.reply_to_caller(ticket) # reply now to avoid deadlocks
 	if not movers:
