@@ -3,7 +3,7 @@ SHELL=/bin/sh
 #
 #  $Id$
 #
-all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp
+all:	 adler32.a Makefile.modules Modules tape_copy tape_write enroute2 m2probe t_rand t_read ecrc ddencp mouse_move autologinenstore
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -17,6 +17,8 @@ POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
 LIBSOCKETNSL=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lsocket -lnsl"; else echo ""; fi`
+XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
+XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm -ldl
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
@@ -76,6 +78,12 @@ ecrc: ecrc.c
 ddencp: EXfer.c
 	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT)
 	cp $(@) ../bin
+
+autologinenstore: autologinenstore.c
+	$(CC) -o $@ autologinenstore.c
+
+mouse_move: mouse_move.c
+	$(CC) -o $@ $(XINCLUDES) mouse_move.c $(XLIBS)
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \

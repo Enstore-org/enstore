@@ -32,3 +32,5 @@ t_rand
 t_read
 ecrc
 ddencp
+mouse_move
+autologinenstore
