@@ -15,13 +15,14 @@ import bfid_db
 class Interface(generic_client.GenericClientInterface):
 	def __init__(self):
 		self.delete = None
+		self.force = 0
 		generic_client.GenericClientInterface.__init__(self)
 
 	def options(self):
-		return(['delete='])
+		return(['delete=', 'force'])
 
 def usage():
-	print "usage: %s [--delete] vol"%(sys.argv[0])
+	print "usage: %s [[--force] --delete] vol"%(sys.argv[0])
 
 if __name__ == '__main__':
 	# use GenericClientInterface to get basic environment
@@ -59,7 +60,10 @@ if __name__ == '__main__':
 	for i in files:
 		fcc.bfid = i
 		fileInfo = fcc.bfid_info()
-		file_list[i] = fileInfo
+		if fileInfo['status'][0] == e_errors.OK:
+			file_list[i] = fileInfo
+		else:
+			print '(Warning)', i, fileInfo
 
 	error = 0
 	for i in file_list.keys():
@@ -106,8 +110,11 @@ if __name__ == '__main__':
 				# ignore it
 
 	if error:
-		print vol, "can not be removed due to above reasons"
-		sys.exit(1)
+		if intf.force:
+			print "Force to proceed on errors ..."
+		else:
+			print vol, "can not be removed due to above reasons"
+			sys.exit(1)
 	else:
 		print 'It is OK to remove', vol
 
@@ -116,6 +123,13 @@ if __name__ == '__main__':
 		sys.exit(0)
 
 	# let's get serious
+
+	# try to find "delfile"
+
+	delfile = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'delfile')
+	if not os.access(delfile, os.X_OK):
+		print 'can not find executable', delfile
+		sys.exit(0)
 
 	print 'volume =', vol
 	for i in file_list.keys():
@@ -133,6 +147,7 @@ if __name__ == '__main__':
 
 	# now, it is for real. Don't try this at home!
 
+	volmapdir = '/tmp/none'
 	for i in file_list.keys():
 		fileInfo = file_list[i]
 		volmap = fileInfo['pnfs_mapname']
@@ -157,16 +172,6 @@ if __name__ == '__main__':
 			except:
 				print 'failed'
 
-		# clean it up in file database
-
-		fcc.bfid = i
-		print 'removing', i, 'from file database ...',
-		ticket = fcc.del_bfid()
-		if ticket['status'][0] == e_errors.OK:
-			print 'done'
-		else:
-			print 'failed'
-
 	# now remove the volmap directory, too
 
 	if os.access(volmapdir, os.W_OK):
@@ -175,6 +180,25 @@ if __name__ == '__main__':
 			os.unlink(volmapdir)
 			print 'done'
 		except:
+			print 'failed'
+
+	# run delfile to clean it up
+
+	print 'running', delfile, 'to clean up ...',
+	if os.system(delfile):
+		print 'failed'
+	else:
+		print 'done'
+
+	# delete from file database
+
+	for i in file_list.keys():
+		fcc.bfid = i
+		print 'removing', i, 'from file database ...',
+		ticket = fcc.del_bfid()
+		if ticket['status'][0] == e_errors.OK:
+			print 'done'
+		else:
 			print 'failed'
 
 	# delete from volume database
