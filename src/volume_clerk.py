@@ -922,13 +922,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     %s\
                 order by declared ;"%(library, storage_group,
                     file_family, wrapper, vito_q)
+        Trace.trace(20, "start query: %s", q)
         res = self.dict.db.query(q).dictresult()
+        Trace.trace(20, "finish query: found %d exact_match=%d"%(len(res), exact_match))
         if len(res):
             if exact_match:
                 for v in res:
                     v1 = self.dict.export_format(v)
                     if self.is_volume_full(v1,min_remaining_bytes):
-                        Trace.trace(30, "full")
+                        Trace.trace(20, "set %s to full"%(v1['external_label']))
                     else:
                         return v1
                 return {}
@@ -1672,7 +1674,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         if not self.get_user_sockets(ticket):
             return
-        callback.write_tcp_obj(self.data_socket, ticket)
+        try:
+            callback.write_tcp_obj(self.data_socket, ticket)
+        except:
+            Trace.log(e_errors.ERROR, "get_vols(): client bailed out 1")
+            return
 
         msg = {}
         q = "select * from volume "
@@ -1748,9 +1754,21 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 vol2['comment'] = v2['comment']
             msg['volumes'].append(vol2)
 
-        callback.write_tcp_obj_new(self.data_socket, msg)
+        try:
+            callback.write_tcp_obj_new(self.data_socket, msg)
+        except:
+            Trace.log(e_errors.ERROR, "get_vols(): client bailed out 2")
+            # clean up
+            self.data_socket.close()
+            return
         self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket, ticket)
+        try:
+            callback.write_tcp_obj(self.control_socket, ticket)
+        except:
+            Trace.log(e_errors.ERROR, "get_vols(): client bailed out 3")
+            # clean up
+            self.control_socket.close()
+            return
         self.control_socket.close()
 
         Trace.log(e_errors.INFO, "stop listing all volumes")
