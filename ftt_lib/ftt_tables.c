@@ -1,4 +1,4 @@
-static char rcsid[] = "@(#)$Id$";
+
 #include <stdio.h>
 #include <ftt_private.h>
 
@@ -837,7 +837,7 @@ static char IRIXfind[] =
      PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
      /sbin/hinv | \
        grep 'Tape drive: unit %2$d on SCSI controller %1$d:' | \
-       sed -e 's/.*: *//' -e 's/8mm(\\(.*\\).) cartridge */EXB-\\1/'";
+       sed -e 's/.*: *//' -e 's/8mm *(\\(.*\\)) *cartridge */\\1/' -e 's/^8.0.$/Exb-&/'";
 
 static char IRIXfindVME[] =
     "IFS=\" \t\n\";\
@@ -948,11 +948,11 @@ ftt_dev_entry devtable[] = {
        { "sc/sc%dd%d",    -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/tps%dd%dn",  0,  0, 0x30,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%d",   1,  0, 0x00,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%d",   1,  0, 0x31,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%d",   0,  0, 0x30,  0,  0,FTT_RWOC, 0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%dn",  1,  1, 0x00,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",  1,  1, 0x31,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",  0,  1, 0x30,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%d",   1,  1, 0x00,  0,  0,FTT_RWOC, 0, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%d",   1,  1, 0x31,  0,  0,FTT_RWOC, 0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%d",   0,  1, 0x30,  0,  0,FTT_RWOC, 0, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
@@ -1554,34 +1554,34 @@ ftt_dev_entry devtable[] = {
     /*   ======          === === ===   === === ======            === */
     /* Default, passthru  */
        { "rmt/%dhbn", 	  1,  0, 0x00,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dhbn", 	  1,  0, 0x00,  1,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  1,  0, 0x31,  1,  0,                 0, 1, SUN_MAX_BLKSIZE},
     /* Usable */
        { "rmt/%dlbn", 	  0,  0, 0x30,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dhbn", 	  1,  1, 0x00,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  1,  1, 0x31,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
        { "rmt/%dlbn", 	  0,  1, 0x30,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Descriptive */
-       { "rmt/%dub", 	  1,  0, 0x00,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dhb", 	  1,  0, 0x00,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dmb", 	  1,  0, 0x00,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dub", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dhb", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dmb", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dlb", 	  0,  0, 0x30,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%db", 	  1,  0, 0x00,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dubn", 	  1,  0, 0x00,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dmbn", 	  1,  0, 0x00,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dbn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dun", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dhn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dmn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%db", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dubn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dmbn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dbn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dun", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dhn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dmn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dln", 	  0,  0, 0x30,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%du", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dh", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dm", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%du", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dh", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dm", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dl", 	  0,  0, 0x30,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%d", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dc", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dcb", 	  1,  0,  0,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dcbn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dcn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "rmt/%dn", 	  1,  0,  0,    0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%d", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dc", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dcb", 	  1,  0, 0x31,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dcbn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dcn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dn", 	  1,  0, 0x31,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
        { 0 },
     }},
     {"SunOS+5", "", "SCSI", FTT_FLAG_SUID_SCSI|FTT_FLAG_VERIFY_EOFS, FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
@@ -2023,24 +2023,24 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
         { "dev/rmt%d.1",        1,  0, 0x00, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.1",       -1,  0,   -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Variable useable */
-        { "dev/rmt%d.1",        1,  1, 0x00, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        1,  1, 0x31, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  0, 0x30, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  1, 0x30, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Fixed useable */
-        { "dev/rmt%d.1",        1,  0, 0x00, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        1,  0, 0x31, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  0, 0x30, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.1",        1,  1, 0x00, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.1",        1,  1, 0x31, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  1, 0x30, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
     /* descriptive */
-        { "dev/rmt%d",          1,  0, 0x00, 0,  0,FTT_RWOC|        0, 1, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.2",        1,  0, 0x00, 0,  0,FTT_RTOO|FTT_RWOC , 1, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.3",        1,  0, 0x00, 0,  0,FTT_RTOO|       0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d",          1,  0, 0x31, 0,  0,FTT_RWOC|        0, 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.2",        1,  0, 0x31, 0,  0,FTT_RTOO|FTT_RWOC , 1, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.3",        1,  0, 0x31, 0,  0,FTT_RTOO|       0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.4",        0,  0, 0x30, 0,  0,FTT_RWOC|        0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.6",        0,  0, 0x30, 0,  0,FTT_RTOO|FTT_RWOC , 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.7",        0,  0, 0x30, 0,  0,FTT_RTOO|        0, 1, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d",          1,  0, 0x00, 0,  1,FTT_RWOC|        0, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.2",        1,  0, 0x00, 0,  1,FTT_RTOO|FTT_RWOC , 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.3",        1,  0, 0x00, 0,  1,FTT_RTOO|       0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d",          1,  0, 0x31, 0,  1,FTT_RWOC|        0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.2",        1,  0, 0x31, 0,  1,FTT_RTOO|FTT_RWOC , 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.3",        1,  0, 0x31, 0,  1,FTT_RTOO|       0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.4",        0,  0, 0x30, 0,  1,FTT_RWOC|        0, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.6",        0,  0, 0x30, 0,  1,FTT_RTOO|FTT_RWOC , 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.7",        0,  0, 0x30, 0,  1,FTT_RTOO|        0, 0, EXB_MAX_BLKSIZE},
@@ -2071,6 +2071,44 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
     }},
     /* note that %*[rmt] matches "rmt" or "mt" (or mrt, so sue me) -- mengel */
     /*      all of which we re-write into rmt */
+    {"IRIX", "AIT","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
+	FTT_OP_GET_STATUS, ftt_trans_table, AIT_density_trans,
+	"%*[rmt]/tps%dd%d%*[nrsv.]","rmt/tps%dd%d", 2, IRIXfind,  {
+	    /*   string             den mod hwd  pas fxd rewind        sf,1st */
+	    /*   ======             === === ===  === === ======        ==  = */
+    /* Default, Passthru */
+	{ "rmt/tps%dd%dnrv",         1,  0,0x31, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "scsi/sc%dd%dl0",         -1,  0,  -1, 1,  0,                 0, 1, EXB_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrvc",        1,  1,0x31, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+    /* Usable Variable */
+	{ "rmt/tps%dd%dnrnsv",       1,  0,0x31, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrnsvc",      1,  1,0x31, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+    /* Usable Fixed */
+	{ "rmt/tps%dd%dnr",          1,  0,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrc",         1,  1,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrns",        1,  0,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrnsc",       1,  1,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+    /* Descriptive */
+	{ "rmt/tps%dd%dstat",       -1,  0,  -1, 0,  0,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%d",            1,  0,0x31, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dc",           1,  1,0x31, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnr",          1,  0,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrc",         1,  1,0x31, 0,  1,                 0, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrs",         1,  0,0x31, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrsc",        1,  1,0x31, 0,  1,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrsv",        1,  0,0x31, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnrsvc",       1,  1,0x31, 0,  0,          FTT_BTSW, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dns",          1,  0,0x31, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnsc",         1,  1,0x31, 0,  1,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnsvc",        1,  1,0x31, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dnsv",         1,  0,0x31, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%ds",           1,  0,0x31, 0,  1, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dsvc",         1,  1,0x31, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dsv",          1,  0,0x31, 0,  0, FTT_BTSW|FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dvc",          1,  1,0x31, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ "rmt/tps%dd%dv",           1,  0,0x31, 0,  0,          FTT_RWOC, 1, IRIX_MAX_BLKSIZE},
+	{ 0,},
+    }},
     {"IRIX", "EXB-82","SCSI",  FTT_FLAG_CHK_BOT_AT_FMK|FTT_FLAG_BSIZE_AFTER, 
 	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
 	"%*[rmt]/tps%dd%d%*[nrsv.]890%d","rmt/tps%dd%d.8900", 3, IRIXfind,  {
