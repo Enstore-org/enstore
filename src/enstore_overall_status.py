@@ -22,10 +22,10 @@ LCL_HTML_DIR = "/export/hppc_home/www/enstore/"
 
 DOWN_L = [enstore_constants.DOWN,
 	  enstore_functions2.format_time(time.time()),
-	  enstore_constants.NONE,
-	  enstore_constants.NONE,
-	  enstore_constants.NONE,
-	  enstore_constants.NONE]
+	  enstore_constants.ENONE,
+	  enstore_constants.ENONE,
+	  enstore_constants.ENONE,
+	  enstore_constants.ENONE]
 
 class HtmlStatusOnlyFile:
 
