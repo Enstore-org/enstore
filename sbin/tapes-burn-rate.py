@@ -200,8 +200,6 @@ for g in group_fd.keys():
     print cmd
     os.system(cmd)
 
-sys.exit()
-
 cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
 print cmd
 os.system(cmd)
