@@ -62,7 +62,9 @@ today=`date +"%b %d"`
 now=`date +"%s"`
 
 #FULL_BACKUP_DAYS="Mon Thu"
-FULL_BACKUP_DAYS="Wed"
+#FULL_BACKUP_DAYS="Wed"
+FULL_BACKUP_DAYS="NEVER"
+
 
 START_BACKUP_DATE=$VAULT/start_backup_date
 rm -f $START_BACKUP_DATE
