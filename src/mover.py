@@ -616,6 +616,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state_change_time = 0.0
         self.time_in_state = 0.0
         self.in_state_to_cnt = 0 # how many times timeot for being in the same state expired
+        self.connect_to = 15  # timeout for control socket connection
+        self.connect_retry = 4 # number of retries for control socket connection 
         self._state_lock = threading.Lock()
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
@@ -851,6 +853,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.log_mover_state = self.config.get('log_state', None)
         self.syslog_match = self.config.get("syslog_entry",None) # pattern to match in syslog for scsi error
         self.restart_on_error = self.config.get("restart_on_error", None)
+        self.connect_to = self.config.get("connect_timeout", 15)
+        self.connect_retry = self.config.get("connect_retries", 4)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -2694,7 +2698,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 u = udp_client.UDPClient()
                 Trace.trace(10, "sending IP %s to %s" % (host, ticket['routing_callback_addr']))
                 try:
-                    x= u.send(ticket,ticket['routing_callback_addr'] , 15, 3, 0)
+                    x= u.send(ticket,ticket['routing_callback_addr'] , self.connect_to, self.connect_retry, 0)
                 except errno.errorcode[errno.ETIMEDOUT]:
                     Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
                               (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
@@ -2728,7 +2732,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
 		    
 	    #Check if the socket is open for reading and/or writing.
-	    r, w, ex = select.select([control_socket], [control_socket], [], 60)
+	    r, w, ex = select.select([control_socket], [control_socket], [], self.connect_to*self.connect_retry)
 
 	    if r or w:
 		#Get the socket error condition...
@@ -3220,7 +3224,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if broken:
                 # error out and do not allow dismount as nothing has
                 # been mounted yet
-                self.transfer_failed(e_errors.MOUNTFAILED, broken,error_source=ROBOT, dismount_allowed=0)
+                self.transfer_failed(exc=e_errors.MOUNTFAILED, msg=broken,error_source=ROBOT, dismount_allowed=0)
             
             #self.current_volume = None
             
@@ -4189,7 +4193,7 @@ class DiskMover(Mover):
         self.start_transfer()
         return 1
             
-    def transfer_failed(self, exc=None, msg=None, error_source=None):
+    def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
         self.timer('transfer_time')
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
