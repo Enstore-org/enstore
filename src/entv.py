@@ -374,13 +374,13 @@ def main():
         #Loop until user says don't.
         display.mainloop()
 
-        print "waiting for threads to stop"
+        if debug: print "waiting for threads to stop"
         status_thread.join()
-        print "status thread finished"
+        if debug: print "status thread finished"
         periodic_thread.join()
-        print "periodic thread finished"
+        if debug: print "periodic thread finished"
         messages_thread.join()
-        print "message thread finished"
+        if debug: print "message thread finished"
 
 
 if __name__ == "__main__":
