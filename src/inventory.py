@@ -7,13 +7,17 @@ import string
 import os
 import tempfile
 import pprint
+import cPickle
 
 #user imports
 import db
 import checkBackedUpDatabases
 import configuration_client
 import enstore_constants
-import cPickle
+import Trace
+import e_errors
+
+mount_limit = {}
 
 #Grab the start time.
 t0 = time.time()
@@ -1163,20 +1167,31 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         # handle mounts -- need more work
         mnts = "%6d"%(mounts)
-        if mounts >= 1000:
-            mnts = '<font color=#FF0000>'+mnts+'</font>'
-            tm_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6d %-40s\n" % \
-               (vv['external_label'],
-                formated_size[0], formated_size[1],
-                vv['system_inhibit'][0],
-                vv['system_inhibit'][1],
-                vv['user_inhibit'][0],
-                vv['user_inhibit'][1],
-                vv['library'],
-                mounts,
-                vv['volume_family']))
-        if mounts >= 10000:
-            mnts = '<blink>'+mnts+'</blink>'
+
+        if mount_limit.has_key(vv['media_type']):
+            if mounts > mount_limit[vv['media_type']][0]:
+                msg = 'Too many mounts on %s (%s, %d, %d)'%\
+                    (vv['external_label'], vv['media_type'],
+                        mounts, mount_limit[vv['media_type']][0])
+                Trace.alarm(e_errors.ERROR, msg)
+                mnts = '<font color=#FF0000>'+mnts+'</font>'
+                # record it in tape mount file
+                tm_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6d %-40s\n" % \
+                   (vv['external_label'],
+                    formated_size[0], formated_size[1],
+                    vv['system_inhibit'][0],
+                    vv['system_inhibit'][1],
+                    vv['user_inhibit'][0],
+                    vv['user_inhibit'][1],
+                    vv['library'],
+                    mounts,
+                    vv['volume_family']))
+            if mounts >= mount_limit[vv['media_type']][1]:
+                mnts = '<blink>'+mnts+'</blink>'
+                msg = '(Should be Red Ball!) Too many mounts on %s (%s, %d, %d)'%\
+                    (vv['external_label'], vv['media_type'],
+                        mounts, mount_limit[vv['media_type']][1])
+                Trace.alarm(e_errors.ERROR, msg)
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
@@ -1250,6 +1265,15 @@ if __name__ == "__main__":
     if "--help" in sys.argv:
         inventory_usage()
         sys.exit(0)
+
+    Trace.init('INVENTORY')
+
+    csc = configuration_client.ConfigurationClient()
+    mount_limit = csc.get('tape_mount_limit', timeout=15,retry=3)
+    if mount_limit['status'][0] == e_errors.OK:
+        del mount_limit['status']
+    else:
+        mount_limit = {}
 
     #Retrieve the necessary directories from the enstore servers.
     # Extract_dir is ignored by inventory.py.
