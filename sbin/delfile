@@ -24,7 +24,7 @@ if [ -z "${1-}" ] ; then
   # see if any other delfiles are active - use the DESY technique of creating a directory as lock file
   mkdir $ACTIVE 1>/dev/null 2>/dev/null
   if [ $? -ne 0 ];then
-    echo "Can not make $ACTIVE - another delfile must be active"
+    #echo "Can not make $ACTIVE - another delfile must be active"
     exit 1
   fi
 
