@@ -84,6 +84,6 @@ class GenericServer(generic_cs.GenericCS):
         except:
            t["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
            self.reply_to_caller(t)
-           Trace.trace(0,"}send_reply "+repr(t))
+           Trace.trace(1,"}send_reply "+repr(t))
            return
 	Trace.trace(11,"}send_reply")
