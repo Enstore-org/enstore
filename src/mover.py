@@ -799,6 +799,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("MB DREAD:                  %s\n"%(long(stats[ftt.READ_COUNT])/1024.,))
                 fd.write("MB DWRITE:                 %s\n"%(long(stats[ftt.WRITE_COUNT])/1024.,))
                 fd.write("RETRIES:                %s\n"%(stats[ftt.TRACK_RETRY],))
+                fd.write("WRITEPROT:               %s\n"%(stats[ftt.WRITE_PROT],))
                 fd.write("UNDERRUN:               %s\n"%(stats[ftt.UNDERRUN],))
             if self.send_stats:
                 self.dsc.log_stat(stats[ftt.SERIAL_NUM],
@@ -820,7 +821,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   stats[ftt.WRITE_ERRORS],
                                   stats[ftt.TRACK_RETRY],
                                   stats[ftt.UNDERRUN],
-                                  0)
+                                  0,
+                                  stats[ftt.WRITE_PROT])
                 
     def start(self):
         name = self.name
