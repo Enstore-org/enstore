@@ -262,6 +262,8 @@ class Interface:
                 self.clean_drive = 1
             elif opt == "--new_library" :
                 self.new_library = value
+            elif opt == "--modify":
+                self.modify = value
             elif opt == "--read_only" :
                 self.read_only = value
             elif opt == "--no_access" :
