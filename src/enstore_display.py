@@ -117,13 +117,17 @@ color_dict = {
     'percent_color':        rgbtohex(0, 255, 0), # green
     'progress_bar_color':   rgbtohex(255, 255, 0), # yellow
     'progress_bg_color':    rgbtohex(255, 0, 255), # magenta
-    'state_color':          rgbtohex(191, 239, 255), # lightblue
+    'state_stable_color':   rgbtohex(255, 192, 0), # orange
+    'state_idle_color':     rgbtohex(191, 239, 255), # lightblue
+    'state_error_color':    rgbtohex(0, 0, 0), # black
+    'state_offline_color':  rgbtohex(0, 0, 0), # black
     'timer_color':          rgbtohex(255, 255, 255), # white
     #volume colors
     'label_offline_color':  rgbtohex(0, 0, 0), # black (tape)
     'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
     'tape_offline_color':   rgbtohex(169, 169, 169), # grey
-    'tape_stable_color':    rgbtohex(255, 165, 0), # orange
+    #'tape_stable_color':    rgbtohex(255, 165, 0), # orange
+    'tape_stable_color':    rgbtohex(0, 165, 255), # (royal?) blue
 }
 
     
@@ -211,28 +215,22 @@ class XY:
 #     __del__() - calls undraw() module and deletes features
 #
 #########################################################################
-
 class Mover:
     def __init__(self, name, display, index=0,N=0):
-        self.color      = None
-        self.connection = None         
-        self.display    = display
-        self.index      = index
-        self.name       = name
-        self.N          = N
-        self.column = 0 #Movers may be laid out in multiple columns
+        self.color         = None
+        self.connection    = None         
+        self.display       = display
+        self.index         = index
+        self.name          = name
+        self.timer_display = None
+        self.N             = N
+        self.column        = 0 #Movers may be laid out in multiple columns
+        self.state         = None
+        self.volume        = None
 
         #Set geometry of mover.
         self.resize(N) #Even though this is the initial size, still works.
         self.x, self.y  = self.position(N)
-
-        #Font geometry.
-        self.font = get_font(self.height/2.5, 'arial',
-                             width_wanted=self.max_font_width(),
-                             fit_string="DISMOUNT_WAIT")
-        self.label_font = get_font(self.height/2.5, 'arial',
-                                   width_wanted=self.max_label_font_width(),
-                                   fit_string=self.name)
         
         #These 3 pieces make up the progress gauge display
         self.progress_bar             = None
@@ -241,11 +239,6 @@ class Mover:
         # This is the numeric value.  "None" means don't show the progress bar.
         self.percent_done = None
         
-        # Other characteristics of a mover
-        self.state = "Unknown"
-        self.volume = None
-
-
         # Anything that deals with time
         self.b0                 = 0
         now                     = time.time()
@@ -256,42 +249,39 @@ class Mover:
         self.timer_started      = now
         self.timer_string       = '00:00:00'
 
-
         #Attributes of draw()
         self.bar_width               = 10
-        self.img_offset              =  XY(90, 2)
+        self.img_offset              = XY(90, 2)
         self.label_offset            = XY(200, 18)
         self.percent_disp_offset     = XY(85, 22)
-        self.progress_bar_offset1     = XY(5, 22)#yellow
-        self.progress_bar_offset2     = XY(6, 30)#yellow
+        self.progress_bar_offset1    = XY(5, 22)#yellow
+        self.progress_bar_offset2    = XY(6, 30)#yellow
         self.progress_bar_bg_offset1 = XY(5, 22) #pink
         self.progress_bar_bg_offset2 = XY(6, 30) #pink
         self.state_offset            = XY(124, 6)
         self.timer_offset            = XY(124, 18)
         self.tape_offset = (5, 2)
 
+        self.update_state("Unknown")
+        
         self.draw()
     
     def draw(self):
         x, y                    = self.x, self.y
 
-        # create color names
-        mover_color        = colors('mover_color')
-        percent_color      =  colors('percent_color')
-        progress_bar_color = colors('progress_bar_color')
-        progress_bg_color  = colors('progress_bg_color')
-        state_color        = colors('state_color') 
-        timer_color        = colors('timer_color')
-       
+        #Display the mover rectangle.
         self.outline = self.display.create_rectangle(x, y, x+self.width,
                                                      y+self.height,
-                                                     fill = mover_color)
+                                                     fill = self.mover_color)
+
+        #Display the mover name label.
         self.label   = self.display.create_text(x+self.label_offset.x,
                                                 y+self.label_offset.y,
                                                 text=self.name,
                                                 anchor=Tkinter.SW,
                                                 font = self.label_font)
-        
+
+        #Display the current state.
         img          = find_image(self.state + '.gif')
         if img:
             self.state_display = self.display.create_image(
@@ -300,114 +290,104 @@ class Mover:
         else:
             self.state_display = self.display.create_text(
                 x+self.state_offset.x, y+self.state_offset.y, text=self.state,
-                fill = state_color, font = self.font)
-            
+                fill = self.state_color, font = self.font)
+
+        #Display the timer.
         self.timer_display = self.display.create_text(
             x+self.timer_offset.x, y+self.timer_offset.y, text='00:00:00',
-            fill = timer_color, font = self.font)
-        if self.percent_done != None:
-            self.progress_bar_bg = self.display.create_rectangle(
-                x+self.progress_bar_bg_offset1.x,
-                y+self.progress_bar_bg_offset1.y,
-                x+self.progress_bar_bg_offset2.x+self.bar_width,
-                y+self.progress_bar_bg_offset2.y,
-                fill = progress_bg_color)
-            self.progress_bar = self.display.create_rectangle(
-                x+self.progress_bar_offset1.x, y+self.progress_bar_offset1.y,
-                x+self.progress_bar_offset2.x+(self.bar_width*self.percent_done/100.0),
-                y+self.progress_bar_offset2.y,
-                fill = progress_bar_color)
-            f= str(self.percent_done)+"%"
-            #print  "measure of percent = ", self.font.measure(f)
-            #print "width of mover = ", self. width
-            difference=self.font.measure(f)/self.width
-            #print "difference bt mover width and percent = ", difference
-            if self.display.width > 500:
-                self.progress_percent_display = self.display.create_text(
-                    x+self.percent_disp_offset.x, y+self.percent_disp_offset.y,
-                    text = str(self.percent_done)+"%",
-                    fill = percent_color, font = self.font)
+            fill = self.timer_color, font = self.font)
+
+        #Display the progress bar and percent done.
+        self.show_progress(self.percent_done)
+
+        #Diaplay the volume.
+        if self.volume:
+            self.volume.resize()
+            x, y = self.volume_position()
+            self.volume.moveto(x,y)
+            self.volume.draw()
+
+        #Display the connection.
+        if self.connection:
+            self.connection.draw()
+
         self.display.update()
         
     def update_state(self, state, time_in_state=0):
+        if state == self.state:
+            return
+        self.state = state
 
         #different mover colors
         mover_error_color   = colors('mover_error_color')
         mover_offline_color = colors('mover_offline_color')
         mover_stable_color  = colors('mover_stable_color')
-        state_color         = colors('state_color')
-        mover_color         = None
+        state_error_color   = colors('state_error_color')
+        state_offline_color = colors('state_offline_color')
+        state_stable_color  = colors('state_stable_color')
+        state_idle_color    = colors('state_idle_color')
 
-        if state == self.state:
-            return
-        self.state = state
-        mover_color = {'ERROR': mover_error_color,
-                       'OFFLINE':mover_offline_color}.get(self.state,
-                                                          mover_stable_color)
-        if mover_color != self.color:
-            self.display.itemconfigure(self.outline, fill=mover_color)
-            self.color = mover_color
-        x, y = self.x, self.y
-        # "undraw" the prev. state message
-        self.display.delete(self.state_display)
-        img = find_image(state+'.gif')
-        if img:
-            self.state_display = self.display.create_image(
-                x + self.img_offset.x, y+ self.img_offset.y,
-                anchor=Tkinter.NW, image=img)
-        else:
-            self.state_display = self.display.create_text(
-                x + self.state_offset.x, y + self.state_offset.y,
-                text=self.state, fill=state_color, font = self.font)
+        #These mover colors stick around.
+        self.percent_color      =  colors('percent_color')
+        self.progress_bar_color = colors('progress_bar_color')
+        self.progress_bg_color  = colors('progress_bg_color')
+        self.state_color        = colors('state_color') 
+        self.timer_color        = colors('timer_color')
+        self.mover_color = {'ERROR': mover_error_color,
+                            'OFFLINE':mover_offline_color}.get(self.state,
+                                                           mover_stable_color)
+        self.state_color = {'ERROR': state_error_color,
+                            'OFFLINE':state_offline_color,
+                            'Unknown':state_idle_color,
+                            'IDLE':state_idle_color}.get(self.state,
+                                                         state_stable_color)
+
+        #Update the time in state counter for the mover.
         now = time.time()
         self.timer_started = now - time_in_state
-        if state != 'ACTIVE':
-            self.show_progress(None)
-        self.update_timer(time_in_state)
-        if state in ['IDLE']:
-            if self.volume:
-                print "Alert!  mover has a volume and shouldn't"
-                self.volume.loaded = 0
-                self.volume.ejected = 1
-                self.volume.draw()
-                #x, y = self.volume_position(ejected=1)
-                #self.volume.moveto(x, y)
+        self.update_timer(now)
         
-    def update_timer(self, seconds):
-        #timer color
-        timer_color = colors('timer_color')
-        
-        x, y = self.x, self.y
-        self.timer_seconds = seconds
-        self.timer_string = HMS(seconds)
-        self.display.delete(self.timer_display)
-        self.timer_display = self.display.create_text(
-            x + self.timer_offset.x, y + self.timer_offset.y,
-            text=self.timer_string,fill = timer_color, font = self.font)
+    def update_timer(self, now):
+        seconds = int(now - self.timer_started)
+        if seconds == self.timer_seconds:
+            return
 
-    def load_tape(self, volume, load_state):
-        if self.volume:
-            if self.volume != volume:
-                self.volume.undraw()
-        self.volume = volume
-        x, y = self.volume_position(ejected=0)
-        self.volume.x, self.volume.y = x, y
-        self.volume.vol_width = self.width/2.5
-        self.volume.vol_height =  self.height/2.25
-        self.volume.ejected = 0
-        self.volume.loaded = load_state
-        self.volume.draw()
+        self.timer_seconds = seconds
+        print "Seconds:", seconds
+        self.timer_string = HMS(seconds)
+
+        if self.timer_display:
+            self.display.itemconfigure(self.timer_display,
+                                       text=self.timer_string)
+        else:
+            #timer color
+            self.timer_color = colors('timer_color')
+            self.timer_display = self.display.create_text(
+                self.x + self.timer_offset.x, self.y + self.timer_offset.y,
+                text = self.timer_string, fill = self.timer_color,
+                font = self.font)
+
+    def load_tape(self, volume_name, load_state):
+        if self.volume:  #If this mover already has a volume.
+            self.volume.undraw()
+            x, y = self.volume_position(ejected=0)
+            self.volume.reinit(volume_name, self.display, x=x, y=y,
+                               loaded=load_state)
+            self.volume.draw()
+
+        else: #If this mover needs a volume.
+            x, y = self.volume_position(ejected=0)
+            self.volume = Volume(volume_name, self.display, x=x, y=y,
+                                 loaded=load_state)
+            self.volume.draw()
 
     def unload_tape(self):
         if not self.volume:
             print "Mover ",self.name," has no volume"
             return
             
-        self.volume.loaded = 0
-        self.volume.ejected = 1
+        self.volume.unload()
         self.volume.draw()
-        #x, y = self.volume_position(ejected=1)
-        #self.volume.moveto(x, y)
 
     def volume_position(self, ejected=0):
         if layout==CIRCULAR:
@@ -491,6 +471,10 @@ class Mover:
         self.display.delete(self.progress_bar_bg)
         self.display.delete(self.progress_bar)
         self.display.delete(self.progress_percent_display)
+        if self.volume:
+            self.volume.undraw()
+        if self.connection:
+            self.connection.undraw()
     
     def position_circular(self, N):
         k = self.index
@@ -565,6 +549,28 @@ class Mover:
         #This line assumes that their will not be 30 or more movers.
         self.width = (self.display.width/4.0)
 
+        #These are the new offsets
+        self.label_offset          = XY(self.width+5, self.height)
+        self.img_offset            = XY(self.width/2.3, self.height/8.)
+        self.state_offset          = XY(self.width/1.4, self.height/3.)
+        self.timer_offset          = XY(self.width/1.3, self.height/1.3)
+        self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
+        self.progress_bar_offset1  = XY(self.width/25., self.height/1.6)#yellow
+        self.progress_bar_offset2  = XY(self.width/25., self.height/1.2)#yellow
+        self.progress_bar_bg_offset1 = \
+                                 XY(self.width/25., self.height/1.6)#magenta
+        self.progress_bar_bg_offset2 = \
+                                 XY(self.width/25., self.height/1.2)#magenta
+        self.bar_width             = self.width/2.5 #(how long bar should be)
+
+        #Font geometry.
+        self.font = get_font(self.height/2.5, 'arial',
+                             width_wanted=self.max_font_width(),
+                             fit_string="DISMOUNT_WAIT")
+        self.label_font = get_font(self.height/2.5, 'arial',
+                                   width_wanted=self.max_label_font_width(),
+                                   fit_string=self.name)
+
     def max_font_width(self):
         return (self.width - self.width/3.0) - 10
 
@@ -590,83 +596,15 @@ class Mover:
                     mover = m
             return mover
 
-    def reposition(self, N, state=None):
+    def reposition(self, N): #, state=None):
+        #Undraw the mover before moving it.
+        self.undraw()
 
         self.resize(N)
         self.x, self.y = self.position(N)
 
-        self.font = get_font(self.height/2.5, 'arial',
-                             width_wanted=self.max_font_width(),
-                             fit_string="DISMOUNT_WAIT")
-        self.label_font = get_font(self.height/2.5, 'arial',
-                                   width_wanted=self.max_label_font_width(),
-                                   fit_string=self.name)
-                                   
-        #len_text = self.label_font.measure(self.name)
-
-        #These are the new offsets
-        self.label_offset          = XY(self.width+5, self.height)
-        self.img_offset            = XY(self.width/2.3, self.height/8.)
-        self.state_offset          = XY(self.width/1.4, self.height/3.)
-        self.timer_offset          = XY(self.width/1.3, self.height/1.3)
-        self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
-        self.progress_bar_offset1  = XY(self.width/25., self.height/1.6)#yellow
-        self.progress_bar_offset2  = XY(self.width/25., self.height/1.2)#yellow
-        self.progress_bar_bg_offset1 = \
-                                 XY(self.width/25., self.height/1.6)#magenta
-        self.progress_bar_bg_offset2 = \
-                                 XY(self.width/25., self.height/1.2)#magenta
-        self.bar_width             = self.width/2.5 #(how long bar should be)
-
-        ### color
-        mover_error_color   = colors('mover_error_color')
-        mover_offline_color = colors('mover_offline_color')
-        mover_stable_color  = colors('mover_stable_color')
-        state_color         = colors('state_color')
-
-        self.undraw()
         self.draw()
 
-        state = self.state
-        mover_color = {'ERROR': mover_error_color,
-                       'OFFLINE':mover_offline_color}.get(self.state,
-                                                          mover_stable_color)
-        if state  in ['ERROR', 'OFFLINE']:
-            self.undraw()
-            self.outline =  self.display.create_rectangle(
-                self.x, self.y, self.x + self.width, self.y + self.height,
-                fill=mover_color)
-            self.label = self.display.create_text(
-                self.x+self.label_offset.x, self.y+self.label_offset.y,
-                text=self.name, anchor=Tkinter.SW, font = self.label_font)
-        # "undraw" the prev. state message
-        self.display.delete(self.state_display)
-        img = find_image(state+'.gif')
-        if img:
-            self.state_display = self.display.create_image(
-                self.x+self.img_offset.x, self.y+self.img_offset.y,
-                anchor=Tkinter.NW, image=img)
-        else:
-            self.state_display = self.display.create_text(
-                self.x+self.state_offset.x, self.y+self.state_offset.y,
-                text=self.state, fill=state_color, font = self.font)
-
-        if self.volume:
-            #self.volume.font= font
-            self.volume.vol_width = self.width/2.5
-            self.volume.vol_height = self.height/2.25
-            #if self.volume.ejected == 0:
-            x, y = self.volume_position(self.volume.ejected)
-            self.volume.moveto(x,y)
-            #else:
-            #    self.tape_offset = XY(self.width/20, self.height*2)
-            #    x, y = self.volume_position(self.volume.ejected)
-            #    self.volume.moveto(x,y)
-
-        if self.connection:
-            self.connection.undraw()
-            self.connection.draw()
-        
     def __del__(self):
         if self.volume:
             self.volume.undraw()
@@ -678,18 +616,23 @@ class Mover:
 
 class Volume:
     def __init__(self, name, display, x=None, y=None, loaded=0, ejected=0):
-        self.name = name
+        self.reinit(name, display, x, y, loaded, ejected)
+
+    def reinit(self, name, display, x=None, y=None, loaded=0, ejected=0):
+        self.name      = name
         self.display   = display
         self.outline   = None
         self.label     = None
+        self.font      = None
         self.loaded    = loaded
         self.ejected   = ejected
-        self.x, self.y = x, y
-        self.vol_width = 50
-        self.vol_height = 11
+        self.moveto(x, y)
+        self.resize()
+
         self.draw()
-        self.font  = get_font(10, 'arial')
-        
+
+
+
     def __setattr__(self, attr, value):
 
         ### color
@@ -716,7 +659,7 @@ class Volume:
         tape_offline_color  = colors('tape_offline_color')
         label_offline_color = colors('label_offline_color')
         x, y = self.x, self.y
-        self.font  = get_font(self.vol_height/1.5, 'arial')
+        #self.font  = get_font(self.vol_height/1.5, 'arial')
         if x is None or y is None:
             return
         if self.loaded:
@@ -730,11 +673,23 @@ class Volume:
         self.label = self.display.create_text(
             x+self.vol_width/2, 1+y+self.vol_height/2, text=self.name,
             fill=label_color, font = self.font)
+
+    def resize(self):
+        #self.undraw()
+        self.vol_width = (self.display.movers.values()[0].width)/2.5
+        self.vol_height = (self.display.movers.values()[0].height)/2.5
+        #self.draw()
+        self.font = get_font(self.vol_height, 'arial', fit_string=self.name,
+                              width_wanted=self.vol_width)
         
     def moveto(self, x, y):
-        self.undraw()
+        #self.undraw()
         self.x, self.y = x, y
-        self.draw()
+        #self.draw()
+
+    def unload(self):
+        self.loaded = 0
+        self.ejected = 1
 
     def undraw(self):
         self.display.delete(self.outline)
@@ -1093,9 +1048,7 @@ class Display(Tkinter.Canvas):
         #This checks to see if the timer has changed at all.  If it has,
         # it resets the timer for new state.
         for mover in self.movers.values():
-            seconds = int(now - mover.timer_started)
-            if seconds != mover.timer_seconds:
-                mover.update_timer(seconds)     #We must advance the timer
+            mover.update_timer(now)     #We must advance the timer
             if mover.connection:
                 mover.connection.animate(now)
 
@@ -1235,13 +1188,13 @@ class Display(Tkinter.Canvas):
             
             if words[0]=='state':
                 what_state = words[2]
-                time_in_state = 0
-                if len(words) > 3:
-                    try:
-                        time_in_state = int(float(words[3]))
-                    except:
-                        print "bad numeric value", words[3]
+                try:
+                    time_in_state = int(float(words[3]))
+                except:
+                    time_in_state = 0
                 mover.update_state(what_state, time_in_state)
+                mover.undraw()
+                mover.draw()
                 if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
                     print "Need to disconnect because mover state ",
                     print "changed to : ", what_state
@@ -1275,13 +1228,13 @@ class Display(Tkinter.Canvas):
                 if mover.state in ['IDLE']:
                     print "An idle mover cannot have tape...ignore"
                     return
-                load_state = words[0]=='loaded'
+                load_state = words[0] #=='loaded'
                 what_volume = words[2]
-                volume=self.volumes.get(what_volume)
-                if volume is None:
-                    volume=Volume(what_volume, self, loaded=load_state)
-                self.volumes[what_volume]=volume
-                mover.load_tape(volume, load_state)
+                #volume=self.volumes.get(what_volume)
+                #if volume is None:
+                #    volume=Volume(what_volume, self, loaded=load_state)
+                #self.volumes[what_volume]=volume
+                mover.load_tape(what_volume, load_state)
                 return
         
             if words[0]=='unload': # Ignore the passed-in volume name, unload
