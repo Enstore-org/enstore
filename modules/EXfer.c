@@ -1,14 +1,10 @@
 #include <Python.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <assert.h>
 #include <errno.h>
-#if defined(IRIX) || defined(IRIX64) || defined(sun)
-# include <alloca.h>
-#endif
+#include <alloca.h>
 
 #include <sys/time.h>
 
