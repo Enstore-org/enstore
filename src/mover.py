@@ -321,7 +321,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config.has_key('do_eject'):
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
-
         
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.media_type = self.config.get('media_type', '8MM') #XXX
@@ -373,8 +372,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.default_dismount_delay < 0:
             self.default_dismount_delay = 31536000 #1 year
         self.max_dismount_delay = self.config.get('max_dismount_delay', 600)
-
-
         
         self.libraries = []
         lib_list = self.config['library']
@@ -383,6 +380,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         for lib in lib_list:
             lib_config = self.csc.get(lib)
             self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
+
+        #how often to send a message to the library manager
+        self.update_interval = self.config.get('update_interval', 15)
 
         self.single_filemark=self.config.get('single_filemark', 0)
         ##Setting this attempts to optimize filemark writing by writing only
@@ -434,7 +434,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mount_delay = 0
 
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
-        self.set_interval_func(self.update, 5) #this sets the period for messages to LM.
+        self.set_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
         ##end of __init__
 
