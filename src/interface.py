@@ -51,7 +51,7 @@ class Interface:
         return [""]
 
     def help_options(self):
-	return ["help"]
+	return ["help", "usage_line"]
 
     def config_options(self):
 	return ["config_host=", "config_port="]
@@ -99,6 +99,9 @@ class Interface:
 
     def print_help(self):
         generic_cs.enprint("USAGE:\n  "+self.help_line()+"\n")
+
+    def print_usage_line(self):
+        generic_cs.enprint("["+self.format_options(self.options(), " ")+"] "+self.parameters()+"\n")
 
     def parse_config_host(self, value):
         try:
@@ -294,4 +297,7 @@ class Interface:
 	        self.criteria['system_inhibit']=string.split(value,',')
             elif opt == "--help" :
 	        self.print_help()
+                sys.exit(0)
+            elif opt == "--usage_line" :
+	        self.print_usage_line()
                 sys.exit(0)

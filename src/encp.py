@@ -1842,11 +1842,16 @@ class encp(interface.Interface):
         Trace.trace(16,"}encp.help_line help_line="+the_help)
         return the_help
 
+    ##########################################################################
+    #  define our specific parameters
     def parameters1(self):
         return "inputfilename outputfilename"
 
     def parameters2(self):
         return "inputfilename1 ... inputfilenameN outputdirectory"
+
+    def parameters(self):
+        return "[["+self.parameters1()+"] or ["+self.parameters2()+"]]"
 
     ##########################################################################
     # parse the options from the command line
