@@ -2236,7 +2236,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             return
         
-        Trace.trace(8, "write_client exiting: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
+        Trace.log(e_errors.INFO, "write_client: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
         if failed: return
   
         if self.bytes_written == self.bytes_to_write:
@@ -2254,6 +2254,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
             self.bytes_written_last = self.bytes_written                
             self.transfer_completed()
+        Trace.log(e_errors.INFO, "write_client exits")
 
         
     # the library manager has asked us to write a file to the hsm
@@ -2333,12 +2334,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
-        ####UNCOMMENT THESE 3
-        #if self.method and self.method == "read_next":
-        #    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
-        #else:
-        #    self.run_in_thread('client_connect_thread', self.connect_client)
-        self.run_in_thread('client_connect_thread', self.connect_client)  # REMOVE THIS !!!!
+        self.run_in_thread('client_connect_thread', self.connect_client)
 
     def assert_vol(self):
         ticket = self.current_work_ticket
