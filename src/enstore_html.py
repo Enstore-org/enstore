@@ -2507,8 +2507,8 @@ class EnSaagPage(EnBaseHtmlDoc):
 	tr = HTMLgen.TR()
 	tr.append(HTMLgen.TD(self.checkmark))
 	tr.append(HTMLgen.TD(HTMLgen.Font("Scheduled outage", size="-1")))
-	tr.append(HTMLgen.TD(HTMLgen.Strike("Known Down"), colspan=2, 
-			     align="CENTER"))
+	tr.append(HTMLgen.TD(empty_data()))
+	tr.append(HTMLgen.TD(HTMLgen.Font(HTMLgen.Strike("Known Down"), size="-1"), colspan=2))
 	entable.append(tr)
 	return entable
 
