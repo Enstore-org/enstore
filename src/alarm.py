@@ -203,7 +203,7 @@ class LogFileAlarm(GenericAlarm):
                          self.timedate[2], self.timedate[3],
                          self.timedate[4], self.timedate[5],
                          self.timedate[6], self.timedate[7],
-                         time.daylight)
+                         -1)
 	self.id = str(self.timedate)
 	
 	text = string.strip(text)
