@@ -1130,7 +1130,7 @@ def do_work(intf):
             pprint.pprint(ticket['status'][1])
     elif intf.add:
         if not intf.bypass_label_check:
-            if self.check_label(intf.add):
+            if check_label(intf.add):
                 print 'Error: label "%s" is not syntatically valid'%(intf.add)
                 sys.exit(1)
 
