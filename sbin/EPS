@@ -7,9 +7,17 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ $# = 0 ]; 
 then 
-   p=" ";
+   p=" "
+   returnpid=0
 else
-   p=$@;
+   if [ "$1" != "returnpid" ]; then
+     p="$@"
+     returnpid=0
+   else
+     p=" "
+     returnpid=1
+     lookfor=${2-:enstore}
+   fi    
 fi
 
 case `uname` in
@@ -30,4 +38,17 @@ case `uname` in
         ;;
 esac
 
-echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload | tee '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver'
+if [ $returnpid -eq 0 ]; then
+  echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload | tee '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver'
+else
+  psline=`echo "$x" | grep $lookfor | grep -v grep | grep \`whoami\``
+  # is the pid always the 2nd field???????
+  # what if there is more than one process, this only returns the 1st!
+  pid=`echo $psline | cut -f2 -d' '` # no quotes arounds $psline removes spaces
+  if [ "$pid" != ""  ]; then 
+    echo $pid
+  else 
+    echo -1
+  fi
+fi
+
