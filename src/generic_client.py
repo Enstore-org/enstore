@@ -123,11 +123,41 @@ class GenericClient:
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
 
+    def __del__(self):
+        try:
+            del self.u
+        except AttributeError:
+            pass
+        try:
+            del self.logc
+        except AttributeError:
+            pass
+        try:
+            del self.alarmc
+        except AttributeError:
+            pass
+
+    def _is_csc(self):
+        #If the server requested is the configuration server,
+        # do something different.
+        if self.__dict__.get('is_config', 0):
+            return 1
+        else:
+            return 0
+
+    def _get_csc(self):
+        #If the server address requested is the configuration server,
+        # do something different.
+        if self._is_csc():
+            return self
+        else:
+            return self.csc
+
     def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
         #If the server address requested is the configuration server,
         # do something different.
-        #if self.__dict__.get('is_config', 0):
-        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER:
+        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER or \
+           self._is_csc():
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
             hostip = socket.gethostbyname(host)
             port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
