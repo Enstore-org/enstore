@@ -17,7 +17,7 @@ if __name__=="__main__":
         if argc==4:
             robot = sys.argv[2]
     else:
-        print "Usage: %s [month day [robot]]"
+        print "Usage: %s [month day [robot]]" % sys.argv[0]
         print "  fetches and dumps log file for robot (default adic2) on"
         print "  specified day (default today)"
         sys.exit(-1)
