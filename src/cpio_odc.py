@@ -56,7 +56,7 @@ class Wrapper :
         uid          = info['uid']
         gid          = info['gid']
         mtime        = info['mtime']
-        filesize     = info['size_bytes']
+        self.filesize     = info['size_bytes']
         major        = info['major']
         minor        = info['minor']
         rmajor       = info['rmajor']
@@ -67,15 +67,18 @@ class Wrapper :
         # generate the headers for the archive and write out 1st one
         nlink = 1
         header, self.trailer = headers(inode, mode, uid, gid, nlink, mtime,
-				       filesize, major, minor, rmajor, rminor,
+				       self.filesize, major, minor, rmajor, rminor,
 				       filename)
-	#self.header_size = len( header )
+	self.header_size = len( header )
 	driver.write( header )
 	return
 
 
     def write_post_data( self, driver, crc ):
-        driver.write( self.trailer )
+
+	size = self.header_size + self.filesize
+
+        driver.write( trailers(size,self.trailer) )
         return
 
 
@@ -185,6 +188,16 @@ def headers( inode, mode, uid, gid, nlink, mtime, filesize,
 	trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
 
         return head, trailer
+
+# generate the enstore cpio "trailers"
+def trailers( siz, trailer ):
+        size = siz
+
+        size = size + len(trailer)
+        padt = (512-(size%512)) % 512
+
+        # ok, send it back to so he can write it out
+        return(trailer + "\0"*padt )
 
 
 ###############################################################################
