@@ -589,7 +589,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 			    self.add_files(moverd, mv_table)
 			tr = HTMLgen.TR(empty_data())
 			tr.append(HTMLgen.TD(mv_table, colspan=5))
-		    table.append(tr)
+		        table.append(tr)
 
     # output all of the library manager rows and their associated movers
     def lm_mv_rows(self, table):
