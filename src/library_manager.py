@@ -1373,6 +1373,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
     # set lock in a lock file
     def set_lock(self, lock):
+        if not os.path.exists(self.lockfile_name()):
+           dirname, basename = os.path.split(self.lockfile_name())
+           if not os.path.exists(dirname):
+               os.makedirs(dirname)
         lock_file = open(self.lockfile_name(), 'w')
         lock_file.write(lock)
         lock_file.close()
