@@ -268,7 +268,7 @@ class EnstoreStatus:
     def format_moverstatus(self, ticket):
         Trace.trace(12,"{format_moverstatus "+repr(ticket))
 	spacing = "\n    "
-	string = spacing+"Completed Xfers : "+repr(ticket["no_xfers"])
+	string = spacing+"Completed Transfers : "+repr(ticket["no_xfers"])
 	if ticket["state"] == "busy":
 	    p = "Current"
 	    if ticket["mode"] == "r":
