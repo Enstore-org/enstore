@@ -38,9 +38,9 @@ if __name__=="__main__":
 	if retVal==0:
 	    # try ntpd only
 	    retVal=string.atoi(check("cat /proc/[0-9]*/stat|grep \(*ntpd\)|wc -l"))
-	    executable = ntpdc
+	    executable = "ntpdc"
 	else:
-	    executable = xntpdc
+	    executable = "xntpdc"
         if retVal==0:
             try:
                 os.unlink(fileName)
