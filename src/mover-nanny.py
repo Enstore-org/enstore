@@ -7,6 +7,9 @@ import sys
 import os
 import string
 import time
+import pprint
+
+mail_victims = "bakken@fnal.gov,cgw@fnal.gov,moibenko@fnal.gov"
 
 config = eval(os.popen("enstore config --show",'r').read())
 
@@ -49,12 +52,14 @@ def getps(mover):
             ret.append(line)
     return ret
 
-def reset(mover):
+def reset(mover, reason=None):
     now = time.time()
     last_reset = reset_times.get(mover,0)
     if now-last_reset < 600:
         print "Not resetting", mover, "more than once per 10 minutes"
         return
+    if reason:
+        sendmail("resetting mover %s"%mover, reason=reason)
     reset_times[mover]=now
     err = stop(mover)
     if err:
@@ -104,13 +109,22 @@ def reboot(mover):
     print ssh(host, "rm -f /tmp/enstore/root/mover_lock")
     print ssh(host, "/sbin/shutdown -r now")
     time.sleep(30)
+
+def sendmail(subject, reason):
+    mail_cmd = '/bin/mail -s "%s" %s'%(subject,mail_victims)
+    p=os.popen(mail_cmd, 'w')
+    p.write('reason: %s\n' % (reason,))
+    p.write('\n.\n')
+    p.close()
     
-def start(mover):
+def start(mover, reason=None):
     conf = config[mover]
     host = conf['host']
     print ssh(host, "rm -f /tmp/enstore/root/mover_lock")
     print ssh(host, '. /usr/local/etc/setups.sh; setup enstore; enstore Estart %s "--just %s"' % (host, mover))
-    
+    if reason:
+        sendmail("mover %s has been started"%mover, reason=reason)
+        
 def stop(mover):
     conf = config[mover]
     host = conf['host']
@@ -158,19 +172,22 @@ def check(mover):
     print "\t%-30s\t%-20s"%(status, state), 
     if time_in_state:
         print '\t%10s' % hms(time_in_state)
+##      if state in ['SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT'] and int(time_in_state)>1200:
+        if state in ['SEEK'] and int(time_in_state)>1200:
+            return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
     else:
         print
 
 
     if state=='ERROR':
         print mover,'\t', status
-        return -1
+        return -1,  "Mover in ERROR state.\n\nFull status: %s" % pprint.pformat(d)
     elif status[0]=='TIMEDOUT':
-        return -2
+        return -2, "Status request timed out"
     elif status  != ("ok", None):
-        return -3
+        return -3, "Status request returned %s.\n\nFull status: %s" % status, pprint.pformat(d)
     else:
-        return 0
+        return 0, None
     
 def get_status(mover):    
     p = os.popen("enstore mov --status --retries=1 %s" % mover)
@@ -197,13 +214,13 @@ def main(reset_on_error=0):
         all_ok = 1
         for mover in movers:
             noreset = 1
-            err = check(mover)
+            err, reason = check(mover)
             if err:
                 all_ok=0
             if err == -1: #ERROR state
                 if reset_on_error:
                     noreset = 0
-                    reset(mover)
+                    reset(mover, reason)
             elif err < -1: #Some other error - timeout?
                 #Check to see if there's a single process in D state
                 lines = getps(mover)
@@ -216,11 +233,11 @@ def main(reset_on_error=0):
                         print mover, lines[0]
                         if reset_on_error:
                             noreset = 0
-                            reset(mover)
+                            reset(mover,reason="Uninterruptible I/O wait.\nProcess status: %s" % lines[0])
                 if len(lines)==0:
                     if reset_on_error:
                         noreset = 0
-                        start(mover)
+                        start(mover,reason="No mover process was running")
             if err and noreset:
                 print "error on", mover, "not resetting"
         if all_ok:
