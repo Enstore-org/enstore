@@ -741,7 +741,7 @@ class Pnfs:
 		    Trace.trace(11,'dir='+repr(dir)+" path="+repr(dir_path))
 		    os.mkdir(dir)
 		    os.chmod(dir,mod)
-		    return e_errors.OK, None
+            return e_errors.OK, None
 	else: return e_errors.OK, None
       except:
 	  exc, val, tb = e_errors.handle_error()
@@ -750,8 +750,7 @@ class Pnfs:
     # create a duplicate entry in pnfs that is ordered by file number on tape
     def make_volmap_file(self):
         if self.volume_file!=UNKNOWN:
-	    self.make_dir(self.voldir, 0777)
-
+	    ret=self.make_dir(self.voldir, 0777)
             # create the volume map file and set its size the same as main file
             self.volume_fileP = Pnfs(self.volume_file)
             self.volume_fileP.touch()
