@@ -22,7 +22,7 @@ def generate_volume_list(volume_file, library):
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     url = "http://%s/%s"%(host, volume_file)
     # copy to this file first
-    # as wget may intemix the data with diagnistics at stdout
+    # as wget may intermix the data with diagnistics at stdout
     ofile = "VOLS%s"%(int(time.time()),)
     try:
         os.system("wget -o wget.log -O %s %s"%(ofile, url,))
@@ -106,7 +106,7 @@ def check_volume(label,selected_library=""):
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     url = "http://%s/%s/%s"%(host, tdir, label)
     # copy to this file first
-    # as wget may intemix the data with diagnistics at stdout
+    # as wget may intermix the data with diagnistics at stdout
     ofile = label
     try:
         os.system("wget -o wget.log -O %s %s"%(ofile, url,))
@@ -286,7 +286,6 @@ if __name__ == "__main__":
     except getopt.GetoptError:
         usage()
         sys.exit(-1)
-    print "opt %s arg %s"%(options, args)
     if options and options[0][0] == '--library':
         library = options[0][1]
     else:
@@ -297,7 +296,6 @@ if __name__ == "__main__":
         volume_list = args
     else:
        volume_list=generate_volume_list("enstore/tape_inventory/VOLUMES_DEFINED", library) 
-    print volume_list
     t1 = time.time()
     flog = open("AUDIT.log","w")
 
@@ -313,7 +311,7 @@ if __name__ == "__main__":
 
     for volume in volume_list:
         print "Volume %4d of %4d, %s" % (vcount+1, nvols, volume)
-        (ret,err,warn,fcount,vinfo) = check_volume(volume,'samm2')
+        (ret,err,warn,fcount,vinfo) = check_volume(volume,library)
         flag = "OK "
         if (ret != 0 or err !=0 or warn !=0 ):
             flag = "BAD"
