@@ -1,0 +1,300 @@
+#!/bin/sh
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# Use /bin/sh5 for Ultrix systems, and /bin/sh for all other systems.
+# @(#) zap.sh 1.3 Delta: 93/09/01 11:36:12 Extraction: 94/11/21 11:18:45 @(#)
+#
+# Name: zap (zapit)
+# Programmer:
+#               Hemant Shah
+#               Voice: (708) 840-8071
+#               E-mail: shah@fnal.fnal.gov
+#
+#               Frank Koenen
+#               Voice: (708) 840-8042
+#               E-mail: koenen@fnal.fnal.gov
+#
+#               Fermilab
+#               Systems Integration Group
+#               March 31, 1992
+#
+# Description:
+# Kills processes by process name. e.g. zap xclock
+# It will ask for conformation before killing the process. If you do not
+# want it to ask for conformation then create a soft link to zapit.
+# e.g. ln -s zap zapit
+# If you type "zapit xclock", then it will not ask you for yes/no.
+# NOTE: This can be dangerous if used without caution.
+#
+# You can have multiple paterns on the command line.
+# e.g., To kill all the xterms started by shah type:
+#       zap shah xterm
+#
+# NOTE: IF YOU MAKE ANY CHANGES TO THIS PROGRAM OR ADD NEW FUNCTIONALITY
+#       PLEASE SEND THE MODIFIED CODE TO ONE OF THE AUTHORS.
+#
+# History:
+#   03-04-93 Hemant Shah
+#       Added -s option so that user can specify different signal to send. By
+#       default signal 9 will be sent to the process.
+#
+#       Changed the grep command to egrep command so that regular expression
+#       can be used for command name.
+#
+#       Added -y option, another way for non interactive zap. If this option
+#       is used, no questions will be asked.
+#
+#       Added -q option, do not print any messages on the screen. This is
+#       useful if the command is being used from a shell script. Using this
+#       option implies -y option.
+#
+#   03-17-93 Hemant Shah
+#       Added support Ultrix system. If you are running zap on the ultrix
+#       system, use /bin/sh5 as the shell.
+#
+#       Added -l option which will list all the commands that match the
+#       expression.
+#
+#       Added support for SunOS 5.0 (SVR4)
+#
+#   08-16-93 Frank Koenen
+#       Corrected problem with non-tty input attempts. Reference all "TERM"
+#       values.
+#
+#   08-27-93 Frank Koenen
+#       Modified the Sun 4.x ps command, changed "ps -auxw" to "ps -auxww".
+#
+PATH="/usr/5bin:/usr/bin:/usr/ucb:/usr/bsd:/bin:/usr/etc:/usr/lib:/usr/bin/X11"
+# get the name of the program
+PROGNAME=`basename ${0}`
+
+# If the program contains "it" in it e.g. zapit then do not ask for
+# conformation, just kill the process.
+# NOTE: THIS CAN BE DANGEROUS.
+NO_ASK="`echo ${PROGNAME} | grep it | wc -c`"
+NO_ASK=`echo ${NO_ASK}`
+NO_PRINT=0
+LIST_PROCS=0
+SIG_OPT=0
+tempfile="/usr/tmp/zap_temp_$$"
+tempfile=$HOME/"zap_temp_$$"
+SIGNO=15
+Usage_message="USAGE: ${PROGNAME} [ [-y] [-q] [-s sig_num] ] [-l] expression"
+
+if [ $# -eq 0 ]
+then
+  echo $Usage_message
+  exit 1
+fi
+
+trap "exitproc" 0 1 2 3 15
+
+# Functions
+exitproc()
+{
+ if [ -n "${tempfile}" ]; then
+  rm -f ${tempfile}*
+ fi
+ exit
+}
+
+
+
+# Determine what type of machine we have here.
+mach_type=`uname -a`
+os_type=`uname -r`
+case $mach_type in
+  *SunOS*|*SunOs*|*sun4c*|*sun4*)
+      AWKCMD=nawk
+      if [ ${os_type} -ge 5.0 ]; then      # Check if it is SunOS 5.x (SVR4)
+             PSCMD="ps -ef"
+             COLS=48
+          else
+             PSCMD="ps -auxww"
+             COLS=57
+          fi
+      ;;
+  *Linux*)
+      PSCMD="ps  uxww"
+      PSCMD="ps auxww"
+      COLS=60
+      AWKCMD=awk
+      ;;
+  *IP*|*IRIX*)
+      PSCMD="ps -ef"
+      COLS=47
+      AWKCMD=nawk
+      ;;
+  *AIX*)
+      PSCMD="ps -ef"
+      COLS=48
+      AWKCMD=awk
+      ;;
+  *NEWS*)
+      PSCMD="ps -ef"
+      COLS=48
+      AWKCMD=nawk
+      ;;
+  *ULTRIX*)
+      PSCMD="ps -aux"
+      COLS=51
+      AWKCMD=nawk
+      ;;
+    *)
+      echo "Error setting machine type, '$mach_type' unknown."
+      exitproc
+      ;;
+esac
+if [ "$OPTIND" = 1 ]; then  # can use getopts
+    while getopts qyls: flag ; do
+        case $flag in
+            q)  NO_PRINT=1 ; NO_ASK=1  # Do not print any messages, implies -y
+                ;;
+            y)  NO_ASK=1  # Do not ask question.
+                ;;
+            l)  LIST_PROCS=1
+                ;;
+            s)  SIGNO=$OPTARG ; SIG_OPT=1      # Store signal number
+                ;;
+            \?) echo $Usage_message >&2 ; exit 1    # Unrecognized option
+                ;;
+        esac
+    done
+    shift `expr $OPTIND - 1`        # shift options away
+else    # getopts not available
+    while [ $# -gt 0 ]; do  # while there are arguments remaining
+        case $1 in
+            -q) NO_PRINT=1 ; NO_ASK=1 ; shift # Do not print messages,implies -y
+                ;;
+            -y) NO_ASK=1 ; shift
+                ;;
+            -l)  LIST_PROCS=1 ; shift   # List all the matching processes
+                ;;
+            -s) if [ -z "$2" ]; then
+                    echo "-s option requires an argument" >&2
+                    echo $Usage_message >&2 ; exit 1
+                else
+                    SIGNO=$2 ; SIG_OPT=1 ;shift 2
+                fi
+                ;;
+            -*) echo "Unrecognized option \"$1\"" >&2
+                echo $Usage_message >&2 ; exit 1
+                ;;
+            *)  break
+                ;;
+        esac
+    done
+fi
+
+# Make sure any specified signal number is numeric:
+expr $SIGNO + 0 >/dev/null 2>&1 # discard output
+if [ $? -eq 2 ]; then   # expr returns 2 for invalid expressions
+    echo "Error: -s option argument is not an integer" >&2
+    echo $Usage_message >&2; exit 2
+fi
+
+
+# Check for the validity of the parameters, one cannot specify any option
+# with -l option.
+case ${LIST_PROCS}${NO_PRINT}${NO_ASK}${SIG_OPT} in
+   1000|0???)
+              ;;
+   *)
+   echo "Error: You cannot specify any option with -l option." >&2
+   echo $Usage_message >&2
+   exit 1
+   ;;
+esac
+
+# Get the terminal line.
+TERM=`tty`
+if [ "${TERM}" = "not a tty" ]; then
+ TERM="not_a_tty"
+fi
+
+# Reduce output by match strings.
+for string in $*; do
+ if [ ! -f ${tempfile}a ]; then
+  ${PSCMD}|egrep ${string}| grep -v grep| grep -v ${PROGNAME}| grep -v delayed-kill | \
+           grep -v "${PSCMD}" > ${tempfile}a
+ else
+  egrep ${string} ${tempfile}a > ${tempfile}b
+  if [ -s ${tempfile}b ]; then
+   mv ${tempfile}b ${tempfile}a
+  else
+     if [ "${NO_PRINT}" = 0 ]; then
+        echo "${PROGNAME}: No Match"
+     fi
+   exitproc
+  fi
+ fi
+done
+
+# Read the temp file and kill process listed in the temp file.
+if [ -s ${tempfile}a ]; then
+ ${AWKCMD} 'BEGIN{
+                   if( "'${LIST_PROCS}'" > 0 )
+                   {
+                      printf("PID   UID      COMMAND\n") ;
+                   }
+
+                 }
+ {
+
+# If the LIST_PTOC is 0 then ask question, otherwise list all the
+# matching processes
+  if( "'${LIST_PROCS}'" > 0 )
+  {
+     printf("%-5d %-8s %-0.63s\n",$2,$1,substr($0,"'${COLS}'")) ;
+  }
+  else
+  {
+     if( "'${NO_PRINT}'" == 0 )
+     {
+        printf("Command: %s\n",substr($0,"'${COLS}'"))
+     }
+
+     if( "'${NO_ASK}'" > 0 )
+     {
+        ANS = "y"
+     }
+     else
+     {
+        if ( "not_a_tty" == "'${TERM}'" ) {
+         printf("Cannot prompt for input. Default to \"No\"\n")
+         ANS = "n"
+        }
+        else {
+         printf("Do you want to send signal %d to this command {%5d}? [y/n/q]: ",
+                 signum,$2)
+         getline ANS < "'${TERM}'"
+         close("'${TERM}'")
+         if( length(ANS) == 0 )
+            ANS = "n"
+        }
+     }
+
+     if( index("yYyesYES",ANS) > 0)
+     {
+       kill_cmd=sprintf("%s%d %d", "/bin/kill -",signum,$2)
+       system(kill_cmd)
+       if( "'${NO_PRINT}'" == 0 )
+       {
+
+          printf("Signal %d sent to process id %5d.\n",signum,$2)
+       }
+     }
+     else if(index("qQquitQUIT",ANS) > 0)
+     {
+        exit
+     }
+
+   }
+ }' signum="${SIGNO}" ${tempfile}a
+else
+  if [ "${NO_PRINT}" = 0 ]; then
+     echo "${PROGNAME}: No Match."
+  fi
+fi
+
+exitproc
