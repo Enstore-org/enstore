@@ -38,6 +38,9 @@ class LM_Queue:
     # A call back for sort, highest file location should be first.
     def compare_location(self,t1,t2):
 	if 0: print self.keys() # lint fix
+	if not (t1["fc"].has_key("external_label") and
+		t2["fc"].has_key("external_label")):
+	    return 0
 	if t1["fc"]["external_label"] == t2["fc"]["external_label"]:
 	    if t1["fc"]["location_cookie"] > t2["fc"]["location_cookie"]:
 		return 1
@@ -47,9 +50,12 @@ class LM_Queue:
    
     # Add work to the end of the set of jobs
     def insert_job(self,ticket):
-	ticket['times']['job_queued'] = time.time()
-	ticket['at_the_top'] = 0
-	self.queue.append(ticket)
+	# see if there is a job with this id in the queueu
+	w = self.find_job(ticket["unique_id"])
+	if not w:
+	    ticket['times']['job_queued'] = time.time()
+	    ticket['at_the_top'] = 0
+	    self.queue.append(ticket)
    
     # Remove a ticket 
     def delete_job(self,ticket):

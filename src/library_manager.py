@@ -650,7 +650,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # as having no access and send a regret: noaccess.
     def bad_volume(self, suspect_volume, ticket):
 	ret_val = 0
-	label = ticket['fc']['external_label']
+	if ticket['fc'].has_key('external_label'):
+	    label = ticket['fc']['external_label']
+	else: label = None
 	if len(suspect_volume['movers']) >= self.max_suspect_movers:
 	    ticket['status'] = (e_errors.NOACCESS, None)
 	    Trace.trace(13,"Number of movers for suspect volume %" %\
@@ -678,13 +680,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    self.suspect_volumes.remove(suspect_volume)
 	    ret_val = 1
 	else:
-	    try:
-		next_mover = idle_mover_next(self, label)
-	    except:
-		# there was no external label: must be write
-		next_mover = idle_mover_next(self, None)
+	    next_mover = idle_mover_next(self, label)
+	    if ticket.has_key('mover'): mover = ticket['mover']
+	    else: mover = None
 	    Trace.trace(14,"current mover %snext mover %s"%\
-			(ticket['mover'], next_mover))
+			(mover, next_mover))
 	    if next_mover:
 		Trace.trace(14, "will summon mover %s"%next_mover)
 		summon_mover(self,next_mover,ticket)
@@ -745,7 +745,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'],mc)
 		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
-						 mc["at_mover"][0], 
+						 mcstate["at_mover"][0], 
 						 wt['mover']))
 		# force set volume to unmounted
 		v = self.vcc.set_at_mover(wt['fc']['external_label'],
