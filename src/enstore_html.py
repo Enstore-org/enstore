@@ -730,6 +730,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                   "USER ERROR, No access"                     : "NOACCESS",
                   "USER ERROR, need at least 1 /pnfs/... path": "copying unixfile to unixfile",
                   "USER ERROR, Duplicated file in list"       : "Duplicated entry",
+                  "USER ERROR, Duplicated file in list"       : "Duplicate entry",
                   "USER ERROR, Duplicate request, ignored"    : "INPROGRESS",
                   "USER ERROR, File already exists"           : "EEXIST",
                   "USER ERROR, Control-C'd connection"        : "ENCP_GONE",
