@@ -46,6 +46,32 @@ class ConfigurationClient(generic_client.GenericClient):
     def get_retry(self):
         return self.retry
 
+    #Return which key in the 'known_config_servers' configuration dictionary
+    # entry refers to this client's server (if present).  If there is
+    # not an entry (like a developers test system) then a value is returned
+    # based on the configuration servers nodename.
+    def get_enstore_system(self, timeout=0, retry=0):
+
+        while 1:
+            ret = self.get('known_config_servers', timeout, retry)
+
+            if e_errors.is_ok(ret):
+                break
+            else:
+                #Return None if no responce from the configuration
+                # server was received.
+                return None
+        
+        for item in ret.items():
+            if socket.getfqdn(item[1][0]) == \
+               socket.getfqdn(self.server_address[0]):
+                return item[0]
+
+        #If we make it here, then we did receive a resonce from the
+        # configuration server, however we did not find the system this
+        # is looking for in the list received.
+        return socket.getfqdn(self.server_address[0]).split(".")[0]
+
     def do_lookup(self, key, timeout, retry):
 	request = {'work' : 'lookup', 'lookup' : key }
 	while 1:
