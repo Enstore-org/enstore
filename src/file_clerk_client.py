@@ -54,6 +54,23 @@ class FileClient(generic_client.GenericClient,
             self.server_address = self.get_server_address(
                 MY_SERVER, rcv_timeout, rcv_tries)
 
+    # create a bit file using complete metadata -- bypassing all
+    def create_bit_file(self, file):
+        # file is a structure without bfid
+        ticket = {"fc":{}}
+        ticket["fc"]["external_label"] = str(file["external_label"])
+        ticket["fc"]["location_cookie"] = str(file["location_cookie"])
+        ticket["fc"]["size"] = long(file["size"])
+        ticket["fc"]["sanity_cookie"] = file["sanity_cookie"]
+        ticket["fc"]["complete_crc"]  = long(file["complete_crc"])
+        ticket["fc"]["pnfsid"] = str(file["pnfsid"])
+        ticket["fc"]["pnfs_name0"] = str(file["pnfs_name0"])
+        ticket["fc"]["drive"] = str(file["drive"])
+        ticket = self.new_bit_file(ticket)
+        if ticket["status"][0] == e_errors.OK:
+            ticket = self.set_pnfsid(ticket)
+        return ticket
+
     def new_bit_file(self, ticket):
         ticket['work'] = "new_bit_file"
         r = self.send(ticket)
@@ -213,7 +230,11 @@ class FileClient(generic_client.GenericClient,
             bfid = self.bfid
         r = self.send({"work" : "bfid_info",
                        "bfid" : bfid } )
-        del r['work']
+        try:
+            del r['work']
+        except: # something is wrong
+            msg = 'ticket = '+`r`
+            r['status'] = (e_errors.ERROR, msg)
         return r
 
     # This is only to be used internally
