@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
 	outf = open(tmp_data, "w")
 	for i in mtsh.keys():
-		outf.write("%d %d\n"%(i, mtsh[i]))
+		outf.write("%s %d\n"%(i, mtsh[i]))
 	outf.close()
 
 	outf = open(tmp_gnuplot_cmd, "w")
