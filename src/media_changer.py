@@ -629,7 +629,7 @@ class stk_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):
         MediaLoaderMethods.__init__(self,medch,max_work,csc)
         self.prepare = self.unload
-        self.DEBUG = 1
+        self.DEBUG = 0
         print "STK MediaLoader initialized"
 
     # retry function call
