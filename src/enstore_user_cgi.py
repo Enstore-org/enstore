@@ -127,8 +127,6 @@ def go():
 	(config_host, config_port) = find_enstore()
 
 	# add the config port and host to the environment
-	#an_argv = an_argv + ["--config_host", config_host, 
-	#		     "--config_port", config_port]
 	os.environ['ENSTORE_CONFIG_HOST'] = config_host
 	os.environ['ENSTORE_CONFIG_PORT'] = config_port
 
