@@ -4,7 +4,6 @@
 </i></b></font>
 <br><p>
 <center>$Revision$</center>
-<br><p>
 <center>$Date$GMT</center>
 <br><p>
 <br><p>
@@ -89,6 +88,7 @@
 <li><a href="#d0req">8 D0 Requirements</a>
 <li><a href="#d0reqa">8.1 Summary of D0 Functional Specifications</a>
 <li><a href="#d0reqb">8.2 Sam/Enstore Interface Notes</a>
+<li><a href="#manp">9 WBS and Manpower Estimates</a>
 
 </ul>
 
@@ -6414,6 +6414,146 @@ and the network bandwidth.&nbsp;</TD>
 </TABLE>
 
 <BR>&nbsp;
+
+<hr>
+<h2><a name="manp">
+9 WBS and Manpower Estimates
+</h2>
+
+The basic design philosophy of Enstore is to use layered products when
+possible. There are  2 products which need to be updated or enhanced to
+make Enstore fully functional:
+<ul> 
+ <li> OCS for Run II
+  <ul>
+    <li> Enstore plans on using OCS for the few operator mounts that are
+    required for Run II operations.  OCS needs to streamlined to allow this
+    capability.
+    <li> OCS has been deemed the long term repository of tape and drive
+    statistics. A mechanism for sending these statistics will be needed.
+  </ul>
+ <li> FTT optimization for selected drive and media
+  <ul> 
+   <li> FTT is the Fermilab source of all media and drive knowledge.  This
+  product will have to be enhanced to use all the capabilities, for example
+  partitioning, of the drive that is chosen by the Serial Media Working
+  Group for Run II.
+  </ul>
+</ul>
+<p>
+Generally, the project is on track to its original estimate.  I believe
+Enstore needs its current work force of 6 people, (Bakken, Berman, Huang,
+Moibenko, Rechenmacher, Ruthmansdorfer) or their equivalents until May 99.
+After May the Run II effort could drop to 4 people.  I expect to be able to
+deliver a fully Run II functional version of Enstore by the end of July
+99. At that point, I expect serious integration to be well underway with
+D0.  Depending on how well this commissioning goes, what further
+requirements and enhancements are deemed necessary, the Run II Enstore
+effort could drop to 2-3 people.
+<p>
+
+Below is the current Storage Management WBS.  Instructions were to quit
+working on it if it was correct to a factor of 2.  I believe the actual
+estimate is good to 50%. I have attempted to fill in the percentage
+complete column in the WBS with a step of 25%.  Items listed as 0%
+generally mean that no coding has been done for this item. It doesn't 
+mean no thought has gone into the item. Some thought has gone into each item.
+<p>
+<TABLE BORDER>
+<TR BGCOLOR="#DFDFDF"><TH><NOBR>ID</NOBR></TH><TH ALIGN=left><NOBR>Task Name</NOBR></TH><TH><NOBR>Duration</NOBR></TH><TH><NOBR>Start</NOBR></TH><TH><NOBR>Finish</NOBR></TH><TH ALIGN=left><NOBR>Resource Names</NOBR></TH><TH><NOBR>% Complete</NOBR></TH></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>1</TD><TD STYLE="margin-left:4" ALIGN=left><B>Storage Management</B></TD><TD><NOBR>83.4 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>36%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>2</TD><TD STYLE="margin-left:16" ALIGN=left>Management</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>3</TD><TD STYLE="margin-left:16" ALIGN=left>D0 Liaison</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>4</TD><TD STYLE="margin-left:16" ALIGN=left>Hardware and Interface Problem Resolution</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>5</TD><TD STYLE="margin-left:16" ALIGN=left><B>Working Operations</B></TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>6</TD><TD STYLE="margin-left:28" ALIGN=left>Working OCS</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>7</TD><TD STYLE="margin-left:28" ALIGN=left>Interface to Monitoring Tools</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>8</TD><TD STYLE="margin-left:16" ALIGN=left>Working FTT with drive chosen by serial media working group</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>9</TD><TD STYLE="margin-left:16" ALIGN=left>Working Drives and Media in Robot for D0</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>10</TD><TD>&nbsp;</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>11</TD><TD STYLE="margin-left:16" ALIGN=left><B>Enstore</B></TD><TD><NOBR>56.2 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Mon 6/28/99</NOBR></TD><TD>&nbsp;</TD><TD>42%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>12</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>13</TD><TD STYLE="margin-left:28" ALIGN=left><B>Organization and Methods of Working&nbsp;&nbsp;&nbsp;&nbsp; </B></TD><TD><NOBR>56.2 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Mon 6/28/99</NOBR></TD><TD>&nbsp;</TD><TD>63%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>14</TD><TD STYLE="margin-left:40" ALIGN=left>Packaging methods </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Fri 6/26/98</NOBR></TD><TD>&nbsp;</TD><TD>50%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>15</TD><TD STYLE="margin-left:40" ALIGN=left>Coding standards </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Fri 6/26/98</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>16</TD><TD STYLE="margin-left:40" ALIGN=left>Development tools </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 6/1/98</NOBR></TD><TD><NOBR>Fri 6/26/98</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>17</TD><TD STYLE="margin-left:40" ALIGN=left>Bug reporting and tracking procedure (GNATS)</TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Tue 6/1/99</NOBR></TD><TD><NOBR>Mon 6/28/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>18</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>19</TD><TD STYLE="margin-left:28" ALIGN=left><B>Requirements&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </B></TD><TD><NOBR>29 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 5/14/99</NOBR></TD><TD>&nbsp;</TD><TD>63%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>20</TD><TD STYLE="margin-left:40" ALIGN=left>Input and specification from experiments </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 1/15/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>21</TD><TD STYLE="margin-left:40" ALIGN=left>Input and specification from mss groups and operators </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 1/15/99</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>22</TD><TD STYLE="margin-left:40" ALIGN=left>Understand commonality of requirements and iterate </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 1/15/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>23</TD><TD STYLE="margin-left:40" ALIGN=left>Understand interfaces to other Run II Projects </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 1/15/99</NOBR></TD><TD>&nbsp;</TD><TD>50%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>24</TD><TD STYLE="margin-left:40" ALIGN=left>Understand testing dates and scope </TD><TD><NOBR>1 wk</NOBR></TD><TD><NOBR>Mon 1/11/99</NOBR></TD><TD><NOBR>Fri 1/15/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>25</TD><TD STYLE="margin-left:40" ALIGN=left>Understand hardware constraints </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Fri 1/22/99</NOBR></TD><TD><NOBR>Thu 4/15/99</NOBR></TD><TD>&nbsp;</TD><TD>25%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>26</TD><TD STYLE="margin-left:40" ALIGN=left>Agree on change control mechanisms </TD><TD><NOBR>2 wks</NOBR></TD><TD><NOBR>Mon 5/3/99</NOBR></TD><TD><NOBR>Fri 5/14/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>27</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>28</TD><TD STYLE="margin-left:28" ALIGN=left><B>Evolution of Prototype to Run II Product&nbsp;</B></TD><TD><NOBR>51.2 wks</NOBR></TD><TD><NOBR>Wed 7/1/98</NOBR></TD><TD><NOBR>Wed 6/23/99</NOBR></TD><TD>&nbsp;</TD><TD>36%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>29</TD><TD STYLE="margin-left:40" ALIGN=left><B>Client server framework </B></TD><TD><NOBR>23 wks</NOBR></TD><TD><NOBR>Mon 8/3/98</NOBR></TD><TD><NOBR>Fri 1/8/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>30</TD><TD STYLE="margin-left:52" ALIGN=left>Communications protocol and errors </TD><TD><NOBR>23 wks</NOBR></TD><TD><NOBR>Mon 8/3/98</NOBR></TD><TD><NOBR>Fri 1/8/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>31</TD><TD STYLE="margin-left:52" ALIGN=left>Robustness </TD><TD><NOBR>23 wks</NOBR></TD><TD><NOBR>Mon 8/3/98</NOBR></TD><TD><NOBR>Fri 1/8/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>32</TD><TD STYLE="margin-left:40" ALIGN=left><B>Error handling philosophy </B></TD><TD><NOBR>16 wks</NOBR></TD><TD><NOBR>Mon 8/3/98</NOBR></TD><TD><NOBR>Fri 11/20/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>33</TD><TD STYLE="margin-left:52" ALIGN=left>Component Retries </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 8/3/98</NOBR></TD><TD><NOBR>Fri 8/28/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>34</TD><TD STYLE="margin-left:52" ALIGN=left>End-to-end recovery </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 8/31/98</NOBR></TD><TD><NOBR>Fri 9/25/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>35</TD><TD STYLE="margin-left:52" ALIGN=left>Fault tolerance and availability </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 9/28/98</NOBR></TD><TD><NOBR>Fri 10/23/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>36</TD><TD STYLE="margin-left:52" ALIGN=left>Reliability </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 10/26/98</NOBR></TD><TD><NOBR>Fri 11/20/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>37</TD><TD STYLE="margin-left:40" ALIGN=left><B>Encp framework&nbsp; </B></TD><TD><NOBR>12.8 wks</NOBR></TD><TD><NOBR>Tue 9/1/98</NOBR></TD><TD><NOBR>Fri 11/27/98</NOBR></TD><TD>&nbsp;</TD><TD>83%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>38</TD><TD STYLE="margin-left:52" ALIGN=left>Design evaluation </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Tue 9/1/98</NOBR></TD><TD><NOBR>Mon 9/28/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>39</TD><TD STYLE="margin-left:52" ALIGN=left>Options and switch analysis </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Tue 9/1/98</NOBR></TD><TD><NOBR>Mon 9/28/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>40</TD><TD STYLE="margin-left:52" ALIGN=left>Optimization </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 11/27/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>41</TD><TD STYLE="margin-left:52" ALIGN=left>Binary distribution studies </TD><TD><NOBR>6 wks</NOBR></TD><TD><NOBR>Thu 10/1/98</NOBR></TD><TD><NOBR>Wed 11/11/98</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>42</TD><TD STYLE="margin-left:40" ALIGN=left><B>Improvements to Servers/Clients and Clerks Design </B></TD><TD><NOBR>35 wks</NOBR></TD><TD><NOBR>Tue 9/1/98</NOBR></TD><TD><NOBR>Mon 5/3/99</NOBR></TD><TD>&nbsp;</TD><TD>71%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>43</TD><TD STYLE="margin-left:52" ALIGN=left>Configuration server and clients </TD><TD><NOBR>6 wks</NOBR></TD><TD><NOBR>Thu 10/1/98</NOBR></TD><TD><NOBR>Wed 11/11/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>44</TD><TD STYLE="margin-left:52" ALIGN=left>Library manager and clients </TD><TD><NOBR>20 wks</NOBR></TD><TD><NOBR>Tue 12/15/98</NOBR></TD><TD><NOBR>Mon 5/3/99</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>45</TD><TD STYLE="margin-left:52" ALIGN=left>Media Changer and clients </TD><TD><NOBR>10 wks</NOBR></TD><TD><NOBR>Tue 12/15/98</NOBR></TD><TD><NOBR>Mon 2/22/99</NOBR></TD><TD>&nbsp;</TD><TD>50%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>46</TD><TD STYLE="margin-left:52" ALIGN=left>Volume clerk and clients </TD><TD><NOBR>6 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 12/11/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>47</TD><TD STYLE="margin-left:52" ALIGN=left>File clerk and clients </TD><TD><NOBR>6 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 12/11/98</NOBR></TD><TD>&nbsp;</TD><TD>75%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>48</TD><TD STYLE="margin-left:52" ALIGN=left>Log server and clients </TD><TD><NOBR>2 wks</NOBR></TD><TD><NOBR>Tue 9/1/98</NOBR></TD><TD><NOBR>Mon 9/14/98</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>49</TD><TD STYLE="margin-left:40" ALIGN=left><B>Mover Modifications</B></TD><TD><NOBR>25 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 4/23/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>50</TD><TD STYLE="margin-left:52" ALIGN=left>File wrappering - self describing, different types, etc </TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 12/25/98</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>51</TD><TD STYLE="margin-left:52" ALIGN=left>Optimization </TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 12/25/98</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>52</TD><TD STYLE="margin-left:52" ALIGN=left>Read/Write Entire Volumes</TD><TD><NOBR>6 wks</NOBR></TD><TD><NOBR>Mon 2/1/99</NOBR></TD><TD><NOBR>Fri 3/12/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>53</TD><TD STYLE="margin-left:52" ALIGN=left>FTT - new drives to support </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Mon 2/1/99</NOBR></TD><TD><NOBR>Fri 4/23/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>54</TD><TD STYLE="margin-left:40" ALIGN=left><B>Testing Framework </B></TD><TD><NOBR>18.2 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Mon 3/8/99</NOBR></TD><TD>&nbsp;</TD><TD>25%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>55</TD><TD STYLE="margin-left:52" ALIGN=left>Debug and integration framework </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Tue 12/15/98</NOBR></TD><TD><NOBR>Mon 3/8/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>56</TD><TD STYLE="margin-left:52" ALIGN=left>Configure Test Hardware Platform </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 11/27/98</NOBR></TD><TD>&nbsp;</TD><TD>100%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>57</TD><TD STYLE="margin-left:40" ALIGN=left><B>Database framework&nbsp; </B></TD><TD><NOBR>17 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 2/26/99</NOBR></TD><TD>&nbsp;</TD><TD>30%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>58</TD><TD STYLE="margin-left:52" ALIGN=left>Evaluation of underlying database choice </TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Mon 1/4/99</NOBR></TD><TD><NOBR>Fri 2/26/99</NOBR></TD><TD>&nbsp;</TD><TD>25%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>59</TD><TD STYLE="margin-left:52" ALIGN=left>User Queries </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 11/27/98</NOBR></TD><TD>&nbsp;</TD><TD>25%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>60</TD><TD STYLE="margin-left:52" ALIGN=left>Fault tolerance </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 11/27/98</NOBR></TD><TD>&nbsp;</TD><TD>25%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>61</TD><TD STYLE="margin-left:52" ALIGN=left>Backup </TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Tue 12/15/98</NOBR></TD><TD><NOBR>Mon 1/11/99</NOBR></TD><TD>&nbsp;</TD><TD>50%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>62</TD><TD STYLE="margin-left:40" ALIGN=left><B>Admin tools&nbsp; </B></TD><TD><NOBR>48.6 wks</NOBR></TD><TD><NOBR>Wed 7/1/98</NOBR></TD><TD><NOBR>Fri 6/4/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>63</TD><TD STYLE="margin-left:52" ALIGN=left>Pnfs </TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Wed 7/1/98</NOBR></TD><TD><NOBR>Tue 8/25/98</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>64</TD><TD STYLE="margin-left:52" ALIGN=left>Web status </TD><TD><NOBR>22 wks</NOBR></TD><TD><NOBR>Mon 11/2/98</NOBR></TD><TD><NOBR>Fri 4/2/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>65</TD><TD STYLE="margin-left:52" ALIGN=left>User queries and reports </TD><TD><NOBR>22 wks</NOBR></TD><TD><NOBR>Mon 1/4/99</NOBR></TD><TD><NOBR>Fri 6/4/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>66</TD><TD STYLE="margin-left:52" ALIGN=left>System and Tape Monitoring and Statistics (Patrol)</TD><TD><NOBR>14 wks</NOBR></TD><TD><NOBR>Mon 2/1/99</NOBR></TD><TD><NOBR>Fri 5/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>67</TD><TD STYLE="margin-left:40" ALIGN=left><B>Volume Import/Export</B></TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Mon 2/1/99</NOBR></TD><TD><NOBR>Fri 3/26/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>68</TD><TD STYLE="margin-left:52" ALIGN=left>Facility to Export/Eject Tapes from EMASS Robot</TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 3/1/99</NOBR></TD><TD><NOBR>Fri 3/26/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>69</TD><TD STYLE="margin-left:52" ALIGN=left>Facility to Import Foreign Tapes to EMASS Robot</TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Mon 2/1/99</NOBR></TD><TD><NOBR>Fri 2/26/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>70</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>71</TD><TD STYLE="margin-left:40" ALIGN=left><B>Security, with respect to Fermilab Policy </B></TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Thu 4/1/99</NOBR></TD><TD><NOBR>Wed 6/23/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>72</TD><TD STYLE="margin-left:52" ALIGN=left>Data protection, Authentication, Access </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Thu 4/1/99</NOBR></TD><TD><NOBR>Wed 6/23/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>73</TD><TD STYLE="margin-left:52" ALIGN=left>Accidents </TD><TD><NOBR>12 wks</NOBR></TD><TD><NOBR>Thu 4/1/99</NOBR></TD><TD><NOBR>Wed 6/23/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>74</TD><TD STYLE="margin-left:16" ALIGN=left>Documentation</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>75</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>76</TD><TD STYLE="margin-left:16" ALIGN=left><B>Integration </B></TD><TD><NOBR>29.4 wks</NOBR></TD><TD><NOBR>Fri 1/1/99</NOBR></TD><TD><NOBR>Mon 7/26/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>77</TD><TD STYLE="margin-left:28" ALIGN=left>Integration with Experiment RIP and Production Farms</TD><TD><NOBR>20 wks</NOBR></TD><TD><NOBR>Fri 1/1/99</NOBR></TD><TD><NOBR>Thu 5/20/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>78</TD><TD STYLE="margin-left:28" ALIGN=left>Integration with Experiment Data Handling and Analysis</TD><TD><NOBR>20 wks</NOBR></TD><TD><NOBR>Fri 1/1/99</NOBR></TD><TD><NOBR>Thu 5/20/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>79</TD><TD STYLE="margin-left:28" ALIGN=left>Commissioning</TD><TD><NOBR>8 wks</NOBR></TD><TD><NOBR>Tue 6/1/99</NOBR></TD><TD><NOBR>Mon 7/26/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>80</TD><TD STYLE="margin-left:28" ALIGN=left>Tuning</TD><TD><NOBR>4 wks</NOBR></TD><TD><NOBR>Tue 6/1/99</NOBR></TD><TD><NOBR>Mon 6/28/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>81</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>82</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>83</TD><TD STYLE="margin-left:16" ALIGN=left><B>Enstore V2</B></TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>84</TD><TD STYLE="margin-left:28" ALIGN=left>Support for Commissiong of D0 before run starts</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>85</TD><TD STYLE="margin-left:28" ALIGN=left>Addition of new features as discovered</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>86</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>87</TD><TD STYLE="margin-left:16" ALIGN=left><B>Enstore V3</B></TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>88</TD><TD STYLE="margin-left:28" ALIGN=left>Support for run</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>89</TD><TD STYLE="margin-left:28" ALIGN=left>New features discovered when there is beam</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD><NOBR>Tue 1/4/00</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>90</TD><TD>&nbsp;</TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD><NOBR>&nbsp;</NOBR></TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+<TR BGCOLOR="#FFFFFF" ALIGN=right><TD ALIGN=center>91</TD><TD STYLE="margin-left:16" ALIGN=left>Ongoing Support</TD><TD><NOBR>0.2 wks</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD><NOBR>Thu 1/7/99</NOBR></TD><TD>&nbsp;</TD><TD>0%</TD></TR>
+</TABLE>
+<P>
 
 
 
