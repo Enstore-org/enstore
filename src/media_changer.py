@@ -790,13 +790,41 @@ class stk_MediaLoader(MediaLoaderMethods):
         message = ""
         blanks=0
         nread=0
-        while blanks<2 and nread<100:
+	if string.find(cmd,'mount') != -1:  # this is a mount or a dismount command
+	    maxread=100  # quick response on queries
+	else:
+	    maxread=10000 # slow respone on mount/dismounts
+
+	nlines=0
+	ntries=0
+	while nlines<19 and ntries<3:
+	  ntries=ntries+1
+          while blanks<2 and nread<maxread:
             msg=os.read(c2pread,200)
             message = message+msg
             nread = nread+1
             if msg == '':
                 blanks = blanks+1
-        response = string.split(message,'\012')
+#	    if self.DEBUG:
+#	        nl=0
+#		ml=string.split(msg,'\012')
+#		for l in ml:
+#                   nl=nl+1
+#		   print "nread=",nread, "line=",nl, l
+          response = string.split(message,'\012')
+	  nl=0
+	  for l in response:
+	    if string.find(l,'Place cartridges in CAP') != -1 or \
+	       string.find(l,'Clean drive') != -1 or \
+	       string.find(l,'Cleaned') != -1:
+	       if self.DEBUG:
+	          print "DELETED:", l
+	       del response[nl]
+	    if self.DEBUG:
+	       print    "response line =",nl, l
+	    nl=nl+1
+          nlines=len(response)
+	  
 	os.close(c2pread)
         size = len(response)
         if size <= 19:
@@ -825,7 +853,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "%s " % (volume,)
 
         # execute the command and read the response
-        status,response, delta = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,10)
         if status != 0:
             E=1
             msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
@@ -865,7 +893,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 
         # execute the command and read the response
         # FIXME - what if this hangs?
-        status,response, delta = self.timed_command(command,4,60)
+        status,response, delta = self.timed_command(command,4,10)
         if status != 0:
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
@@ -1011,7 +1039,7 @@ class stk_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "run"
 
         # execute the command and read the response
-        status,response,delta = self.timed_command(command,5,60)
+        status,response,delta = self.timed_command(command,5,10)
         if status != 0:
             E=18
             msg = "query server %i: %s => %i,%s" % (E,command,status,response)
