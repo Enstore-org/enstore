@@ -31,7 +31,7 @@ class NullDriver(driver.Driver):
         self.mode = mode
         self.fd = os.open(device, mode)
         self._rate = self._last_rate = self._bytes_transferred = 0
-        return self.fd
+        return 1
 
     def rewind(self):
         Trace.trace(25, "rewind")
