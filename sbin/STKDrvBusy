@@ -15,6 +15,7 @@ plotnode_d0=d0ensrv2
 plotnode_cdf=cdfensrv2
 
 now=`date +"%Y-%m-%d:%H:%M:%S"`
+Quarter_ago=`date --date "90 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
 case $command in
 
@@ -52,7 +53,7 @@ set title \"STK 9840 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in Use\"
 set grid
 set yrange [0: ]
@@ -70,7 +71,7 @@ set title \"STK 9940 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in use\"
 set grid
 set yrange [0: ]
@@ -94,7 +95,7 @@ set title \"STK 9940 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in use\"
 set grid
 set yrange [0: ]
@@ -118,7 +119,7 @@ set title \"STK 9940 Drive Utilization $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
-set xrange [ : ]
+set xrange [\"$Quarter_ago\" : ]
 set ylabel \"Number in use\"
 set grid
 set yrange [0: ]
