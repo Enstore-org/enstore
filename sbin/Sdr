@@ -79,11 +79,15 @@ for des in \
   cat <<EOF >>$output
 <tr><td align=center>$des</td>
 EOF
+  alarm_sent=0
   for i in `cat $farmlet`; do
     val="`getval "$des" $filebase$i`"
     if [ "$val" = "" ]; then
       data_item="<td align=center bgcolor=\"RED\">&nbsp;</td>"
-      `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i"`
+      if [ "$alarm_sent" = "0" ]; then
+        `enstore alarm --raise --root-error="DOESNOTEXIST - $des, $i (check all values)"`
+	alarm_sent=1
+      fi
     else
       data_item="<td align=center>$val</td>"
     fi
