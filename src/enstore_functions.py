@@ -3,6 +3,7 @@ import string
 import os
 import exceptions
 import socket
+import tempfile
 
 import configuration_server
 import enstore_constants
@@ -12,6 +13,15 @@ import Trace
 import e_errors
 
 DEFAULTHTMLDIR = "."
+
+# send mail
+def send_mail(server, message, subject):
+    mail_file = tempfile.mktemp()
+    os.system("date >> %s"%(mail_file,))
+    os.system('echo "\tFrom: %s\n\n" >> %s' % (server, mail_file))
+    os.system('echo "\t%s" >> %s' % (message, mail_file))
+    os.system("/usr/bin/Mail -s \"%s\" $ENSTORE_MAIL < %s"%(subject, mail_file))
+    os.system("rm %s"%(mail_file,))
 
 # this is done here to have central exception handling.  it cannot be
 # done in the erc read routine, because we cannot import Trace in that
