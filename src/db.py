@@ -127,19 +127,20 @@ class dBTable:
 	     self.logc.send(log_client.INFO, "End backup for "+self.name)
 def do_backup(name):
 	import time
-	cmd="tar cvf "+name+".tar  "+ os.environ['ENSTORE_DB'] + \
-                     "/"+name+".dat "+os.environ['ENSTORE_DB'] + \
-                     "/"+name+".dir "+ os.environ['ENSTORE_DB'] + \
-                     "/"+name+".jou.*"
+        cwd=os.getcwd()
+	os.chdir(os.environ['ENSTORE_DB'])
+	cmd="tar cvf "+name+".tar "+name+".dat "+name+".dir "+name+".bak "+ \
+                      name+".jou.*"
 	print cmd
 	os.system(cmd)
 	cmd="mv " + name +".tar  /tmp/backup/"+name+".tar."+ \
                         repr(time.time())
 	print cmd
 	os.system(cmd)
-	cmd="rm "+os.environ['ENSTORE_DB']+"/"+name +".jou.*"
+	cmd="rm "+name +".jou.*"
 	print cmd
 	os.system(cmd)
+	os.chdir(cwd)
 if __name__=="__main__":
 	db=dBTable("volume")
 	for i in range(1,100):
