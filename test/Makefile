@@ -2,6 +2,9 @@ SHELL=/bin/sh
 
 dpnfs = `echo "/pnfs/enstore/hppc/test1-\`uname -n\`-\`whoami\`"`
 
+all:
+	@echo "nothing to build"
+
 newdbs:
 	- killall -9 longtest
 	- pidkill $$ENSTORE_DIR/test/longtest_pids
