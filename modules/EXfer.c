@@ -22,6 +22,8 @@
 # include <alloca.h>		/* alloca() */
 #endif
 
+#include  <sys/time.h>  /* select */
+
 #include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
 
 #if 0
@@ -134,6 +136,9 @@ do_read_write(  int 		rd_fd
 	char	*b_p;
 	int	sts;
 	int	bytes_to_xfer;
+	fd_set  fds;
+	int     n_fds;
+	struct  timeval timeout;
 
     buffer = (char *)alloca( blk_size ); /* space off stack */
 	
@@ -141,7 +146,16 @@ do_read_write(  int 		rd_fd
     {   /* Do not worry about reading/writeing an exact block as this is
 	   one the user end. But attempt blk_size reads. */
 	bytes_to_xfer = (no_bytes<blk_size)?no_bytes:blk_size;
-
+	
+	FD_ZERO(&fds);
+	FD_SET(rd_fd,&fds);
+	timeout.tv_sec = 15 * 60;
+	timeout.tv_usec = 0;
+	sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
+	if (sts == 0){
+	    /* timeout - treat as an EOF */
+	    return (-2);
+	}
 	sts = read( rd_fd, buffer, bytes_to_xfer );
 	if (sts == -1)
 	{   /* return/break - read error */
