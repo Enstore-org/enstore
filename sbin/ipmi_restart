@@ -32,10 +32,7 @@ sleep 3
 # The timer will reset the system if 5 minutes passes
 # without a reset by deadman with ipmisrv.
 
-### strange things are happening, multiple ipmisrvs appearing, so comment
-### this out for now.
-###$IPMI_DIR/ipmi_startup
-
+$IPMI_DIR/ipmi_startup
 
 ps axuww|grep ipmisrv| grep -v grep  
 
