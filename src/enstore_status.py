@@ -296,8 +296,8 @@ class EnstoreStatus:
     # format the encp info taken from the log file
     def format_encp(self, lines, key):
 	Trace.trace(13,"{format_encp ")
-	prefix = "\n          "
-	str = key+" : "
+	prefix =  "\n                     "
+	str = key+"            : "
 	spacing = ""
 	# break up each line into it's component parts, format it and save it
 	for line in lines:
@@ -325,7 +325,7 @@ class EnstoreStatus:
 	if lines != []:
 	    str = self.format_encp(lines, key)
 	else:
-	    str = "encp : NONE"
+	    str = "encp            : NONE"
 	generic_cs.enprint(str, generic_cs.SERVER|generic_cs.PRETTY_PRINT,\
 	                   verbose)
 	self.text[key] = str+"\n"
