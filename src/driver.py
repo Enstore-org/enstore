@@ -170,7 +170,20 @@ class  FTTDriver(GenericDriver) :
 	self.blocksize = blocksize
 	# make cur_loc_cookie such that an ordered list can be produced (for pnfs)
 	self.cur_loc_cookie = int2loc( self, (0,0,0) )# partition, blk offset, filemarks
-	os.system( 'mt -t ' + device + ' rewind')
+	FTT.open( device, 'r' )
+	x = 60				# for now, after 60 ftt_rewind will
+					# raise exception
+	while x:
+	    try:
+		status = FTT.status( 3 )
+		if status['ONLINE']: break
+		else:                break
+	    except FTT.error:
+	    time.sleep( 1 )
+	    x = x -1
+	    pass
+	FTT.rewind()
+	FTT.close()
 	# get blocksize into FTT so we do not have to pass it as param to
 	# open.
 	FTT.set_blocksize( self.blocksize )
