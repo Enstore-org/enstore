@@ -74,10 +74,7 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     fsize = filesize
     # set this dang mode to something that works on all machines!
     if ((mode & 0777000) != 0100000) & (filename != "TRAILER!!!"):
-	jonmode = 0100664
-
-    else :
-	jonmode = mode
+	mode = 0100664
 
     # make all filenames relative - strip off leading slash
     if fname[0] == "/" :
@@ -85,7 +82,7 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     dev = makedev(major, minor)
     rdev = makedev(rmajor, rminor)
     header =  "070707%06o%06lo%06lo%06lo%06lo%06lo%06o%011lo%06lo%011lo%s\0" % \
-             (dev & 0xffff, inode & 0xffff, jonmode & 0xffff,
+             (dev & 0xffff, inode & 0xffff, mode & 0xffff,
               uid & 0xffff, gid & 0xffff, nlink & 0xffff,
               rdev & 0xfff, mtime, (len(fname)+1)&0xffff,
               fsize, fname)
@@ -93,106 +90,37 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
 
 
 # create  header + trailer
-def headers( inode, mode, uid, gid, nlink, mtime, filesize,
-             major, minor, rmajor, rminor, filename):
-	head = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
+def headers(ticket):
+
+    inode = ticket.get('inode', 0)
+    mode = ticket.get('mode', 0)
+    uid = ticket.get('uid', 0)
+    gid = ticket.get('gid', 0)
+    nlink = ticket.get('nlink', 1)
+    mtime = ticket.get('mtime', 0)
+    filesize = ticket.get('size_bytes', 0)
+    major = ticket.get('major', 0)
+    minor = ticket.get('minor', 0)
+    rmajor = ticket.get('rmajor', 0)
+    rminor = ticket.get('rminor', 0)
+    filename = ticket.get('pnfsFilename', '???')
+    
+    header = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
              major, minor, rmajor, rminor, filename)
 
-        # create the trailer as well
-	trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
-
-        return head, trailer
-
-# generate the enstore cpio "trailers"
-def trailers(blocksize, siz, trailer):
-        size = siz
-
-        size = size + len(trailer)
-        padt = (blocksize-(size%blocksize)) % blocksize
-
-        # ok, send it back to so he can write it out
-
-        return(trailer + "\0"*int(padt) )
-
-             
-class Wrapper :
-
-    def sw_mount( self, driver, info ):
-	return
-
-    # generate an enstore cpio archive: devices must be open and ready
-    def write_pre_data( self, driver, info ):
-        inode        = info['inode']
-        mode         = info['mode']
-        uid          = info['uid']
-        gid          = info['gid']
-        mtime        = info['mtime']
-        self.filesize     = info['size_bytes']
-        major        = info['major']
-        minor        = info['minor']
-        rmajor       = info['rmajor']
-        rminor       = info['rminor']
-        filename     = info['pnfsFilename']
-        sanity_bytes = info['sanity_size']
-
-        # generate the headers for the archive and write out 1st one
-        nlink = 1
-        header, self.trailer = headers(inode, mode, uid, gid, nlink, mtime,
-				       self.filesize, major, minor, rmajor, rminor,
-				       filename)
-	self.header_size = len( header )
-	driver.write( header )
-	return
+    # create the trailer as well
+    trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
+    # Trailers must be rounded to 512 byte blocks
+    pad = len(trailer)%512
+    if pad:
+        pad = 512 - pad
+        trailer = trailer + '\0'*pad
+    return header, trailer
 
 
-    def write_post_data( self, driver, crc ):
+min_header_size = 76
 
-	try:
-	    blocksize = self.blocksize
-	except:
-	    blocksize = 512
-	size = self.header_size + self.filesize
-
-        driver.write( trailers(blocksize, size,self.trailer) )
-        return
-
-
-    def read_pre_data( self, driver, info ):
-	# The pre data is one cpio header (including the pad).
-
-	# 1st read the constant length part
-	header = driver.read(76)
-
-	# determine/save info
-	self.magic = header[0:6]
-	
-	self.filename_size = string.atoi( header[59:65], 8 )
-	self.file_size   = string.atoi( header[65:76], 8 )
-
-	self.header_size = 76+self.filename_size
-
-	# now just index to first part of real data
-	buffer = driver.read( self.filename_size )
-	return
-
-
-    def read_post_data( self, driver, info ):
-	trailer = driver.read(76)
-	magic = trailer[0:6]
-	if magic != self.magic:
-	    raise IOError, "header magic number " + repr(self.magic) +\
-		  "does not match trailer magic number " + repr(magic)
-	trailer_name_size = string.atoi( trailer[59:65], 8 )
-	trailer_size   = string.atoi( trailer[65:76], 8 )
-	if trailer_name_size != 11:
-	    raise IOError, "Wrong trailer name size " + repr(trailer_name_size)
-	trailer_name = driver.read(trailer_name_size)
-	if trailer_name != "TRAILER!!!\0":
-	   raise IOError, "Wrong trailer name " + repr(trailer_name) + \
-		 "Must be null terminated TRAILER!!!"
-
-	return
-	
-
-
-###############################################################################
+def header_size(header_start):
+    filename_size = string.atoi( header_start[59:65], 8 )    
+    header_size = 76+filename_size
+    return header_size
