@@ -303,6 +303,22 @@ def extract_brand(bfid):
 
     return None
 
+def extract_file_number(location_cookie):
+
+    if type(location_cookie) != types.StringType:
+        return None
+
+    if is_location_cookie(location_cookie):
+        try:
+            #Return just third integer portion of the string.
+            return int(string.split(location_cookie, "_")[2])
+        except KeyboardInterrupt:
+            raise sys.exc_info()
+        except:
+            return None
+        
+    return None
+
 def combine_dict(*dictionaries):
     new = {}
     for i in range(0, len(dictionaries)):
@@ -4474,18 +4490,18 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 vc_reply = vcc.inquire_vol(e.volume)
                 vc_reply['address'] = vcc.server_address
                 fc_reply = {'address' : fcc.server_address,
-                            #'bfid' : None,
-                            #'complete_crc' : None,
-                            #'deleted' : None,
-                            #'drive' : None,
+                            'bfid' : None,
+                            'complete_crc' : None,
+                            'deleted' : None,
+                            'drive' : None,
                             'external_label' : e.volume,
                             'location_cookie':generate_location_cookie(number),
-                            #'pnfs_mapname': None,
-                            #'pnfs_name0': None,
-                            #'pnfsid': None,
-                            #'pnfsvid': None,
-                            #'sanity_cookie': None,
-                            #'size': None,
+                            'pnfs_mapname': None,
+                            'pnfs_name0': None,
+                            'pnfsid': None,
+                            'pnfsvid': None,
+                            'sanity_cookie': None,
+                            'size': None,
                             'status' : (e_errors.OK, None)
                             }
             
@@ -4545,18 +4561,18 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
                 vc_reply = vcc.inquire_vol(e.volume)
                 vc_reply['address'] = vcc.server_address
                 fc_reply = {'address' : fcc.server_address,
-                            #'bfid' : None,
-                            #'complete_crc"' : None,
-                            #'deleted' : None,
-                            #'drive' : None,
+                            'bfid' : None,
+                            'complete_crc' : None,
+                            'deleted' : None,
+                            'drive' : None,
                             'external_label' : e.volume,
                             'location_cookie': '0000_000000000_0000001',
-                            #'pnfs_mapname': None,
-                            #'pnfs_name0': None,
-                            #'pnfsid': None,
-                            #'pnfsvid': None,
-                            #'sanity_cookie': None,
-                            #'size': None,
+                            'pnfs_mapname': None,
+                            'pnfs_name0': None,
+                            'pnfsid': None,
+                            'pnfsvid': None,
+                            'sanity_cookie': None,
+                            'size': None,
                             'status' : (e_errors.OK, None)
                             }
 
@@ -4605,7 +4621,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
 
                     file_size = get_file_size(ifullname)
                     
-                except (OSError, KeyError):
+                except (OSError, KeyError, AttributeError):
                     #If we get here then there was a problem determining
                     # the name and path of the file.  Most likely, there
                     # is an entry in pnfs but the metadata is not complete.

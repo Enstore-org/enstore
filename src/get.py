@@ -31,6 +31,27 @@ def print_usage():
     print "Usage:", os.path.basename(sys.argv[0]), \
           "[--verbose <level>] <Volume> <Input Dir.> <Output Dir.>"
 
+def error_output(request):
+    #Get the info.
+    pprint.pprint(request)
+    lc = request['fc'].get("location_cookie", None)
+    file_number = encp.extract_file_number(lc)
+    message = request.get("status", (e_errors.UNKNOWN, None))
+    #Format the output.
+    msg = "error_output %s %s\n" % (file_number, message)
+    #Print the output.
+    sys.stderr.write(msg)
+
+def untried_output(request_list):
+
+    for request in request_list:
+        #For each item in the list, print this if it was not tried.
+        if request.get('completion_status', None) == None:
+            request['status'] = (e_errors.UNKNOWN,
+                                 "File transfer not attempted.")
+            error_output(request)
+                
+        
 #def get_request_callback_addr(intf):
 #
 #    u = udp_client.UDPClient()
@@ -80,12 +101,14 @@ def next_request_update(work_ticket, file_number):
 
     #Only update these fields if a filename is not known already.
     #This could be a problem if a file is the same name as its location cookie.
-    if encp.is_location_cookie(work_ticket['infile']):
+    if encp.is_location_cookie(os.path.basename(work_ticket['infile'])):
         # Update the tickets fields for the next file.
-        work_ticket['infile'] = lc
+        work_ticket['infile'] = \
+                    os.path.join(os.path.dirname(work_ticket['infile']), lc)
         work_ticket['outfile'] = \
                     os.path.join(os.path.dirname(work_ticket['outfile']), lc)
-        work_ticket['wrapper']['fullname'] = work_ticket['outfile']
+        work_ticket['wrapper']['fullname'] = work_ticket['infile']
+        work_ticket['wrapper']['pnfsFilename'] = work_ticket['outfile']
 
     #Update the unique id for the LM.
     work_ticket['unique_id'] = encp.generate_unique_id()
@@ -98,11 +121,15 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         Trace.message(5, "Opening local file.")
 
+        #If necessary, create the file.
+        if work_ticket.get('completion_status', None) == EOD and \
+           not os.path.exists(work_ticket['outfile']):
+            encp.create_zero_length_files(work_ticket['outfile'])
         # Open the local file.
         done_ticket = encp.open_local_file(work_ticket['outfile'], e)
         
         if not e_errors.is_ok(done_ticket):
-            sys.stderr.write("Unable to open local file %s: %s\n",
+            sys.stderr.write("Unable to open local file %s: %s\n" %
                              (work_ticket['outfile'], done_ticket['status'],))
             encp.quit(1)
         else:
@@ -119,8 +146,10 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         request  = udp_socket.process_request()
         Trace.message(10, "MOVER_MESSAGE:")
         Trace.message(10, pprint.pformat(request))
+        Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
+        Trace.message(10, pprint.pformat(work_ticket))
         udp_socket.reply_to_caller(work_ticket)
-
+        
         Trace.message(5, "Opening the data socket.")
 
         #Open the data socket.
@@ -227,8 +256,6 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             Trace.log(e_errors.ERROR, str(result_dict['status']))
             return work_ticket
         
-        #verify_file_size(done_ticket) #Verify size is the same.
-
         work_ticket = encp.combine_dict(result_dict, work_ticket)
         return work_ticket
         
@@ -275,12 +302,14 @@ def end_session(udp_socket, control_socket):
     #Either success or failure; this can be closed.
     encp.close_descriptors(control_socket)
 
+#Return the number of files in the list left to transfer.
 def requests_outstanding(request_list):
 
     files_left = 0
 
     for request in request_list:
-        if request.get('completion_status', None) == None: 
+        completion_status = request.get('completion_status', None)
+        if completion_status == None or completion_status == EOD: 
             files_left = files_left + 1
 
     return files_left
@@ -289,7 +318,9 @@ def requests_outstanding(request_list):
 def get_next_request(request_list):
 
     for i in range(len(request_list)):
-        if request_list[i].get('completion_status', None) == None:
+        completion_status = request_list[i].get('completion_status', None)
+        print "completion_status", completion_status, i
+        if completion_status == None or completion_status == EOD: 
             return request_list[i], i
 
     return None, 0
@@ -392,7 +423,6 @@ def main(e):
 
         Trace.message(4, "Opened control socket.")
 
-
         #If this is a volume where the file information is not known and
         # the user did not specify the filenames...
         #if len(requests_per_vol[e.volume]) == 1 and \
@@ -402,6 +432,8 @@ def main(e):
             #Initalize this.
             file_number = 1
             request['completion_status'] = EOD
+            #Store these changes back into the master list.
+            requests_per_vol[e.volume][index] = request
 
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
@@ -417,8 +449,8 @@ def main(e):
             done_ticket = get_single_file(request, control_socket,
                                           udp_socket, e)
 
-            #Trace.message(1, "DONE_TICKET (get_single_file):")
-            #Trace.message(1, pprint.pformat(done_ticket))
+            Trace.message(1, "DONE_TICKET (get_single_file):")
+            Trace.message(1, pprint.pformat(done_ticket))
 
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
@@ -435,8 +467,16 @@ def main(e):
                 #Remember the completed transfer.
                 files_transfered = files_transfered + 1
 
+                #Set the metadata if it has not already been set.
+                try:
+                    p = pnfs.Pnfs(request['infile'])
+                    pnfs_bfid = p.get_bit_file_id()
+                except (IOError, OSError):
+                    Trace.message(5, "Updating metadata for %s." %
+                                  request['infile'])
+                    set_metadata(request, e)
                 
-                if request.get('completion_status', None) == "EOD": 
+                if request.get('completion_status', None) == "EOD":
                     #The fields need to be updated for the next file
                     # on the tape to be read.  We should only get here if
                     # the metadata is unkown and --list was NOT used.
@@ -449,19 +489,12 @@ def main(e):
                     #Set completion status to successful.
                     request['completion_status'] = SUCCESS
 
-                #Set the metadata if it has not already been set.
-                try:
-                    p = pnfs.Pnfs(request['infile'])
-                    pnfs_bfid = p.get_bit_file_id()
-                except (IOError, OSError):
-                    Trace.message(5, "Updating metadata for %s." %
-                                  request['infile'])
-                    set_metadata(request, e)
-
                 #Store these changes back into the master list.
                 requests_per_vol[e.volume][index] = request
                 #Get the next request before continueing.
                 request, index = get_next_request(requests_per_vol[e.volume])
+                print "GET_NEXT_REQUEST:"
+                pprint.pprint(request)
                 continue
             #The requested file does not exist on the tape.  (i.e. the
             # tape has only 6 files and the seventh file was requested.)
@@ -478,6 +511,11 @@ def main(e):
                 #Set completion status to failure.
                 request['completion_status'] = FAILURE
 
+                #Tell the calling process, this file failed.
+                error_output(request)
+                #Tell the calling process, of those files not attempted.
+                untried_output(requests_per_vol[e.volume])
+                #Perform any necessary file cleanup.
                 encp.quit(1)
             #Give up.
             elif e_errors.is_non_retriable(done_ticket['status'][0]) or \
@@ -493,6 +531,11 @@ def main(e):
                 #Set completion status to failure.
                 request['completion_status'] = FAILURE
 
+                #Tell the calling process, this file failed.
+                error_output(request)
+                #Tell the calling process, of those files not attempted.
+                untried_output(requests_per_vol[e.volume])
+                #Perform any necessary file cleanup.
                 encp.quit(1)
             #Keep trying.
             elif e_errors.is_retriable(done_ticket['status'][0]) or \
@@ -508,6 +551,7 @@ def main(e):
                 end_session(udp_socket, control_socket)
                 break
 
+    #Perform any necessary file cleanup.
     encp.quit(0)
 
 def do_work(intf):
