@@ -9,6 +9,7 @@ import random
 import select
 import errno
 import socket
+import cPickle
 
 # enstore imports
 import Trace
@@ -65,6 +66,11 @@ def write_tcp_raw(sock,msg):
 def write_tcp_obj(sock,obj):
     return write_tcp_raw(sock,repr(obj))
 
+# send a message which is a Python object
+def write_tcp_obj_new(sock,obj):
+    return write_tcp_raw(sock,cPickle.dumps(obj))
+
+
 #recv with a timeout
 def timeout_recv(sock,nbytes,timeout=15*60):
     fds,junk,junk = select.select([sock],[],[],timeout)
@@ -112,6 +118,12 @@ def read_tcp_obj(sock) :
     if not s:
         raise "TCP connection closed"
     return eval(s)
+
+def read_tcp_obj_new(sock) :
+    s=read_tcp_raw(sock)
+    if not s:
+        raise "TCP connection closed"
+    return cPickle.loads(s)
 
 
 if __name__ == "__main__" :
