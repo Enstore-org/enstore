@@ -965,7 +965,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             msg = "%s %s"(msg, expected_keys)
         msg = "%s %s"%(msg, ticket)
 
-        Trace.log(e_errrors.ERROR, msg)
+        Trace.log(e_errors.ERROR, msg)
 
     def send_client_done( self, ticket, status, error_info=None):
         ticket['status'] = (status, error_info)
@@ -1097,7 +1097,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             
         except:
             exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "connect_client:  %s %s"%(exc, msg))
+            Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%(exc, msg, traceback.format_tb(tb)))
             return None, None 
 
     
