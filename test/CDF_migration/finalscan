@@ -32,7 +32,6 @@ cat $f | while read tape; do
   n=`wc $files|awk '{print $1}'`
   
   echo "encp --delayed=3 --priority=300000 "          >> $command
-  n=0
   cat $files | while read f; do
     echo $f " " >>$command
   done
