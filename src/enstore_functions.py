@@ -1,9 +1,12 @@
 import time
 import string
 import os
+import exceptions
 
 import configuration_server
 import enstore_constants
+import Trace
+import e_errors
 
 DEFAULTHTMLDIR = "."
 
