@@ -2,10 +2,10 @@
 
 #set -x
 
-rm -f $ENSTORE_DIR/testfiles.in
+rm -f $ENSTORE_DIR/test/files.in
 
 dpnfs=/pnfs/enstore/test1-`whoami`
-if [ -d $dpnfs ] ; then 
+if [ -d $dpnfs ] ; then
     rm $dpnfs/*
 else
     mkdir $dpnfs
@@ -13,9 +13,9 @@ fi
 
 if [ ! -d data ] ; then mkdir data ; fi
 cd data
-for f in * ; do 
+for f in * ; do
     f2=$pnfs/`basename $f`
-    python encp.py $f $f2
-    echo $f2 >> ../files.in
-done 
+    python $ENSTORE_DIR/src/encp.py $f $f2
+    echo $f2 >> $ENSTORE_DIR/test/files.in
+done
 

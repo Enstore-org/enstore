@@ -1,9 +1,9 @@
 #!/bin/sh
 
-python configuration_server.py --config_host localhost --config_port 7500 &
+python $ENSTORE_DIR/src/configuration_server.py --config_host localhost --config_port 7500 &
 
 sleep 1
-python configuration_client.py --config_host localhost --config_port 7500
+python $ENSTORE_DIR/src/configuration_client.py --config_host localhost --config_port 7500
 if [ $? -ne 0 ] ; then
     echo "...configuration error. can not continue..."
     exit 1
