@@ -8,6 +8,7 @@ import regex
 import time
 import shutil
 import traceback
+import socket
 
 import e_errors
 import timeofday
@@ -79,11 +80,15 @@ def configure(configuration = None):
     csc = configuration_client.ConfigurationClient()
     backup = csc.get('backup',timeout=15,retry=3)
     check_ticket('Configuration Server',backup)
-    
+
+    #Check both the FQDN and the ip.  On multihomed hosts only checking on
+    # my lead to failed operations that would otherwise succed.
     backup_node = backup.get('hostip','MISSING')
     thisnode = hostaddr.gethostinfo(1)
     mynode = thisnode[2][0]
-    if mynode != backup_node:
+    backup_fqdn = socket.gethostbyaddr(backup_node)[0]
+    mynode_fqdn = socket.gethostbyaddr(mynode)[0]
+    if mynode != backup_node and backup_fqdn != mynode_fqdn:
         print timeofday.tod(),"ERROR Backups are stored", backup_node,
         print ' you are on',mynode,' - database check is not possible'
         sys.exit(1)
