@@ -3175,7 +3175,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         Trace.log(e_errors.INFO, "Updating stats")
-        self.update_stat()
+        try:
+            self.update_stat()
+        except TypeError:
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.ERROR, "in update_stat: %s %s" % (exc, msg))
+            # perhaps it is due to scsi error
+            self.watch_syslog()
+        except:
+            # I do not know what kind of exception this can be 
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
