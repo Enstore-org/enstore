@@ -535,7 +535,7 @@ bakken    3433  0.0  5.1 36472  6560  ?  S    00:17   0:00 python /home/bakken/e
 bakken    3465  0.0  8.8 33456 11300  ?  S    00:17   0:01 python /home/bakken/enstore/src/mover.new.py
 bakken    3515  0.0  0.3  1140   492  ?  S    00:18   0:00 db_checkpoint -h
 bakken    3520  0.0  0.3  1612   420  ?  S    00:18   0:00 db_deadlock -h
-bakken    3523  0.0  5.3 30508  6808  ?  S    00:18   0:01 python /home/bakken/enstore/src/admin_clerk.py
+bakken    3523  0.0  5.3 30508  6808  ?  S    00:18   0:01 python /home/bakken/enstore/src/alarm_server.py
 bakken    3673  0.0  8.1 36760 10432  ?  S    00:20   0:34 python /home/bakken/enstore/src/inquisitor.py
 bakken   12178  0.0  0.8  1552  1048  p2 S    19:38   0:00 /bin/login -h willow fnal.gov -p bakken
 </pre>
@@ -1748,18 +1748,17 @@ recognizes the following server names when sending commands to the individual
 servers:
 <p>
 <ul>
- <li>Configuration Server - config
+ <li>Configuration Server - cc
  <li>Library Manager - lmc
- <li>Mover - mov
+ <li>Mover - mvc
  <li>Media Changer - mcc
- <li>Inquisitor - inq
+ <li>Inquisitor - ic
  <li>File Clerk - fcc
  <li>Volume Clerk - vcc
- <li>Log Server - log
- <li>Admin Clerk - adm
- <li>Alarm Server - alarm
+ <li>Log Server - lc
+ <li>Alarm Server - ac
 </ul>
-For example : <em>ecmd inq --help</em>
+For example : <em>ecmd ic --help</em>
 <p>
 When <em>ecmd</em> is used to start/stop servers, the server must be specified by
 using the full Ascii name specified in the configuration file. For example:<br>
@@ -1770,8 +1769,7 @@ using the full Ascii name specified in the configuration file. For example:<br>
 <li>rip6.media_changer
 <li>file_clerk
 <li>volume_clerk
-<li>logserver
-<li>admin_clerk
+<li>log_server
 <li>alarm_server
 </ul>
 
@@ -1852,7 +1850,7 @@ and inelegant information.  This will be fixed in the future.
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop only the log_server on the current node</td>
-<td NOSAVE>ecmd stop --just logserver</td>
+<td NOSAVE>ecmd stop --just log_server</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop the Enstore system on the whole Enstore cluster</td>
@@ -2975,8 +2973,10 @@ configdict['blocksizes'] = { 'diskfile'  : 512, \
 
 configdict['file_clerk']   = { 'host':'rip6', 'port':7501, 'logname':'FILSRV' }
 configdict['volume_clerk'] = { 'host':'rip6', 'port':7502, 'logname':'VOLSRV' }
-configdict['admin_clerk']  = { 'host':'rip6', 'port':7503, 'logname':'ADMSRV' }
-configdict['logserver']    = { 'host':'rip6', 'port':7504, \
+configdict['alarm_server'] = { 'host':'rip10', 'logname':'ALMSRV', \
+                               'port'  : 7503 }
+
+configdict['log_server']   = { 'host':'rip6', 'port':7504, \
                                'log_file_path':'/rip6a/enstore/log' }
 configdict['database']     = { 'db_dir':'/rip6a/enstore/db' }
 configdict['backup']       = { 'host':'rip6', 'dir':'/rip6a/enstore/db_backup'}
@@ -3052,7 +3052,7 @@ supports the general commands supported by all other servers.
 <TD NOSAVE>ecmd config --get_keys</TD>
 <TD NOSAVE><pre>
 ['DE13DLT.mover',
- 'admin_clerk',
+ 'alarm_server',
  'backup',
  'blocksizes',
  'database',
@@ -3060,7 +3060,7 @@ supports the general commands supported by all other servers.
  'dlt.library_manager',
  'file_clerk',
  'inquisitor',
- 'logserver',
+ 'log_server',
  'rip6.library_manager',
  'rip6.media_changer',
  'rip6.mover',
@@ -3180,6 +3180,9 @@ following reports using this information:<BR>
 <LI>an <a href="#inquisitor_encp_status">html file</a> recording a snapshot of a history of <em>encp</em> commands 
 <LI>a <a href="#inquisitor_plot_ita">plot of individual transfer activity</a>
 <LI>a <a href="#inquisitor_plot_btd">plot of total bytes transferred/day</a>
+<LI>a <a href="#inquisitor_plot_mph">plot of mounts per hour</a>
+<LI>a <a href="#inquisitor_plot_mlat">plot of mount latencies</a>
+
 </UL>
 
 The reports are updated periodically based on 
@@ -3188,9 +3191,13 @@ config file directing the Inquisitor to gather
 each servers' information on a specific time frequency.  Each Enstore server may
 have its own unique timeout value specified for it.  For example, the Inquisitor
 may be instructed to gather information from the file_clerk every 60 seconds but
-from the logserver every 135 seconds.  However the plots are not updated
+from the log_server every 135 seconds.  However the plots are not updated
 automatically and may be updated by a user initiated command or by a cron job
 for example.  The information for plotting is obtained from the log files.
+<p>
+In addition to the above reports, the Inquisitor will make available on the
+web, the contents of the configuration file, all current Enstore log files and
+any additional log files useful to the user.
 <p>
 The Inquisitor will listen for command
 line requests sent to it and will periodically check to see if it is time to
@@ -3220,7 +3227,7 @@ set in the Enstore config file.
 <TD NOSAVE>continuous Ascii status file and<br><em>encp</em> html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>Admin Clerk</TD>
+<TD NOSAVE>Alarm Server</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
@@ -3267,7 +3274,7 @@ set in the Enstore config file.
 </TABLE></center>
 <P>
 
-Since the Inquisitor can request a new config file from the config_server 
+Since the Inquisitor requests a new config file from the config_server 
 periodically, it is possible to dynamically change the way information is
 displayed and the type of information that is displayed without restarting the
 Inquisitor.
@@ -3328,6 +3335,16 @@ mentioned in the table below may be replaced by any legal server name.
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots, keep the data files and put them in /tmp.</TD>
+<TD NOSAVE>ecmd inq --plot --keep --keep_dir=/tmp</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots and put the plot files in /tmp.</TD>
+<TD NOSAVE>ecmd inq --plot --out_dir=/tmp</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and use the log files located in the specified directory</TD>
 <TD NOSAVE>ecmd inq --plot --logfile_dir=/tmp/logs</TD>
 <TD NOSAVE>&nbsp;</TD>
@@ -3353,8 +3370,8 @@ mentioned in the table below may be replaced by any legal server name.
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>reset the frequency for monitoring the admin_clerk to the value in the config file</TD>
-<TD NOSAVE>ecmd inq --reset_timeout admin_clerk</TD>
+<TD NOSAVE>reset the frequency for monitoring the alarm_server to the value in the config file</TD>
+<TD NOSAVE>ecmd inq --reset_timeout alarm_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3379,7 +3396,7 @@ mentioned in the table below may be replaced by any legal server name.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor the Log Server now</TD>
-<TD NOSAVE>ecmd inq --update logserver</TD>
+<TD NOSAVE>ecmd inq --update log_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3459,6 +3476,11 @@ config file.  All frequencies are specified in seconds.<BR>
 <TD NOSAVE>120</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>robot_adic_log_dir</TD>
+<TD NOSAVE>location of adic log files to point to in the Inquisitor log page (NOTE: replace 'adic' with other text to add a link to a different log directory)</TD>
+<TD NOSAVE>&nbsp;</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>timeout</TD>
 <TD NOSAVE>frequency that Inquisitor looks for work</TD>
 <TD NOSAVE>5</TD>
@@ -3494,16 +3516,20 @@ In order to block monitoring of a particular server, set it's timeout value to
 An example Inquisitor dictionary element is given below:<BR>
 <P>
 <PRE>
-configdict['inquisitor']   = { 'host':'rip6',          \
-                               'port':7505,            \
-                               'logname':'INQSRV',     \
-                               'timeout':10,           \
-                               'alive_rcv_timeout': 5, \
-                               'alive_retries':1,      \
-                               'ascii_file':'/rip6a/enstore/inquisitor/', \
-                               'html_file':'/fnal/ups/prd/www_pages/enstore/', \
-                               'default_server_timeout': 15, \
-                               'timeouts' : { 'ait.library_manager': 15} }
+configdict['inquisitor'] = { 'alive_rcv_timeout'  : 5,
+                             'alive_retries'  : 1,
+                             'ascii_file'  : '/tmp',
+                             'default_server_timeout'  : 15,
+                             'host'  : 'rip7',
+                             'html_file'  : '/fnal/ups/prd/www_pages/enstore/',
+                             'http_log_file_path'  : '/enstore/log/',
+                             'logname'  : 'INQSRV',
+                             'max_ascii_size'  : 100000000,
+                             'port'  : 7505,
+                             'robot_adic_log_dir'  : '/enstore/adiclog/',
+                             'timeout'  : 10,
+                             'timeouts'  : {'ait.library_manager': 15},
+                             'www_host'  : 'http://rip8.fnal.gov:' }
 </PRE>
 
 <h4><a name="inquisitor_outputs">
@@ -3552,170 +3578,131 @@ number of attempts to summon them
 </ul>
 <pre>
 ENSTORE SYSTEM STATUS
-DC12MAM.mover : alive on (rip2, 7535) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 0,  Current State : idle 
-    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DE13DLT.mover : alive on (rip1, 7526) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 0,  Current State : idle 
-    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DE14DLT.mover : alive on (rip1, 7527) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 0,  Current State : idle 
-    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DE15DLT.mover : alive on (rip1, 7528) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 0,  Current State : idle 
-    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DE16DLT.mover : alive on (rip1, 7529) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 0,  Current State : idle 
-    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DM05AIT.mover : alive on (rip2, 7530) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 65,  Current State : busy writing 1073741824 bytes to the HSM
-    Current Transfer :  Read 1073741824 bytes,  Wrote 1070792703 bytes
-
-DM06AIT.mover : alive on (rip2, 7531) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 59,  Current State : busy writing 1073741824 bytes to the HSM
-    Current Transfer :  Read 0 bytes,  Wrote 0 bytes
-
-DM07AIT.mover : alive on (rip2, 7532) at 1999-Jan-7 00:00:27
-
-    Completed Transfers : 51,  Current State : busy writing 1073741824 bytes to the HSM
-    Current Transfer :  Read 171179860 bytes,  Wrote 167182335 bytes
-
-DM08AIT.mover : timed out on (rip2, 7533) at 1999-Jan-7 00:00:27
-admin clerk     : alive on (rip6, 7503) at 1999-Jan-7 00:00:27
-ait.library_manager : alive on (rip5, 7507) at 1999-Jan-7 00:00:27
+DC03MAM.mover : timed out on (rip1, 7552) at 1999-May-27 13:50:34
+                last alive at ----
+DC04MAM.mover : timed out on (rip1, 7553) at 1999-May-27 13:50:34
+                last alive at ----
+DC05MAM.mover : timed out on (rip1, 7554) at 1999-May-27 13:50:34
+                last alive at ----
+DC06MAM.mover : timed out on (rip1, 7555) at 1999-May-27 13:50:34
+                last alive at ----
+DM07AIT.mover : timed out on (ripsgi, 7556) at 1999-May-27 13:50:34
+                last alive at ----
+DM08AIT.mover : timed out on (ripsgi, 7557) at 1999-May-27 13:50:34
+                last alive at ----
+DM09AIT.mover : timed out on (ripsgi, 7558) at 1999-May-27 13:50:34
+                last alive at ----
+DM10AIT.mover : timed out on (ripsgi, 7559) at 1999-May-27 13:50:34
+                last alive at ----
+DM11AIT.mover : timed out on (ripsgi, 7560) at 1999-May-27 13:50:34
+                last alive at ----
+DM12AIT.mover : timed out on (ripsgi, 7561) at 1999-May-27 13:50:34
+                last alive at ----
+adicr1.media_changer : alive on (rip10, 7521) at 1999-May-27 13:50:34
+adicr1TOM.media_changer : alive on (rip10, 9521) at 1999-May-27 13:50:34
+ait.library_manager : alive on (rip5, 7512) at 1999-May-27 13:50:34
 
     SUSPECT VOLUMES : NONE
 
     KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
-    DM05AIT.mover         7530    work_at_mo    1999-Jan-6 23:52:31     0  
-    DM08AIT.mover         7533    work_at_mo    1999-Jan-6 21:26:51     0  
-    DM07AIT.mover         7532    work_at_mo    1999-Jan-6 23:58:01     0  
-    DM06AIT.mover         7531    work_at_mo    1999-Jan-6 23:59:38     0  
-
-    Work for: DM08AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7602
-          WRITE to: /pnfs/grau/ait/jon1/100MB.trand__Jan06212546rip8.fnal.gov25511,  BYTES: 104857600
-          DEVICE LABEL: CA2901,  FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
-          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
-          JOB SUBMITTED: 1999-Jan-6 21:25:48
-          FILE MODIFIED: 1999-Jan-6 21:25:49
-
-          DM05AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7600
-          WRITE to: /pnfs/grau/ait/jon1/1GB.trand__Jan06235102rip8.fnal.gov25520,  BYTES: 1073741824
-          DEVICE LABEL: CA2905,  FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
-          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
-          JOB SUBMITTED: 1999-Jan-6 23:51:04
-          FILE MODIFIED: 1999-Jan-6 23:51:04
-
-          DM07AIT.mover, from NODE: rip8.fnal.gov (Linux),  PORT: 7601
-          WRITE to: /pnfs/grau/ait/jon2/1GB.trand__Jan06235709rip8.fnal.gov25550,  BYTES: 1073741824
-          DEVICE LABEL: CA2907,  FILE FAMILY: jon-ait-2,  FILE FAMILY WIDTH: 2
-          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
-          JOB SUBMITTED: 1999-Jan-6 23:57:11
-          FILE MODIFIED: 1999-Jan-6 23:57:11
-
-          DM06AIT.mover, from NODE: rip4.fnal.gov (Linux),  PORT: 7600
-          WRITE to: /pnfs/grau/ait/jon2/1GB.trand__Jan06235846rip4.fnal.gov17340,  BYTES: 1073741824
-          DEVICE LABEL: CA2906,  FILE FAMILY: jon-ait-2,  FILE FAMILY WIDTH: 2
-          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
-          JOB SUBMITTED: 1999-Jan-6 23:58:48
-          FILE MODIFIED: 1999-Jan-6 23:58:48
-
-
-    Pending work: from NODE: rip8.fnal.gov (Linux),  PORT: 7602
-          WRITE to: /pnfs/grau/ait/jon1/1GB.trand__Jan06235128rip8.fnal.gov25511,  BYTES: 1073741824
-          FILE FAMILY: jon-ait-1,  FILE FAMILY WIDTH: 2
-          PRIORITIES:  CURRENT 1,  BASE 1,  DELTA 0  and  AGETIME: 0
-          JOB SUBMITTED: 1999-Jan-6 23:51:29
-          FILE MODIFIED: 1999-Jan-6 23:51:30
-
-blocksizes      : diskfile : 512,  redwood : 131072,  DECDLT : 131072,
-                  floppy : 512,  cartridge : 512,  exabyte : 131072,
-                  cassette : 512,  8MM : 131072
-config server   : alive on (rip6.fnal.gov, 7500) at 1999-Jan-7 00:00:27
-dc11.media_changer : alive on (rip1, 7521) at 1999-Jan-7 00:00:27
-dc12.media_changer : alive on (rip1, 7522) at 1999-Jan-7 00:00:27
-de13.media_changer : alive on (rip10, 7517) at 1999-Jan-7 00:00:27
-de14.media_changer : alive on (rip10, 7518) at 1999-Jan-7 00:00:27
-de15.media_changer : alive on (rip10, 7519) at 1999-Jan-7 00:00:27
-de16.media_changer : alive on (rip10, 7520) at 1999-Jan-7 00:00:27
-dlt.library_manager : alive on (rip5, 7509) at 1999-Jan-7 00:00:27
-
-    SUSPECT VOLUMES : NONE
-
-    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
-    DE13DLT.mover         7526    idle_mover    1999-Jan-6 18:01:14     0  
-    DE15DLT.mover         7528    idle_mover    1999-Jan-6 18:01:16     0  
-    DE16DLT.mover         7529    idle_mover    1999-Jan-6 18:01:17     0  
-    DE14DLT.mover         7527    idle_mover    1999-Jan-6 18:01:19     0  
+    DM12AIT.mover         7561    idle_mover    1999-May-26 00:19:39    0  
+    DM08AIT.mover         7557    idle_mover    1999-May-26 00:19:39    0  
+    DM11AIT.mover         7560    idle_mover    1999-May-26 00:19:39    0  
+    DM07AIT.mover         7556    idle_mover    1999-May-26 00:19:39    0  
+    DM10AIT.mover         7559    idle_mover    1999-May-26 00:19:39    0  
+    DM09AIT.mover         7558    idle_mover    1999-May-26 00:19:39    0  
 
     No work at movers
     No pending work
 
-dm05.media_changer : alive on (rip1, 7513) at 1999-Jan-7 00:00:27
-dm06.media_changer : alive on (rip1, 7514) at 1999-Jan-7 00:00:27
-dm07.media_changer : alive on (rip1, 7515) at 1999-Jan-7 00:00:27
-dm08.media_changer : alive on (rip1, 7516) at 1999-Jan-7 00:00:27
-encp            : 23:58:16 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
-                     104857600 bytes copied to CA2906 at a user rate of 0.509 MB/S
-                  23:56:39 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
-                     104857600 bytes copied to CA2907 at a user rate of 0.511 MB/S
-                  23:54:27 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
-                     1073741824 bytes copied to CA2906 at a user rate of 1.93 MB/S
-                  23:52:51 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
-                     1073741824 bytes copied to CA2907 at a user rate of 1.95 MB/S
-                  23:50:58 on rip8.fnal.gov by bakken (Data Transfer Rate : 1.35 MB/S)
-                     1048576 bytes copied to CA2905 at a user rate of 0.0183 MB/S
-                  23:50:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.41 MB/S)
-                     104857600 bytes copied to CA2905 at a user rate of 0.233 MB/S
-                  23:49:30 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.7 MB/S)
-                     1073741824 bytes copied to CA2905 at a user rate of 1.08 MB/S
-                  23:45:04 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.39 MB/S)
-                     104857600 bytes copied to CA2906 at a user rate of 0.527 MB/S
-                  23:43:32 on rip8.fnal.gov by bakken (Data Transfer Rate : 2.4 MB/S)
-                     104857600 bytes copied to CA2907 at a user rate of 0.529 MB/S
-
-file clerk      : alive on (rip6, 7501) at 1999-Jan-7 00:00:27
-inquisitor      : alive on (rip6, 7505) at 1999-Jan-7 00:00:27
-log server      : alive on (rip6, 7504) at 1999-Jan-7 00:00:27
-mam.library_manager : alive on (rip5, 7508) at 1999-Jan-7 00:00:27
+alarm server    : alive on (rip10, 7503) at 1999-May-27 13:50:34
+blocksizes      : diskfile : 512,  exabyte : 102400,  DECDLT : 102400,
+                  floppy : 512,  cartridge : 512,  redwood : 102400,
+                  cassette : 512,  8MM : 102400
+config server   : alive on (131.225.164.14, 7500) at 1999-May-27 13:50:34
+disk.library_manager : alive on (rip7, 7510) at 1999-May-27 13:50:34
 
     SUSPECT VOLUMES : NONE
 
     KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
-    DC12MAM.mover         7535    idle_mover    1999-Jan-6 18:01:05     0  
+    disk1.mover           7530    idle_mover    1999-May-26 16:23:33    0  
+    disk2.mover           7531    idle_mover    1999-May-26 16:23:32    0  
 
     No work at movers
     No pending work
 
-rip6.library_manager : alive on (rip5, 7506) at 1999-Jan-7 00:00:27
-
-    SUSPECT VOLUMES : NONE
-
-    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
-    rip6.mover            7525    idle_mover    1999-Jan-6 18:00:50     0  
-
-    No work at movers
-    No pending work
-
-rip6.media_changer : alive on (rip6, 7512) at 1999-Jan-7 00:00:27
-rip6.mover : alive on (rip6, 7525) at 1999-Jan-7 00:00:27
+disk.media_changer : alive on (rip7, 7520) at 1999-May-27 13:50:34
+disk1.mover : alive on (rip7, 7530) at 1999-May-27 13:50:34
 
     Completed Transfers : 0,  Current State : idle 
     Last Transfer :  Read 0 bytes,  Wrote 0 bytes
 
-volume clerk    : alive on (rip6, 7502) at 1999-Jan-7 00:00:27
+disk2.mover : alive on (rip7, 7531) at 1999-May-27 13:50:34
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+dlt.library_manager : alive on (rip5, 7514) at 1999-May-27 13:50:34
+
+    SUSPECT VOLUMES : NONE
+
+    No moverlist
+    No work at movers
+    No pending work
+
+encp            : 15:44:11 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.62 MB/S)
+                     1073741824 bytes copied to CA2252 at a user rate of 2.08 MB/S
+                  15:43:39 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.62 MB/S)
+                     1073741824 bytes copied to CA2258 at a user rate of 1.88 MB/S
+                  15:40:36 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.68 MB/S)
+                     1073741824 bytes copied to CA2257 at a user rate of 1.79 MB/S
+                  15:34:30 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.63 MB/S)
+                     1073741824 bytes copied to CA2252 at a user rate of 2.11 MB/S
+                  15:34:00 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.64 MB/S)
+                     1073741824 bytes copied to CA2258 at a user rate of 2.03 MB/S
+                  15:30:57 on rip4.fnal.gov by bakken (Data Transfer Rate : 2.67 MB/S)
+                     1073741824 bytes copied to CA2257 at a user rate of 1.84 MB/S
+
+file clerk      : alive on (rip6, 7501) at 1999-May-27 13:50:34
+inquisitor      : alive on (rip7, 7505) at 1999-May-27 13:50:34
+log server      : alive on (rip10, 7504) at 1999-May-27 13:50:34
+mam.library_manager : alive on (rip5, 7513) at 1999-May-27 13:50:34
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    DC05MAM.mover         7554    idle_mover    1999-May-26 00:19:39    0  
+    DC03MAM.mover         7552    idle_mover    1999-May-26 00:19:39    0  
+    DC04MAM.mover         7553    idle_mover    1999-May-26 00:19:39    0  
+    DC06MAM.mover         7555    idle_mover    1999-May-26 00:19:39    0  
+
+    No work at movers
+    No pending work
+
+null.library_manager : alive on (rip7, 7511) at 1999-May-27 13:50:34
+
+    SUSPECT VOLUMES : NONE
+
+    KNOWN MOVER           PORT    STATE         LAST SUMMONED        TRY COUNT
+    null2.mover           7533    idle_mover    1999-May-26 16:23:33    0  
+    null1.mover           7532    idle_mover    1999-May-26 16:23:33    0  
+
+    No work at movers
+    No pending work
+
+null1.mover : alive on (rip7, 7532) at 1999-May-27 13:50:34
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+null2.mover : alive on (rip7, 7533) at 1999-May-27 13:50:34
+
+    Completed Transfers : 0,  Current State : idle 
+    Last Transfer :  Read 0 bytes,  Wrote 0 bytes
+
+volume clerk    : alive on (rip6, 7502) at 1999-May-27 13:50:34
+
+
 </pre>
 
 <h4><a name="inquisitor_html_status">
@@ -3835,9 +3822,9 @@ ENSTORE SYSTEM STATUS
 This plot shows the history of individual transfers (and their size) over a 
 specified time interval.  This includes both reads and writes.
 <p>
-<center><img src="bpt.pts.gif"></center>
+<center><img src="enplot_xfer.gif"></center>
 <p>
-<div align=right><a href="bpt.pts.ps">(also available in Postscript)</a><div align=left>
+<div align=right><a href="enplot_xfer.ps">(also available in Postscript)</a><div align=left>
 <p>
 <h4><a name="inquisitor_plot_btd">
 1.3.8.3.5 Example Bytes Transferred/Day Plot
@@ -3845,9 +3832,27 @@ specified time interval.  This includes both reads and writes.
 This plot shows the number of bytes transferred per day over a specified time
 interval.  This includes both reads and writes.
 <p>
-<center><img src="bytes.pts.gif"></center>
+<center><img src="enplot_bpd.gif"></center>
 <p>
-<div align=right><a href="bytes.pts.ps">(also available in Postscript)</a><div align=left>
+<div align=right><a href="enplot_bpd.ps">(also available in Postscript)</a><div align=left>
+<p>
+<h4><a name="inquisitor_plot_mph">
+1.3.8.3.4 Example Mounts Per Hour Plot
+</h4>
+This plot shows the number of mounts per hour for a single day.
+<p>
+<center><img src="enplot_mph.gif"></center>
+<p>
+<div align=right><a href="enplot_mph.ps">(also available in Postscript)</a><div align=left>
+<p>
+<h4><a name="inquisitor_plot_mlat">
+1.3.8.3.4 Example Mount Latency Plot
+</h4>
+This plot shows mount latencies.
+<p>
+<center><img src="enplot_mlat.gif"></center>
+<p>
+<div align=right><a href="enplot_mlat.ps">(also available in Postscript)</a><div align=left>
 <p>
 
 <hr>
