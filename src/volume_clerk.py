@@ -205,6 +205,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          if r['status'][0] == e_errors.OK:
              # modify the volume record
              # should we update other infromation?
+             record['external_label'] = new
              self.dict[new] = record
              del self.dict[old]
          else:
@@ -231,6 +232,35 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         ticket['status'] = self.__rename_volume(old, new)
         self.reply_to_caller(ticket)
         return
+
+    # __erase_volume(vol) -- erase vol forever
+    # This one is very dangerous
+
+    def __erase_volume(self, vol):
+        fcc = file_clerk_client.FileClient(self.csc)
+        # erase file record
+        status = fcc.erase_volume(vol)
+        if status[0] != e_errors.OK:
+            return status
+        # erase volume record
+        del self.dict[vol]
+        return
+
+    # erase_volume(vol) -- server version of __erase_volume()
+
+    def erase_volume(self, ticket):
+        try:
+            vol = ticket['external_label']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+         ticket['status'] = self.__erase_volume(vol)
+         self.reply_to_caller(ticket)
+         return
             
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
