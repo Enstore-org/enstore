@@ -29,6 +29,7 @@ pending_work = manage_queue.Queue()       # list of read or write work tickets
 ##############################################################
 movers = []    # list of movers belonging to this LM
 mover_cnt = 0  # number of movers in the queue
+mover_index = 0  # index if current mover in the queue
 
 # add mover to the movers list
 def add_mover(name, address):
@@ -108,6 +109,8 @@ def update_mover_list(mover, state):
 
 # remove mover from list
 def remove_mover(mover, mover_list):
+    global mover_cnt
+    global mover_index
     if debug:
 	print 'removing mover ', mover
     Trace.trace(3,"{remove_mover " + repr(mover) + "from " + repr(mover_list))
@@ -116,6 +119,10 @@ def remove_mover(mover, mover_list):
 	return
     if mv:
 	mover_list.remove(mv)
+	if mover_cnt > 0:
+	    mover_cnt = mover_cnt - 1
+	    if mover_index >= mover_cnt:
+		mover_index = mover_cnt - 1
 	Trace.trace(3,"}remove_mover " + repr(mv))
 	
 	
@@ -180,7 +187,7 @@ def next_work_any_volume(csc):
                 continue
             # otherwise we have found a volume that has read work pending
 	    Trace.trace(3,"}next_work_any_volume "+ repr(w))
-            return w
+	    return w
 
         # if we need to write: ask the volume clerk for a volume, but first go
         # find volumes we _dont_ want to hear about -- that is volumes in the
@@ -262,7 +269,7 @@ def next_work_this_volume(v):
 
 def summon_mover(self, mover):
     if not summon: return
-    if list:
+    if debug:
 	print "SUMMON"
 	pprint.pprint(mover)
     Trace.trace(3,"{summon_mover " + repr(mover))
@@ -270,15 +277,15 @@ def summon_mover(self, mover):
     mover['state'] = 'summoned'
     mover['summon_try_cnt'] = mover['summon_try_cnt'] + 1
     mv = find_mover(mover, self.summon_queue)
-    if list: print "MV=", mv
+    if debug: print "MV=", mv
     if not mv:
 	self.summon_queue.append(mover)
 	    
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
-    if list: print 'summon_rq', summon_rq
+    if debug: print 'summon_rq', summon_rq
     mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
-    if list: 
+    if debug: 
 	print "summon_queue"
 	pprint.pprint(self.summon_queue)
     Trace.trace(3,"}summon_mover " + repr(mover))
@@ -286,17 +293,26 @@ def summon_mover(self, mover):
 
 # find the next idle mover
 def idle_mover_next(self):
+    global mover_cnt
+    global mover_index
     Trace.trace(3,"{idle_mover_next ")
     idle_mover_found = 0
-    for i in range(self.summon_queue_index, mover_cnt):
-	if movers[i]['state'] == 'idle_mover':
+    j = mover_index
+    for i in range(0, mover_cnt):
+	if movers[j]['state'] == 'idle_mover':
 	    idle_mover_found = 1
 	    self.summon_queue_index = i
 	    break
 	else:
-	    continue
+	    j = j+1
+	    if j == mover_cnt:
+		j = 0
     if idle_mover_found:
-	mv = movers[i]
+	mv = movers[j]
+	j = j+1
+	if j == mover_cnt:
+	    j = 0
+	mover_index = j
     else:
 	mv = None
     Trace.trace(3,"}idle_mover_next " + repr(mv))
@@ -335,6 +351,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def handle_timeout(self):
 	Trace.trace(3,"{handle_timeout")
 	global mover_cnt
+	global mover_index
 	if debug: 
 	    print "PROCESSING TO"
 	    print "summon queue"
@@ -367,11 +384,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    self.summon_queue.remove(mv)
 			    if mover_cnt > 0:
 				mover_cnt = mover_cnt - 1
+				if mover_index >= mover_cnt:
+				    mover_index = mover_cnt - 1
+				
 
 	if debug: 
-	    print "movers queue after processing TO"
-	    print 'mover count ', mover_cnt
-	    pprint.pprint(movers)
+	    #print "movers queue after processing TO"
+	    #print 'mover count ', mover_cnt
+	    #pprint.pprint(movers)
 	    print "summon queue after processing TO"
 	    pprint.pprint(self.summon_queue)
 	Trace.trace(3,"}handle_timeout")
@@ -420,7 +440,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	requests from another encp clients TO did not work even if
 	movers being summoned did not respond
 	"""
-	if debug:
+	if debug: print "read_from_hsm"
+	if list:
 	    print "read_from_hsm", ticket
 	Trace.trace(3,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
@@ -445,15 +466,16 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         pending_work.insert_job(ticket)
 
-	if debug :
-	    print "MOVERS ",mover_cnt
-	    pprint.pprint(movers)
-	
-	# find the next idle mover
-	mv = idle_mover_next(self)
-	if mv != None:
-	    # summon this mover
-	    summon_mover(self, mv)
+	# check if requested volume is busy
+	if  not is_volume_busy(ticket["fc"]["external_label"]):
+	    # find the next idle mover
+	    mv = idle_mover_next(self)
+	    if mv != None:
+		# summon this mover
+		if debug:
+		    print "read_from_hsm will summon mover", mv
+		summon_mover(self, mv)
+
 	Trace.trace(3,"}read_from_hsm ")
 	
 
@@ -462,7 +484,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	global mover_cnt
 	
 	Trace.trace(3,"{idle_mover " + repr(mticket))
-	if list: print "IDLE MOVER"
+	if debug: print "IDLE MOVER", mticket
 	update_mover_list(mticket, mticket['work'])
 	# remove the mover from the list of movers being summoned
 	mv = find_mover(mticket, self.summon_queue)
@@ -643,6 +665,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def unilateral_unbind(self, ticket):
 	Trace.trace(3,"{unilateral_unbind " + repr(ticket))
         # get the work ticket for the volume
+	if debug: print "unilateral_unbind"
 	if list: 
 	    print "unilateral_unbind"
 	    pprint.pprint(ticket)
@@ -679,17 +702,35 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    item['movers'].append(ticket['mover'])
 	if not vol_found:
 	    self.suspect_volumes.append(item)
-	if list: 
+	if debug: 
 	    print "SUSPECT VOLUME LIST AFTER"
 	    pprint.pprint(self.suspect_volumes)
 
         if w:
-	    if list: 
-		print "unbind: work_at_movers" 
+	    if (debug or list): 
+		print "unbind: work_at_movers"
+	    if list:
 		pprint.pprint(w)
             work_at_movers.remove(w)
-
         self.reply_to_caller({"work" : "nowork"})
+
+	# find next mover that can do this job
+	next_mover_found = 0
+	for i in range(0, mover_cnt):
+	    next_mover = idle_mover_next(self)
+	    if debug:
+		print "current mover", ticket['mover'], " next mover", next_mover
+	    if (next_mover != None) and \
+	       (next_mover['mover'] != ticket['mover']):
+		next_mover_found = 1
+		break
+	if next_mover_found:
+	    if debug: 
+		print "unilateral_unbind will summon mover ", next_mover
+	    summon_mover(self, next_mover)
+	else:
+	    w['status'] = (e_errors.NOMOVERS, None)
+	    send_regret(w)
 	Trace.trace(3,"}unilateral_unbind ")
 
     # what is next on our list of work?
