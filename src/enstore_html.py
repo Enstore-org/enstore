@@ -1195,7 +1195,7 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 				    self.data_dict[enstore_constants.STATUS]))
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
-	if self.data_dict.has_key(enstore_constants.LMSTATE):
+	if self.data_dict.has_key(enstore_constants.ACTIVE_VOLUMES):
 	    # the rest of the lm information is in a separate table, it starts
 	    # with the suspect volume info
 	    lm_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
@@ -1541,7 +1541,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# if we are updating the web page faster that receiving the new
 	# info, then we already have a correct status
 	if lm_d and string.find(lm_d[enstore_constants.STATUS][0], NBSP) == -1:
-	    if lm_d.has_key(enstore_constants.LMSTATE) and \
+	    if lm_d.has_key(enstore_constants.ACTIVE_VOLUMES) and \
 	       lm_d[enstore_constants.STATUS][0] not in NO_INFO_STATES:
 		# append the lm state to the status information
 		lm_d[enstore_constants.STATUS][0] = \
@@ -1563,7 +1563,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 					     link = name))
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
-	if lm_d.has_key(enstore_constants.LMSTATE):
+	if lm_d.has_key(enstore_constants.ACTIVE_VOLUMES):
 	    # the rest of the lm information is in a separate table, it starts
 	    # with the suspect volume info
 	    lm_table = HTMLgen.TableLite(cellpadding=0, 

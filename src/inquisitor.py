@@ -573,6 +573,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             return None
         elif not enstore_functions.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
+            return None
         return 1
 
     check_nodes = ["d0olc",]
@@ -717,6 +718,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             return None
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
+            return None
         return 1
 
     # get the library manager active_volumes and output it
@@ -747,6 +749,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             return None
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
             self.handle_lmc_error(lib_man, time, self.lm_queues[lib_man.name])
+            return None
         return 1
 
     # get the library manager state and output it
@@ -777,6 +780,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             return None
         elif not enstore_functions.is_ok(state):
             self.handle_lmc_error(lib_man, time, state)
+            return None
         return 1
 
     # get the information from the library manager(s)
