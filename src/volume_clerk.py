@@ -2032,6 +2032,135 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.log(e_errors.INFO, "stop listing all volumes")
         return
 
+    # return all the volumes in our dictionary.  Not so useful!
+    #
+    # This is the newer and better implementation that replaces
+    # get_vols(). Now the data formatting, which takes 90% of CPU
+    # load in this request, is done in the client, freeing up
+    # server for other requests
+    def get_vols2(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+        # log it
+        Trace.log(e_errors.INFO, "start listing all volumes (2)")
+
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket, ticket)
+
+        msg = {}
+        # q = "select * from volume "
+        q = "select label, capacity_bytes, remaining_bytes, library, system_inhibit_0, system_inhibit_1, si_time_0, si_time_1, storage_group, file_family, wrapper, comment from volume "
+        if ticket.has_key('in_state'):
+            state = ticket['in_state']
+        else:
+            state = None
+        if ticket.has_key('not'):
+            cond = ticket['not']
+        else:
+            cond = None
+        if ticket.has_key('key'):
+            key = ticket['key']
+        else:
+            key = None
+
+        if key and state:
+            if key == 'volume_family':
+                sg, ff, wp = string.split(state, '.')
+                if cond == None:
+                    q = q + "where storage_group = '%s' and file_family = '%s' and wrapper = '%s'"%(sg, ff, wp)
+                else:
+                    q = q + "where not (storage_group = '%s' and file_family = '%s' and wrapper = '%s')"%(sg, ff, wp)
+
+            else:
+                if key in ['blocksize', 'capacity_bytes',
+                    'non_del_files', 'remaining_bytes', 'sum_mounts',
+                    'sum_rd_access', 'sum_rd_err', 'sum_wr_access',
+                    'sum_wr_err']:
+                    val = "%d"%(state)
+                elif key in ['eod_cookie', 'external_label', 'library',
+                    'media_type', 'volume_family', 'wrapper',
+                    'storage_group', 'file_family', 'wrapper',
+                    'system_inhibit_0', 'system_inhibit_1',
+                    'user_inhibit_0', 'user_inhibit_1']:
+                    val = "'%s'"%(state)
+                elif key in ['first_access', 'last_access', 'declared',
+                    'si_time_0', 'si_time_1']:
+                    val = "'%s'"%(edb.time2timestamp(state))
+                else:
+                    val = state
+
+                if key == 'external_label':
+                    key = 'label'
+
+                if cond == None:
+                    q = q + "where %s = %s"%(key, val)
+                else:
+                    q = q + "where %s %s %s"%(key, cond, val)
+            q = q + "and not label like '%%.deleted'"
+        elif state:
+            if state in ['full', 'readonly', 'migrated']:
+                q = q + "where system_inhibit_1 = '%s'"%(state)
+            else:
+                q = q + "where system_inhibit_0 = '%s'"%(state)
+            q = q + "and not label like '%%.deleted'"
+
+        msg['header'] = 'FULL'
+
+        q = q + ' order by label;'
+
+        try:
+            res = self.dict.db.query(q).dictresult()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+            Trace.log(e_errors.ERROR, mesg)
+            res = []
+        msg['volumes'] = res
+        callback.write_tcp_obj_new(self.data_socket, msg)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket, ticket)
+        self.control_socket.close()
+
+        Trace.log(e_errors.INFO, "stop listing all volumes (2)")
+        return
+
+    # return the volumes that have set system_inhibits
+    def get_pvols(self,ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+
+        # log it
+        Trace.log(e_errors.INFO, "start listing all problematic volumes")
+
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket, ticket)
+
+        msg = {}
+        q = "select * from volume where \
+            not label like '%.deleted' and \
+            (system_inhibit_0 != 'none' or \
+            system_inhibit_1 != 'none') \
+            order by label;"
+
+        try:
+            res = self.dict.db.query(q).dictresult()
+        except:
+            exc_type, exc_value = sys.exc_info()[:2]
+            mesg = 'get_vols(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+            Trace.log(e_errors.ERROR, mesg)
+            res = []
+        msg['volumes'] = res
+        callback.write_tcp_obj_new(self.data_socket, msg)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket, ticket)
+        self.control_socket.close()
+
+        Trace.log(e_errors.INFO, "stop listing all problematic volumes")
+        return
+
     # The followings are for the sgdb
 
     #### DONE

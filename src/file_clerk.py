@@ -13,15 +13,12 @@ import time
 import string
 import socket
 import select
-import pprint
 
 # enstore imports
-import setpath
 import traceback
 import callback
 import dispatching_worker
 import generic_server
-import event_relay_client
 import monitored_server
 import enstore_constants
 import edb
@@ -29,8 +26,6 @@ import Trace
 import e_errors
 import configuration_client
 import hostaddr
-import pnfs
-import volume_family
 import event_relay_messages
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
@@ -609,6 +604,45 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO, "finish listing "+external_label)
         return
 
+    # This is the newer implementation that off load to client
+    def tape_list2(self,ticket):
+        try:
+            external_label = ticket["external_label"]
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+        except KeyError, detail:
+            msg = "Info Clerk: key %s is missing"%(detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            ####XXX client hangs waiting for TCP reply
+            return
+
+        # get a user callback
+        if not self.get_user_sockets(ticket):
+            return
+        callback.write_tcp_obj(self.data_socket,ticket)
+
+        # log the activity
+        Trace.log(e_errors.INFO, "start listing "+external_label+" (2)")
+        
+        q = "select bfid, crc, deleted, drive, volume.label, \
+                    location_cookie, pnfs_path, pnfs_id, \
+                    sanity_size, sanity_crc, size \
+             from file, volume \
+             where \
+                 file.volume = volume.id and volume.label = '%s' order by location_cookie;"%(
+             external_label)
+
+        vol = self.dict.db.query(q).dictresult()
+
+        callback.write_tcp_obj_new(self.data_socket, vol)
+        self.data_socket.close()
+        callback.write_tcp_obj(self.control_socket,ticket)
+        self.control_socket.close()
+        Trace.log(e_errors.INFO, "finish listing "+external_label+" (2)")
+        return
+
     #### DONE
     # list_active(self, ticket) -- list the active files on a volume
     #     only the /pnfs path is listed
@@ -658,6 +692,48 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
         return
+
+    # list_active2(self, ticket) -- list the active files on a volume
+    #	 only the /pnfs path is listed
+    #	 the purpose is to generate a list for deletion before the
+    #	 deletion of a volume
+
+    def list_active2(self,ticket):
+    	try:
+    		external_label = ticket["external_label"]
+    		ticket["status"] = (e_errors.OK, None)
+    		self.reply_to_caller(ticket)
+    	except KeyError, detail:
+    		msg = "Info Clerk: key %s is missing"%(detail,)
+    		ticket["status"] = (e_errors.KEYERROR, msg)
+    		Trace.log(e_errors.ERROR, msg)
+    		self.reply_to_caller(ticket)
+    		####XXX client hangs waiting for TCP reply
+    		return
+
+    	# get a user callback
+    	if not self.get_user_sockets(ticket):
+    		return
+    	callback.write_tcp_obj(self.data_socket,ticket)
+
+    	q = "select pnfs_path from \
+    		(select pnfs_path, location_cookie \
+    		from file, volume \
+    		where \
+    			file.volume = volume.id and volume.label = '%s' and\
+    			deleted = 'n' and not pnfs_path is null and \
+    			pnfs_path != '' order by location_cookie) a1;"%(
+    		 external_label)
+
+    	res = self.dict.db.query(q).getresult()
+
+    	# finishing up
+
+    	callback.write_tcp_obj_new(self.data_socket, res)
+    	self.data_socket.close()
+    	callback.write_tcp_obj(self.control_socket,ticket)
+    	self.control_socket.close()
+    	return
 
     def start_backup(self,ticket):
         try:

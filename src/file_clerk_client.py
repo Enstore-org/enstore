@@ -157,7 +157,7 @@ class FileClient(generic_client.GenericClient,
     def list_active(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        ticket = {"work"          : "list_active",
+        ticket = {"work"          : "list_active2",
                   "callback_addr" : (host, port),
                   "external_label": external_label}
         # send the work ticket to the file clerk
@@ -186,21 +186,23 @@ class FileClient(generic_client.GenericClient,
   
         ticket= callback.read_tcp_obj(data_path_socket)
         list = callback.read_tcp_obj_new(data_path_socket)
-        ticket['active_list'] = list
-        data_path_socket.close()
-
         # Work has been read - wait for final dialog with file clerk
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
             return done_ticket
 
+        ticket['active_list'] = []
+        for i in list:
+            ticket['active_list'].append(i[0])
+        data_path_socket.close()
+
         return ticket
 
     def tape_list(self,external_label):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
-        ticket = {"work"          : "tape_list",
+        ticket = {"work"          : "tape_list2",
                   "callback_addr" : (host, port),
                   "external_label": external_label}
         # send the work ticket to the file clerk
@@ -683,21 +685,25 @@ def do_work(intf):
     elif intf.list:
         ticket = ifc.tape_list(intf.list)
         if ticket['status'][0] == e_errors.OK:
-            
-            print "     label           bfid       size        location_cookie delflag original_name\n"
+            format = "%%-%ds %%-16s %%10s %%-22s %%-7s %%s"%(len(intf.list))
+            # print "%-8s %-16s %10s %-22s %-7s %s\n"%(
+            #    "label", "bfid", "size", "location_cookie", "delflag", "original_name")
+            print format%("label", "bfid", "size", "location_cookie", "delflag", "original_name")
+            print
             tape = ticket['tape_list']
             for record in tape:
-                deleted = 'unknown'
-                if record.has_key('deleted'):
-                    if record['deleted'] == 'yes':
-                        deleted = str('deleted')
-                    elif record['deleted'] == 'no':
-                        deleted = str('active')
-
-                print "%10s %s %10i %22s %7s %s" % (intf.list,
+                if record['deleted'] == 'y':
+                    deleted = 'deleted'
+                elif record['deleted'] == 'n':
+                    deleted = 'active'
+                else:
+                    deleted = 'unknown'
+                # print "%-8s %-16s %10i %-22s %-7s %s" % (intf.list,
+                print format % (intf.list,
                     record['bfid'], record['size'],
                     record['location_cookie'], deleted,
-                    record['pnfs_name0'])
+                    record['pnfs_path'])
+
     elif intf.mark_bad:
         ticket = fcc.mark_bad(intf.mark_bad)
 
