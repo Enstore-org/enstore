@@ -165,11 +165,11 @@ class LM_Queue:
 	else:
 	    # no match has been found, return first for this volume
 	    for w in self.queue:
-		if (w['vc'].has_key('external_label') and
-                    ['vc']['external_label'] == v["external_label"]):
-		    w['at_the_top'] = w['at_the_top']+1
-		    w['status'] = v['status']
-		    break
+                if w['vc'].has_key('external_label'):
+                    if ['vc']['external_label'] == v["external_label"]):
+                        w['at_the_top'] = w['at_the_top']+1
+                        w['status'] = v['status']
+                        break
 	    else: return None 
 	# this is for test
 	#if w["fc"].has_key("location_cookie"):
