@@ -74,3 +74,31 @@ def is_generic_server(server):
     if server in enstore_constants.GENERIC_SERVERS:
 	return 1
     return 0
+
+
+try:
+    import threading
+except ImportError:
+    threading = None
+
+if threading:    
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        thread = getattr(self, thread_name, None)
+        for wait in range(5):
+            if thread and thread.isAlive():
+                Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
+                time.sleep(1)
+        if thread and thread.isAlive():
+                Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
+                return -1
+        if after_function:
+            args = args + (after_function,)
+        thread = threading.Thread(group=None, target=function,
+                                  name=thread_name, args=args, kwargs={})
+        setattr(self, thread_name, thread)
+        try:
+            thread.start()
+        except exceptions.Exception, detail:
+            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
+        return 0
+
