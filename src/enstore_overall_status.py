@@ -9,9 +9,9 @@ import enstore_constants
 import enstore_html
 import HTMLgen
 
-nodes = {'d0ensrv2' : ' enstore on d0en',
-	 'stkensrv2' : ' enstore on stken',
-	 'cdfensrv2' : ' enstore on cdfen',
+nodes = {'d0ensrv2' : ' d0en mass storage',
+	 'stkensrv2' : ' stken mass storage',
+	 'cdfensrv2' : ' cdfen mass storage',
 	 }
 TMP = ".tmp"
 DESTDIR = "/tmp/enstore_overall_status"

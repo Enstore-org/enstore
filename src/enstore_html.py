@@ -2339,7 +2339,7 @@ class EnSaagPage(EnBaseHtmlDoc):
     yellowball = HTMLgen.Image("yelball.gif", width=17, height=17, border=0)
     checkmark = HTMLgen.Image("checkmark.gif", width=17, height=17, border=0)
 
-    def __init__(self, title="ENSTORE Status-At-A-Glance", gif="ess-aag.gif", 
+    def __init__(self, title="Mass Storage Status-At-A-Glance", gif="ess-aag.gif", 
 		 system_tag=""):
 	EnBaseHtmlDoc.__init__(self, refresh=360, help_file="saagHelp.html", 
 			       system_tag=system_tag)
@@ -2724,7 +2724,7 @@ class EnSaagNetworkPage(EnSaagPage):
 
 class EnStatusOnlyPage(EnSaagPage):
 
-    def __init__(self, title="ENSTORE Production System's Status", 
+    def __init__(self, title="Mass Storage Production System's Status", 
                  gif="en_all.gif"):
         EnBaseHtmlDoc.__init__(self, refresh=370, background="enstore_background.gif")
         self.title = title
