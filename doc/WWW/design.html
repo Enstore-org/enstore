@@ -560,6 +560,11 @@ A mover task is bound to a single drive, and seeks to use that drive to service
 read and write requests.  It communicates with the library manager in a
 defined protocol, as just described.
 <p>
+The mover is responsible for efficient data movement and as such is an
+integral part of the system.  The architecture allows for performance critical
+code to be written in "C" thus allowing efficient access to fundamental OS
+features such as forking with minimal to no language overhead.
+<p>
 Although a  mover is bound to a drive, and a drive may serve more than one
 virtual library, i.e., the mover has a dynamic list of of library managers
 that it is supposed to service.  This has two benefits.
