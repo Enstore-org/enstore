@@ -25,9 +25,9 @@ sendMail() {
   filename=$1
   mode=$2
   if [ "$mode" = "emergency" ] ; then
-     mailaddress=huangch@fnal.gov
+     mailaddress="bakken@fnal.gov huangch@fnal.gov"
   else
-     mailaddress=huangch@fnal.gov
+     mailaddress="bakken@fnal.gov huangch@fnal.gov"
   fi
   /usr/bin/Mail -s "${3:-\"Enstore ecron Scheduler\"}" $mailaddress <$filename
 }
