@@ -1,5 +1,8 @@
 # @(#) $Id$
 # $Log$
+# Revision 1.2  2000/06/13 16:09:13  cgw
+# import sys, use sys.exc_info
+#
 # Revision 1.1  2000/03/02 00:18:49  bakken
 # install here as temporary fix
 #
@@ -295,7 +298,6 @@ def open(env, filename, flag='c', prot=0666, type='hash', **opts):
 	Argument is the filename for the database.
 	See the module's __doc__ string for an overview of the interface.
 	"""
-
 	if type == 'hash':
 		return LibtpShelf(env.hashopen(filename, flag, prot, opts))
 	elif type == 'btree':
