@@ -108,6 +108,9 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def get_suspect_volumes(self):
 	return getlist(self,"get_suspect_volumes")
 
+    def get_delayed_dismounts(self):
+	return getlist(self,"get_delayed_dismounts")
+
 class LibraryManagerClientInterface(interface.Interface) :
     def __init__(self) :
         self.name = ""
@@ -116,6 +119,8 @@ class LibraryManagerClientInterface(interface.Interface) :
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
 	self.getmoverlist = 0
+	self.get_susp_vols = 0
+	self.get_del_dismounts = 0
 	self.got_server_verbose = 0
 	self.get_susp_vols = 0
         interface.Interface.__init__(self)
@@ -126,7 +131,8 @@ class LibraryManagerClientInterface(interface.Interface) :
     # define the command line options that are valid
     def options(self):
         return self.config_options()+self.verbose_options()+\
-	       ["getwork", "getmoverlist", "get_suspect_vols"] +\
+	       ["getwork", "getmoverlist", "get_suspect_vols",
+	       "get_del_dismount"] +\
 	       self.alive_options()+self.help_options()
 
     # tell help that we need a library manager specified on the command line
@@ -175,6 +181,10 @@ if __name__ == "__main__" :
     elif  intf.get_susp_vols:
 	ticket = lmc.get_suspect_volumes()
 	generic_cs.enprint(ticket['suspect_volumes'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+    elif  intf.get_del_dismounts:
+	ticket = lmc.get_delayed_dismounts()
+	generic_cs.enprint(ticket['delayed_dismounts'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
     else:
 	intf.print_help()

@@ -23,6 +23,7 @@ import udp_client
 
 import manage_queue
 import e_errors
+import timer_task
 
 pending_work = manage_queue.Queue()       # list of read or write work tickets
 
@@ -101,7 +102,7 @@ def update_mover_list(self, mover, state):
     Trace.trace(3,"{update_mover_list " + repr(mover))
     mv = find_mover(mover, movers, self.verbose)
     if mv == None:
-	return
+	return mv
     if not mv:
 	add_mover(mover['mover'], mover['address'])
 	mv = find_mover(mover, movers, self.verbose)
@@ -116,11 +117,11 @@ def update_mover_list(self, mover, state):
     mv['state'] = state
     mv['last_checked'] = time.time()
     Trace.trace(3,"}update_mover_list " + repr(mv))
-    #generic_cs.enprint("MOVER_LIST"+repr(movers))
     generic_cs.enprint("MOVER_LIST"+repr(movers), generic_cs.SERVER, \
 	               self.verbose)
     for i in movers:
         generic_cs.enprint(i, generic_cs.SERVER, self.verbose)
+    return mv
 
 # remove mover from list
 def remove_mover(mover, mover_list, verbose=0):
@@ -302,6 +303,9 @@ def next_work_this_volume(v):
     return {"status" : (e_errors.NOWORK, None)}
 
 ##############################################################
+def hello(a,b):
+    print "hello", a, b
+##############################################################
 
 def summon_mover(self, mover, ticket):
     if not summon: return
@@ -320,6 +324,17 @@ def summon_mover(self, mover, ticket):
 	    
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
+    
+    # find mover in delayed dismount queue and 
+    # cancel timer queue entry for this mover
+    w = {}
+    for mov in self.del_dismount_list:
+	if mov['mover'] == mover['mover']:
+	    try:
+		w = mov['work_ticket']
+	    except:
+		w = {}
+    timer_task.msg_cancel_tr(summon_mover, self, mover['mover'], w)
     self.enprint("summon_rq "+repr(summon_rq), generic_cs.DEBUG, self.verbose)
     mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
     self.enprint("summon_queue", generic_cs.DEBUG, self.verbose)
@@ -396,12 +411,14 @@ def send_regret(ticket, verbose):
 
 
 class LibraryManager(dispatching_worker.DispatchingWorker,
-		     generic_server.GenericServer):
+		     generic_server.GenericServer,
+		     timer_task.TimerTask):
 
     summon_queue = []   # list of movers being summoned
     max_summon_attempts = 3
     summon_queue_index = 0
     suspect_volumes = [] # list of suspected volumes
+    del_dismount_list = []
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
 
     def __init__(self, libman, csc=0, verbose=0, \
@@ -422,6 +439,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    pass
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], \
                                                       self.keys['port']))
+	timer_task.TimerTask.__init__( self, 5 )
         # get a logger
         self.logc = log_client.LoggerClient(self.csc, self.keys["logname"], \
                                             'logserver', 0)
@@ -610,7 +628,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	vc = volume_clerk_client.VolumeClerkClient(self.csc)
 	v = vc.inquire_vol(ticket['fc']['external_label'])
 	#self.enprint("VC "+repr(v))
-	if v['system_inhibit'] == 'noaccess':
+	if v['system_inhibit'] == e_errors.NOACCESS:
 	    # tape cannot be accessed, report back to caller and do not
 	    # put ticket in the queue
 	    ticket["status"] = (e_errors.NOACCESS, None)
@@ -775,7 +793,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 self.verbose)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
-	    update_mover_list(self, mticket, 'work_at_mover')
+	    mv = update_mover_list(self, mticket, 'work_at_mover')
+	    mv['external_label'] = w['fc']['external_label']
             self.enprint("Work at movers appended", generic_cs.SERVER, \
 	                 self.verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
@@ -826,7 +845,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.enprint("removing "+repr(w)+" from the queue", \
 	                 generic_cs.SERVER, self.verbose)
             work_at_movers.remove(w)
-
+	    delayed_dismount = w['encp']['delayed_dismount']
+	else: delayed_dismount = 0
 	# check if mover can accept another request
 	if state != 'idle_mover':
             self.enprint("have_bound_volume "+repr(state), generic_cs.DEBUG, \
@@ -850,10 +870,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	                 self.verbose)
             pending_work.delete_job(w)
             self.reply_to_caller(w) # reply now to avoid deadlocks
+	    delayed_dismount = w['encp']['delayed_dismount']
 	    state = 'work_at_mover'
 	    update_mover_list(self, mticket, state)
             w['mover'] = mticket['mover']
             work_at_movers.append(w)
+	    
             self.enprint("Pending Work", generic_cs.SERVER, self.verbose)
             self.enprint(w, generic_cs.SERVER|generic_cs.PRETTY_PRINT, \
 	                 self.verbose)
@@ -863,18 +885,48 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # if the pending work queue is empty, then we're done
         elif  w["status"][0] == e_errors.NOWORK:
-            format = "unbind vol %s mover=%s"
-            logticket = self.logc.send(log_client.INFO, 2, format,
-                                       mticket['vc']["external_label"],
-                                       mticket["mover"])
 	    mv = find_mover(mticket, movers, self.verbose)
-            #self.enprint("unbind volume before "+repr(mv), generic_cs.SERVER,\
-	    #             self.verbose)
-	    mv['state'] = 'unbind_sent'
-            self.enprint("unbind volume for "+repr(mv), generic_cs.SERVER, \
-	                 self.verbose)
-            self.reply_to_caller({"work" : "unbind_volume"})
-	    Trace.trace(3,"}have_bound_volume: No work, sending unbind ")
+	    if not ((mv != None) and mv):
+		mvr_found = 1 # fake dismount request
+	    else:
+		# check if delayed_dismount set
+		mvr_found = 0
+		mvr = find_mover(mticket,self.del_dismount_list,self.verbose)
+		if (mvr != None) and mvr: 
+		    mvr_found = 1
+		try:
+		    if (delayed_dismount):
+			if not mvr_found:
+			    self.del_dismount_list.append(mv)
+			timer_task.msg_add(delayed_dismount*60, 
+					   summon_mover, self, mv, w)
+			self.reply_to_caller({'work': 'nowork'})
+			Trace.trace(3,"}have_bound_volume delayed dismount"+\
+				    repr(w))
+			return
+		    else:
+			mvr_found = 1
+		except:
+		    mvr_found = 1 
+			
+	    if mvr_found:
+		# unbind volume
+		try:
+		    self.del_dismount_list.remove(mv)
+		except:
+		    pass
+		format = "unbind vol %s mover=%s"
+		logticket = self.logc.send(log_client.INFO, 2, format,
+					   mticket['vc']["external_label"],
+					   mticket["mover"])
+		mv['state'] = 'unbind_sent'
+		self.enprint("unbind volume for "+repr(mv), generic_cs.SERVER, \
+			     self.verbose)
+		#print "Unbind", mv
+		self.reply_to_caller({"work" : "unbind_volume"})
+		Trace.trace(3,"}have_bound_volume: No work, sending unbind "+\
+			    repr(mv))
+	    
 
         # alas
         else:
@@ -1099,6 +1151,31 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				  controlsocket")
         self.control_socket.close()
 	Trace.trace(3,"}get_suspect_volumes ")
+        os._exit(0)
+
+    # get list of delayed dismounts 
+    def get_delayed_dismounts(self,ticket):
+	Trace.trace(3,"{get_delayed_dismounts ")
+        self.enprint("get_delayed_dismounts "+repr(ticket),generic_cs.SERVER,
+	             self.verbose)
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            return
+        self.get_user_sockets(ticket)
+        rticket = {}
+        rticket["status"] = (e_errors.OK, None)
+        rticket["delayed_dismounts"] = self.del_dismount_list
+        callback.write_tcp_socket(self.data_socket,rticket,
+                                  "library_manager get_suspect_volumes, datasocket")
+        self.data_socket.close()
+        callback.write_tcp_socket(self.control_socket,ticket,
+                                  "library_manager get_delayed_dismounts, \
+				  controlsocket")
+        self.control_socket.close()
+	Trace.trace(3,"}get_delayed_dismounts ")
         os._exit(0)
 
 

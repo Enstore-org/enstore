@@ -7,7 +7,9 @@
 #  $Date$
 
 import time
+import string
 import e_errors
+import pprint
 
 timerTaskDict = {}
 
@@ -60,10 +62,27 @@ def msg_add( time, func, *args ):
 
 def msg_cancel( func, *args ):
     try: del timerTaskDict[str(func)+str(args)]
-    except: pass
+    except:
+	pass
+    return None
+
+def msg_cancel_tr( func, *args ):
+    for key in timerTaskDict.keys():
+	if string.find(key, str(func)+str(args)) != -1:
+	    break
+    try:
+	a= key
+    except:
+	return None
+    try:
+	del timerTaskDict[key]
+    except:
+	pass
     return None
 
     
+
+
 
 
 

@@ -751,7 +751,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # flag that the current volume is marked as noaccess
     def set_system_noaccess(self, ticket):
      Trace.trace(10,'{set_system_noaccess '+repr(ticket))
-     self.set_system_inhibit(ticket, "noaccess")
+     self.set_system_inhibit(ticket, e_errors.NOACCESS)
      Trace.trace(10,"}set_system_noaccess ")
 
     # device is broken - what to do, what to do

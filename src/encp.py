@@ -47,7 +47,7 @@ d0sam_format = "INFILE=%s\n"+\
 def write_to_hsm(input, output,
                  config_host, config_port,
                  ilist=0, chk_crc=0,
-                 pri=1, delpri=0, agetime=0,
+                 pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0):
     if t0==0:
         t0 = time.time()
@@ -114,10 +114,10 @@ def write_to_hsm(input, output,
     # check the input unix files. if files don't exits, 
     # we bomb out to the user
     (ninput, inputlist, file_size) = inputfile_check(input)
-    if ninput>1:
+    if (ninput>1) and (delayed_dismount == 0):
         delayed_dismount = 1
-    else:
-        delayed_dismount = 0
+    #else:
+        #delayed_dismount = 0
 
     tinfo["filecheck"] = time.time() - t1 #-------------------------End
     if verbose>2:
@@ -640,7 +640,7 @@ def write_to_hsm(input, output,
 def read_from_hsm(input, output,
                   config_host, config_port,
                   ilist=0, chk_crc=0,
-                  pri=1, delpri=0, agetime=0,
+                  pri=1, delpri=0, agetime=0, delayed_dismount,
                   t0=0):
     if t0==0:
         t0 = time.time()
@@ -662,35 +662,19 @@ def read_from_hsm(input, output,
     t1 = time.time() #----------------------------------------------------Start
 
     # initialize - and get config, udp and log clients
-    finfo = []
-    vinfo = []
-    volume = []
-    unique_id = []
-    retry = []
+
+    request_list = []
+
+
     vols_needed = {}
-    delayed_dismount = 0
     maxretry = 2
 
     global logc
     client = {}
-#    (csc,u,uinfo) = clients(config_host,config_port,verbose)
     (client['csc'],client['u'],client['uinfo']) = clients(config_host, \
 							  config_port,verbose)
-    """
-    wrapper = {}
-    for key in client['uinfo'].keys():
-        wrapper[key] = client['uinfo'][key]
 
-    # make the part of the ticket that encp knows about (there's more later)
-    encp = {}
-    encp["basepri"] = pri
-    encp["adminpri"] = -1
-    encp["delpri"] = delpri
-    encp["agetime"] = agetime
-    encp["delayed_dismount"] = delayed_dismount
-    """
-
-    tinfo["clients"] = time.time() - t1 #-----------------------------------End
+    tinfo["clients"] = time.time() - t1 #---------------------------------End
     if verbose>2:
         print "  dt:",tinfo["clients"], "   cumt=",time.time()-t0
     if verbose>3:
@@ -703,11 +687,11 @@ def read_from_hsm(input, output,
         print "Checking input pnfs files:",input, "   cumt=",time.time()-t0
     t1 =  time.time() #---------------------------------------------------Start
 
-    # check the input unix files. if files don't exits, we bomb out to the user
+    #check the input unix files. if files don't exits, we bomb out to the user
     (ninput, inputlist, file_size) = inputfile_check(input)
     (bfid,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
 
-    tinfo["pnfscheck"] = time.time() - t1 #---------------------------------End
+    tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
         print "  dt:",tinfo["pnfscheck"], "   cumt=",time.time()-t0
     if verbose>3:
@@ -720,13 +704,13 @@ def read_from_hsm(input, output,
 
     if verbose>2:
         print "Checking output unix files:",output, "   cumt=",time.time()-t0
-    t1 = time.time() #----------------------------------------------------Start
+    t1 = time.time() #---------------------------------------------------Start
 
     # check (and generate) the output files(s)
     # bomb out if they exist already
     outputlist = outputfile_check(ninput,inputlist,output)
 
-    tinfo["filecheck"] = time.time() - t1 #---------------------------------End
+    tinfo["filecheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
         print "  dt:",tinfo["filecheck"], "   cumt=",time.time()-t0
     if verbose>3:
@@ -734,7 +718,7 @@ def read_from_hsm(input, output,
 
     if verbose>2:
         print "Requesting callback ports", "   cumt=",time.time()-t0
-    t1 = time.time() #----------------------------------------------------Start
+    t1 = time.time() #---------------------------------------------------Start
 
     # get a port to talk on and listen for connections
     Trace.trace(10,'read_from_hsm calling callback.get_callback')
@@ -744,7 +728,7 @@ def read_from_hsm(input, output,
     Trace.trace(10,'read_from_hsm got callback host='+repr(host)+\
                 ' port='+repr(port)+' listen_socket='+repr(listen_socket))
 
-    tinfo["get_callback"] = time.time() - t1 #------------------------------End
+    tinfo["get_callback"] = time.time() - t1 #-----------------------------End
     if verbose>2:
         print " ",host,port
         print "  dt:",tinfo["get_callback"], "   cumt=",time.time()-t0
@@ -769,12 +753,10 @@ def read_from_hsm(input, output,
         print "Calling file clerk for file info", "   cumt=",time.time()-t0
     t1 = time.time() # ---------------------------------------------------Start
 
-    wrapper = []
-    encp = []
+    nfiles = 0
     # call file clerk and get file info about each bfid
     for i in range(0,ninput):
         t2 = time.time() # -------------------------------------------Lap-Start
-        #unique_id.append(0) # will be set later when submitted
         Trace.trace(7,"read_from_hsm calling file clerk for bfid="+\
                     repr(bfid[i]))
         binfo  = client['u'].send({'work': 'bfid_info', 'bfid': bfid[i]},
@@ -785,11 +767,23 @@ def read_from_hsm(input, output,
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
                     repr(binfo['fc']['external_label']))
-        vinfo.append(binfo['vc'])
-        finfo.append(binfo['fc'])
+	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
+	    print_d0sam_format('', '', 0, binfo)
+	    continue
+
+	request = {}
+	request['vinfo'] = binfo['vc']
+	request['finfo'] = binfo['fc']
+	request['volume'] = binfo['fc']['external_label']
+	request['bfid'] = bfid[i]
+	request['infile'] = inputlist[i]
+	request['outfile'] = outputlist[i]
+	request['pinfo'] = pinfo[i]
+	request['file_size'] = file_size[i]
+	request['retry'] = 0
+	request['unique_id'] = ''
+
         label = binfo['fc']['external_label']
-        volume.append(label)
-	retry.append(0)
 	wr = {}
 	for key in client['uinfo'].keys():
 	    wr[key] = client['uinfo'][key]
@@ -801,13 +795,16 @@ def read_from_hsm(input, output,
 	encp_el["delpri"] = delpri
 	encp_el["agetime"] = agetime
 	encp_el["delayed_dismount"] = delayed_dismount
-	wrapper.append(wr)
-	encp.append(encp_el)
+
+	request['wrapper'] = wr
+	request['encp'] = encp_el
 
         try:
             vols_needed[label] = vols_needed[label]+1
         except KeyError:
             vols_needed[label] = 1
+	request_list.append(request)
+	nfiles = nfiles+1
         tinfo['fc'+repr(i)] = time.time() - t2 #------------------------Lap--End
 
     tinfo['fc'] =  time.time() - t1 #-------------------------------End
@@ -824,22 +821,18 @@ def read_from_hsm(input, output,
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
 
-    files_left = ninput
+    files_left = nfiles
     retry_flag = 0
     bytes = 0
     while files_left:
 
 	for vol in vols_needed.keys():
 	    system_enabled(p) # make sure system is still enabled before submitting
-	    (submitted,Qd, unique_id) = submit_read_requests(bfid, inputlist, 
-							 outputlist, wrapper, 
-							 file_size, pinfo, 
-							 client, tinfo, vol, 
-							 volume, finfo, 
-							 vinfo, encp, files_left,
-							 retry,
-							 verbose, unique_id, \
-							 retry_flag)
+	    (submitted,Qd) = submit_read_requests(request_list,
+							     client, tinfo, 
+							     vol, files_left,
+							     verbose, 
+							     retry_flag)
 
 
 	    tinfo["send_ticket"] = time.time() - t1 #---------------------------End
@@ -848,21 +841,19 @@ def read_from_hsm(input, output,
 	    if verbose>1:
 		print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
 
-		# We have placed our work in the system and now we have to 
-		#wait for resources. All we need to do is wait for the system
-		# to call us back, and make sure that is it calling _us_ back,
-		# and not some sort of old call-back to this very same port. 
-		# It is dicey to time out, as it is probably legitimate to 
-		# wait for hours....
+	    # We have placed our work in the system and now we have to 
+	    # wait for resources. All we need to do is wait for the system
+	    # to call us back, and make sure that is it calling _us_ back,
+	    # and not some sort of old call-back to this very same port. 
+	    # It is dicey to time out, as it is probably legitimate to 
+	    # wait for hours....
 
 	    if submitted != 0:
-		files_left, brcvd = read_hsm_files(listen_socket, submitted, 
-						   files_left, unique_id, 
-						   inputlist, outputlist, 
-						   file_size, pinfo, finfo,
-						   vinfo, tinfo, wrapper, 
-						   chk_crc, d0sam, encp, 
-						   maxretry, retry, verbose)
+		files_left, brcvd = read_hsm_files(listen_socket, submitted,
+						   files_left, request_list,
+						   tinfo, 
+						   chk_crc, d0sam, 
+						   maxretry, verbose)
 		bytes = bytes + brcvd
 		if verbose: print "FILES_LEFT ", files_left
 		if files_left > 0:
@@ -883,7 +874,7 @@ def read_from_hsm(input, output,
     else:
         done_ticket["MB_per_S"] = 0.0
 
-    msg = "Complete: "+repr(total_bytes)+" bytes in "+repr(ninput)+" files"+\
+    msg = "Complete: "+repr(total_bytes)+" bytes in "+repr(nfiles)+" files"+\
           " in"+repr(tf-t0)+"S.  Overall rate = "+\
           repr(done_ticket["MB_per_S"])+" MB/s"
     if verbose:
@@ -929,7 +920,6 @@ def query_lm_queue(node,
 		fn = pw_list[i]["wrapper"]["fullname"]
 		if host == node:
 		    print "%s %s %s %s P" % (host,user,pnfsfn,fn)
-		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s P" % (host,user,pnfsfn,fn)
 	    for i in range(0, len(at_list)):
 		host = at_list[i]["wrapper"]["machine"][1]
 		user = at_list[i]["wrapper"]["uname"]
@@ -937,10 +927,8 @@ def query_lm_queue(node,
 		fn = at_list[i]["wrapper"]["fullname"]
 		if host == node:
 		    print "%s %s %s %s M" % (host,user,pnfsfn,fn)
-		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s M" % (host,user,pnfsfn,fn)
 	    del(lmc)
 
-    #pprint.pprint(keys)
     Trace.trace(6,"}query_lm_queue")
 
 
@@ -948,13 +936,13 @@ def query_lm_queue(node,
 
 # submit read_from_hsm requests
 
-def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size, 
-			 pinfo, client, tinfo, vol, volume, finfo, vinfo, 
-			 encp, ninput, retry, verbose, unique_id, retry_flag):
+def submit_read_requests(requests, client, tinfo, vol, ninput, verbose, 
+			 retry_flag):
 
     t2 = time.time() #--------------------------------------------Lap-Start
     rq_list = []
-    Trace.trace(7,"{submit_read_requests="+repr(inputlist)+" t2="+repr(t2))
+    for rq in requests: 
+	Trace.trace(7,"{read_hsm_files:"+repr(rq['infile'])+" t2="+repr(t2))
     Qd=""
     current_library = ''
     submitted = 0
@@ -965,33 +953,33 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
     thishost = socket.gethostname()
 
     for i in range(0,ninput):
-        if volume[i]==vol:
+        if requests[i]['volume']==vol:
 	    if not retry_flag:
 		id = "%s-%f-%d" \
 		     % (thishost, time.time(), pid)
 
-		unique_id.append(id)  # note that this is down to mS
+		requests[i]['unique_id'] = id  # note that this is down to mS
 	    
-            wrapper[i]["fullname"] = outputlist[i]
-            wrapper[i]["sanity_size"] = 65535
-            wrapper[i]["size_bytes"] = file_size[i]
+            requests[i]['wrapper']['fullname'] = requests[i]['outfile']
+            requests[i]['wrapper']["sanity_size"] = 65535
+            requests[i]['wrapper']["size_bytes"] = requests[i]['file_size']
 
             # store the pnfs information info into the wrapper
-            for key in pinfo[i].keys():
+            for key in requests[i]['pinfo'].keys():
                 if not client['uinfo'].has_key(key) : # the user key takes precedence over the pnfs key
-                    wrapper[i][key] = pinfo[i][key]
+                    requests[i]['wrapper'][key] = requests[i]['pinfo'][key]
 
-	    if verbose > 1: print "RETRY_CNT=", retry[i]
+	    if verbose > 1: print "RETRY_CNT=", requests[i]['retry']
             # generate the work ticket
             work_ticket = {"work"              : "read_from_hsm",
-                           "wrapper"           : wrapper[i],
+                           "wrapper"           : requests[i]['wrapper'],
                            "callback_addr"     : client['callback_addr'],
-                           "fc"                : finfo[i],
-                           "vc"                : vinfo[i],
-                           "encp"              : encp[i],
-			   "retry_cnt"         : retry[i],
+                           "fc"                : requests[i]['finfo'],
+                           "vc"                : requests[i]['vinfo'],
+                           "encp"              : requests[i]['encp'],
+			   "retry_cnt"         : requests[i]['retry'],
                            "times"             : times,
-                           "unique_id"         : unique_id[i]
+                           "unique_id"         : requests[i]['unique_id']
                            }
 
 
@@ -999,12 +987,12 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
             Trace.trace(8,"submit_read_requests q'ing:"+repr(work_ticket))
 
             # get the library manager
-            library = vinfo[i]['library']
+            library = requests[i]['vinfo']['library']
 
 	    rq = {"work_ticket": work_ticket,
-		  "infile"     : inputlist[i],
-		  "bfid"       : bfid[i],
-		  "library"    : vinfo[i]['library'],
+		  "infile"     : requests[i]['infile'],
+		  "bfid"       : requests[i]['bfid'],
+		  "library"    : requests[i]['vinfo']['library'],
 		  "index"      : i
 		  }
 	    rq_list.append(rq)
@@ -1099,15 +1087,16 @@ def submit_read_requests(bfid, inputlist, outputlist, wrapper, file_size,
     
     Trace.trace(7,"}submit_read_requests. submitted="+repr(submitted)+ \
 		" Qd:"+repr(Qd))
-    return submitted, Qd, unique_id
+    return submitted, Qd
 
 
 #############################################################################
 # read hsm files in the loop after read requests have been submitted
 
-def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outputlist, file_size, pinfo, finfo, vinfo, tinfo, wrapper,
-		   chk_crc, d0sam, encp, maxretry, retry, verbose):
-    Trace.trace(7,"{read_hsm_files:"+repr(inputlist))
+def read_hsm_files(listen_socket, submitted, ninput,requests,  
+		   tinfo, chk_crc, d0sam, maxretry, verbose):
+    for rq in requests: 
+	Trace.trace(7,"{read_hsm_files:"+repr(rq['infile']))
     files_left = ninput
     bytes = 0
     control_socket_closed = 0
@@ -1134,7 +1123,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             forus = 0
             for j in range(0,ninput):
                 # compare strings not floats (floats fail comparisons)
-                if str(unique_id[j])==str(callback_id):
+                if str(requests[j]['unique_id'])==str(callback_id):
                     forus = 1
                     break
             if forus==1:
@@ -1152,7 +1141,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         # ok, we've been called back with a matched id - how's the status?
         if ticket["status"][0] != e_errors.OK :
 	    # print error to stdout in d0sam format
-	    print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
+	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
+			       requests[j]['file_size'],
 			       ticket)
 	    if not e_errors.is_retriable(ticket["status"][0]):
 		# exit here
@@ -1168,18 +1158,11 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                    +"ticket[\"status\"]="+repr(ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
-		del(inputlist[j])
-		del(outputlist[j])
-		del(file_size[j])
-		del(pinfo[j])
-		del(finfo[j])
-		del(vinfo[j])
-		del(unique_id[j])
-		del(retry[j])
+		del(requests[j])
 		if files_left > 0:
 		    files_left = files_left - 1
 	    else:
-		retry[j] = retry[j]+1
+		requests[j]['retry'] = requests[j]['retry']+1
 	    continue
 
         data_path_socket = callback.mover_callback_socket(ticket)
@@ -1193,7 +1176,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             print "  dt:",dt,"   cumt=",time.time()-t0
 
         if verbose:
-            print "Receiving data for file ", outputlist[j],\
+            print "Receiving data for file ", requests[j]['outfile'],\
                   "   cumt=",time.time()-t0
         t2 = time.time() #----------------------------------------Lap-Start
 
@@ -1202,10 +1185,10 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         l = 0
         mycrc = 0
         bufsize = 65536*4
-	tempname = outputlist[j]+'.'+unique_id[j]
+	tempname = requests[j]['outfile']+'.'+requests[j]['unique_id']
         f = open(tempname,"w")
         Trace.trace(8,"read_hsm_files: reading data to  file="+\
-                    inputlist[j]+" socket="+repr(data_path_socket)+\
+                    requests[j]['infile']+" socket="+repr(data_path_socket)+\
                     " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
 
 	# someone should catch the exceptions fd_xfer throws, for possible
@@ -1214,7 +1197,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 	    if chk_crc != 0: crc_fun = ECRC.ECRC
 	    else:            crc_fun = None
 	    mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
-			       file_size[j], bufsize, crc_fun )
+			       requests[j]['file_size'], bufsize, crc_fun )
 	except:
 	    Trace.trace(0,"write_to_hsm EXfer error:"+\
 			str(sys.argv)+" "+\
@@ -1225,24 +1208,17 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 
 
 	    if ticket['retry_cnt'] >= maxretry:
-		del(inputlist[j])
-		del(outputlist[j])
-		del(file_size[j])
-		del(pinfo[j])
-		del(finfo[j])
-		del(vinfo[j])
-		del(unique_id[j])
-		del(retry[j])
+		del(requests[j])
 		if files_left > 0:
 		    files_left = files_left - 1
 	    else:
-		retry[j] = retry[j]+1
+		requests[j]['retry'] = requests[j]['retry']+1
 	    continue
 	    print done_ticket, "retrying"
 
 
 	# if no exceptions, fsize is file_size[j]
-	fsize = file_size[j]
+	fsize = requests[j]['file_size']
 	# fd_xfer does not check for EOF after reading the specified
 	# number of bytes.
 	buf = data_path_socket.recv(bufsize)# there should not be any more
@@ -1281,8 +1257,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         if done_ticket["status"][0] != e_errors.OK:
 	    os.remove(tempname)
 	    # print error to stdout in d0sam format
-	    print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
-			       done_ticket)
+	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
+			       requests[j]['file_size'], done_ticket)
 	    # exit here
 	    if not e_errors.is_retriable(ticket["status"][0]):
 		jraise(errno.errorcode[errno.EPROTO], \
@@ -1299,18 +1275,11 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                    +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
 	    if ticket['retry_cnt'] >= maxretry:
-		del(inputlist[j])
-		del(outputlist[j])
-		del(file_size[j])
-		del(pinfo[j])
-		del(finfo[j])
-		del(vinfo[j])
-		del(unique_id[j])
-		del(retry[j])
+		del(requests[j])
 		if files_left > 0:
 		    files_left = files_left - 1
 	    else:
-		retry[j] = retry[j]+1
+		requests[j]['retry'] = requests[j]['retry']+1
 	    continue
 
         # verify that the crc's match
@@ -1318,7 +1287,9 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
             if done_ticket["fc"]["complete_crc"] != mycrc :
 		# print error to stdout in d0sam format
 		done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
-		print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
+		print_d0sam_format(requests[j]['infile'], 
+				   requests[j]['outfile'], 
+				   requests[j]['file_size'],
 				   done_ticket)
 
                 print_error(errno.errorcode[errno.EPROTO],\
@@ -1326,15 +1297,8 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                        +repr(done_ticket["fc"]["complete_crc"])+" "+repr(mycrc))
 
 		# no retry for this case
-		bytes = bytes+file_size[j]
-		inputlist.remove(inputlist[j])
-		outputlist.remove(outputlist[j])
-		file_size.remove(file_size[j])
-		pinfo.remove(pinfo[j])
-		finfo.remove(finfo[j])
-		vinfo.remove(vinfo[j])
-		unique_id.remove(unique_id[j])
-		retry.remove(retry[j])
+		bytes = bytes+requests[j]['file_size']
+		requests.remove(requests[j])
 		os.remove(tempname)
 		if files_left > 0:
 		    files_left = files_left - 1
@@ -1355,7 +1319,7 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
                 print "Updating pnfs last parked",\
                       "   cumt=",time.time()-t0
             try:
-                p.set_lastparked(repr(wrapper['fullname']))
+                p.set_lastparked(repr(requests[j]['wrapper']['fullname']))
             except:
                 print "Failed to update last parked info"
             if verbose>1:
@@ -1381,33 +1345,26 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
 
         if verbose:
             print format %\
-                  (inputlist[j], outputlist[j], fsize,
+                  (requests[j]['infile'], requests[j]['outfile'], fsize,
                    done_ticket["fc"]["external_label"],
                    tinfo["rate"+repr(j)],
                    tinfo["transrate"+repr(j)],
                    time.time()-t0)
         if d0sam:
-	    print_d0sam_format(inputlist[j], outputlist[j], fsize,
-			       done_ticket)
+	    print_d0sam_format(requests[j]['infile'], requests[j]['outfile'], 
+			       fsize, done_ticket)
 
         logc.send(log_client.INFO, 2, format,
-                  inputlist[j], outputlist[j], fsize,
+                  requests[j]['infile'], requests[j]['outfile'], fsize,
                   done_ticket["fc"]["external_label"],
                   tinfo["rate"+repr(j)], 
                   tinfo["transrate"+repr(j)],
                   time.time()-t0)
 	# remove file requests if transfer completed succesfuly
 	if (done_ticket["status"][0] == e_errors.OK):
-	    os.rename(tempname, outputlist[j])
-	    bytes = bytes+file_size[j]
-	    del(inputlist[j])
-	    del(outputlist[j])
-	    del(file_size[j])
-	    del(pinfo[j])
-	    del(finfo[j])
-	    del(vinfo[j])
-	    del(unique_id[j])
-	    del(retry[j])
+	    os.rename(tempname, requests[j]['outfile'])
+	    bytes = bytes+requests[j]['file_size']
+	    del(requests[j])
 	    if files_left > 0:
 		files_left = files_left - 1
 
@@ -1809,6 +1766,7 @@ class encp(interface.Interface):
         self.agetime = 0 # priority doesn't age
         self.d0sam = 0   # no special sam listings
         self.verbose = 0 # no output yet
+	self.delayed_dismount = 0 # delayed dismount time is set to 0
 
         host = 'localhost'
         port = 0
@@ -1824,7 +1782,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      ["verbose=","crc","pri=","delpri=","agetime=","d0sam", "queue"]+\
+                      ["verbose=","crc","pri=","delpri=","agetime=","delayed_dismount=", "d0sam", "queue"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
@@ -1934,14 +1892,14 @@ if __name__  ==  "__main__" :
 	    write_to_hsm(e.input,  e.output,
 			 e.config_host, e.config_port,
 			 e.verbose, e.chk_crc,
-			 e.pri, e.delpri, e.agetime, t0)
+			 e.pri, e.delpri, e.agetime, e.delayed_dismount, t0)
 
 	# have we been called "encp hsmfile unixfile" ?
 	elif e.intype=="hsmfile" and e.outtype=="unixfile" :
 	    read_from_hsm(e.input, e.output,
 			  e.config_host, e.config_port,
 			  e.verbose, e.chk_crc,
-			  e.pri, e.delpri, e.agetime, t0)
+			  e.pri, e.delpri, e.agetime, e.delayed_dismount, t0)
 
 	# have we been called "encp unixfile unixfile" ?
         elif e.intype=="unixfile" and e.outtype=="unixfile" :

@@ -59,8 +59,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                capacity_bytes,        #
                remaining_bytes,       #
                eod_cookie  = "none",  # code for seeking to eod
-               user_inhibit  = "none",# "none" | "readonly" | "noaccess"
-               error_inhibit = "none",# "none" | "readonly" | "noaccess" | "writing"
+               user_inhibit  = "none",# "none" | "readonly" | "NOACCESS"
+               error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
                                       # lesser access is specified as
                                       #       we find media errors,
                                       # writing means that a mover is

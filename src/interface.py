@@ -162,6 +162,8 @@ class Interface:
                 self.getmoverlist = 1
             elif opt == "--get_suspect_vols" :
                 self.get_susp_vols = 1
+            elif opt == "--get_del_dismount" :
+                self.get_del_dismounts = 1
             elif opt == "--load" :
                 self.load = 1
             elif opt == "--vols" :
@@ -235,6 +237,8 @@ class Interface:
                 self.delpri = string.atoi(value)
             elif opt == "--agetime" :
                 self.agetime = string.atoi(value)
+            elif opt == "--delayed_dismount" :
+                self.delayed_dismount = string.atoi(value)
             elif opt == "--debug":
                 self.debug = 1
             elif opt == "--dump":
