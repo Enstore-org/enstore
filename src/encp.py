@@ -9,6 +9,7 @@ import grp
 import pnfs
 import callback
 import binascii
+import log_client
 from configuration_client import configuration_client
 from udp_client import UDPClient, TRANSFER_MAX
 
@@ -20,7 +21,7 @@ except ImportError:
 
 ##############################################################################
 
-def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
+def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -265,6 +266,8 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
                   "at",done_ticket["MB_per_S"],"MB/S", "   cum=",time.time()-t0
             #print done_formatted
 
+        logticket = logc.send(log_client.INFO, "this is an INFO message")
+
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
                +"2nd (post-file-send) mover callback on socket "\
@@ -273,7 +276,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
 
 ##############################################################################
 
-def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
+def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
     t0 = time.time()
     tinfo = {}
     tinfo["abs_start"] = t0
@@ -505,6 +508,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
                   "   cum=",time.time()-t0
             #done_formatted  = pprint.pformat(done_ticket)
             #print done_formatted
+        logticket = logc.send(log_client.INFO, "this is an INFO message")
 
     else :
         jraise(errno.errorcode[errno.EPROTO],"encp.read_from_hsm: "\
@@ -571,13 +575,16 @@ if __name__  ==  "__main__" :
     csc = configuration_client(config_host,config_port)
     u = UDPClient()
 
+    # get a logger
+    logc = log_client.LoggerClient(csc, 'ENCP', 'logserver', 0)
+
     # all files on the hsm system have /pnfs/ as the 1st part of their name
     p1 = string.find(args[0],"/pnfs/")
     p2 = string.find(args[1],"/pnfs/")
 
     # have we been called "encp unixfile hsmfile" ?
     if p1==-1 and p2==0 :
-        write_to_hsm(args[0], args[1], u, csc, list, chk_crc)
+        write_to_hsm(args[0], args[1], u, csc, logc, list, chk_crc)
         if list > 1 :
             p=pnfs.pnfs(args[1],1)
             p.dump()
@@ -587,7 +594,7 @@ if __name__  ==  "__main__" :
         if list > 1 :
             p=pnfs.pnfs(args[0],1)
             p.dump()
-        read_from_hsm(args[0], args[1], u, csc, list, chk_crc)
+        read_from_hsm(args[0], args[1], u, csc, logc, list, chk_crc)
 
     # have we been called "encp unixfile unixfile" ?
     elif p1==-1 and p2==-1 :
@@ -602,3 +609,4 @@ if __name__  ==  "__main__" :
     else:
         print "ERROR: Can not process arguments "\
               +args[0]," to ",args[1]
+

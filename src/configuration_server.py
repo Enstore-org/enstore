@@ -222,6 +222,6 @@ if __name__ == "__main__" :
         try:
             cs.serve_forever()
         except:
-            print sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            print sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
 
