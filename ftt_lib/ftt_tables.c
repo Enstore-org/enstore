@@ -884,40 +884,41 @@ ftt_dev_entry devtable[] = {
 /* macro for standard rmt devices for the drives  */
 #define SunOS_dev \
        { SunOS_str"lbn",   SunOS_L,    0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"lbn",   SunOS_L,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"lbn",   SunOS_L,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"lb",    SunOS_L,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"ln",    SunOS_L,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"l",     SunOS_L,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
 \
        { SunOS_str"mbn",   SunOS_M,    0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"mbn",   SunOS_M,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"mbn",   SunOS_M,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"mb",    SunOS_M,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"mn",    SunOS_M,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"m",     SunOS_M,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
 \
        { SunOS_str"hbn",   SunOS_H,    0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"hbn",   SunOS_H,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"hbn",   SunOS_H,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"hb",    SunOS_H,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"hn",    SunOS_H,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"h",     SunOS_H,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
 \
        { SunOS_str"ubn",   SunOS_U,    0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"ubn",   SunOS_U,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"ubn",   SunOS_U,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"ub",    SunOS_U,    0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"un",    SunOS_U,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"u",     SunOS_U,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
 \
        { SunOS_str"cbn",   SunOS_U,    0,  0,                 0, 1, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"cbn",   SunOS_U,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"cbn",   SunOS_U,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"cb",    SunOS_U,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"cn",    SunOS_U,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"c",     SunOS_U,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
 \
        { SunOS_str"bn",    SunOS_D,    0,  0,                 0, 1, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"bn",    SunOS_D,    0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /* { SunOS_str"bn",    SunOS_D,    0,  1,                 0, 0, SUN_MAX_BLKSIZE},*/ \
        { SunOS_str"b",     SunOS_D,    0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"n",     SunOS_D,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"",      SunOS_D,    0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE}, \
+
 
 /* flags for SunOS */
 
@@ -1087,10 +1088,10 @@ ftt_dev_entry devtable[] = {
        { SunOS_str"lbn",    SunOS_L,  0,  0,                 0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"mbn",    SunOS_M,  0,  0,                 0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"hbn", 4, 0, 0x80,  0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"hbn", 4, 0, 0x80,  0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /*{ SunOS_str"hbn", 4, 0, 0x80,  0,  1,                 0, 0, SUN_MAX_BLKSIZE}, */\
        { SunOS_str"ubn",    SunOS_U,  0,  0,                 0, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"ubn", 4, 1, 0x81,  0,  0,                 0, 0, SUN_MAX_BLKSIZE}, \
-       { SunOS_str"ubn", 4, 1, 0x81,  0,  1,                 0, 0, SUN_MAX_BLKSIZE}, \
+       /*{ SunOS_str"ubn", 4, 1, 0x81,  0,  1,                 0, 0, SUN_MAX_BLKSIZE}, */\
     /* Densitites */                                                               \
        { SunOS_str"",    0,  0, 0x0A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE}, \
        { SunOS_str"",    1,  0, 0x16,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE}, \
@@ -1926,7 +1927,7 @@ FTT_OP_STATUS|FTT_OP_GET_STATUS,ftt_trans_table_AIX, Exabyte_density_trans,
 	{ 0,},
     }},
 {"WINNT", "", "", FTT_FLAG_BSIZE_AFTER|FTT_FLAG_MODE_AFTER,
-	FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+	FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
 	".\\tape%d",".\\tape%d", 1, Win32find_dev, {
 	 /* string		den mod hwd pas fxd rewind                   1st */
 	 /* ======		=== === === === === ======                   === */

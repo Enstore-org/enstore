@@ -244,7 +244,6 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     ENTERING("ftt_set_compression");
     CKNULL("ftt_descriptor", d);
-    DEBUG4(stderr, "Entering: ftt_set_compression\n");
 
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(d->prod_id) & FTT_DO_MS_Px0f) {

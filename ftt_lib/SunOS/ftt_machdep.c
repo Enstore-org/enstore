@@ -80,29 +80,7 @@ ftt_set_compression(ftt_descriptor d, int compression) {
 int
 ftt_set_blocksize(ftt_descriptor d, int blocksize) {
 
-    static struct mtop buf;
-    int res = 0;
-
-    DEBUG4(stderr,"Entering ftt_set_hwdens_blocksize %d\n", blocksize);
-
-    if (0 > (res = ftt_open_io_dev(d))) { 
-        return res;
-    }
-    buf.mt_op = MTGRSZ;
-    res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-
-    if ( res == 0 && (int)buf.mt_count != blocksize ) { 
-      DEBUG2(stderr,"Blocksize on device %d >> set to %d\n",(int) buf.mt_count,blocksize);
-      
-      buf.mt_op = MTSRSZ;
-      buf.mt_count = blocksize;
-      res = ioctl(d->file_descriptor, MTIOCTOP, &buf);
-      res = ftt_translate_error(d,FTT_OPN_STATUS,
-			      "an MTIOCTOP/MTSRSZ ioctl()", res,
-                                "an ftt_open_dev",1);
-    }
-
-    return res;
+  return 0;
 }
 
 int
