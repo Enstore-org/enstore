@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 import os
 import sys
 import stat
 import string
 import time
+import errno
 
 import info_client
 import option
@@ -206,6 +213,23 @@ def check_file(f):
     try:
         f_stats = os.lstat(f)
     except OSError, msg:
+	if msg.errno == errno.ENOENT:
+            #Before blindly returning this error, first check the directory
+            # listing for this entry.  A known 'ghost' file problem exists
+            # and this is how to find out.
+            directory, filename = os.path.split(f)
+            dir_list = os.listdir(directory)
+            if filename in dir_list:
+                #We have this special error situation.
+                error(f + " ... invalid directory entry")
+                return
+          
+            error(f + " ... does not exist")
+            return
+        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
+            error(f + " ... permission error")
+            return
+        
         error(f + " ... " + os.strerror(msg.errno))
         return
     
