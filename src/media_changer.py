@@ -58,6 +58,7 @@ def unlock(f):
 
 
 
+
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                          generic_server.GenericServer):
@@ -88,7 +89,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.idleTimeLimit = 600  # default idle time in seconds
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
-        self.set_this_error = e_errors.OK  # this is useful for testing mover errors
         self.timeInsert = time.time()
         ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_max_work)
@@ -164,18 +164,17 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             print "make sure tape %s in in drive %s"%(external_label,drive)
             time.sleep( self.mc_config['delay'] )
             print 'continuing with reply'
-        return (self.set_this_error, 0, None)
+        return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
     def unload(self,
                external_label,  # volume external label
                drive,           # drive id
                media_type):     # media type
-               
         if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
             Trace.log(e_errors.INFO, "remove tape "+external_label+" from drive "+drive)
             time.sleep( self.mc_config['delay'] )
-        return (self.set_this_error, 0, None)
+        return (e_errors.OK, 0, None)
 
     # view volume in the drive;  default overridden for other media changers
     #def view(self,
@@ -1039,20 +1038,14 @@ class Manual_MediaLoader(MediaLoaderMethods):
             self.driveCleanTime = None
 
     def loadvol(self, ticket):
-        rc = 0
         if ticket['vol_ticket']['external_label']:
-            rc = os.system("mc_popup 'Please load %s'"%(ticket['vol_ticket']['external_label'],)) >> 8
-        if rc: self.set_this_error = rc + 9990
-        else: self.set_this_error = e_errors.OK
+            os.system("mc_popup 'Please load %s'"%(ticket['vol_ticket']['external_label'],))
         return MediaLoaderMethods.loadvol(self,ticket)
 
     def unloadvol(self, ticket):
-        rc = 0
         if ticket['vol_ticket']['external_label']:
-            rc = os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
-        if rc: self.set_this_error = rc + 9990
-        else: self.set_this_error = e_errors.OK
-        return MediaLoaderMethods.loadvol(self,ticket)
+            os.system("mc_popup 'Please unload %s'"%(ticket['vol_ticket']['external_label']),)
+        return MediaLoaderMethods.unloadvol(self,ticket)
 
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
