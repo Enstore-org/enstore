@@ -56,10 +56,11 @@ class UDPClient:
 
     def __init__(self):
         self.tsd = {} #Thread-specific data
+        self._os = os
         self.reinit()
 
     def reinit(self):
-        pid = os.getpid()
+        pid = self._os.getpid()
         tsd = Container()
         self.tsd[pid] = tsd
         tsd.host, tsd.port, tsd.socket = get_client()
@@ -69,7 +70,7 @@ class UDPClient:
         return tsd
 
     def get_tsd(self):
-        pid = os.getpid()
+        pid = self._os.getpid()
         tsd = self.tsd.get(pid)
         if not tsd:
             tsd = self.reinit()
@@ -81,8 +82,10 @@ class UDPClient:
     def __del__(self):
         # tell server we're done - this allows it to delete our unique id in
         # its dictionary - this keeps things cleaner & stops memory from growing
-        tsd = self.get_tsd()
-
+        pid = self._os.getpid()
+        tsd = self.tsd.get(pid)
+        if not tsd:
+            return
         for server in tsd.send_done.keys() :
             try:
                 self.send_no_wait({"work":"done_cleanup"}, server)
