@@ -11,6 +11,7 @@ make jobs
 volume-declare dlt
 ecmd delvol CA2501
 ecmd delvol CA2503
+ecmd delvol CA2512
 cd /pnfs/grau/dlt/
 for i in 1 2 3; do mkdir jon$i; cd jon$i; pcmd file_family jon-dlt-$i; cd ..; done
 cd $ENSTORE_DIR/test
