@@ -160,7 +160,7 @@
    		   </Condition>
 	 	</ConditionSet>
     	    </MonitoredElement>   
- 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+ 	   <MonitoredElement Name="/diska" Host="localhost" Type="FileSystem">
 		<ConditionSet>
 		   <fn Name="plug_ins" Arg="df /diska 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
 		   <Condition State="1" SevLevel="5" Description="/diska between 85 and 95%">	
@@ -188,7 +188,7 @@
    		   </Condition>
 	 	</ConditionSet>
     	    </MonitoredElement>   
- 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+ 	   <MonitoredElement Name="/diskb" Host="localhost" Type="FileSystem">
 		<ConditionSet>
 		   <fn Name="plug_ins" Arg="df /diskb 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
 		   <Condition State="1" SevLevel="5" Description="/diskb between 85 and 95%">	
@@ -216,7 +216,7 @@
    		   </Condition>
 	 	</ConditionSet>
     	    </MonitoredElement>   
- 	   <MonitoredElement Name="/home" Host="localhost" Type="FileSystem">
+ 	   <MonitoredElement Name="/diskc" Host="localhost" Type="FileSystem">
 		<ConditionSet>
 		   <fn Name="plug_ins" Arg="df /diskc 2> /dev/null| grep -v Filesystem|awk '{print $5}'|sed s/\\%//" RetVal="int:size"/>
 		   <Condition State="1" SevLevel="5" Description="/diskc between 85 and 95%">	
@@ -260,7 +260,7 @@
     </For>
     <MonitoredElement Name="timeSync" Host="localhost" Type="Daemon">
         <ConditionSet>
-        <fn Name="plug_ins" Arg="cat /proc/[0-9]*/stat|grep \(*xntpd\)|wc -l;echo `/usr/sbin/xntpdc -p | grep '*'|awk '{print $8}'`" RetVal="int:alive,str:disp"/>
+        <fn Name="plug_ins" Arg="cat /proc/[0-9]*/stat|grep \(*xntpd\)|wc -l;echo `/usr/sbin/xntpdc -p | grep '*'|awk '{print $8}'`" RetVal="int:alive,float:disp"/>
    	<Condition State="0" SevLevel="0" Description="xntpd is dead">
     	<apply>
        	<eq/>
