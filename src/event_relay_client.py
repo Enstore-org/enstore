@@ -3,6 +3,7 @@ import socket
 import os
 import sys
 import select
+import string
 
 import enstore_erc_functions
 import event_relay_messages
@@ -29,6 +30,13 @@ def get_event_relay_host(csc):
         host = ""
     return host
 
+def get_rmem_max():
+    fd = open("/proc/sys/net/core/rmem_max", 'r')
+    line = fd.readline()
+    fd.close()
+    value = int(string.strip(line))
+    return value
+
 
 class EventRelayClient:
 
@@ -40,7 +48,9 @@ class EventRelayClient:
         self.error_msg = ""
         self.sock = None
         try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            max_size = get_rmem_max()
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, max_size)
             self.sock.bind((self.hostname, 0))         # let the system pick a port
             self.addr = self.sock.getsockname()
             self.host = self.addr[0]
