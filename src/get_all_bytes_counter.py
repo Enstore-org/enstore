@@ -87,7 +87,7 @@ if __name__ == "__main__":
 		lines = file.readlines()
 		for line in lines:
                     # translate total bytes into terabytes
-                    bytes = float(fields[0])
+                    bytes = float(string.strip(line))
                     total = total + bytes/TB
                     total_bytes = total_bytes + bytes
 		else:
