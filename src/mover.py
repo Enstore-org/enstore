@@ -1812,7 +1812,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=TAPE)
                     return
                 try:
-                    location = self.vol_info['eod_cookie']
+                    location = cookie_to_long(self.vol_info['eod_cookie'])
                     if self.header_labels:
                         location = location+1
                     self.tape_driver.seek(cookie_to_long(location), 0) #XXX is eot_ok needed?
