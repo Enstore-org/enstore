@@ -1330,7 +1330,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        ticket["status"] = (e_errors.OK,'None')
+        ticket["status"] = (e_errors.OK, None)
         if (v["library"] == library and
             (v["volume_family"] == vol_fam) and
             v["user_inhibit"][0] == "none" and
@@ -1348,7 +1348,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
         else:
-            ticket["status"] = (e_errors.NOACCESS, 'None')
+            ticket["status"] = (e_errors.NOACCESS, None)
             self.reply_to_caller(ticket)
             return
 
