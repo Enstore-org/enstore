@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile a3a$  $Revision$
 
-# rsh rip1 "/usr/local/bin/traceMode 1"
+# rsh rip2 "/usr/local/bin/traceMode 1"
 
 $ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon1 /home/bakken/enstore/test/rip3a-1.in 5 0
 $ENSTORE_DIR/test/roll -noread /pnfs/grau/ait/jon1 /home/bakken/enstore/test/rip3b-1.in 6 0
