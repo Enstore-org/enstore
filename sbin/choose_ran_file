@@ -15,7 +15,7 @@ here=`pwd`
 # first go get the volumes that are defined in the inventory
 wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
 rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;fi
-cat VOLUMES_DEFINED | egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS" | grep "$MUSTHAVE" >V_D
+cat VOLUMES_DEFINED | egrep -iv "$FORGET|CLN|null|^Date|^label|DELETED|NOTALLOWED|NOACCESS" | egrep "$MUSTHAVE" >V_D
 rm -f VOLUMES_DEFINED
 N=`wc V_D| awk '{print $1}'`
 if [ $N -eq 0 ]; then
