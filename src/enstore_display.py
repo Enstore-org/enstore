@@ -116,6 +116,25 @@ def rgbtohex(r,g,b):
         b='0'+b
     return "#"+r+g+b
 
+def hextorgb(hexcolor):
+    if type(hexcolor) != type(""):
+        return 0, 0, 0
+    
+    #make sure the string is long enough
+    if len(hexcolor) < 7:
+        hexcolor = hexcolor + "0"*(7-len(hexcolor))
+
+    red = int("0x" + hexcolor[1:3], 16)
+    green = int("0x" + hexcolor[3:5], 16)
+    blue = int("0x" + hexcolor[5:7], 16)
+    
+    return red, green, blue
+
+def invert_color(hexcolor):
+    red, green, blue = hextorgb(hexcolor)
+
+    return rgbtohex(255 - red, 255 - green, 255 - blue)
+
 color_dict = {
     #client colors
     'client_wait_color' :   rgbtohex(100, 100, 100),  # grey
@@ -505,7 +524,8 @@ class Mover:
                     x + self.percent_disp_offset.x,
                     y + self.percent_disp_offset.y,
                     text = str(self.percent_done)+"%",
-                    fill = percent_display_color, font = self.font)
+                    fill = percent_display_color, font = self.font,
+                    anchor = Tkinter.SW)
 
     def get_bar_position(self, percent):
         offset = (self.bar_width*percent/100.0)
@@ -887,9 +907,8 @@ class Mover:
         self.img_offset            = XY(4 + self.vol_width, 0)
         self.state_offset          = XY(
             ((self.width - self.vol_width - 6) / 2) + (4 + self.vol_width),
-            (2 + self.vol_height) / 2.0)
-        self.timer_offset          = XY(self.width - 2, self.height - 2)
-        self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
+            (4 + self.vol_height) / 2.0)
+        self.timer_offset          = XY(self.width - 2, self.height - 0)
         self.rate_offset           = XY(self.width - 2, 2) #green
 
         self.bar_width             = self.width/2.5 #(how long bar should be)
@@ -903,6 +922,8 @@ class Mover:
                                      self.buffer_bar_height - self.bar_height)
         self.buffer_bar_offset2 = XY(4, self.height - 4 -
                                      self.bar_height)#magenta
+        #self.percent_disp_offset   = XY(self.width/1.9, self.height/1.2)#green
+        self.percent_disp_offset   = XY(self.bar_width + 6, self.height)#green
         
         #Font geometry.
         self.font = get_font(self.height/2.5, 'arial',
@@ -1074,6 +1095,7 @@ class Connection:
         self.segment_stop_time  = 0
         self.line               = None
         self.path               = []
+        self.color              = None
 
         self.position()
 
@@ -1084,13 +1106,18 @@ class Connection:
     #########################################################################
         
     def draw(self):
+
+        if not self.color:
+            self.color = self.display.get_client_color(self.client.name)
+
         if self.line:
             self.display.coords(self.line, tuple(self.path))
             self.display.itemconfigure(self.line,dashoffset = self.dashoffset)
         else:
             self.line = self.display.create_line(self.path, dash='...-',
                                                  width=2, smooth=1,
-                                                 dashoffset = self.dashoffset)
+                                                 dashoffset = self.dashoffset,
+                                                 fill=self.color)
 
     def undraw(self):
         try:
@@ -1426,18 +1453,20 @@ class Display(Tkinter.Canvas):
         overlapping = self.find_overlapping(x-1, y-1, x+1, y+1)
         Trace.trace(1, "%s %s" % (overlapping, (x, y)))
 
+        #Display detailed mover information.
         for mover in self.movers.values():
             for i in range(len(overlapping)):
                 if mover.state_display == overlapping[i]:
                     mover_display = MoverDisplay(mover=mover)
 
+        #Change the color of the connection.
         for connection in self.connections.values():
             for i in range(len(overlapping)):
                 if connection.line == overlapping[i]:
                     self.itemconfigure(connection.line,
-                                       fill=rgbtohex(255, 0, 0))
+                                       fill=invert_color(connection.color))
                 else:
-                    self.itemconfigure(connection.line, fill=rgbtohex(0, 0, 0))
+                    self.itemconfigure(connection.line, fill=connection.color)
                                                  
     def resize(self, event):
         try:
