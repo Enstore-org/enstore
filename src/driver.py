@@ -5,6 +5,12 @@
 
 """ Abstract base class for driver classes"""
 
+import exceptions
+
+class DriverError(exceptions.Exception):
+    def __init__(self, arg):
+        exceptions.Exception.__init__(self,arg)
+
 class Driver:
 
     def fileno(self):
