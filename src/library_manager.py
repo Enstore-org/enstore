@@ -103,6 +103,7 @@ def update_mover_list(mover, state):
     mv['state'] = state
     mv['last_checked'] = time.time()
     Trace.trace(3,"}update_mover_list " + repr(mv))
+    #print "MOVER_LIST", movers
     if verbose: 
 	print "MOVER_LIST"
 	for i in movers:
@@ -479,13 +480,31 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	Trace.trace(3,"}write_to_hsm")
 
     def read_from_hsm(self, ticket):
+	Trace.trace(3,"{read_from_hsm " + repr(ticket))
+	if debug: print "read_from_hsm", ticket
+	# check if this volume is OK
+	vc = volume_clerk_client.VolumeClerkClient(self.csc)
+	v = vc.inquire_vol(ticket['fc']['external_label'])
+	#print "VC", v
+	if v['system_inhibit'] == 'noaccess':
+	    # tape cannot be accessed, report back to caller and do not
+	    # put ticket in the queue
+	    ticket["status"] = (e_errors.NOACCESS, None)
+	    self.reply_to_caller(ticket)
+	    format = "read request discarded for unique_id=%s : \
+	    volume %s is marked as %s"
+	    logticket = self.logc.send(log_client.ERROR, 1, format,
+				       ticket['unique_id'],
+				       ticket['fc']['external_label'],
+				       ticket["status"][0])
+	    Trace.trace(3,"}read_from_hsm: volue has no access")
+	    return
+
 	"""
 	call handle_timeout to avoid the situation when due to
 	requests from another encp clients TO did not work even if
 	movers being summoned did not respond
 	"""
-	if debug: print "read_from_hsm", ticket
-	Trace.trace(3,"{read_from_hsm " + repr(ticket))
 	self.handle_timeout()
 	if debug: print "MOVERS", movers
 	if movers:
@@ -527,6 +546,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	global mover_cnt
 	
 	Trace.trace(3,"{idle_mover " + repr(mticket))
+	#print "IDLE MOVER", mticket
 	if debug: print "IDLE MOVER", mticket
 	update_mover_list(mticket, mticket['work'])
 	# remove the mover from the list of movers being summoned
@@ -563,17 +583,30 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 					repr(item))
 			    break
 		    if debug: print "MOVERS=", mover_cnt
-		    if len(item['movers']) > 1:
+
+
+		    # determine if all the movers are in suspect volume list 
+		    # and if yes set volume as having no access and send 
+		    # a regret: noaccess.
+
+		    if len(item['movers']) >= self.max_suspect_movers:
+			w['status'] = (e_errors.NOACCESS, None)
+
 			if debug: 
 			    print "Number of movers for suspect volume", \
 				  len(item['movers'])
-			pending_work.delete_job(w)
-			w['status'] = (e_errors.NOMOVERS, 'Read failed')
-			send_regret(w)
-			#remove volume from suspect volume list
+
+			# set volume as noaccess
+			vc = volume_clerk_client.VolumeClerkClient(self.csc)
+			v = vc.set_system_noaccess(w['fc']['external_label'])
+
+			#remove entry from suspect volume list
 			self.suspect_volumes.remove(item)
-			Trace.trace(3,"}idle_mover: failed on more than \
-			 1 mover " + repr(item))
+
+			pending_work.delete_job(w)
+			send_regret(w)
+			Trace.trace(3,"}idle_mover: failed on more than "\
+			 + repr(self.max_suspect_movers)+ " for " + repr(item))
 			return
 		    elif mover_cnt == 1:
 			if debug:
@@ -757,9 +790,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
-	# yes send a regret: no more movers.
+	# yes set volume as having no access and send a regret: noaccess.
 	if len(vol['movers']) >= self.max_suspect_movers:
-	    w['status'] = (e_errors.NOMOVERS, None)
+	    w['status'] = (e_errors.NOACCESS, None)
+
+	    # set volume as noaccess
+	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
+	    v = vc.set_system_noaccess(w['fc']['external_label'])
+	    print "set_system_noaccess retrned ", v
+
+	    #remove entry from suspect volume list
+	    self.suspect_volumes.remove(vol)
+	    print "removed forom suspect volume list ", vol
+	    print "SUSPECT VOLUME LIST AFTER"
+	    pprint.pprint(self.suspect_volumes)
+	    
 	    pending_work.delete_job(w)
 	    send_regret(w)
 	else:

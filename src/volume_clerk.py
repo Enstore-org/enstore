@@ -640,9 +640,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          return
 
 
-    # flag that the current volume is readonly
-    def set_system_readonly(self, ticket):
-     Trace.trace(10,'{set_system_readonly '+repr(ticket))
+    # set system_inhibit flag
+    def set_system_inhibit(self, ticket, flag):
+     Trace.trace(11,'{set_system_inhibit '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -653,7 +653,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 				"Volume Clerk: "+key+" key is missing")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
+            Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
             return
 
         # get the current entry for the volume
@@ -665,15 +665,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                +" no such volume")
             pprint.pprint(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
+            Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
             return
 
         # update the fields that have changed
-        record ["system_inhibit"] = "readonly"
+        record ["system_inhibit"] = flag
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
-        Trace.trace(10,"}set_system_readonly "+repr(record))
+        Trace.trace(11,"}set_system_inhibit "+repr(record))
         return
 
      # even if there is an error - respond to caller so he can process it
@@ -681,9 +681,20 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
          pprint.pprint(ticket)
          self.reply_to_caller(ticket)
-         Trace.trace(0,"}set_system_readonly "+repr(ticket["status"]))
+         Trace.trace(0,"}set_system_inhibit "+repr(ticket["status"]))
          return
 
+    # flag that the current volume is readonly
+    def set_system_readonly(self, ticket):
+     Trace.trace(10,'{set_system_readonly '+repr(ticket))
+     self.set_system_inhibit(ticket, "readonly")
+     Trace.trace(10,"}set_system_readonly ")
+
+    # flag that the current volume is marked as noaccess
+    def set_system_noaccess(self, ticket):
+     Trace.trace(10,'{set_system_noaccess '+repr(ticket))
+     self.set_system_inhibit(ticket, "noaccess")
+     Trace.trace(10,"}set_system_noaccess ")
 
     # device is broken - what to do, what to do
     def set_hung(self,ticket):

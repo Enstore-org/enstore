@@ -16,6 +16,7 @@ USERERROR = 'USERERROR'
 DRIVEERROR = 'DRIVEERROR'
 UNKNOWNMEDIA = 'UNKNOWNMEDIATYPE'
 NOVOLUME = 'NOVOLUME'
+NOACCESS = 'NOACCESS'
 
 # Tape Errors:
 #--------------------------------------
@@ -52,6 +53,7 @@ MOVER_CRASH     = 'MOVER_CRASH'
 
 def is_retriable(error):
     if error == NOMOVERS or \
+       error == NOACCESS or \
        error == WRONGPARAMETER or \
        error == MOUNTFAILED or \
        error == USERERROR  or \

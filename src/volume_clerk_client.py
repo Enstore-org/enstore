@@ -52,8 +52,8 @@ class VolumeClerkClient(generic_client.GenericClient,\
                capacity_bytes,        #
                remaining_bytes,       #
                eod_cookie  = "none",  # code for seeking to eod
-               user_inhibit  = "none",# "none" | "readonly" | "all"
-               error_inhibit = "none",# "none" | "readonly" | "all" | "writing"
+               user_inhibit  = "none",# "none" | "readonly" | "noaccess"
+               error_inhibit = "none",# "none" | "readonly" | "noaccess" | "writing"
                                       # lesser access is specified as
                                       #       we find media errors,
                                       # writing means that a mover is
@@ -205,6 +205,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'external_label' : external_label }
         x = self.send(ticket)
         Trace.trace(10,'}set_system_readonly '+repr(x))
+        return x
+
+    # mark volume as noaccess
+    def set_system_noaccess(self, external_label):
+        Trace.trace(10,'set_system_noaccess label='+repr(external_label))
+        ticket= { 'work'           : 'set_system_noaccess',
+                  'external_label' : external_label }
+        x = self.send(ticket)
+        Trace.trace(10,'}set_system_noaccess '+repr(x))
         return x
 
     # clear any inhibits on the volume
