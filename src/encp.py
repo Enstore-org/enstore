@@ -519,7 +519,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    in_file.close()
 
 		    #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
-		    if err_msg.args[1] == errno.EPIPE:
+		    if msg.args[1] == errno.EPIPE:
 			# could be network or could be mover closing socket...
 			# try to get done_ticket
 			try:
@@ -1365,8 +1365,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 					   crc_flag, 0, ipc_flag )
                 except EXfer.error, msg: 
 
-                    Trace.trace(6,"read_from_hsm EXfer error: %s %s %s"%
-                                (sys.argv,exc,msg))
+                    Trace.trace(6,"read_from_hsm EXfer error: %s %s"%
+                                (sys.argv,msg))
                     
                     if verbose > 1: traceback.print_exc()
 
