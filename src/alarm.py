@@ -9,9 +9,6 @@ import e_errors
 # key to get at a server supplied short text string
 SHORT_TEXT = "short_text"
 
-# use this if no SHORT_TEXT was part of the alarm
-DEFAULT_TEXT = "has a problem"
-
 DEFAULT_PID = -1
 DEFAULT_UID = ""
 DEFAULT_SOURCE = "None"
