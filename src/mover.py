@@ -75,7 +75,7 @@ class Buffer:
         self.complete_crc = 0L
         self.sanity_crc = 0L
         self.sanity_bytes = 0L
-        self.header_size = 0L
+        self.header_size = None
         self.trailer_size = 0L
 
         self.read_ok = threading.Event()
@@ -107,7 +107,7 @@ class Buffer:
         self.complete_crc = 0L
         self.sanity_crc = 0L
         self.sanity_bytes = 0L
-        self.header_size = 0L
+        self.header_size = None
         self.trailer_size = 0
         self._lock.release()
         
@@ -616,7 +616,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, "write_client, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.net_driver
         if self.bytes_written == 0 and self.wrapper: #Skip over cpio or other headers
-            while self.buffer.header_size == 0 and self.state in (ACTIVE, DRAINING):
+            while self.buffer.header_size is None and self.state in (ACTIVE, DRAINING):
                 Trace.trace(15, "write_client: waiting for read_tape to set header info")
                 self.buffer.write_ok.clear()
                 self.buffer.write_ok.wait(1)
@@ -740,6 +740,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.mode == READ:
             self.files = (self.pnfs_filename, self.client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
+            self.buffer.header_size = None
         elif self.mode == WRITE:
             self.files = (self.client_filename, self.pnfs_filename)
             if self.wrapper:
