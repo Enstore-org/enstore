@@ -152,8 +152,9 @@ if __name__=="__main__":
     vcc = volume_clerk_client.VolumeClerkClient(csc, 
                                                 volume_clerk_address)
 
-    
-    for vol_name in volume_dict.keys():
+    vols = volume_dict.keys()
+    vols.sort()
+    for vol_name in vols:
         vol = volume_dict[vol_name]
         library = "shelf"
         file_family = vol.get("hostname", "import_unknown")
@@ -212,8 +213,9 @@ if __name__=="__main__":
             print status
             sys.exit(-1)
         
-        
-        for file_num in vol['files'].keys():
+        files = vol['files'].keys()
+        files.sort()
+        for file_num in files:
             file = vol['files'][file_num]
             n = string.atoi(file_num) 
             loc_cookie = "0000_000000000_%07d" % (n,)
@@ -240,14 +242,19 @@ if __name__=="__main__":
 
             # create a new bit file id
             if verbose: print "add_file", file
-            done_ticket = fcc.new_bit_file(ticket)
-
-            status = done_ticket["status"]
+            fc_ticket = fcc.new_bit_file(ticket)
+            bfid = fc_ticket['fc']['bfid']
+            status = fc_ticket["status"]
             if status[0] != "ok":
                 print status
                 sys.exit(-1)
-            
 
+            vc_ticket = vcc.add_bfid(bfid, vol_name)
+            status = vc_ticket["status"]
+            if status[0] != "ok":
+                print status
+                sys.exit(-1)
+                                     
             pnfs_filename = file['destination']
 
             ## create the base directories
@@ -257,7 +264,7 @@ if __name__=="__main__":
 
             # create PNFS cross-reference
             p = pnfs.Pnfs(pnfs_filename)
-            p.set_bit_file_id(done_ticket["fc"]["bfid"], size)
+            p.set_bit_file_id(bfid, size)
             
             if verbose:
                 print vol_name,loc_cookie,size
@@ -271,13 +278,13 @@ if __name__=="__main__":
                 "pnfs_name0": p.pnfsFilename,
                 "pnfs_mapname": p.volume_fileP.pnfsFilename,
                 "pnfsid": p.id, 
-                "bfid": done_ticket['fc']['bfid']
+                "bfid": bfid
                 })
 
             if verbose: print "setting pnfsid"
-            done_ticket = fcc.set_pnfsid(ticket)
+            fc_ticket = fcc.set_pnfsid(ticket)
            
-            status = done_ticket["status"]
+            status = fc_ticket["status"]
             if status[0] != "ok":
                 print status
                 sys.exit(-1)
