@@ -1073,9 +1073,10 @@ ftt_dev_entry devtable[] = {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
     /* Default */
-       { "rmt/tps%dd%dn", 	  2,  0, 0x27,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",  2,  1, 0x27,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
        { "sc/sc%dd%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
+       { "rmt/tps%dd%dn",  2,  0, 0x27,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/tps%dd%dn", 	  1,  1, 0x8c,  0,  0,FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
@@ -1206,6 +1207,7 @@ ftt_dev_entry devtable[] = {
        { "dev/nst%d", 	  2,  1, 0x27,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
        { "dev/sg%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
+       { "dev/nst%d", 	  2,  0, 0x27,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "dev/nst%d", 	  1,  0, 0x15,  0,  0,FTT_RDNW,  0, LINUX_MAX_BLKSIZE},
        { "dev/nst%d", 	  0,  1, 0x90,  0,  0,FTT_RDNW, 0, LINUX_MAX_BLKSIZE},
@@ -1246,7 +1248,9 @@ ftt_dev_entry devtable[] = {
     /*   ======          === === ===   === === ======            === */
     /* Default, passthru  */
        { "rmt/%dhbn", 	  2,  1, 0x27,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
+       { "rmt/%dhbn", 	  2,  1, 0x27,  1,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Usable */
+       { "rmt/%dhbn", 	  2,  0, 0x27,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Densitites */
        { "rmt/%dub", 	  0,  1, 0x90,  0,  0,FTT_RDNW| FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "rmt/%dhb", 	  1,  0, 0x15,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
@@ -1633,6 +1637,7 @@ ftt_dev_entry devtable[] = {
     /* Default, Passthru  */
         { "dev/nrmt%dl",         2,  1,0x27, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/nrmt%dl",        -1,  0,  -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/nrmt%dl",         2,  0,0x27, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Descritptive */
         { "dev/rmt%dl",          2,  1,0x27, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%dm",          2,  1,0x27, 0,  0,          FTT_RWOC, 1, EXB_MAX_BLKSIZE},
@@ -1767,17 +1772,20 @@ ftt_dev_entry devtable[] = {
         { "dev/rmt%d.5",        2,  1, 0x27, 0,  0,                 0, 1, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",       -1,  0,   -1, 1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Variable useable */
+        { "dev/rmt%d.5",        2,  0, 0x27, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.5",        2,  1, 0x27, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Fixed useable */
+        { "dev/rmt%d.5",        2,  1, 0x27, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+        { "dev/rmt%d.5",        2,  0, 0x27, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
+    /* Descriptive */
         { "dev/rmt%d.5",        0,  0, 0x14, 0,  0,FTT_RDNW| FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  1, 0x90, 0,  0,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  0, 0x15, 0,  0,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  1, 0x8c, 0,  0,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.5",        2,  1, 0x27, 0,  0,                 0, 0, EXB_MAX_BLKSIZE},
-    /* Fixed useable */
         { "dev/rmt%d.5",        0,  0, 0x14, 0,  1,FTT_RDNW| FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        0,  1, 0x90, 0,  1,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  0, 0x15, 0,  1,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
         { "dev/rmt%d.5",        1,  1, 0x8c, 0,  1,          FTT_RDNW, 0, EXB_MAX_BLKSIZE},
-        { "dev/rmt%d.5",        2,  1, 0x27, 0,  1,                 0, 0, EXB_MAX_BLKSIZE},
     /* Descriptive/translators */
         { "dev/rmt%d",         -1,  0, 0x00, 0,  1, FTT_RWOC|       0, 1, 512},
         { "dev/rmt%d.1",       -1,  0, 0x00, 0,  1,          FTT_RDNW, 1, 512},
