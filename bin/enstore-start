@@ -28,7 +28,9 @@ if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/configuration_server.py \
            --config_host=$enstore_config_host --config_port=$enstore_config_port --config_file=$enstore_config_file &
     echo $! >> $enstore_db/`uname -n`-configuration_pids
-  fi
+    echo "pause 2 seconds to make sure it starts"
+    sleep 2 # this is necessary to start up with no error messages when running all servers
+  fi        # on a single node
 
 else
 
@@ -49,7 +51,9 @@ if [ $ping_only -eq 0 ] ; then
     echo "$What Log Server"
     python $ENSTORE_DIR/src/log_server.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-log_server_pids
-  fi
+    echo "pause 2 seconds to make sure it starts"
+    sleep 2 # this is necessary to start up with no error messages when running all servers
+  fi        # on a single node
 
 else
 
