@@ -224,14 +224,16 @@ class DbTable:
   def checkpoint(self):
      import regex,string
      import time
-     del self.jou
+     if self.auto_journal:
+        del self.jou
      if self.logc:
         self.logc.send(log_client.INFO, 1, "Start checkpoint for "+self.name+" journal")
      cmd="mv " + self.dbHome +"/"+self.name+".jou " + \
                         self.dbHome +"/"+self.name+".jou."+ \
                         repr(time.time())
      os.system(cmd)
-     self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
+     if self.auto_journal:
+        self.jou = journal.JournalDict({},self.dbHome+"/"+self.name+".jou")
      self.count=0
      if self.logc:
         self.logc.send(log_client.INFO, 1, "End checkpoint for "+self.name)
