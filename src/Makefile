@@ -20,6 +20,7 @@ check:
 
 encp:
 	(cd $(ENSTORE_DIR)/modules; make all)
+
 	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
@@ -28,12 +29,20 @@ encp:
 	(cd ENCPBIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp      ENCPBIN
 	rm -rf ENCPBIN_TEMP
+
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYTHON_DIR)/Python-*/Modules -o ENSTORE_USER_BIN_TEMP enstore_user.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP
+
+	- rm -rf MONITOR_CLIENT_BIN_TEMP
+	mkdir MONITOR_CLIENT_BIN_TEMP
+	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYTHON_DIR)/Python-*/Modules -o MONITOR_CLIENT_BIN_TEMP monitor_client.py
+	(cd MONITOR_CLIENT_BIN_TEMP; LDFLAGS=-static; export LDFLAGS; make -e;)
+	cp MONITOR_CLIENT_BIN_TEMP/monitor_client      ENCPBIN/monitor_client
+	rm -rf MONITOR_CLIENT_BIN_TEMP
 
 install: encp enstore_user
 	cp encp $ENSTORE_DIR/bin
