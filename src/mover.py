@@ -180,12 +180,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.mvr_config['do_fork'] = 1
 	# for production, either add 'execution_env':'production' to mover
         # config or change this default to 'production'
-	if not 'execution_env' in self.mvr_config.keys(): self.mvr_config['execution_env'] = 'devel'
-        if not 'do_eject' in self.mvr_config.keys(): self.mvr_config['do_eject'] = 'yes'
+	if not 'execution_env' in self.mvr_config.keys():
+            self.mvr_config['execution_env'] = 'devel'
+        if not 'do_eject' in self.mvr_config.keys():
+            self.mvr_config['do_eject'] = 'yes'
 
         del self.mvr_config['status']
 
-        # get clients -- these will be (readonly) global object instances
         self.udpc =  udp_client.UDPClient()     # for server to send (client) request
 
         self.state = 'idle'
@@ -438,7 +439,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def do_fork( self, ticket, mode ):
         if self.state != 'idle' and self.state != 'draining':
             Trace.log(e_errors.ERROR, "mover: do_fork called when mover already forked")
-
+        #grab a new udp client
         ticket['mover'] = self.mvr_config
         if mode == 'w' or mode == 'r':
             # get vcc and fcc for this xfer
@@ -1167,17 +1168,19 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # hsm_driver_info (read: hsm_driver.position
             #                  write: position, eod, remaining_bytes)
             # recent (read) errors (part of vol_info???)
-            self.udpc.send_nowait( {'work'       :'update_client_info',
-                                    'address'    :origin_addr,
-                                    'pid'        :os.getpid(),
-                                    'exit_status':m_err.index(status),
-                                    'vol_info'   :self.vol_info,
-                                    'no_xfers'   :self.no_xfers,
-                                    'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
-                                                   'remaining_bytes':self.hsm_driver.remaining_bytes,
-                                                   'vol_label'      :self.hsm_driver.vol_label,
-                                                   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
-                                   (self.mvr_config['hostip'],self.mvr_config['port']) )
+            r=self.udpc.send( {'work'       :'update_client_info',
+                               'address'    :origin_addr,
+                               'pid'        :os.getpid(),
+                               'exit_status':m_err.index(status),
+                               'vol_info'   :self.vol_info,
+                               'no_xfers'   :self.no_xfers,
+                               'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
+                                              'remaining_bytes':self.hsm_driver.remaining_bytes,
+                                              'vol_label'      :self.hsm_driver.vol_label,
+                                              'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
+                              (self.mvr_config['hostip'],self.mvr_config['port']) )
+            Trace.log(e_errors.INFO,
+                      "child mover: send update_client_info message to parent, return is %s"%(r,))
             os._exit( m_err.index(status) )
         return self.status_to_request( status ) # return_or_update_and_exit
 
@@ -1408,6 +1411,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
     def update_client_info( self, ticket ):
 	Trace.log( e_errors.INFO,  "update_client_info - pid: %s, ticket['pid']=%s"%
                    (self.pid,ticket['pid']))
+        self.reply_to_caller({'status':(e_errors.OK, None)})
         if self.pid != ticket['pid']:
             # assume previous "No child processes" exception
             Trace.log(e_errors.INFO, "update_client_info: self.pid=%s, ticket[pid]=%s"%(
