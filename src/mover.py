@@ -844,7 +844,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # restart itselfs
     def restart(self):
         cmd = '/usr/bin/at now+1minute'
-        ecmd = "enstore Estart %s '--just %s'\n"%(self.config['host'],self.name) 
+        ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name) 
         p=os.popen(cmd, 'w')
         p.write(ecmd)
         p.close()
@@ -1002,8 +1002,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         continue
                     method = getattr(self, work, None)
                     if method:
-                        method(request_from_lm)
-                        ### XXX Try/except here?
+                        try:
+                            method(request_from_lm)
+                        except:
+                            Trace.log(e_errors.ERROR,"update_lm: tried %s %s and failed"%
+                                      (method,request_from_lm)) 
                 # if work is mover_busy of mover_error
                 # send no_wait message
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
