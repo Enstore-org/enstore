@@ -728,7 +728,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	bfid = ticket.get("bfid")
 	if bfid: 
 	    if not record.has_key("bfids"):
-	    	record.bfids = []
+	    	record["bfids"] = []
 	    record["bfids"].append(bfid)
         # record our changes
         dict[external_label] = record  ## was deepcopy
