@@ -140,8 +140,9 @@ class VolumeClerkClient(generic_client.GenericClient,
             wrapper = "cpio_odc",  # kind of wrapper for volume
             blocksize = -1,        # blocksize (-1 =  media type specifies)
             non_del_files = 0,     # non-deleted files
-            system_inhibit = ["none","none"] # 0:"none" | "writing??" | "NOACCESS", "DELETED
+            system_inhibit = ["none","none"], # 0:"none" | "writing??" | "NOACCESS", "DELETED
                                              # 1:"none" | "readonly" | "full"
+            remaining_bytes = None
             ):
         Trace.trace( 6, 'add label=%s'%(external_label,))
         if storage_group == 'none':
@@ -172,6 +173,8 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'non_del_files'   : non_del_files,
                    'system_inhibit'  : system_inhibit
                    }
+        if remaining_bytes != None:
+            ticket['remaining_bytes'] = remaining_bytes
         # no '.' are allowed in storage_group, file_family and wrapper
         for item in ('storage_group', 'file_family', 'wrapper'):
             if '.' in ticket[item]:
@@ -719,11 +722,12 @@ def do_work(intf):
 
         # check if all files match the external_label
         bfids = []
-        for i in volume['files']:
-            if i['external_label'] != vname:
+        for i in volume['files'].keys():
+            f = volume['files'][i]
+            if f['external_label'] != vname:
                 print "Error!", intf._import, "is corrupted"
                 sys.exit(1)
-            bfids.append(i['bfid'])    # collect all bfids
+            bfids.append(f['bfid'])    # collect all bfids
 
         # get a fcc here
         fcc = file_clerk_client.FileClient(vcc.csc)
@@ -734,38 +738,48 @@ def do_work(intf):
         j = 0
         for i in result:
             if i:
-                print "Error! file %s exists"%(volume['files'][i]['bfid'])
+                print "Error! file %s exists"%(volume['files'].values()[j]['bfid'])
                 err = 1
             j = j + 1
         if err:
             sys.exit(1)
 
         # check if volume exists
-        v = vcc.inquire_volume(volume['vol']['external_label'])
+        v = vcc.inquire_vol(volume['vol']['external_label'])
         if v['status'][0] == e_errors.OK:	# it exists
             print "Error! volume %s exists"%(volume['vol']['external_label'])
             sys.exit(1)
 
         # now we are getting serious
+
+        # get the file family from volume record
+        try:
+            sg, ff, wr = string.split(volume['vol']['volume_family'], '.')
+        except:
+            print "Invalid volume_family:", `volume['vol']['volume_family']`
+            sys.exit(1)
+
         # insert the file records first
-        for i in volume['files']:
-            ticket = fcc.add(i)
+        for i in volume['files'].keys():
+            f = volume['files'][i]
+            ticket = fcc.add(f)
             # handle errors
             if ticket['status'][0] != e_errors.OK:
-                print "Error! failed to insert file record:", `i`
+                print "Error! failed to insert file record:", `f`
                 sys.exit(1)
 
         # insert the volume record
+
         ticket = vcc.add(
                     library = volume['vol']['library'],
-                    file_family = volume['vol']['file_family'],
-                    storage_group = volume['vol']['storage_group'],
+                    file_family = ff,
+                    storage_group = sg,
                     media_type = volume['vol']['media_type'],
                     external_label = volume['vol']['external_label'],
                     capacity_bytes = volume['vol']['capacity_bytes'],
                     eod_cookie = volume['vol']['eod_cookie'],
                     user_inhibit = volume['vol']['user_inhibit'],
-                    error_inhibit = volume['vol']['error_inhibit'],
+                    # error_inhibit = volume['vol']['error_inhibit'],
                     last_access = volume['vol']['last_access'],
                     first_access = volume['vol']['first_access'],
                     declared = volume['vol']['declared'],
@@ -776,7 +790,8 @@ def do_work(intf):
                     wrapper = volume['vol']['wrapper'],
                     blocksize = volume['vol']['blocksize'],
                     non_del_files = volume['vol']['non_del_files'],
-                    system_inhibit = volume['vol']['system_inhibit'])
+                    system_inhibit = volume['vol']['system_inhibit'],
+                    remaining_bytes = volume['vol']['remaining_bytes'])
      
     elif intf.add:
         print intf.add, repr(intf.args)
