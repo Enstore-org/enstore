@@ -62,4 +62,5 @@ extern int 		ftt_wait(ftt_descriptor);
 extern int		ftt_write(ftt_descriptor, char*, int);
 extern int 		ftt_write_vol_label(ftt_descriptor,int,char*);
 extern int		ftt_writefm(ftt_descriptor);
+extern int		ftt_write2fm(ftt_descriptor);
 

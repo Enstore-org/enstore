@@ -49,7 +49,7 @@ int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*    9	EBADF	*/	FTT_ENOENT,
 	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
 	/*   11	EAGAIN	*/	FTT_ENOTAPE,
-	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   12	ENOMEM	*/	FTT_ERANGE,
 	/*   13	EACCES	*/	FTT_EPERM,
 	/*   14	EFAULT	*/	FTT_EFAULT,
 	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
@@ -59,7 +59,7 @@ int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*   19	ENODEV	*/	FTT_ENOENT,
 	/*   20	ENOTDIR	*/	FTT_ENOENT,
 	/*   21	EISDIR	*/	FTT_ENOENT,
-	/*   22	EINVAL	*/	FTT_EBLKSIZE,
+	/*   22	EINVAL	*/	FTT_ERANGE,
 	/*   23	ENFILE	*/	FTT_ENFILE,
 	/*   24	EMFILE	*/	FTT_ENFILE,
 	/*   25	ENOTTY	*/	FTT_ENOTTAPE,
@@ -83,7 +83,7 @@ int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*    9	EBADF	*/	FTT_ENOENT,
 	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
 	/*   11	EAGAIN	*/	FTT_ENOTAPE,
-	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   12	ENOMEM	*/	FTT_ERANGE,
 	/*   13	EACCES	*/	FTT_EPERM,
 	/*   14	EFAULT	*/	FTT_EFAULT,
 	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
@@ -580,13 +580,9 @@ ftt_dev_entry devtable[] = {
     /*   string                  den mod hwd   pas fxd rewind            1st */
     /*   ======                  === === ===   === === ======            === */
     /* Default, passthru  */
-       { "/dev/rmt/%dhbn", 	  1,  0, 0x15,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%dhbn", 	  1,  0, 0x15,  1,  0,                 0, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%dmbn", 	  1,  0, 0x15,  0,  0,                 0, 0, SUN_MAX_BLKSIZE},
     /* Usable Varirable */
        { "/dev/rmt/%dlbn", 	  0,  0, 0x14,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%dmbn", 	  0,  1, 0x8c,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%dbn", 	  1,  0, 0x15,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%dubn", 	  1,  1, 0x90,  0,  0,                 0, 1, SUN_MAX_BLKSIZE},
     /* Densitites */
        { "/dev/rmt/%dub", 	  1,  1, 0x90,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%dhb", 	  1,  0, 0x15,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
@@ -594,6 +590,10 @@ ftt_dev_entry devtable[] = {
        { "/dev/rmt/%dlb", 	  0,  0, 0x14,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%db", 	  1,  0, 0x15,  0,  0,          FTT_RWOC, 1, SUN_MAX_BLKSIZE},
     /* Descriptive */
+       { "/dev/rmt/%dubn", 	  1,  1, 0x90,  0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%dmbn", 	  1,  0, 0x15,  1,  0, FTT_RDNW|       0, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%dhbn", 	  1,  0,  0,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%dbn", 	  1,  0,  0,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%dun", 	  1,  0,  0,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%dhn", 	  1,  0,  0,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%dmn", 	  1,  0,  0,    0,  0, FTT_RDNW|       0, 1, SUN_MAX_BLKSIZE},
@@ -610,6 +610,7 @@ ftt_dev_entry devtable[] = {
     /*   ======                  === === ===   === === ======            === */
     /* Default, Passthru  */
        { "/dev/rmt/%dubn", 	  5,  0, 0x1A,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
+       { "/dev/rmt/%dubn", 	  5,  1, 0x1A,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
        { "/dev/rmt/%dubn", 	  5,  0, 0x00,  1,  0,                 0, 0, EXB_MAX_BLKSIZE},
     /* Usable */
        { "/dev/rmt/%dubn", 	  5,  0, 0x1A,  0,  0,                 0, 0, EXB_MAX_BLKSIZE},
@@ -617,15 +618,15 @@ ftt_dev_entry devtable[] = {
        { "/dev/rmt/%d", 	  0,  0, 0x0A,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%d", 	  1,  0, 0x16,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
        { "/dev/rmt/%d", 	  2,  0, 0x17,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  3,  0, 0x18,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  4,  0, 0x80,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  4,  1, 0x81,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  4,  0, 0x19,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  4,  1, 0x19,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  5,  0, 0x82,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  5,  1, 0x83,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  5,  0, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
-       { "/dev/rmt/%d", 	  5,  1, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 1, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  3,  0, 0x18,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  4,  0, 0x80,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  4,  1, 0x81,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  4,  0, 0x19,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  4,  1, 0x19,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  5,  0, 0x82,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  5,  1, 0x83,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  5,  0, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
+       { "/dev/rmt/%d", 	  5,  1, 0x1A,  0,  0, FTT_RDNW|FTT_RWOC, 0, SUN_MAX_BLKSIZE},
     /* Descriptive */
        { "/dev/rmt/%dubn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},
        { "/dev/rmt/%dcbn", 	  5,  0, 0x1A,  0,  0,                 0, 1, EXB_MAX_BLKSIZE},

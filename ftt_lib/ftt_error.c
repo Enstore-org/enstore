@@ -109,7 +109,8 @@ static char *messages[] = {
     "that the process which was invoked to perform this task on our \n\
 	behalf died unexpectedly.",
 	/* FTT_ERANGE		19 */
-    "[ZZZ fill in later]",
+    "The buffer you provided for tape data was smaller than the data \n\
+     block on the tape.",
 	/* FTT_ENOMEM		20 */
     "that we were unable to allocate memory needed to perform the task.",
 	/* FTT_ENOTTAPE		21 */

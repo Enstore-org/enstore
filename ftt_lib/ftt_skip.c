@@ -351,3 +351,45 @@ ftt_write_fm_if_needed(ftt_descriptor d) {
     }
     return 0;
 }
+
+int
+ftt_write2fm(ftt_descriptor d) {
+
+    int res;
+    CKOK(d,"ftt_write2fm",1,0);
+    CKNULL("ftt_descriptor", d);
+
+    if (d->flags & FTT_FLAG_CHK_BOT_AT_FMK) {
+
+	/* 
+	** call ftt_status to see if we're at BOT 
+	** we should only do this check on machines that don't 
+	** need to close the device to get the status.
+	** Note that we need to check current_file and current_block
+	** *first* because ftt_status will reset them if it notices
+	** we're at BOT.
+	*/
+        (void)ftt_mtop(d, 0, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
+		"write filemark 0 == flush", ftt_cdb_writefm);
+
+	if ((d->current_file != 0 || d->current_block > 2) &&
+		(ftt_status(d,0) & FTT_ABOT)) {
+	    ftt_errno = FTT_EUNRECOVERED;
+	    ftt_eprintf(
+"ftt_write2fm: supposed to be at file number %d block number %d, actually at BOT\n\
+	indicating that there was a SCSI reset or other error which rewound\n\
+	the tape behind our back.", d->current_file, d->current_block );
+	    d->unrecovered_error = 1;
+	    return -1;
+	}
+    }
+    d->data_direction = FTT_DIR_WRITING;
+    d->current_block = 0;
+    d->current_file += 2;
+    res = ftt_mtop(d, 2, FTT_TAPE_WEOF, FTT_OPN_WRITEFM,
+		"ftt_write2fm", ftt_cdb_writefm);
+    /* we've done a double filemark, so we can forget we were writing */
+    /* (see check in ftt_write_fm_if_needed, above) */
+    d->last_operation = 0;
+    return res;
+}
