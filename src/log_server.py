@@ -108,7 +108,7 @@ class Logger(  dispatching_worker.DispatchingWorker
     def open_extra_logs(self, mode='w'):
 	for msg_type in self.msg_type_keys:
 	    filename = self.msg_type_logs[msg_type]
-	    file_path = "%s/%s-%s"%(self.logfile_dir_path, filename,
+	    file_path = "%s/%s%s"%(self.logfile_dir_path, filename,
 				    format_date())
 	    self.extra_logfiles[msg_type] = open(file_path, mode)
 
