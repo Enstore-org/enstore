@@ -42,8 +42,11 @@ def check(f):
         if bfid != pf.bfid:
             msg.append('bfid(%s, %s)'%(bfid, pf.bfid))
     except:
-        msg.append('no or corrupted bfid')
-        return msg
+        if len(bfid) < 8:
+            msg.append('missing layer 1')
+            return msg
+        else:
+            msg.append('missing layer 4')
     fr = fcc.bfid_info(bfid)
     if fr['status'][0] != e_errors.OK:
         msg.append('not in db')
@@ -108,9 +111,14 @@ def check(f):
                 msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     except:
         msg.append('no or corrupted pnfs_path')
+
     # path2
-    if pf.path != pf.p_path:
-        msg.append('path(%s, %s)'%(pf.path, pf.p_path))
+    try:
+        if pf.path != pf.p_path:
+            msg.append('path(%s, %s)'%(pf.path, pf.p_path))
+    except:
+        msg.append('no or corrupted l4_pnfs_path')
+
     # deleted
     try:
         if fr['deleted'] != 'no':
