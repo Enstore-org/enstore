@@ -25,6 +25,7 @@ UNSUBSCRIBE = "unsubscribe"
 DUMP = "dump"
 MAX_TIMEOUTS = 20
 LOG_NAME = "EVRLY"
+YES = 1
 
 def get_message_filter_dict(msg_tok):
     filter_d = {}
@@ -69,8 +70,11 @@ class Relay:
 	print "Subscribed clients : %s"%(self.clients,)
 	print "Timeouts : %s"%(self.timeouts,)
 
-    def cleanup(self, key):
+    def cleanup(self, key, log=0):
 	if self.clients.has_key(key):
+	    if log:
+		msg = "Cleaning up %s from clients"%(key,)
+		Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 	    del self.clients[key]
 	if self.timeouts.has_key(key):
 	    del self.timeouts[key]
@@ -101,7 +105,10 @@ class Relay:
 			# client is interested in.  if there is no list, the client
 			# wants all message types
 			filter_d = get_message_filter_dict(tok)
-			self.clients[(ip, port)] = (now, filter_d)
+			key = (ip, port)
+			# get rid of old info first
+			self.cleanup(key)
+			self.clients[key] = (now, filter_d)
 			msg = "Subscribe request for %s, (port: %s) for %s."%(ip, port,
 									      filter_d)
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
@@ -139,7 +146,7 @@ class Relay:
         """Send the message to all clients who care about it"""
         for addr, (t0, filter_d) in self.clients.items():
             if now - t0 > self.client_timeout:
-		self.cleanup(addr)
+		self.cleanup(addr, YES)
             else:
                 # client wants the message if there is no filter or if
                 # the filter contains the message type in its dict.
@@ -155,7 +162,7 @@ class Relay:
 			### figure out if we should stop sending to this client
 			self.timeouts[addr] = self.timeouts.get(addr, 0) + 1
 			if self.timeouts[addr] > MAX_TIMEOUTS:
-			    self.cleanup(addr)
+			    self.cleanup(addr, YES)
                 
 if __name__ == '__main__':
     R = Relay()
