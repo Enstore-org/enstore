@@ -260,7 +260,7 @@ def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stu
     if type(cookie) is type(0):
         return long(cookie)
     if type(cookie) != type(''):
-        raise TypeError, "expected string or integer"
+        raise TypeError, "expected string or integer, got %s %s" % (cookie, type(cookie))
     if '_' in cookie:
         part, block, file = string.split(cookie, '_')
     else:
