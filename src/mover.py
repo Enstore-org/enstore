@@ -2383,9 +2383,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
+                Trace.trace(10, "encp called back with %s"%(x,))
                 if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
                 self.del_udp_client(u)
                 #del u
+            sys.exit(-1)
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
 		control_socket.connect(ticket['callback_addr'])
