@@ -345,7 +345,7 @@ def set_entvrc(display, intf):
                 data = []
 
         #use a temporary file incase something goes wrong.
-        tmp_filename = get_entvrc_filename() + ".tmp"
+        tmp_filename = get_entvrc_filename() + "." + str(os.getpid()) + ".tmp"
         tmp_file = open(tmp_filename, "w")
 
         #Make sure this gets written to file if not already there.
