@@ -79,7 +79,7 @@ def signal_handler(sig, frame):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "x2_10  CVS $Revision$ "
+    version_string = "v2_9  CVS $Revision$ "
     file = globals().get('__file__', "")
     if file: version_string = version_string + file
     return version_string
@@ -1152,7 +1152,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Since a retriable error occured, resubmit the ticket.
             submit_one_request(request_dictionary, verbose)
         except KeyError:
-            sys.stderr.write("Error processing resubmition of %s." %
+            sys.stderr.write("Error processing resubmition of %s.\n" %
                              (request_dictionary['unique_id']))
             sys.stderr.write(pprint.pformat(request_dictionary))
 
