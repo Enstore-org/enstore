@@ -52,6 +52,7 @@ import re
 import statvfs
 import types
 import gc
+import copy
 
 # enstore modules
 import Trace
@@ -821,9 +822,22 @@ def requests_outstanding(request_list):
 
     for request in request_list:
         completion_status = request.get('completion_status', None)
-        if completion_status == None: # or completion_status == EOD: 
+        if completion_status == None:
             files_left = files_left + 1
 
+        if completion_status == FAILURE:
+            #Don't worry about copies when the original failed.
+            continue
+
+        try:
+            #Also count any unwritten copies.
+            for copy_request in request['copies'].values():
+                completion_status = copy_request.get('completion_status', None)
+                if completion_status == None:
+                    files_left = files_left + 1
+        except KeyError:
+            pass
+        
     return files_left
 
 #Return the next uncompleted transfer.
@@ -832,22 +846,47 @@ def get_next_request(request_list):
     for i in range(len(request_list)):
         completion_status = request_list[i].get('completion_status', None)
         if completion_status == None:
-            return request_list[i], i
+            return request_list[i], i, 0
 
-    return None, 0
+        if completion_status == FAILURE:
+            #Don't worry about copies when the original failed.
+            continue
+
+        try:
+            #Also check any copies.
+            for copy_request in request_list[i]['copies'].values():
+                completion_status = copy_request.get('completion_status', None)
+                if completion_status == None:
+                    #We need to set the bfid to be the same as the original.
+                    # It will be made unique by the either the file clerk
+                    # or the mover later on.
+                    copy_request['fc']['bfid'] = request_list[i]['fc']['bfid']
+                    return copy_request, i, copy_request['copy']
+        except KeyError:
+            pass
+        
+    return None, 0, 0
 
 #Return the index that the specified request refers to.
 def get_request_index(request_list, request):
 
     unique_id = request.get('unique_id', None)
     if not unique_id:
-        return None
+        return None, None
 
     for i in range(len(request_list)):
         if unique_id == request_list[i]['unique_id']:
-            return i
+            return i, 0  #file number, copy number
 
-    return None
+        try:
+            #Also check any copies.
+            for copy_request in request_list[i]['copies'].values():
+                if unique_id == copy_request.get('unique_id', None):
+                    return i, copy_request['copy']  #file number, copy number
+        except KeyError:
+            pass
+
+    return None, None
     
 ############################################################################
 
@@ -4801,8 +4840,9 @@ def set_pnfs_settings(ticket, intf_encp):
                   ticket["fc"]["bfid"])
     try:
         p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        # save the bfid
-        p.set_bit_file_id(ticket["fc"]["bfid"])
+        if not ticket.get('copy', None):  #Don't set layer 1 if copy.
+            # save the bfid
+            p.set_bit_file_id(ticket["fc"]["bfid"])
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -4839,21 +4879,21 @@ def set_pnfs_settings(ticket, intf_encp):
     #Write to the metadata layer 4 "file".
     Trace.message(INFO_LEVEL, "Setting layer 4.")
     try:
-        #t.get_file_family()
-        p.get_bit_file_id()
-        p.get_id()
-        p.set_xreference(
-            ticket["fc"]["external_label"],
-            ticket["fc"]["location_cookie"],
-            ticket["fc"]["size"],
-            volume_family.extract_file_family(ticket["vc"]["volume_family"]),
-            p.pnfsFilename,
-            "", #p.volume_filepath,
-            p.id,
-            "", #p.volume_fileP.id,
-            p.bit_file_id,
-            drive,
-            crc)
+        if not ticket.get('copy', None):  #Don't set layer 4 if copy.
+            p.get_bit_file_id()
+            p.get_id()
+            p.set_xreference(
+                ticket["fc"]["external_label"],
+                ticket["fc"]["location_cookie"],
+                ticket["fc"]["size"],
+                volume_family.extract_file_family(ticket["vc"]["volume_family"]),
+                p.pnfsFilename,
+                "", #p.volume_filepath,
+                p.id,
+                "", #p.volume_fileP.id,
+                p.bit_file_id,
+                drive,
+                crc)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -5115,6 +5155,19 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['work'] = "write_to_hsm"
         work_ticket['wrapper'] = wrapper
 
+        #Make dictionaries for the copies of the data.
+        if e.copy > 0:
+            copy_ticket = copy.deepcopy(work_ticket)
+            for n_copy in range(1, e.copy + 1):
+                copy_ticket['copy'] = n_copy
+                copy_ticket['unique_id'] = generate_unique_id()
+                try:
+                    work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
+                except KeyError:
+                    #First copy will create work_ticket['copies'].
+                    work_ticket['copies'] = {}
+                    work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
+            
         request_list.append(work_ticket)
 
     return request_list
@@ -5136,7 +5189,7 @@ def submit_write_request(work_ticket, encp_intf):
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
         ticket = submit_one_request(work_ticket)
-        
+
         Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
 
@@ -5556,13 +5609,18 @@ def write_to_hsm(e, tinfo):
                 #print_data_access_layer_format(request['infile'], "",
                 #                               0, request)
                 #delete_at_exit.quit()
-                
+
+    work_ticket, index, copy = get_next_request(request_list)
+
     # loop on all input files sequentially
-    for i in range(0,len(request_list)):
+    #for i in range(0,len(request_list)):
+    while requests_outstanding(request_list):
 
-        Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
+        #Trace.message(TO_GO_LEVEL, "FILES LEFT: %s" % str(len(request_list)-i))
+        Trace.message(TO_GO_LEVEL,
+                      "FILES LEFT: %s" % requests_outstanding(request_list))
 
-        work_ticket = request_list[i]
+        #work_ticket = request_list[i]
 
         #Send (write) the file to the mover.
         done_ticket = write_hsm_file(listen_socket, work_ticket, tinfo, e)
@@ -5577,7 +5635,11 @@ def write_to_hsm(e, tinfo):
 
         #Store the combined tickets back into the master list.
         work_ticket = combine_dict(done_ticket, work_ticket)
-        request_list[i] = work_ticket
+        if copy == 0:
+            request_list[index] = work_ticket
+        else:
+            request_list[index]['copies'][copy] = work_ticket
+            print 
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
@@ -5585,13 +5647,22 @@ def write_to_hsm(e, tinfo):
             #Set completion status to successful.
             work_ticket['completion_status'] = SUCCESS
             #Store these changes back into the master list.
-            request_list[i] = work_ticket
-            
+            if copy == 0:
+                request_list[index] = work_ticket
+            else:
+                request_list[index]['copies'][copy] = work_ticket
+
+            #Pick up the next file.
+            work_ticket, index, copy = get_next_request(request_list)
+
         elif e_errors.is_non_retriable(done_ticket):
             #Set completion status to successful.
             work_ticket['completion_status'] = FAILURE
             #Store these changes back into the master list.
-            request_list[i] = work_ticket
+            if copy == 0:
+                request_list[index] = work_ticket
+            else:
+                request_list[index]['copies'][copy] = work_ticket
 
             exit_status = 1
             
@@ -6040,8 +6111,6 @@ def get_volume_clerk_info(volume_or_ticket):
     #Get the clerk info.
     vcc, vc_ticket = __get_vcc(volume_or_ticket)
 
-    volume = vc_ticket['external_label']
-    
     # Determine if the information returned is complete.
     
     if vc_ticket == None or not e_errors.is_ok(vc_ticket):
@@ -7097,7 +7166,7 @@ def read_from_hsm(e, tinfo):
                                                {'bytes_transfered' : 0L})
                 bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
 
-                index = get_request_index(request_list, done_ticket)
+                index, unused = get_request_index(request_list, done_ticket)
 
                 #handle_retries() is not required here since write_hsm_file()
                 # handles its own retrying when an error occurs.
@@ -7201,6 +7270,7 @@ class EncpInterface(option.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # higher the number the more is output
         self.version = 0           # print out the encp version
+        self.copy = 0              # number of copies to write to tape
 
         #EXfer optimimazation options
         self.buffer_size = 262144  # 256K: the buffer size
@@ -7332,6 +7402,10 @@ class EncpInterface(option.Interface):
                       option.VALUE_USAGE:option.IGNORED,
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
+        option.COPY:{option.HELP_STRING:"Write N copies of the file.",
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_TYPE:option.INTEGER,
+                     option.USER_LEVEL:option.USER,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -7556,8 +7630,8 @@ class EncpInterface(option.Interface):
         elif self.max_retry.isdigit():
             self.max_retry = max(int(self.max_retry), 0)
         else:
-            self.print_usage("Argument for max_retry must be a positive " \
-                             "integer or None.")
+            self.print_usage("Argument for --max-retry must be a "
+                             "positive integer or None.")
         if type(self.max_resubmit) != types.StringType:
             pass  #Skip the int and None cases.  Only consider string cases.
         elif self.max_resubmit.upper() == "NONE":
@@ -7565,8 +7639,11 @@ class EncpInterface(option.Interface):
         elif self.max_resubmit.isdigit():
             self.max_resubmit = max(int(self.max_resubmit), 0)
         else:
-            self.print_usage("Argument for max_resubmit must be a positive " \
-                             "integer or None.")
+            self.print_usage("Argument for --max-resubmit must be a "
+                             "positive integer or None.")
+
+        if self.copy < 0:
+            self.print_usage("Argument for --copy must be a positive integer.")
 
         # bomb out if we don't have an input/output if a special command
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
