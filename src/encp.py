@@ -1039,7 +1039,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         return result_dict
     elif type(status[0]) == type(socket):
         Trace.log(e_errors.ERROR, "Malformed status detected: " + str(status))
-            
+
     #If the transfer has failed to many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
     if retry >= max_retries:
@@ -1091,7 +1091,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # wait for the other transfers to commence.  The key error is
         # generated trying to get request_dictionary['vc']['library']
         pass
-    
+
     result_dict = {'status':(e_errors.RETRY, None),
                    'retry':request_dictionary['retry'],
                    'queue_size':len(request_list)}
@@ -1359,8 +1359,8 @@ def submit_write_request(work_ticket, client, max_retry, verbose):
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
                                      max_retry, verbose)
-        if result_dict['status'] == e_errors.RETRY or \
-           result_dict['status'] in e_errors.non_retriable_errors:
+        if result_dict['status'][0] == e_errors.RETRY or \
+           result_dict['status'][0] in e_errors.non_retriable_errors:
             continue
         else:
             ticket['status'] = (e_errors.OK, ticket['status'])
@@ -1465,6 +1465,13 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             status_ticket = (e_errors.IOERROR, detail)
             result_dict = handle_retries([work_ticket], work_ticket,
                                          status_ticket, e.max_retry, e.verbose)
+
+            try:
+                control_socket.close()
+                data_path_socket.close()
+            except socket.error:
+                pass
+            
             if result_dict['status'][0] == e_errors.RETRY:
                 continue
             elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1473,6 +1480,49 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         if e.verbose > 1:
             print "Input file %s opened.   elapsed=%s" % \
                   (work_ticket['infile'], time.time()-tinfo['encp_start_time'])
+
+        #Stall starting the count until the first byte is ready for reading.
+        read_fd, write_fd, exc_fd = select.select([], [data_path_socket],
+                                                  [data_path_socket], 15 * 60)
+
+        #If nothing was recieved from the mover after 15 min.
+        if not write_fd:
+            #Get volume info from the volume clerk.
+            vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
+            vc_reply = vcc.inquire_vol(work_ticket['fc']['external_label'])
+            #Determine if the control socket has some errror to report.
+            read_fd, write_fd, exc_fd = select.select([control_socket], [],
+                                                      [control_socket], 60)
+
+            #Need to check if the volume has been marked NOACCESS since it
+            # was checked last.
+            if vc_reply['status'][0] != e_errors.OK:
+                done_ticket = {'status':vc_reply['status']}
+            #check control socket for error.
+            elif read_fd or exc_fd:
+                done_ticket = recieve_final_dialog(control_socket, work_ticket,
+                                                   e.max_retry)
+                if done_ticket['status'][0] == e_errors.OK:
+                    done_ticket = {'status':(e_errors.NET_ERROR,
+                                             e_errors.UNKNOWN)}
+            #Something happend, but don't know what.
+            else:
+                done_ticket = {'status':(e_errors.NET_ERROR, e_errors.UNKNOWN)}
+                
+            result_dict = handle_retries([work_ticket], work_ticket,
+                                         done_ticket, e.max_retry, e.verbose)
+            try:
+                control_socket.close()
+                data_path_socket.close()
+                in_file.close()
+            except (socket.error, OSError):
+                #print "Error closeing something"
+                pass
+        
+            if result_dict['status'][0] == e_errors.RETRY:
+                continue
+            elif result_dict['status'][0] in e_errors.non_retriable_errors:
+                return combine_dict(result_dict, work_ticket)
 
         lap_time = time.time() #------------------------------------------Start
 
@@ -2027,8 +2077,8 @@ def submit_read_requests(requests, client, tinfo, verbose):
 
             result_dict = handle_retries(requests_to_submit, req, ticket,
                                          max_retry, verbose)
-            if result_dict['status'] == e_errors.RETRY or \
-               result_dict['status'] in e_errors.non_retriable_errors:
+            if result_dict['status'][0] == e_errors.RETRY or \
+               result_dict['status'][0] in e_errors.non_retriable_errors:
                 continue
             
             del requests_to_submit[requests_to_submit.index(req)]
@@ -2131,11 +2181,15 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             done_ticket = {'status':(e_errors.USERERROR, detail)}
             result_dict = handle_retries(requests, requests[j],
                                         done_ticket, e.max_retry, e.verbose)
-            if result_dict['status'] in e_errors.non_retriable_errors:
+            if result_dict['status'][0] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
                 failed_requests.append(request)
-            control_socket.close()
-            data_path_socket.close()
+
+            try:
+                control_socket.close()
+                data_path_socket.close()
+            except socket.error:
+                pass
             continue
 
         if e.verbose > 1:
@@ -2144,8 +2198,48 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         #Stall starting the count until the first byte is ready for reading.
         read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
-                                                  [data_path_socket], 30)
+                                                  [data_path_socket], 15 * 60)
 
+        #If nothing was recieved from the mover after 15 min.
+        if not read_fd:
+            #Get volume info from the volume clerk.
+            #Get volume info from the volume clerk.
+            vcc = volume_clerk_client.VolumeClerkClient(client['csc'])
+            vc_reply = vcc.inquire_vol(requests[j]['fc']['external_label'])
+            #Determine if the control socket has some errror to report.
+            read_fd, write_fd, exc_fd = select.select([control_socket], [],
+                                                      [control_socket], 60)
+
+            #Need to check if the volume has been marked NOACCESS since it
+            # was checked last.
+            if vc_reply['status'][0] != e_errors.OK:
+                done_ticket = {'status':vc_reply['status']}
+            #check control socket for error.
+            elif read_fd or exc_fd:
+                done_ticket = recieve_final_dialog(control_socket, requests[j],
+                                                   e.max_retry)
+                if done_ticket['status'][0] == e_errors.OK:
+                    done_ticket = {'status':(e_errors.NET_ERROR,
+                                             e_errors.UNKNOWN)}
+            #Something happend, but don't know what.
+            else:
+                done_ticket = {'status':(e_errors.NET_ERROR, e_errors.UNKNOWN)}
+            
+            result_dict = handle_retries(requests, requests[j],
+                                         done_ticket, e.max_retry, e.verbose)
+            if result_dict['status'][0] in e_errors.non_retriable_errors:
+                files_left = result_dict['queue_size']
+                failed_requests.append(request)
+            try:
+                control_socket.close()
+                data_path_socket.close()
+                os.close(out_fd)
+            except socket.error:
+                pass
+
+            continue
+            
+            
         lap_start = time.time() #----------------------------------------Start
 
         #Read in the data from the mover and write it out to file.  Also,
