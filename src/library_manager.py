@@ -179,7 +179,8 @@ class LibraryManagerMethods:
     # send a regret
     def send_regret(self, ticket):
         # fork off the regret sender
-        ## ret = self.fork() #XXX do we really need to fork off here? - cgw
+        if self.fork() != 0:
+            return
         try:
             Trace.trace(11,"send_regret %s" % (ticket,))
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -191,6 +192,7 @@ class LibraryManagerMethods:
         except:
             exc,msg,tb=sys.exc_info()
             Trace.log(1,"send_regret %s %s %s"%(exc,msg,ticket))
+        os._exit(0)
 
 
     # find mover in the list
@@ -351,7 +353,6 @@ class LibraryManagerMethods:
         vol_family = rq.ticket["vc"]["volume_family"]
         if not self.write_vf_list.has_key(vol_family):
             vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(vol_family)
-            #vol_veto_list, wr_en = self.busy_vols_in_family(key)
             Trace.trace(11,"process_write_request vol veto list:%s, width:%d"%\
                         (vol_veto_list, wr_en))
             self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
@@ -367,18 +368,10 @@ class LibraryManagerMethods:
 
         # width not exceeded, ask volume clerk for a new volume.
         first_found = 0
-        #################################################
-        # REMOVE WHEN OLD SYSTEM IS GONE
-        # backward compatibility
-        # cut the wrapper info off volume family
-        sg_tmp = volume_family.extract_storage_group(vol_family)
-        if sg_tmp == 'unknown':
-            vf = string.join((sg_tmp, string.split(vol_family,'.')[1]), '.')
-        else: vf = vol_family
         ##################################################
         v = self.vcc.next_write_volume (rq.ticket["vc"]["library"],
                                         rq.ticket["wrapper"]["size_bytes"],
-                                        vf, 
+                                        vol_family, 
                                         rq.ticket["vc"]["wrapper"],
                                         vol_veto_list,
                                         first_found)
@@ -723,7 +716,8 @@ class LibraryManagerMethods:
 		break
 	if not vol_found:
 	    vol = {'external_label' : external_label,
-		   'movers' : []
+		   'movers' : [],
+                   'time':time.time()
 		   }
 	for mv in vol['movers']:
 	    if mover == mv:
@@ -745,7 +739,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		     generic_server.GenericServer,
 		     LibraryManagerMethods):
 
-    suspect_volumes = [] # list of suspected volumes
     max_suspect_movers = 2 # maximal number of movers in the suspect volume
     max_suspect_volumes = 100 # maximal number of suspected volumes for alarm
                               # generation
@@ -843,9 +836,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
 	    
         ticket["status"] = (e_errors.OK, None)
-        # create a file_family
-        if ticket["vc"]["file_family"] != 'ephemeral':
-            ticket["vc"]["file_family"]+"."+ticket["vc"]["wrapper"]
 
         # check if work is in the at mover list before inserting it
 	for wt in self.work_at_movers.list:
