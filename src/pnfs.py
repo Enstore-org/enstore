@@ -117,12 +117,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Test if the filename passed in is really a pnfs id.
         if self.is_pnfsid(pnfsFilename):
-            
+            self.id = pnfsFilename
             try:
-                self.id = pnfsFilename
                 pnfsFilename = self.get_path(pnfsFilename)
             except (OSError, IOError), detail:
-                self.id = ""
+                pnfsFilename = ""
 
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
@@ -131,7 +130,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.pnfsFilename = self.filepath
         except AttributeError:
-            sys.stderr.write("self.filepath DNE after initialization\n")
+            #sys.stderr.write("self.filepath DNE after initialization\n")
+            pass
 
     ##########################################################################
 
@@ -368,7 +368,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # get the total path of the id
     def get_path(self, id=None, directory=""):
         if directory:
-            use_dir = directory
+            use_dir = fullpath(directory)[1]
         else:
             use_dir = self.dir
 
@@ -379,7 +379,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         ###Note: The filepath should be munged with the mountpoint.
         search_path = os.path.join("/", use_dir.split("/")[0])
-        for d in self.dir.split("/")[1:]:
+        for d in use_dir.split("/")[1:]:
             search_path = os.path.join(search_path, d)
             if os.path.ismount(search_path):
                 #If the path is of the master /pnfs/fs, then the /usr should
@@ -707,6 +707,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.mode = 0
         self.mode_octal = 0
         self.file_size = ERROR
+        self.inode = 0
         #What these do, I do not know.  MWZ
         self.rmajor, self.rminor = (0, 0)
         self.major, self.minor = (0, 0)
@@ -761,6 +762,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             if os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
+        except KeyboardInterrupt:
+            raise sys.exc_info()
+        except:
+            pass
+
+        #Get the inode.
+        try:
+            #if os.path.exists(self.filepath):
+            self.inode = self.pstat[stat.ST_INO]
         except KeyboardInterrupt:
             raise sys.exc_info()
         except:
