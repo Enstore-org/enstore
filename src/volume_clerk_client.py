@@ -26,29 +26,26 @@ import e_errors
 class VolumeClerkClient(generic_client.GenericClient,\
                         backup_client.BackupClient):
 
-    def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
-                 port=interface.default_port()):
-        Trace.trace(10,'{__init__ csc='+repr(csc)+' verbose='+repr(verbose)+\
-                    ' host='+repr(host)+' port='+repr(port))
+    def __init__( self, csc=0, verbose=0, host=interface.default_host(), \
+                  port=interface.default_port(), servr_addr=None ):
+        Trace.trace( 10, '{__init__ csc='+str(csc)+' verbose='+str(verbose)+\
+		     ' host='+str(host)+' port='+str(port)+' servr_addr='+str(servr_addr) )
 	self.print_id = "VCC"
-        configuration_client.set_csc(self, csc, host, port, verbose)
         self.u = udp_client.UDPClient()
 	self.verbose = verbose
-        ticket = self.csc.get("volume_clerk")
-	try:
-            self.print_id = ticket['logname']
-        except:
-            pass
-        Trace.trace(10,'}__init__ u='+repr(self.u))
+        configuration_client.set_csc( self, csc, host, port, verbose )
+        ticket = self.csc.get( "volume_clerk" )
+	if servr_addr != None: self.servr_addr = servr_addr
+	else:                  self.servr_addr = (ticket['hostip'],ticket['port'])
+	try:    self.print_id = ticket['logname']
+        except: pass
+        Trace.trace(10,'}__init__ u='+str(self.u))
 
     # send the request to the volume clerk server and then send answer to user
     def send (self, ticket,  rcv_timeout=0, tries=0):
-        Trace.trace(16,'{send')
-        vticket = self.csc.get("volume_clerk")
-        Trace.trace(16,'send to volume clerk '+\
-                    repr((vticket['hostip'], vticket['port'])))
-        x = self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
-        Trace.trace(16,'}send '+repr(x))
+        Trace.trace( 16, '{send to volume clerk '+str(self.servr_addr) )
+        x = self.u.send( ticket, self.servr_addr, rcv_timeout, tries )
+        Trace.trace( 16, '}send '+str(x) )
         return x
 
     # add a volume to the stockpile
@@ -77,7 +74,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                wrapper = "cpio_custom",      # kind of wrapper for volume
                blocksize = -1         # blocksize (-1 =  media type specifies)
                ):
-        Trace.trace(3,'add_vol label='+repr(external_label))
+        Trace.trace(3,'add_vol label='+str(external_label))
         ticket = { 'work'            : 'addvol',
                    'library'         : library,
                    'file_family'     : file_family,
@@ -98,17 +95,17 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'wrapper'         : wrapper,
                    'blocksize'       : blocksize }
         x = self.send(ticket)
-        Trace.trace(3,'}add_vol '+repr(x))
+        Trace.trace(3,'}add_vol '+str(x))
         return x
 
 
     # delete a volume from the stockpile
     def delvol(self, external_label):
-        Trace.trace(3,'del_vol label='+repr(external_label))
+        Trace.trace(3,'del_vol label='+str(external_label))
         ticket= { 'work'           : 'delvol',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}del_vol '+repr(x))
+        Trace.trace(3,'}del_vol '+str(x))
         return x
 
 
@@ -125,9 +122,9 @@ class VolumeClerkClient(generic_client.GenericClient,\
         # send the work ticket to the library manager
         ticket = self.send(ticket)
         if ticket['status'][0] != e_errors.OK:
-            Trace.trace(0,"vcc.get_vols: sending ticket"+repr(ticket))
+            Trace.trace(0,"vcc.get_vols: sending ticket"+str(ticket))
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: sending ticket"\
-                  +repr(ticket)
+                  +str(ticket)
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -148,11 +145,11 @@ class VolumeClerkClient(generic_client.GenericClient,\
         if ticket["status"][0] != e_errors.OK:
             Trace.trace(0,"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
-                  +repr(address)+" failed to setup transfer: "\
+                  +str(address)+" failed to setup transfer: "\
                   +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols: "\
                   +"1st (pre-work-read) volume clerk callback on socket "\
-                  +repr(address)+", failed to setup transfer: "\
+                  +str(address)+", failed to setup transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
 
         # If the system has called us back with our own  unique id, call back
@@ -178,103 +175,103 @@ class VolumeClerkClient(generic_client.GenericClient,\
         if done_ticket["status"][0] != e_errors.OK:
             Trace.trace(0,"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
-                  +repr(address)+", failed to transfer: "\
+                  +str(address)+", failed to transfer: "\
                   +ticket["status"])
             raise errno.errorcode[errno.EPROTO],"vcc.get_vols "\
                   +"2nd (post-work-read) volume clerk callback on socket "\
-                  +repr(address)+", failed to transfer: "\
+                  +str(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
         Trace.trace(20,'}get_vols')
         return worklist
 
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label):
-        Trace.trace(10,'inquire_vol label='+repr(external_label))
+        Trace.trace(10,'inquire_vol label='+str(external_label))
         ticket= { 'work'           : 'inquire_vol',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(10,'}inquire_vol '+repr(x))
+        Trace.trace(10,'}inquire_vol '+str(x))
         return x
 
     # move a volume to a new library
     def new_library(self, external_label,new_library):
-        Trace.trace(10,'new_library label='+repr(external_label)+' new_library='+repr(new_library))
+        Trace.trace(10,'new_library label='+str(external_label)+' new_library='+str(new_library))
         ticket= { 'work'           : 'new_library',
                   'external_label' : external_label,
                   'new_library'    : new_library}
         x = self.send(ticket)
-        Trace.trace(10,'}new_library '+repr(x))
+        Trace.trace(10,'}new_library '+str(x))
         return x
 
     # we are using the volume
     def set_writing(self, external_label):
-        Trace.trace(10,'set_writing label='+repr(external_label))
+        Trace.trace(10,'set_writing label='+str(external_label))
         ticket= { 'work'           : 'set_writing',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(10,'}set_writing '+repr(x))
+        Trace.trace(10,'}set_writing '+str(x))
         return x
 
     # we are using the volume
     def set_system_readonly(self, external_label):
-        Trace.trace(10,'set_system_readonly label='+repr(external_label))
+        Trace.trace(10,'set_system_readonly label='+str(external_label))
         ticket= { 'work'           : 'set_system_readonly',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(10,'}set_system_readonly '+repr(x))
+        Trace.trace(10,'}set_system_readonly '+str(x))
         return x
 
     # mark volume as noaccess
     def set_system_noaccess(self, external_label):
-        Trace.trace(10,'set_system_noaccess label='+repr(external_label))
+        Trace.trace(10,'set_system_noaccess label='+str(external_label))
         ticket= { 'work'           : 'set_system_noaccess',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(10,'}set_system_noaccess '+repr(x))
+        Trace.trace(10,'}set_system_noaccess '+str(x))
         return x
 
     # mark volume as noaccess
     def set_at_mover(self, external_label, flag, mover):
-        Trace.trace(10,'set_at_mover label='+repr(external_label)+\
-		    ' flag='+repr(flag)+' mover='+repr(mover))
+        Trace.trace(10,'set_at_mover label='+str(external_label)+\
+		    ' flag='+str(flag)+' mover='+str(mover))
         ticket= { 'work'           : 'set_at_mover',
                   'external_label' : external_label,
 		  'at_mover' : (flag, mover)}
         x = self.send(ticket)
 	"""
 	generic_cs.enprint("set_at_mover:VCC returned "+\
-			   repr(x['at_mover'])+repr(x['status']), 
+			   str(x['at_mover'])+str(x['status']), 
 			   generic_cs.DEBUG)
         """
 
-        Trace.trace(10,'}set_at_mover '+repr(x))
+        Trace.trace(10,'}set_at_mover '+str(x))
         return x
 
     # clear any inhibits on the volume
     def clr_system_inhibit(self,external_label):
-        Trace.trace(3,'clr_system_inhibit label='+repr(external_label))
+        Trace.trace(3,'clr_system_inhibit label='+str(external_label))
         ticket= { 'work'           : 'clr_system_inhibit',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}clr_system_inhibit '+repr(x))
+        Trace.trace(3,'}clr_system_inhibit '+str(x))
         return x
 
     # we are using the volume
     def set_hung(self, external_label):
-        Trace.trace(3,'set_hung label='+repr(external_label))
+        Trace.trace(3,'set_hung label='+str(external_label))
         ticket= { 'work'           : 'set_hung',
                   'external_label' : external_label }
         x = self.send(ticket)
-        Trace.trace(3,'}set_hung '+repr(x))
+        Trace.trace(3,'}set_hung '+str(x))
         return x
 
     # this many bytes left - update database
     def set_remaining_bytes(self, external_label,remaining_bytes,eod_cookie,
                             wr_err,rd_err,wr_access,rd_access):
-        Trace.trace(10,'{set_remaining_bytes label='+repr(external_label)+\
-                    ' bytes='+repr(remaining_bytes)+ ' wr_err='+\
-                    repr(wr_err)+' rd_err='+repr(rd_err)+' wr_access='+\
-                    repr(wr_access)+' rd_access='+repr(rd_access))
+        Trace.trace(10,'{set_remaining_bytes label='+str(external_label)+\
+                    ' bytes='+str(remaining_bytes)+ ' wr_err='+\
+                    str(wr_err)+' rd_err='+str(rd_err)+' wr_access='+\
+                    str(wr_access)+' rd_access='+str(rd_access))
         ticket= { 'work'            : 'set_remaining_bytes',
                   'external_label'  : external_label,
                   'remaining_bytes' : remaining_bytes,
@@ -284,15 +281,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
         x = self.send(ticket)
-        Trace.trace(10,'}set_remaining_bytes '+repr(x))
+        Trace.trace(10,'}set_remaining_bytes '+str(x))
         return x
 
 
     # update the counts in the database
     def update_counts(self, external_label, wr_err,rd_err,wr_access,rd_access):
-        Trace.trace(10,'{update_counts label='+repr(external_label)+' wr_err='+\
-                    repr(wr_err)+' rd_err='+repr(rd_err)+' wr_access='+\
-                    repr(wr_access)+' rd_access='+repr(rd_access))
+        Trace.trace(10,'{update_counts label='+str(external_label)+' wr_err='+\
+                    str(wr_err)+' rd_err='+str(rd_err)+' wr_access='+\
+                    str(wr_access)+' rd_access='+str(rd_access))
         ticket= { 'work'            : 'update_counts',
                   'external_label'  : external_label,
                   'wr_err'          : wr_err,
@@ -300,16 +297,16 @@ class VolumeClerkClient(generic_client.GenericClient,\
                   'wr_access'       : wr_access,
                   'rd_access'       : rd_access }
         x = self.send(ticket)
-        Trace.trace(10,'}update_counts '+repr(x))
+        Trace.trace(10,'}update_counts '+str(x))
         return x
 
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
                            file_family, wrapper, vol_veto_list,first_found):
-        Trace.trace(10,'{next_write_volume lib='+repr(library)+' bytes='+\
-                    repr(min_remaining_bytes)+' ff='+repr(file_family)+\
-                    " veto="+repr(vol_veto_list)+' first_found='+\
-                    repr(first_found))
+        Trace.trace(10,'{next_write_volume lib='+str(library)+' bytes='+\
+                    str(min_remaining_bytes)+' ff='+str(file_family)+\
+                    " veto="+str(vol_veto_list)+' first_found='+\
+                    str(first_found))
         ticket = { 'work'                : 'next_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
@@ -319,15 +316,15 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'first_found'         : first_found }
 
         x = self.send(ticket)
-        Trace.trace(10,'}next_write_volume '+repr(x))
+        Trace.trace(10,'}next_write_volume '+str(x))
         return x
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
                            file_family, wrapper, external_label):
-        Trace.trace(10,'{can_write_volume lib='+repr(library)+' bytes='+\
-                    repr(min_remaining_bytes)+' ff='+repr(file_family)+\
-                    " volume="+repr(external_label))
+        Trace.trace(10,'{can_write_volume lib='+str(library)+' bytes='+\
+                    str(min_remaining_bytes)+' ff='+str(file_family)+\
+                    " volume="+str(external_label))
         ticket = { 'work'                : 'can_write_volume',
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
@@ -336,17 +333,17 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'external_label'       : external_label }
 
         x = self.send(ticket)
-        Trace.trace(10,'}can_write_volume '+repr(x))
+        Trace.trace(10,'}can_write_volume '+str(x))
         return x
 
     # for the backward compatibility D0_TEMP
     def add_at_mover (self, external_label):
-        Trace.trace(10,'{add_at_mover '+repr(external_label))
+        Trace.trace(10,'{add_at_mover '+str(external_label))
         ticket = { 'work'                : 'add_at_mover',
                    'external_label'       : external_label }
 
         x = self.send(ticket)
-        Trace.trace(10,'}add_at_mover '+repr(x))
+        Trace.trace(10,'}add_at_mover '+str(x))
         return x
     # END D0_TEMP
 
@@ -458,7 +455,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 if __name__ == "__main__":
     import sys
     Trace.init("VC client")
-    Trace.trace(1,"vcc called with args "+repr(sys.argv))
+    Trace.trace(1,"vcc called with args "+str(sys.argv))
 
     # fill in the interface
     intf = VolumeClerkClientInterface()
