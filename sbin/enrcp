@@ -49,8 +49,19 @@ if [ -d $krbdir ]; then
       ${krbdir}/rcp "$@"
 
    else
-      # this is someone else
+      # this is someone else, see if we have a ticket before doing anything
+      OLDKRB5CCNAME=""
+      ${krbdir}/klist -s
+      if [ $? -eq 1 ];
+      then
+        # no we do not, try to get one using kcron
+	OLDKRB5CCNAME="YES"
+	KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
+	${krbdir}/kcron 2> /dev/null
+      fi
       ${krbdir}/rcp "$@"
+      # only destroy the ticket if we obtained one using kcron
+      if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
 
 else
