@@ -661,7 +661,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     # update statistics
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
-        if self.stats_on and self.tape_driver:
+        if self.stats_on and self.tape_driver and self.tape_driver.ftt:
             stats = self.tape_driver.ftt.get_stats()
             drivestat.ds_set_character_field(self.drive_stats, self.current_volume, drivestat.TAPE_VOLSER)
             st = drivestat.ds_translate_ftt_stats(self.drive_stats, stats.b, drivestat.RECENT)
@@ -2467,7 +2467,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         self.update_stat()
-        if self.stats_on and self.tape_driver:
+        if self.stats_on and self.tape_driver and self.tape_driver.ftt:
 		ret=drivestat.ds_send_stats(self.drive_stats,
                                             10,
                                             drivestat.RECENT|drivestat.BUMP_MOUNTS|drivestat.SUM_OF_DELTAS);
