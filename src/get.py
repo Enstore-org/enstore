@@ -92,7 +92,7 @@ def transfer_file(in_fd, out_fd):
             'bytes' : bytes, 'encp_crc' : crc}
 
 
-def get_single_file(work_ticket, control_socket, udp_socket, e):
+def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
     #Loop around in case the file transfer needs to be retried.
     #while work_ticket.get('retry', 0) <= e.max_retry:
@@ -128,6 +128,8 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(10, "MOVER_REQUEST_SUBMISSION:")
         Trace.message(10, pprint.pformat(work_ticket))
         udp_socket.reply_to_caller(work_ticket)
+
+        overall_start = time.time() #----------------------------Overall Start
         
         Trace.message(5, "Opening the data socket.")
 
@@ -155,9 +157,14 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             return {'status':(e_errors.TIMEDOUT, "No data received")}
 
         Trace.message(5, "Reading data from tape.")
+
+        lap_time = time.time() #------------------------------------------Start
         
         # Read the file from the mover.
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+
+        tstring = '%s_transfer_time' % work_ticket['unique_id']
+        tinfo[tstring] = time.time() - lap_time #--------------------------End
 
         #Store what there is in the 'exfer' sub-ticket.
         work_ticket['exfer'] = done_ticket
@@ -253,6 +260,12 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             #work_ticket = encp.combine_dict(result_dict, work_ticket)
             Trace.log(e_errors.ERROR, str(work_ticket['status']))
             return work_ticket
+
+        tstring = '%s_overall_time' % work_ticket['unique_id']
+        tinfo[tstring] = time.time() - overall_start #-------------Overall End
+
+        #Give the user some numbers on how fast things went.
+        encp.calculate_rate(work_ticket, tinfo)
         
         #work_ticket = encp.combine_dict(result_dict, work_ticket)
         return work_ticket
@@ -496,6 +509,7 @@ def main(e):
                     "Unable to open control socket with mover: %s\n" %
                     (ticket['status'],))
                 encp.quit(1)
+
         except (encp.EncpError,), detail:
             if detail.errno == errno.ETIMEDOUT:
                 continue
@@ -532,6 +546,7 @@ def main(e):
             # It must be done by hand because both tickets have correct
             # pieces of information that is old in the other ticket.
             request['mover'] = ticket['mover']
+            request['encp_ip'] =  use_listen_socket.getsockname()[0]
             #Encp create_read_request() gives each file a new unique id.
             # The LM can't deal with multiple mover file requests from one
             # LM request.  Thus, we need to set this back to the last unique
@@ -541,7 +556,7 @@ def main(e):
             requests_per_vol[e.volume][index] = request
             
             Trace.message(4, "Preparing to read %s." % request['outfile'])
-            done_ticket = get_single_file(request, control_socket,
+            done_ticket = get_single_file(request, tinfo, control_socket,
                                           udp_socket, e)
 
             #Print out the final ticket.
