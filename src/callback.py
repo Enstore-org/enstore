@@ -73,7 +73,7 @@ def write_tcp_raw(sock,msg,timeout=15*60):
         #sock.send(hex8(checksum.adler32(salt,msg,l)))
         timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
     except socket.error, detail:
-        Trace.trace(6,"write_tcp_raw: socket.error %s"%(detail,))
+        Trace.log(e_errors.ERROR,"write_tcp_raw: socket.error %s"%(detail,))
         ##XXX Further sends will fail, our peer will notice incomplete message
 
 
@@ -103,11 +103,11 @@ def read_tcp_raw(sock, timeout=15*60):
     except:
         bytecount = None
     if len(tmp)!=8 or bytecount is None:
-        Trace.trace(6,"read_tcp_raw: bad bytecount %s"%(tmp,))
+        Trace.log(e_errors.ERROR,"read_tcp_raw: bad bytecount %s"%(tmp,))
         return ""
     tmp = timeout_recv(sock,8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        Trace.trace(6,"read_tcp_raw: invalid signature %s"%(tmp,))
+        Trace.log(e_errors.ERROR,"read_tcp_raw: invalid signature %s"%(tmp,))
         return ""
     salt=string.atoi(tmp[6:])
     msg = ""
@@ -117,13 +117,13 @@ def read_tcp_raw(sock, timeout=15*60):
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
-        Trace.trace(6,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
+        Trace.log(e_errors.ERROR,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
         return ""
     tmp = timeout_recv(sock,8, timeout)
     crc = string.atol(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        Trace.trace(6,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
+        Trace.log(e_errors.ERROR,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
         return ""
     return msg
 
