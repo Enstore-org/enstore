@@ -38,7 +38,7 @@ rm -f $OUTPUT
 echo "Matching $X $node to $match" | tee $OUTPUT
 
 # NOTE: the -e option does not appear to exist on sgi machines
-/usr/bin/rsync -e /home/bakken/enstore/sbin/enrsh -c -r -R -l -p -o -g -D -t -x $X \
+/usr/bin/rsync -e /home/enstore/enstore/sbin/enrsh -c -r -R -l -p -o -g -D -t -x $X \
                --exclude="*~" \
                --exclude="/tmp/*" \
                --exclude="*.Xauthority" \
