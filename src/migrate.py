@@ -784,6 +784,36 @@ def migrate(files):
 		migrating()
 		return errors
 
+# migrated_from(vol, db) -- list all volumes that have migrated to vol
+def migrated_from(vol, db):
+	q = "select distinct va.label \
+		from volume va, volume vb, file fa, file fb, migration \
+		 where fa.volume = va.id and fb.volume = vb.id \
+			and fa.bfid = migration.src_bfid \
+			and fb.bfid = migration.dst_bfid \
+			and vb.label = '%s' order by va.label;"%(vol)
+	res = db.query(q).getresult()
+	from_list = []
+	for i in res:
+		from_list.append(i[0])
+
+	return from_list
+
+# migrated_to(vol, db) -- list all volumes that vol has migrated to
+def migrated_to(vol, db):
+	q = "select distinct vb.label \
+		from volume va, volume vb, file fa, file fb, migration \
+		 where fa.volume = va.id and fb.volume = vb.id \
+			and fa.bfid = migration.src_bfid \
+			and fb.bfid = migration.dst_bfid \
+			and va.label = '%s' order by vb.label;"%(vol)
+	res = db.query(q).getresult()
+	to_list = []
+	for i in res:
+		to_list.append(i[0])
+
+	return to_list
+
 # migrate_volume(vol) -- migrate a volume
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
@@ -941,6 +971,24 @@ if __name__ == '__main__':
 	elif sys.argv[1] == "--scan-vol":
 		for i in sys.argv[2:]:
 			final_scan_volume(i)
+	elif sys.argv[1] == "--migrated-from":
+		# get a db connection
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+		for i in sys.argv[2:]:
+			from_list = migrated_from(i, db)
+			print "%s <=",
+			for j in from_list:
+				print j,
+			print
+	elif sys.argv[1] == "--migrated-to":
+		# get a db connection
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+		for i in sys.argv[2:]:
+			to_list = migrated_to(i, db)
+			print "%s =>",
+			for j in to_list:
+				print j,
+			print
 	else:	# assuming all are files
 		files = []
 		for i in sys.argv[1:]:
