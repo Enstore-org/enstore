@@ -244,17 +244,17 @@ class FileDB(DbTable):
 			deleted = 'unknown'
 
 		# take care of sanity_cookie
-		if s['sanity_cookie_0'] == 0:
+		if s['sanity_cookie_0'] == -1:
 			sanity_cookie_0 = None
 		else:
 			sanity_cookie_0 = s['sanity_cookie_0']
-		if s['sanity_cookie_1'] == 0:
+		if s['sanity_cookie_1'] == -1:
 			sanity_cookie_1 = None
 		else:
 			sanity_cookie_1 = s['sanity_cookie_1']
 
 		# take care of crc
-		if s['crc'] == 0:
+		if s['crc'] == -1:
 			crc = None
 		else:
 			crc = s['crc']
@@ -282,15 +282,15 @@ class FileDB(DbTable):
 
 		# Take care of sanity_cookie
 		if s['sanity_cookie'][0] == None:
-			sanity_cookie_0 = 0
+			sanity_cookie_0 = -1 
 		else:
 			sanity_cookie_0 = s['sanity_cookie'][0]
 		if s['sanity_cookie'][1] == None:
-			sanity_cookie_1 = 0
+			sanity_cookie_1 = -1 
 
 		# take care of crc
 		if s['complete_crc'] == None:
-			crc = 0
+			crc = -1 
 		else:
 			crc = s['complete_crc']
 
