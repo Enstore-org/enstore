@@ -152,14 +152,10 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             pass
         
 def alarm(severity, root_error, rest={}):
-    rest['severity'] = severity
-    rest[enstore_constants.ROOT_ERROR] = root_error
     #log(severity, root_error, MSG_ALARM)
     if alarm_func:
-        alarm_func(
-            time.time, os.getpid(), logname, root_error,
-	    ("%s:%s"%(enstore_constants.ROOT_ERROR,
-		      rest[enstore_constants.ROOT_ERROR],), rest ))
+        alarm_func(time.time, os.getpid(), logname, root_error, severity,
+		   rest)
     if print_levels.has_key(severity):
         try:
             print root_error
@@ -202,7 +198,7 @@ def set_log_func(func):
 
 # defaults (templates) -- called from trace
 
-def default_alarm_func(time, pid, name, root_error, args):
+def default_alarm_func(time, pid, name, root_error, severity, args):
     lvl = args[0]
     msg = args[1]
     print "default alarm_func", args

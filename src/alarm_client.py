@@ -4,6 +4,7 @@ import sys
 import os
 import pwd
 import errno
+import types
 
 # enstore imports
 import generic_client
@@ -51,28 +52,28 @@ class AlarmClient(generic_client.GenericClient):
         Trace.set_alarm_func( self.alarm_func )
         self.alarm_func_lock = Lock() 
         
-    def alarm_func(self, time, pid, name, root_error, args):
+    def alarm_func(self, time, pid, name, root_error, 
+		   severity, args):
         # prevent infinite recursion (i.e if some function call by this
         # function does a trace and the alarm bit is set
         if self.alarm_func_lock.test_and_set(): return None
+	# translate severity to text
+	if type(severity) == types.IntType:
+	    severity = e_errors.sevdict.get(severity, 
+					    e_errors.sevdict[e_errors.ERROR])
         ticket = {}
         ticket['work'] = "post_alarm"
         ticket[enstore_constants.UID] = self.uid
         ticket[enstore_constants.PID] = pid
         ticket[enstore_constants.SOURCE] = name
+	ticket[enstore_constants.SEVERITY] = severity
 	ticket[enstore_constants.ROOT_ERROR] = root_error
-        if args[0] == e_errors.ALARM:
-            # we were called from Trace.alarm and args will be a dict
-            ticket.update(args[2])
-            log_msg = args[2]
-        else:
-            # we were called from someplace like Trace.trace and we only
-            # have a text string for an argument
-            ticket['text'] = args[1]
-            log_msg = args[1]
+	ticket['text'] = args
+	log_msg = "%s, %s (severity : %s)"%(root_error, args, severity)
+
         self.send(ticket, self.rcv_timeout, self.rcv_tries )
         # log it for posterity
-        Trace.log(e_errors.ALARM, repr(log_msg), Trace.MSG_ALARM)
+        Trace.log(e_errors.ALARM, log_msg, Trace.MSG_ALARM)
         return self.alarm_func_lock.unlock()
 
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY, \
