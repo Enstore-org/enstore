@@ -178,7 +178,7 @@ class UDPServer:
             elif number < lst[0]: 
                 Trace.trace(6,"process_request "+repr(idn)+" old news")
                 return None#old news, timing race....
-
+        self.purge_stale_entries()
         return ticket
 
 
