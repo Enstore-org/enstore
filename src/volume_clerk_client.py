@@ -604,6 +604,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.forget_all_ignored_storage_groups = 0
         self.show_ignored_storage_groups = 0
         self.remaining_bytes = None
+        self.set_comment = None
         
         generic_client.GenericClientInterface.__init__(self)
 
