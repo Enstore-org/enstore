@@ -103,7 +103,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # temporary workaround - sam doesn't want to update encp too often
         pnfsvid = ticket["fc"].get("pnfsvid")
         pnfs_name0 = ticket["fc"].get("pnfs_name0")
-        pnfs_mapname = ticket["fc"].get("pnfs_mapname")
 
         # start (10/18/00) adding which drive we used to write the file
         drive = ticket["fc"].get("drive","unknown:unknown")
@@ -125,8 +124,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["pnfsvid"] = pnfsvid
         if pnfs_name0 != None:
             record["pnfs_name0"] = pnfs_name0
-        if pnfs_mapname != None:
-            record["pnfs_mapname"] = pnfs_mapname
         record["deleted"] = "no"
 
         # record our changes
@@ -834,7 +831,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             drive = ticket['drive']
             external_label = ticket['external_label']
             location_cookie = ticket['location_cookie']
-            pnfs_mapname = ticket.get('pnfs_mapname')
             pnfs_name0 = ticket['pnfs_name0']
             pnfsid = ticket['pnfsid']
             pnfsvid = ticket.get('pnfsvid')
@@ -854,8 +850,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record['drive'] = drive
         record['external_label'] = external_label
         record['location_cookie'] = location_cookie
-        if pnfs_mapname:
-            record['pnfs_mapname'] = pnfs_mapname
         record['pnfs_name0'] = pnfs_name0
         record['pnfsid'] = pnfsid
         if pnfsvid:
