@@ -933,8 +933,19 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if mticket['state'] != 'idle':
             Trace.trace(14,"idle_mover state:%s"%(mticket['state'],))
             if mticket['state'] == "draining":
-                movers.remove(mv)
+                if mv in movers:
+                    movers.remove(mv)
+                    mover_cnt = mover_cnt - 1
+                    if (self.mover_index >= mover_cnt and 
+                        self.mover_index > 0):
+                        self.mover_index = mover_cnt - 1
                 Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
+                # find the next idle mover
+                next_mv = idle_mover_next(self, None)
+                if next_mv:
+                    # summon this mover
+                    summon_mover(self, next_mv, {})
+            
             self.reply_to_caller({"work" : "nowork"})
             return
 	# check if there is a work for this mover in work_at_movers list
@@ -1060,6 +1071,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
+        global mover_cnt
 	Trace.trace(11, "have_bound_volume: request: %s"%(mticket,))
 	# update mover list. If mover is in the list - update its state
 	if mticket['state'] == 'idle':
@@ -1073,9 +1085,32 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	if state != 'idle_mover':
             Trace.trace(14,"have_bound_volume state:%s"%(state,))
             if state == "draining":
-                movers.remove(mv)
-                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
-	    self.reply_to_caller({'work': 'nowork'})
+                if mv in movers:
+                    movers.remove(mv)
+                    mover_cnt = mover_cnt - 1
+                    if (self.mover_index >= mover_cnt and 
+                        self.mover_index > 0):
+                        self.mover_index = mover_cnt - 1
+                        Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
+                        v = self.vcc.set_at_mover(mticket['vc']['external_label'], 
+                                                  'unmounting', 
+                                                  mticket["mover"])
+                        if v['status'][0] != e_errors.OK:
+                            state,mover=v.get('at_mover')
+                            format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
+                            Trace.log(e_errors.INFO, format%\
+                                      (mticket['vc']['external_label'],
+                                       mover, 
+                                       state))
+		
+                        format = "unbind vol %s mover=%s"
+                        Trace.log(e_errors.INFO, format %\
+                                  (mticket['vc']["external_label"],
+                                   mticket["mover"]))
+                        mv['state'] = 'unbind_sent'
+                        self.reply_to_caller({"work" : "unbind_volume"})
+            else:
+                self.reply_to_caller({'work': 'nowork'})
 	    return
 
         # just did some work, delete it from queue
@@ -1208,6 +1243,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # THE LIBRARY COULD NOT MOUNT THE TAPE IN THE DRIVE AND IF THE MOVER
     # THOUGHT THE VOLUME WAS POISONED, IT WOULD TELL THE VOLUME CLERK.
     def unilateral_unbind(self, ticket):
+        global mover_cnt
         Trace.trace(11,"UNILATERAL UNBIND RQ %s"%(ticket,))
         # get the work ticket for the volume
         w = get_work_at_movers(self, ticket["external_label"])
@@ -1245,7 +1281,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    self.reply_to_caller({"work" : "unbind_volume"})
 	    else:
                 if ticket['state'] == "draining":
-                    movers.remove(mv)
+                    if mv in movers:
+                        movers.remove(mv)
+                        mover_cnt = mover_cnt - 1
+                        if (self.mover_index >= mover_cnt and 
+                            self.mover_index > 0):
+                            self.mover_index = mover_cnt - 1
+
                     Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
                 Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
 		self.reply_to_caller({"work" : "nowork"})
