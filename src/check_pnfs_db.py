@@ -8,7 +8,7 @@ import time
 OK = 0
 FAIL = 1
 
-dir="/home/aik/tape_inventory_010723"
+dir="/home/aik/tape_inventory_010723/"
 
 def generate_volume_list(volume_file):
     f=open(volume_file, 'r')
