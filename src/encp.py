@@ -4387,6 +4387,8 @@ def set_pnfs_settings(ticket, intf_encp):
         fc_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
         fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
         fc_ticket["fc"]["drive"] = drive
+        fc_ticket["fc"]['uid'] = ticket['wrapper']['uid']
+        fc_ticket["fc"]['gid'] = ticket['wrapper']['gid']
 
         #volume_label = ticket.get('volume', None)
         #csc = get_csc(volume_label) #Get the correct system (if necessary).
@@ -6916,7 +6918,7 @@ class EncpInterface(option.Interface):
         #options effecting encp retries and resubmits
         self.max_retry = None      # number of times to try again
         self.max_resubmit = None   # number of times to try again
-        self.mover_timeout = 60 #15*60 # seconds to wait for mover to call back,
+        self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
 
