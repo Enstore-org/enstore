@@ -49,7 +49,10 @@ class UDPClient:
         # its dictionary - this keeps things cleaner and stops memory from growing
         for server in self.where_sent.items() :
             #print "clearing ",server[0], server[1]
-            self.send_no_wait({"work":"done_cleanup"}, server[0])
+	    try:
+		self.send_no_wait({"work":"done_cleanup"}, server[0])
+	    except:
+		pass
 
     # this (generally) is received/processed by dispatching worker
     def send(self, text, address) :
