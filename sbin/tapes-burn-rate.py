@@ -3,7 +3,6 @@
 import os
 import string
 import sys
-import pg
 import popen2
 import time
 
