@@ -46,6 +46,7 @@ MoverClient:
 """
 
 import generic_server
+import interface
 import dispatching_worker
 import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
@@ -715,66 +716,73 @@ def status_to_request( client_obj_inst, exit_status ):
 	pass
     return next_req_to_lm
 
+class MoverInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{lmsi.__init__')
+        # fill in the defaults for possible options
+        self.config_list = 0
+        self.list = 0
+        self.summon = 1
+        self.debug = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}lmsi.__init__')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16, "{}options")
+        return self.config_options()+\
+               self.help_options()
+
+    #  define our specific help
+    def help_line(self):
+        return interface.Interface.help_line(self)+" mover_device"
+
+    # parse the options like normal but make sure we have a mover
+    def parse_options(self):
+        interface.Interface.parse_options(self)
+        # bomb out if we don't have a mover
+        if len(self.args) < 1 :
+            self.print_help(),
+            sys.exit(1)
+        else:
+            self.name = self.args[0]
+
 #############################################################################
 
 #############################################################################
 import sys				# sys.argv[1:]
 import os				# os.environ
-import getopt				# getopt.getopt
-import socket				# gethostname (local host)
+import socket                           # gethostname (local host)
 import string				# atoi
 import types				# see if library config is list
 import configuration_client
 import udp_client
 import log_client
 
-# defaults
-try:
-    config_host = os.environ['ENSTORE_CONFIG_HOST']
-except:
-    (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
-    pass
-try:
-    config_port = string.atoi(os.environ['ENSTORE_CONFIG_PORT'])
-except:
-    config_port = 7500
-    pass
-
-# see what the user has specified. bomb out if wrong options specified
-options = [ "config_host=","config_port=","help" ]
-optlist,args=getopt.getopt(sys.argv[1:],'',options)
-for (opt,value) in optlist:
-    if opt == "--config_host":   config_host = value
-    elif opt == "--config_port": config_port = string.atoi(value)
-    elif opt == "--help":
-	print "python ",sys.argv[0], options
-	print "   do not forget the '--' in front of each option"
-	sys.exit(0)
-	pass
-    pass
-
-# bomb out if we don't have a mover
-if len(args) < 1:
-    print "python",sys.argv[0], options, "mover_device"
-    print "   do not forget the '--' in front of each option"
-    sys.exit(1)
-    pass
+# get an interface, and parse the user input
+intf = MoverInterface()
 
 # get clients -- these will be (readonly) global object instances
-csc  = configuration_client.ConfigurationClient( config_host, config_port, 0 )
+csc  = configuration_client.ConfigurationClient( intf.config_host, 
+                                                 intf.config_port, 0 )
 udpc =          udp_client.UDPClient()	# for server to send (client) request
 logc =          log_client.LoggerClient( csc, 'MOVER', 'logserver', 0 )
 fcc  = file_clerk_client.FileClient( csc )
 vcc  = volume_clerk_client.VolumeClerkClient( csc )
 
 # get my (localhost) configuration from the configuration server
-mvr_config = csc.get( args[0] )
+mvr_config = csc.get( intf.name )
 if mvr_config['status'][0] != "ok":
-    raise "could not start mover",args[0]," up:" + mvr_config['status']
+    raise "could not start mover",intf.name," up:" + mvr_config['status']
 # clean up the mvr_config a bit
-mvr_config['name'] = args[0]
-mvr_config['config_host'] = config_host; del config_host
-mvr_config['config_port'] = config_port; del config_port
+mvr_config['name'] = intf.name
+mvr_config['config_host'] = intf.config_host
+mvr_config['config_port'] = intf.config_port
+del intf
 mvr_config['do_fork'] = 1
 if not 'do_eject' in mvr_config.keys(): mvr_config['do_eject'] = 'yes'
 del mvr_config['status']
