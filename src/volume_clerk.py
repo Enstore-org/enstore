@@ -1193,8 +1193,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         Trace.alarm(e_errors.ERROR,
                           "Volume Clerk: Selecting volume from common pool, add more volumes for %s"%(vol_fam,))
                         # this is important so turn the enstore ball red
-                        inquisitor_client.override(enstore_constants.ENSTORE,
-                                                   enstore_constants.RED)
+			ic = inquisitor_client.Inquisitor(self.csc)
+                        ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
 
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
