@@ -33,7 +33,6 @@ import pprint
 import configuration_client
 import dispatching_worker
 import generic_server
-import event_relay_client
 import monitored_server
 import enstore_constants
 import interface
@@ -67,6 +66,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     work_list = []
     work_cleaning_list = []
 
+    def return_max_work(self):
+	return self.max_work
+
     def __init__(self, medch, max_work, csc):
         self.logdetail = 1
         self.name = medch
@@ -89,7 +91,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.robotNotAtHome = 1
         self.timeInsert = time.time()
         ##start our heartbeat to the event relay process
-        self.erc.start_heartbeat(self.name, self.alive_interval)
+        self.erc.start_heartbeat(self.name, self.alive_interval, self.return_max_work)
 
     # retry function call
     def retry_function(self,function,*args):
