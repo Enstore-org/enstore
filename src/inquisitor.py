@@ -172,8 +172,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    node = string.split(server.host, ".", 1)
 	    alarm_info['node'] = node
 	    while i < 3:
-		Trace.trace(enstore_constants.INQRESTARTDBG, 
-			    "Restart try %s for %s"%(i, server.name))
 		if server.delete:
 		    # we no longer need to try to restart this server.  possibly
 		    # while we were trying to restart it, it was removed from the
@@ -191,16 +189,18 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 				  "%s: Attempting restart of %s"%(prefix, server.name))
 			first_time = 0
 		    os.system('enstore Estop %s "--just %s"'%(node[0], server.name))
-		    time.sleep(20)
+		    j = 0
+		    while j < 15:
+			time.sleep(1)
+			j = j + 1
 		    os.system('enstore Estart %s "--just %s"'%(node[0], server.name))
 
 		# check if now alive - to do this, wait the equivalent of hung_interval
 		# for this server and then see if an event relay message has arrived
-		k = 15
 		j = 0
 		while j < server.hung_interval:
-		    time.sleep(k)
-		    j = j + k
+		    time.sleep(1)
+		    j = j + 1
 		if server.check_recent_alive() == monitored_server.NO_TIMEOUT:
 		    Trace.log(e_errors.INFO, "%s: Restarted %s"%(prefix, server.name))
 		    break
@@ -228,7 +228,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    e_errors.handle_error()
 	    self.serve_forever_error(prefix)
 
-    # this restarting may be overridden in the config file on a per server basis.
+    # check if a server is alive, if not, try to restart it.  this restarting
+    # may be overridden in the config file on a per server basis.
     def attempt_restart(self, server):
 	# could not communicate with the server.  create a thread that will try
 	# to restart it, if we have not already done this
@@ -252,8 +253,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 		    # we must keep track of the fact that we created a thread for this 
 		    # client so the next time we find the server dead we do not create 
 		    # another one.
-		    Trace.trace(enstore_constants.INQRESTARTDBG,
-			      "Inquisitor creating thread to restart %s"%(server.name,))
+		    Trace.trace(8,"Inquisitor creating thread to restart %s"%(server.name,))
 		    server.restart_thread = threading.Thread(group=None,
 							     target=self.restart_function,
 							     name="RESTART_%s"%(server.name,),
@@ -362,7 +362,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	# get the config dictionary
 	d=self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
 	if enstore_functions.is_timedout(d):
-            Trace.trace(enstore_constants.INQERRORDBG,
+            Trace.trace(12,
 			"make_config_html_file - ERROR, getting config dict timed out")
 	    return
 	# we may not have gotten the dict so check for it first before writing it.
@@ -378,7 +378,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.serverfile.output_suspect_vols(state, key)
 	if enstore_functions.is_timedout(state):
 	    self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
-	    Trace.trace(enstore_constants.INQERRORDBG, "suspect_vols - ERROR, timed out")
+	    Trace.trace(13, "suspect_vols - ERROR, timed out")
 
     # get the library manager work queue and output it
     def work_queue(self, lm, (host, port), key, time):
@@ -386,7 +386,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.serverfile.output_lmqueues(state, key)
 	if enstore_functions.is_timedout(state):
 	    self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
-	    Trace.trace(enstore_constants.INQERRORDBG, "work_queue - ERROR, timed out")
+	    Trace.trace(13, "work_queue - ERROR, timed out")
 
     # get the library manager state and output it
     def lm_state(self, lm, (host, port), key, time):
@@ -394,7 +394,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.serverfile.output_lmstate(state, key)
 	if enstore_functions.is_timedout(state):
 	    self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
-	    Trace.trace(enstore_constants.INQERRORDBG, "lm_state - ERROR, timed out")
+	    Trace.trace(13, "lm_state - ERROR, timed out")
 
     # get the information from the library manager(s)
     def update_library_manager(self, lib_man):
@@ -415,7 +415,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.serverfile.output_moverstatus(state, key)
 	if enstore_functions.is_timedout(state):
 	    self.serverfile.output_etimedout(host, port, TIMED_OUT_SP, time, key)
-	    Trace.trace(enstore_constants.INQERRORDBG, "mover_status - ERROR, timed out")
+	    Trace.trace(13, "mover_status - ERROR, timed out")
 
     # get the information from the movers
     def update_mover(self, mover):
@@ -432,7 +432,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	# the above just stored the information, now write the page out
 	self.make_server_status_html_file()
 	# Don't fear the reaper!!
-	Trace.trace(enstore_constants.INQERRORDBG, "exiting inquisitor due to request")
+	Trace.trace(10, "exiting inquisitor due to request")
 	self.erc.unsubscribe()
 	os._exit(exit_code)
 
@@ -451,8 +451,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
             t = self.logc.get_logfile_name(self.alive_rcv_timeout,
 						      self.alive_retries)
         except errno.errorcode[errno.ETIMEDOUT]:
-            Trace.trace(enstore_constants.INQERRORDBG,
-			"update_encp - ERROR, getting log file name timed out")
+            Trace.trace(8,"update_encp - ERROR, getting log file name timed out")
             return
 	logfile = t.get('logfile_name', "")
         # create the file which contains the encp lines from the most recent
@@ -474,8 +473,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
                 t = self.logc.get_last_logfile_name(self.alive_rcv_timeout,
                                                     self.alive_retries)
             except errno.errorcode[errno.ETIMEDOUT]:
-                Trace.trace(enstore_constants.INQERRORDBG,
-			    "update_encp - ERROR, getting last log file name timed out")
+                Trace.trace(8,"update_encp - ERROR, getting last log file name timed out")
                 t = {}
 	    logfile2 = t.get('last_logfile_name', "")
 	    if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
@@ -736,8 +734,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 	use_once_retry = 1
 	config_d = self.csc.dump(use_once_timeout, use_once_retry)
 	if enstore_functions.is_timedout(config_d):
-	    Trace.trace(enstore_constants.INQERRORDBG,
-			"inquisitor init - ERROR, getting config dict timed out")
+	    Trace.trace(12,"inquisitor init - ERROR, getting config dict timed out")
 	    self.startup_state = e_errors.TIMEDOUT
 	    self.startup_text = enstore_constants.CONFIG_SERVER
 	    return
@@ -901,8 +898,7 @@ class InquisitorInterface(generic_server.GenericServerInterface):
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))
-    Trace.trace(enstore_constants.INQSTARTDBG,
-		"inquisitor called with args %s"%(sys.argv,))
+    Trace.trace(6,"inquisitor called with args "+repr(sys.argv))
 
     # get interface
     intf = InquisitorInterface()
@@ -914,8 +910,7 @@ if __name__ == "__main__":
 	             intf.max_encp_lines,intf.refresh)
 
     if inq.startup_state == e_errors.TIMEDOUT:
-	Trace.trace(enstore_constants.INQERRORDBG, 
-		    "Inquisitor TIMED OUT when contacting %s"%(inq.startup_text,))
+	Trace.trace(6, "Inquisitor TIMED OUT when contacting %s"%(inq.startup_text))
     else:
 	inq.handle_generic_commands(intf)
 
@@ -932,4 +927,4 @@ if __name__ == "__main__":
 		inq.serve_forever_error(inq.log_name)
 		inq.do_dump()
             continue
-    Trace.trace(enstore_constants.INQERRORDBG, "Inquisitor finished (impossible)")
+    Trace.trace(6,"Inquisitor finished (impossible)")
