@@ -212,14 +212,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	    }
 
 	}
-	
-        if (FTT_EBLANK == guess_errno && atoi(ftt_extract_stats(&sbuf,FTT_BOT))) {
-	    guess_errno == FTT_ELEADER;
-	}
     }
 
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
-			|FTT_OP_READ)
+			|FTT_OP_READ|FTT_OP_REWIND)
 
     if ( -1 == res && ((1<<opn)&CHECKS) && guess_errno == FTT_EIO ) {
 	int statres;
@@ -227,7 +223,10 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	 DEBUG3(stderr, "Checking for blank tape on other error\n");
 	 statres = ftt_status(d, 0);
 
-         if (statres & FTT_AEOT) {
+         if (! (statres & FTT_ONLINE)) {
+	     guess_errno = FTT_ENOTAPE;
+	     res = -1;
+         } else if (statres & FTT_AEOT) {
 	     guess_errno = FTT_EBLANK;
 	     res = -1;
 	 } else if ( statres & FTT_ABOT ) {
@@ -383,7 +382,7 @@ ftt_WIN_error (DWORD res) {
 
 
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
-			|FTT_OP_READ)
+			|FTT_OP_READ|FTT_OP_REWIND)
 
     if ((NO_ERROR == fres && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS))
     		      || (NO_ERROR != fres && ((1<<opn)&CHECKS) )) {
