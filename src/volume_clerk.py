@@ -806,7 +806,7 @@ if __name__ == "__main__":
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     vc.set_logc(logc)
     indlst=['media_type','file_family','library']
-    dict = db.dBTable("volume",logc,indlst)
+    dict = db.DbTable("volume",logc,indlst)
     while 1:
         try:
             Trace.trace(1,'Volume Clerk (re)starting')

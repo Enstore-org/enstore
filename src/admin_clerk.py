@@ -185,9 +185,9 @@ if __name__=="__main__":
    logc = log_client.LoggerClient(csc, "", 'logserver', 0)
    ac.set_logc(logc)
    indlst=['media_type','file_family','library']
-   dictV = db.dBTable("volume",logc,indlst) 
+   dictV = db.DbTable("volume",logc,indlst) 
    indlst=['external_label']
-   dictF = db.dBTable("file",logc,indlst)
+   dictF = db.DbTable("file",logc,indlst)
    while 1:
         try:
             Trace.trace(1,"Admin Clerk (re)starting")
