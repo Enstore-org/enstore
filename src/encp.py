@@ -300,7 +300,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
 
     # tell library manager we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
-    u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
+    #u.send_no_wait({"work":"done_cleanup"}, (vticket['host'], vticket['port']))
 
 ##############################################################################
 
@@ -553,7 +553,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
     # tell file clerk we are done - this allows it to delete our unique id in
     # its dictionary - this keeps things cleaner and stops memory from growing
-    u.send_no_wait({"work":"done_cleanup"}, (fticket['host'], fticket['port']))
+    #u.send_no_wait({"work":"done_cleanup"}, (fticket['host'], fticket['port']))
 
 ##############################################################################
 

@@ -109,8 +109,11 @@ class DispatchingWorker:
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
-        del dict[self.current_id]
-    
+        try:
+            del dict[self.current_id]
+        except KeyError:
+            pass
+
     # reply to sender with her number and ticket (which has status)
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight

@@ -41,11 +41,23 @@ class UDPClient:
         self.host, self.port, self.socket = get_client()
         self.ident = "%s-%d-%f-%d" \
                      % (self.host, self.port, time.time(), os.getpid() )
+        self.where_sent = {}
+
+
+    def __del__(self):
+        # tell file clerk we are done - this allows it to delete our unique id in
+        # its dictionary - this keeps things cleaner and stops memory from growing
+        for server in self.where_sent.items() :
+            print "clearing ",server[0], server[1]
+            self.send_no_wait({"work":"done_cleanup"}, server[0])
 
     # this (generally) is received/processed by dispatching worker
     def send(self, text, address) :
         # make a new message number - response needs to match this number
         self.number = self.number + 1
+
+        # keep track of where we are sending things so we can clean up later
+        self.where_sent[address] = (self.ident,text)
 
         # stringify message and check if it is too long
         message = `(self.ident, self.number, text)`
