@@ -39,6 +39,7 @@ class Request:
         if ticket:
             ticket['times']['job_queued'] = self.queued
             ticket['at_the_top'] = 0
+            ticket['encp']['curpri'] = self.pri
         self.work = ticket.get('work','')
         wrapper = ticket.get('wrapper','')
         if wrapper:
