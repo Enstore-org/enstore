@@ -20,6 +20,7 @@ ecmd vols
 ecmd vol     external_label
 ecmd addvol  library file_family media_type  volume_name, volume_byte_capacity remaining_capacity
 ecmd delvol  volume_name
+ecmd restorevol  volume_name
 ecmd clrvol  volume_name
 ecmd statvol  volume_name
 ecmd rdovol  volume_name
@@ -104,6 +105,10 @@ case $cmd in
     ;;
   delvol)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --delvol $@
+    stat=$?
+    ;;
+  restorevol)
+    python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --restorevol $@
     stat=$?
     ;;
   clrvol)
