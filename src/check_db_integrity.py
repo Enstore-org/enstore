@@ -9,6 +9,7 @@ import string
 import errno
 import time
 import e_errors
+import traceback
 import db
 import pnfs
 import bfid_db
@@ -110,17 +111,20 @@ class DBChecker:
             if must_key not in rec_keys:
                 #print "KEY %s is missing in the file record %s" % (must_key,record)
                 missing_keys.append(must_key)
-        if missing_keys:
-            bad_record['file_db_record'] = record
-            bad_record['missing_keys'] = missing_keys
         if not record.has_key('drive'):
             # special case
             # just put there something
             # this may not work because we are running through indices
             # check !!!!!!!!!!!!!!!!
             #print "DRIVE MISSING",record
-            record['drive'] = 'uknown'
-            self.records_to_fix.append(record)
+            record['drive'] = 'unknown'
+            if record not in self.records_to_fix:
+                if len(self.records_to_fix) < 1:
+                    print "adding",record
+                    self.records_to_fix.append(record)
+        if missing_keys:
+            bad_record['file_db_record'] = record
+            bad_record['missing_keys'] = missing_keys
         #print "BAD RECORD",bad_record
         return bad_record
         
@@ -357,54 +361,6 @@ class DBChecker:
                     }
         return {}
             
-
-
-        #print "ML",ml
-        #print "EXISTS",file['pnfs_mapname'], pinfo.exists
-        #print "MAP:volume %s, location_cookie %s, size %s, origff %s, origname %s, mapfile %s" % (map.volume, map.location_cookie, map.size, map.origff, map.origname, map.mapfile)
-        """
-        # check if file bfid is in the volume db
-        match = 1
-        if pinfo.bit_file_id not in bfids:
-            print "bit file id %s is missing in the volume database" % (pinfo.bit_file_id)
-            match = 0
-        # pinfo and volume map pinfo must match
-        if pinfo.volume != vmap.volume:
-            print "volume name %s and volmap volume name %s do not match" % (pinfo.volume, vmap.volume)
-            match = 0
-        if pinfo.location_cookie != vmap.location_cookie:
-            print "loc. cookie %s and volmap loc. cookie %s do not match" % (pinfo.location_cookie, vmap.location_cookie)
-
-            match = 0
-        if pinfo.size != vmap.size:
-            print "file size %s and volmap file size %s do not match" % (pinfo.size, vmap.size)
-
-            match = 0
-        if pinfo.origff != vmap.origff:
-            print "file family %s and volmap file family %s do not match" % (pinfo.origff, vmap.origff)
-
-            match = 0
-        if pinfo.origname != vmap.origname:
-            print "file name %s and volmap file name %s do not match" % (pinfo.origname, vmap.origname)
-
-            match = 0
-        if pinfo.mapfile != vmap.mapfile:
-            print "map file %s and volmap map file %s do not match" % (pinfo.mapfile, vmap.mapfile)
-
-            match = 0
-        if not match:
-            # try to fix
-            print "trying to fix",pinfo.origname
-            try:
-                p.set_xreference(done_ticket["fc"]["external_label"],
-                                 done_ticket["fc"]["location_cookie"],
-                                 done_ticket["fc"]["size"],
-                                 drive)
-            except:
-                exc,msg,tb=sys.exc_info()
-
-        """
-
     def fix_layer1(self, file, entry):
         print "Fixing pnfs layer 1 for %s" % (file['pnfs_name0'],)
         print "layer 1 before fix"
@@ -435,6 +391,7 @@ class DBChecker:
         print "+++++++++++++++++++++++++++++++++++++++++"
         print "VOLUME", external_label
         bfid_list = self.bfid_db.get_all_bfids(external_label)
+        print "BFID LIST",bfid_list
         files=[]    # files belonging to the volume
         self.records_to_fix=[]
         vol_rec = self.vol_db[external_label]
@@ -447,7 +404,8 @@ class DBChecker:
         for bfid in bfid_list:
             record = self.file_dict[bfid]
             # check the consistensy of the file DB record
-            bad_record = self.check_file_db_record(self.file_dict[bfid])
+            bad_record = self.check_file_db_record(record)
+            print "RF!!!",self.records_to_fix
             if bad_record:
                 bad_file_db_records.append(bad_record)
             else:
@@ -491,7 +449,9 @@ class DBChecker:
                 print "Database for %s is severely damaged and cannot be fixed"%(external_label,)
 
         if self.records_to_fix:
+            print "RF2",self.records_to_fix
             bad_volume['file_db_records_to_fix'] = self.records_to_fix
+            print "RF3",bad_volume['file_db_records_to_fix']
         ######################
         if bad_file_db_records:
             bad_volume['bad_file_db_records'] =  bad_file_db_records
@@ -553,6 +513,9 @@ class DBChecker:
         if missing_bfids:
             bad_volume['missing_bfids'] = missing_bfids
         if bad_volume:
+            print "BAD VOL",bad_volume
+            print "BAD VOL PPRINT"
+            pprint.pprint(bad_volume)
             report_file.write('VOLUME %s'%(external_label,))
             self.write_record(bad_volume, report_file)
             ret = 1

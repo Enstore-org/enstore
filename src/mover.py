@@ -493,6 +493,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vcc = None
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
+        mc_keys = self.csc.get(self.mcc.media_changer)
+        # STK robot can eject tape by either sending command directly to drive or
+        # by pushing a corresponding button
+        if mc_keys.has_key('type') and mc_keys['type'] is 'STK_MediaLoader':
+            self.can_force_eject = 1
+        else:
+            self.can_force_eject = 0
         self.config['device'] = os.path.expandvars(self.config['device'])
         self.client_hostname = None
         self.client_ip = None  #NB: a client may have multiple interfaces, this is
@@ -1587,11 +1594,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except:
                     exc, msg, tb = sys.exc_info()
                     broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
-
-            self.broken(broken)
-##            self.error("Cannot eject tape")
-
-            return
+            # for all tape libraries except STK error out
+            if not self.can_force_eject:
+                self.broken(broken)
+                return
+            else:
+                Trace.log(e_errors.ERROR,"%s, for STK robot will try to unload anyway" %
+                          (broken,))
+                
         self.tape_driver.close()
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
