@@ -2,6 +2,8 @@
 # src/$RCSfile$   $Revision$
 #
 
+import sys
+
 TIMEDOUT = 'TIMEDOUT'
 KEYERROR = 'KEYERROR'
 OK         = 'ok'
@@ -259,10 +261,9 @@ def handle_error(exc=None, value=None, tb=None):
     import traceback
     # store Trace back info
     if not exc:
-	import sys
-	exc, value, tb = sys.exc_type, sys.exc_value, sys.exc_traceback
+	exc, value, tb = sys.exc_info()
     # log it
     for l in traceback.format_exception( exc, value, tb ):
 	#print l[0:len(l)-1]
-	Trace.log( ERROR, l[0:len(l)-1], {}, "TRACEBACK")
+	Trace.log( ERROR, l[:-1], {}, "TRACEBACK")
     return exc, value, tb
