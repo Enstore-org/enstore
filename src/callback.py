@@ -51,7 +51,7 @@ def get_callback_port(start,end,use_multiple=0):
     host_name,junk,ips = hostaddr.gethostinfo()
     ca = ips[0]
     if use_multiple:
-        interface_tab = hostaddr.get_multiple_interfaces(0) 
+        interface_tab = hostaddr.get_multiple_interfaces()
     else:
         interface_tab = [(ips[0], 1)]
 
