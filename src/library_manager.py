@@ -141,6 +141,7 @@ def busy_vols_in_family (vc, family_name):
     for mv in movers:
 	if mv["file_family"] == family_name:
 	    vol_info = vc.inquire_vol(mv["external_label"])
+	    if vol_info["status"][0] != e_errors.OK: continue
 	    if vol_info['at_mover'][0] != 'unmounted':
 		# volume is potentially available if not unmounted
 		for vol in vols:
@@ -739,9 +740,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # check if tape is stuck in in the mounting state
 	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'mounting':
-		format = "FORCING  vol:%s to %s. mover:%s"
+		mc = self.get_mc_l()
+		if mc:
+		    mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'],mc)
+		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
-						 'unmounted', wt['mover']))
+						 mc["at_mover"][0], 
+						 wt['mover']))
 		# force set volume to unmounted
 		v = self.vcc.set_at_mover(wt['fc']['external_label'],
 					  'unmounted', wt["mover"], 1)
@@ -1056,11 +1061,21 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.control_socket.close()
         os._exit(0)
 
-    # get Media Changer serving this LM
-    def get_mc(self, ticket):
+    # get Media Changer serving this LM for the internal use
+    def get_mc_l(self):
 	mticket = self.csc.get(movers[0]["mover"])
 	if mticket.has_key('media_changer'):
-	    return_ticket = {'mc': mticket['media_changer']}
+	    return mticket['media_changer']
+	else:
+	    return None
+	
+	self.reply_to_caller(return_ticket)
+
+    # get Media Changer serving this LM and send it to caller
+    def get_mc(self, ticket):
+	mc = self.get_mc_l()
+	if mc:
+	    return_ticket = {'mc': mc}
 	else:
 	    return_ticket = {}
 	
