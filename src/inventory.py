@@ -951,8 +951,15 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             vk, vv = vc.next()
             continue
 
+        print 'processing', vk, '...',
+
         if vol_sum.has_key(vk):
-            vsum = vol_sum[vk]
+            try:
+                vsum = vol_sum[vk]
+            except:
+                # can be ignored
+                print "(warning) cache problem ...",
+                vsum = {}
         else:
             vsum = {}
 
