@@ -40,8 +40,6 @@ class LibraryManagerClient :
         if ticket['status'] != "ok" :
             raise errno.errorcode[errno.EPROTO],"lmc.getwork: sending ticket"\
                   +repr(ticket)
-        if list :
-            print "Q'd: getwork from",self.name
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
@@ -82,9 +80,6 @@ class LibraryManagerClient :
                   +"2nd (post-work-read) library manger callback on socket "\
                   +repr(address)+", failed to transfer: "\
                   +"ticket[\"status\"]="+ticket["status"]
-        if list :
-            print "done"
-
         return worklist
 
     # check on alive status

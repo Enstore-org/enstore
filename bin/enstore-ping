@@ -57,6 +57,13 @@ for i in $enstore_libraries_all; do
   msg="$i Library Manager"
   alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --alive --list $i"`
   esave
+  msg="$i Library Manager Queues"
+  if [ "$alive" != "DEAD" ] ; then
+    alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$enstore_config_host --config_port=$enstore_config_port --getwork --list $i"`
+  else
+    alive=""
+  fi
+  esave
 done
 
 ################################################################################################################################################
