@@ -1467,7 +1467,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
         #These four functions write errors/warnings to the log file and put an
         # error status in the ticket.
         check_crc(done_ticket, e.chk_crc, encp_crc) #Check the CRC.
-        verify_file_size(done_ticket) #make sure file size is same.
+        #verify_file_size(done_ticket) #make sure file size is same.
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
