@@ -216,7 +216,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
         return x
 
     # mark volume as noaccess
-    def set_at_mover(self, external_label, flag, mover, *force):
+    def set_at_mover(self, external_label, flag, mover, force=None):
 	if force: f = 1
 	else: f = 0
         ticket= { 'work'           : 'set_at_mover',
