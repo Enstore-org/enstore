@@ -310,7 +310,14 @@ def next_work_any_volume(self, csc, verbose):
 
             # If the volume clerk has no volumes and our veto list was empty,
             # then we have run out of space for this file family == error
-            if (len(vol_veto_list) == 0 and v["status"][0] != e_errors.OK):
+	    if v["status"][0] == e_errors.NOVOLUME:
+		generic_cs.enprint("no volume. Status:"+repr(v["status"]),
+				   generic_cs.DEBUG, verbose)
+		w["status"] = v["status"]
+		return w
+		
+            if (len(vol_veto_list) < w["vc"]["file_family_width"] and 
+		v["status"][0] != e_errors.OK):
                 w["status"] = v["status"]
 		Trace.trace(0,"next_work_any_volume "+ repr(w))
                 return w
@@ -332,7 +339,8 @@ def next_work_any_volume(self, csc, verbose):
         else:
 	    Trace.trace(0,"}next_work_any_volume \
 	    assertion error in next_work_any_volume w="+ repr(w))
-            generic_cs.enprint("assertion error in next_work_any_volume w=", \
+            generic_cs.enprint("assertion error in next_work_any_volume w="+\
+			       repr(w), \
 	                       generic_cs.DEBUG, verbose)
             generic_cs.enprint(w, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
 	                       verbose)
