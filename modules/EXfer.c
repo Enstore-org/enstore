@@ -55,11 +55,13 @@ do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, un
 	    FD_SET(rd_fd,&fds);
 	    timeout.tv_sec = 15 * 60;
 	    timeout.tv_usec = 0;
+	    errno=0;
 	    sts = select(rd_fd+1, &fds, NULL, NULL, &timeout);
 	    if (sts == 0){
 		/* timeout - treat as an EOF */
 		return (-2);
 	    }
+	    errno = 0;
 	    sts = read(rd_fd, buffer, bytes_to_xfer);
 	    if (sts == -1)
 		{   /* return/break - read error */
@@ -73,7 +75,14 @@ do_read_write(int rd_fd, int wr_fd, int no_bytes, int blk_size, int crc_flag, un
 	    bytes_to_xfer = sts;
 	    b_p = buffer;
 	    do {
-		sts = write(wr_fd, b_p, bytes_to_xfer);
+	        errno=0;
+	        sts = write(wr_fd, b_p, bytes_to_xfer);
+	        if (sts != bytes_to_xfer){
+		/* printf("write(%d, 0x%x, %d) -> %d, errno=%d\n", wr_fd, b_p, bytes_to_xfer,sts, errno);
+		   fflush(stdout); */
+		fprintf(stderr, "write(%d, 0x%x, %d) -> %d, errno=%d\n", wr_fd, b_p, bytes_to_xfer,sts, errno);
+                fflush(stderr);
+		}
 		if (sts == -1) {   /* return a write error */
 		    return (-3);
 		}
