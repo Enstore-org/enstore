@@ -15,6 +15,10 @@ import enstore_files
 import enstore_constants
 import Trace
 
+YES = 1
+NO = 0
+WRITE = "to"
+
 # file extensions
 PTS = ".pts"
 GNU = ".gnuplot"
@@ -26,11 +30,11 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
 def sort_stamp_files(tmp_stamps):
-    # sort the stamp files so that all of the mount per hour stamps are at the end in
+    # sort the stamp files so that all mount per hour stamps are at the end in
     # descending date order.  first get the other plots to the front.
     jpg_stamp_files = []
     tmp_stamps.sort()
-    # now move all the list elements that are not mph stamps to a new list, and delete them
+    # now move all list elements that are not mph stamps to new list, & delete them
     # from the old
     i = 0
     num_stamps = len(tmp_stamps)
@@ -40,15 +44,23 @@ def sort_stamp_files(tmp_stamps):
 	    jpg_stamp_files.append(tmp_stamps.pop(i))
 	    num_stamps = num_stamps - 1
 	else:
-	    # this is an mph file, leave it here for later sorting but skip to the next stamp
+	    # this is mph file, leave it here for later sorting, skip to next stamp
 	    i = i + 1
-    # now we should have jpg_stamp_files full of the non mph stamps and only the mph stamps
-    # left in tmp_stamps.  reverse sort these and add them at the end of the other stamps
+    # now we should have jpg_stamp_files full of non mph stamps and only mph stamps
+    # left in tmp_stamps.  reverse sort these and add them at end of other stamps
     tmp_stamps.reverse()
     jpg_stamp_files = jpg_stamp_files + tmp_stamps
     return (jpg_stamp_files)
 
-def find_files(files, dir):
+def ignore_file(file, ignore):
+    for ignore_string in ignore:
+	if not string.find(file, ignore_string) == -1:
+	    # this file has a string meaning 'ignore this file' in it
+		return YES
+    else:
+	return NO
+
+def find_files(files, dir, ignore):
     # find all files with ".jpg" in them. fill
     # in the lists above with those files with and without the "_stamp" 
     # string from this group. also find the ps files
@@ -56,6 +68,8 @@ def find_files(files, dir):
     jpg_files = []
     ps_files = []
     for file in files:
+	if ignore_file(file, ignore) == YES:
+	    continue
 	if not string.find(file, enstore_constants.JPG) == -1:
 	    # this file has '.jpg' in it
 	    if not string.find(file, STAMP_JPG) == -1:
@@ -75,16 +89,20 @@ def find_jpg_files(dir):
     # in the lists above with those files with and without the "_stamp" 
     # string from this group. also find the ps files
     files = os.listdir(dir)
-    jpg_files, stamp_files, ps_files = find_files(files, dir)
+    ignore = [enstore_constants.MPH,]
+    jpg_files, stamp_files, ps_files = find_files(files, dir, ignore)
     jpg_files.sort()
     ps_files.sort()
     jpg_stamp_files = sort_stamp_files(stamp_files)
     return (jpg_files, jpg_stamp_files, ps_files)
 
 def convert_to_jpg(psfile, file_name):
-    os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s%s"%(psfile, file_name, STAMP_JPG))
+    os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s%s"%(psfile,
+									 file_name,
+									 STAMP_JPG))
     #JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
-    os.system("convert -rotate 90 %s %s%s"%(psfile, file_name, enstore_constants.JPG))
+    os.system("convert -rotate 90 %s %s%s"%(psfile, file_name, 
+					    enstore_constants.JPG))
     #JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
 
 # return the time to be included in the title of the plots
@@ -96,6 +114,7 @@ class EnPlot(enstore_files.EnFile):
     def __init__(self, dir, name):
 	enstore_files.EnFile.__init__(self, dir+"/"+name)
 	self.name = name
+	self.dir = dir
 	self.ptsfile = self.file_name+PTS
 	self.psfile = self.file_name+enstore_constants.PS
 	self.gnufile = self.file_name+GNU
@@ -195,7 +214,8 @@ class MphDataFile(EnPlot):
 	        pfile.close()
 
 		# save the info in order to use it to update the file containing the
-		# information on total mounts/day that have been done up to this day.
+		# information on total mounts/day that have been done up to this 
+		# day.
 		self.total_mounts[day] = total
 	else:
 	    # we must create our gnu plot command file too
@@ -218,7 +238,7 @@ class MpdGnuFile(enstore_files.EnFile):
 			    "set ylabel 'Mounts'\n"+\
 			    "set grid\n"+ \
 			    "set output '"+outfile+"'\n"+\
-			    "set title 'Cumulative Mount Counts (Total = "+\
+			    "set title 'Mounts/Day (Total = "+\
 			    total_mounts+") "+plot_time()+"'\n"+\
 			    "plot '"+ptsfile+"' using 1:2 t '' with impulses lw 20\n")
 
@@ -247,7 +267,7 @@ class MpdDataFile(EnPlot):
 		else:
 		    total_mounts = total_mounts + string.atoi(count)
 
-	# now add to the list any of the new days that were not present in the old list
+	# now add to list any of the new days that were not present in the old list
 	for day in new_mounts_d.keys():
 	    mounts_l.append("%s %s\n"%(day, new_mounts_d[day]))
 	    total_mounts = total_mounts + new_mounts_d[day]
@@ -260,10 +280,11 @@ class MpdDataFile(EnPlot):
     # make the mounts per day plot file
     def plot(self, new_mounts_d):
 	# the data passed to us is a dict of total mount counts for the days that
-	# were just plotted.  in effect this is new data that must be merged in with the
-	# the data currently in the total mount count file.  we will read in the current
-	# data and add any new stuff to it.  if the file contains data for today, we will
-	# overwrite it with our new data which is presumed to be more recent.
+	# were just plotted.  in effect this is new data that must be merged with
+	# the data currently in the total mount count file.  will read in current
+	# data and add any new stuff to it.  if the file contains data for today, 
+	# we will overwrite it with our new data which is presumed to be more 
+	# recent.
 	(mounts_l, total_mounts) = self.get_all_mounts(new_mounts_d)
 	if self.openfile:
 	    self.openfile.close()
@@ -373,7 +394,7 @@ class XferGnuFile(enstore_files.EnFile):
 	                   "set yrange [0: ]\n"+ \
 			   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
 			   "'"+ptsfile2+\
-	                   "' using 1:5 t 'mean file size' w points 3 5\n")
+	                   "' using 1:7 t 'mean file size' w points 3 5\n")
 
 class XferDataFile(EnPlot):
 
@@ -386,7 +407,7 @@ class XferDataFile(EnPlot):
     def plot(self, data):
 	# write out the data points
 	for [xpt, ypt, type] in data:
-	    if type == "to":
+	    if type == WRITE:
 		# this was a write request
 		self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
 	    else:
@@ -408,7 +429,11 @@ class XferDataFile(EnPlot):
 
 class BpdGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, ptsfile, total, meansize, xfers):
+    def write(self, outfile, ptsfile, total, meansize, xfers, read_xfers, write_xfers):
+	psfiler = string.replace(outfile, enstore_constants.BPD_FILE,
+				 enstore_constants.BPD_FILE_R)
+	psfilew = string.replace(outfile, enstore_constants.BPD_FILE,
+				 enstore_constants.BPD_FILE_W)
 	self.openfile.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
 	                   "set title 'Total Bytes Transferred Per Day "+plot_time()+"'\n"+ \
@@ -420,74 +445,33 @@ class BpdGnuFile(enstore_files.EnFile):
 	                   "set grid\n"+ \
 	                   "set yrange [0: ]\n"+ \
 	                   "set format x \"%m-%d\"\n"+ \
-			   "set key right top Right title \"Total Bytes : "+\
+			   "set key right top Right samplen 1 title \"Total Bytes : "+\
 			      "%.2e"%(total,)+"\\nMean Xfer Size : "+
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
-	                   "plot '"+ptsfile+"' using 1:2 t '' w impulses lw 20\n")
+	                   "plot '"+ptsfile+"' using 1:2 t 'reads' w impulses lw 20 3 1, '"+ptsfile+\
+			          "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
+			    "set output '"+psfiler+"'\n"+ \
+			    "set title 'Total Bytes Read Per Day "+plot_time()+"'\n"+ \
+			    "set pointsize 2\n"+ \
+			    "set key right top Right samplen 1 title \"Total Bytes : "+\
+			      "%.2e"%(total,)+"\\n Number of Xfers : "+\
+			      repr(read_xfers)+"\"\n"+\
+			    "plot '"+ptsfile+"' using 1:2 t 'total' w points 4 7, '"+ptsfile+\
+			          "' using 1:3 t 'reads' w impulses lw 20 1 1\n"+
+			    "set output '"+psfilew+"'\n"+ \
+			    "set title 'Total Bytes Written Per Day "+plot_time()+"'\n"+ \
+			    "set key right top Right samplen 1 title \"Total Bytes : "+\
+			       "%.2e"%(total,)+"\\n Number of Xfers : "+\
+			       repr(write_xfers)+"\"\n"+\
+			    "plot '"+ptsfile+"' using 1:2 t 'total' w points 4 7, '"+ptsfile+\
+			          "' using 1:4 t 'writes' w impulses lw 20 1 1\n"
+			    )
 
 class BpdDataFile(EnPlot):
 
     def __init__(self, dir):
 	EnPlot.__init__(self, dir, enstore_constants.BPD_FILE)
-
-    # make the file with the bytes per day format, first we must sum the data
-    # that we have based on the day
-    def plot(self, data):
-	# initialize the new data hash
-	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
-	# sum the data together based on day boundaries. also save the largest
-	# smallest and average sizes
-	mean = {}
-	smallest = {}
-	largest = {}
-	ctr = {}
-	for [xpt, ypt, type] in data:
-	    adate = xpt[0:10]
-	    fypt = string.atof(ypt)
-	    if mean.has_key(adate):
-	        mean[adate] = mean[adate] + fypt
-	        ctr[adate] = ctr[adate] + 1
-	    else:
-	        mean[adate] = fypt
-	        ctr[adate] = 1
-	    if largest.has_key(adate):
-	        if fypt > largest[adate]:
-	            largest[adate] = fypt
-	    else:
-	        largest[adate] = fypt
-	    if smallest.has_key(adate):
-	        if fypt < smallest[adate]:
-	            smallest[adate] = fypt
-	    else:
-	        smallest[adate] = fypt
-	    ndata[adate] = ndata[adate] + fypt
-	# write out the data points
-	keys = ndata.keys()
-	keys.sort()
-	numxfers = 0
-	total = 0
-	for key in keys:
-	    if not ndata[key] == 0:
-	        self.openfile.write(key+" "+repr(ndata[key])+" "+\
-	                                   repr(smallest[key])+" "+\
-	                                   repr(largest[key])+" "+\
-	                                   repr(mean[key]/ctr[key])+"\n")
-	    else:
-	        self.openfile.write(key+" "+repr(ndata[key])+"\n")
-	    # now find the total bytes transferred over all days and the mean
-	    # size of all transfers.
-	    total = total + ndata[key]
-	    # there may not be any transfers on a certain date, so check the key
-	    # first.  above ndata has all dates initialized to 0 so no check is
-	    # necessary.
-	    numxfers = numxfers + ctr.get(key, 0)
-	    
-	# we must create our gnu plot command file too
-	gnucmds = BpdGnuFile(self.gnufile)
-	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers)
-	gnucmds.close()
 
     # init the following hash from the first date given to the last date
     def init_date_hash(self, sdate, edate):
@@ -520,3 +504,91 @@ class BpdDataFile(EnPlot):
 	            iyr = iyr + 1
 		    is_leap = calendar.isleap(iyr)
 	return ndate
+
+    # make the file with the bytes per day format, first we must sum the data
+    # that we have based on the day
+    def plot(self, data):
+	# initialize the new data hash
+	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
+	reads = self.init_date_hash(data[0][0], data[len(data)-1][0])
+	writes = self.init_date_hash(data[0][0], data[len(data)-1][0])
+	# sum the data together based on day boundaries. also save the largest
+	# smallest and average sizes and sum up reads and writes separately
+	mean = {}
+	smallest = {}
+	largest = {}
+	ctr = {}
+	read_ctr = 0
+	write_ctr = 0
+	for [xpt, ypt, type] in data:
+	    adate = xpt[0:10]
+	    fypt = string.atof(ypt)
+	    if mean.has_key(adate):
+	        mean[adate] = mean[adate] + fypt
+	        ctr[adate] = ctr[adate] + 1
+	    else:
+	        mean[adate] = fypt
+	        ctr[adate] = 1
+	    if largest.has_key(adate):
+	        if fypt > largest[adate]:
+	            largest[adate] = fypt
+	    else:
+	        largest[adate] = fypt
+	    if smallest.has_key(adate):
+	        if fypt < smallest[adate]:
+	            smallest[adate] = fypt
+	    else:
+	        smallest[adate] = fypt
+	    ndata[adate] = ndata[adate] + fypt
+	    if type == WRITE:
+		dict = writes
+		write_ctr = write_ctr + 1
+	    else:
+		dict = reads
+		read_ctr = read_ctr + 1
+	    dict[adate] = dict[adate] + fypt
+	# write out the data points
+	keys = ndata.keys()
+	keys.sort()
+	numxfers = 0
+	total = 0
+	for key in keys:
+	    if not ndata[key] == 0:
+	        self.openfile.write(key+" "+repr(ndata[key])+" "+\
+				    repr(reads[key])+" "+\
+				    repr(writes[key])+" "+\
+				    repr(smallest[key])+" "+\
+				    repr(largest[key])+" "+\
+				    repr(mean[key]/ctr[key])+"\n")
+	    else:
+		# all data is 0
+	        #self.openfile.write(key+" "+repr(ndata[key])+" "+\
+		#		            repr(ndata[key])+" "+\
+		#		            repr(ndata[key])+"\n")
+	        self.openfile.write(key+"\n")
+	    # now find the total bytes transferred over all days and the mean
+	    # size of all transfers.
+	    total = total + ndata[key]
+	    # there may not be any transfers on a certain date, so check the key
+	    # first.  above ndata has all dates initialized to 0 so no check is
+	    # necessary.
+	    numxfers = numxfers + ctr.get(key, 0)
+	    
+	# we must create our gnu plot command file too
+	gnucmds = BpdGnuFile(self.gnufile)
+	gnucmds.open('w')
+	gnucmds.write(self.psfile, self.ptsfile, total, total/numxfers, numxfers,
+		      read_ctr, write_ctr)
+	gnucmds.close()
+
+    def install(self, dir):
+	EnPlot.install(self, dir)
+	filer = string.replace(self.name, enstore_constants.BPD_FILE,
+			       enstore_constants.BPD_FILE_R)
+	psfiler = "%s/%s%s"%(self.dir, filer, enstore_constants.PS)
+	filew = string.replace(self.name, enstore_constants.BPD_FILE,
+			       enstore_constants.BPD_FILE_W)
+	psfilew = "%s/%s%s"%(self.dir, filew, enstore_constants.PS)
+	os.system("cp %s %s %s"%(psfiler, psfilew, dir))
+	convert_to_jpg(psfiler, "%s/%s"%(dir, filer))
+	convert_to_jpg(psfilew, "%s/%s"%(dir, filew))

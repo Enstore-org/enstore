@@ -276,6 +276,9 @@ class LibraryManager(EnstoreServer):
 	    # the lm is not in a good state mark it as yellow
 	    enprint("%s in a %s state"%(self.format_name, self.lstate))
 	    self.set_status(enstore_constants.WARNING)
+            self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
+                                                                    self.lstate,
+                                                                    self.config_host))
 	else:
 	    EnstoreServer.is_alive(self)
 
@@ -326,10 +329,16 @@ class Mover(EnstoreServer):
 	    # the mover is not in a good state mark it as bad
 	    enprint("%s in a %s state"%(self.format_name, self.mstate))
 	    self.set_status(enstore_constants.DOWN)
+            self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
+                                                                    self.BADSTATUS[0],
+                                                                    self.config_host))
 	elif self.mstate == self.BADSTATUS[1]:
 	    # the mover is not in a good state mark it as yellow
 	    enprint("%s in a %s state"%(self.format_name, self.mstate))
 	    self.set_status(enstore_constants.WARNING)
+            self.sendmail("%s is in a %s state (config node - %s)"%(self.format_name,
+                                                                    self.BADSTATUS[1],
+                                                                    self.config_host))
 	else:
 	    EnstoreServer.is_alive(self)
 
@@ -443,11 +452,12 @@ def do_real_work():
 										 num_movers))
 
     media_changers = sortit(meds)
+
     for med in media_changers:
-        if med:
-            mcc = MediaChanger(cs, med, offline_d, seen_down_d, allowed_down_d)
-            total_servers.append(mcc)
-            mcc.check()
+	if med:
+	    mcc = MediaChanger(cs, med, offline_d, seen_down_d, allowed_down_d)
+	    total_servers.append(mcc)
+	    mcc.check()
 
     # rewrite the schedule file as we keep track of how many times something has been down
     if sfile:
