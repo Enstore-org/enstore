@@ -82,10 +82,11 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
              media_type) :	# media type
         if 0: print media_type #lint fix
 	if 'delay' in self.mc_config.keys() and self.mc_config['delay']:
-	    Trace.log(e_errors.INFO,
-                      "make sure tape "+external_label+" is in drive "+drive)
+	    # YES, THIS BLOCK IS FOR THE DEVELOPMENT ENVIRONMENT AND THE
+	    # OUTPUT OF THE PRINTS GO TO THE TERMINAL
+	    print "make sure tape %s in in drive %s"%(external_label,drive)
 	    time.sleep( self.mc_config['delay'] )
-	    Trace.log(e_errors.INFO, 'continuing with reply' )
+	    print 'continuing with reply'
 	return (e_errors.OK, 0, None)
 
     # unload volume from the drive;  default overridden for other media changers
