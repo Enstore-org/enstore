@@ -200,9 +200,9 @@ pdown()     { if [ "`whoami`" != "root" ]; then p_error "must be root to create 
               ls /pnfs/fs/admin/etc/config/flags 2>&1 >/dev/null; if [ $? -ne 0 ]; then p_error "/pnfs/fs is not mounted"; fi
 	      (cd /pnfs/fs/admin/etc/config/flags;  echo "${1}" > disabled; touch ".(fset)(disabled)(io)(on)" ) }
 
-pup()       { if [ "`whoami`" != "root" ]; then p_error "must be root to remove enstore system-down wormhole"; fi
-              ls /pnfs/fs/admin/etc/config/flags 2>&1 >/dev/null; if [ $? -ne 0 ]; then p_error "/pnfs/fs is not mounted"; fi
-	      rm -f /pnfs/fs/admin/etc/config/flags/disabled }
+pup()       { if [ "`whoami`" != "root" ]; then p_error "must be root to remove enstore system-down wormhole"; fi;
+              ls /pnfs/fs/admin/etc/config/flags 2>&1 >/dev/null; if [ $? -ne 0 ]; then p_error "/pnfs/fs is not mounted"; fi;
+	      rm -f /pnfs/fs/admin/etc/config/flags/disabled; }
 
 ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
               eval more `p_tag $@` ; }
