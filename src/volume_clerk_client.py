@@ -742,6 +742,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_LABEL:"volume_name",
                           option.USER_LEVEL:option.ADMIN},
+        option.LIST_IGNORED_STORAGE_GROUPS:{option.HELP_STRING:
+                      "list all ignored storage group",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN},
         option.MODIFY:{option.HELP_STRING:
                        "modify a volume record -- extremely dangerous",
                         option.VALUE_TYPE:option.STRING,
