@@ -101,7 +101,7 @@ class GenericAlarm:
             l_message = string.replace(l_message, '"', '')
             
             print '$ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, aType, item)
-            #os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, aType, item))
+            os.system('. /usr/local/etc/setups.sh;setup enstore; $ENSTORE_DIR/sbin/generate_ticket %s "%s" "%s" "%s" %s %s %s %s "%s" %s'%(system_name, condition, short_message, l_message, submitter, user, password, category, aType, item))
             self.ticket_generated = "YES"
             
     def seen_again(self):
