@@ -2132,7 +2132,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dismount_volume(after_function=self.idle)
             return
         self.state = SEEK ##XXX start a timer here?
-        time.sleep(300)
         eod = self.vol_info['eod_cookie']
         if eod=='none':
             eod = None
