@@ -2068,9 +2068,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.buffer.write_ok.set()
             if bytes_read < nbytes and self.method == 'read_next':
                 # end of file?
-                location = self.tape_driver.tell()
-                Trace.log(e_errors.INFO, "location %s cur_loc %s"%(location, self.current_location))
-                break
+                if bytes_read == 0:
+                    location = self.tape_driver.tell()
+                    Trace.log(e_errors.INFO, "location %s cur_loc %s"%(location, self.current_location))
+                    break_here = 1
+                    break
             if break_here:
                 break
 
@@ -3940,8 +3942,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         filename=self.lockfile_name()
         try:
             os.unlink(filename)
-        except (OSError, IOError):
-            Trace.log(e_errors.ERROR, "Cannot unlink %s"%(filename,))
+        except (OSError, IOError), detail:
+            Trace.log(e_errors.ERROR, "Cannot unlink %s %s"%(filename,detail))
 
     def check_lockfile(self):
         return os.path.exists(self.lockfile_name())
@@ -3988,7 +3990,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket)
-            elif self.state !=  ERROR:
+            elif self.state != ERROR:
                 time.sleep(2)
                 Trace.trace(11,"waiting in state %s for OFFLINE" % (self.state,))
             else:
