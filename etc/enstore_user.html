@@ -1,24 +1,17 @@
 <HTML><HEAD><TITLE>Enstore User Commands</TITLE></HEAD>
 <BODY TEXT="#000066" BGCOLOR="#FFFFFF">
 <BLOCKQUOTE>
-<CENTER><B><U><FONT COLOR="DARKRED" SIZE=+4>ENSTORE USER COMMANDS</FONT></U></B></CENTER>
+<CENTER><B><U><FONT COLOR="DARKRED" SIZE=+9>ENSTORE USER COMMANDS</FONT></U></B></CENTER>
 </BLOCKQUOTE>
 
 <FORM METHOD="POST" ACTION="http://rip8:/cgi-bin/enstore_user.cgi">
 <TABLE ALIGN=LEFT NOBORDER NOSAVE>
+<TR><TD COLSPAN=7>&nbsp;</TD></TR>
 <TR>
-<TD><INPUT ALIGN=LEFT VALUE="Execute" TYPE="submit"></TD>
-<TD>&nbsp;</TD>
-<TD><INPUT ALIGN=RIGHT VALUE="Reset" TYPE="reset"></TD>
-<TD>&nbsp;</TD>
-<TD>&nbsp;</TD>
-<TD>&nbsp;</TD>
-<TD>&nbsp;</TD>
-</TR>
-<TR>
-<TD COLSPAN=3></FONT SIZE=+2><B>File Commands</B></FONT></TD>
-<TD>&nbsp;</TD>
-<TD COLSPAN=4></FONT SIZE=+2><B>Library Commands</B></FONT></TD>
+<TD COLSPAN=3><FONT SIZE=+7><B>File Commands </B><A HREF="#file_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD COLSPAN=2><FONT SIZE=+7><B>Library Commands </B><A HREF="#library_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
+<TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
 </TR>
 <TR>
 <TD><INPUT TYPE=RADIO NAME="server" VALUE="file"> <B>file</B></TD>
@@ -83,11 +76,11 @@
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 </TR>
+<TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
 <TR>
-<TD COLSPAN=7>&nbsp;</TD>
-</TR>
-<TR>
-<TD COLSPAN=7 ALIGN=LEFT></FONT SIZE=+2><B>Volume Commands</B></FONT></TD>
+<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>Volume Commands </B><A HREF="#volume_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
+<TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
 </TR>
 <TR>
 <TD><INPUT TYPE=RADIO NAME="server" VALUE="volume"> <B>volume</B></TD>
@@ -185,15 +178,96 @@
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 </TR>
+<TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
 <TR>
-<TD><INPUT ALIGN=LEFT VALUE="Execute" TYPE="submit"></TD>
+<TD COLSPAN=5 ALIGN=LEFT><FONT SIZE=+7><B>PNFS Commands </B><A HREF="#pnfs_help"><IMG ALIGN="bottom" SRC="question.gif"></A></FONT></TD>
+<TD ALIGN=RIGHT><INPUT VALUE="Execute" TYPE="submit"></TD>
+<TD ALIGN=CENTER><INPUT VALUE="Reset" TYPE="reset"></TD>
+</TR>
+<TR>
+<TD><INPUT TYPE=RADIO NAME="server" VALUE="pnfs"> <B>pnfs</B></TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="help"> help</TD>
 <TD>&nbsp;</TD>
-<TD><INPUT ALIGN=RIGHT VALUE="Reset" TYPE="reset"></TD>
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 <TD>&nbsp;</TD>
 </TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="enstore_state"> enstore_state</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="files"> files</TD>
+<TD><INPUT TYPE=TEXT NAME="files" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="file_family"> file family</TD>
+<TD><INPUT TYPE=TEXT NAME="file_family" size=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="ff_width"> file family width</TD>
+<TD><INPUT TYPE=TEXT NAME="ff_width" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="ff_wrapper"> file family wrapper</TD>
+<TD><INPUT TYPE=TEXT NAME="ff_wrapper" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="library"> library</TD>
+<TD><INPUT TYPE=TEXT NAME="library" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="tags"> tags</TD>
+<TD><INPUT TYPE=TEXT NAME="tags" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR>
+<TD>&nbsp;</TD>
+<TD><INPUT TYPE=RADIO NAME="pnfs_opts" VALUE="xref"> xref</TD>
+<TD><INPUT TYPE=TEXT NAME="xref" SIZE=20></TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+<TD>&nbsp;</TD>
+</TR>
+<TR><TD COLSPAN=7><HR NOSHADE SIZE=6></TD></TR>
+<TR><TD COLSPAN=7>&nbsp;</TD></TR>
+<TH COLSPAN=7><FONT SIZE=+7><B>HELP</B></FONT></TH>
 <TR>
 <TD COLSPAN=7><TABLE BORDER WIDTH="100%" BGCOLOR="#DFDFF0" NOSAVE>
 	<TR>
@@ -203,7 +277,7 @@
 	<TD ALIGN=CENTER NOSAVE><BR>DEFINITION</BR></TD>
 	</TR>
 	<TR>
-	<TD ALIGN=LEFT NOSAVE>file</TD>
+	<TD ALIGN=LEFT NOSAVE ><A NAME="file_help">file</A></TD>
 	<TD ALIGN=LEFT NOSAVE>bfid=bit_file_id</TD>
 	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
 	<TD ALIGN=LEFT NOSAVE>get information on the specified bit file id</TD>
@@ -245,7 +319,7 @@
 	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
 	</TR>
 	<TR>
-	<TD ALIGN=LEFT NOSAVE>library</TD>
+	<TD ALIGN=LEFT NOSAVE><A NAME="library_help">library</A></TD>
 	<TD ALIGN=LEFT NOSAVE>delete_work=work_id</TD>
 	<TD ALIGN=LEFT NOSAVE>library_manager_name</TD>
 	<TD ALIGN=LEFT NOSAVE>remove the specified work from the queue of work to do</TD>
@@ -281,7 +355,7 @@
 	<TD ALIGN=LEFT NOSAVE>number of seconds to wait for udp response</TD>
 	</TR>
 	<TR>
-	<TD ALIGN=LEFT NOSAVE>volume</TD>
+	<TD ALIGN=LEFT NOSAVE><A NAME="volume_help">volume</A></TD>
 	<TD ALIGN=LEFT NOSAVE>add=volume_name</TD>
 	<TD ALIGN=LEFT NOSAVE>library file_family media_type volume_byte_capacity remaining_capacity</TD>
 	<TD ALIGN=LEFT NOSAVE>add the specified volume to Enstore</TD>
@@ -345,6 +419,54 @@
 	<TD ALIGN=LEFT NOSAVE>vol=</TD>
 	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
 	<TD ALIGN=LEFT NOSAVE>get information on the specified volume</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE><A NAME="pnfs_help">pnfs</A></TD>
+	<TD ALIGN=LEFT NOSAVE>enstore_state</TD>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>list whether Enstore is still accepting transfers</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>files</TD>
+	<TD ALIGN=LEFT NOSAVE>volmap-tape</TD>
+	<TD ALIGN=LEFT NOSAVE>list all files on the specified tape in volmap</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>file family</TD>
+	<TD ALIGN=LEFT NOSAVE>[value]</TD>
+	<TD ALIGN=LEFT NOSAVE>set file family tag to value</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>file family width</TD>
+	<TD ALIGN=LEFT NOSAVE>[value]</TD>
+	<TD ALIGN=LEFT NOSAVE>set library tag to value</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>file family wrapper</TD>
+	<TD ALIGN=LEFT NOSAVE>[value]</TD>
+	<TD ALIGN=LEFT NOSAVE>set file family wrapper tag to value</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>library</TD>
+	<TD ALIGN=LEFT NOSAVE>[value]</TD>
+	<TD ALIGN=LEFT NOSAVE>set library tag to value</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>tags</TD>
+	<TD ALIGN=LEFT NOSAVE>directory</TD>
+	<TD ALIGN=LEFT NOSAVE>list the tags in the directory</TD>
+	</TR>
+	<TR>
+	<TD ALIGN=LEFT NOSAVE>&nbsp;</TD>
+	<TD ALIGN=LEFT NOSAVE>xref</TD>
+	<TD ALIGN=LEFT NOSAVE>file</TD>
+	<TD ALIGN=LEFT NOSAVE>list the cross-reference info about the file</TD>
 	</TR>
 	</TABLE>
 </TD>
