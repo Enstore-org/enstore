@@ -239,16 +239,22 @@ def check_file(f, f_stats):
         f1 = open(layer_file(f, 1))
         bfid = f1.readline()
         f1.close()
-    except OSError:
-        msg.append('corrupted layer 1 metadata')
+    except (OSError, IOError), detail:
+        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
+            msg.append('no read permissions for layer 1')
+        else:
+            msg.append('corrupted layer 1 metadata')
 
     # get xref from layer 4 (?)
     try:
         pf = pnfs.File(f)
     except (KeyboardInterrupt, SystemExit), msg:
         raise msg
-    except OSError:
-        msg.append('corrupted layer 4 metadata')
+    except (OSError, IOError), detail:
+        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
+            msg.append('no read permissions for layer 4')
+        else:
+            msg.append('corrupted layer 4 metadata')
 
     if msg or warn:
         return msg, warn
