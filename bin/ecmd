@@ -184,9 +184,9 @@ case $cmd in
     stat=$?
     ;;
 
-  help)
-  echo "Getting help lines, one moment please....\n\n"
-  usage="
+  *)
+    echo "Getting help lines, one moment please....\n\n"
+    usage="
 $usage1
 ecmd encp `ecmd encp --usage_line`
 
@@ -209,10 +209,7 @@ $usage2
 "
     echo "$usage"
     stat=$?
-    ;;
-  *)
-    echo "$usage"
-    stat=1
+    if [ "$cmd" != "help" ]; then stat=1; fi;
 
 esac
 
