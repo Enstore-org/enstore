@@ -45,6 +45,7 @@ import charset
 import volume_family
 import volume_clerk_client
 import file_clerk_client
+import enstore_constants
 
 #############################################################################
 # verbose: Roughly, five verbose levels are used.
@@ -1013,7 +1014,12 @@ def verify_file_size(ticket):
 ############################################################################
 
 def handle_retries(request_list, request_dictionary, error_dictionary,
-                   control_socket, max_retries, verbose):
+                   control_socket, encp_intf):
+    #Extract for readability.
+    max_retries = encp_intf.max_retry
+    max_submits = encp_intf.max_resubmit
+    verbose = encp_intf.verbose
+
     #request_dictionary must have 'retry' as an element.
     #error_dictionary must have 'status':(e_errors.XXX, "explanation").
 
@@ -1026,6 +1032,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     outfile = request_dictionary.get('outfile', '')
     file_size = request_dictionary.get('file_size', 0)
     retry = request_dictionary.get('retry', 0)
+    resubmits = request_list[0].get('resubmits', 0)
     
     dict_status = error_dictionary.get('status', (e_errors.OK, None))
 
@@ -1067,15 +1074,20 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         
     #If there is no error, then don't do anything
     if status == (e_errors.OK, None):
-        result_dict = {'status':(e_errors.OK, None), 'retry':retry, 
-                       'queue_size':len(request_list)}
+        result_dict = {'status':(e_errors.OK, None), 'retry':retry,
+                       'resubmits':resubmits, 'queue_size':len(request_list)}
         result_dict = combine_dict(result_dict, socket_dict)
         return result_dict
 
+    #If the mover doesn't call back after max_submits number of times, give up.
+    if max_submits != None and resubmits >= max_submits:
+        if verbose > 2:
+            print "To many resubmitions for %s -> %s." % (infile, outfile)
+        status = (e_errors.TOO_MANY_RESUBMITS, status)
 
     #If the transfer has failed to many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
-    if retry >= max_retries:
+    if max_retries != None and retry >= max_retries:
         if verbose > 2:
             print "To many retries for %s -> %s." % (infile, outfile)
         status = (e_errors.TOO_MANY_RETRIES, status)
@@ -1086,6 +1098,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # do so if the dictionary is full (aka. the error occured after
         # the control socket was successfully opened).  Control socket
         # errors are printed elsewere (for reads only).
+        error_dictionary['status'] = status
+        #By checking those that aren't of significant length, we only
+        # print these out on writes.
         if len(request_dictionary) > 3:
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
@@ -1096,8 +1111,16 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             queue_size = len(request_list)
         except (KeyError, ValueError):
             queue_size = len(request_list) - 1
+
+        #This is needed on reads to send back to the calling function
+        # that ths error means that there should be none left in the queue.
+        # On writes, if it gets this far it should already be 0 and doesn't
+        # effect anything.
+        if request_dictionary['status'][0] == e_errors.TOO_MANY_RESUBMITS:
+            queue_size = 0
         
         result_dict = {'status':status, 'retry':retry,
+                       'resubmits':resubmits,
                        'queue_size':queue_size} #one less than before
         return result_dict
 
@@ -1133,8 +1156,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # Even though for writes there is only one entry in the active request
     # list at a time, submitting like this will still work.
     else:
+        request_dictionary['resubmits'] = resubmits + 1
+        
         for req in request_list:
             try:
+                req['resubmits'] = req.get('resubmits', 0) + 1
                 #Since a retriable error occured, resubmit the ticket.
                 submit_one_request(req, verbose)
             except KeyError:
@@ -1145,8 +1171,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             Trace.log(e_errors.WARNING, status)
 
 
-    result_dict = {'status':(e_errors.RETRY, None),
+    result_dict = {'status':(e_errors.RESUBMITTING, None),
                    'retry':request_dictionary.get('retry', 0),
+                   'resubmits':request_dictionary.get('resubmits', 0),
                    'queue_size':len(request_list)}
     return result_dict
 
@@ -1396,26 +1423,26 @@ def create_write_request(input_file, output_file,
 
 ############################################################################
 
-def submit_write_request(work_ticket, client, max_retry, verbose):
+def submit_write_request(work_ticket, client, encp_intf):
 
-    if verbose > 1:
+    if encp_intf.verbose > 1:
         print "Submitting %s write request.   time=%s" % \
               (work_ticket['outfile'], time.time())
 
     # send the work ticket to the library manager
-    while work_ticket['retry'] < max_retry:
+    while work_ticket['retry'] < encp_intf.max_retry:
         
         ##start of resubmit block
         Trace.trace(7,"write_to_hsm q'ing: %s"%(work_ticket,))
 
-        ticket = submit_one_request(work_ticket, verbose)
+        ticket = submit_one_request(work_ticket, encp_intf.verbose)
 
-        if verbose > 4:
+        if encp_intf.verbose > 4:
             print "LIBRARY MANAGER"
             pprint.pprint(ticket)
 
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     None, max_retry, verbose)
+                                     None, encp_intf)
         if result_dict['status'][0] == e_errors.RETRY or \
            result_dict['status'][0] in e_errors.non_retriable_errors:
             continue
@@ -1493,9 +1520,10 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Handle any possible errors occured so far.
         result_dict = handle_retries([work_ticket], work_ticket, ticket,
-                                     None, e.max_retry, e.verbose)
+                                     None, e)
 
-        if result_dict['status'][0] == e_errors.RETRY:
+        if result_dict['status'][0] == e_errors.RETRY or \
+           result_dict['status'][0] == e_errors.RESUBMITTING:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
             ticket = combine_dict(result_dict, ticket)
@@ -1522,8 +1550,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             #Handle any possible errors occured so far
             status_ticket = (e_errors.IOERROR, detail)
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         work_ticket, None,
-                                         e.max_retry, e.verbose)
+                                         work_ticket, None, e)
 
             try:
                 control_socket.close()
@@ -1547,8 +1574,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         if not write_fd:
             result_dict = handle_retries([work_ticket], work_ticket,
-                                         status_ticket, control_socket,
-                                         e.max_retry, e.verbose)
+                                         status_ticket, control_socket, e)
             
             try:
                 control_socket.close()
@@ -1603,8 +1629,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Verify that everything is ok on this side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     EXfer_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     EXfer_ticket, None, e)
         
         if result_dict['status'][0] == e_errors.RETRY:
             continue
@@ -1616,8 +1641,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Verify that everything is ok on the mover side of the transfer.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     done_ticket, None, e)
 
         #For simplicity combine everything together.
         done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
@@ -1640,8 +1664,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Verify that the file transfered in tacted.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     done_ticket, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1653,8 +1676,7 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
 
         #Verify that the pnfs info was set correctly.
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     done_ticket, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -1696,7 +1718,6 @@ def write_to_hsm(e, client, tinfo):
                  tinfo['encp_start_time']))
 
     # initialize
-    #max_retry = 3
     bytecount=None #Test moe only
     storage_info=None #DCache only
     unique_id = []
@@ -1832,8 +1853,7 @@ def write_to_hsm(e, client, tinfo):
                   (library[i], time.time() - tinfo['encp_start_time'])
 
         #Send the request to write the file to the library manager.
-        done_ticket = submit_write_request(work_ticket, client,
-                                           e.max_retry, e.verbose)
+        done_ticket = submit_write_request(work_ticket, client, e)
 
         if e.verbose > 4:
             print "DONE SUBMITTING TICKET"
@@ -2102,30 +2122,29 @@ def create_read_requests(inputlist, outputlist, file_size,
 #######################################################################
 
 # submit read_from_hsm requests
-def submit_read_requests(requests, client, tinfo, verbose):
+def submit_read_requests(requests, client, tinfo, encp_intf):
 
     submitted = 0
     requests_to_submit = requests[:]
-    max_retry = 2
 
     # submit requests
     while requests_to_submit:
         for req in requests_to_submit:
 
-            if verbose > 1:
+            if encp_intf.verbose > 1:
                 print "Submitting %s read request.   time=%s" % (req['infile'],
                                                                  time.time())
 
             Trace.trace(8,"submit_read_requests queueing:%s"%(req,))
 
-            ticket = submit_one_request(req, verbose)
+            ticket = submit_one_request(req, encp_intf.verbose)
 
-            if verbose > 4:
+            if encp_intf.verbose > 4:
                 print "LIBRARY MANAGER"
                 pprint.pprint(ticket)
 
             result_dict = handle_retries(requests_to_submit, req, ticket,
-                                         None, max_retry, verbose)
+                                         None, encp_intf)
             if result_dict['status'][0] == e_errors.RETRY or \
                result_dict['status'][0] in e_errors.non_retriable_errors:
                 continue
@@ -2182,13 +2201,14 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         done_ticket = request #Make sure this exists by this point.
         result_dict = handle_retries(requests, request, request,
-                                     None, e.max_retry, e.verbose)
-        if result_dict['status'][0]== e_errors.RETRY:
+                                     None, e)
+        if result_dict['status'][0]== e_errors.RETRY or \
+           result_dict['status'][0]== e_errors.RESUBMITTING:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
-            failed_requests.append(request)
-            files_left = submitted - len(failed_requests)
-            mover_timeout_retries = 0 #reset this
+            for n in range(files_left):
+                failed_requests.append(request)
+            files_left = result_dict['queue_size'] #submitted - len(failed_requests)
             continue
 
         if e.verbose > 1:
@@ -2219,8 +2239,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             # range(submitted).
             done_ticket = {'status':(e_errors.USERERROR, detail)}
             result_dict = handle_retries(requests, requests[j],
-                                        done_ticket, None,
-                                         e.max_retry, e.verbose)
+                                        done_ticket, None, e)
             if result_dict['status'][0] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
                 failed_requests.append(request)
@@ -2285,8 +2304,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
                 #                         "Network problem or mover reset")}
                 
             result_dict = handle_retries(requests, requests[j],
-                                        done_ticket, control_socket,
-                                         e.max_retry, e.verbose)
+                                        done_ticket, control_socket, e)
 
             if result_dict['status'][0] in e_errors.non_retriable_errors:
                 files_left = result_dict['queue_size']
@@ -2319,8 +2337,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         #Verfy that the final responce from the mover is that everything is ok.
         result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     done_ticket, None, e)
         try:
             control_socket.close()
             data_path_socket.close()
@@ -2355,8 +2372,7 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
         #Verfy that the file transfered in tacted.
         result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, None,
-                                     e.max_retry, e.verbose)
+                                     done_ticket, None, e)
         if result_dict['status'][0] == e_errors.RETRY:
             continue
         elif result_dict['status'][0] in e_errors.non_retriable_errors:
@@ -2518,6 +2534,19 @@ def read_from_hsm(e, client, tinfo):
                                             #e.delpri, e.age_time,
                                             #e.delayed_dismount,)
 
+    #Determine how many times a transfer can be retried from failures.
+    #Also, determine how many times encp resends the request to the lm
+    # and the mover fails to call back.
+    check_lib = requests_per_vol.keys()
+    lib = requests_per_vol[check_lib[0]][0]['vc']['library']
+    lm = client['csc'].get(lib + ".library_manager")
+    if e.max_retry == None:
+        e.max_retry = lm.get('max_encp_retries',
+                             enstore_constants.DEFAULT_ENCP_RETRIES)
+    if e.max_resubmit == None:
+        e.max_resubmit = lm.get('max_encp_resubmits',
+                                enstore_constants.DEFAULT_ENCP_RESUBMITIONS)
+
     #This will halt the program if everything isn't consistant.
     verify_read_request_consistancy(requests_per_vol)
     
@@ -2539,7 +2568,7 @@ def read_from_hsm(e, client, tinfo):
         #The return value is the number of files successfully submitted.
         # This value may be different from len(request_list).  The value
         # of request_list is not changed by this function.
-        submitted = submit_read_requests(request_list, client, tinfo, e.verbose)
+        submitted = submit_read_requests(request_list, client, tinfo, e)
 
         if e.verbose > 2:
             print "SUBMITED: ", submitted
@@ -2560,7 +2589,6 @@ def read_from_hsm(e, client, tinfo):
             if e.verbose > 1:
                 print "Files read for volume %s   elapsed=%s" % \
                       (vol, time.time() - tinfo['encp_start_time'])
-            
             if len(requests_failed) > 0 or \
                data_access_layer_ticket['status'][0] != e_errors.OK:
                 exit_status = 1 #Error, when quit() called, this is passed in.
@@ -2610,7 +2638,8 @@ class encp(interface.Interface):
         self.verbose = 0
         self.bufsize = 65536*4     #XXX CGW Investigate this
         self.delayed_dismount = None
-        self.max_retry = 2         # number of times to try again
+        self.max_retry = None      # number of times to try again
+        self.max_resubmit = None   # number of times to try again
         self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
@@ -2638,7 +2667,8 @@ class encp(interface.Interface):
             "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
             "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
-            "data-access-layer"] + self.help_options()
+            "data-access-layer", "max-retry=", "max-resubmit="] + \
+            self.help_options()
 
     
     ##########################################################################
