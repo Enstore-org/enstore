@@ -1,34 +1,65 @@
 #!/bin/sh
+exec  >>/tmp/finalscan.`date +'%s'` 2>&1 <&-
+
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ -z "${1:-}" ] ; then echo `date` Usage $0 '<volume|file-with-list-of-volumes>' ; exit 1; fi
+
 . /home/enstore/enstore/test/CDF_migration/migration-setup-enstore
+
 set -u
-tape=$1
-files=/tmp/scan.$tape
-command=/tmp/command.$tape
-finalscan=/data1/status/finalscan.$tape
-rm -f $files $command $finalscan 2>/dev/null
-enstore fil --ls-active $tape >$files
 
-#echo "export  ENSTORE_SPECIAL_LIB=CDF-Migration;"  > $command
-#echo "export ENSTORE_SPECIAL_LIB" >> $command 
-echo "encp --delayed=3 --priority=300000 "          >> $command
-n=0
-cat $files | while read f; do
-  n=`expr $n + 1`
-  echo `date` $n $f
-  echo $f " " >>$command
-done
-echo "/dev/null" >>$command
-
-cmd=`cat $command`
-rm -f $command $files 2>/dev/null
-echo `date` $cmd
-eval $cmd >$finalscan 2>&1
-rc=$?
-if [ $rc -ne 0 ]; then
-    echo `date` ERROR $tape bad return code
-    /usr/bin/Mail -s "$tape migration error" enstore-admin@fnal.gov < $finalscan
+#tape=$1
+if [ -r $1 ]; then
+ f=$1
+ removef=0
 else
-    echo `date` $tape All files read
+ f=/tmp/f.$$.`date +"%s"`
+ removef=1
+ rm -f $f
+ echo $1 >$f
 fi
-date
-exit $rc
+
+cat $f | while read tape; do 
+  files=/tmp/scan.$tape
+  command=/tmp/command.$tape
+  finalscan=/data1/status/finalscan.$tape
+  rm -f $files $command $finalscan 2>/dev/null
+  
+  echo
+  echo
+  echo `date` Starting tape $tape 
+  echo `date` Starting tape $tape >> $finalscan
+
+  enstore fil --ls-active $tape >$files 2>&1
+  cat $files
+  cat $files >> $finalscan
+  
+  #echo "export  ENSTORE_SPECIAL_LIB=CDF-Migration;"  > $command
+  #echo "export ENSTORE_SPECIAL_LIB" >> $command 
+  echo "encp --delayed=3 --priority=300000 "          >> $command
+  n=0
+  cat $files | while read f; do
+    n=`expr $n + 1`
+    echo $f " " >>$command
+  done
+  echo "/dev/null" >>$command
+  
+  cmd=`cat $command`
+  rm -f $command $files 2>/dev/null
+  echo `date` $cmd
+  echo `date` $cmd >> $finalscan
+  
+  eval $cmd >>$finalscan 2>&1
+  rc=$?
+  if [ $rc -ne 0 ]; then
+      echo `date` ERROR $tape bad return code
+      echo `date` ERROR $tape bad return code >> $finalscan
+      /usr/bin/Mail -s "$tape migration error" enstore-admin@fnal.gov < $finalscan
+  else
+      echo `date` $tape All files read
+      echo `date` $tape All files read >> $finalscan
+  fi
+
+done
+
+if [ $removef -eq 1 ]; then rm $f; fi
