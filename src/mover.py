@@ -294,7 +294,8 @@ class MoverClient:
         try: self.hsm_driver = getattr(driver, mvr_config['driver'])( sm_size )
         except AttributeError:
             Trace.log(e_errors.INFO, "No such driver: "+mvr_config['driver'])
-            raise
+            exc,msg,tb=sys.exc_info()
+            raise exc,msg
 
 	# Note: open the dev in read mode, incase there is not a tape
 	# an exception will occur when opening 'a+' when no tape is present.
