@@ -135,6 +135,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  Trace.log(e_errors.ERROR, "rename_volume failed: "+repr(ret))
                  
          # create new record in the database
+         cur_rec['declared'] = time.time()
          self.dict[new_label] = cur_rec
          # remove current record from the database
          del self.dict[old_label]
@@ -177,7 +178,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              self.bfid_db.delete_all_bfids(external_label)
              new_label = string.replace(external_label, '.deleted','')
              rec = self.dict[new_label]
-             rec['system_inhibit'] = ('none', 'none')
+             rec['system_inhibit'] = ['none', 'none']
              self.dict[new_label] = rec
              Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
 
@@ -437,7 +438,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              
                 new_label = string.replace(cur_rec['external_label'], '.deleted', '')
                 if not self.dict.has_key(new_label):
-                    cur_rec['exrenal_label'] = new_label
+                    cur_rec['external_label'] = new_label
                     # form a volume family
                     sg = volume_family.extract_storage_group(cur_rec['volume_family'])
                     cur_rec['volume_family'] = volume_family.make_volume_family(sg,'none', 'none')
@@ -582,8 +583,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         label, v = vc.set(pool)
         c = db.join(self.dict, [lc, vc])
         while 1:
-            Trace.trace(30, "label,v = %s, %s" % (label, v))
             label,v = c.next()
+            Trace.trace(30, "label,v = %s, %s" % (label, v))
             if not label:
                 break
             if v["user_inhibit"] != ["none",  "none"]:
@@ -615,12 +616,14 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # supposed to return first volume found?
             # do not return blank volume at this point yet
             if first_found:
+                Trace.trace(30,"first found")
                 v["status"] = (e_errors.OK, None)
                 c.close()
                 return v
             # if not, is there an "earlier" volume that we have already found?
             if len(vol) == 0:
-                vol = v  
+                Trace.trace(30,"vol %s"%(v,))
+                vol = v
             elif v['declared'] < vol['declared']:
                 vol = v  
         c.close()
