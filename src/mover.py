@@ -121,10 +121,14 @@ class Buffer:
         return n
         
     def full(self):
-        return self.nbytes() > self.max_bytes
+        return self.nbytes() >= self.max_bytes
     
     def empty(self):
-        return self.nbytes() == 0
+        ##return self.nbytes() == 0
+        return len(self._buf) == 0
+
+    def low(self):
+        return len(self._buf)==0 or self.nbytes() <= self.min_bytes
     
     def set_min_bytes(self, min_bytes):
         self.min_bytes = min_bytes
@@ -132,15 +136,13 @@ class Buffer:
     def set_blocksize(self, blocksize):
         if blocksize == self.blocksize:
             return
-        if not self.empty():
+        if self.nbytes() != 0:
             raise "Buffer error: changing blocksize of nonempty buffer"
         self._lock.acquire()
         self._freelist = []
         self.blocksize = blocksize
         self._lock.release()
         
-    def low(self):
-        return len(self._buf)==0 or self.nbytes() <= self.min_bytes
     
     def push(self, data):
         self._lock.acquire()
