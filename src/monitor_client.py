@@ -182,33 +182,40 @@ class MonitorServerClient(generic_client.GenericClient):
     #Return the socket to use for the encp rate tests.
     #mon_serv_addr: A 2-tuple containing the host and port to connect to.
     def _open_data_socket(self, mon_serv_addr):
-        #Create the TCP socket, remeber the current settings (to reset them
-        # back later) and set the new file control flags.
+        #Create the socket and put it into non-blocking mode.
         sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
 
-        for retry in xrange(self.timeout):
-            try:
-                sock.connect(mon_serv_addr)
-                break #Success, so get out of the loop.
-            except socket.error, detail:
-                #We have seen that on IRIX, when the connection succeds, we
-                # get an ISCONN error.
-                if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
-                    break
-                elif detail[0] == errno.EINPROGRESS:
-                    pass #Keep trying.
-                #A real or fatal error has occured.  Handle accordingly.
-                else:
-                    raise CLIENT_CONNECTION_ERROR, detail[1]
+        try:
+            sock.connect(mon_serv_addr) #Start the TCP handshake.
+        except socket.error, detail:
+            #We have seen that on IRIX, when the connection succeds, we
+            # get an ISCONN error.
+            if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+                pass
+            #The TCP handshake is in progress.
+            elif detail[0] == errno.EINPROGRESS:
+                pass
+            #A real or fatal error has occured.  Handle accordingly.
+            else:
+                raise CLIENT_CONNECTION_ERROR, detail[1]
 
-                time.sleep(1) #Wait a sec, so each pass is a second of timeout.
-                
-        else: #If we did not break out of the for loop, flag the error.
-            raise SERVER_CONNECTION_ERROR, os.srterror(errno.ETIMEDOUT)
+        #Check if the socket is open for reading and/or writing.
+        r, w, ex = select.select([sock], [sock], [], self.timeout)
 
-        #Success on the connection!  Restore flag values.
+        if r or w:
+            #Get the socket error condition...
+            rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        else:
+            print "no r or w"
+            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+
+        #...if it is zero then success, otherwise it failed.
+        if rtn != 0:
+            raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+        
+        #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
 
         return sock
@@ -260,18 +267,18 @@ class MonitorServerClient(generic_client.GenericClient):
         try:
             mon_serv_callback_addr = self._open_cntl_socket(mon_serv_ip)
             data_sock = self._open_data_socket(mon_serv_callback_addr)
-
+            print "c ta:", time.time()
             if not data_sock:
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
-        except CLIENT_CONNECTION_ERROR, detail:
-            raise CLIENT_CONNECTION_ERROR, detail
-        except SERVER_CONNECTION_ERROR, detail:
-            raise CLIENT_CONNECTION_ERROR, detail
+        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         try:
+            print "c tb:", time.time()
             if ticket['transfer'] == SEND_TO_SERVER:
                 self._test_encp_transfer(data_sock, ticket['block_size'],
                                          ticket['block_count'], "send")
@@ -282,10 +289,10 @@ class MonitorServerClient(generic_client.GenericClient):
                 reply['elapsed'] = self._test_encp_transfer(
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
-        except CLIENT_CONNECTION_ERROR, detail:
-            raise CLIENT_CONNECTION_ERROR, detail
-        except SERVER_CONNECTION_ERROR, detail:
-            raise SERVER_CONNECTION_ERROR, detail
+
+        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg
 
         #If we get here, the status is ok.
         reply['status'] = ('ok', None)
@@ -329,18 +336,18 @@ class MonitorServerClient(generic_client.GenericClient):
             else:
                 reply['status'] = ('INVALIDACTION', "failed to simulate encp")
 
-        except CLIENT_CONNECTION_ERROR, detail:
+        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+            exc, msg, tb = sys.exc_info()
             reply = {}
-            reply['status'] = (CLIENT_CONNECTION_ERROR, detail)
+            reply['status'] = (exc, msg)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
-
-        except SERVER_CONNECTION_ERROR, detail:
+        except errno.ETIMEDOUT, detail:
             reply = {}
             reply['status'] = (SERVER_CONNECTION_ERROR, detail)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
-        
+
         return reply
 
     #Take the elapsed time and the amount of data sent/recieved and calculate
