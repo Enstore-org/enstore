@@ -428,6 +428,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	self.reply_to_caller(ticket)
 
     # Get the next volume that satisfy criteria
+    #
+    # A quick fix is applied
+    # There should be a permenat fix in the future
+
     def next_write_volume (self, ticket):
         vol_veto = ticket["vol_veto_list"]
         vol_veto_list = eval(vol_veto)
