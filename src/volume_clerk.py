@@ -69,6 +69,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 vm_ticket = fcc.get_volmap_name()
 	 old_vol_map_name = vm_ticket["pnfs_mapname"]
 	 (old_vm_dir,file) = os.path.split(old_vol_map_name)
+         if 0: print file # quiet lint
 	 new_vm_dir = string.replace(old_vm_dir, old_label, new_label)
 	 # rename map files
 	 Trace.log(e_errors.INFO, "trying volume map directory renamed %s->%s"%\
@@ -93,6 +94,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
 	 exc, val, tb = e_errors.handle_error()
+         if 0: print tb # quiet lint
          return str(exc), str(val)
      
     # remove deleted volume and all information about it
@@ -115,7 +117,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		 vm_ticket = fcc.get_volmap_name()
 		 vol_map_name = vm_ticket["pnfs_mapname"]
 		 (vm_dir,file) = os.path.split(vol_map_name)
+                 if 0: print file # quiet lint
 		 ret = fcc.del_bfid()
+                 if 0: print ret # quiet lint
 		 os.remove(vol_map_name)
 	     os.rmdir(vm_dir)
 	     # remove current record from the database
@@ -125,8 +129,52 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
      # even if there is an error - respond to caller so he can process it
      except:
 	 exc, val, tb = e_errors.handle_error()
+         if 0: print tb # quiet lint
          return str(exc), str(val)
 	 
+    # remove deleted volume(s)
+    # this method is called externally
+    def remove_deleted_vols(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        # this could tie things up for awhile - fork and let child
+        # send the work list (at time of fork) back to client
+        if os.fork() != 0:
+            Trace.trace(17,'remove_deleted_vols forked parent - returning')
+            return
+        vols = []
+        try:
+            Trace.init("REM_VOLS")
+            Trace.trace(17,"remove_deleted_vols child processing")
+            self.get_user_sockets(ticket)
+            ticket["status"] = (e_errors.OK, None)
+            callback.write_tcp_obj(self.data_socket, ticket)
+            if not ticket.has_key("external_label"):
+                # fill in the list of volumes to delete
+                dict.cursor("open")
+                key,value=dict.cursor("first")
+                while key:
+                    if value["system_inhibit"] == e_errors.DELETED:
+                        vols.append(key)
+                    key,value=dict.cursor("next")
+                dict.cursor("close")
+            else: vols.append(ticket["external_label"])
+            for vol in vols:
+                ret = self.remove_deleted_volume(vol)
+                msg="VOLUME "+vol
+                if ret[0] == e_errors.OK: msg = msg+" removed"
+                else: msg = msg + " " + repr(ret)
+                callback.write_tcp_raw(self.data_socket,msg)                
+            self.data_socket.close()
+            callback.write_tcp_obj(self.control_socket, ticket)
+            self.control_socket.close()
+            Trace.trace(17,'remove_deleted_vols child exitting')
+        except:
+            print "EXCEPTION"
+            e_errors.handle_error()
+        os._exit(0)
+            
+
     # add: some sort of hook to keep old versions of the s/w out
     # since we should like to have some control over format of the records.
     def addvol(self, ticket):
@@ -242,6 +290,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(8,"delvol "+repr(ticket["status"]))
             return
 
+        if record['at_mover'][0] != 'unmounted':
+           ticket["status"] = (e_errors.CONFLICT,"volume must be unmounted")
+           self.reply_to_caller(ticket)
+           return
         if record.has_key('non_del_files'):
             if record['non_del_files']>0:
                 ticket["status"] = (e_errors.CONFLICT,
@@ -403,6 +455,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.trace(17,label+" rejected system_inhibit "+v["system_inhibit"])
                 continue
             at_mover = v.get('at_mover',('unmounted', '')) # for backward compatibility for at_mover field
+            if 0: print at_mover # quiet lint
             if v['at_mover'][0] != "unmounted" and  v['at_mover'][0] != None: 
                 Trace.trace(17,label+" rejected at_mover "+v['at_mover'][0])
                 continue
@@ -574,6 +627,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
          # for backward compatibility for at_mover field
          try:
              at_mover = v['at_mover']
+             if 0: print at_mover # quiet lint
          except KeyError:
              v['at_mover'] = ('unmounted', '')
 
@@ -683,6 +737,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
         try:
             non_del_files = record['non_del_files']
+            if 0: print non_del_files # quiet lint
         except KeyError:
             record['non_del_files'] = record['sum_wr_access']
 
@@ -788,6 +843,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         #TEMPORARY TRY BLOCK - all new volumes should already have the non_del_files key
         try:
             non_del_files = record['non_del_files']
+            if 0: print non_del_files # quiet lint
         except KeyError:
             record['non_del_files'] = record['sum_wr_access']
 
@@ -970,10 +1026,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # add fields
         try:
             at_mover = record['at_mover']
+            if 0: print at_mover # quiet lint
         except KeyError:
             record['at_mover'] = ('unmounted', 'none')
         try:
             non_del_files = record['non_del_files']
+            if 0: print non_del_files # quiet lint
         except KeyError:
             record['non_del_files'] = record['sum_wr_access']
 
@@ -1029,6 +1087,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # device is broken - what to do, what to do ===================================FIXME======================================
     def set_hung(self,ticket):
+        if 0: print ticket # quiet lint
 	Trace.trace(16,'set_hung')
 	self.reply_to_caller({"status" : (e_errors.OK, None)})
 	return
@@ -1038,6 +1097,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	external_label = ticket["external_label"]
 	record = dict[external_label]  ## was deepcopy
 	at_mover = record.get('at_mover',('unmounted','none'))
+        if 0: print at_mover # quiet lint
 	
 	# update the fields that have changed
 	if ticket['force']:
@@ -1122,6 +1182,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             ticket["volume_clerk_callback_port"] = volume_clerk_port
             self.control_socket = callback.user_callback_socket(ticket)
             data_socket, address = listen_socket.accept()
+            if 0: print address # quiet lint
             self.data_socket = data_socket
             listen_socket.close()
         # catch any error and keep going. server needs to be robust
@@ -1131,6 +1192,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     def start_backup(self,ticket):
+        if 0: print ticket # quiet lint
         try:
             Trace.log(e_errors.INFO,"start_backup")
             dict.start_backup()
@@ -1145,6 +1207,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
 
     def stop_backup(self,ticket):
+        if 0: print ticket # quiet lint
         try:
             Trace.log(e_errors.INFO,"stop_backup")
             dict.stop_backup()
@@ -1158,6 +1221,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                   "stop_backup"  : 'no' })
 
     def backup(self,ticket):
+        if 0: print ticket # quiet lint
         try:
             Trace.log(e_errors.INFO,"backup")
             dict.backup()

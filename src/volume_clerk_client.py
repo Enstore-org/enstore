@@ -14,7 +14,6 @@ import interface
 import generic_client
 import backup_client
 import udp_client
-import db
 import Trace
 import e_errors
 
@@ -185,6 +184,79 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
         return ticket
 
+    # remove deleted volumes
+    def remove_deleted_vols(self, volume=None):
+        # get a port to talk on and listen for connections
+        host, port, listen_socket = callback.get_callback()
+        listen_socket.listen(4)
+        ticket = {"work"         : "remove_deleted_vols",
+                  "callback_addr" : (host, port),
+                  "unique_id"    : time.time() }
+        if volume: ticket["external_label"] = volume
+        # send the work ticket to the library manager
+        ticket = self.send(ticket)
+        if ticket['status'][0] != e_errors.OK:
+            Trace.log( e_errors.ERROR,
+		       'vcc.remove_deleted_vols: sending ticket: %s'%ticket )
+            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: sending ticket"\
+                  +str(ticket)
+
+        # We have placed our request in the system and now we have to wait.
+        # All we  need to do is wait for the system to call us back,
+        # and make sure that is it calling _us_ back, and not some sort of old
+        # call-back to this very same port. It is dicey to time out, as it
+        # is probably legitimate to wait for hours....
+        while 1:
+            control_socket, address = listen_socket.accept()
+            new_ticket = callback.read_tcp_obj(control_socket)
+            if ticket["unique_id"] == new_ticket["unique_id"]:
+                listen_socket.close()
+                break
+            else:
+                Trace.log(e_errors.WARNING,
+                          "remove_deleted_vols - imposter called us back, trying again")
+                control_socket.close()
+        ticket = new_ticket
+        if ticket["status"][0] != e_errors.OK:
+            Trace.trace(12,"vcc.remove_deleted_vols: "\
+                  +"1st (pre-work-read) volume clerk callback on socket "\
+                  +str(address)+" failed to setup transfer: "\
+                  +ticket["status"])
+            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols: "\
+                  +"1st (pre-work-read) volume clerk callback on socket "\
+                  +str(address)+", failed to setup transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+
+        # If the system has called us back with our own  unique id, call back
+        # the library manager on the library manager's port and read the
+        # work queues on that port.
+        data_path_socket = callback.volume_server_callback_socket(ticket)
+        ticket= callback.read_tcp_obj(data_path_socket)
+        volumes=''
+        while 1:
+            msg=callback.read_tcp_raw(data_path_socket)
+            if not msg: break
+            if volumes: volumes = volumes+"\012"+msg
+            else: volumes=msg
+        ticket['volumes'] = volumes
+        data_path_socket.close()
+
+
+        # Work has been read - wait for final dialog with volume clerk
+        done_ticket = callback.read_tcp_obj(control_socket)
+        control_socket.close()
+        if done_ticket["status"][0] != e_errors.OK:
+            Trace.trace(12,"vcc.remove_deleted_vols "
+                        "2nd (post-work-read) volume clerk callback on socket "
+                        +str(address)+", failed to transfer: "
+                        +ticket["status"])
+            raise errno.errorcode[errno.EPROTO],"vcc.remove_deleted_vols "\
+                  +"2nd (post-work-read) volume clerk callback on socket "\
+                  +str(address)+", failed to transfer: "\
+                  +"ticket[\"status\"]="+ticket["status"]
+
+        return ticket
+
     # what is the current status of a specified volume?
     def inquire_vol(self, external_label):
         ticket= { 'work'           : 'inquire_vol',
@@ -349,6 +421,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.update = ""
         self.backup = 0
         self.vols = 0
+        self.in_state = 0
         self.next = 0
         self.vol = ""
         self.check = ""
@@ -361,6 +434,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.read_only = ""
         self.no_access = ""
         self.decr_file_count = 0
+        self.rmvol = 0
 	self.atmover = 0 # for the backward compatibility D0_TEMP
         generic_client.GenericClientInterface.__init__(self)
 
@@ -373,7 +447,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                    ["clear=", "backup", "vols","next","vol=","check=","add=",
                     "update=", "delete=","new_library=","read_only=",
                     "no_access=", "atmover","decr_file_count=","force",
-                    "restore=", "all"]
+                    "restore=", "all","remove_vol"]
 
     # parse the options like normal but make sure we have necessary params
     def parse_options(self):
@@ -425,7 +499,16 @@ def do_work(intf):
         ticket = vcc.backup()
         ticket = vcc.stop_backup()
     elif intf.vols:
-        ticket = vcc.get_vols()
+        # optional argument
+        if len(intf.args): in_state=intf.args[0]
+        else: in_state = None 
+        ticket = vcc.get_vols(in_state)
+        print ticket['volumes']
+    elif intf.rmvol:
+        # optional argument
+        if len(intf.args): vol=intf.args[0]
+        else: vol = None 
+        ticket = vcc.remove_deleted_vols(vol)
         print ticket['volumes']
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library

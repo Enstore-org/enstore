@@ -183,7 +183,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
      # if there is an error - log and return it
      except:
-	 exc, val, tb = e_errorrs.handle_error()
+	 exc, val, tb = e_errors.handle_error()
+         if 0: print tb # quiet lint
          status = (str(exc), str(val))
 
     # change the delete state element in the dictionary
@@ -246,7 +247,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	while key:
 	    if value["pnfs_name0"] == fname:
 		bfid = value["bfid"]
-		external_label = value["external_label"]
 		break
 	    key,value=dict.cursor("next")
 	dict.cursor("close")
@@ -259,7 +259,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
 	if string.find(value["external_label"],'deleted') !=-1:
-	    ticket["status"] = EACCES, "volume %s is deleted"%value["external_label"]
+	    ticket["status"] = "EACCES", "volume %s is deleted"%value["external_label"]
             Trace.log(e_errors.INFO, repr(ticket))
             self.reply_to_caller(ticket)
             Trace.trace(10,"restore_file "+repr(ticket["status"]))
@@ -306,6 +306,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      while key:
          callback.write_tcp_raw(self.data_socket,repr(key))
          key,value=dict.cursor("next")
+     if 0: print value # quiet lint
      callback.write_tcp_raw(self.data_socket,"")
      dict.cursor("close")
      callback.write_tcp_raw(self.data_socket,"")
@@ -431,6 +432,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         # now just delete the bfid
         del dict[bfid]
+        Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%repr(bfid))
 
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
