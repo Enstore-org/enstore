@@ -115,24 +115,24 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     ##########################################################################
 
     # simple test configuration
-    def jon1(self):
-        if self.valid == VALID:
-            self.set_bit_file_id("1234567890987654321",123)
-        else:
-            raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
-                  +self.pnfsfile+" is an invalid pnfs filename"
-
+    #def jon1(self):
+    #    if self.valid == VALID:
+    #        self.set_bit_file_id("1234567890987654321",123)
+    #    else:
+    #        raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
+    #              +self.pnfsfile+" is an invalid pnfs filename"
+    #
     # simple test configuration
-    def jon2(self):
-        if self.valid == VALID:
-            self.set_bit_file_id("1234567890987654321",45678)
-            self.set_library("activelibrary")
-            self.set_file_family("raw")
-            self.set_file_family_width(2)
-            self.pstatinfo()
-        else:
-            raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
-                  +self.pnfsfile+" is an invalid pnfs filename"
+    #def jon2(self):
+    #    if self.valid == VALID:
+    #        self.set_bit_file_id("1234567890987654321",45678)
+    #        self.set_library("activelibrary")
+    #        self.set_file_family("raw")
+    #        self.set_file_family_width(2)
+    #        self.pstatinfo()
+    #    else:
+    #        raise errno.errorcode[errno.EINVAL],"pnfs.jon1: "\
+    #              +self.pnfsfile+" is an invalid pnfs filename"
 
     ##########################################################################
 
@@ -300,23 +300,22 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             self.dir = os.path.join(p.pnfsFilename, self.file)
 
-        #path may or may not be the final path name, in either case don't
-        # risk destroying what is known to be correct in self.dir.
-        path = self.dir
-
         #At some point it will be possible to remove the local pnfs directory
         # with the remote pnfs directory.  Thus, for example
         # /root/fs/usr/mist/zaa/100MB_002 becomes /pnfs/mist/zaa/100MB_002,
         try:
-            #By requiring that the "/" exists at the end of "/root/fs/usr/",
-            # there must be one more directory listed in path
-            # ( ie./root/fs/usr/rip6disk1 ).  When this occurs the mount
-            # point should be supsituted in.
-            if path[:13] ==  "/root/fs/usr/":
-                path = matched_mp_list[0]
+            #For each directory in self.dir, append it to the mount point to
+            # determine if it exists.  If it exists, then for future
+            # iterations use the known existing directory to append to for the
+            # remaining existence tests.
+            path = matched_mp_list[0]
+            for d in string.split(self.dir, "/"):
+                test_dir = os.path.join(path, d)
+                if os.path.exists(test_dir):
+                    path = test_dir
         except:
             pass
-
+        
         self.check_valid_pnfs_filename(path, "")
 
     ##########################################################################
