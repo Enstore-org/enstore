@@ -13,81 +13,83 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
 CFLAGS=-I. -I../ftt_lib -g $(WARN) `cat ../ftt_lib/local/flags`
 
-BIN=$(FTT_DIR)/bin
+BINDIR=../bin
+MAIDIR=..
+LIBDIR=../lib
 
 all: ftt_test ftt_random ftt_copy
 
 scripts: \
-	$(BIN)/ftt_ansi_prelabel \
-	$(BIN)/ftt_dump \
-	$(BIN)/ftt_exercise \
-	$(BIN)/ftt_fast \
-	$(BIN)/ftt_multitest \
-	$(BIN)/ftt_run_test \
-	$(BIN)/ftt_slow 
+	$(BINDIR)/ftt_ansi_prelabel \
+	$(BINDIR)/ftt_dump \
+	$(BINDIR)/ftt_exercise \
+	$(BINDIR)/ftt_fast \
+	$(BINDIR)/ftt_multitest \
+	$(BINDIR)/ftt_run_test \
+	$(BINDIR)/ftt_slow 
 
 exes: \
-	$(BIN)/ftt_test \
-	$(FTT_DIR)/test \
-	$(BIN)/ftt_copy \
-	$(FTT_DIR)/copy \
-	$(BIN)/ftt_random \
-	$(FTT_DIR)/random 
+	$(BINDIR)/ftt_test \
+	$(MAIDIR)/test \
+	$(BINDIR)/ftt_copy \
+	$(MAIDIR)/copy \
+	$(BINDIR)/ftt_random \
+	$(MAIDIR)/random 
 
-testlib: $(FTT_DIR)/lib/libftt_test.a
+testlib: $(LIBDIR)/libftt_test.a
 
 clean:
 	rm *.o ftt_test ftt_random ftt_copy
 
 install: all testlib exes scripts 
 
-$(FTT_DIR)/lib/libftt_test.a: libftt_test.a 
-	cp libftt_test.a $(FTT_DIR)/lib
+$(LIBDIR)/libftt_test.a: libftt_test.a 
+	cp libftt_test.a $(LIBDIR)
 
-$(FTT_DIR)/test: ftt_test
-	-mv $(FTT_DIR)/test $(FTT_DIR)/test.bak
-	cp ftt_test $(FTT_DIR)/test
+$(MAIDIR)/test: ftt_test
+	-mv $(MAIDIR)/test $(MAIDIR)/test.bak
+	cp ftt_test $(MAIDIR)/test
 
-$(FTT_DIR)/random: ftt_random 
-	-mv $(FTT_DIR)/random $(FTT_DIR)/random.bak
-	cp ftt_random $(FTT_DIR)/random
+$(MAIDIR)/random: ftt_random 
+	-mv $(MAIDIR)/random $(MAIDIR)/random.bak
+	cp ftt_random $(MAIDIR)/random
 
-$(FTT_DIR)/copy: ftt_copy
-	-mv $(FTT_DIR)/copy $(FTT_DIR)/copy.bak
-	cp ftt_copy $(FTT_DIR)/copy
+$(MAIDIR)/copy: ftt_copy
+	-mv $(MAIDIR)/copy $(MAIDIR)/copy.bak
+	cp ftt_copy $(MAIDIR)/copy
 
-$(BIN)/ftt_test: ftt_test
-	-mv $(FTT_DIR)/bin/ftt_test $(FTT_DIR)/bin/ftt_test.bak
-	cp ftt_test $(FTT_DIR)/bin
+$(BINDIR)/ftt_test: ftt_test
+	-mv $(MAIDIR)/bin/ftt_test $(MAIDIR)/bin/ftt_test.bak
+	cp ftt_test $(MAIDIR)/bin
 
-$(BIN)/ftt_random: ftt_random
-	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
-	cp ftt_random $(FTT_DIR)/bin
+$(BINDIR)/ftt_random: ftt_random
+	-mv $(MAIDIR)/bin/ftt_random $(MAIDIR)/bin/ftt_random.bak
+	cp ftt_random $(MAIDIR)/bin
 
-$(BIN)/ftt_copy: ftt_copy
-	-mv $(FTT_DIR)/bin/ftt_copy $(FTT_DIR)/bin/ftt_copy.bak
-	cp ftt_copy $(FTT_DIR)/bin
+$(BINDIR)/ftt_copy: ftt_copy
+	-mv $(MAIDIR)/bin/ftt_copy $(MAIDIR)/bin/ftt_copy.bak
+	cp ftt_copy $(MAIDIR)/bin
 
-$(BIN)/ftt_ansi_prelabel: scripts/ftt_ansi_prelabel
-	cp scripts/ftt_ansi_prelabel $(BIN)/
+$(BINDIR)/ftt_ansi_prelabel: scripts/ftt_ansi_prelabel
+	cp scripts/ftt_ansi_prelabel $(BINDIR)/
 
-$(BIN)/ftt_dump: scripts/ftt_dump
-	cp scripts/ftt_dump $(BIN)/
+$(BINDIR)/ftt_dump: scripts/ftt_dump
+	cp scripts/ftt_dump $(BINDIR)/
 
-$(BIN)/ftt_exercise: scripts/ftt_exercise
-	cp scripts/ftt_exercise $(BIN)/
+$(BINDIR)/ftt_exercise: scripts/ftt_exercise
+	cp scripts/ftt_exercise $(BINDIR)/
 
-$(BIN)/ftt_fast: scripts/ftt_fast  
-	cp scripts/ftt_fast $(BIN)/
+$(BINDIR)/ftt_fast: scripts/ftt_fast  
+	cp scripts/ftt_fast $(BINDIR)/
 
-$(BIN)/ftt_multitest: scripts/ftt_multitest
-	cp scripts/ftt_multitest $(BIN)/
+$(BINDIR)/ftt_multitest: scripts/ftt_multitest
+	cp scripts/ftt_multitest $(BINDIR)/
 
-$(BIN)/ftt_run_test: scripts/ftt_run_test
-	cp scripts/ftt_run_test $(BIN)/
+$(BINDIR)/ftt_run_test: scripts/ftt_run_test
+	cp scripts/ftt_run_test $(BINDIR)/
 
-$(BIN)/ftt_slow: scripts/ftt_slow
-	cp scripts/ftt_slow $(BIN)/
+$(BINDIR)/ftt_slow: scripts/ftt_slow
+	cp scripts/ftt_slow $(BINDIR)/
 
 
 libftt_test.a: $(OBJ)
