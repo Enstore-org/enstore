@@ -68,6 +68,17 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 
 
 if __name__ == "__main__":
+
+    pid=os.fork()
+    if pid: #parent
+        os.waitpid(pid,0)
+        sys.exit(0)
+    else: #child
+        pid=os.fork()
+        if pid:
+            sys.exit(0)
+        
+    
     Trace.init(MY_NAME)
     Trace.trace( 6, "called args="+repr(sys.argv) )
     import sys
