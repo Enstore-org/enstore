@@ -2710,25 +2710,51 @@ Additionally it is expected that a trace module will be developed.
 <h3><a name="media_changer">
 1.3.7 Media Changer
 </h3>
-The Media Changer mounts and dismounts the media into and from the drive
-according to a request from the Mover.  One Media Changer can serve multiple
-drives and libraries.  When the drives are in the robot, the Media Changer
-is the interface to the robotic software.
+
+The Media Changer mounts and dismounts the media into and from the drive according to a request from
+the Mover. One Media Changer can serve multiple drives and libraries. When the drives are in the robot, the
+Media Changer is the interface to the robotic software. 
 <p>
 The Media Changer issues multiple simultaneous commands by forking processes
 that do the work.  A media changer parameter, MAXWORK, limits the maximum number of
-simultaneous outstanding operations.   If the media changer receives 
+simultaneous outstanding operations.   If the media changer receives
 mount/dismount requests while there are  MAXWORK unfinished operations then
-the new oprations are ignored, the mover request will time out, and the
+the new operations are ignored, the mover request will time out, and the
 mover will reissue the mount/dismount request.
 <p>
 The reason for the MAXWORK parameter is because when the EMASS robot has an operation for ten minutes
 it reports a timeout failure even though it eventually finishes the operation.  The MAXWORK parameter
-can be set to 0 when it is necessasry to perform work on a robot.
+can be set to 0 when it is necessary to perform work on a robot.
 <p>
-The reason mounts/dismounts requests are ignored when MAXWORK operations are outstanding
-is because it is desired to not keep uneccessary state.
+The media changer supports the following requests:
+<ul>
+<li>LOAD &ltvolume id&gt &ltdrive id&gt &ltmedia type&gt
+<li>UNLOAD &ltvolume id&gt &ltdrive id&gt &ltmedia type&gt
+<li>MAXWORK &ltmmax simultaneous operation&gt 
+</ul>
 <p>
+The media changer mounting agents:
+<ul>
+<li>EMASS/Grau robot
+<li>STK robot
+<li>null media changer used by the disk movers and stand alone tape drives
+<li>OCS operator assisted mounts - to be implemented
+</ul>
+<h3>
+Tape Cleaning
+</h3>
+The media changer is not involved with tape cleaning.  The EMASS AMU and the
+STK ACSLS tape library systems keep tape drive usage statistics and automatically
+mount cleaning tapes.
+<h3>
+Tape statistics
+</h3>
+The media changer does not keep tape drive or cartridge statistics.  Summary statistics
+are not very useful and the media does not run on the machine connected to the tape drive.
+<p>
+Enstore writes detail error statistics to its log when a file is closed.
+
+
 
 <h3><a name="inquisitor">
 1.3.8 Inquisitor
