@@ -717,7 +717,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.transfer_deficiency = 1.0
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        #self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
@@ -1124,6 +1124,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     def reset(self, sanity_cookie, client_crc_on):
         self.current_work_ticket = None
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.buffer.reset(sanity_cookie, client_crc_on)
         self.bytes_read = 0L
         self.bytes_written = 0L
@@ -1856,7 +1857,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = ERROR
 
     def broken(self, msg, err=e_errors.ERROR):
-        self.set_sched_down()
+        #self.set_sched_down()
         Trace.alarm(err, str(msg))
         self.error(msg, err)
         
@@ -1988,6 +1989,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        del(self.buffer)
         self.timer('transfer_time')
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
@@ -2098,6 +2100,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
+        del(self.buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -2488,20 +2491,20 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = DISMOUNT_WAIT
         ejected = self.tape_driver.eject()
         if ejected == -1:
+            # see what threads are running
+            threads = threading.enumerate()
+            for thread in threads:
+                if thread.isAlive():
+                    thread_name = thread.getName()
+                    Trace.log(e_errors.INFO,"Thread %s is running" % (thread_name,))
+                else:
+                    Trace.log(e_errors.INFO,"Thread is dead")
             if self.can_force_eject:
                 # try to unload tape if robot is STK. It can do this
                 Trace.log(e_errors.INFO,"Eject failed. For STK robot will try to unload anyway")
             else:
                 
                 broken = "Cannot eject tape"
-                # see what threads are running
-                threads = threading.enumerate()
-                for thread in threads:
-                    if thread.isAlive():
-                        thread_name = thread.getName()
-                        Trace.log(e_errors.INFO,"Thread %s is running" % (thread_name,))
-                    else:
-                        Trace.log(e_errors.INFO,"Thread is dead")
 
                 if self.current_volume:
                     try:
@@ -2944,7 +2947,7 @@ class DiskMover(Mover):
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.transfer_deficiency = 1.0
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        #self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
         self.last_error = (e_errors.OK, None)
         if self.check_sched_down() or self.check_lockfile():
@@ -3398,16 +3401,6 @@ class DiskMover(Mover):
     def create_volume_name(self, ip_map, volume_family):
         return string.join((ip_map,volume_family,'%s'%(long(time.time()*1000),)),':')
 
-    # the library manager has asked us to write a file to the hsm
-    def write_to_hsm(self, ticket):
-        Trace.log(e_errors.INFO, "WRITE_TO_HSM")
-        self.setup_transfer(ticket, mode=WRITE)
-
-    # the library manager has asked us to read a file from the hsm
-    def read_from_hsm(self, ticket):
-        Trace.log(e_errors.INFO,"READ FROM HSM")
-        self.setup_transfer(ticket, mode=READ)
-
     def no_work(self, ticket):
         if self.state is HAVE_BOUND:
             self.dismount_volume()
@@ -3604,16 +3597,6 @@ class DiskMover(Mover):
         Trace.trace(29,"FILE NAME %s"%(self.file,))
         self.position_media(self.file)
         
-    def error(self, msg, err=e_errors.ERROR):
-        self.last_error = (str(err), str(msg))
-        Trace.log(e_errors.ERROR, str(msg)+ " state=ERROR")
-        self.state = ERROR
-
-    def broken(self, msg, err=e_errors.ERROR):
-        self.set_sched_down()
-        Trace.alarm(err, str(msg))
-        self.error(msg, err)
-        
     def position_media(self, file):
         have_tape = 0
         err = None
@@ -3630,6 +3613,7 @@ class DiskMover(Mover):
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
+        del(self.buffer)
         self.timer('transfer_time')
         self.tape_driver.close()
         if self.mode == WRITE:
@@ -3723,6 +3707,7 @@ class DiskMover(Mover):
         #self.need_lm_update = (1, 0, None)    
         
     def transfer_completed(self):
+        del(self.buffer)
         self.consecutive_failures = 0
         self.timer('transfer_time')
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
@@ -3896,22 +3881,6 @@ class DiskMover(Mover):
         self.current_volume = None
         return
     
-    def start_transfer(self):
-        Trace.trace(10, "start transfer")
-        #If we've gotten this far, we've mounted, positioned, and connected to the client.
-        #Just start up the work threads and watch the show...
-        self.state = ACTIVE
-        if self.draining:
-            self.state = DRAINING
-        if self.mode is WRITE:
-            self.run_in_thread('net_thread', self.read_client)
-            self.run_in_thread('tape_thread', self.write_tape)
-        elif self.mode is READ:
-            self.run_in_thread('tape_thread', self.read_tape)
-            self.run_in_thread('net_thread', self.write_client)
-        else:
-            self.transfer_failed(e_errors.ERROR, "invalid mode %s" % (self.mode,))
-                
     def status(self, ticket):
         now = time.time()
         status_info = (e_errors.OK, None)
