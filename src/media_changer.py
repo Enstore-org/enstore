@@ -826,9 +826,10 @@ class stk_MediaLoader(MediaLoaderMethods):
 	       if self.DEBUG:
 	          print "DELETED:", l
 	       del response[nl]
-	    if self.DEBUG:
-	       print    "response line =",nl, l
-	    nl=nl+1
+	    else:
+	       if self.DEBUG:
+	          print    "response line =",nl, l
+	       nl=nl+1
           nlines=len(response)
 	  
 	os.close(c2pread)
