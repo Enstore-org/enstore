@@ -22,8 +22,8 @@ import fcntl, FCNTL
 
 import setpath
 import generic_server
-import event_relay_client
-import monitored_server
+#import event_relay_client
+#import monitored_server
 import enstore_constants
 import interface
 import dispatching_worker
