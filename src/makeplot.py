@@ -3,6 +3,7 @@
 import sys
 import string
 import os
+import tempfile
 
 import configuration_client
 
@@ -40,31 +41,30 @@ def get_rate_info():
     ratekeep = csc.get('ratekeeper', timeout, tries)
     
     dir  = ratekeep.get('dir', 'MISSING')
-    scaled_file = ratekeep.get('scaled_plot', 'MISSING')
-    smooth_file = ratekeep.get('smooth_plot', 'MISSING')
+    tmp_dir  = ratekeep.get('tmp', 'MISSING')
     ratekeeper_name = ratekeep.get('name','MISSING')
-    plot_file = ratekeep.get('plot_file','MISSING')
     rate_nodes = ratekeep.get('nodes','MISSING')
+    gif_filename = ratekeep.get('gif','MISSING')
     
     if dir == 'MISSING':
         print "Unable to determine the log directory."
         sys.exit(1)
-    if scaled_file == 'MISSING':
-        print "Unable to determine scale file."
-        sys.exit(1)
-    if smooth_file == 'MISSING':
-        print "Unable to determine smooth file."
-        sys.exit(1)
+    if tmp_dir == 'MISSING':
+        tmp_dir = None
     if ratekeeper_name == 'MISSING' or ratekeeper_name == "":
         ratekeeper_name = os.environ.get("ENSTORE_CONFIG_HOST")
     if rate_nodes == 'MISSING':
         rate_nodes = ''
+    if gif_filename == 'MISSING':
+        print "Unable to determine the gif output filename."
+        sys.exit(1)
 
     if dir[-1] != "/":
         dir = dir + "/"
+    if tmp_dir[-1] != "/":
+        tmp_dir = tmp_dir + "/"
 
-    return dir, scaled_file, smooth_file, ratekeeper_name, plot_file, \
-           rate_nodes
+    return dir, tmp_dir, ratekeeper_name, rate_nodes, gif_filename
 
 ###########################################################################
 ###########################################################################
@@ -93,10 +93,8 @@ def filter_out_files(sys_name, log_dir):
 # to terabytes per day.
 #rate_log_files is the list of files and scaled_filename is the file that
 # the merged data is written to.
-def write_scale_file(rate_log_files, scaled_filename):
+def write_scale_file(log_dir, rate_log_files, scaled_file):
 
-    rate_file = open(scaled_filename, "w")
-    
     for file in rate_log_files:
         in_file = open(log_dir + file, "r")
         while 1:
@@ -104,27 +102,22 @@ def write_scale_file(rate_log_files, scaled_filename):
             if not line:
                 break
             date, time, read, write = string.split(line)
-            rate_file.write("%s %s %s %s\n" %
+            scaled_file.write("%s %s %s %s\n" %
                             (date, time, BP15S_TO_TBPD * float(read),
                              BP15S_TO_TBPD * float(write)))
-
-    rate_file.close()
 
 
 #Take the file writen out in write_scale_file and smooth the data.
 # smooth_filename = file to write out
 # scaled_filename = file to read in
 # smooth_num = number of points that get smoothed into one.
-def write_smooth_file(smooth_filename, scaled_filename, smooth_num = 40):
+def write_smooth_file(smooth_file, scaled_file, smooth_num = 40):
     n = smooth_num
     tr, tw = 0.0, 0.0
     c = 0
 
-    rate_file = open(scaled_filename, "r")
-    smooth_file = open(smooth_filename, "w")
-    
     while 1:
-        line = string.strip(rate_file.readline())
+        line = string.strip(scaled_file.readline())
         if not line:
             break
         date, time, r, w = string.split(line)
@@ -135,16 +128,13 @@ def write_smooth_file(smooth_filename, scaled_filename, smooth_num = 40):
             smooth_file.write("%s %s %s %s\n" % (date, time, tr/n, tw/n))
             tr, tw = 0.0, 0.0
 
-    rate_file.close()
-    smooth_file.close()
 
 
 #Write out the file that gnuplot will use to plot the data.
 # sys_name = The node name that will be the plot title.
 # smooth_file = the file that contains the data to be ploted.
 # plot_file = the file that will be read in by gnuplot.
-def write_plot_file(sys_name, smooth_file, plot_file):
-    plot_file = open(plot_file, "w")
+def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
 
     plot_file.write("set title \"%s\"\n" % (sys_name))
     plot_file.write("set ylabel \"Terabytes/day\"\n")
@@ -152,16 +142,23 @@ def write_plot_file(sys_name, smooth_file, plot_file):
     plot_file.write("set timefmt \"%s\"\n" % ("%m-%d-%Y %H:%M:%S"))
     plot_file.write("set format x \"%s\"\n" % ("%m-%d-%Y\\n%H:%M:%S"))
     plot_file.write("set grid ytics\n")
+    plot_file.write("set terminal pbm small color\n")
+#    plot_file.write("set size 100 100\n")
+    plot_file.write("set output \"%s\"\n" % graphic_filename)
     plot_file.write("plot \"%s\" using 1:3 title \"read\" with lines," \
-                    "\"%s\" using 1:4 title \"write\" with lines" %
-                    (smooth_file, smooth_file))
+                    "\"%s\" using 1:4 title \"write\" with lines\n" %
+                    (smooth_filename, smooth_filename))
 
 ##########################################################################
 ##########################################################################
 
 if __name__ == "__main__":
-    log_dir, scaled_filename, smooth_filename, sys_name, plot_filename, \
-             rate_nodes = get_rate_info()
+    if "--help" in sys.argv:
+        print "Usage:", sys.argv[0],
+        print "[-t <num>] [-n <name>]"
+        sys.exit(1)
+    
+    log_dir, tmp_dir, sys_name, rate_nodes, gif_filename = get_rate_info()
 
     #Check the command line arguments.
     #-t stands for Time smoothing, which is the number of points that get
@@ -180,19 +177,43 @@ if __name__ == "__main__":
                     sys_name = rate_nodes[short_name][1]
                     break
 
+    #If they put an * in the filename, replace it with the system name.
+    gif_filename = string.replace(gif_filename, '*', sys_name)
+
     rate_log_files = filter_out_files(sys_name, log_dir)
 
     if not rate_log_files:
         print "No %s rate files found." % (sys_name)
         sys.exit(1)
 
-    write_scale_file(rate_log_files, scaled_filename)
-    write_smooth_file(smooth_filename, scaled_filename, smooth_num)
+    #Create temporary files.
+    tempfile.tempdir = tmp_dir
+    scaled_filename = tempfile.mktemp(".plot")
+    smooth_filename = tempfile.mktemp(".plot")
+    plot_filename = tempfile.mktemp(".plot")
+    graphic_filename = tempfile.mktemp(".ppm")
 
-    write_plot_file(sys_name, smooth_filename, plot_filename)
+    #Open these files for writing.
+    scaled_file = open(scaled_filename, "w")
+    smooth_file = open(smooth_filename, "w")
+    plot_file = open(plot_filename, "w")
 
-    os.system("gnuplot -persist < %s" % plot_filename)
+    write_scale_file(log_dir, rate_log_files, scaled_file)  #Scale the data.
+    scaled_file.close()   #Start reading from beginning of file.
+    scaled_file = open(scaled_filename, "r")
+    write_smooth_file(smooth_file, scaled_file, smooth_num)  #Smooth the data.
+    smooth_file.close()   #Start reading from beginning of file.
+    smooth_file = open(smooth_filename, "r")
+    #Write the gnuplot command file.
+    write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename)
+    smooth_file.close()
+    plot_file.close()     #Close this file so gnuplot can read it.
 
-    os.system("rm " + smooth_filename)
-    os.system("rm " + scaled_filename)
-    os.system("rm " + plot_filename)
+    os.system("gnuplot < %s" % plot_filename)
+
+    os.system("ppmtogif %s > %s\n" % (graphic_filename, gif_filename))
+    
+    os.remove(scaled_filename)
+    os.remove(smooth_filename)
+    os.remove(plot_filename)
+    os.remove(graphic_filename)
