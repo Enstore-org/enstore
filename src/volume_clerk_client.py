@@ -515,6 +515,12 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'comment': comment}
         return self.send(ticket)
 
+    def assign_sg(self, vol, sg):
+        ticket = {'work': 'reassign_sg',
+                  'external_label': vol,
+                  'storage_group': sg}
+        return self.send(ticket)
+
 """
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
@@ -645,6 +651,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.show_ignored_storage_groups = 0
         self.remaining_bytes = None
         self.set_comment = None
+        self.volume = None
+        self.assign_sg = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -687,6 +695,17 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.VALUE_USAGE:option.IGNORED,
                        option.USER_LEVEL:option.ADMIN},
+        option.ASSIGN_SG:{
+                    option.HELP_STRING: 'reassign to new storage group',
+                    option.VALUE_TYPE:option.STRING,
+                    option.VALUE_USAGE:option.REQUIRED,
+                    option.VALUE_LABEL:"storage_group",
+                    option.USER_LEVEL:option.ADMIN,
+                    option.EXTRA_VALUES:[{
+                        option.VALUE_NAME:"volume",
+                        option.VALUE_LABEL:"volume_name",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED}]},
         option.BACKUP:{option.HELP_STRING:
                        "backup voume journal -- part of database backup",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -879,6 +898,8 @@ def do_work(intf):
                                        intf.args[2], #volume_family
                                             [], #vol_veto_list
                                              1) #first_found
+    elif intf.assign_sg and intf.volume:
+        ticket = vcc.assign_sg(intf.volume, intf.assign_sg)
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:

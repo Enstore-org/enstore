@@ -124,6 +124,7 @@ EXTRA_OPTION = "extra_option"
 ADD = "add"                                  #volume
 ALIVE = "alive"
 ALL = "all"                                  #volume
+ASSIGN_SG = "assign-sg"                      #volume
 BACKUP = "backup"                            #volume, file
 BFID = "bfid"                                #pnfs, file
 BFIDS = "bfids"                              #file
@@ -285,7 +286,7 @@ TEST = "test"                                #option
 # to keep the different spellings of options (ie. --host vs. --hostip vs --ip)
 # in check.
 valid_option_list = [
-    ADD, ALIVE, ALL,
+    ADD, ALIVE, ALL, ASSIGN_SG,
     BACKUP, BFID, BFIDS,
     CAPTION_TITLE, CAT, CHECK, CLEAN_DRIVE, CLEAR, CONFIG_FILE, CONST,
     COUNTERS, COUNTERSN, CP, CURSOR,

@@ -469,6 +469,63 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(ticket)
         return
 
+    # reassign_sg(self, ticket) -- reassign storage group
+    #    only the volumes with initial storage 'none' can be reassigned
+
+    def reassign_sg(self, ticket):
+        try:
+            vol = ticket['external_label']
+            storage_group = ticket['storage_group']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        if storage_group == 'none':
+            msg = "Can not assign to storage group 'none'"
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+	    record = self.dict[vol]
+        except:
+            msg = "trying to reassign sg for non-existing volume %s"%(vol)
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        sg, ff, wp = string.split(record['volume_family'], '.')
+        if sg != 'none': # can not do it
+            msg = "can not reassign from existing storage group %s"%(sg)
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+
+        # deal with quota
+
+        library = record['library']
+        q_dict = self.quota_enabled(library, storage_group)
+        if q_dict:
+            if self.check_quota(q_dict, library, storage_group):
+                self.sgdb.inc_sg_counter(library, storage_group)
+            else:
+                msg="%s Quota exceeded, contact enstore admin."%(storage_group)
+                Trace.log(e_errors.ERROR,msg)
+                ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
+                self.reply_to_caller(ticket)
+                return
+            
+        record['volume_family'] = string.join((storage_group, ff, wp), '.')
+
+        self.dict[vol] = record
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     # set_comment() -- set comment to a volume record
 
     def set_comment(self, ticket):
