@@ -3078,6 +3078,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.send_error_msg(error_info = (exc, msg),error_source=error_source)
         if not ftt_eio:
             self.need_lm_update = (1, ERROR, 1, error_source)
+        else:
+            broken = "FTT_EIO: tape drive or IC problem"
         if exc in (e_errors.READ_VOL1_WRONG,
                    e_errors.WRITE_VOL1_WRONG,
                    e_errors.WRITE_VOL1_MISSING,
