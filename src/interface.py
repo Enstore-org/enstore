@@ -9,7 +9,8 @@ import sys
 # See http://www.w3.org/People/Connolly/support/socksForPython.html or
 # goto www.python.org and search for "import SOCKS"
 try:
-    import SOCKS; socket = SOCKS
+    import SOCKS
+    socket = SOCKS
 except ImportError:
     import socket
 import generic_cs
@@ -152,7 +153,7 @@ class Interface:
             elif opt == "--config_file" :
                 self.config_file = value
                 # bomb out if we can't find the file
-    	        if len(self.config_file) :
+                if len(self.config_file) :
                     statinfo = os.stat(self.config_file)
             elif opt == "--dict" :
                 self.dict = 1

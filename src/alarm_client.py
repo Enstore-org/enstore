@@ -2,6 +2,7 @@
 #
 import time
 import string
+import sys
 
 # enstore imports
 import configuration_client
@@ -97,7 +98,6 @@ class AlarmClientInterface(interface.Interface):
 
 
 if __name__ == "__main__" :
-    import sys
     Trace.init("ALARM client")
     Trace.trace(1,"alrmc called with args "+repr(sys.argv))
 
