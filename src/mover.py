@@ -1189,7 +1189,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         try:
             lm_address = ticket['lm']['address']
         except KeyError, msg:
-            Trace.trace(21, "return_work_to_lm failed %"%(msg,))
+            Trace.trace(21, "return_work_to_lm failed %s"%(msg,))
             self.malformed_ticket(ticket, "[lm][address]")
             return
 
