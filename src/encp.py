@@ -536,7 +536,8 @@ def write_to_hsm(input, output,
 				       file_size[i], done_ticket)
                     jraise(errno.errorcode[errno.EPROTO],\
                            " encp.write_to_hsm: CRC's mismatch: "\
-                           +repr(complete_crc)+" "+repr(mycrc))
+                           +repr(done_ticket["fc"]["complete_crc"])+\
+			   " "+repr(mycrc))
 
 	    tinfo1["final_dialog"] = time.time()-t1 #----------Lap End
 	    if verbose>1:
@@ -1242,7 +1243,8 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
 			str(sys.argv)+" "+\
 			str(sys.exc_info()[0])+" "+\
 			str(sys.exc_info()[1]))
-	    print "Error with encp EXfer trying to get %d bytes - continuing"%file_size[j]
+	    print "Error with encp EXfer trying to get %d bytes - continuing"%\
+		  requests[j]['file_size']
 	    traceback.print_exc()
 
 
@@ -1379,7 +1381,7 @@ def read_hsm_files(listen_socket, submitted, ninput,requests,
         if done_ticket["times"]["transfer_time"]!=0:
             tinfo['transrate'+repr(j)] = 1.*fsize/1024./1024./done_ticket["times"]["transfer_time"]
         else:
-            tinfo['rate'+repr(i)] = 0.0
+            tinfo['rate'+repr(j)] = 0.0
         format = "  %s -> %s : %d bytes copied to %s at %.3g MB/S (%.3g MB/S)     cumt= %f"
 
         if verbose:
@@ -1949,7 +1951,7 @@ if __name__  ==  "__main__" :
 	# have we been called "encp unixfile unixfile" ?
         elif e.intype=="unixfile" and e.outtype=="unixfile" :
 	    print "encp copies to/from hsm. It is not involved in copying "\
-		  +input," to ",output
+		  +e.intype," to ",e.outtype
 
 	# have we been called "encp hsmfile hsmfile?
         elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
@@ -1958,7 +1960,7 @@ if __name__  ==  "__main__" :
 
 	else:
 	    emsg = "ERROR: Can not process arguments "+repr(e.args)
-	    Trace.trace(0,emgs)
+	    Trace.trace(0,emsg)
 	    jraise(errno.errorcode[errno.EPROTO],emsg)
 
 	Trace.trace(1,"encp finished at "+repr(time.time()))
