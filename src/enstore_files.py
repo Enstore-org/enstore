@@ -89,10 +89,20 @@ class EnFile:
             Trace.log(e_errors.WARNING,
                       "%s not openable for %s"%(self.file_name, mode))
 
+    def do_write(self, data, filename=None):
+	if filename is None:
+	    filename = self.file_name
+	try:
+	    self.openfile.write(data)
+	except IOError, detail:
+	    msg = "Error writing %s (%s)"%(filename, detail)
+	    Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
+
+
     # write it to the file
     def write(self, data):
         if self.openfile:
-            self.openfile.write(str(data))
+	    self.do_write(str(data))
 
     def close(self):
 	Trace.trace(enstore_constants.INQFILEDBG,"enfile close %s"%(self.file_name,))
@@ -161,7 +171,7 @@ class HTMLLMQFile(EnStatusFile, enstore_status.EnStatus):
 
     def write(self, doc):
         if self.openfile:
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
 
@@ -190,8 +200,8 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
                                                max_lm_pendingq_rows,
                                                max_lm_atworkq_rows)
             doc.body(self.text)
-            self.openfile.write(str(doc))
-            # check if there are any extra pages that should be generated. this happens if
+	    self.do_write(str(doc))
+            # check for are any extra pages that should be generated. this happens if
             # the libman queue was too long and the extra should be written to another
             # file
             if doc.extra_lm_queue_pages:
@@ -203,7 +213,11 @@ class HTMLStatusFile(EnStatusFile, enstore_status.EnStatus):
                                    doc.extra_lm_queue_pages[extra_page_key][0].refresh,
                                    doc.extra_lm_queue_pages[extra_page_key][0].system_tag)
                     extra_file.open()
-                    extra_file.write(doc.extra_lm_queue_pages[extra_page_key][0])
+		    try:
+			extra_file.write(doc.extra_lm_queue_pages[extra_page_key][0])
+		    except IOError, detail:
+			msg = "Error writing %s (%s)"%(filename, detail)
+			Trace.log(e_errors.ERROR, msg, e_errors.IOERROR)
                     extra_file.close()
                     extra_file.install()
                                              
@@ -242,7 +256,7 @@ class HTMLEncpStatusFile(EnStatusFile):
             doc = enstore_html.EnEncpStatusPage(refresh=self.refresh, 
                                                 system_tag=self.system_tag)
             doc.body(eline)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class HTMLLogFile(EnFile):
 
@@ -257,7 +271,7 @@ class HTMLLogFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnLogPage(system_tag=self.system_tag)
             doc.body(http_path, logfiles, user_logs, host)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
     def copy(self):
         # copy the file we created to the real file name in the new dir.
@@ -277,7 +291,7 @@ class HTMLConfigFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnConfigurationPage(system_tag=self.system_tag)
             doc.body(cdict)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class HTMLPlotFile(EnFile):
 
@@ -290,7 +304,7 @@ class HTMLPlotFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnPlotPage(system_tag=self.system_tag)
             doc.body(jpgs, stamps, pss)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class HTMLMiscFile(EnFile):
 
@@ -299,7 +313,7 @@ class HTMLMiscFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnMiscPage(system_tag=self.system_tag)
             doc.body(data)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class EnDataFile(EnFile):
 
@@ -432,7 +446,7 @@ class HtmlAlarmFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnAlarmPage(system_tag=self.system_tag)
             doc.body(data, www_host)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class HTMLPatrolFile(EnFile):
 
@@ -453,7 +467,7 @@ class HTMLPatrolFile(EnFile):
         if self.openfile:
             doc = enstore_html.EnPatrolPage(system_tag=self.system_tag)
             doc.body(data)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class EnAlarmFile(EnFile):
 
@@ -488,10 +502,7 @@ class EnAlarmFile(EnFile):
     def write(self, alarm):
         if self.openfile:
             line = repr(alarm)+"\n"
-            try:
-                self.openfile.write(line)
-            except IOError:
-                pass
+	    self.do_write(line)
 
 class EnPatrolFile(EnFile):
 
@@ -513,7 +524,7 @@ class EnPatrolFile(EnFile):
         if self.openfile:
             # tell the alarm that this is going to patrol so the alarm
             # can add the patrol expected header
-            self.openfile.write(alarm.prepr())
+	    self.do_write(alarm.prepr())
 
     # rm the file
     def remove(self):
@@ -542,7 +553,7 @@ class HtmlSaagFile(EnFile):
                                                            www_server.MEDIA_TAG_DEFAULT)
             doc.body(enstore_contents, network_contents, media_contents, 
                      alarm_contents, node_contents, outage, offline, media)
-            self.openfile.write(str(doc))
+	    self.do_write(str(doc))
 
 class ScheduleFile(EnFile):
 
@@ -588,9 +599,9 @@ class ScheduleFile(EnFile):
 
         # write out the dictionary
         if self.openfile:
-            self.openfile.write("outage = %s\n"%(dict1,))
-            self.openfile.write("offline = %s\n"%(dict2,))
-            self.openfile.write("seen_down = %s\n"%(dict3,))
+	    self.do_write("outage = %s\n"%(dict1,))
+	    self.do_write("offline = %s\n"%(dict2,))
+	    self.do_write("seen_down = %s\n"%(dict3,))
             rtn = 1
             # close the file
             self.close()
