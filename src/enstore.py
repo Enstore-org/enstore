@@ -246,7 +246,7 @@ class EnstoreInterface:
 	    self.print_valid_servers()
 
     def got_help(self):
-	if sys.argv[1] in HELP_OPTS:
+	if len(sys.argv) >= 2 and sys.argv[1] in HELP_OPTS:
 	    self.print_valid_servers(HELP)
 	    return 1
 	else:
