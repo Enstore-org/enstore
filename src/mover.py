@@ -178,15 +178,15 @@ def freeze_tape( self, error_info, unload=1 ):# DO NOT UNLOAD TAPE, BUT --
     # LIBRARY MANAGER CAN RSP UNBIND??
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
     Trace.log( e_errors.ERROR,
-               "MOVER SETTING VOLUME \"SYSTEM NOACCESS\" %s %s",
-               error_info, self.vol_info )
+               'MOVER SETTING VOLUME "SYSTEM NOACCESS" %s %s'%(error_info,
+							       self.vol_info) )
     return unilateral_unbind_next( self, error_info )
 
 def freeze_tape_in_drive( self, error_info ):
     vcc.set_system_noaccess( self.vol_info['err_external_label'] )
     Trace.log( e_errors.ERROR,
-               "MOVER SETTING VOLUME \"SYSTEM NOACCESS\" %s %s",
-               error_info, self.vol_info )
+               'MOVER SETTING VOLUME "SYSTEM NOACCESS" %s %s'%(error_info,
+							       self.vol_info) )
     return offline_drive( self, error_info )
 
 def offline_drive( self, error_info ):	# call directly for READ_ERROR
