@@ -538,11 +538,6 @@ def inputfile_check(input_files, bytecount=None):
     else:
         inputlist = [input_files]
 
-    #if bytecount != None and ninput != 1:
-    #    print_data_access_layer_format(inputlist[0],'',0,{'status':(
-    #        'EPROTO',"Cannot specify --bytes with multiple files")})
-    #    quit()
-
     # we need to know how big each input file is
     file_size = []
     
@@ -561,10 +556,17 @@ def inputfile_check(input_files, bytecount=None):
                                            {'status':status})
             quit()
 
-        # input files must exist
-        if not access_check(inputlist[i], os.R_OK):
+        # input files must exist - also handle automounting.
+        if not access_check(inputlist[i], os.F_OK):
             print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR','Cannot read file %s'%(inputlist[i],))})
+                'USERERROR',
+                'No such file or directory: %s' % (inputlist[i],))})
+            quit()
+
+        # input files must have read permissions.
+        if not os.access(inputlist[i], os.R_OK):
+            print_data_access_layer_format(inputlist[i], '', 0, {'status':(
+                'USERERROR', "Permission denied: no read access")})
             quit()
 
         #Since, the file exists, we can get its stats.
@@ -573,14 +575,8 @@ def inputfile_check(input_files, bytecount=None):
         # input files can't be directories
         if not stat.S_ISREG(statinfo[stat.ST_MODE]):
             print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-                'USERERROR', 'Not a regular file %s'%(inputlist[i],))})
+                'USERERROR', 'Not a regular file: %s'%(inputlist[i],))})
             quit()
-
-        # input files can't be larger than 8G
-        #if statinfo[stat.ST_SIZE] > MAX_FILE_SIZE:
-        #    print_data_access_layer_format(inputlist[i], '', 0, {'status':(
-        #        'USERERROR', 'file %s exceeds file size limit of %d bytes'%(inputlist[i],MAX_FILE_SIZE))})
-        #    quit()
 
         # get the file size
         if "/pnfs/" == inputlist[i][:6]:
@@ -592,11 +588,6 @@ def inputfile_check(input_files, bytecount=None):
 	# be used in conjuction with large file support.
         else:
             file_size.append(long(statinfo[stat.ST_SIZE]))
-
-        #if bytecount != None:
-        #    file_size.append(bytecount)
-        #else:
-        #    file_size.append(statinfo[stat.ST_SIZE])
 
         # we cannot allow 2 input files to be the same
         # this will cause the 2nd to just overwrite the 1st
@@ -656,11 +647,11 @@ def outputfile_check(inputlist, output, dcache):
                     if len(inputlist) > 1:
                         #With mulitiple input files, the output is wrong.
                         raise e_errors.USERERROR, \
-                              'Not a directory %s' % (output[0],)
+                              'Not a directory: %s' % (output[0],)
                     else:
                         #It is a file that already exists.
                         raise e_errors.EEXIST, \
-                              "File %s already exists" % (outputlist[i],)
+                              "File exists: %s" % (outputlist[i],)
             elif access_check(odir, os.W_OK) and len(inputlist) == 1:
                 #Output is not a directory.  If one level up (odir) is a
                 # valid directory and the number of input files is 1, then
@@ -674,10 +665,11 @@ def outputfile_check(inputlist, output, dcache):
 
                 if access_check(outputlist[i], os.F_OK):
                     #Path exists, but without write permissions.
-                    raise e_errors.USERERROR, "No write access to %s"%(odir,)
+                    raise e_errors.USERERROR, \
+                          "Permission denied: no write access"
                 elif not access_check(outputlist[i], os.F_OK):
                     raise e_errors.USERERROR, \
-                          "Invalid file or directory %s" % (outputlist[i],)
+                          "No such file or directory: %s" % (outputlist[i],)
                 else:
                     raise e_errors.UNKNOWN, e_errors.UNKNOWN
 
@@ -747,8 +739,11 @@ def outputfile_check(inputlist, output, dcache):
 
             except OSError:
                 exc, msg, tb = sys.exc_info()
+                error = errno.errorcode.get(msg.errno,
+                                            errno.errorcode[errno.ENODATA])
                 print_data_access_layer_format('', f, 0,
-                                               {'status':(str(exc), str(msg))})
+                                               {'status': (error, str(msg))})
+                
                 quit()
 
     return outputlist
@@ -1757,7 +1752,8 @@ def set_pnfs_settings(ticket, verbose):
 
     try:
         # add the pnfs ids and filenames to the file clerk ticket and store it
-        fc_ticket = ticket.copy() #Make a copy so "work" isn't overridden.
+        fc_ticket = {}
+        fc_ticket["fc"] = ticket['fc'].copy()
         fc_ticket["fc"]["pnfsid"] = p.id
         fc_ticket["fc"]["pnfsvid"] = p.volume_fileP.id
         fc_ticket["fc"]["pnfs_name0"] = p.pnfsFilename
@@ -1768,9 +1764,8 @@ def set_pnfs_settings(ticket, verbose):
         fcc = file_clerk_client.FileClient(csc, ticket["fc"]["bfid"])
         fc_reply = fcc.set_pnfsid(fc_ticket)
 
-        #if fc_reply['status'][0] != e_errors.OK:
-        #    print_data_access_layer_format('', '', 0, fc_reply)
-        #    quit()
+        if fc_reply['status'][0] != e_errors.OK:
+            Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
 
         Trace.message(TICKET_LEVEL, "PNFS SET")
         Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
@@ -2011,6 +2006,9 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
                 continue
             elif not e_errors.is_retriable(result_dict['status'][0]):
                 return combine_dict(result_dict, work_ticket)
+
+        Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
+                  (time.time() - tinfo['encp_start_time'],))
             
         lap_time = time.time() #------------------------------------------Start
 
@@ -2751,6 +2749,8 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
                                                   [data_path_socket], 15 * 60)
 
+        Trace.message(TRANSFER_LEVEL, "Starting transfer.  elapsed=%s" %
+                  (time.time() - tinfo['encp_start_time'],))
         
         lap_start = time.time() #----------------------------------------Start
 
@@ -2761,7 +2761,6 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         lap_end = time.time()  #-----------------------------------------End
         tstring = "%s_elapsed_time" % request_ticket['unique_id']
         tinfo[tstring] = lap_end - lap_start
-
 
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (request_ticket['infile'],
