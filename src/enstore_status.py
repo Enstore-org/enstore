@@ -327,7 +327,10 @@ class EnStatus:
 	elif ticket["state"] == "idle":
 	    self.text[key][LAST_READ] = add_commas(str(ticket["rd_bytes"]))
 	    self.text[key][LAST_WRITE] = add_commas(str(ticket["wr_bytes"]))
-	    self.text[key][STATE] = ticket["state"]
+	    if ticket['tape'] == 'w' or ticket['tape'] == 'r':
+		self.text[key][STATE] = "idle - have bound volume"
+	    else:
+		self.text[key][STATE] = "idle"
             if ticket['no_xfers'] > 0:
                 work = ticket['work_ticket'].get('work', "")
                 if string.find(work, "read") != -1:
