@@ -501,18 +501,49 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    ff_dict[ff][NUM_IN_Q] = 1
 	return ff_dict
 
+    def get_stalled_q_mail_key(self, server_name, node, ff):
+	return "%s,%s,%s"%(server_name, ff, node)
+
+    def split_stalled_q_mail_key(self, key):
+	return string.split(key, ',', 2)
+
+    def already_sent_mail(self, server_name, ff, node):
+	key = self.get_stalled_q_mail_key(server_name, node, ff)
+	if not self.sent_stalled_mail.has_key(key):
+	    self.sent_stalled_mail[key] = 1
+	    rtn = 0
+	else:
+	    rtn = 1
+	return rtn
+
+    def clear_sent_stalled_mail(self, server_name, node, ff=""):
+	if ff:
+	    key = self.get_stalled_q_mail_key(server_name, node, ff)
+	    if self.sent_stalled_mail.has_key(key):
+		del(self.sent_stalled_mail[key])
+	else:
+	    # clear all elements for this server, node combo
+	    keys = self.sent_stalled_mail.keys()
+	    for key in keys:
+		name, ff, snode = self.split_stalled_q_mail_key(key)
+		if name == server_name and snode == node:
+		    del(self.sent_stalled_mail[key])
+
     # we do this when a queue seems to be stalled
     def queue_is_stalled(self, server, node, ff, pend_num, wam_num):
-	# send mail and raise an alarm, this looks stalled.
-	txt = "Write queue stall for %s, file_family: %s, from node %s"%(server, ff,
-									 node)
-	Trace.alarm(e_errors.ERROR, txt)
-	enstore_functions.send_mail(MY_NAME, 
-	     enstore_functions.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
-		  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
-												  wam_num),
-		  txt), "Write Queue Stall")
-
+	# queue may be stalled, or we may be in a transitional state.  we should make
+	# sure the same problem exists several times in a row.
+	self.lm = self.server_d[server.name]
+	if self.lm.is_really_stalled(node, ff) and not self.already_sent_mail(server.name, ff, node):
+	    # send mail and raise an alarm, this looks stalled.
+	    txt = "Write queue stall for %s, file_family: %s, from node %s"%(server.name,
+									     ff, node)
+	    Trace.alarm(e_errors.ERROR, txt)
+	    enstore_functions.send_mail(MY_NAME, 
+	      enstore_functions.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
+			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
+													  wam_num),
+					    txt), "Write Queue Stall")
 
     def check_for_stalled_queue(self, lib_man):
 	# get the number of writes that are being done now
@@ -527,15 +558,24 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    keys = pend_dict.keys()
 	    for ff in keys:
 		if wam_dict.has_key(ff):
-		    # there are elements in the wark at movers queue
+		    # there are elements in the work at movers queue
 		    if wam_dict[ff][NUM_IN_Q] < wam_dict[ff][FF_W]:
 			# we should be processing more for this file_family.
-			self.queue_is_stalled(lib_man.name, node, ff, pend_dict[ff][NUM_IN_Q],
+			self.queue_is_stalled(lib_man, node, ff, pend_dict[ff][NUM_IN_Q],
 					      wam_dict[ff][NUM_IN_Q])
-
+		    else:
+			# no stall here, move along
+			self.lm.no_stall(node, ff)
+			self.clear_sent_stalled_mail(lib_man.name, node, ff)
 		else:
 		    # there are no elements in the wam queue for this ff. oops.
-		    self.queue_is_stalled(lib_man.name, node, ff, pend_dict[ff][NUM_IN_Q], 0)
+		    self.queue_is_stalled(lib_man, node, ff, pend_dict[ff][NUM_IN_Q], 0)
+
+	    # if the pending queue did not have any elements from this node that were stalled, clear out
+	    # ff_stalled of anyhting from before, all is ok now
+	    if not keys:
+		self.lm.no_stall(node)
+		self.clear_sent_stalled_mail(lib_man.name, node)
 
     # get the library manager work queue and output it
     def work_queue(self, lib_man, time):
@@ -1155,8 +1195,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         Trace.init(self.log_name)
         self.name = MY_NAME
         self.startup_state = e_errors.OK
+        self.sent_stalled_mail = {}
 
-        
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
         # passed values because they might have been defaulted and we need to
@@ -1285,9 +1325,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             server = self.server_d[server_key]
             server.hung_interval = self.inquisitor.get_hung_interval(server.name)
 
-        self.lib_man_d = {}
-        self.mover_d = {}
-        self.media_changer_d = {}
 	self.mover_state = {}
 	self.lm_queues = {}
         for key in self.config_d.keys():

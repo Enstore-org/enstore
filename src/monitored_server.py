@@ -1,6 +1,7 @@
 import time
 import threading
 import os
+import string
 
 import enstore_constants
 import enstore_functions
@@ -239,4 +240,41 @@ class MonitoredLibraryManager(MonitoredServer):
 	MonitoredServer.__init__(self, config, name)
 	self.time_bad = 0
 	self.csc = csc
+	self.ff_stalled = {}
+	self.stalled_time = 600
 	self.client = library_manager_client.LibraryManagerClient(self.csc, self.name)
+
+    def get_stalled_key(self, node, ff):
+	return "%s,%s"%(node, ff)
+
+    def split_stalled_key(self, key):
+	return string.split(key, ',', 1)
+
+    # determine if the queue has been stalled for a long time. since it may be in a transitionsl
+    # state, we do not want to alarm every time there is discrepancy, only after several
+    # continuous discrepansies.
+    def is_really_stalled(self, node, ff):
+	rtn = 0
+	key = self.get_stalled_key(node, ff)
+	if self.ff_stalled.has_key(key):
+	    # see if the time is long enough to warrant an alarm
+	    if time.time() - self.ff_stalled[key] > self.stalled_time:
+		rtn = 1
+	else:
+	    # not a stall yet, keep track of it though
+	    self.ff_stalled[key] = time.time()
+	return rtn
+
+    # there is no stall for the passed in file_family
+    def no_stall(self, node, ff=""):
+	if ff:
+	    key = self.get_stalled_key(node, ff)
+	    if self.ff_stalled.has_key(key):
+		del(self.ff_stalled[key])
+	else:
+	    # delete all the keys for this node
+	    keys = self.ff_stalled.keys()
+	    for key in keys:
+		stalled_node, ff = self.split_stalled_key(key)
+		if node == stalled_node:
+		    del(self.ff_stalled[key])
