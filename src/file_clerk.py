@@ -1141,11 +1141,28 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
-    # assign_file_record() -- create or modify file record
+    # add_file_record() -- create or modify file record
     #
     # This is very dangerous!
 
-    def assign_file_record(self, ticket):
+    def add_file_record(self, ticket):
+
+        if ticket.has_key('bfid'):
+            bfid = ticket['bfid']
+            # to see if the bfid has already been used
+            try:
+                record = self.dict[bfid]
+                msg = 'bfid "%s" has already been used'%(bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            except: # This is normal
+                pass
+        else:
+            bfid = self.unique_bit_file_id()
+            ticket['bfid'] = bfid
+
         # extracting the values 
         try:
             complete_crc = ticket['complete_crc']
@@ -1165,12 +1182,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
-
-        if ticket.has_key('bfid'):
-            bfid = ticket['bfid']
-        else:
-            bfid = self.unique_bit_file_id()
-            ticket['bfid'] = bfid
 
         record = {}
         record['bfid'] = bfid
