@@ -47,9 +47,10 @@ def go():
 
 	# get a list of the log files we need
 	import log_client
-	logfile_names = log_client.get_logfile_name(logfile,
-		                                    enstore_utils_cgi.TIMEOUT,
-						    enstore_utils_cgi.RETRIES)
+	logc = log_client.LoggerClient((config_host, config_port))
+	logfile_names = logc.get_logfile_name(logfile,
+					      enstore_utils_cgi.TIMEOUT,
+					      enstore_utils_cgi.RETRIES)
 	if logfile_names == []:
 	    # there were no matches
 	    print cmd
