@@ -5,6 +5,7 @@ import exceptions
 
 import configuration_server
 import enstore_constants
+import enstore_files
 import interface
 import Trace
 import e_errors
@@ -19,6 +20,20 @@ def get_config_dict():
     else:
 	cdict = {}
     return cdict
+
+def read_schedule_file(html_dir=None):
+    if html_dir is None:
+	html_dir = get_html_dir()
+    # check if the html_dir is accessible
+    sfile = None
+    if os.path.exists(html_dir):
+	sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
+	outage_d, offline_d, seen_down_d = sfile.read()
+    else:
+	outage_d = {}
+	offline_d = {}
+	seen_down_d = {}
+    return sfile, outage_d, offline_d, seen_down_d
 
 def get_from_config_file(server, keyword, default):
     cdict = get_config_dict()
