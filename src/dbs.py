@@ -21,12 +21,12 @@ import configuration_client
 # Yes, all those blasted slashes are needed and I agree it is insane. We should
 # loop on rsh and dump rgang
 CMDa = "(F=~/\\\\\\`hostname\\\\\\`."
-CMDb = ";echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore>>\\\\\\$F;"
-CMDc = ";echo >>\\\\\\$F;date>>\\\\\\$F;. /usr/local/etc/setups.sh>>\\\\\\$F; setup enstore -r /devel/berman/enstore  -M ups -m enstore.table>>\\\\\\$F;"
+CMDb = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore>>\\\\\\$F 2>&1;"
+CMDc = ";echo >>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1;. /usr/local/etc/setups.sh>>\\\\\\$F 2>&1; setup enstore -r /devel/berman/enstore  -M ups -m enstore.table>>\\\\\\$F 2>&1;"
 CMD1 = "%s%s%s"%(CMDa, "database", CMDb)
 #CMD1 = "%s%s%s"%(CMDa, "database", CMDc)
 # the tee is not robust - need to add code to check if we can write to tty (that is connected to console server)
-CMD2 = "|tee /dev/console>>\\\\\\$F;date>>\\\\\\$F) 1>&- 2>&- <&- &"
+CMD2 = "|tee /dev/console>>\\\\\\$F 2>&1;date>>\\\\\\$F 2>&1) 1>&- 2>&- <&- &"
 
 def send_dbs_cmd(intf, farmlet, db):
     # build the command and send it to the correct node
