@@ -12,6 +12,9 @@ fi
 
 set -u  # force better programming and ability to use check for not set
 
+rm -f read_list*
+rm -f reader.out
+
 read_list=./reader_list.$$
 
 while /bin/true; do
