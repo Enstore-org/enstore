@@ -22,6 +22,7 @@ TOTAL = "total"
 READS = "reads"
 WRITES = "writes"
 CTR = "ctr"
+MEAN = "mean"
 USE_SUBDIR = "use_subdir"
 DRIVE_ID = "drive_id"
 LARGEST = "largest"
@@ -635,9 +636,9 @@ class BpdDataFile(EnPlot):
 	self.movers_d = {}
 
     # write out the files for each movers' bytes/day
-    def per_mover(self, date_d):
+    def per_mover(self):
 	movers_l = self.movers_d.keys()
-	dates = date_d.keys()
+	dates = self.ndata.keys()
 	dates.sort()
 	for mover in movers_l:
 	    mover_d = self.movers_d[mover]
@@ -674,13 +675,13 @@ class BpdDataFile(EnPlot):
 	    drive_id_d[TOTAL] = drive_id_d[TOTAL] + mover_d[TOTAL]
 	    drive_id_d[CTR] = drive_id_d[CTR] + mover_d[CTR]
 
-    def sum_data(self, ndata, data):
+    def sum_data(self, data):
 	self.read_ctr = 0
 	self.write_ctr = 0
 	for [xpt, ypt, type, mover, drive_id] in data:
 	    adate = xpt[0:10]
 	    fypt = string.atof(ypt)
-	    day = ndata[adate]
+	    day = self.ndata[adate]
 	    day[CTR] = day[CTR] + 1
 	    if fypt > day[LARGEST]:
 		day[LARGEST] = fypt
@@ -716,21 +717,43 @@ class BpdDataFile(EnPlot):
 	    for mover in self.movers_d.keys():
 		self.sum_movers(self.movers_d[mover])
 
+    def get_all_bpd(self):
+	if self.openfile:
+	    bpd_l = self.openfile.readlines()
+	    for line in bpd_l:
+		fields = string.split(string.strip(line))
+		if not self.ndata.has_key(fields[0]):
+		    # we do not have data for this day yet
+		    self.ndata[fields[0]] = { TOTAL : fields[1],
+					 READS : fields[2],
+					 WRITES : fields[3],
+					 SMALLEST : fields[4],
+					 LARGEST : fields[5],
+					 CTR : long(float(fields[1])/float(fields[6])) }
+    def open(self):
+	if os.path.isfile(self.ptsfile):
+	    EnPlot.open(self, 'r')
+
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
     def plot(self, data):
 	# initialize the new data hash
-	ndata = init_date_hash(data[0][0], data[len(data)-1][0])
+	self.ndata = init_date_hash(data[0][0], data[len(data)-1][0])
 	# sum the data together based on day boundaries. also save the largest
 	# smallest and average sizes and sum up reads and writes separately
-	self.sum_data(ndata, data)
-	# write out the data points
-	keys = ndata.keys()
+	self.sum_data(data)
+	# merge the old data in with the new data
+	self.get_all_bpd()
+	# write out the data points, open file for write, not read
+	if self.openfile:
+	    self.openfile.close()
+	EnPlot.open(self, 'w')
+	keys = self.ndata.keys()
 	keys.sort()
 	numxfers = 0
 	total = 0.0
 	for key in keys:
-	    day = ndata[key]
+	    day = self.ndata[key]
 	    if not day[TOTAL] == 0:
 	        self.openfile.write(key+" "+repr(day[TOTAL])+" "+\
 				    repr(day[READS])+" "+\
@@ -757,7 +780,7 @@ class BpdDataFile(EnPlot):
 	gnucmds.close()
 
 	# now output the data to make the bytes/day/mover plots
-	self.per_mover(ndata)
+	self.per_mover()
 	for mover in self.movers_d.keys():
 	    mover_d = self.movers_d[mover]
 	    datafile = self.per_mover_files_d[mover]
@@ -789,6 +812,52 @@ class BpdDataFile(EnPlot):
 
 	for mover in self.per_mover_files_d.keys():
 	    self.per_mover_files_d[mover].cleanup(keep, pts_dir)
+
+
+class BpdMonthDataFile(EnPlot):
+
+    def __init__(self, dir):
+	EnPlot.__init__(self, dir, enstore_constants.BPD_MONTH_FILE)
+
+    def open(self):
+	if os.path.isfile(self.ptsfile):
+	    EnPlot.open(self, 'r')
+
+    def get_30_bpd(self):
+	bpdfile = BpdDataFile(self.dir)
+	bpdfile.open()
+	bpd_l = bpdfile.openfile.readlines()
+	bpdfile.openfile.close()
+	bpd_l.sort()
+	return bpd_l[-30:]
+
+    def get_total_bpd(self, bpd_l):
+	total_bpd = 0
+	num_xfers = 0
+	for bpd in bpd_l:
+	    fields = string.split(string.strip(bpd))
+	    total_bpd = total_bpd + float(fields[1])
+	    num_xfers = num_xfers + long(float(fields[1])/float(fields[6]))
+	return total_bpd, num_xfers
+
+    # make the mounts per day plot file
+    def plot(self):
+	# we must plot the last 30 days of  data in the total bpd file
+	bpd_l = self.get_30_bpd()
+	total_bpd, num_xfers = self.get_total_bpd(bpd_l)
+	if self.openfile:
+	    self.openfile.close()
+	self.openfile = open(self.ptsfile, 'w')
+	for line in bpd_l:
+	    self.openfile.write(line)
+	# don't need to close the file as it is closed by the caller
+
+	# now create the gnuplot command file
+	gnucmds = BpdGnuFile(self.gnufile)
+	gnucmds.open('w')
+	gnucmds.write(self.psfile, self.ptsfile, total_bpd, total_bpd/num_xfers,
+		      num_xfers, 0, 0)
+	gnucmds.close()
 
 
 class SgGnuFile(enstore_files.EnFile):

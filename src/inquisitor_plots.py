@@ -74,7 +74,8 @@ class InquisitorPlots:
             mphfile.open()
             mphfile.plot(mountfile.data)
             mphfile.close()
-            mphfile.install(self.html_dir)
+	    # we aren't using these plots, so do not create them.
+            #mphfile.install(self.html_dir)
             mphfile.cleanup(self.keep, self.keep_dir)
 
             mlatfile = enstore_plots.MlatDataFile(self.output_dir, self.mount_label)
@@ -97,6 +98,7 @@ class InquisitorPlots:
             mmpdfile.plot()
             mmpdfile.close()
             mmpdfile.install(self.html_dir)
+	    mmpdfile.cleanup(self.keep, self.keep_dir)
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
@@ -121,11 +123,18 @@ class InquisitorPlots:
 
         # only do the plotting if we have some data
         if encpfile.data:
+	    # overall bytes/per/day count
 	    bpdfile = enstore_plots.BpdDataFile(self.output_dir)
 	    bpdfile.open()
 	    bpdfile.plot(encpfile.data)
 	    bpdfile.close()
 	    bpdfile.install(self.html_dir)
+
+	    mbpdfile = enstore_plots.BpdMonthDataFile(self.output_dir)
+	    mbpdfile.open()
+	    mbpdfile.plot()
+	    mbpdfile.close()
+	    mbpdfile.install(self.html_dir)
 
             xferfile = enstore_plots.XferDataFile(self.output_dir, bpdfile.ptsfile)
             xferfile.open()
@@ -135,7 +144,7 @@ class InquisitorPlots:
 
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
-            bpdfile.cleanup(self.keep, self.keep_dir)
+	    mbpdfile.cleanup(self.keep, self.keep_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
 
     # make the plot showing queue movement for different storage groups plot
