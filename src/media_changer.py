@@ -16,6 +16,7 @@
 # system imports
 import os
 import sys
+import types
 import time
 import popen2
 import string
@@ -209,7 +210,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             for i in self.work_list:
                 if i["ra"] == ticket["ra"]:
                     return
-	    # if function is insert, close work queue
+	    # if function is insert and queue not empty, close work queue
             if ticket["function"] == "insert":
 	        if len(self.work_list)>0:
 	           self.workQueueClosed = 1
@@ -308,8 +309,15 @@ class EMASS_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, "ERROR:EMASS no IO box media assignments in configuration")
 	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) # force the exception
 	    return
-	if self.mc_config.has_key('IdleHomeTime'):
-	    self.idleTimeLimit = int(string.strip(self.mc_config['IdleTimeHome']))
+	if self.mc_config.has_key('IdleTimeHome'):
+	    temp = self.mc_config['IdleTimeHome']
+            if temp == types.int:
+	        if temp < 20:   # wait at least 20 seconds
+	            self.idleTimeLimit = self.mc_config['IdleTimeHome']
+		else:
+                    Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeTooSmall(>20), default used")
+	    else:
+                Trace.log(e_errors.ERROR, "ERROR:EMASS IdleHomeTimeNotAnInt, default used")
 
 	import EMASS
         self.load=EMASS.mount
