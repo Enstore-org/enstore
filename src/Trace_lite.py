@@ -26,6 +26,8 @@ if __name__== '__main__':
 MSG_TYPE = "MSG_TYPE="
 MSG_DEFAULT = ""
 MSG_ENCP_XFER = "%sENCP_XFER "%MSG_TYPE
+MSG_MC_LOAD_REQ = "%sMC_LOAD_REQ "%MSG_TYPE
+MSG_MC_LOAD_DONE = "%sMC_LOAD_DONE "%MSG_TYPE
 
 logname = ""
 alarm_func = None
