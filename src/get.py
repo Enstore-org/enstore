@@ -136,10 +136,29 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             if not data_path_socket:
                 raise socket.error(errno.ENOTCONN,
                                    errno.errorcode[errno.ENOTCONN])
+
+            done_ticket = {'status':(e_errors.OK, None)}
         except (encp.EncpError, socket.error), detail:
-            sys.stderr.write("Unable to open data socket with mover: %s\n" %
-                             (str(detail),))
-            encp.quit(1)
+            #sys.stderr.write("Unable to open data socket with mover: %s\n" %
+            #                 (str(detail),))
+            #encp.quit(1)
+            done_ticket = {'status':(e_errors.NET_ERROR, str(detail))}
+
+        # Verify that everything went ok with the transfer.
+        result_dict = encp.handle_retries([work_ticket], work_ticket,
+                                          done_ticket, None,
+                                          None, None, e)
+
+        if not e_errors.is_ok(result_dict):
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                work_ticket = encp.combine_dict(result_dict, work_ticket)
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+
+            #Log the error and return.
+            Trace.log(e_errors.ERROR, str(result_dict['status']))
+            return work_ticket
 
         Trace.message(5, "Waiting for data")
 
@@ -631,6 +650,9 @@ def main(e):
             requests_per_vol[e.volume][index] = request
             
             Trace.message(4, "Preparing to read %s." % request['outfile'])
+            Trace.log(e_errors.INFO,
+                      "Preparing to read %s." % request['outfile'])
+                      
             done_ticket = get_single_file(request, tinfo, control_socket,
                                           udp_socket, e)
 
@@ -692,7 +714,7 @@ def main(e):
                                          e_errors.READ_EOD):
                 #Tell the user what happend.
                 Trace.message(1, "File %s read failed: %s" %
-                              (request['infile'], done_ticket['status']))
+                              (request['ifile'], done_ticket['status']))
                 Trace.log(e_errors.ERROR, "File %s read failed: %s" %
                               (request['infile'], done_ticket['status']))
 
