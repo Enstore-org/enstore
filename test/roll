@@ -45,10 +45,16 @@ else
   delayed_dismount="$5"
 fi
 
+if [ -z "${6-}" ] ; then
+  test_mode=" "
+else
+  test_mode="1073741824"
+fi
+
 if [ $writem -eq 1 ] ; then
    for d in $subdirs; do
       (cd $d; echo starting writer. directory: `pwd`,  files to write: $datain,  next request delay: $sleep_time; \
-       rm -f writestop writer.output; ./writer $place $datain $sleep_time $delayed_dismount>writer.output 2>&1 &)
+       rm -f writestop writer.output; ./writer $place $datain $sleep_time $delayed_dismount $test_mode>writer.output 2>&1 &)
    done
 fi
 
