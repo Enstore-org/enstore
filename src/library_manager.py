@@ -1057,6 +1057,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                     "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
                 return
+        ########################
+        # The following is a hack to not let sdss use encp
+        # older than 2_14
+        fn = ticket['outfile'].split('/')
+        if 'sdss' in fn:
+            if convert_version('v2_14') > convert_version(version):
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be not older than %s"%(version, 'v2_14',))
+                self.reply_to_caller(ticket)
+                return
+        # end of hack
+        ##########################
             
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
@@ -1146,6 +1158,18 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                     "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
                 self.reply_to_caller(ticket)
                 return
+        ########################
+        # The following is a hack to not let sdss use encp
+        # older than 2_14
+        fn = ticket['infile'].split('/')
+        if 'sdss' in fn:
+            if convert_version('v2_14') > convert_version(version):
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be not older than %s"%(version, 'v2_14',))
+                self.reply_to_caller(ticket)
+                return
+        # end of hack
+        ##########################
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
             del(ticket['mover'])
