@@ -24,7 +24,8 @@ delay=5
 partition=/data1
 local=$partition/bja
 
-options="--array-size=3 --buffer-size=67108864 --threaded --direct"
+#options="--array-size=3 --buffer-size=67108864 --threaded --direct"
+options="--threaded"
 
 files=/tmp/$tape.files.$$
 rm -f $files 2>/dev/null
