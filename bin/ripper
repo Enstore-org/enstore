@@ -54,9 +54,11 @@ case `uname -n` in
     cmd="killall python"; doit
     cmd="traceMode 7"; doit
     cmd="traceReset"; doit
-    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 rip6.library_manager &"; doit
-    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 rip6.media_changer &"; doit
-    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 rip6.mover &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 disk.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/library_manager.py      --config_host=rip6.fnal.gov --config_port=7500 null.library_manager &"; doit
+    cmd="python /home/bakken/enstore/src/media_changer.py        --config_host=rip6.fnal.gov --config_port=7500 disk.media_changer &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 disk.mover &"; doit
+    cmd="python /home/bakken/enstore/src/mover.py                --config_host=rip6.fnal.gov --config_port=7500 null.mover &"; doit
     cmd="python /home/bakken/enstore/src/inquisitor.py           --config_host=rip6.fnal.gov --config_port=7500 &"; doit
     ;;
 
