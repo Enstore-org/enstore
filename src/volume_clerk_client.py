@@ -113,12 +113,13 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
 
     # get a list of all volumes
-    def get_vols(self):
+    def get_vols(self, state=None):
         # get a port to talk on and listen for connections
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         ticket = {"work"         : "get_vols",
                   "callback_addr" : (host, port),
+                  "in_state" : state,
                   "unique_id"    : time.time() }
         # send the work ticket to the library manager
         ticket = self.send(ticket)

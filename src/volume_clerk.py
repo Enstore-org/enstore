@@ -1072,7 +1072,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # return all the volumes in our dictionary.  Not so useful!
     def get_vols(self,ticket):
-        print "TICKET", ticket
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
