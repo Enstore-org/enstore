@@ -1294,6 +1294,10 @@ class LibraryManagerMethods:
 			"Volume %s failed on maximal allowed movers (%s)"%(label, 
 							     self.max_suspect_movers))
             #remove entry from suspect volume list
+            # do not remove anything as this should have been done in the
+            # error porcessing
+            Trace.alarm(e_errors.ERROR, "Attn. developer. ", rest=suspect_volume)
+            return
             self.suspect_volumes.remove(suspect_volume)
             # delete the job
             ## !!! To catch a bug use try
