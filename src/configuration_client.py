@@ -27,9 +27,6 @@ class ConfigurationClient(generic_client.GenericClient):
         self.server_address=address
         self.u = udp_client.UDPClient()
 
-    def config_address(self):
-        return self.server_address()
-    
     # get rid of all cached values - go back to server for information
     def clear(self):
         self.cache = {}
@@ -44,7 +41,7 @@ class ConfigurationClient(generic_client.GenericClient):
     # return cached (or get from server) value for requested item
     def get(self, key, timeout=0, retry=0):
         if key=='configuration_server':
-            ret = {'hostip':self.config_address[0], 'port':self.config_address[1]}
+            ret = {'hostip':self.server_address[0], 'port':self.server_address[1]}
         else:
             ret = self.cache.get(key, None)
         if ret is None:
