@@ -15,7 +15,7 @@ setup enstore
 # . I know I don't check everything!
 # . Only check for LISTEN, igorning TCP and UDP for now.
 #        TCP could be done, but UDP seems very hard (sh, mt... open lots of sockets!).
-# . Depend on installed version of os (grep, lsof...) 
+# . Depend on installed version of os (grep, lsof...)
 #        Should download a static version each time.
 # . Swapped out versions of jobs with open connections - allowed, not checked.
 #        Should look into the proc file system to get cmdline and check that.
@@ -46,8 +46,8 @@ gang=`/home/enstore/enstore/sbin/gang`
 LOG=/tmp/netscan.log
 
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
-          if [ "$2"x = "psx" ]; then
-	    $PS >> $LOG 2>&1
+          if [ "${2:-}"x = "psx" ]; then
+             $PS >> $LOG 2>&1
           fi
           $ECHO "$1"
         }
@@ -190,7 +190,7 @@ allow() { tt=$1
                 p=""
               fi
               if [ $QUIET -ne 1 ]; then
-                logit"Allowing $node $c $tt $a $b $p"
+                logit "Allowing $node $c $tt $a $b $p"
               fi
               return 0
             fi
