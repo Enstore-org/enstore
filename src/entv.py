@@ -44,7 +44,7 @@ DEFAULT_BG_COLOR = '#add8e6'   #light blue
 status_thread = None
 messages_thread = None
 
-_csc = None
+#_csc = None
 _system_csc = None
 _config_cache = None
 
@@ -448,11 +448,13 @@ def handle_messages(display, intf):
         if intf.commands_file:
             try:
                 command = string.join(commands_file.readline().split()[5:])
-            except IOError:
-                commands_file.close()
-                display.stopped = 1
-                stop_now = 1
-                #commands_file = open(intf.commands_file, "r")
+                if not command:
+                    raise "EOF"
+            except KeyboardInterrupt:
+                exc, msg, tb = sys.exc_info()
+                raise exc, msg, tb
+            except:
+                commands_file.seek(0, 0) #Position at beginning of file.
                 continue
             #Don't overwhelm the display thread.
             time.sleep(0.03)
