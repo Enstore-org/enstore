@@ -331,53 +331,46 @@
        <MonitoredElement Name="baseTemp" Host="localhost" Type="Hardware">
          <ConditionSet>
          <fn Name="plug_ins" Arg="/usr/local/bin/sdrread|grep 'Processor.*Temp:'|awk -F':' '{print $3}'|awk '{print $2}'|awk -F'C' '{print $2}'" RetVal="int:mask1,int:mask2"/>
-         <Condition State="0" SevLevel="0" Description="Temperature is too high">
+         <Condition State="1" SevLevel="6" Description="Temperature is above non-critical threshold">
             <apply>
             <or/>
             <apply>
-            <gt/>
+            <eg/>
              <ci>mask1</ci>
              <cn>4</cn>
             </apply>
             <apply>
-            <gt/>
+            <eq/>
             <ci>mask2</ci>
             <cn>4</cn>
             </apply>
             </apply>
 	</Condition>
-          <Condition State="1" SevLevel="6" Description="Temperature is nearing warning level">
+         <Condition State="0" SevLevel="0" Description="Temperature is above critical threshold">
             <apply>
-             <or/>
-             <apply>
-               <and/>
-               <apply>
-                 <gt/>
-                 <ci>mask1</ci>
-                 <cn>0</cn>
-               </apply>
-               <apply>
-                <leq/>
-                 <ci>mask1</ci>
-                 <cn>4</cn>
-                </apply>
-              </apply>
+            <or/>
             <apply>
-            <and/>
-             <apply>
-              <gt/>
-               <ci>mask2</ci>
-               <cn>0</cn>
-              </apply>
-              <apply>
-               <leq/>
-               <ci>mask2</ci>
-               <cn>4</cn>
-              </apply>
-             </apply>
+            <eq/>
+             <ci>mask1</ci>
+             <cn>1</cn>
             </apply>
-	</Condition>       
-        
+            <apply>
+            <eq/>
+            <ci>mask2</ci>
+            <cn>1</cn>
+            </apply>
+            <apply>
+            <eq/>
+             <ci>mask1</ci>
+             <cn>5</cn>
+            </apply>
+            <apply>
+            <eq/>
+            <ci>mask2</ci>
+            <cn>5</cn>
+            </apply>
+            </apply>
+	</Condition>
         </ConditionSet>
        </MonitoredElement>
               <MonitoredElement Name="fanSpeed" Host="localhost" Type="Hardware">
