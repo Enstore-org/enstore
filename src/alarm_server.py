@@ -262,30 +262,27 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 	# write the current alarms to it
 	self.write_html_file()
 
-class AlarmServerInterface(interface.Interface):
+class AlarmServerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
         # fill in the defaults for possible options
-        interface.Interface.__init__(self)
+        generic_server.GenericServerInterface.__init__(self)
 
         # now parse the options
         self.parse_options()
 
     # define the command line options that are valid
     def options(self):
-        return self.config_options()+\
-	       self.help_options()
+        return (self.config_options() + 
+                self.help_options() )
 
 if __name__ == "__main__":
     Trace.init(string.upper(MY_NAME))
     Trace.trace( 6, "alarm server called with args "+repr(sys.argv) )
 
-    # get interface
     intf = AlarmServerInterface()
-
-    # get the alarm server
-    als = AlarmServer((intf.config_host, intf.config_port))
-
+    als = AlarmServer(intf)
+    
     while 1:
         try:
             Trace.log(e_errors.INFO, "Alarm Server (re)starting")
