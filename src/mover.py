@@ -744,9 +744,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             print "tape driver", self.tape_driver.fileno()
         else: #already mounted
             self.timer('mount_time') # needed to make encp happy - cgw
-            print "Reopening tape driver"
+            if verbose: print "Reopening tape driver"
             self.tape_driver.reopen(self.device, iomode)
-            print "tape driver", self.tape_driver.fileno()
+            if verbose: print "tape driver", self.tape_driver.fileno()
             ##XXX need to set mode here?
 
         if iomode is WRITE:
