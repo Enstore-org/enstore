@@ -59,8 +59,8 @@ echo "`date` ${krbdir}/kdestroy"
 ${krbdir}/klist -fea
 
 if [ $stat1 -ne 0 ]; then
- echo enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f2 /dev/null.  STAT=$stat1"
-      enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f2 /dev/null.  STAT=$stat1"
+ echo enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null.  STAT=$stat1"
+      enstore alarm --raise --severity "A" --root-error "kftpcp -p 24127 -m p -v enstore@fndca:$f3 /dev/null.  STAT=$stat1"
 fi
 
 # transfer the same file via the dcache's non-kerberized door (anonymous read)
