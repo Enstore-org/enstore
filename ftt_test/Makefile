@@ -13,27 +13,82 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
 CFLAGS=-I. -I../ftt_lib -g $(WARN) `cat ../ftt_lib/local/flags`
 
+BIN=$(FTT_DIR)/bin
 
 all: ftt_test ftt_random ftt_copy
+
+scripts: \
+	$(BIN)/ftt_ansi_prelabel \
+	$(BIN)/ftt_dump \
+	$(BIN)/ftt_exercise \
+	$(BIN)/ftt_fast \
+	$(BIN)/ftt_multitest \
+	$(BIN)/ftt_run_test \
+	$(BIN)/ftt_slow 
+
+exes: \
+	$(BIN)/ftt_test \
+	$(FTT_DIR)/test \
+	$(BIN)/ftt_copy \
+	$(FTT_DIR)/copy \
+	$(BIN)/ftt_random \
+	$(FTT_DIR)/random 
+
+testlib: $(FTT_DIR)/lib/libftt_test.a
 
 clean:
 	rm *.o ftt_test ftt_random ftt_copy
 
-install: all
+install: all testlib exes scripts 
+
+$(FTT_DIR)/lib/libftt_test.a: libftt_test.a 
 	cp libftt_test.a $(FTT_DIR)/lib
+
+$(FTT_DIR)/test: ftt_test
 	-mv $(FTT_DIR)/test $(FTT_DIR)/test.bak
-	-mv $(FTT_DIR)/random $(FTT_DIR)/random.bak
-	-mv $(FTT_DIR)/copy $(FTT_DIR)/copy.bak
 	cp ftt_test $(FTT_DIR)/test
+
+$(FTT_DIR)/random: ftt_random 
+	-mv $(FTT_DIR)/random $(FTT_DIR)/random.bak
 	cp ftt_random $(FTT_DIR)/random
+
+$(FTT_DIR)/copy: ftt_copy
+	-mv $(FTT_DIR)/copy $(FTT_DIR)/copy.bak
 	cp ftt_copy $(FTT_DIR)/copy
+
+$(BIN)/ftt_test: ftt_test
 	-mv $(FTT_DIR)/bin/ftt_test $(FTT_DIR)/bin/ftt_test.bak
-	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
-	-mv $(FTT_DIR)/bin/ftt_copy $(FTT_DIR)/bin/ftt_copy.bak
 	cp ftt_test $(FTT_DIR)/bin
+
+$(BIN)/ftt_random: ftt_random
+	-mv $(FTT_DIR)/bin/ftt_random $(FTT_DIR)/bin/ftt_random.bak
 	cp ftt_random $(FTT_DIR)/bin
+
+$(BIN)/ftt_copy: ftt_copy
+	-mv $(FTT_DIR)/bin/ftt_copy $(FTT_DIR)/bin/ftt_copy.bak
 	cp ftt_copy $(FTT_DIR)/bin
-	cp scripts/ftt_* $(FTT_DIR)/bin
+
+$(BIN)/ftt_ansi_prelabel: scripts/ftt_ansi_prelabel
+	cp scripts/ftt_ansi_prelabel $(BIN)/
+
+$(BIN)/ftt_dump: scripts/ftt_dump
+	cp scripts/ftt_dump $(BIN)/
+
+$(BIN)/ftt_exercise: scripts/ftt_exercise
+	cp scripts/ftt_exercise $(BIN)/
+
+$(BIN)/ftt_fast: scripts/ftt_fast  
+	cp scripts/ftt_fast $(BIN)/
+
+$(BIN)/ftt_multitest: scripts/ftt_multitest
+	cp scripts/ftt_multitest $(BIN)/
+
+$(BIN)/ftt_run_test: scripts/ftt_run_test
+	cp scripts/ftt_run_test $(BIN)/
+
+$(BIN)/ftt_slow: scripts/ftt_slow
+	cp scripts/ftt_slow $(BIN)/
+
 
 libftt_test.a: $(OBJ)
 	rm -f libftt_test.a

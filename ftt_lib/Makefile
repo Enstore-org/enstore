@@ -45,18 +45,53 @@ print.ps: $(PRINTEM)
 slides.ps: $(PRINTEM)
 	a2ps -c -p -1 -n -l80 $(PRINTEM) > slides.ps
 
-install: all ../lib ../bin ../include
-	cp libftt.a ../lib
-	cp local/libs ../lib
-	rm -f ../bin/ftt_suid
-	cp ftt_suid ../bin
-	-chown root ../bin/ftt_suid
-	-chmod 4755 ../bin/ftt_suid
-	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h ftt_defines.h \
-		../include
+BINDIR=../bin
+LIBDIR=../lib
+INCDIR=../include
 
-../lib ../bin ../include:
+dirs: $(INCDIR) $(BINDIR) $(LIBDIR)
+
+includes: \
+	$(INCDIR)/ftt.h \
+	$(INCDIR)/ftt_common.h \
+	$(INCDIR)/ftt_scsi.h \
+	$(INCDIR)/ftt_voidtypes.h \
+	$(INCDIR)/ftt_defines.h
+
+fttlib: $(LIBDIR)/libftt.a $(LIBDIR)/libs
+
+install: all dirs includes fttlib $(BINDIR)/ftt_suid
+
+$(LIBDIR)/libftt.a: libftt.a
+	cp libftt.a $(LIBDIR)/
+
+$(LIBDIR)/libs: local/libs
+	cp local/libs $(LIBDIR)/
+
+$(BINDIR)/ftt_suid: ftt_suid
+	rm -f $@
+	cp ftt_suid $@
+	-chown root $@
+	-chmod 4755 $@
+
+$(INCDIR) $(BINDIR) $(LIBDIR):
 	mkdir $@
+
+$(INCDIR)/ftt.h : ftt.h
+	cp ftt.h $(INCDIR)/
+
+$(INCDIR)/ftt_common.h : ftt_common.h
+	cp ftt_common.h $(INCDIR)/
+
+$(INCDIR)/ftt_scsi.h : ftt_scsi.h 
+	cp ftt_scsi.h $(INCDIR)/
+
+$(INCDIR)/ftt_voidtypes.h :ftt_voidtypes.h 
+	cp ftt_voidtypes.h  $(INCDIR)/
+
+$(INCDIR)/ftt_defines.h : ftt_defines.h 
+	cp ftt_defines.h  $(INCDIR)/
+
 
 local:
 	rm -f local ;\
