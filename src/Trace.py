@@ -36,6 +36,14 @@ print_levels = {}
 log_levels = {}
 alarm_levels = {}
 
+def trunc(x):
+    if type(x) != type(""):
+        x = str(x)
+    if len(x)>=4096:
+        x=x[:4080] + "(truncated)"
+    return x
+
+
 def do_print(levels):
     if type(levels) != type([]):
         levels = [levels]
@@ -84,9 +92,13 @@ def init(name):
     logname=name
 
 def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
+    msg = trunc(msg)
     if  log_func:
-        log_func(time.time(), os.getpid(), logname, (severity,"%s %s" % (msg_type,msg)))
-
+        try:
+            log_func(time.time(), os.getpid(), logname, (severity,"%s %s" % (msg_type,msg)))
+        except: #XXX message too long?
+            pass
+        
     if doprint and print_levels.has_key(severity):
         print msg
         sys.stdout.flush()
@@ -103,6 +115,7 @@ def alarm(severity, root_error, rest={}):
         sys.stdout.flush()
 
 def trace(severity, msg):
+    msg = trunc(msg)
     if print_levels.has_key(severity):
         print severity, msg
         sys.stdout.flush()
