@@ -692,7 +692,7 @@ class Connection:
         mover_names = display.movers.keys()
         mover_names.sort()
         print "calling obspath"
-        path = pathplan.obspath(self.display.config, (self.mover.x, self.mover.y), self.mover.index, (self.client.x + self.client.cli_width, self.client.y + self.client.cli_height/2.0), pathplan.POLYID_NONE )
+        path = pathplan.obspath(self.display.config, (self.mover.x, self.mover.y+self.mover.height/2), self.mover.index, (self.client.x + self.client.cli_width, self.client.y + self.client.cli_height/2.0), pathplan.POLYID_NONE )
         print "path=", path
         print "calling routespline"
         spline = pathplan.routespline(self.display.barriers, path, (0,0), (0,0))
