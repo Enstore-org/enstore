@@ -459,7 +459,7 @@ fi
 # web servers need to be running on certain nodes.
 case $node in
   rip7|cdfensrv2|d0ensrv2|stkensrv2|cdfendca3|stkendca3a)
-    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c 'httpd'` -eq 0 ]; then
+    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -eq 0 ]; then
        msg="httpd Web server not running"
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
@@ -470,7 +470,7 @@ case $node in
     fi
     ;;
   *)
-    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP -c 'httpd'` -ne 0 ]; then
+    if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -ne 0 ]; then
        msg="httpd Web server running on illegal node"
        logit "$msg"
        if [ $ALARM -eq 1 ]; then
