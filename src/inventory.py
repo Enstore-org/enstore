@@ -668,8 +668,10 @@ def inventory(volume_file, metadata_file, output_dir, tmp_dir):
         
         print_footer(volume, fd_output) #Print the footer information.
 
+        #Close the file descriptors, or else will open to many and crash.
         if fd_output != 1:
             os.close(fd_output)
+        os.close(fd_tmp)
         
         #Verifies the amount of data stored on the volumes.  Each call to
         # this function adds an entry into volume_sums.  The data generated
