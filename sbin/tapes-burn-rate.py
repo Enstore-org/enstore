@@ -5,7 +5,37 @@ import string
 import sys
 import popen2
 import time
+import pprint
 
+def sort_the_file(infile):
+    fi = open(infile,'r')
+    fo = open('%s.tmp'%(infile,),'w')
+    while 1:
+        line = fi.readline()
+        if not line: break
+        d,v,mb=line.split()
+        t=time.mktime(time.strptime(d,"%d-%b-%y"))
+        do=time.strftime("%Y-%m-%d",time.localtime(t))
+        ol = string.join((do,v,mb),'\t')
+        fo.write('%s\n' % (ol,))
+    fi.close()
+    fo.close()
+    os.system("sort %s.tmp > /tmp/%s"%(infile,infile))
+    fi = open('/tmp/%s'%(infile,),'r')
+    fo = open(infile,'w')
+    while 1:
+        line = fi.readline()
+        if not line: break
+        d,v,mb=line.split()
+        t=time.mktime(time.strptime(d,"%Y-%m-%d"))
+        do=time.strftime("%d-%b-%y",time.localtime(t))
+        ol = string.join((do.upper(),v,mb),'\t')
+        fo.write('%s\n' % (ol,))
+    fi.close()
+    fo.close()
+    
+    
+    
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
@@ -85,9 +115,12 @@ for thefile in 'cdfen','d0en','stken':
                 print 'can not parse', line,len(line)
                 continue
 
-        QUOTAS[l+'.'+sg] = (wv,bv,su)
+        QUOTAS[l+'.'+sg] = (wv,bv,su,l)
     f.close()
 
+print "QUOTAS"
+pprint.pprint(QUOTAS)
+#sys.exit()
 TAPES = {}
 for thefile in 'cdfen','d0en','stken':
     print 'processing',thefile,'volumes'
@@ -123,9 +156,22 @@ group_fd['CD-9840'] = eagle
 #beagle = open('CD-9940.tapes','w')
 beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
+ALL_9940 = open('ALL_9940.tapes','a')
+ALL_9940B = open('ALL_9940B.tapes', 'a')
+group_fd['ALL_9940'] = ALL_9940
+group_fd['ALL_9940B'] = ALL_9940B
+
 
 print 'sorting drivestat into storage group and library'
 f = open('dstat.txt',"r")
+eagle_mb = 0L
+beagle_mb = 0L
+eagle_v={}
+beagle_v={}
+all_9940_mb = 0L
+all_9940b_mb = 0L
+all_9940_v = {}
+all_9940b_v = {}
 while 1:
     line = f.readline()
     if not line: break
@@ -157,15 +203,33 @@ while 1:
     do = time.strftime("%d-%b-%y",time.localtime(ti))
     
     ol = string.join((do.upper(),v,mb),'\t')
-    o.write('%s\n' % (ol,))
+    if not g in ['ALL_9940B', 'ALL_9940']: 
+        o.write('%s\n' % (ol,))
     #if g=='cdf.cdf':
         #print "WWW",ol
-    if l in ['mezsilo','cdf','samlto'] or sg in ['cms']:
+    if l in ['mezsilo', 'cdf', '9940']:
+       all_9940_mb = all_9940_mb + long(mb)
+       all_9940_v[v] = 1
+       ALL_9940.write('%s\n' % (ol,))
+       if l == '9940':
+           beagle_mb = beagle_mb + long(mb)
+           beagle_v[v] = 1
+           beagle.write('%s\n' % (ol,))
+    elif l in ['D0-9940B', 'CDF-9940B', 'CMS-9940B']:
+       #all_9940b_mb = all_9940_mb + long(mb)
+       all_9940b_v[v] = 1
+       ALL_9940B.write('%s\n' % (ol,))
+        
+    elif l in ['samlto'] or sg in ['cms']:
         pass
     elif l == 'eagle':
+        eagle_mb = eagle_mb + long(mb)
+        eagle_v[v]=1
         eagle.write('%s\n' % (ol,))
-    elif l == '9940':
-        beagle.write('%s\n' % (ol,))
+    #elif l == '9940':
+    #    beagle_mb = beagle_mb + long(mb)
+    #    beagle_v[v] = 1
+    #    beagle.write('%s\n' % (ol,))
     else:
         pass
         #print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
@@ -177,28 +241,82 @@ for g in group_fd.keys():
 
 #import pprint
 #pprint.pprint(QUOTAS)
+_9940_wv = _9940_bv = 0
+_9940_su = 0.
+_9940b_wv = _9940b_bv = 0
+_9940b_su = 0.
 
+rpt=open('report','w')
 for g in group_fd.keys():
+    print "make plot for %s"%(g,)
+    if g == 'ALL_9940':
+        pass
+        
+        #wv = len(all_9940_v)
+        #su="%.2f%s"%(all_9940_mb / 1024.,"GB")
+    elif g == 'ALL_9940B':
+        pass
+        #wv = len(all_9940b_v)
+        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
     if QUOTAS.has_key(g):
-        (wv,bv,su) = QUOTAS[g]
+        (wv,bv,su, l) = QUOTAS[g]
+        
+        if l in ['D0-9940B', 'CDF-9940B', 'CMS-9940B']:
+          _9940b_wv = _9940b_wv + int(wv)
+          _9940b_bv = _9940b_bv + int(bv)
+          su = float(su.split("G")[0])
+          _9940b_su = _9940b_su + su
+        elif l in ['mezsilo', 'cdf', '9940']:
+          su = float(su.split("G")[0])
+          rpt.write("GROUP %s WR %s BL %s GB %s\n"%(g, wv,bv,su)) 
+          _9940_wv = _9940_wv + int(wv)
+          _9940_bv = _9940_bv + int(bv)
+          _9940_su = _9940_su + su
+        
+            
     elif g == "CD-9840":
-        (wv1,bv1,su1) = QUOTAS['blank-9840.none']
-        (wv2,bv2,su2) = QUOTAS['eagle.none:']
-        wv = string.atoi(wv1)+string.atoi(wv2)
+        (wv1,bv1,su1,l) = QUOTAS['blank-9840.none']
+        (wv2,bv2,su2,l) = QUOTAS['eagle.none:']
+        #wv = string.atoi(wv1)+string.atoi(wv2)
+        wv = len(eagle_v)
         bv = string.atoi(bv1)+string.atoi(bv2)
-        su = '0.0GB'
+        #su = '0.0GB'
+        su="%.2f%s"%(eagle_mb / 1024.,"GB")
     elif g == "CD-9940":
-        (wv1,bv1,su1) = QUOTAS['blank-9940.none']
-        (wv2,bv2,su2) = QUOTAS['9940.none:']
-        wv = string.atoi(wv1)+string.atoi(wv2)
+        (wv1,bv1,su1,l) = QUOTAS['blank-9940.none']
+        (wv2,bv2,su2,l) = QUOTAS['9940.none:']
+        #wv = string.atoi(wv1)+string.atoi(wv2)
+        wv = len(beagle_v)
         bv = string.atoi(bv1)+string.atoi(bv2)
-        su = '0.0GB'
+        #su = '0.0GB'
+        su="%.2f%s"%(beagle_mb / 1024.,"GB")
+    elif g == 'ALL_9940':
+        pass
+        
+        #wv = len(all_9940_v)
+        #su="%.2f%s"%(all_9940_mb / 1024.,"GB")
+    elif g == 'ALL_9940B':
+        pass
+        #wv = len(all_9940b_v)
+        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
-    print cmd
-    os.system(cmd)
+    if g in ['ALL_9940', 'ALL_9940B']:
+        pass
+    else:
+        cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su)
+        print cmd
+        os.system(cmd)
+sort_the_file('ALL_9940.tapes')
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('ALL_9940',d1,d2,_9940_wv,_9940_bv,_9940_su)
+print cmd
+os.system(cmd)
+sort_the_file('ALL_9940B.tapes')
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s" % ('ALL_9940B',d1,d2,_9940b_wv,_9940b_bv,_9940b_su)
+print cmd
+os.system(cmd)
+
 
 cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
 print cmd
