@@ -301,28 +301,13 @@ def transfer_file(in_fd, out_fd):
     return {'status' : (e_errors.BROKEN, "Reached unreachable code."),
             'bytes' : bytes, 'encp_crc' : crc}
 
-def wait_for_final_dialog(control_socket, udp_socket, e):
-    #Get the final success/failure message from the mover.  If this side
-    # has an error, don't wait for the mover in case the mover is waiting
-    # for "Get" to do something.
-    if control_socket != None:
-        final_dialog_start_time = time.time()
-        
-        Trace.message(5, "Waiting for final dialog (1).")
-        mover_done_ticket = encp.receive_final_dialog(control_socket)
-        Trace.message(5, "Received final dialog (1).")
-        Trace.message(10, "FINAL DIALOG (tcp):")
-        Trace.message(10, pprint.pformat(mover_done_ticket))
-        Trace.log(e_errors.INFO, "Received final dialog (1).")
+def receive_final_dialog_2(udp_socket, e):
 
-        Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
-                      (time.time() - final_dialog_start_time,))
-    else:
-        mover_done_ticket = {'status' : (e_errors.OK, None)}
+    final_dialog_2_start_time = time.time()
+
+    Trace.message(5, "Waiting for final dialog (2).")
 
     #Keep the udp socket queues clear.
-    final_dialog_2_start_time = time.time()
-    Trace.message(5, "Waiting for final dialog (2).")
     while time.time() < final_dialog_2_start_time + e.mover_timeout:
         mover_udp_done_ticket = udp_socket.process_request()
 
@@ -340,6 +325,7 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
             continue
         else:
             break
+        
     Trace.message(5, "Received final dialog (2).")
     Trace.message(10, "FINAL DIALOG (udp):")
     Trace.message(10, pprint.pformat(mover_udp_done_ticket))
@@ -347,6 +333,32 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
 
     Trace.message(TIME_LEVEL, "Time to receive final dialog (2): %s sec." %
                   (time.time() - final_dialog_2_start_time,))
+
+    return mover_udp_done_ticket
+
+def wait_for_final_dialog(control_socket, udp_socket, e):
+    #Get the final success/failure message from the mover.  If this side
+    # has an error, don't wait for the mover in case the mover is waiting
+    # for "Get" to do something.
+    if control_socket != None:
+        
+        #Trace.message(5, "Waiting for final dialog (1).")
+        mover_done_ticket = encp.receive_final_dialog(control_socket)
+        #Trace.message(5, "Received final dialog (1).")
+        #Trace.message(10, "FINAL DIALOG (tcp):")
+        #Trace.message(10, pprint.pformat(mover_done_ticket))
+        #Trace.log(e_errors.INFO, "Received final dialog (1).")
+    else:
+        mover_done_ticket = {'status' : (e_errors.OK, None)}
+
+    if udp_socket != None:
+        mover_udp_done_ticket = receive_final_dialog_2(udp_socket, e)
+    else:
+        mover_udp_done_ticket = {'status' : (e_errors.OK, None)}
+
+    if not e_errors.is_ok(mover_udp_done_ticket):
+        Trace.log(e_errors.ERROR, "MOVER_UDP_DONE_TICKET")
+        Trace.log(e_errors.ERROR, pprint.pformat(mover_udp_done_ticket))
 
     return mover_done_ticket
 
@@ -366,6 +378,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         else:
             out_fd = done_ticket['fd']
 
+        prepare_for_transfer_start_time = time.time()
+
         #This is an evil hack to modify work_ticket outside of
         # create_read_requests().
         work_ticket['method'] = "read_next"
@@ -383,10 +397,6 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(10, pprint.pformat(work_ticket))
         #Send the actual request to the mover.
         udp_socket.reply_to_caller(work_ticket)
-
-        #It will most likely be a while, so this would be a good time to
-        # perform this maintenance.
-        encp.collect_garbage()
 
 	try:
 	    mover_addr = work_ticket['mover']['callback_addr']
@@ -410,6 +420,9 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 	except (encp.EncpError,), msg:
 	    work_ticket['status'] = (e_errors.EPROTO, str(msg))
 	    return None, work_ticket
+
+        Trace.message(TIME_LEVEL, "Time to prepare for transfer: %s sec." %
+                  (time.time() - prepare_for_transfer_start_time,))
 
 	overall_start = time.time() #----------------------------Overall Start
 
