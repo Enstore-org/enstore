@@ -61,7 +61,7 @@ set nokey
 plot \"$busy\" using 1:2 t \"9840 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          rm -f $pltcmd
-         convert $plot9840.ps $plot9840.gif
+         convert -rotate 90 $plot9840.ps $plot9840.jpg
          echo "set output \"$plot9940.ps\"
 set terminal postscript color solid
 set title \"STK 9940 Drive Utilization $now\"
@@ -76,7 +76,7 @@ set format x \"%m-%d\"
 set nokey
 plot \"$busy\" using 1:4 t \"9940 in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
-         convert $plot9940.ps $plot9940.gif
+         convert -rotate 90 $plot9940.ps $plot9940.jpg
         else
          echo \"$0 $command\" can only be run on $plotnode because that is the only one that has a web server
         fi
