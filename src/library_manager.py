@@ -20,7 +20,6 @@ if sys.version_info < (2, 2, 0):
     fcntl.F_SETFL = FCNTL.F_SETFL
 import re
 # enstore imports
-import setpath
 import copy
 
 import volume_clerk_client
@@ -28,7 +27,6 @@ import callback
 import hostaddr
 import dispatching_worker
 import generic_server
-import event_relay_client
 import event_relay_messages
 import monitored_server
 import enstore_constants
@@ -280,10 +278,10 @@ class AtMovers:
         return sg
 
     def get_active_movers(self):
-        list = []
+        mv_list = []
         for key in self.at_movers.keys():
-            list.append(self.at_movers[key])
-        return list
+            mv_list.append(self.at_movers[key])
+        return mv_list
     
     # check if a particular volume with given label is busy
     # for read requests
@@ -349,7 +347,7 @@ class PostponedRequests:
             if len(l) > 1: l.sort()
             Trace.trace(16, "sorted sg_list %s"%(l,))
 
-            for g in remove_these:
+            for sg in remove_these:
                 if self.sg_list.has_key(sg):
                     del(self.sg_list[sg])
             # get sg
@@ -424,7 +422,7 @@ class LibraryManagerMethods:
             tsd = udp_client.tsd.get(pid)
             if not tsd:
                 return
-            for server in tsd.send_done.keys() :
+            for server in tsd.send_done.keys():
                 try:
                     tsd.socket.close()
                 except:
@@ -488,7 +486,6 @@ class LibraryManagerMethods:
 
     def busy_volumes(self, volume_family_name):
         vol_veto_list, wr_en = self.volumes_at_movers.busy_volumes(volume_family_name)
-        vols = []
         # look in the list of work_at_movers
         for w in self.work_at_movers.list:
             if w["vc"]["volume_family"] == volume_family_name:
@@ -556,10 +553,10 @@ class LibraryManagerMethods:
     def is_vol_available(self, work, external_label, requestor):
         if work == 'write_to_hsm':
             return {'status':(e_errors.OK, None)}
-        map = string.split(external_label,':')[0]
-        Trace.trace(37, "label %s address #%s# requestor address #%s#"%(external_label, map,
+        ip_map = string.split(external_label,':')[0]
+        Trace.trace(37, "label %s address #%s# requestor address #%s#"%(external_label, ip_map,
                                                                     requestor['ip_map']))
-        if map == requestor['ip_map']:
+        if ip_map == requestor['ip_map']:
             return {'status':(e_errors.OK, None)}
         else:
             return {'status': (e_errors.MEDIA_IN_ANOTHER_DEVICE, None)}
@@ -581,6 +578,10 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = None # if not None volume is bound
 
     def fair_share(self, rq):
+        if (rq.ticket.get('ignore_fair_share', None)):
+            # do not count this request against fair share
+            # this is an automigration request
+            return None
         # fair share
         # see how many active volumes are in this storage group
         if rq.ticket['work'] == 'read_from_hsm':
@@ -681,8 +682,13 @@ class LibraryManagerMethods:
             rq.ticket['vc']['volume_family'] = rq.ticket['vc']['file_family']
         ##############################################
         rq_sg = volume_family.extract_storage_group(rq.ticket['vc']['volume_family'])
-        sg_limit = self.get_sg_limit(rq_sg)
-        self.postponed_requests.put(rq)
+        if (rq.ticket.get('ignore_fair_share', None)):
+            # do not count this request against fair share
+            # this is an automigration request
+            sg_limit = 0
+        else:
+            sg_limit = self.get_sg_limit(rq_sg)
+            self.postponed_requests.put(rq)
         if self.tmp_rq:
             #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
@@ -789,8 +795,13 @@ class LibraryManagerMethods:
         # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
         # do not update temporarily stored rq.
         rq_sg = volume_family.extract_storage_group(vol_family)
-        sg_limit = self.get_sg_limit(rq_sg)
-        self.postponed_requests.put(rq)
+        if (rq.ticket.get('ignore_fair_share', None)):
+            # do not count this request against fair share
+            # this is an automigration request
+            sg_limit = 0
+        else:
+            sg_limit = self.get_sg_limit(rq_sg)
+            self.postponed_requests.put(rq)
         if self.tmp_rq:
             #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
@@ -1159,7 +1170,6 @@ class LibraryManagerMethods:
                rq = self.pending_work.get(vol_family, use_admin_queue=0) 
 
         exc_limit_rq = None
-        loop = 1
         while rq:
             # skip over tape read requests they are processed only in the idle state
             #method = rq.ticket.get("method", None)
@@ -1212,12 +1222,17 @@ class LibraryManagerMethods:
             # fair share
             storage_group = volume_family.extract_storage_group(vol_family)
             active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
-            if len(active_volumes) > self.get_sg_limit(storage_group):
-                rq.ticket['reject_reason'] = ('PURSUING',None)
-                Trace.trace(11, "next_work_this_volume: active work limit exceeded for %s" %
-                            (storage_group,))
-                # temporarily store this request
-                exc_limit_rq = rq
+            if (rq.ticket.get('ignore_fair_share', None)):
+                # do not count this request against fair share
+                # this is an automigration request
+                exc_limit_rq = 0
+            else:
+                if len(active_volumes) > self.get_sg_limit(storage_group):
+                    rq.ticket['reject_reason'] = ('PURSUING',None)
+                    Trace.trace(11, "next_work_this_volume: active work limit exceeded for %s" %
+                                (storage_group,))
+                    # temporarily store this request
+                    exc_limit_rq = rq
             if exc_limit_rq:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work with online priority
@@ -1365,7 +1380,7 @@ class LibraryManagerMethods:
                         (len(suspect_volume['movers']),))
                                 
             # set volume as noaccess
-            v = self.vcc.set_system_noaccess(label)
+            self.vcc.set_system_noaccess(label)
 	    Trace.alarm(e_errors.ERROR, 
 			"Volume %s failed on maximal allowed movers (%s)"%(label, 
 							     self.max_suspect_movers))
@@ -1444,7 +1459,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
                                                                   libman,
                                                                   self.keys)
-        enstore_dir = os.environ.get('ENSTORE_DIR','')
         self.pri_sel = priority_selector.PriSelector(self.csc, self.name)
 
         self.lm_lock = self.get_lock()
@@ -2326,7 +2340,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                         w['status'] = (e_errors.NOACCESS, None)
 
                     # set volume as noaccess
-                    v = self.vcc.set_system_noaccess(mticket['external_label'])
+                    self.vcc.set_system_noaccess(mticket['external_label'])
                     Trace.alarm(e_errors.ERROR, 
                                 "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
                                                                                mticket['external_label']))
@@ -2472,8 +2486,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     
     # remove work from list of pending works
     def remove_work(self, ticket):
-        id = ticket["unique_id"]
-        rq = self.pending_work.find(id)
+        rq = self.pending_work.find(ticket["unique_id"])
         if not rq:
             self.reply_to_caller({"status" : (e_errors.NOWORK,"No such work")})
         else:
