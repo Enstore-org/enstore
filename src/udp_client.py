@@ -54,27 +54,36 @@ def get_client() :
 def empty_socket( sock ):
     try:
 	f = sock.fileno()
-	r, w, x = select.select([f],[],[f],0)
-	if r:
-	    badsock = sock.getsockopt(socket.SOL_SOCKET,
-					     socket.SO_ERROR)
-	    if badsock != 0:
-		Trace.trace(0,"send pre recv, clearout error "+\
-			    repr(errno.errorcode[badsock]))
-		print "udp_client pre recv, clearout error:",\
-		      errno.errorcode[badsock]
-	    reply , server = sock.recvfrom(TRANSFER_MAX)
-	    badsock = sock.getsockopt(socket.SOL_SOCKET,
-					     socket.SO_ERROR)
-	    if badsock != 0:
-		Trace.trace(0,"send post recv, clearout error"+\
-			    repr(errno.errorcode[badsock]))
-		print "udp_client post recv, clearout error:",\
-		      errno.errorcode[badsock]
+	while 1:
+	    r, w, x = select.select([f],[],[f],0)
+	    if r:
+		badsock = sock.getsockopt(socket.SOL_SOCKET,
+					  socket.SO_ERROR)
+		if badsock != 0:
+		    Trace.trace(0,"send pre recv, clearout error "+\
+				repr(errno.errorcode[badsock]))
+		    print "udp_client pre recv, clearout error:",\
+			  errno.errorcode[badsock]
+		    pass
+		reply , server = sock.recvfrom(TRANSFER_MAX)
+		badsock = sock.getsockopt(socket.SOL_SOCKET,
+					  socket.SO_ERROR)
+		if badsock != 0:
+		    Trace.trace(0,"send post recv, clearout error"+\
+				repr(errno.errorcode[badsock]))
+		    print "udp_client post recv, clearout error:",\
+			  errno.errorcode[badsock]
+		    pass
+		pass
+	    else:
+		break
+	    pass
+	pass
     except:
 	Trace.trace(0,'send clearout err'+str(sys.exc_info()[0])+\
 		    str(sys.exc_info()[1]))
 	print "clearout",sys.exc_info()[0],sys.exc_info()[1]
+	pass
     return
 
 def send_socket( sock, message, address ):
