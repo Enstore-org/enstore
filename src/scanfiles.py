@@ -88,8 +88,8 @@ def check(f):
         if p1[-1] != p2[-1] or p1[1:4] != p2[1:4]:
             msg.append('pnfs_path(%s, %s)'%(pf.path, fr['pnfs_name0']))
     # path2
-    if pf.path != f:
-        msg.append('path(%s, %s)'%(pf.path, f))
+    if pf.path != pf.p_path:
+        msg.append('path(%s, %s)'%(pf.path, pf.p_path))
     # deleted
     if fr['deleted'] != 'no':
         msg.append('deleted(%s)'%(fr['deleted']))

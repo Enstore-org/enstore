@@ -2011,6 +2011,7 @@ class File:
 			self.bfid = file['bfid']
 			self.drive = file['drive']
 			self.path = file['pnfs_name0']
+			self.p_path = self.path
 		else:
 			self.path = os.path.abspath(file)
 			# does it exist?
@@ -2022,19 +2023,19 @@ class File:
 					self.volume,\
 					self.location_cookie,\
 					self.size, self.file_family,\
-					p_path, self.volmap,\
+					self.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid, self.drive = finfo
 				elif len(finfo) == 9:
 					self.volume,\
 					self.location_cookie,\
 					self.size, self.file_family,\
-					p_path, self.volmap,\
+					slef.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					self.drive = "missing"
 					
-				if p_path != self.path:
+				if self.p_path != self.path:
 					raise 'DIFFERENT_PATH'
 				#	print 'different paths'
 				#	print '\t f>', self.path
@@ -2049,6 +2050,7 @@ class File:
 				self.pnfs_vid = ""
 				self.bfid = ""
 				self.drive = ""
+				self.p_path = self.path
 		return
 
 	# layer_file(i) -- compose the layer file name
@@ -2089,6 +2091,7 @@ class File:
 		print "       pnfs_vid =", self.pnfs_vid
 		print "           bfid =", self.bfid
 		print "          drive =", self.drive
+		print "      meta-path =", self.p_path
 		return
 
 	# set_size() -- set size in pnfs
