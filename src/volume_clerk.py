@@ -8,10 +8,10 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
-from journal import JournalDict
+from db import dBTable
 import pprint
 
-dict = JournalDict({},"volume_clerk.jou")
+dict = dBTable("volume")
 
 class VolumeClerkMethods(DispatchingWorker) :
 
@@ -619,7 +619,14 @@ class VolumeClerkMethods(DispatchingWorker) :
         self.data_socket = data_socket
         listen_socket.close()
 
-
+    def start_backup(self,ticket):
+	dict.start_backup()
+	self.reply_to_caller({"status" : "ok",\
+		"start_backup"  : 'yes' })
+    def stop_backup(self,ticket):
+	dict.stop_backup()
+	self.reply_to_caller({"status" : "ok",\
+        	"stop_backup"  : 'yes' })
 class VolumeClerk(VolumeClerkMethods, GenericServer, UDPServer) :
     pass
 

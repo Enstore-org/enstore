@@ -1,6 +1,6 @@
 from configuration_client import configuration_client
 from udp_client import UDPClient
-
+from db import do_backup
 class FileClerkClient :
 
     def __init__(self, configuration_client) :
@@ -37,6 +37,11 @@ class FileClerkClient :
     # check on alive status
     def alive(self):
         return self.send({'work':'alive'})
+    def start_backup(self):
+    	return self.send({'work':'start_backup'})
+    def stop_backup(self):
+    	return self.send({'work':'stop_backup'})	
+
 
 if __name__ == "__main__" :
     import sys
@@ -57,11 +62,12 @@ if __name__ == "__main__" :
     bfid = 0
     bfids = 0
     list = 0
+    backup=0	
     alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
-               "bfids","bfid=","list","verbose","alive","help"]
+               "bfids","bfid=","list","verbose","alive","backup","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -78,6 +84,8 @@ if __name__ == "__main__" :
             alive = 1
         elif opt == "--list" or opt == "--verbose":
             list = 1
+	elif opt == "--backup":
+	    backup = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
@@ -97,7 +105,10 @@ if __name__ == "__main__" :
 
     if alive:
         ticket = fcc.alive()
-
+    elif backup:
+	ticket = fcc.start_backup()
+	do_backup("file")
+	ticket = fcc.stop_backup()
     elif bfids :
         ticket = fcc.get_bfids()
 

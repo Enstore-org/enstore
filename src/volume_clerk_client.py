@@ -2,7 +2,7 @@ import time
 import callback
 from configuration_client import configuration_client
 from udp_client import UDPClient
-
+from db import do_backup
 class VolumeClerkClient :
 
     def __init__(self, configuration_client) :
@@ -196,6 +196,10 @@ class VolumeClerkClient :
     # check on alive status
     def alive(self):
         return self.send({'work':'alive'})
+    def start_backup(self):
+    	return self.send({'work':'start_backup'})
+    def stop_backup(self):
+    	return self.send({'work':'stop_backup'})	
 
 
 
@@ -221,12 +225,13 @@ if __name__ == "__main__" :
     addvol = 0
     delvol = 0
     clrvol = 0
+    backup=0
     alive = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list",
                "vols","vol=","addvol","delvol","list","verbose",
-               "clrvol","alive","help"]
+               "clrvol","alive","backup","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -249,6 +254,8 @@ if __name__ == "__main__" :
             alive = 1
         elif opt == "--list" or opt == "--verbose":
             list = 1
+	elif opt == "--backup":
+	    backup = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
@@ -271,6 +278,10 @@ if __name__ == "__main__" :
 
     if alive:
         ticket = vcc.alive()
+    elif backup:
+	ticket = vcc.start_backup()
+	do_backup("volume")
+	ticket = vcc.stop_backup()
     elif vols :
         ticket = vcc.get_vols()
     elif vol :
@@ -308,3 +319,6 @@ if __name__ == "__main__" :
     elif list:
         pprint.pprint(ticket)
         sys.exit(0)
+
+
+

@@ -10,9 +10,9 @@ from dispatching_worker import DispatchingWorker
 from SocketServer import UDPServer, TCPServer
 from generic_server import GenericServer
 from udp_client import UDPClient
-from journal import JournalDict
+from db import dBTable
 
-dict = JournalDict({}, "file_clerk.jou")
+dict = dBTable("file")
 
 class FileClerkMethods(DispatchingWorker) :
 
@@ -209,7 +209,14 @@ class FileClerkMethods(DispatchingWorker) :
      except:
          print "can not generate a bit file id!!",sys.exc_info()[0]+sys.exc_info()[1]
          sys.exit(1)
-
+    def start_backup(self,ticket):
+	dict.start_backup()
+	self.reply_to_caller({"status" : "ok",\
+		"start_backup"  : 'yes' })
+    def stop_backup(self,ticket):
+	dict.stop_backup()
+	self.reply_to_caller({"status" : "ok",\
+        	"stop_backup"  : 'yes' })
 
 class FileClerk(FileClerkMethods, GenericServer, UDPServer) :
     pass

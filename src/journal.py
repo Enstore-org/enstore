@@ -62,14 +62,13 @@ class JournalDict:
 		self.jfile.flush()
 			
 	def __delitem__(self, key):
-		del self.dict[key]
 		j = "del self.dict['%s']\n" % key
 		self.jfile.write(j)
 		self.jfile.flush()
 	def close(self):
-		if hasattr(self.dict, 'close'):
-			self.dict.close()
-		self.dict = None
+#		if hasattr(self.dict, 'close'):
+#		self.dict.close()
+		self.dict = {}
 
 	def __del__(self):
 		self.close()
