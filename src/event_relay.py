@@ -156,7 +156,7 @@ class Relay:
                     except:
 			###self.dump()
                         ###Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)
-			error_msg = "send failed %s"%(addr,)
+			error_msg = "send failed %s (%s)"%(addr, msg)
 			Trace.log(e_errors.ERROR, error_msg, Trace.MSG_EVENT_RELAY)
 
 			### figure out if we should stop sending to this client
