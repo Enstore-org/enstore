@@ -1,153 +1,88 @@
-#include <Python.h>
-
 /* choose only 1 method for the crc */
-#define Select_crc32 
-/* #define Select_adler32 */
-/* #define Select_binascii */
+#define Select_adler32
+/* #define Select_crc32 */
+/* #define Select_binascii */          /* 16 bit method */
+/* #define Select_numrecipes */        /* 16 bit CRC-CCITT method */
 
-#if defined(Select_adler32) || defined(Select_crc32)
-#include "zlib.h"
-#elif defined(Select_binascii)
-/* file is included to ease Python module making */
-
-/*--------------------------------------------------------------------------------------------------*/
-/* binascii.c from the python source *** Jack Jansen, CWI, July 1995. */
-
-/***********************************************************
-Copyright 1991, 1992, 1993, 1994 by Stichting Mathematisch Centrum,
-Amsterdam, The Netherlands.
-
-                        All Rights Reserved
-
-Permission to use, copy, modify, and distribute this software and its
-documentation for any purpose and without fee is hereby granted,
-provided that the above copyright notice appear in all copies and that
-both that copyright notice and this permission notice appear in
-supporting documentation, and that the names of Stichting Mathematisch
-Centrum or CWI or Corporation for National Research Initiatives or
-CNRI not be used in advertising or publicity pertaining to
-distribution of the software without specific, written prior
-permission.
-
-While CWI is the initial source for this software, a modified version
-is made available by the Corporation for National Research Initiatives
-(CNRI) at the Internet address ftp://ftp.python.org.
-
-STICHTING MATHEMATISCH CENTRUM AND CNRI DISCLAIM ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL STICHTING MATHEMATISCH
-CENTRUM OR CNRI BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL
-DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-*/
-static unsigned short crctab_hqx[256] = {
-        0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
-        0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
-        0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
-        0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
-        0x2462, 0x3443, 0x0420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
-        0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
-        0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
-        0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
-        0x48c4, 0x58e5, 0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
-        0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
-        0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0x0a50, 0x3a33, 0x2a12,
-        0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
-        0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0x0c60, 0x1c41,
-        0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
-        0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
-        0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
-        0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
-        0x1080, 0x00a1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
-        0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
-        0x02b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
-        0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
-        0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
-        0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
-        0x26d3, 0x36f2, 0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
-        0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
-        0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x08e1, 0x3882, 0x28a3,
-        0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
-        0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0, 0x2ab3, 0x3a92,
-        0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
-        0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
-        0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
-        0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
-};
-
-#endif
-
-static char ECRC_Doc[] = "Calculate crc using zlib crc32 method";
-
-static PyObject* ECRC(PyObject *self, PyObject *args)
-{
-  unsigned char *buf;
-  unsigned int crc;
-  int len;
-
-  /* Parse the arguments */
-  if ( !PyArg_ParseTuple(args, "s#i", &buf, &len, &crc) ) return NULL;
-
-  /* Generate the crc */
-#if defined(Select_crc32)
-  crc = crc32(crc, buf, len); /* the crc from zlib */
-#elif defined(Select_adler32)
-  crc = adler32(crc, buf, len); /* the addler crc from zlib */
-#elif defined(Select_binascii)
-  while(len--) { /* the binascii.crc_hqx */
-    crc=((crc<<8)&0xff00)^crctab_hqx[((crc>>8)&0xff)^*buf++];
-  }
-#else
-#error NO_METHOD
-#endif
-
-  /* and return the crc to the user */
-  return Py_BuildValue("i", crc);
-
-}
 
 /*
-   Module Methods table.
 
-   There is one entry with four items for for each method in the module
+I finally took time to study the checksums.  I looked at 4 varieties:
+   1. hqx  (16 bit)
+   2. adler32 (zlib)
+   3. crc32 (zlib)
+   4. numerical recipes (16 bit)
 
-   Entry 1 - the method name as used  in python
-         2 - the c implementation function
-         3 - flags
-         4 - method documentation string
+I found that in all 4 that they were very proportional to the size of the
+buffer you were checksumming. That's good (and expected) since there isn't
+any additional penalty for large/small files.
+
+I used hqx as the base since that was the default. Crc32 was better than
+hqx by 20%; adler32 was better than hqx by 38%; the numerical recipes one
+was 62% slower than hqx.
+
+Here is what expect for a 1 GB file, the checksumming time (on airedale):
+     adler32:  38 seconds
+     crc32:    50 seconds
+     hqx:      62 seconds
+     numrec:  101 seconds
+
+I did more checking on the adler32 crc and found that there were several
+places that mentioned that it wasn't robust in all cases, but there were
+not any more details given. I'm still checking on how it fails.
+
+Here's a reference on the Adler32:
+ http://www.cdrom.com/pub/infozip/zlib/zlib_tech.html
+
+"
+Adler-32 versus CRC-32
+
+Both Adler-32 and CRC-32 (cyclic redundancy check) are 32-bit checks. But
+while the CRC can take on any 32-bit value (2^32 possibilities), Adler-32
+is limited to 65521^2 possibilities. So the probability of a false positive
+on random errors for CRC-32 is 2.3283 x 10^-10, whereas it is very slightly
+higher for Adler-32 at 2.3294 x 10^-10.
+
+The above assumes that all the values are accessible given the amount of
+data. That is true after only four bytes for the CRC-32, but Adler-32
+requires, on the average, about 0.5 KB of data to get rolling--or 1 KB if
+it's ASCII data (text). So if the Adler-32 is used on significantly less
+than about a kilobyte, it will be noticeably weaker than a CRC-32 on the
+same small block.
+
+A properly constructed CRC-n has the nice property that less than n bits in
+error is always detectable. This is not always true for Adler-32 --
+Adler-32 can detect all one- or two-byte errors but can miss some
+three-byte errors. However, Adler-32 has been constructed to minimize the
+ways to make small changes in the data that result in the same check value,
+through the use of sums significantly larger than the bytes and by using a
+prime (65521) for the modulus. It is in this area that some analysis is
+deserved, but it has not yet been done.
+
+This last potential weakness is not a major concern in the application of
+Adler-32 to zlib (or any other history-based compressor), since if there is
+an error at some point in a stream, it will be massively propagated after
+that. It would be of concern in an application with transmission or storage
+that has a borderline signal-to-noise ratio, for which small numbers of
+random errors are expected. For that sort of application one would
+certainly want to use a CRC or, better yet, Reed-Solomon error-correction
+coding. But even in this case, if the data being transmitted or stored uses
+some sort of history-dependent compression (as in zlib) and was
+compressible to begin with, then an Adler-32 used after decompression would
+be adequate since the decompressor would significantly amplify any small
+errors in the compressed stream. (For incompressible data, most modern
+compressors operate in a pass-through mode, so the original comment about
+using a CRC or ECC holds.)
+
+The main reason for Adler-32 is, of course, speed in software
+implementations. The authors wanted a check on zlib's decompression, but
+not a significant speed penalty just for the check. So Mark came up with
+the Adler-32 as a faster but still effective alternative to the CRC-32.
+"
+
 */
 
-static PyMethodDef ECRC_Methods[] = {
-  { "ECRC", ECRC, 1, ECRC_Doc},
-  {0,     0}        /* Sentinel */
-};
-
-/*
-   Module initialization.   Python call the entry point init<module name>
-   when the module is imported.  This should the only non-static entry point
-   so it is exported to the linker.
-
-   The Py_InitModule4 is not in the python 1.5 documentation but is copied
-   from the oracle module.  It extends Py_InitModule with documentation
-   and seems useful.
-
-   First argument must be a the module name string.
-
-   Seond        - a list of the module methods
-
-   Third        - a doumentation string for the module
-
-   Fourth & Fifth - see Python/modsupport.c
-
-*/
-
-void initECRC()
-{
-  (void) Py_InitModule4("ECRC", ECRC_Methods, ECRC_Doc,
-                        (PyObject*)NULL,PYTHON_API_VERSION);
-}
+#include <Python.h>
 
 #if defined(Select_crc32)
 /* file is included to ease Python module making */
@@ -369,4 +304,200 @@ uLong ZEXPORT adler32(adler, buf, len)
     return (s2 << 16) | s1;
 }
 
+#elif defined(Select_binascii)
+/* file is included to ease Python module making */
+
+/*--------------------------------------------------------------------------------------------------*/
+/* binascii.c from the python source *** Jack Jansen, CWI, July 1995. */
+
+/***********************************************************
+Copyright 1991, 1992, 1993, 1994 by Stichting Mathematisch Centrum,
+Amsterdam, The Netherlands.
+
+                        All Rights Reserved
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation, and that the names of Stichting Mathematisch
+Centrum or CWI or Corporation for National Research Initiatives or
+CNRI not be used in advertising or publicity pertaining to
+distribution of the software without specific, written prior
+permission.
+
+While CWI is the initial source for this software, a modified version
+is made available by the Corporation for National Research Initiatives
+(CNRI) at the Internet address ftp://ftp.python.org.
+
+STICHTING MATHEMATISCH CENTRUM AND CNRI DISCLAIM ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL STICHTING MATHEMATISCH
+CENTRUM OR CNRI BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL
+DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+*/
+static unsigned short crctab_hqx[256] = {
+        0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+        0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
+        0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
+        0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
+        0x2462, 0x3443, 0x0420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
+        0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
+        0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
+        0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
+        0x48c4, 0x58e5, 0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
+        0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
+        0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0x0a50, 0x3a33, 0x2a12,
+        0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
+        0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0x0c60, 0x1c41,
+        0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
+        0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
+        0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
+        0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
+        0x1080, 0x00a1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
+        0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
+        0x02b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
+        0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
+        0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
+        0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
+        0x26d3, 0x36f2, 0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
+        0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
+        0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x08e1, 0x3882, 0x28a3,
+        0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
+        0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0, 0x2ab3, 0x3a92,
+        0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
+        0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
+        0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
+        0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
+};
+
+#elif defined(Select_numrecipes)
+/*
+ *  This routine is based on the Numerical Recipes icrc.c and icrc1.c routines.
+ * Test Strings  "T" -> 0x14a1, "CatMouse987654321" -> 0xC28D
+ */
+
+int crcCCITT(unsigned short crc, unsigned char *bufptr, unsigned long len)
+{
+
+#define LOBYTE(x) ((unsigned char)((x) & 0xFF))
+#define HIBYTE(x) ((unsigned char)((x) >> 8))
+
+  static unsigned int   init=0;
+  static unsigned short icrctb[256];
+  static unsigned char  rchr[256];
+  static unsigned char  it[16]={0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15};
+         unsigned long  j;
+         unsigned short cword=crc;
+         unsigned short crc1;
+                  int   i;
+                  int   result=0;
+
+  if (!init) {
+    init=1;
+    for (j=0;j<256;j++) {
+      crc1 = j<<8;
+      for (i=0; i<8; i++) {
+        if (crc1 & 0x8000) crc1 = (crc1<<1)^4129;
+        else               crc1 = (crc1<<1);
+      }
+      icrctb[j] = crc1;
+      rchr[j]=(unsigned char)( it[j&0xF]<<4 | it[j>>4] );
+    }
+  }
+
+  for (j=0;j<len;j++) cword=icrctb[rchr[bufptr[j]] ^ HIBYTE(cword)] ^ LOBYTE(cword)<<8;
+  result = rchr[HIBYTE(cword)] | rchr[LOBYTE(cword)]<<8;
+  return result;
+
+}
+#undef LOBYTE
+#undef HIBYTE
+
 #endif
+
+
+
+
+static char ECRC_Doc[] = "Calculate crc using zlib crc32 method";
+
+static PyObject* ECRC(PyObject *self, PyObject *args)
+{
+  unsigned char *buf;
+  unsigned int crc;
+  unsigned short crc_s;
+  int len;
+
+  /* Parse the arguments */
+  if ( !PyArg_ParseTuple(args, "s#i", &buf, &len, &crc) ) return NULL;
+
+  /* Generate the crc */
+
+#if defined(Select_crc32)
+  crc = crc32(crc, buf, len); /* the crc from zlib */
+
+#elif defined(Select_adler32)
+  crc = adler32(crc, buf, len); /* the addler crc from zlib */
+
+#elif defined(Select_binascii)
+  crc_s = crc;
+  while(len--) { /* the binascii.crc_hqx */
+    crc_s=((crc_s<<8)&0xff00)^crctab_hqx[((crc_s>>8)&0xff)^*buf++];  }
+  crc = crc_s;
+
+#elif defined(Select_numrecipes)
+  crc_s = crc;
+  crc = crcCCITT(crc_s, buf,(unsigned long)len);
+
+#else
+#error NO_METHOD
+#endif
+
+  /* and return the crc to the user */
+  return Py_BuildValue("i", crc);
+
+}
+
+/*
+   Module Methods table.
+
+   There is one entry with four items for for each method in the module
+
+   Entry 1 - the method name as used  in python
+         2 - the c implementation function
+         3 - flags
+         4 - method documentation string
+*/
+
+static PyMethodDef ECRC_Methods[] = {
+  { "ECRC", ECRC, 1, ECRC_Doc},
+  {0,     0}        /* Sentinel */
+};
+
+/*
+   Module initialization.   Python call the entry point init<module name>
+   when the module is imported.  This should the only non-static entry point
+   so it is exported to the linker.
+
+   The Py_InitModule4 is not in the python 1.5 documentation but is copied
+   from the oracle module.  It extends Py_InitModule with documentation
+   and seems useful.
+
+   First argument must be a the module name string.
+
+   Seond        - a list of the module methods
+
+   Third        - a doumentation string for the module
+
+   Fourth & Fifth - see Python/modsupport.c
+
+*/
+
+void initECRC()
+{
+  (void) Py_InitModule4("ECRC", ECRC_Methods, ECRC_Doc,
+                        (PyObject*)NULL,PYTHON_API_VERSION);
+}
