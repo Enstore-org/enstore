@@ -492,6 +492,10 @@ class Interface:
                 self.update_and_exit = 1
             elif opt == "--url":
                 self.url = value
+	    elif opt == "--encp":
+		self.encp = 1
+	    elif opt == "--sg":
+		self.sg = 1
             elif opt == "--usage-line":
                 self.print_usage_line()
                 sys.exit(0)

@@ -92,6 +92,9 @@ class PlotterInterface(generic_client.GenericClientInterface):
         self.keep_dir = ""
         self.output_dir = None
 	self.html_file = None
+	self.encp = None
+	self.mount = None
+	self.sg = None
         generic_client.GenericClientInterface.__init__(self)
         
     # define the command line options that are valid
@@ -102,7 +105,7 @@ class PlotterInterface(generic_client.GenericClientInterface):
             return self.client_options() +[
                 "refresh=", "plot", "logfile-dir=",
                 "start-time=", "stop-time=", "media-changer=", "keep",
-                "keep-dir=", "output-dir="]
+                "keep-dir=", "output-dir=", "encp", "mount", "sg"]
 
 if __name__ == "__main__":
     Trace.trace(1, "plotter called with args %s"%(sys.argv,))
@@ -121,7 +124,7 @@ if __name__ == "__main__":
         Trace.trace(1, 
                     "Plotter TIMED OUT when contacting %s"%(plotter.startup_text,))
     else:
-	plotter.plot()
+	plotter.plot(intf.encp, intf.mount, intf.sg)
 
     del plotter.csc.u
     del plotter.u     # del now, otherwise get name exception (just for python v1.5???)

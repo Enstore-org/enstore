@@ -160,7 +160,7 @@ class InquisitorPlots:
             sgplot.cleanup(self.keep, self.keep_dir)
 
     #  make all the plots
-    def plot(self):
+    def plot(self, encp, mount, sg):
 	ld = {}
 	# find out where the log files are located
 	if self.logfile_dir is None:
@@ -176,15 +176,18 @@ class InquisitorPlots:
 	    ld = self.config_d.get("log_server")
 	alt_logs = ld.get("msg_type_logs", {})
 
-	Trace.trace(1, "Creating inq transfer plots")
-	alt_key = string.strip(Trace.MSG_ENCP_XFER)
-	self.encp_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
-	Trace.trace(1, "Creating inq mount plots")
-	alt_key = string.strip(Trace.MSG_MC_LOAD_REQ)
-	self.mount_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
-	Trace.trace(1, "Creating inq storage group plots")
-	alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
-	self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if encp:
+	    Trace.trace(1, "Creating inq transfer plots")
+	    alt_key = string.strip(Trace.MSG_ENCP_XFER)
+	    self.encp_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if mount:
+	    Trace.trace(1, "Creating inq mount plots")
+	    alt_key = string.strip(Trace.MSG_MC_LOAD_REQ)
+	    self.mount_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if sg:
+	    Trace.trace(1, "Creating inq storage group plots")
+	    alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
+	    self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
 	# update the inquisitor plots web page
 	Trace.trace(1, "Creating the inq plot web page")
 	self.make_plot_html_page()
