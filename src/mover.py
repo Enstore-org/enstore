@@ -671,6 +671,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.min_buffer = self.config.get('min_buffer', 8*MB)
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
+        self.transfer_deficiency = 1.0
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
         self.udpc = udp_client.UDPClient()
         self.last_error = (e_errors.OK, None)
@@ -1210,7 +1211,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
-                import ftt
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
                 # bail out gracefuly
@@ -1220,7 +1220,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                             (self.current_volume,))
                 self.vcc.set_system_readonly(self.current_volume)
                 # trick ftt_close, so that it does not attempt to write FM
-                ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
+                if self.driver_type == 'FTTDriver':
+                    import ftt
+                    ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
                 #initiate cleaning
                 self.force_clean = 1
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
@@ -1716,6 +1718,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_to_transfer = long(fc['size'])
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
+        self.expected_transfer_time = self.bytes_to_write*1.0 / self.max_rate
+        self.real_transfer_time  = 0.
+        self.transfer_deficiency = 1.
 
         ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
         try:
@@ -2314,6 +2319,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             volume_family = self.volume_family
         else:
             volume_family = None
+        if self.transfer_deficiency < 1.:
+            self.transfer_deficiency = 1.
         ticket =  {
             "mover":  self.name,
             "address": self.address,
@@ -2329,6 +2336,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "error_source": error_source,
             "unique_id": self.unique_id,
             "work": work,
+            "transfer_deficiency": int(self.transfer_deficiency),
             }
         return ticket
 
