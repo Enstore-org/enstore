@@ -94,6 +94,7 @@ ADMIN = "admin"
 
 #variable type
 INTEGER = "integer"
+LONG = "long"
 STRING = "string"
 FLOAT = "float"
 RANGE = "range"
@@ -196,6 +197,7 @@ IMPORT = "import"                            #volume
 INFO = "info"                                #pnfs
 IO = "io"                                    #pnfs
 JOUHOME = "jouHome"                          #restore
+JUST = "just"                                #start, stop
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
@@ -323,7 +325,7 @@ valid_option_list = [
     GET_UPDATE_INTERVAL, GET_WORK, GET_WORK_SORTED,
     HELP, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_STORAGE_GROUP, IMPORT, INFO, IO,
-    JOUHOME,
+    JOUHOME, JUST,
     KEEP, KEEP_DIR,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MAX_ENCP_LINES, MAX_WORK, MESSAGE, MODIFY, MOUNT, MOVER_TIMEOUT,
@@ -969,7 +971,8 @@ class Interface:
         for i in range(0, len(argv)):
             if argv[i].find("_") >= 0: #returns -1 on failure
                 opt_with_dashes = argv[i].replace("_", "-")
-                if self.is_long_option(opt_with_dashes):
+                if self.is_long_option(opt_with_dashes) and \
+                   opt_with_dashes[:2] == "--":
                     #sys.stderr.write("Option %s depreciated, " \
                     #                 "use %s instead.\n" %
                     #                 (argv[i], opt_with_dashes))
@@ -1204,6 +1207,8 @@ class Interface:
         try:
             if opt_dict.get(VALUE_TYPE, STRING) == INTEGER:
                 return int   #int(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == LONG:
+                return long
             elif opt_dict.get(VALUE_TYPE, STRING) == FLOAT:
                 return float  #float(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
@@ -1221,6 +1226,8 @@ class Interface:
         try:
             if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
                 return int  #int(value)
+            elif opt_dict.get(DEFAULT_TYPE, STRING) == LONG:
+                return long
             elif opt_dict.get(DEFAULT_TYPE, STRING) == FLOAT:
                 return float  #float(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
