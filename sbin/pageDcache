@@ -300,7 +300,7 @@ echo cleanup: rm -f $test_file $read_back $write_in_progress $read_in_progress
               rm -f $test_file $read_back $write_in_progress $read_in_progress
 
 # make sure the ball is ok
-enstore sched --nooverride %dcache_saag
+enstore sched --nooverride $dcache_saag
 
 echo `date` Finished.
 exit 0
