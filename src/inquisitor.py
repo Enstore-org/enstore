@@ -167,9 +167,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
 	# get a client and then check if the server is alive
 	lmc = library_manager_client.LibraryManagerClient(self.csc, 0, key, \
-                                                          t['host'], t['port'])
-	ret = self.alive_status(lmc, (t['host'], t['port']), key+self.trailer,\
-	                        time, key)
+                                                          t['hostip'], \
+	                                                  t['port'])
+	ret = self.alive_status(lmc, (t['host'], t['port']), \
+	                        key+self.trailer, time, key)
 	if ret == self.did_it:
 	    self.suspect_vols(lmc, (t['host'], t['port']), key, verbose)
 	    self.mover_list(lmc, (t['host'], t['port']), key, verbose)
@@ -194,7 +195,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.trace(12,"{update_mover - ERROR, not in config dict")
 	    return
 	# get a client and then check if the server is alive
-	movc = mover_client.MoverClient(self.csc, 0, key, t['host'], t['port'])
+	movc = mover_client.MoverClient(self.csc, 0, key, t['hostip'], \
+	                                t['port'])
 	self.alive_status(movc, (t['host'], t['port']), key+self.trailer, \
 	                  time, key)
         Trace.trace(12,"{update_mover")
@@ -236,9 +238,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    return
 	# get a client and then check if the server is alive
 	mcc = media_changer_client.MediaChangerClient(self.csc, 0, key, \
-	                                              t['host'], t['port'])
-	self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, time,\
-	                   key)
+	                                              t['hostip'], t['port'])
+	self.alive_status(mcc, (t['host'], t['port']), key+self.trailer, \
+	                  time, key)
         Trace.trace(12,"}update_media_changer")
 
     # get the information from the inquisitor
