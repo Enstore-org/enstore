@@ -360,10 +360,12 @@ class MpdMonthDataFile(EnPlot):
         # now create the mounts/day/drive type plots
         self.files_to_install = {}
         for drive_type in total_mounts_type.keys():
-            self.files_to_install[drive_type] = MpdDriveTypeDataFile(self.dir, drive_type)
-            self.files_to_install[drive_type].open()
-            self.files_to_install[drive_type].plot(total_mounts_type[drive_type])
-            self.files_to_install[drive_type].close()
+            # do not generate plot if there is no data
+            if total_mounts_type[drive_type]:
+                self.files_to_install[drive_type] = MpdDriveTypeDataFile(self.dir, drive_type)
+                self.files_to_install[drive_type].open()
+                self.files_to_install[drive_type].plot(total_mounts_type[drive_type])
+                self.files_to_install[drive_type].close()
 
     def install(self, html_dir):
         EnPlot.install(self, html_dir)
