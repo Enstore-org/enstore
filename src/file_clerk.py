@@ -1214,7 +1214,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             sanity_cookie = ticket['sanity_cookie']
             size = ticket['size']
         except KeyError, detail:
-            msg =  "File Clerk: assign_file_record() -- key %s is missing" % (detail,)
+            msg =  "File Clerk: add_file_record() -- key %s is missing" % (detail,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)

@@ -292,7 +292,7 @@ class FileClient(generic_client.GenericClient,
 
     # create file record
     def add(self, ticket):
-        ticket['work'] = 'assign_file_record'
+        ticket['work'] = 'add_file_record'
         return self.send(ticket)
 
 class FileClerkClientInterface(generic_client.GenericClientInterface):
