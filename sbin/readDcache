@@ -87,7 +87,7 @@ ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
 # ${krbdir}/klist -fea
 
 
-wfile=$w3_$$_1
+wfile=${w3}_$$_1
 # Active kerberized kftp read
 if [ $do_active = 1 ]; then
   echo "================================================================================================================================"
@@ -159,7 +159,7 @@ fi
 #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$A
 if /bin/false; then
 
-wfile=$w3_$$_2
+wfile=${w3}_$$_2
 
 # Passive kerberized kftp write
 if [ $do_passive = 1 -a $do_kftp_write = 1 ]; then
@@ -298,7 +298,7 @@ if [ $do_dccp = 1 -a $do_double = 1 ]; then
 fi
 
 
-wfile=$w_$$_2
+wfile=${w3}_$$_3
 # dccp write
 if [ $do_dccpwrite = 1 ]; then
   echo "================================================================================================================================"
