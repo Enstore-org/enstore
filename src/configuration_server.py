@@ -40,14 +40,19 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         except:
             x = sys.exc_info()
             tb=x[2]
-            while tb.tb_next:
-                tb=tb.tb_next
+            msg="YO"
+
+            fmt =  traceback.format_exception(x[0],x[1],x[2])[-4:]
+            fmt[0] = string.replace(fmt[0], "<string>", configfile)
+
             msg = (e_errors.ERROR, "Configuration Server: "+
                    configfile+(" line %d \n"%
                                tb.tb_lineno)+
-                   traceback.format_exception(x[0],x[1],x[2])[-1])
-            Trace.trace(msg[0],msg[1])
+                   string.join(fmt, ""))
             print msg[1]
+#            Trace.trace(msg[0],msg[1])
+#            print msg[1]
+
             os._exit(-1)
         # ok, we read entire file - now set it to real dictionary
         self.configdict=configdict
