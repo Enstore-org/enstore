@@ -451,7 +451,11 @@ Availability
 -+ 
 =============================================================================
 Fault Tolerance
--+ 
+
+-+ 3 This is the most important and most difficult task required for enstore
+     There is very little error checking now and I think it will make the system
+     much larger - (double) - almost every action must be checked and ewrrors handled.
+
 (72) The failure of a single component shall not cause the system to become     Library manager provides
      unavailable for the high priority data movement tasks.
 -+ 
@@ -549,6 +553,12 @@ Administration and Monitoring
 -+ 
 =============================================================================
 Items not in requirements that need to get finished:
+
+
+-+ the ticket scheme is very handy bu I think it is prone to prblems.
+   There is no control or discipline on the ticket.  An OO approach
+   to the ticket would pay dividends.  At the least a data dictionary
+   for the ticket is needed.
 
 is it time to switch to C?
 
