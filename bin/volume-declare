@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # declare the volumes used on the rip test system
 
-USAGE="`basename $0` <red50|red20|ait|dlt|mam|rip6>"
+USAGE="`basename $0` <red50|red20|ait|dlt|mam|rip6|samait|samdlt|sammam>"
 
 if [ -z "${1-}" ] ; then
   echo "$USAGE"
@@ -117,6 +117,23 @@ case $1 in
                       ait   none 8MM     CA2916 10737418240 10737418240
                      "
          ;;
+  samait)   rm -fr /pnfs/sam/ait/*
+         volumes_del="
+                      CA2945
+                      CA2946
+                      CA2947
+                      CA2948
+                      CA2949
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      samait   none 8MM     CA2945 10737418240 10737418240
+                      samait   none 8MM     CA2946 10737418240 10737418240
+                      samait   none 8MM     CA2947 10737418240 10737418240
+                      samait   none 8MM     CA2948 10737418240 10737418240
+                      samait   none 8MM     CA2949 10737418240 10737418240
+                     "
+         ;;
   mam)   rm -fr /pnfs/grau/mammoth/*
          volumes_del="
                       CA2251
@@ -156,6 +173,23 @@ case $1 in
                       mam   none 8MM     CA2266 10737418240 10737418240
                      "
          ;;
+  sammam)   rm -fr /pnfs/sam/mammoth/*
+         volumes_del="
+                      CA2270
+                      CA2271
+                      CA2272
+                      CA2273
+                      CA2274
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      samman   none 8MM     CA2270 10737418240 10737418240
+                      samman   none 8MM     CA2271 10737418240 10737418240
+                      samman   none 8MM     CA2272 10737418240 10737418240
+                      samman   none 8MM     CA2273 10737418240 10737418240
+                      samman   none 8MM     CA2274 10737418240 10737418240
+                     "
+         ;;
   dlt)   rm -fr /pnfs/grau/dlt/*
          volumes_del="
                       CA2501
@@ -193,6 +227,23 @@ case $1 in
                       dlt   none DECDLT  CA2514 10737418240 10737418240
                       dlt   none DECDLT  CA2515 10737418240 10737418240
                       dlt   none DECDLT  CA2516 10737418240 10737418240
+                     "
+         ;;
+  samdlt)   rm -fr /pnfs/sam/dlt/*
+         volumes_del="
+                      CA2545
+                      CA2546
+                      CA2547
+                      CA2548
+                      CA2549
+                     "
+#                     lib   ff   medtype label  capacity    bytes left
+         volumes="
+                      samdlt   none DECDLT  CA2545 10737418240 10737418240
+                      samdlt   none DECDLT  CA2546 10737418240 10737418240
+                      samdlt   none DECDLT  CA2547 10737418240 10737418240
+                      samdlt   none DECDLT  CA2548 10737418240 10737418240
+                      samdlt   none DECDLT  CA2549 10737418240 10737418240
                      "
          ;;
   rip6)  rm -fr /pnfs/rip6/*
