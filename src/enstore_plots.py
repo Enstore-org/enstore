@@ -49,6 +49,8 @@ DRIVE_IDS = { "ULT3580-TD1" : LTO,
 
 # there may be several different drive ids that correspond to one type of drive.
 def translate_drive_id(drive_id):
+    # if the drive_id has a '/' in it make it a '-'
+    drive_id = string.replace(drive_id, '/', '-')
     return DRIVE_IDS.get(drive_id, drive_id)
 
 def get_ctr(fields):
