@@ -417,6 +417,10 @@ class Mover:
         if self.state == "ACTIVE" and self.display.width <= 470:
             self.undraw_state()
             return
+        #The rate should only be drawn when in ACTIVE state.  Force an
+        # undraw of it if it is in a different state.
+        if self.state != "ACTIVE":
+            self.undraw_rate()
 
         #Display the current state.
         img          = find_image(self.state + '.gif')
@@ -466,7 +470,8 @@ class Mover:
         #### color
         if (self.timer_seconds > 3600) and \
            (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
-                           "MOUNT_WAIT", "DISMOUNT_WAIT"]):
+                           "MOUNT_WAIT", "DISMOUNT_WAIT", "FINISH_WRITE",
+                           "HAVE_BOUND", "DRAINING", "CLEANING"]):
             timer_color = self.timer_longtime_color
         else: #state is "Unknown", "IDLE", "OFFLINE", "ERROR"
             timer_color = self.timer_color
@@ -794,6 +799,7 @@ class Mover:
         try:
             self.display.delete(self.rate_display)
             self.rate_display = None
+            self.rate = None
         except Tkinter.TclError:
             pass
 
@@ -930,8 +936,9 @@ class Mover:
         row = (k % num_rows)
 
         #vertical distance seperating the bottom of one mover with the top
-        # of the next.
-        space = ((self.display.height - (self.height * 19.0)) / 19.0)
+        # of the next.  Use 20.0 instead of 19.0 for the (self.height * 20.0)
+        # term to offset the second collumn's "lowerness" on the screen.
+        space = ((self.display.height - (self.height * 20.0)) / 19.0)
         space = (self.height - space) * ((19.0 - num_rows) / 19.0) + space
 
         #The following offsets the y values for a second column.
@@ -1360,62 +1367,17 @@ class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
     #entvrc_info is a dictionary of various parameters.
-    def __init__(self, entvrc_info, **attributes):
+    def __init__(self, entvrc_info, master = None, **attributes):
         #title="", window_width=None, window_height=None,
         #geometry=None, x_position=None, y_position=None,
         #**attributes):
-
-        geometry = entvrc_info.get('geometry', None)
-        window_width = entvrc_info.get('window_width', None)
-        window_height = entvrc_info.get('window_height', None)
-        x_position = entvrc_info.get('x_position', None)
-        y_position = entvrc_info.get('y_position', None)
+        
         title = entvrc_info.get('title', "")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
-        self.library_colors = entvrc_info.get('library_colors', {})
-        self.client_colors = entvrc_info.get('client_colors', {})
 
-        tk = Tkinter.Tk()
-        #Don't draw the window until all geometry issues have been worked out.
-        tk.withdraw()
-
-        #Use the geometry argument first.
-        if geometry != None:
-            window_width = int(re.search("^[0-9]+", geometry).group(0))
-            window_height = re.search("[x][0-9]+", geometry).group(0)
-            window_height = int(window_height.replace("x", " "))
-            x_position = re.search("[+][-]{0,1}[0-9]+[+]", geometry).group(0)
-            x_position = int(x_position.replace("+", ""))
-            y_position = re.search("[+][-]{0,1}[0-9]+$", geometry).group(0)
-            y_position = int(y_position.replace("+", ""))
-        
-        #If the initial size is larger than the screen size, use the
-        #  screen size.
-        if window_width != None and window_height != None:
-            window_width = min(tk.winfo_screenwidth(), window_width)
-            window_height= min(tk.winfo_screenheight(), window_height)
-        else:
-            window_width = 0
-            window_height = 0
-        if x_position != None and y_position != None:
-            x_position = max(min(tk.winfo_screenwidth(), x_position), 0)
-            y_position = max(min(tk.winfo_screenheight(), y_position), 0)
-        else:
-            x_position = 0
-            y_position = 0
-
-        #Recompile the geometry string.
-        geometry = "%sx%s+%s+%s" % (window_width, window_height,
-                                    x_position, y_position)
-
-        #Remember the unframed geometry.  This is used when determining the
-        # correct geometry to write to the .entvrc file.
-        self.unframed_geometry = geometry
-
-        #Set the geometry of the cavas and its toplevel window.
-        Tkinter.Canvas.__init__(self, master=tk, height=window_height,
-                                width=window_width)
-        tk.winfo_toplevel().winfo_toplevel().geometry(geometry)
+        Tkinter.Canvas.__init__(self, master=master)
+                                #height=window_height,
+                                #width=window_width)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 ##        if canvas_width is None:
@@ -1446,12 +1408,13 @@ class Display(Tkinter.Canvas):
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 
         #The toplevel widget the canvas created.
-        toplevel = self.winfo_toplevel()
+        #toplevel = self.winfo_toplevel()
         #Various toplevel window attributes.
-        toplevel.title(title)
+        #toplevel.title(title)
+        master.title(title)
         self.configure(attributes)
         #Menubar attributes.
-        self.menubar = Tkinter.Menu(master=self.master)
+        self.menubar = Tkinter.Menu(master=master)   #self.master)
         #Options menu.
         self.option_menu = Tkinter.Menu(master=self.menubar, tearoff=0)
         #Create the animate check button and set animate accordingly.
@@ -1469,7 +1432,7 @@ class Display(Tkinter.Canvas):
             self.animate = 1 #keep it on
         #Added the menus to there respective parent widgets.
         self.menubar.add_cascade(label="options", menu=self.option_menu)
-        toplevel.config(menu=self.menubar)
+        master.config(menu=self.menubar)
 
         #With the window attributes created, pack them in.
         self.pack(expand=1, fill=Tkinter.BOTH)
@@ -1479,14 +1442,15 @@ class Display(Tkinter.Canvas):
         self._init() #Other none window related attributes.
 
         self.bind('<Button-1>', self.action)
-        self.bind('<Button-3>', self.reinititalize)
+        self.bind('<Button-3>', self.reinitialize)
         self.bind('<Configure>', self.resize)
         self.bind('<Destroy>', self.window_killed)
         self.bind('<Visibility>', self.visibility)
         self.bind('<Button-2>', self.print_canvas)
 
         #Clear the window for drawing to the screen.
-        self.winfo_toplevel().deiconify()
+        #self.winfo_toplevel().deiconify()
+        master.deiconify()
         self.update()
 
     def toggle_animation(self):
@@ -1495,12 +1459,6 @@ class Display(Tkinter.Canvas):
 
         if self.animate:  #If turn on, schedule the next animation.
             self.after_animation_id = self.after(30, self.connection_animation)
-
-    def __del__(self):
-        self.connections = {}        
-        self.movers = {}
-        self.clients = {}
-        self.client_positions = {}
 
     def _init(self):
         self._reinit = 0
@@ -1562,7 +1520,7 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_animation_id)
             self.after_cancel(self.after_clients_id)
             self.after_cancel(self.after_idle_id)
-            self.after_cancel(self.after_reinititalize_id)
+            self.after_cancel(self.after_reinitialize_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -1583,12 +1541,12 @@ class Display(Tkinter.Canvas):
         except AttributeError:
             pass
 
-    def reinititalize(self, event=None):
+    def reinitialize(self, event=None):
         self.after_cancel(self.after_timer_id)
         self.after_cancel(self.after_animation_id)
         self.after_cancel(self.after_clients_id)
         self.after_cancel(self.after_idle_id)
-        self.after_cancel(self.after_reinititalize_id)
+        self.after_cancel(self.after_reinitialize_id)
         self._reinit = 1
         self.quit()
 
@@ -1598,15 +1556,15 @@ class Display(Tkinter.Canvas):
     def window_killed(self, event):
         self.stopped = 1
 
-        new_position = self.unframed_geometry.split("+", 1)[1]
-        new_size = self.unframed_geometry.split("+")[0]
+        #new_position = self.unframed_geometry.split("+", 1)[1]
+        #new_size = self.unframed_geometry.split("+")[0]
 
-        geometry = self.winfo_toplevel().geometry()
-        size = geometry.split("+")[0]
-        position = geometry.split("+", 1)[1]
+        #geometry = self.winfo_toplevel().geometry()
+        #size = geometry.split("+")[0]
+        #position = geometry.split("+", 1)[1]
 
-        initial_framed_size= self.framed_geometry.split("+")[0]
-        initial_framed_position= self.framed_geometry.split("+", 1)[1]
+        #initial_framed_size= self.framed_geometry.split("+")[0]
+        #initial_framed_position= self.framed_geometry.split("+", 1)[1]
         
         ###If the user never repositioned the window then the value returned
         ### from self.winfo_toplevel().geometry() points to the top left of the
@@ -1617,18 +1575,18 @@ class Display(Tkinter.Canvas):
         ### geometry.  If this is different than the initial framed geometry
         ### then we know the user moved the window and to set self.geometry
         ### to tell the calling code (aka entv.py) to save the geometry.
-        if position != initial_framed_position:
-            new_position = position
+        #if position != initial_framed_position:
+        #    new_position = position
 
         ###The size doesn't seem to change with respect to the window being
         ### framed or unframed...
-        if size != initial_framed_size:
-            new_size = size
+        #if size != initial_framed_size:
+        #    new_size = size
 
         #By setting this everytime, this will force entv to rewrite the
         # .entvrc file everytime.  This will also help correct errors in
         # the .entvrc file.
-        self.geometry = "%s+%s" % (new_size, new_position)
+        #self.geometry = "%s+%s" % (new_size, new_position)
         
 
     def visibility (self, event):
@@ -1810,7 +1768,8 @@ class Display(Tkinter.Canvas):
         #  Wait 1 minutes before starting over.
         if not getattr(self, "csc", None):
             time.sleep(60)
-            os.execvp(sys.argv[0], sys.argv)
+            self.queue_command("reinit")
+            #os.execvp(sys.argv[0], sys.argv)
         
     def client_command(self, command_list):
         ## For now, don't draw waiting clients (there are just
@@ -1993,6 +1952,7 @@ class Display(Tkinter.Canvas):
         #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
         #      movers MOVER_NAME_1 MOVER_NAME_2 ...MOVER_NAME_N
     comm_dict = {'quit' : {'function':quit_command, 'length':1},
+                 'reinit': {'function':reinitialize, 'length':1},
                  'title' : {'function':title_command, 'length':1},
                  'csc' : {'function':csc_command, 'length':2},
                  'client' : {'function':client_command, 'length':2},
@@ -2068,11 +2028,23 @@ class Display(Tkinter.Canvas):
             
     def display_idle(self):
         display_lock.acquire()
-        if self.command_queue: #If the queue is not empty:
+
+        if self.stopped: #If we should stop, then stop.
+            self.quit()
+        elif self.command_queue: #If the queue is not empty:
             self.handle_command(self.command_queue[0])
             del self.command_queue[0]
         display_lock.release()
         self.after_idle_id = self.after(30, self.display_idle)
+
+    #overloaded
+    def destroy(self):
+        self.connections = {}
+        self.movers = {}
+        self.clients = {}
+        self.client_positions = {}
+        self.csc = None
+        Tkinter.Canvas.destroy(self)
     
     #overloaded 
     def update(self):
@@ -2090,7 +2062,7 @@ class Display(Tkinter.Canvas):
         self.after_animation_id = self.after(30, self.connection_animation)
         self.after_clients_id = self.after(30, self.disconnect_clients)
         self.after_idle_id = self.after(30, self.display_idle)
-        self.after_reinititalize_id = self.after(3600000, self.reinititalize)
+        self.after_reinitialize_id = self.after(3600000, self.reinitialize)
         self.after_reposition_id = None
         Tkinter.Tk.mainloop(self)
         self.undraw()
