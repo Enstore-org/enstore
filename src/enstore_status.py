@@ -749,7 +749,8 @@ class HTMLLogFile(EnHTMLFile, EnStatusFile):
         if self.filedes:
             self.filedes.write(self.header)
 
-    # format the log files and write them to the file
+    # format the log files and write them to the file, include a link to the
+    # page to search the log files
     def write(self, logfile_dir, logfiles, log_dirs, www_host):
         # first we will create links in the file to all log file directories
         # that have been specified in the configuration file with the
@@ -770,6 +771,7 @@ class HTMLLogFile(EnHTMLFile, EnStatusFile):
                 log_keys = logfiles.keys()
                 log_keys.sort()
                 self.filedes.write("<H1><FONT SIZE=+3>Enstore Log Files</FONT></H1>\n")
+		self.filedes.write('<H3><A HREF="enstore_log_file_search.html">Search these Logs</A></H3>')
                 self.filedes.write('<TABLE BGCOLOR="#DFDFF0" NOSAVE >\n')
                 self.filedes.write('<TR><TD><B>FILE</B></TD><TD ALIGN=CENTER><B>SIZE</B></TD></TR>\n')
                 for log in log_keys:
