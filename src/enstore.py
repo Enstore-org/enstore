@@ -57,9 +57,6 @@ def call_function(executable, argv):
     str = executable
     for arg in argv:
         str = "%s %s"%(str, arg)
-    # check to see if we need to setup the environment a little
-    if not os.environ.has_key("ENSTORE_DIR"):
-        str = ". /usr/local/etc/setups.sh; setup enstore; %s"%(str,)
     return os.system(str)>>8
 
 def get_farmlet(default):
@@ -253,7 +250,7 @@ class EnstoreInterface(UserOptions):
             print "\n%s EPS      farmlet   (global Enstore-associated ps on all farmlet nodes)"%(cmd,)
             print "\n%s aml2               (lists current mount state & queue list on aml2 robot)"%(cmd,)
         else:
-            call_function("pnfs", "")            
+            call_function("pnfs", "")
         print "\n"
         servers = self.get_valid_servers()
         for server in servers:
