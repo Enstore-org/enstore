@@ -186,6 +186,11 @@ class Index:
 	def cursor(self, txn = None):
 		return self.db.cursor(txn)
 
+	# close -- close Index db
+	def close(self):
+		self.db.close()
+		return
+
 	# check the consistency of index
 	def check(self):
 		status = 0
@@ -457,6 +462,9 @@ class DbTable:
         self.jou.close()
      if self.cursor_open==1:
 	self.cursor("close")
+     # take care of Index
+     for i in self.inx.keys():
+        self.inx[i].close()
      self.db.close()
 
   def checkpoint(self):
