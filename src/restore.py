@@ -135,7 +135,7 @@ if __name__ == "__main__":		# main
 	try:
 		dbInfo = configuration_client.ConfigurationClient(
 			(intf.config_host, intf.config_port)).get(
-			database')
+			'database')
         	dbHome = dbInfo['db_dir']
         	try:  # backward compatible
 			jouHome = dbInfo['jou_dir']
@@ -178,11 +178,13 @@ if __name__ == "__main__":		# main
 
 	# go to dbHome
 	os.chdir(dbHome)
+	print "cd "+dbHome
 
 	# save the current (bad?) database
 	for i in dbs:
 		cmd = "mv "+i+" "+i+".saved"
 		os.system(cmd)
+		print cmd
 
 	# save all log.* files
 	cmd = "ls -1 log.*"
@@ -190,14 +192,18 @@ if __name__ == "__main__":		# main
 	for i in logs:
 		cmd = "mv "+i+" "+i+".saved"
 		os.system(cmd)
+		print cmd
 
 	# get the database file from the backup
 
+	print "Getting database file from backup"
 	cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/dbase.tar bs=20b | tar xvBfb - 20"
+	print cmd
 	os.system(cmd)
 
 	# run db_recover to put the databases in consistent state
 
+	print "Synchronize database using db_recover"
 	os.system("db_recover")
 
 	# get the journal files in place
@@ -206,12 +212,16 @@ if __name__ == "__main__":		# main
 	# we still get some previous journal files ...
 
 	os.chdir(jouHome)
+	print "cd "+jouHome
 
+	print "Retriving journal files"
 	for i in dbs:
 		cmd = "rsh -n "+bckHost+" dd if="+bckHome+"/"+i+\
 			".tar bs=20b | tar xvBfb - 20 '"+i+".jou*'"
 		os.system(cmd)
+		print cmd
 
+	print "Restoring databse ..."
 	for i in dbs:
 		d = DbTable(i, dbHome, jouHome, [])
 		print "Checking "+i+" ... "
