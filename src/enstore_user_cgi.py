@@ -5,6 +5,7 @@
 import cgi
 import string
 import os
+import sys
 import tempfile
 import re
 
@@ -45,6 +46,16 @@ def no_access(host):
     print "<FONT SIZE=+3>Sorry, your host (%s) is not allowed to query Enstore.</FONT>"%host
     print "</BODY></HTML>"
         
+def find_enstore():
+    enstore_dir = os.popen(". /usr/local/etc/setups.sh;ups list -K @PROD_DIR enstore").readlines()
+    enstore_dir = string.strip(enstore_dir[0])
+    enstore_dir = string.replace(enstore_dir, "\"", "")
+    enstore_src = "%s/src"%enstore_dir
+    enstore_modules = "%s/modules"%enstore_dir
+    sys.path.append(enstore_src)
+    sys.path.append(enstore_modules)
+    import enstore_user
+
 def go():
     # first print the two lines for the header
     print "Content-type: text/html"
@@ -136,20 +147,28 @@ def go():
         # stuff
         cmd = string.join(an_argv, " ")
         print cmd
+	print an_argv
         print "<BR><P><HR><P><PRE>"
-        file = tempfile.mktemp()
-        rtn = os.system(". /usr/local/etc/setups.sh;. `ups setup enstore`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
+
+	# now we need to find the location of enstore so we can import it and do what we have to
+	find_enstore()
+
+	# do our stuff
+	enstore_user.do_work()
+
+        #file = tempfile.mktemp()
+        #rtn = os.system(". /usr/local/etc/setups.sh;. `ups setup enstore`;$ENSTORE_DIR/bin/%s > %s "%(cmd, file))
 
         # now read in the file and output the results
-        filedes = open(file)
-        while 1:
-            line = filedes.readline()
-            if not line:
-                break
-            else:
-                print line
-        filedes.close()
-        os.remove(file)
+        #filedes = open(file)
+        #while 1:
+        #    line = filedes.readline()
+        #    if not line:
+        #        break
+        #    else:
+        #        print line
+        #filedes.close()
+        #os.remove(file)
 
         print "</PRE>"
     finally:
