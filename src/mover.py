@@ -64,6 +64,7 @@ import sys				# exit
 import time				# .sleep
 import traceback			# print_exc == stack dump
 import string				# find
+import select
 
 # enstore modules
 import generic_server
@@ -885,12 +886,15 @@ def get_usr_driver( self, ticket ):
 	    ticket['mover']['callback_addr'] = (host,port)
 	    self.control_socket = callback.user_callback_socket( ticket )
 
-	    # we expect a prompt call-back here, and should protect against
-	    # users not getting back to us. The best protection would be to
-	    # kick off if the user dropped the control_socket, but I am at
-	    # home and am not able to find documentation on select...
-	    self.usr_driver, address = listen_socket.accept()
-	    listen_socket.close()
+	    # we expect a prompt call-back here
+
+            read_fds,write_fds,exc_fds=select.select(
+                [listen_socket],[],[],300) # 5 minute timeout
+            if listen_socket in read_fds:
+                self.usr_driver, address = listen_socket.accept()
+                listen_socket.close()
+            else:
+                return "error"
 	    pass
 	return 'ok'
     except: return 'error'
