@@ -28,7 +28,8 @@ def fixindent(line):
         elif c=='\t':
             #take it out to the next multiple of 8
             level=((level+8)/8)*8
-    return level*' '+rest
+    line=level*' '+line
+    return line
 
 import kjpylint
 (pyg, context) = kjpylint.setup()
@@ -41,9 +42,17 @@ def complain(error):
 
 context.complain=complain
 
-ignore_patterns = [".*defined before [0-9]+ not used"]
+ignore_patterns = [".*defined before [0-9]+ not used$",
+                   "Warning: set of global .* in local context",
+                   ]
 
 ignore_list = map(re.compile, ignore_patterns)
+
+verbose=0
+args = sys.argv[1:]
+if args and args[0]=='-v':
+    verbose=1
+    args=args[1:]
 
 for filename in sys.argv[1:]:
     exit_status = 0
@@ -71,10 +80,12 @@ for filename in sys.argv[1:]:
     for err in error_list:
         for pattern in ignore_list:
             if pattern.match(err):
-                continue
-            else:
-                exit_status=1
-                print err
+                if verbose:
+                    print "ignoring", err
+                break
+        else:
+            exit_status=1
+            print err
                 
 sys.exit(exit_status)
     
