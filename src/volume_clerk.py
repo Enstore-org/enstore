@@ -18,6 +18,7 @@ import db
 import Trace
 import e_errors
 import configuration_client
+import bfid_db
 
 ##def p(*args):
 ##    lev = args[0]
@@ -40,24 +41,8 @@ MY_NAME = "volume_clerk"
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
-
-    ## Avoid sending back a ticket which contains the "bfids" key, which may
-    ## be arbitrarily large and hence not fit in a UDP packet.  This is a hack which
-    ## should probably be replaced with a more general notion of public vs. private
-    ## (or external vs. internal) elements of tickets
-    def reply_to_caller(self, ticket,
-                        replyfunc=dispatching_worker.DispatchingWorker.reply_to_caller):
-        has_bfids = ticket.has_key("bfids")
-        if has_bfids:
-            bfids=ticket["bfids"]
-            del ticket["bfids"]
-        replyfunc(self,ticket)
-        if has_bfids:
-            ticket["bfids"]=bfids
             
     # check if volume is full and if is set it to full
-    # this is made up as method because is used in several places
-    # and has to be universal
     def is_volume_full(self, v, min_remaining_bytes):
         external_label = v['external_label']
         ret = ""
@@ -121,7 +106,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 import file_clerk_client
 	 fcc = file_clerk_client.FileClient(self.csc)
 	 # get volume map name
-	 fcc.bfid = cur_rec['bfids'][0]
+         bfid_list = self.bfid_db.get_all_bfids(old_label)
+	 fcc.bfid = bfid_list[0]
 	 vm_ticket = fcc.get_volmap_name()
 	 old_vol_map_name = vm_ticket["pnfs_mapname"]
 	 (old_vm_dir,file) = os.path.split(old_vol_map_name)
@@ -133,7 +119,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 Trace.log(e_errors.INFO, "volume map directory renamed %s->%s"%
 		   (old_vm_dir, new_vm_dir))
 	 # replace file clerk database entries
-	 for bfid in cur_rec['bfids']:
+         for bfid in bfid_list:
 	     ret = fcc.rename_volume(bfid, new_label, 
 				     set_deleted, restore, restore_dir)
 	     if ret["status"][0] != e_errors.OK:
@@ -143,6 +129,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 self.dict[new_label] = cur_rec
 	 # remove current record from the database
 	 del self.dict[old_label]
+         # update the bitfile id database too
+         self.bfid_db.rename_volume(old_label,new_label)
 	 Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
 							   new_label))
 	 return e_errors.OK, None
@@ -165,8 +153,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     # remove all bfids for this volume
 	     import file_clerk_client
 	     fcc = file_clerk_client.FileClient(self.csc)
-	     
-	     for bfid in cur_rec['bfids']:
+	     bfid_list = self.bfid_db.get_all_bfids(external_label)
+	     for bfid in bfid_list:
 		 fcc.bfid = bfid
 		 vm_ticket = fcc.get_volmap_name()
 		 vol_map_name = vm_ticket["pnfs_mapname"]
@@ -176,6 +164,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     os.rmdir(vm_dir)
 	     # remove current record from the database
 	     del self.dict[external_label]
+             # update the bfid database too
+             self.bfid_db.delete_all_bfids(external_label)
 	     Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
 	     return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
@@ -293,7 +283,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         record['wrapper'] = ticket.get('wrapper', "cpio_odc")
         record['non_del_files'] = ticket.get('non_del_files', 0)
         record['blocksize'] = ticket.get('blocksize', -1)
-	record['bfids'] = []
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
@@ -308,6 +297,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # write the ticket out to the database
         self.dict[external_label] = record
+        # initialize the bfid database for this volume
+        self.bfid_db.init_dbfile(external_label)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -403,6 +394,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	# if volume has not been written delete it
 	if record['sum_wr_access'] == 0:
 	    del self.dict[external_label]
+            #clear the bfid database file too
+            self.bfid_db.delete_all_bfids(external_label)
 	    ticket["status"] = (e_errors.OK, None)
 	else:
 	    record["system_inhibit"][0] = e_errors.DELETED
@@ -452,9 +445,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = status
 	if status[0] == e_errors.OK:
 	    record = self.dict[external_label]
+            bfid_list = self.bfid_db.get_all_bfids(external_label)
 	    record["system_inhibit"] = ["none","none"]
 	    if restore_vm == "yes":
-		record["non_del_files"] = len(record["bfids"])
+		record["non_del_files"] = len(bfid_list)
 	    self.dict[external_label] = record
 	    Trace.log(e_errors.INFO,"Volume %s is restored"%(external_label,))
 
@@ -850,10 +844,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                       ticket['wr_access']
 
 	bfid = ticket.get("bfid")
-	if bfid: 
-	    if not record.has_key("bfids"):
-	    	record["bfids"] = []
-	    record["bfids"].append(bfid)
+	if bfid:
+            self.bfid_db.add_bfid(external_label, bfid)
         # record our changes
         self.dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
@@ -1395,6 +1387,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'file_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
+        self.bfid_db=bfid_db.BfidDb(dbHome)
         
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
