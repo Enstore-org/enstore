@@ -25,7 +25,8 @@ SEEN = 'seen'
 VOLUME = 'volume'
 STORAGE_GROUP = 'storage_group'
 STORAGE_GROUP_LIMIT = 'storage_group_limit'
-
+UNKNOWN = 'UNKNOWN'
+DASH = "-"
 
 # locate and pull out the dictionaries in the text message. assume that if
 # there is more than one dict, they are of the form -
@@ -349,8 +350,8 @@ class EnStatus:
     def output_moverstatus(self, ticket, key):
         # clean out all the old info but save the status
         self.text[key] = {enstore_constants.STATUS : self.text[key][enstore_constants.STATUS]}
-        self.text[key][enstore_constants.COMPLETED] = repr(ticket["transfers_completed"])
-        self.text[key][enstore_constants.FAILED] = repr(ticket["transfers_failed"])
+        self.text[key][enstore_constants.COMPLETED] = self.unquote(repr(ticket.get("transfers_completed", DASH)))
+        self.text[key][enstore_constants.FAILED] = self.unquote(repr(ticket.get("transfers_failed", DASH)))
         # these are the states where the information  in the ticket refers to a current transfer
         if ticket["state"] in (mover_constants.ACTIVE, mover_constants.MOUNT_WAIT,
                                mover_constants.DISMOUNT_WAIT):
@@ -399,4 +400,6 @@ class EnStatus:
             self.text[key][enstore_constants.STATE] = "ERROR - %s"%(ticket["status"],)
         # unknown state
         else:
-            self.text[key][enstore_constants.STATE] = "%s"%(ticket["state"],)
+	    if not self.text[key][enstore_constants.STATUS]:
+		self.text[key][enstore_constants.STATUS] = UNKNOWN
+            self.text[key][enstore_constants.STATE] = "%s"%(ticket.get("state", UNKNOWN),)

@@ -496,7 +496,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_suspect_vols(state, lib_man.name)
         if enstore_functions.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name)
+					     TIMED_OUT_SP, time, lib_man.name,
+					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "suspect_vols - ERROR, timed out")
         elif not enstore_functions.is_ok(state):
@@ -628,7 +629,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmqueues(self.lm_queues[lib_man.name], lib_man.name)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name)
+					     TIMED_OUT_SP, time, lib_man.name,
+					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "work_queue - ERROR, timed out")
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
@@ -653,7 +655,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmactive_volumes(lib_man.active_volumes, lib_man.name)
         if enstore_functions.is_timedout(self.lm_queues[lib_man.name]):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name)
+					     TIMED_OUT_SP, time, lib_man.name,
+					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "active volumes - ERROR, timed out")
         elif not enstore_functions.is_ok(self.lm_queues[lib_man.name]):
@@ -678,7 +681,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_lmstate(state, lib_man.name)
         if enstore_functions.is_timedout(state):
             self.serverfile.output_etimedout(lib_man.host,
-					     TIMED_OUT_SP, time, lib_man.name)
+					     TIMED_OUT_SP, time, lib_man.name,
+					     lib_man.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "lm_state - ERROR, timed out")
         elif not enstore_functions.is_ok(state):
@@ -706,7 +710,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
         if enstore_functions.is_timedout(self.mover_state[mover.name]):
             self.serverfile.output_etimedout(mover.host, TIMED_OUT_SP,
-					     time.time(), mover.name)
+					     time.time(), mover.name,
+					     mover.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "mover_status - ERROR, timed out")
         self.new_server_status = 1
