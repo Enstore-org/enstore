@@ -583,6 +583,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.forget_ignored_storage_group = None
         self.forget_all_ignored_storage_groups = 0
         self.show_ignored_storage_groups = 0
+        self.remaining_bytes = None
         
         generic_client.GenericClientInterface.__init__(self)
 
@@ -614,6 +615,9 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                                      {option.VALUE_NAME:"volume_byte_capacity",
                                           option.VALUE_TYPE:option.STRING,
                                           option.VALUE_USAGE:option.REQUIRED,},
+                                         {option.VALUE_NAME:"remaining_bytes",
+                                          option.VALUE_TYPE:option.STRING,
+                                          option.VALUE_USAGE:option.OPTIONAL}
                                          ]},
         option.ALL:{option.HELP_STRING:"used with --restore to restore all",
                        option.DEFAULT_VALUE:option.DEFAULT,
@@ -994,12 +998,27 @@ def do_work(intf):
             cookie = '0000_000000000_0000001'
         #library, storage_group, file_family, wrapper, media_type, capacity = intf.args[:6]
         capacity = my_atol(intf.volume_byte_capacity)
+        print 'intf.remaining_bytes =', `intf.remaining_bytes`
+        if intf.remaining_bytes != None:
+            remaining = my_atol(intf.remaining_bytes)
+        else:
+            remaining = None
         # if wrapper is empty create a default one
         if not intf.wrapper:
             if intf.media_type == 'null': #media type
                 intf.wrapper = "null"
             else:
                 intf.wrapper = "cpio_odc"
+        print 'intf.library =', intf.library
+        print 'intf.file_family =', intf.file_family
+        print 'intf.storage_group =', intf.storage_group
+        print 'intf.media_type =', intf.media_type
+        print 'intf.add =', intf.add
+	print 'capacity =', capacity
+        print 'intf.wrapper =', intf.wrapper
+        print 'eod_cookie =', cookie
+        print 'remaining_bytes =', remaining
+
         ticket = vcc.add(intf.library,
                          intf.file_family,
                          intf.storage_group,
@@ -1007,7 +1026,8 @@ def do_work(intf):
                          intf.add,                  # name of this volume
                          capacity,
                          wrapper=intf.wrapper,
-                         eod_cookie=cookie)           # rem cap'y of volume
+                         eod_cookie=cookie,            # rem cap'y of volume
+                         remaining_bytes = remaining)
     elif intf.modify:
         d={}
         for s in intf.args:
