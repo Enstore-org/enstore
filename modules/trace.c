@@ -264,6 +264,7 @@ trace_init_trc( const char *key_file_spec )
     strcpy( lck_file, key_file );
     strcat( lck_file, TRC_LCK_EXTN );
     strcat( key_file, TRC_KEY_EXTN );
+    /* printf( "key_file is %s\n", key_file ); */
 
     /*  INITIALIZE -
         - first open lock file to check trace file and possible
@@ -275,7 +276,8 @@ trace_init_trc( const char *key_file_spec )
     /* AFTER THIS FOR CODE BLOCK,
        trc_sem_id, trc_cntl_sp, and trc_ent_sp will be set correctly */
     for (idx=40; idx--; )
-    {   lck_fd = open( lck_file, O_CREAT|O_EXCL ); /* ref. open(2) */
+    {   int	r_sts;
+	lck_fd = open( lck_file, O_CREAT|O_EXCL ); /* ref. open(2) */
 	if (lck_fd != -1)
 	{   int		shm_id;
 
@@ -284,10 +286,15 @@ trace_init_trc( const char *key_file_spec )
 	    if (buf_fd == -1)
 	    {   /* problem (could be permision???) - try creating */
 		buf_fd = open( key_file, O_CREAT|O_RDWR, 0x1b6 );
+		if (buf_fd == -1)
+		{   perror( "can't create key file" );
+		    exit( 1 );
+		}
 	    }
-	    read( buf_fd, &shm_id, sizeof(shm_id) );
+	    r_sts = read( buf_fd, &shm_id, sizeof(shm_id) );
 	    trc_cntl_sp = shmat( shm_id, 0,0 );/* no adr hint, no flgs */
-	    if (trc_cntl_sp == (struct s_trc_cntl *)-1)
+	    if (   (r_sts!=sizeof(shm_id))
+		|| (trc_cntl_sp==(struct s_trc_cntl *)-1))
 	    {	int	ii;
 
 		shm_id = shmget(  IPC_PRIVATE, TRC_BUF_SZ
@@ -318,9 +325,10 @@ trace_init_trc( const char *key_file_spec )
 
 	    /* now chk the semaphore */
 	    lseek( buf_fd, sizeof(shm_id), SEEK_SET ); /* index past shm_id */
-	    read( buf_fd, &trc_sem_id, sizeof(trc_sem_id) );
+	    r_sts = read( buf_fd, &trc_sem_id, sizeof(trc_sem_id) );
 	    sts = semop( trc_sem_id, &sem_chk_s, 1 );
-	    if ((sts==-1) && (errno!=EFBIG))
+	    if (   (r_sts!=sizeof(trc_sem_id))
+		|| ((sts==-1)&&(errno!=EFBIG)))
 	    {   /* assume sem is no longer valid - i.e. reboot */
 		trc_sem_id = semget( IPC_PRIVATE, 1, IPC_CREAT|0x1ff );
 		/* init the sem (so others can get) */
