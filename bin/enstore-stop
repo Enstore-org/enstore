@@ -73,13 +73,15 @@ fi
 
 
 turnoff() { for pid in $1; do
-                if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
+		rm -f $PID_DIR/mtpid; echo "-1">$PID_DIR/mtpid
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; pidkill $PID_DIR/mtpid $2; break; fi
 		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
                 pidkill $pid $2
             done; }
 
 turnoff_s() { for pid in $1; do
-                if [ "$pid" = "$1" ] ; then echo "No $2 running"; break; fi
+		rm -f $PID_DIR/mtpid; echo "-1">$PID_DIR/mtpid
+                if [ "$pid" = "$1" ] ; then echo "No $2 running"; pidkill_s $PID_DIR/mtpid $2; break; fi
 		#note the search and kill feature of pidkill only works for single instance servers (like file_clerk, not movers) because name won't match
                 pidkill_s $pid $2
             done; }

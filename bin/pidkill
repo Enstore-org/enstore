@@ -6,14 +6,16 @@ if [ -z "${1-}" ] ; then echo usage $0 pid-file [process name]; exit 1; fi
 
 if [ ! -r $1 ] ; then exit; fi
 
-echo Stopping `basename $1 | sed -e 's/_pids$//'`
+if [ "`basename $1`" != "mtpid" -a "`basename $1`" != "lost_pids" ]; then
+  echo Stopping `basename $1 | sed -e 's/_pids$//'`
+fi
 
 cat $1 | while read pid; do
     if [ `echo "$pid" | egrep -c "[^0-9]"` -ne 0 ]; then
        if [ "$pid" != "-1" ]; then echo "bad pid \"$pid\" in pid file $1"; fi
     elif [ `ps -p $pid 2>&1 | grep -c $pid` -ne 0 ]; then 
-      ps -p $pid
-      echo "kill -9 $pid"
+      #ps -p $pid
+      #echo "kill -9 $pid"
       kill -9 $pid
       cnt=0
       max=3
@@ -35,8 +37,8 @@ rm -f $1
 # some jobs don't seem to die. search for them
 if [ -n "${2-}" ]; then
   pid="`EPS returnpid $2`"
-  if [ "$pid" = ""  ]; then 
-    echo "ERROR $2 still lives...trying to kill $pid again"
+  if [ "$pid" != ""  -a "$pid" != "-1" ]; then 
+    echo ERROR $2 still lives...trying to kill $pid again
     tmpfile=$ENSTORE_TMP/lost_pids
     rm -f $tmpfile
     echo "$pid">$tmpfile
