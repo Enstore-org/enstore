@@ -16,7 +16,7 @@ GB=MB*KB
 
 
 class FTTDriver(driver.Driver):
-
+    mount_delay = 15
     def __init__(self):
         self.fd = -1
         self.ftt = None
@@ -58,12 +58,12 @@ class FTTDriver(driver.Driver):
         
         for retry in xrange(retry_count):
             if retry:
-                Trace.trace(25, "retrying status")
+                Trace.trace(25, "retrying status %d" % retry)
             status = self.ftt.status(5)
             Trace.trace(25, "ftt status returns %s"%(status,))
             if status & ftt.ONLINE:
                 break
-            Trace.trace(25, "closing ftt device to get status to update")
+            Trace.trace(25, "closing ftt device to force status update")
             self.ftt.close_dev()
             self._open_dev(2)
         else:
@@ -81,7 +81,7 @@ class FTTDriver(driver.Driver):
                 self.fd = self.ftt.open_dev()
                 break
             except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "%s %s" %(detail, detail.errno))
+                Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.errno))
                 if detail.errno == ftt.EBUSY:
                     time.sleep(5)
                 else:
@@ -266,6 +266,7 @@ class FTTDriver(driver.Driver):
         """returns a tuple (overall rate, instantaneous rate)"""
         return self._rate, self._last_rate
 
+    
         
 if __name__ == '__main__':
 

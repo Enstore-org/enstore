@@ -13,6 +13,8 @@ class DriverError(exceptions.Exception):
 
 class Driver:
 
+    mount_delay = 0
+    
     def fileno(self):
         raise NotImplementedError
 
