@@ -120,6 +120,8 @@ def headers(ticket):
 min_header_size = 76
 
 def header_size(header_start):
+    #Note: this can raise TypeError as well as ValueError, if the
+    # string contains NULL bytes
     filename_size = string.atoi( header_start[59:65], 8 )    
     header_size = 76+filename_size
     return header_size
