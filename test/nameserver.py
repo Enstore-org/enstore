@@ -1,3 +1,8 @@
+#
+# infinite loop pinging nameserver.  Run test for several hours to see
+# the frequency of nameserver lookup errors.
+#
+
 import socket
 import sys
 import time
