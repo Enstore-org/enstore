@@ -2040,7 +2040,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      'operation'      : mover['operation'],
                                      'volume_status'  : mover['volume_status'],
                                      'state'   : mover['state'],
-                                     'updated' : mover['updated']
+                                     'updated' : mover['updated'],
+                                     'time_in_state' : int(mover.get('time_in_state', 0)),
                                      })
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)

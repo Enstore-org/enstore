@@ -2336,24 +2336,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.control_socket = None
         return
 
-    def del_udp_client(self, udp_client):
-        if not udp_client: return
-        # tell server we're done - this allows it to delete our unique id in
-        # its dictionary - this keeps things cleaner & stops memory from growing
-        try:
-            pid = udp_client._os.getpid()
-            tsd = udp_client.tsd.get(pid)
-            if not tsd:
-                return
-            for server in tsd.send_done.keys() :
-                try:
-                    tsd.socket.close()
-                except:
-                    pass
-        except:
-            pass
-            
-
     def connect_client(self):
         # run this in a thread
         try:
@@ -2378,12 +2360,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except errno.errorcode[errno.ETIMEDOUT]:
                     Trace.log(e_errors.ERROR, "error sending to %s (%s)" %
                               (ticket['routing_callback_addr'], os.strerror(errno.ETIMEDOUT)))
-                    self.del_udp_client(u)
+                    del u
                     self.control_socket, self.client_socket = None, None
                     self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
                     return
                 if x.has_key('callback_addr'): ticket['callback_addr'] = x['callback_addr']
-                self.del_udp_client(u)
+                del u
             Trace.trace(10, "connecting to %s" % (ticket['callback_addr'],))
 	    try:
 		control_socket.connect(ticket['callback_addr'])
@@ -2504,13 +2486,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
 
+        now = time.time()
         if self.unique_id and state in (IDLE, HAVE_BOUND):
             ## If we've been idle for more than 15 minutes, force the LM to clear
             ## any entry for this mover in the work_at_movers.  Yes, this is a
             ## kludge, but it keeps the system from getting completely hung up
             ## if the LM doesn't realize we've finished a transfer.
-            now = time.time()
-            if time.time() - self.state_change_time > 900:
+            if now - self.state_change_time > 900:
                 self.unique_id = None
 
         Trace.trace(20, "format_lm_ticket: volume info %s"%(self.vol_info,))
@@ -2543,6 +2525,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             "unique_id": self.unique_id,
             "work": work,
             "transfer_deficiency": int(self.transfer_deficiency),
+            'time_in_state': now - self.state_change_time,
+
             }
         return ticket
 
@@ -3940,13 +3924,13 @@ class DiskMover(Mover):
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
             status = (status, None)
 
+        now = time.time()
         if self.unique_id and state in (IDLE, HAVE_BOUND):
             ## If we've been idle for more than 15 minutes, force the LM to clear
             ## any entry for this mover in the work_at_movers.  Yes, this is a
             ## kludge, but it keeps the system from getting completely hung up
             ## if the LM doesn't realize we've finished a transfer.
-            now = time.time()
-            if time.time() - self.state_change_time > 900:
+            if now - self.state_change_time > 900:
                 self.unique_id = None
 
         volume_status = (['none', 'none'], ['none','none'])
@@ -3974,6 +3958,8 @@ class DiskMover(Mover):
             "unique_id": self.unique_id,
             "work": work,
             "transfer_deficiency": int(self.transfer_deficiency),
+            'time_in_state': now - self.state_change_time,
+
             }
         return ticket
 
