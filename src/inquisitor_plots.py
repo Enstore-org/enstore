@@ -52,7 +52,7 @@ class InquisitorPlots:
 	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
 	    Trace.log(e_errors.INFO, "Creating plots in thread")
 	    self.plot_thread = threading.Thread(group=None, 
-						target=self.plot_thread,
+						target=self.plot_function,
 						name=PLOTTHRNAME, args=plot_args)
 	    self.plot_thread.setDaemon(1)	    
 	    self.plot_thread.start()
