@@ -8,7 +8,7 @@
 #
 
 ERR = /dev/null
-BIN_SRC = ktevMainV0.c
+BIN_SRC = ktevMainV0.c 
 
 SRC = interface.c getopt.c ktevApiV0.c
 
@@ -34,6 +34,9 @@ ktevV0: $(OBJS) $(DCAP_O) ktevV0.o
 
 ktevMainV0: $(OBJS) $(DCAP_O) ktevMainV0.o
 	$(CC) $(EXE_INIT) -o $@$(EXE_EXT) ktevMainV0.o $(LIBS) -lktev
+
+ktevCountRecords: $(OBJS) $(DCAP_O) ktevCountRecords.o
+	$(CC) $(EXE_INIT) -o $@$(EXE_EXT) ktevCountRecords.o $(LIBS) -lktev
 
 libktev$(SO_EXT): libktev$(A_EXT) 
 	$(LD) $(LDFLAGS) $(MAP) $(SO_INIT) -o $@ $(OBJS) $(LIBS) -lc

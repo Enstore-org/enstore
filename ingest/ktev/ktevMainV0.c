@@ -43,7 +43,8 @@ main(int argc, char *argv[])
     }
   }
 
-  while((fileError = getFile(volumeName, fileName)) > 0)
+  record_size = 0;
+  while(record_size >= 0 && (fileError = getFile(volumeName, fileName)) > 0)
     {
       src = dc_open(fileName,O_RDONLY | O_BINARY );
 
@@ -56,7 +57,10 @@ main(int argc, char *argv[])
   if(fileError == -1) {
     return -1;
   }
-  else{
+  else if(record_size <0){
+    return record_size;
+  }
+  else {
     return 0;
   }
 }

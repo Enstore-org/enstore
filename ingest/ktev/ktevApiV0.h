@@ -11,8 +11,10 @@
 
 #define FILENAME_LEN 1024
 
+/* src and dest at int values returned from dc_open */
 int getRecord(char *buffer, int buffer_size, int src);
 int putRecord(char *buffer, int buffer_size, int dest);
+
 void setVolumeName(const char *s);
 int getFile(char *volumeName, char fileName[FILENAME_LEN]);
 

@@ -144,6 +144,7 @@ main(int argc, char *argv[])
 	printf("record_size: %d\n", record_size);
 	record_size = get_record(buffer, 75000, src);
       }
+      printf("final record size: %d\n", record_size);
     }
   
   return 0;
