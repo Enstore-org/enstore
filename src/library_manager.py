@@ -1506,11 +1506,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
                     (storage_group, host, max_permitted, rq_host))
         for w in self.work_at_movers.list:
+            callback = w.get('callback_addr', None)
+            if callback:
+                host_from_ticket = hostaddr.address_to_name(callback)
+            else:
+                host_from_ticket = w['wrapper']['machine']
+            
             try:
                 if (w['vc']['storage_group'] == storage_group and
-                    re.search(host, w['wrapper']['machine'][1])):
+                    re.search(host, host_from_ticket)):
                     if rq_host:
-                        if  w['wrapper']['machine'][1] == rq_host:
+                        if  host_from_ticket == rq_host:
                             active = active + 1
                     else:
                         active = active + 1
