@@ -17,13 +17,14 @@ class Interface(generic_client.GenericClientInterface):
 		self.delete = None
 		self.force = 0
 		self.skip_pnfs = 0
+		self.dont_ask = 0
 		generic_client.GenericClientInterface.__init__(self)
 
 	def options(self):
-		return(['delete=', 'force', 'skip-pnfs'])
+		return(['delete=', 'force', 'skip-pnfs', 'dont-ask'])
 
 def usage():
-	print "usage: %s [[--skip-pnfs] [--force] --delete] vol"%(sys.argv[0])
+	print "usage: %s [[--dont-ask] [--skip-pnfs] [--force] --delete] vol"%(sys.argv[0])
 
 if __name__ == '__main__':
 	# use GenericClientInterface to get basic environment
@@ -160,24 +161,25 @@ if __name__ == '__main__':
 			sys.exit(0)
 
 	print 'volume =', vol
-	for i in file_list.keys():
-		fileInfo = file_list[i]
-		try:
-			volmap = fileInfo['pnfs_mapname']
-		except KeyError, detail:
-			volmap = '*No volmap*'
-		external_label = fileInfo['external_label']
-		try:
-			pnfsname = fileInfo['pnfs_name0']
-		except KeyError:
-			pnfsname = '*no pnfs name*'
-		# check access permission to pnfs files
-		print external_label, i, pnfsname, volmap
+	if not intf.dont_ask:
+		for i in file_list.keys():
+			fileInfo = file_list[i]
+			try:
+				volmap = fileInfo['pnfs_mapname']
+			except KeyError, detail:
+				volmap = '*No volmap*'
+			external_label = fileInfo['external_label']
+			try:
+				pnfsname = fileInfo['pnfs_name0']
+			except KeyError:
+				pnfsname = '*no pnfs name*'
+			# check access permission to pnfs files
+			print external_label, i, pnfsname, volmap
 
-	print "Are you sure that you want to destroy everything listed above (y/n)?",
-	ans = sys.stdin.readline()
-	if ans[0] != 'y' and ans[0] != 'Y':
-		sys.exit(0)
+		print "Are you sure that you want to destroy everything listed above (y/n)?",
+		ans = sys.stdin.readline()
+		if ans[0] != 'y' and ans[0] != 'Y':
+			sys.exit(0)
 
 	# now, it is for real. Don't try this at home!
 
