@@ -793,7 +793,9 @@ class LibraryManagerMethods:
                                 
             # set volume as noaccess
             v = self.vcc.set_system_noaccess(label)
-
+	    Trace.alarm(e_errors.ERROR, 
+			"Volume %s failed on maximal allowed movers (%s)"%(label, 
+							     self.max_suspect_movers))
             #remove entry from suspect volume list
             self.suspect_volumes.remove(suspect_volume)
             # delete the job
@@ -1353,6 +1355,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
                 # set volume as noaccess
                 v = self.vcc.set_system_noaccess(mticket['external_label'])
+		Trace.alarm(e_errors.ERROR, 
+			    "Mover error caused volume %s to go NOACCESS"%(mticket['external_label'],))
                 # set volume as read only
                 #v = self.vcc.set_system_readonly(w['fc']['external_label'])
                 label = mticket['external_label']
