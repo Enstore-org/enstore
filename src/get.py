@@ -151,23 +151,19 @@ def transfer_file(in_fd, out_fd):
             'bytes' : bytes, 'encp_crc' : crc}
 
 def wait_for_final_dialog(control_socket, udp_socket, e):
-    #We should not need this process_request() call.  The mover shoule
-    # only send one message on the udp
-    #
-    #Pretend we are the library manager.
-    #request = udp_socket.process_request()
-    #Trace.message(10, "LM MESSAGE:")
-    #Trace.message(10, pprint.pformat(request))
-    
     #Get the final success/failure message from the mover.  If this side
     # has an error, don't wait for the mover in case the mover is waiting
     # for "Get" to do something.
-    Trace.message(5, "Waiting for final dialog (1).")
-    mover_done_ticket = encp.receive_final_dialog(control_socket)
-    Trace.message(5, "Received final dialog (1).")
-    Trace.message(10, "FINAL DIALOG (tcp):")
-    Trace.message(10, pprint.pformat(mover_done_ticket))
-    Trace.log(e_errors.INFO, "Received final dialog (1).")
+    if control_socket != None:
+        Trace.message(5, "Waiting for final dialog (1).")
+        mover_done_ticket = encp.receive_final_dialog(control_socket)
+        Trace.message(5, "Received final dialog (1).")
+        Trace.message(10, "FINAL DIALOG (tcp):")
+        Trace.message(10, pprint.pformat(mover_done_ticket))
+        Trace.log(e_errors.INFO, "Received final dialog (1).")
+    else:
+        mover_done_ticket = {'status' : (e_errors.OK, None)}
+
     #Keep the udp socket queues clear.
     start_time = time.time()
     Trace.message(5, "Waiting for final dialog (2).")
@@ -328,12 +324,23 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                   
         lap_time = time.time() #------------------------------------------Start
         
-        # Read the file from the mover.
-        done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+        if work_ticket['file_size'] == None:
+            #This version of transfer file can only handle file descriptors.
+            xfer_ticket = transfer_file(data_path_socket.fileno(), out_fd)
+            done_ticket = {'exfer' : xfer_ticket}
+            done_ticket['status'] = xfer_ticket['status']
 
-        # Always check this to clear out the udp_socket queue.
-        mover_done_ticket = wait_for_final_dialog(control_socket,
-                                                  udp_socket, e)
+            # Always check this to clear out the udp_socket queue.
+            mover_done_ticket = wait_for_final_dialog(control_socket,
+                                                      udp_socket, e)
+        else:
+            done_ticket = encp.transfer_file(data_path_socket, out_fd,
+                                             control_socket, work_ticket,
+                                             tinfo, e)
+            done_ticket['exfer']['bytes'] = work_ticket['file_size']
+        
+            # Always check this to clear out the udp_socket queue.
+            mover_done_ticket = wait_for_final_dialog(None, udp_socket, e)
 
         tstring = '%s_transfer_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
@@ -368,7 +375,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         #Store what there is in the 'exfer' sub-ticket, now that it is known
         # to be a valid sub-ticket.
-        work_ticket['exfer'] = done_ticket
+        #work_ticket['exfer'] = done_ticket
+        work_ticket = encp.combine_dict(done_ticket, work_ticket)
 
         #For the case where we don't know how many files exist and we tried
         # to read passed the last file, we don't want to handle any retries
