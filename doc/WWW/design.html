@@ -31,6 +31,7 @@
 <li><a href="#encp_queue">1.2.4 Encp Transfer Lists</a>
 <li><a href="#encp_client">1.2.5 Encp Client Installation</a>
 <li><a href="#servers">1.3 Enstore Servers</a>
+<li><a href="#servers_cmds">1.3.0.1 General Command Line Control of Servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
 <li><a href="#library_manager">1.3.3 Library Manager</a>
@@ -994,7 +995,8 @@ extension to <em>encp</em>.
 <tr NOSAVE>
 <td NOSAVE>print short help message abouting using <em>encp</em></td>
 <td NOSAVE>--help</td>
-<td NOSAVE>continuous Ascii status file and html snapshot file</td>
+<td NOSAVE>None</td>
+</tr>
 
 <tr NOSAVE>
 <td NOSAVE>perform CRC check on the local user machine</td>
@@ -1039,16 +1041,14 @@ extension to <em>encp</em>.
 
 <tr NOSAVE>
 <td NOSAVE>specifies the hostname where the configuration server is running</td>
-<td NOSAVE>--config_host</td>
+<td NOSAVE>--config_host=value</td>
 <td NOSAVE>environmental variable, ENSTORE_CONFIG_HOST, set by the UPS setup command</td>
 </tr>
 
 <tr NOSAVE>
-<td NOSAVE>specifies the port number that theconfiguration server responds to</td>
-<td NOSAVE>--config_port</td>
+<td NOSAVE>specifies the port number that the configuration server responds to</td>
+<td NOSAVE>--config_port=value</td>
 <td NOSAVE>environmental variable, ENSTORE_CONFIG_PORT, set by the UPS setup command</td>
-</tr>
-
 </tr>
 
 </table></center>
@@ -1502,9 +1502,8 @@ frozen, <it>i.e.</it>, they will need Python and the other dependent products.
 
 <hr>
 <h2><a name="servers">
-1.3 Enstore Servers
+1.3.0 Enstore Servers
 </h2>
-
 Enstore servers are software entities which handle media.
 The high level  concepts are as follows:
 <dl>
@@ -1567,6 +1566,145 @@ Users are informed that this data is currently unavailable, and if
 they really want the data, arrangements should be made to have the
 media placed in a library which is accessible,
 or get it manually later.
+<p>
+Each of the servers listed below is discussed in further detail in its own
+section.  Please refer to these sections for information on detailed 
+functionality and specific command line interfaces.
+<ul>
+ <li>Configuration Server - administers Enstore system configuration information.
+ <li>Library Manager - queues and dispatches work for a virtual library.
+ <li>Mover - handles the actual transfer of data from a volume to the user.
+ <li>Media Changer - represents a physical device or operator who performs mounts/dismounts of volumes on drives.
+ <li>Inquisitor - monitors Enstore system status and activity.
+ <li>File Clerk - administers file information (<it>e.g.</it> - location cookies).
+ <li>Volume Clerk - administers volume information (<it>e.g.</it> bytes left).
+ <li>Log Server - formats and records Enstore system log messages.
+ <li>Admin Clerk - allows administrative access to the Enstore system.
+ <li>Alarm Server - analyzes Enstore system status and activity information to determine system health.
+</ul>
+<h3><a name="servers_cmds">
+1.3.0.1 General Command Line Control of Servers
+</h3>
+Enstore servers implement a common uniform interface.  Common parsing is used
+to determine command line options.  All servers support a set of general options
+as well as those specific in functionality.  Control of the servers is done via
+<i>ecmd</i>.  This command provides a general way of accessing the individual
+servers as well as the Enstore system as a whole.  Examples of using this command
+to accomplish this are given following the table of general options. <i>ecmd</i>
+recognizes the following server names when sending commands to the server:
+<p>
+<ul>
+ <li>Configuration Server - config
+ <li>Library Manager - lmc
+ <li>Mover - mov
+ <li>Media Changer - mcc
+ <li>Inquisitor - inq
+ <li>File Clerk - fcc
+ <li>Volume Clerk - vcc
+ <li>Log Server - log
+ <li>Admin Clerk - adm
+ <li>Alarm Server - alarm
+</ul>
+For example : <i>ecmd inq --help</i>
+<p>
+When <i>ecmd</i> is used to start/stop servers, the server must be specified by
+using the full Ascii name specified in the configuration file. For example:<br>
+<ul>
+<li>config
+<li>rip6.library_manager
+<li>rip6.mover
+<li>rip6.media_changer
+<li>file_clerk
+<li>volume_clerk
+<li>logserver
+<li>admin_clerk
+<li>alarm_server
+</ul>
+
+<p>
+<table BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TH COLSPAN=3 VALIGN=CENTER>General Server Options</TH>
+<tr VALIGN=CENTER NOSAVE>
+<td NOSAVE><b>OPTION</b></td>
+<td NOSAVE><b>SWITCH</b></td>
+<td NOSAVE><b>DEFAULTS</b></td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>check if the server process exists</td>
+<td NOSAVE>--alive</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>specify the time to wait for a response from the server</td>
+<td NOSAVE>--alive_rcv_timeout=value</td>
+<td NOSAVE>10</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>specify the number of times to retry sending a message to a server</td>
+<td NOSAVE>--alive_retries=value</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>specify the hostname where the configuration server is running</td>
+<td NOSAVE>--config_host=value</td>
+<td NOSAVE>environmental variable, ENSTORE_CONFIG_HOST, set by the UPS setup command</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>specify the port number that the configuration server responds to</td>
+<td NOSAVE>--config_port=value</td>
+<td NOSAVE>environmental variable, ENSTORE_CONFIG_PORT, set by the UPS setup command</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>print a short help message abouting using the server</td>
+<td NOSAVE>--help</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>change the amount of information printed about the transfer (in the server)</td>
+<td NOSAVE>--server_verbose=value</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>change the amount of information printed about the transfer (in the client)</td>
+<td NOSAVE>--verbose=value</td>
+<td NOSAVE>0 (no printing)</td>
+</tr>
+</table>
+<p>
+It should be noted that currently the <i>help</i> option produces insufficient 
+and inelegant information.  This will be fixed in the future.
+<p>
+<table BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TH COLSPAN=3 VALIGN=CENTER>Enstore System Command Line Control</TH>
+<tr VALIGN=CENTER NOSAVE>
+<td NOSAVE><b>OPTION</b></td>
+<td NOSAVE><b>COMMAND</b></td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>start the Enstore system on the current node</td>
+<td NOSAVE>ecmd start</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>start only the file_clerk on the current node</td>
+<td NOSAVE>ecmd start --just file_clerk</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop the Enstore system on the current node</td>
+<td NOSAVE>ecmd stop</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop only the log_server on the current node</td>
+<td NOSAVE>ecmd stop --just logserver</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop and then start the Enstore system</td>
+<td NOSAVE>ecmd restart</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop and then restart only the inquisitor on the current node</td>
+<td NOSAVE>ecmd restart --just inq</td>
+</tr>
+</table>
 <p>
 <h3><a name="volume_clerk">
 1.3.1 Volume Clerk
@@ -2640,7 +2778,7 @@ set in the Enstore config file.
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE><em>encp</em> command history</TD>
-<TD NOSAVE><em>encp</em> html snapshot file</TD>
+<TD NOSAVE>continuous Ascii status file and<br><em>encp</em> html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>admin_clerk</TD>
