@@ -36,15 +36,25 @@ def go():
 	config_port = int(config_port)
 
 	import log_server
-        if form.has_key("logfile"):
-            logfile = "%s%s"%(log_server.FILE_PREFIX,form["logfile"].value)
-        else:
-            # the user did not enter an alarm timeframe, assume all
-            logfile = "%s*"%(log_server.FILE_PREFIX,)
-
-	# get a list of the log files we need
 	import log_client
 	import Trace
+        if form.has_key("logfile"):
+            logfile = form["logfile"].value
+	    # as a convenience to the user, we will check if the user forgot to add
+	    # the LOG- prefix onto the log file name, and add it ourselves.
+	    for lkey in log_client.VALID_PERIODS.keys():
+		if logfile == lkey:
+		    # we found a match so we will not be adding the generic log
+		    # file prefix to the name of the entered logfile
+		    break
+	    else:
+		if not logfile[0:4] == log_server.FILE_PREFIX:
+		    logfile = "%s%s"%(log_server.FILE_PREFIX, logfile)
+        else:
+            # the user did not enter an alarm timeframe, assume all
+            logfile = "all"
+
+	# get a list of the log files we need
 	logc = log_client.LoggerClient((config_host, config_port))
 	ticket = logc.get_logfiles(logfile, enstore_utils_cgi.TIMEOUT,
 				   enstore_utils_cgi.RETRIES)

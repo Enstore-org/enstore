@@ -117,8 +117,8 @@ def agrep_html(pat1, pat2, files, sensit):
 		if rtn >= 0:
 		    # we have an alarm line that matches both search strings, turn it 
 		    # into an alarm
-		    alarm = alarm.LogFileAlarm(line, date)
-		    matched_alarms[alarm.id] = alarm
+		    anAlarm = alarm.LogFileAlarm(line, date)
+		    matched_alarms[anAlarm.id] = anAlarm
 
     doc = enstore_html.EnAlarmSearchPage()
     doc.body(matched_alarms)
