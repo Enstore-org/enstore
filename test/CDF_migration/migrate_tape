@@ -53,7 +53,7 @@ clean() { rm -f $files $dirs $volume $pids $pidsw $copy2b $rc 2>/dev/null; }
 
 . /home/enstore/enstore/test/CDF_migration/migration-setup-enstore
 
-enstore file --ls-active $tape >$files
+enstore file --ls-active $tape | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' >$files
 #cat $files
 #echo
 

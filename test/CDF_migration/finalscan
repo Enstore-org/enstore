@@ -27,7 +27,7 @@ cat $f | while read tape; do
   echo
   echo `date` Starting tape $tape
 
-  enstore fil --ls-active $tape >$files 2>&1
+  enstore fil --ls-active $tape | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' > $files 2>&1
   cat $files
   
   echo "encp --delayed=3 --priority=300000 "          >> $command

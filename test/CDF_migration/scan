@@ -4,7 +4,7 @@ set -u
 files=/tmp/scan.$1
 pids=/tmp/pids.$1
 rm -f $files $pids
-enstore fil --ls-active $1 >$files
+enstore fil --ls-active $1 | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' > $files
 
 n=0
 cat $files | while read f; do
