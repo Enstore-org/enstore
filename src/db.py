@@ -187,7 +187,7 @@ class DbTable:
   def __delitem__(self,key):
      value=self.db[key]
 
-     if auto_journal:
+     if self.auto_journal:
        if self.jou.has_key(key) == 0:
          self.jou[key]=copy.deepcopy(self.db[key])
        else:
@@ -199,7 +199,7 @@ class DbTable:
      t=self.db.txn()
      del self.db[(key,t)]
      t.commit()
-     if auto_journal:
+     if self.auto_journal:
        self.count=self.count+1
        if self.count > JOURNAL_LIMIT and backup_flag:
       	 self.checkpoint()
