@@ -756,26 +756,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	encpfile.open('r')
 	encpfile.timed_read(ticket)
 	# now pull out the info we are going to plot from the lines
-	encpfile.parse_data()
+	encpfile.parse_data(ticket.get("mcs", []))
         encpfile.close()
         encpfile.cleanup(keep, pts_dir)
 
-	bpdfile = enstore_plots.BpdDataFile(lfd)
-	bpdfile.open()
-	bpdfile.plot(encpfile.data)
-	bpdfile.close()
-	bpdfile.install(self.html_dir)
+        # only do the plotting if we have some data
+        if encpfile.data:
+            bpdfile = enstore_plots.BpdDataFile(lfd)
+            bpdfile.open()
+            bpdfile.plot(encpfile.data)
+            bpdfile.close()
+            bpdfile.install(self.html_dir)
 
-	xferfile = enstore_plots.XferDataFile(lfd, bpdfile.ptsfile)
-	xferfile.open()
-	xferfile.plot(encpfile.data)
-	xferfile.close()
-	xferfile.install(self.html_dir)
+            xferfile = enstore_plots.XferDataFile(lfd, bpdfile.ptsfile)
+            xferfile.open()
+            xferfile.plot(encpfile.data)
+            xferfile.close()
+            xferfile.install(self.html_dir)
 
-        # delete any extraneous files. do it here because the xfer file
-        # plotting needs the bpd data file
-        bpdfile.cleanup(keep, pts_dir)
-        xferfile.cleanup(keep, pts_dir)
+            # delete any extraneous files. do it here because the xfer file
+            # plotting needs the bpd data file
+            bpdfile.cleanup(keep, pts_dir)
+            xferfile.cleanup(keep, pts_dir)
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 

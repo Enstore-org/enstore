@@ -24,6 +24,7 @@ EXRATE = 4
 EBYTES = 5
 EDEV = 6
 EURATE = 7
+EDICTS = 8
 
 # different MOUNT line pieces from log file
 MDEV = 4
@@ -125,7 +126,7 @@ def get_dict(text):
 def parse_encp_line(line):
     [etime, enode, etmp, euser, estatus, etmp2, etype, erest] = \
                                                    string.split(line, None, 7)
-    if 0: print etmp,etmp2,etype # quiet lint
+    if 0: print etmp2,etype # quiet lint
 
     try:
         [erest2, erest3] = string.splitfields(erest, ":", 1)
@@ -133,12 +134,24 @@ def parse_encp_line(line):
         # total data transfer rate from the end of erest3
         [erest2, tt] = string.splitfields(erest3, "(", 1)
         [tt, etmp] = string.splitfields(tt, ")",1)
+        # pull out the name of the media changer
+        mc = get_dict(etmp)
         [tt, etmp] = string.splitfields(tt, " ",1)
         erate = string.splitfields(erest2, " ")
     except ValueError:
         # we do not handle this formatting
         return []
-    return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7]]
+    return [etime, enode, euser, estatus, tt, erate[1], erate[5], erate[7], mc]
+
+# given a list of media changers and a log file message, see if any of the
+# media changers are mentioned in the log file message
+def mc_in_list(msg, mcs):
+    for msgDict in msg:
+        for mc in mcs:
+            if mc == msgDict.get("media_changer", ""):
+                return 1
+    else:
+        return 0
 
 class EnStatus:
 
@@ -773,22 +786,12 @@ class EnMountDataFile(EnDataFile):
 
 	return [etime, enode, euser, estatus, dev, start, msg_dicts]
 
-    # given a list of media changers and a log file message, see if any of the
-    # media changers are mentioned in the log file message
-    def mc_in_list(self, msg, mcs):
-        for msgDict in msg:
-            for mc in mcs:
-                if mc == msgDict.get("media_changer", ""):
-                    return 1
-        else:
-            return 0
-
     # pull out the plottable data from each line that is from one of the
     # specified movers
     def parse_data(self, mcs):
 	for line in self.lines:
 	    minfo = self.parse_line(line)
-            if not mcs or self.mc_in_list(minfo[MDICTS], mcs):
+            if not mcs or mc_in_list(minfo[MDICTS], mcs):
                 self.data.append([minfo[MDEV], string.replace(minfo[ETIME],
                                                               LOG_PREFIX, ""),
                                   minfo[MSTART]])
@@ -802,23 +805,18 @@ class EnEncpDataFile(EnDataFile):
         if not len(einfo):
             # nothing was returned skip this line
             return []
-	if einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
-	    # the time info may contain the file directory which we must
-	    # strip off
-	    strip_file_dir(einfo[ETIME])
-	    Trace.trace(12,"parse_line  - info status")
-	    return [einfo[ESTATUS], einfo[ETIME], einfo[EBYTES]]
-	else:
-	    Trace.trace(12,"parse_line - error status")
-	    return [einfo[ESTATUS]]
+        # the time info may contain the file directory which we must
+        # strip off
+        strip_file_dir(einfo[ETIME])
+        return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS]]
 
     # pull out the plottable data from each line
-    def parse_data(self):
+    def parse_data(self, mcs):
 	for line in self.lines:
 	    einfo = self.parse_line(line)
-	    if len(einfo) and einfo[0] == e_errors.sevdict[e_errors.INFO]:
-	        self.data.append([string.replace(einfo[1], LOG_PREFIX, ""), \
-	                         einfo[2]])
+	    if einfo and (not mcs or mc_in_list(einfo[2], mcs)):
+	        self.data.append([string.replace(einfo[0], LOG_PREFIX, ""), \
+	                         einfo[1]])
 
 class EnAlarmFile(EnFile):
 
