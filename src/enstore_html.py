@@ -1765,10 +1765,6 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 		tr.append(HTMLgen.TD(row[4]))
 		tr.append(HTMLgen.TD(row[5]))
 		tr.append(HTMLgen.TD(row[6]))
-                if not row[10]:
-                    tr.append(empty_data())
-                else:
-                    tr.append(HTMLgen.TD(row[10]))
                 if not row[11]:
                     tr.append(empty_data())
                 else:
@@ -1777,6 +1773,10 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
                     tr.append(empty_data())
                 else:
                     tr.append(HTMLgen.TD(row[12]))
+                if not row[10]:
+                    tr.append(empty_data())
+                else:
+                    tr.append(HTMLgen.TD(row[10]))
 	    else:
 		# this row is an error row
 		tr.append(HTMLgen.TD(row[1]))
