@@ -435,7 +435,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
         
     def update(self, reset_timer=None):
-        Trace.trace(20,"update: %s" % (state_name(self.state))
+        Trace.trace(20,"update: %s" % (state_name(self.state)))
             
         if not hasattr(self,'_last_state'):
             self._last_state = None
