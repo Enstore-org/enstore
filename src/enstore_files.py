@@ -67,6 +67,12 @@ def misc_html_file_name():
 def default_misc_html_file():
     return "%s%s"%(default_dir, misc_html_file_name())
 
+def plot_html_file_name():
+    return "plot_%s"%(inq_file_name(),)
+
+def default_plot_html_file():
+    return "%s%s"%(default_dir, plot_html_file_name())
+
 def status_html_file_name():
     return "status_%s"%(inq_file_name(),)
 
@@ -187,6 +193,15 @@ class HTMLConfigFile(EnFile):
         if self.filedes:
 	    doc = enstore_html.EnConfigurationPage()
 	    doc.body(cdict)
+            self.filedes.write(str(doc))
+
+class HTMLPlotFile(EnFile):
+
+    # format the config entry and write it to the file
+    def write(self, jpgs, stamps, pss):
+        if self.filedes:
+	    doc = enstore_html.EnPlotPage()
+	    doc.body(jpgs, stamps, pss)
             self.filedes.write(str(doc))
 
 class HTMLMiscFile(EnFile):

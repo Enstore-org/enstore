@@ -297,6 +297,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 os.remove("%s/%s%s"%(self.logc.log_dir, LOGHTMLFILE_NAME,
                                      SUFFIX))
 
+    # create the html file with the inquisitor plot information
+    def	make_plot_html_page(self):
+	self.plothtmlfile.open()
+	# get the list of stamps and jpg files
+	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
+	self.plothtmlfile.write(jpgs, stamps, pss)
+	self.plothtmlfile.close()
+	self.move_file(1, self.plothtmlfile_orig)
+
     # update the file that contains the configuration file information
     def make_config_html_file(self):
         self.confightmlfile.open()
@@ -543,6 +552,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
         # update the configuration file web page
         self.make_config_html_file()
+
+	# update the inquisitor plots web page
+	self.make_plot_html_page()
 
 	# update the page that has a link to patrol (if we have one)
 	self.make_patrol_html_file(t.get("patrol_file", ""))
@@ -1148,12 +1160,15 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                             enstore_files.config_html_file_name()
 	        misc_file = self.html_dir+"/"+\
                             enstore_files.misc_html_file_name()
+		plot_file = self.html_dir+"/"+\
+                            enstore_files.plot_html_file_name()
 	    else:
 	        self.html_dir = enstore_files.default_dir
 	        html_file = enstore_files.default_status_html_file()
 	        encp_file = enstore_files.default_encp_html_file()
 	        config_file = enstore_files.default_config_html_file()
 	        misc_file = enstore_files.default_misc_html_file()
+		plot_file = enstore_files.default_plot_html_file()
 
         # if no html refresh was entered on the command line, get it from
         # the configuration file.
@@ -1173,6 +1188,8 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.confightmlfile_orig = config_file
         self.mischtmlfile = enstore_files.HTMLMiscFile(misc_file+SUFFIX)
         self.mischtmlfile_orig = misc_file
+	self.plothtmlfile = enstore_files.HTMLPlotFile(plot_file+SUFFIX)
+        self.plothtmlfile_orig = plot_file
 	self.patrolhtmlfile = enstore_files.HTMLPatrolFile("%s/%s"%(self.html_dir, PATROL_FILE))
 
 	# get the interval for each of the servers from the configuration file.

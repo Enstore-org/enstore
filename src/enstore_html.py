@@ -7,6 +7,7 @@ import HTMLgen
 import types
 
 import enstore_status
+import enstore_constants
 
 YELLOW   = "#FFFFF0"
 AQUA     = "#DFF0FF"
@@ -21,6 +22,7 @@ CELLP = 3
 MAX_SROW_TDS = 5
 AT_MOVERS = 0
 PENDING = AT_MOVERS + 1
+POSTSCRIPT = "(postscript)"
 
 MEDIA_CHANGERS = "Media Changers"
 MEDIA_CHANGER = "media_changer"
@@ -29,6 +31,24 @@ ORPHAN_MOVERS = "Orphan Movers"
 
 GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
 		   "inquisitor", "log_server", "volume_clerk"]
+
+PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
+	     [enstore_constants.MLAT_FILE, "Mount Latency"],
+	     [enstore_constants.BPD_FILE, "Bytes/Day"], 
+	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log)"],
+	     [enstore_constants.XFER_FILE, "Transfer Activity"]]
+
+DEFAULT_LABEL = "UNKNOWN INQ PLOT"
+
+def find_label(text):
+    # compare the passed text with the files listed in PLOT_INFO. if there
+    # is a match, return the associated text.  else return a default string.
+    for file_label in PLOT_INFO:
+	if string.find(text, file_label[0]) == 0:
+	    # this is a match
+	    return file_label[1]
+    else:
+	return DEFAULT_LABEL
 
 def is_this(server, suffix):
     stype = string.split(server, ".")
@@ -101,7 +121,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.background = "enstore.gif"
 	HTMLgen.SimpleDocument.__init__(self, background=self.background, textcolor=self.textcolor)
 	self.refresh = refresh
-	self.set_meta()
+	if not self.refresh == 0:
+	    self.set_meta()
 	self.contents = []
 
     # generate the three button navigation table for the top of each of the
@@ -955,3 +976,116 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
 	self.append(table)
 	
+class EnPlotPage(EnBaseHtmlDoc):
+
+    bpd = "%s%s"
+
+    def __init__(self):
+	EnBaseHtmlDoc.__init__(self, refresh=0)
+	self.title = "ENSTORE System Plots"
+	self.script_title_gif = "en_plots.gif"
+	self.description = "Enstore system plots. This page is created by the Inquisitor."
+
+    def find_ps_file(self, jpg_file, pss):
+	# see if there is a corresponding ps file
+	ps = 0
+	ps_file = ""
+	if pss:
+	    ps_file = string.replace(jpg_file, enstore_constants.JPG,
+				     enstore_constants.PS)
+	    if ps_file in pss:
+		# found it
+		pss.remove(ps_file)
+		ps = 1
+	return (ps, ps_file)
+
+    def add_stamp(self, jpgs, stamps, pss, trs, trps):
+	# for each stamp add it to the row.  if there is a corresponding large
+	# jpg file, add it as a link from the stamp.  also see if there is a
+	# postscript file associated with it and add it in the following row.
+	# if there is no postscript file, then put a message saying this.
+	if stamps:
+	    stamp = stamps[0]
+	    del stamps[0]
+	    jpg_file = string.replace(stamp, enstore_constants.STAMP, "")
+	    # see if there is a corresponding jpg file
+	    url = 0
+	    if jpgs:
+		if jpg_file in jpgs:
+		    # found it
+		    jpgs.remove(jpg_file)
+		    url = 1
+	    # see if there is a corresponding ps file
+	    (ps, ps_file) = self.find_ps_file(jpg_file, pss)
+	    if url:
+		# we have a jpg file associated with this stamp file
+		td = HTMLgen.TD(HTMLgen.Href(jpg_file, HTMLgen.Image(stamp)))
+	    else:
+		td = HTMLgen.TD(HTMLgen.Image(stamp))
+	    trs.append(td)
+	    label = find_label(stamp)
+	    td = HTMLgen.TD("%s%s"%(label, NBSP*2) , html_escape='OFF')
+	    if ps:
+		# we have a corresponding ps file
+		td.append(HTMLgen.Href(ps_file, POSTSCRIPT))
+	    trps.append(td)
+
+    def add_leftover_jpgs(self, table, jpgs, pss):
+	while jpgs:
+	    tr = HTMLgen.TR()
+	    for i in [1, 2, 3]:
+		if jpgs:
+		    jpg_file = jpgs[0]
+		    del jpgs[0]
+		    # see if there is a corresponding ps file
+		    (ps, ps_file) = self.find_ps_file(jpg_file, pss)
+		    td = HTMLgen.TD(HTMLgen.Href(jpg_file, jpg_file))
+		    if ps:
+			# yes there was one
+			td.append(HTMLgen.Href(ps_file, POSTSCRIPT))
+		    tr.append(td)
+	    else:
+		table.append(tr)
+	    
+    def add_leftover_pss(self, table, pss):
+	while pss:
+	    tr = HTMLgen.TR()
+	    for i in [1, 2, 3]:
+		if pss:
+		    ps_file = pss[0]
+		    del pss[0]
+		    td = HTMLgen.TD(HTMLgen.Href(ps_file, ps_file))
+		    tr.append(td)
+	    else:
+		table.append(tr)
+	    
+    def body(self, jpg_files, stamp_files, ps_files):
+	table = self.table_top()
+	# create a grid of jpg stamp files 3 stamps wide.  attach a link to
+	# the associated postscript file too
+	plot_table = HTMLgen.TableLite(width="100%", cols="3", align="CENTER",
+                                       cellspacing=0, cellpadding=0)
+	jpgs = jpg_files
+	stamps = stamp_files
+	pss = ps_files
+	while stamps:
+	    trs = HTMLgen.TR()
+	    trps = HTMLgen.TR()
+	    for i in [1, 2, 3]:
+	        self.add_stamp(jpgs, stamps, pss, trs, trps)
+	    else:
+                plot_table.append(trs)
+                plot_table.append(trps)
+	        plot_table.append(self.empty_row(3))
+	# look for anything leftover to add at the bottom
+	if jpgs or pss:
+	    # add some space between the extra files and the stamps
+	    plot_table.append(self.empty_row(3))
+	    plot_table.append(HTMLgen.TR(HTMLgen.TD(\
+		HTMLgen.Font("Additional Plots", size="+2", color=BRICKRED)),
+					 colspan=3))
+	    plot_table.append(self.empty_row(3))
+	    self.add_leftover_jpgs(plot_table, jpgs, pss)
+	    self.add_leftover_pss(plot_table, pss)
+	table.append(HTMLgen.TR(HTMLgen.TD(plot_table)))
+	self.append(table)

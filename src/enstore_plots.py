@@ -10,35 +10,75 @@ import time
 # enstore imports
 import enstore_status
 import enstore_files
+import enstore_constants
 import Trace
 
 # file extensions
 PTS = ".pts"
-PS = ".ps"
 GNU = ".gnuplot"
-FILE_PREFIX = "enplot_"
 
 DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
                 "09", "10", "11", "12", "13", "14", "15", "16", \
                 "17", "18", "19", "20", "21", "22", "23"]
 
+JPG_STAMP_FILES = []
+JPG_FILES = []
+PS_FILES = []
+
+STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
+
+def clear_jpg_files():
+    JPG_STAMP_FILES = []
+    JPG_FILES = []
+    PS_FILES = []
+
+def find_jpg_files(dir):
+    # given the directory to look in, find all files with ".jpg" in them. fill
+    # in the lists above with those files with and without the "_stamp" 
+    # string from this group. also find the ps files
+    files = os.listdir(dir)
+    clear_jpg_files()
+    for file in files:
+	if not string.find(file, enstore_constants.JPG) == -1:
+	    # this file has '.jpg' in it
+	    if not string.find(file, STAMP_JPG) == -1:
+		# this is a postage stamp file
+		JPG_STAMP_FILES.append(file)
+	    else:
+		JPG_FILES.append(file)
+	elif not string.find(file, enstore_constants.PS) == -1:
+	    # this file has '.ps' in it
+            PS_FILES.append(file)
+    JPG_FILES.sort()
+    JPG_STAMP_FILES.sort()
+    PS_FILES.sort()
+    return (JPG_FILES, JPG_STAMP_FILES, PS_FILES)
+
+def convert_to_jpg(psfile, file_name):
+    os.system("convert -rotate 90 -geometry 120x120 -modulate -20 %s %s%s"%(psfile, file_name, STAMP_JPG))
+    JPG_STAMP_FILES.append("%s%s"%(file_name, STAMP_JPG))
+    os.system("convert -rotate 90 %s %s%s"%(psfile, file_name, enstore_constants.JPG))
+    JPG_FILES.append("%s%s"%(file_name, enstore_constants.JPG))
+
 class EnPlot(enstore_files.EnFile):
 
     def __init__(self, dir, name):
-	self.plot_dir = dir
 	enstore_files.EnFile.__init__(self, dir+"/"+name)
+	self.name = name
 	self.ptsfile = self.file_name+PTS
-	self.psfile = self.file_name+PS
+	self.psfile = self.file_name+enstore_constants.PS
 	self.gnufile = self.file_name+GNU
-
-    def open(self):
-	Trace.trace(10,"enfile open "+self.file_name)
-	self.filedes = open(self.ptsfile, 'w')
 
     def install(self, dir):
         # create the ps file, copy it to the users dir
 	os.system("gnuplot %s;cp %s %s;"%(self.gnufile, self.psfile, dir))
+	# make a jpg version of the file including a postage stamp sized one
+	convert_to_jpg(self.psfile, "%s/%s"%(dir, self.name))
+
+    def open(self):
+	Trace.trace(10,"enfile open "+self.file_name)
+	self.filedes = open(self.ptsfile, 'w')
 
     def cleanup(self, keep, pts_dir):
         if not keep:
@@ -52,20 +92,20 @@ class EnPlot(enstore_files.EnFile):
 
 class MphGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile, gnuinfo):
-	self.filedes.write("set output '"+outfile+ \
-                           "'\nset terminal postscript color\n"+ \
+    def write(self, gnuinfo):
+	self.filedes.write("set terminal postscript color\n"+ \
 	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
 	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
 	for info in gnuinfo:
-	    self.filedes.write("set title 'Mount Count For "+info[0]+ \
+	    self.filedes.write("set output '"+info[3]+ \
+			       "'\nset title 'Mount Count For "+info[0]+ \
 	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
 	                       "' using 1:2 t '' with impulses lw 20\n")
 
 class MphDataFile(EnPlot):
 
     def __init__(self, dir):
-	EnPlot.__init__(self, dir, FILE_PREFIX+"mph")
+	EnPlot.__init__(self, dir, enstore_constants.MPH_FILE)
 
     # do not do the actual open here, we will do it when plotting because we
     # may need to open more than one file.  
@@ -76,6 +116,15 @@ class MphDataFile(EnPlot):
     def close(self):
 	pass
 
+    def install(self, dir):
+        # create the ps file, copy it to the users dir
+	os.system("gnuplot %s;"%(self.gnufile,))
+	# now copy each created ps file and make a jpg version of each of 
+	# the file including a postage stamp sized one
+	for (psfile, day) in self.psfiles:
+	    os.system("cp %s %s;"%(psfile, dir))
+	    convert_to_jpg(psfile, "%s/%s.%s"%(dir, self.name, day))
+
     # make the mounts per hour plot file
     def plot(self, data):
 	# sum the data together based on hour boundaries. we will only plot 1
@@ -83,6 +132,7 @@ class MphDataFile(EnPlot):
 	date_only = {}
 	ndata = {}
 	gnuinfo = []
+	self.psfiles = []
 	for [dev, time, strt] in data:
 	    if strt == enstore_files.MMOUNT:
 	        # this was the record of the mount having been done
@@ -108,13 +158,15 @@ class MphDataFile(EnPlot):
 	            pfile.write(hour+" 0\n")
 	    else:
 	        # now we must save info for the gnuplot file
-	        gnuinfo.append([day, repr(total), fn])
+		self.psfile =  "%s.%s%s"%(self.file_name, day, enstore_constants.PS)
+	        gnuinfo.append([day, repr(total), fn, self.psfile])
+		self.psfiles.append((self.psfile, day))
 	        pfile.close()
 	else:
 	    # we must create our gnu plot command file too
 	    gnucmds = MphGnuFile(self.gnufile)
 	    gnucmds.open('w')
-	    gnucmds.write(self.psfile, gnuinfo)
+	    gnucmds.write(gnuinfo)
 	    gnucmds.close()
 
 class MlatGnuFile(enstore_files.EnFile):
@@ -136,7 +188,7 @@ class MlatGnuFile(enstore_files.EnFile):
 class MlatDataFile(EnPlot):
 
     def __init__(self, dir):
-	EnPlot.__init__(self, dir, FILE_PREFIX+"mlat")
+	EnPlot.__init__(self, dir, enstore_constants.MLAT_FILE)
 
     # make the mount latency plot file
     def plot(self, data):
@@ -215,8 +267,8 @@ class XferDataFile(EnPlot):
 
     def __init__(self, dir, bpdfile):
 	self.bpdfile = bpdfile
-	EnPlot.__init__(self, dir, FILE_PREFIX+"xfer")
-	self.logfile = self.file_name+".log"+PS
+	EnPlot.__init__(self, dir, enstore_constants.XFER_FILE)
+	self.logfile = enstore_constants.XFERLOG_FILE+enstore_constants.PS
 
     # make the file with the plot points in them
     def plot(self, data):
@@ -237,6 +289,9 @@ class XferDataFile(EnPlot):
     def install(self, dir):
         EnPlot.install(self, dir)
 	os.system("cp %s %s"%(self.logfile, dir))
+	convert_to_jpg(self.logfile, "%s/%s%s"%(dir, self.name, 
+						enstore_constants.LOG))
+	
 
 class BpdGnuFile(enstore_files.EnFile):
 
@@ -261,7 +316,7 @@ class BpdGnuFile(enstore_files.EnFile):
 class BpdDataFile(EnPlot):
 
     def __init__(self, dir):
-	EnPlot.__init__(self, dir, FILE_PREFIX+"bpd")
+	EnPlot.__init__(self, dir, enstore_constants.BPD_FILE)
 
     # make the file with the bytes per day format, first we must sum the data
     # that we have based on the day
