@@ -77,7 +77,7 @@ extern int tape_fd;
 extern char *tape_db;
 extern char *volume_label;
 extern char *progname;
-int file_number;
+extern int file_number;
 extern int blocksize;
 extern int verbose;
 
