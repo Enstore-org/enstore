@@ -307,8 +307,8 @@ for try in list doit; do
 	      cp $ENSTORE_DIR/volume_import/enstore_tape $INSTALLDIR
 	      check_status $? "cp enstore_tape $INSTALLDIR"
 	      cd $INSTALLDIR
-	      ln -s sam.table enstore_variables
-	      check_status $? "cp ln -s sam.table enstore_variables"
+	      ln -s sam.table enstore_variables.table
+	      check_status $? "cp ln -s sam.table enstore_variables.table"
            fi
            ;;
 
