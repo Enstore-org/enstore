@@ -531,7 +531,7 @@ def outputfile_check(inputlist, output, dcache):
 
             else: #WRITES
                 #get the maximum filesize the remote filesystem allows.
-                bits = os.pathconf(outputlist[i],
+                bits = os.pathconf(os.path.split(outputlist[i])[0],
                                    os.pathconf_names['PC_FILESIZEBITS'])
                 bytes = 2L**(bits - 1) - 1
 
@@ -547,7 +547,7 @@ def outputfile_check(inputlist, output, dcache):
                                                MAX_FILE_SIZE)
 
                 #Compare the max sizes.
-                if size> bytes:
+                if size > bytes:
                     raise e_errors.USERERROR, \
                           "Filesize (%s) larger than filesystem allows (%s)." \
                           % (size, bytes)
