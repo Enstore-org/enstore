@@ -37,7 +37,7 @@ CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include `cat $(FTT_DIR)/lib/libs`
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
                 ASHAREDMODULESOBS=$$OBS \
-                ASHAREDMODULESEXTRA="$$YOURLIBS" \
+                ASHAREDMODULESEXTRA=$$YOURLIBS \
                 'OPT=$(CFLAGS)' \
                 'srcdir=$(SRCDIR)' \
                 asharedmodule
