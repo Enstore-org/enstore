@@ -2,14 +2,8 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
-import os
-import sys
-import stat
 import errno
 import string
-import time
-import traceback
-import types
 
 
 """
@@ -47,6 +41,9 @@ To extract:   cpio -idmv < archive
 ###############################################################################
 # cpio support functions
 #
+
+header = ""
+filesize = 0
 
 # create device from major and minor
 def makedev(major, minor):
@@ -89,8 +86,10 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
     return header
 
 
-# create  header + trailer
+# create  header
 def headers(ticket):
+    global header
+    global filesize
 
     inode = ticket.get('inode', 0)
     mode = ticket.get('mode', 0)
@@ -106,9 +105,12 @@ def headers(ticket):
     filename = ticket.get('pnfsFilename', '???')
     
     header = create_header(inode, mode, uid, gid, nlink, mtime, filesize,
-             major, minor, rmajor, rminor, filename)
+			   major, minor, rmajor, rminor, filename)
+    return header
 
-    # create the trailer as well
+# create  trailer
+def trailers():
+
     trailer = create_header(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, "TRAILER!!!")
     # Trailers must be rounded to 512 byte blocks.
     # Note: a 2GB file (2147483647 bytes) on a intel linux system would
@@ -118,7 +120,7 @@ def headers(ticket):
     if pad:
         pad = int(512 - pad) #Note: python 1.5 doesn't allow string*long
         trailer = trailer + '\0'*pad
-    return header, trailer
+    return trailer
 
 min_header_size = 76
 
