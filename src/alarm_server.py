@@ -1,11 +1,18 @@
 #! /usr/bin/env python
+
+##############################################################################
+#
+# $Id$
+#
+##############################################################################
+
 # system import
 import sys
 import os
 import string
 
 # enstore imports
-import setpath
+#import setpath
 import dispatching_worker
 import enstore_files
 import generic_server
@@ -19,6 +26,7 @@ import enstore_constants
 import enstore_functions2
 import www_server
 import enstore_html
+import event_relay_messages
 
 def default_alive_rcv_timeout():
     return 5
@@ -26,7 +34,7 @@ def default_alive_rcv_timeout():
 def default_alive_retries():
     return 2
 
-MY_NAME = "alarm_server"
+MY_NAME = enstore_constants.ALARM_SERVER   #"alarm_server"
 
 DEFAULT_FILE_NAME = "enstore_alarms.txt"
 DEFAULT_SUSP_VOLS_THRESH = 3
@@ -269,6 +277,7 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
                               }
 
         generic_server.GenericServer.__init__(self, csc, MY_NAME,
+                                              function = self.handle_er_msg,
 					      flags=enstore_constants.NO_ALARM)
         Trace.init(self.log_name)
 
@@ -303,6 +312,8 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 	# write the current alarms to it if 
 	self.write_html_file()
 
+        # setup the communications with the event relay task
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
 	# start our heartbeat to the event relay process
 	self.erc.start_heartbeat(enstore_constants.ALARM_SERVER, 
 				 self.alive_interval)

@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
-# system imports
+# $Id$
+#
+###############################################################################
 
+# system imports
 import os
 import time
 import traceback
@@ -19,6 +21,7 @@ if sys.version_info < (2, 2, 0):
     fcntl.F_GETFL = FCNTL.F_GETFL
     fcntl.F_SETFL = FCNTL.F_SETFL
 import re
+
 # enstore imports
 import copy
 
@@ -1453,7 +1456,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.name_ext = "LM"
         self.csc = csc
         generic_server.GenericServer.__init__(self, self.csc, libman,
-					      self.handle_er_msg)
+					      function = self.handle_er_msg)
         self.name = libman
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -1488,10 +1491,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'],
                                                              self.keys['port']))
+        
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
-        self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
-
+        self.erc.start([event_relay_messages.NEWCONFIGFILE],
+                       self.resubscribe_rate)
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, 
                                  self.return_state)

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
 import os
 import sys
@@ -24,7 +28,7 @@ import Trace
 import e_errors
 
 
-MY_NAME = "Ratekeeper"
+MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -89,6 +93,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.mover_msg = {} #key is mover, value is last (num, denom)
 
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        Trace.init(self.log_name)
         dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
 
         self.alive_interval = monitored_server.get_alive_interval(self.csc,
@@ -97,7 +102,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         #The generic server __init__ function creates self.erc, but it
         # needs some additional paramaters.
         #start() allows the ratekeeper to recieve message from the ER.
-        self.erc.start([event_relay_messages.ALL,])
+        self.erc.start([event_relay_messages.TRANSFER,
+                        event_relay_messages.NEWCONFIGFILE])
         #start_heartbeat() allows the ratekeeper to send alive messages to ER.
         self.erc.start_heartbeat(enstore_constants.RATEKEEPER, 
                                  self.alive_interval)
@@ -231,11 +237,25 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             if not words:
                 continue
 
-            #If the split strings don't contain the fields we are looking for
-            # then ignore them.
-            if len(words) < 5: #Don't crash if an old mover is sending.
+            if words[0] == event_relay_messages.NEWCONFIGFILE:
+                print "lsdfklajshfklajshflkshfslakdfh"
+                #The following lines are taken from handle_er_msg()
+                # in generic_server.
+                Trace.log(e_errors.INFO,
+                          "Recieved notification of new configuration file.")
+                self.csc.new_config_obj.new_config_msg()
                 continue
-            if words[0] != 'transfer' or words[4] != 'network':
+            elif words[0] == event_relay_messages.TRANSFER:
+                #If the split strings don't contain the fields we are
+                # looking for then ignore them.
+                if len(words) < 5: #Don't crash if an old mover is sending.
+                    continue
+                if words[4] != 'network':
+                    #Only transfer messages with network information is used.
+                    # Ingore all others and continue onto the next message.
+                    continue
+            else:
+                #Impossible, we don't ask for other types of messages.
                 continue
 
             if string.find(string.upper(words[1]), 'NULL') >= 0:

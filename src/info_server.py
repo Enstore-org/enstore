@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+##############################################################################
+#
+# $Id$
+#
+##############################################################################
+
 '''
 Readonly access to file and volume database
 '''
@@ -26,7 +32,7 @@ import select
 import edb
 import esgdb
 
-MY_NAME = "info_server"
+MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
 
 default_host = 'stkensrv0.fnal.gov'
 
@@ -46,7 +52,8 @@ class Interface(generic_server.GenericServerInterface):
 class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 	def __init__(self, csc):
 		self.debug = 0
-		generic_server.GenericServer.__init__(self, csc, MY_NAME)
+		generic_server.GenericServer.__init__(self, csc, MY_NAME,
+						function = self.handle_er_msg)
 		Trace.init(self.log_name)
 		self.keys = self.csc.get(MY_NAME)
 
@@ -64,9 +71,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.volume = edb.VolumeDB(host=att['dbhost'], auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
+
+		# setup the communications with the event relay task
+		self.erc.start([event_relay_messages.NEWCONFIGFILE])
 		# start our heartbeat to the event relay process
 		self.erc.start_heartbeat(enstore_constants.INFO_SERVER, 
-			self.alive_interval)
+					 self.alive_interval)
+
 		self.set_error_handler(self.info_error_handler)
 		return
 

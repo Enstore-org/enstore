@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 ##############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+##############################################################################
+
 # system import
 import sys
 import os
@@ -28,8 +31,9 @@ import configuration_client
 import hostaddr
 import pnfs
 import volume_family
+import event_relay_messages
 
-MY_NAME = "file_clerk"
+MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
@@ -915,7 +919,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 class FileClerk(FileClerkMethods, generic_server.GenericServer):
 
     def __init__(self, csc):
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME,
+                                              function = self.handle_er_msg)
         Trace.init(self.log_name)
         #   pretend that we are the test system
         #   remember, in a system, there is only one bfs
@@ -926,9 +931,13 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
                                                                   MY_NAME,
                                                                   keys)
         FileClerkMethods.__init__(self, (keys['hostip'], keys['port']))
+
+        # setup the communications with the event relay task
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
                                  self.alive_interval)
+        
         self.brand = ""
 
 

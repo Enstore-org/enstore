@@ -1,8 +1,11 @@
 #!/usr/bin/env python
+
+##############################################################################
 #
 # $Id$
 #
 ##############################################################################
+
 # system import
 import sys
 import time
@@ -59,7 +62,7 @@ NOOUTAGE = 4
 OVERRIDE = 5
 NOOVERRIDE = 6
 
-MY_NAME = "inquisitor"
+MY_NAME = enstore_constants.INQUISITOR   #"inquisitor"
 LOGHTMLFILE_NAME = "enstore_logs.html"
 TIMED_OUT_SP = "    "
 DEFAULT_REFRESH = "60"

@@ -1,7 +1,11 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
+
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
 # system imports
 import sys
 import os
@@ -60,13 +64,14 @@ SAFETY_FACTOR=1.05
 MIN_LEFT=long(0) # for now, this is disabled.
 
 
-MY_NAME = "volume_clerk"
+MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
     def __init__(self, csc):
         # basically, to make pychecker happy
-        generic_server.GenericServer.__init__(self, csc, MY_NAME, self.handle_er_msg)
+        generic_server.GenericServer.__init__(self, csc, MY_NAME,
+                                              function = self.handle_er_msg)
         self.keys = self.csc.get(MY_NAME)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
         self.dict = None
@@ -2400,10 +2405,10 @@ class VolumeClerk(VolumeClerkMethods):
 
         # setup the communications with the event relay task
         self.resubscribe_rate = 300
-        self.erc.start([event_relay_messages.NEWCONFIGFILE], self.resubscribe_rate)
+        self.erc.start([event_relay_messages.NEWCONFIGFILE],
+                       self.resubscribe_rate)
 
         # start our heartbeat to the event relay process
-
 	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
 				 self.alive_interval)
 

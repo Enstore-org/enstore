@@ -1,5 +1,10 @@
 #!/usr/bin/env python
+
+###############################################################################
+#
 # $Id$
+#
+###############################################################################
 
 # python modules
 import sys
@@ -611,7 +616,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             generic_server.GenericServer):
 
     def __init__(self, csc_address, name):
-        generic_server.GenericServer.__init__(self, csc_address, name)
+        generic_server.GenericServer.__init__(self, csc_address, name,
+                                              function = self.handle_er_msg)
         self.name = name
         self.shortname = name
         self.unique_id = None #Unique id of last transfer, whether success or failure
@@ -1122,6 +1128,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
         self.add_interval_func(self.need_update, 1) #this sets the period for checking if child thread has asked for update.
         self.set_error_handler(self.handle_mover_error)
+        ##setup the communications with the event relay task
+        self.erc.start([event_relay_messages.NEWCONFIGFILE])
         ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
         ##end of __init__
