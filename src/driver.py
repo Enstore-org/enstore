@@ -245,12 +245,13 @@ class  FTTDriver(GenericDriver) :
 	# Note: remaining_bytes is updated in write and
 	# fd_xfer (when opened for write)
 	ss = FTT.get_stats()
-	#return {'remaining_bytes':self.remaining_bytes,
-	return {'remaining_bytes':string.atoi(ss['remain_tape'])*1024L,
-		'wr_err':self.wr_err,
-		'rd_err':self.rd_err,
-		'wr_access':self.wr_access,
-		'rd_access':self.rd_access}
+	if ss['remain_tape'] == None: rb = self.remaining_bytes
+	else:                         rb = string.atoi(ss['remain_tape'])*1024L
+	return { 'remaining_bytes':rb,
+		 'wr_err'         :self.wr_err,
+		 'rd_err'         :self.rd_err,
+		 'wr_access'      :self.wr_access,
+		 'rd_access'      :self.rd_access }
 
     def fd_xfer( self, fd, siz_bytes, crc_fun=None, crc=0 ):
 	# returns (crc); throws exception if wrong no_bytes xferred
