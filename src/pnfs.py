@@ -36,7 +36,9 @@ class pnfs :
         self.file = file
         self.exists = unknown
         self.check_valid_pnfsFilename()
+	t1 = time.time()
         self.statinfo()
+	print "stattime:",time.time()-t1
         self.rmajor = 0
         self.rminor = 0
         self.get_bit_file_id()
