@@ -1246,18 +1246,6 @@ class PnfsInterface(option.Interface):
                                option.USER_LEVEL:option.USER,
                                option.VALUE_USAGE:option.OPTIONAL,
                    },
-
-        option.FILES:{option.HELP_STRING:"lists all the files on specified " \
-                                         "tape in volmap-tape",
-                 option.DEFAULT_VALUE:option.DEFAULT,
-                 option.DEFAULT_NAME:"files",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"volume_tape",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.USER_LEVEL:option.USER,
-                 option.FORCE_SET_DEFAULT:option.FORCE,
-                   },
 	option.FILESIZE:{option.HELP_STRING:"print out real filesize",
 			 option.VALUE_NAME:"file",
 			 option.VALUE_TYPE:option.STRING,

@@ -169,7 +169,6 @@ EXPORT = "export"                            #volume
 FILE_FAMILY = "file-family"                  #pnfs
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs
-FILES = "files"                              #pnfs
 FILESIZE = "filesize"                        #pnfs
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
@@ -305,7 +304,7 @@ valid_option_list = [
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DOWN, DUMP, DUPLICATE,
     ECHO, ENCP, ENSTORE_STATE, ERASE, EXPORT,
-    FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILES, FILESIZE,
+    FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FORCE,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GET_CRCS, GET_LAST_LOGFILE_NAME, GET_LOGFILE_NAME, GET_LOGFILES,
