@@ -1004,7 +1004,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vk, vv = vc.first()
     while vk:
         # skipping deleted volumes
-        if vk[-8:] == ".deleted":    # skip
+        if vk[-8:] == ".deleted" or vv['external_label'][-8:] == ".deleted":    # skip
             vk, vv = vc.next()
             continue
 
