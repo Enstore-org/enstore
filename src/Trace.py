@@ -42,6 +42,7 @@ log_func = None
 print_levels = {}
 log_levels = {}
 alarm_levels = {}
+message_levels = {}
 
 # stuff added by efb for new event_relay_client
 erc = event_relay_client.EventRelayClient()
@@ -103,6 +104,21 @@ def dont_alarm(levels):
             raise e_errors.NOT_ALWD_EXCEPTION
         if alarm_levels.has_key(level):
             del alarm_levels[level]
+
+def do_message(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        message_levels[level]=1
+    
+def dont_message(levels):
+    if type(levels) != type([]):
+        levels = [levels]
+    for level in levels:
+        if level==0:
+            raise e_errors.NOT_ALWD_EXCEPTION
+        if message_levels.has_key(level):
+            del message_levels[level]
 
 def init(name):
     global logname
@@ -167,7 +183,7 @@ def trace(severity, msg):
 
 def message(severity, msg):
     msg = trunc(msg)
-    if print_levels.has_key(severity):
+    if message_levels.has_key(severity):
         try:
             print msg
             sys.stdout.flush()
