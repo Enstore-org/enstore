@@ -1,3 +1,8 @@
+/* $Id$
+Utility to initialize tapes before use
+Labels tape and  creates database branch for new volume
+*/
+
 #include "volume_import.h"
 
 /* Globals.  The other modules all include globals.h which declares these extern */
