@@ -22,26 +22,28 @@ if not os.path.isdir(epsdir):
     os.mkdir(epsdir)
 else:
     try:
-	os.system("rm -rf %s/*"%(epsdir,))
+        os.system("rm -rf %s/*"%(epsdir,))
     except:
-	pass
+        pass
 
 # for each .ps file under the CRONS directory, create an eps file
 for dir in dirs:
     newdir = "%s/%s"%(crondir, dir)
     files = os.listdir(newdir);
     for file in files:
-	if file[INDEX:] == PSFILE:
-	    oldfile = "%s/%s"%(newdir, file)
-	    filename = file[:INDEX]
-	    newfile = "%s/%s-%s.eps"%(epsdir, dir, filename)
-	    os.system("convert %s %s"%(oldfile, newfile))
+        if file[INDEX:] == PSFILE:
+            oldfile = "%s/%s"%(newdir, file)
+            filename = file[:INDEX]
+            newfile = "%s/%s-%s.eps"%(epsdir, dir, filename)
+            ##os.system("convert %s %s"%(oldfile, newfile))
+            os.system("ps2epsi %s %s" % (oldfile, newfile))
+            
 
 # concatenate all the eps files together
 os.system("epscat %s/*.eps > %s/%s"%(epsdir, epsdir, all_plots))
 
 # make them be 6 images per page
 os.system("psnup -d -%s %s/%s > %s/%s"%(plots_per_page, epsdir, all_plots, 
-					epsdir, plot_print_file))
+                                        epsdir, plot_print_file))
 print "\nprintCrons: Created %s/%s, please print this file.\n"%(epsdir,
-							       plot_print_file)
+                                                               plot_print_file)
