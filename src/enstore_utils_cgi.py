@@ -96,6 +96,7 @@ def agrep_html(pat1, pat2, files, sensit):
     import enstore_html
     import alarm
     matched_alarms = {}
+    i = 0
     for file in files:
 	date = string.split(file, "/")[-1][4:]
 	for line in open(file, 'r').readlines():
@@ -108,7 +109,11 @@ def agrep_html(pat1, pat2, files, sensit):
 		    # we have an alarm line that matches both search strings, turn it 
 		    # into an alarm
 		    anAlarm = alarm.LogFileAlarm(line, date)
-		    matched_alarms[anAlarm.id] = anAlarm
+		    # we cannot use the alarm id as a unique key because the id is from the log
+		    # file and is only good to the second.  so it may not be unique, > 1 alarm 
+		    # may have been recorded within a second.
+		    matched_alarms[i] = anAlarm
+		    i = i + 1
 
     # we do not want any background
     doc = enstore_html.EnAlarmSearchPage("")
