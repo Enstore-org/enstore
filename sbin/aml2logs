@@ -23,6 +23,25 @@ if [ -z "${1-}" ]; then
    mirror $ENSTORE_DIR/sbin/aml2.log.mirror
    find $BASE -type f -name "log*" -maxdepth 1 -exec $0 {} \;
 
+  # make the nice calendar display of log files
+  if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
+      set -xv
+      python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
+             --title="AML/2 Log Files" \
+             --web_host="http://www-d0en.fnal.gov/enstore/aml2log" \
+             --logfile_dir="$DECODED" \
+             --output="$DECODED/aml2_log_file.html" \
+             --caption="AML/2 Log Files"
+
+      python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
+             --title="AML/2 Report Files" \
+             --web_host="http://www-d0en.fnal.gov/enstore/aml2rpt" \
+             --logfile_dir="$REPORTED" \
+             --output="$REPORTED/aml2_report_file.html" \
+             --caption="AML/2 Summary Report Files"
+  fi
+
+
 # otherwise we need to create a version people can read
 # then gzip it to save space - note that most browsers can decode gzip formats
 else
@@ -46,7 +65,7 @@ else
       if [ ! -r $asc -o $asc -ot $1 ]; then
          echo $asc
          nice -n 20 $ENSTORE_DIR/sbin/dump_aml2_log.py $1 > $asc
-	 nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
+         nice -n 20 $ENSTORE_DIR/sbin/stataml2log.py $asc $arpt
       fi
     fi
 fi
