@@ -96,7 +96,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
         fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
-        turnoff "$serv*"   "inquisitor"
+        turnoff_s "$serv*"   "inquisitor"
     done
 
 #    if [ $config_running -eq 1 ] ; then
