@@ -1,6 +1,13 @@
+/*
+   EMASS.c - wrapper for emass library
+  
+*/
 #include <Python.h>
 #include <aci.h>
 #include <derrno.h>
+
+#define EMASS_SKIPINITIALIZEB4ALLCMD 0
+
 /*
 	See media_changer.py 
 */
@@ -16,6 +23,8 @@ static char EMASS_Doc[] =  "EMASS Robot operations";
 static char Mount_Doc[] =  "mount <vol> <drive> <media type> ";
 static char Dismount_Doc[] =  "dismount <vol> <drive> <media type>";
 static char Home_Doc[] = "home <robot>";
+static char View_Doc[] = "view <vol> <media type>";
+/* static char Initialize_Doc[] = "initialize"; */
 
 /*
 	Convert Acsii media type to ACI enum - page 1-8 DAS ref guide
@@ -49,7 +58,7 @@ struct media_struct *m;
     if (strcmp(media_type, m->media_string) == 0) 
       return(m->media_enum);
   }
-  return(m->media_enum);		/* rturn "INVALID" */
+  return(m->media_enum);		/* return "INVALID" */
 }
 /*
         Convert the STK error code to a canonical code
@@ -102,15 +111,15 @@ struct stat_struct{
     };
 
 
-/*
-        mount
+/**************************************************************************************
+        mount -
         arguements
                 vol - cartridge id
                 drive - drive name
                 media_type_s - mediatype
         Returns
-                int - status returned by robot
-                int - canonical status 0=> ok, 1=> unknow error, 2=>drive problem, 3=>nedia problem
+                char* - status returned by robot
+                int - canonical status 0=> ok, 1=> unknown error, 2=>drive problem, 3=>media problem
                 char* text desciption of error
 */
 
@@ -122,23 +131,30 @@ static PyObject* mount(PyObject *self, PyObject *args)
   enum aci_media media_type;
   int stat;
   char *sc;
+  struct aci_vol_desc desc;
 
   if (!PyArg_ParseTuple(args, "sss", &vol, &drive, &media_type_s))     /* get args */ 
   	return (NULL);
-  if (!(media_type = stoi_mediatype(media_type_s)))		/* cvt media type to aci code */
+  if (!(media_type = stoi_mediatype(media_type_s)))        /* convert media type to aci code */
       return(Py_BuildValue("sis",
 		status_table[ENOVOLUME].status,
 		ENOVOLUME, 
 		status_table[ENOVOLUME].status_descrip));
-  if  (stat = aci_mount(vol,media_type,drive))			/* call aci routine */
-  {					/* if error */
-     stat=d_errno;			/* gett err code */
-     if (sizeof(status_table) < stat)	/* if invalid err code */
-         stat= EDASINT;
+  if (!(stat = get_view(vol,media_type,&desc)) && desc.attrib=='O') /* check if volume is 'occupied' */
+  {
+     if (EMASS_SKIPINITIALIZEB4ALLCMD || !(stat=do_initialize()))
+     {
+        if  (stat = aci_mount(vol,media_type,drive))		   /* call aci mount routine */
+        {					/* if error */
+             stat=d_errno;			/* gett err code */
+             if (sizeof(status_table) < stat)	/* if invalid err code */
+                 stat= EDASINT;
+        }
+     }
   }					/* return result */
   return(Py_BuildValue("sis", status_table[stat].status, stat, status_table[stat].status_descrip));
 }
-/*
+/**************************************************************************************
 	dismount - see mount parameters and return values
 */
 static PyObject* dismount(PyObject *self, PyObject *args)
@@ -164,16 +180,136 @@ static PyObject* dismount(PyObject *self, PyObject *args)
 		status_table[ENOVOLUME].status_descrip));
   if  (stat = aci_dismount(vol,media_type))
 */
-  if  (stat = aci_force(drive))
+  if (EMASS_SKIPINITIALIZEB4ALLCMD || !(stat=do_initialize()))
   {
-     stat=d_errno;
-     if (sizeof(status_table) < stat)
-         stat= EDASINT;
+     if  (stat = aci_force(drive))
+     {
+        stat=d_errno;
+        if (sizeof(status_table) < stat)
+            stat= EDASINT;
+     }
   }
   return(Py_BuildValue("sis", status_table[stat].status, stat, status_table[stat].status_descrip));
 }
+/* #ifdef 0 */
+/**************************************************************************************
+       get_view -- local wrapper for aci_view()
+*/
+int get_view(char *vol, enum aci_media media_type, struct aci_vol_desc *desc)
+{
+  int stat;
+  /*
+        Initialize struct desc
+  */
+  desc->coord[0] = '\0';
+  desc->owner = '\0';
+  desc->attrib = '\0';
+  desc->type = '\0';
+  desc->volser[0] = '\0';
+  desc->vol_owner = '\0';
+  desc->use_count = 0;
+  desc->crash_count = 0;
 
-/*
+  if (EMASS_SKIPINITIALIZEB4ALLCMD || !(stat=do_initialize()))
+  {
+     if  (stat = aci_view(vol,media_type,desc))
+     {					/* if error */
+        stat=d_errno;			/* gett err code */
+        if (sizeof(status_table) < stat)	/* if invalid err code, return internal DAS S/W error */
+            stat= EDASINT;
+     } 
+  }
+  /*
+         return result : status index via returned parameter; coordinate, robot owner, volume attribute,
+                         volser media type, volume name, volume owner, use count and crash count via
+                         listed parameter
+  */
+  return stat;
+}
+/* #endif */
+/**************************************************************************************
+	view - get mount parameters and return values
+*/
+static PyObject* view(PyObject *self, PyObject *args)
+{
+  char *vol;
+  char *media_type_s;
+  enum aci_media media_type;
+  int stat;
+  char *sc;
+  struct aci_vol_desc desc;
+
+  /*
+        Initialize struct desc
+  */
+  desc.coord[0] = '\0';
+  desc.owner = '\0';
+  desc.attrib = '\0';
+  desc.type = '\0';
+  desc.volser[0] = '\0';
+  desc.vol_owner = '\0';
+  desc.use_count = 0;
+  desc.crash_count = 0;
+  /*
+        Get the arguements
+  */
+  if (!PyArg_ParseTuple(args, "ss", &vol, &media_type_s))            /* get args */ 
+  	return (NULL);
+  /*         aci_view needs vol and media_type_s, returns error status and database entry in
+                    aci_volume_desc struct
+  */
+  if (!(media_type = stoi_mediatype(media_type_s)))
+      /* if error, return that requested media type not found */
+      return(Py_BuildValue("sisscccscii",
+		status_table[ENOVOLUME].status, ENOVOLUME, 
+	        status_table[ENOVOLUME].status_descrip,desc.coord, desc.owner, desc.attrib, desc.type,
+                desc.volser, desc.vol_owner, desc.use_count, desc.crash_count));
+  stat = get_view(vol,media_type,&desc);
+  /*
+         return result : status, status index, status description, coordinate, robot owner, volume attribute,
+                         volser media type, volume name, volume owner, use count and crash count
+  */
+  return(Py_BuildValue("sisscccscii", status_table[stat].status, stat, status_table[stat].status_descrip,
+                       desc.coord, desc.owner, desc.attrib, desc.type, desc.volser, desc.vol_owner,
+                       desc.use_count, desc.crash_count));
+}
+
+/**************************************************************************************
+	do_initialize - wrapper to initialize ACI library for use; it does not change drive state
+*/
+int do_initialize(void)
+{
+  int stat;
+
+  /*
+        Initialize aci client, do not change drive state
+  */
+  if (stat=aci_initialize())
+  {
+    stat = EAMU;     /* map -1 error return to EAMU - AMU responded with unknown error */
+  } else {
+    stat = EOK;     /* map 0 no error return to EOK - no error */
+  }
+  return stat;
+}
+
+#ifdef 0
+/**************************************************************************************
+	initialize - initialize ACI library for use; it does not change drive state
+*/
+static PyObject* initialize(PyObject *self, PyObject *args)
+{
+  int stat;
+
+  stat = do_initialize();
+  /*
+         return result : status
+  */
+  return(Py_BuildValue("sis", status_table[stat].status, stat, status_table[stat].status_descrip));
+}
+#endif
+
+/**************************************************************************************
 	home (robot)
 */
 static PyObject* home(PyObject *self, PyObject *args)
@@ -188,6 +324,10 @@ static PyObject* home(PyObject *self, PyObject *args)
   if (!PyArg_ParseTuple(args, "s", &robot))            /* get args */
         return (NULL);
   rv="badhome";
+  /*
+  if (EMASS_SKIPINITIALIZEB4ALLCMD || !(stat=do_initialize()))
+  {
+  */
   stat = aci_robhome(robot);
   if (!stat)
      rv="badstart";
@@ -197,7 +337,7 @@ static PyObject* home(PyObject *self, PyObject *args)
   return(Py_BuildValue("s", rv));
 }
 
-/*
+/**************************************************************************************
    Module Methods table.
 
    There is one entry with four items for for each method in the module
@@ -212,10 +352,11 @@ static PyMethodDef EMASS_Methods[] = {
   { "mount", mount, 1, Mount_Doc},
   { "dismount", dismount, 1, Dismount_Doc},
   { "home", home, 1, Home_Doc},
+  { "view", view, 1, View_Doc},
   {0,     0}        /* Sentinel */
 };
 
-/*
+/**************************************************************************************
    Module initialization.   Python call the entry point init<module name>
    when the module is imported.  This should the only non-static entry point
    so it is exported to the linker.
