@@ -31,6 +31,7 @@ to hold the actuall value (a filename for example): option.py --opt <filename>
               VALUE_NAME:'filename'
               VALUE_TYPE:option.STRING,
               VALUE_USAGE:option.REQUIRED,
+              VALUE_LABEL:"filename",
               USER_LEVEL:option.USER,
               FORCE_SET_DEFAULT:1, #This means force setting the default too.
               EXTRA_VALUES:[],
@@ -46,6 +47,7 @@ To accept multiple values: option.py --opt <filename> [filename2]
               VALUE_NAME:'filename'
               VALUE_TYPE:option.STRING,
               VALUE_USAGE:option.REQUIRED,
+              VALUE_LABEL:"filename",
               USER_LEVEL:option.USER,
               FORCE_SET_DEFAULT:1,
               EXTRA_VALUES:[{DEFAULT_NAME:"filename2",
@@ -54,6 +56,7 @@ To accept multiple values: option.py --opt <filename> [filename2]
                              VALUE_NAME:"filename2",
                              VALUE_TYPE:option.STRING,
                              VALUE_USAGE:option.OPTIONAL,
+                             VALUE_LABEL:"filename2",
                                }]
         }
     }
@@ -87,6 +90,7 @@ DEFAULT_TYPE = "default type"
 VALUE_NAME = "value name"
 VALUE_TYPE = "value type"
 VALUE_USAGE = "value usage"
+VALUE_LABEL = "value lable"
 USAGE_LEVEL = "user level"
 SHORT_OPTION = "short option"
 FORCE_SET_DEFAULT = "force set default"
@@ -246,12 +250,15 @@ class Interface:
                 VALUE_NAME,
                 self.options[opts].get(DEFAULT_NAME, opts))
             opt_value = self.options[opts].get(VALUE_USAGE, IGNORED)
+            opt_label = self.options[opts].get(VALUE_LABEL, opt_arg)
             extra_args = self.options[opts].get(EXTRA_VALUES, [])
             extra_args.insert(0, {VALUE_NAME:opt_arg,
-                                  VALUE_USAGE:opt_value})
+                                  VALUE_USAGE:opt_value,
+                                  VALUE_LABEL:opt_label})
             has_value = ""
             for opt_arg in extra_args:
-                arg = string.upper(opt_arg.get(VALUE_NAME, ""))
+                arg = string.upper(opt_arg.get(VALUE_LABEL,
+                                               opt_arg.get(VALUE_NAME, "")))
                 value = opt_arg.get(VALUE_USAGE, IGNORED)
                                   
                 if value == REQUIRED:
