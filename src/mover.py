@@ -2560,11 +2560,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 ##            self.dismount_volume(after_function=self.idle)
             broken = None
             if status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
-                             e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND):
+                             e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
+                             e_errors.MC_DRVNOTEMPTY):
                 # mover is all right
                 # error is only tape or MC related
                 # send error to LM and go into the IDLE state
-                if status[1] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL):
+                if status[1] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL, e_errors.MC_DRVNOTEMPTY):
                     err_source = ROBOT
                 else:
                     err_source = TAPE
@@ -2575,8 +2576,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                    returned_work=self.current_work_ticket)
                     self.udpc.send_no_wait(ticket, self.lm_address)
                     self.net_driver.close()
-                self.state = IDLE
+                if status[1] == e_errors.MC_DRVNOTEMPTY:
+                    broken = "mount %s failed: %s" % (volume_label, status)
+                else:    
+                    self.state = IDLE
                 self.current_volume = None
+                
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
