@@ -27,7 +27,7 @@ def capacity_str(x):
     neg=x<0    ## remember the sign of x
     x=abs(x)   ##  make x positive so that "<" comparisons work
         
-    for suffix in ('B ', 'KB', 'MB', 'GB'):
+    for suffix in ('B ', 'KB', 'MB', 'GB', 'TB', 'PB'):
         if x <= 1024:
             break
         x=x/1024
