@@ -1,0 +1,60 @@
+<html>
+<body BGCOLOR=#FFFFFF>
+<font size=7><b><i>
+<center>January 1999 Von Ruden Review Storage Management Status Report</center>
+</i></b></font>
+<center>Jon Bakken</center>
+<center>Eileen Berman</center>
+<center>Chih-Hao Huang</center>
+<center>Alexander Moibenko</center>
+<center>Don Petravick</center>
+<center>Ron Rechenmacher</center>
+<center>Kurt Ruthmansdorfer</center>
+
+Since the June 1998 Von Ruden Review, progress has been made on many
+fronts. Here is a short summary of the effort during the last 6 months.
+
+<ul>
+  <li> Requirements understood - many discussions with D0 folks, and SAM group in particular
+
+  <li>Technical Design Document - expanded greatly, includes examples and
+       command syntax.
+
+  <li><em>Pnfs</em>
+ 	<ul>
+	  <li> The pnfs servers have been installed and thoroughly tested on 3 Linux machines.
+	  <li> A user query oriented script has been written.
+	  <li> The servers can be installed via Fermilab's UPD mechanism.
+	  <li> A directory tree based on volumes and file families has been added to aid the users in doing optimal tape transversals.
+	</ul>
+
+   <li> <em>Encp</em>
+	<ul>
+	  <li> User client program - Distributed via Fermilab's UPD mechanism
+	  <li> Completely static, binary task with no dependencies
+	  <li> Same syntax as normal unix cp command, including input file list and output directory specification
+	  <li> Special D0 Sam output completed.
+	  <li> Option added that lists what transfers are active and pending for a given node.
+	  <li> Optimal transversal over tape.
+	</ul>
+   <li> Error Control, Robustness and Retries - extensively studied and developed in all sections of the Enstore.
+	<ul>
+	  <li> Trace debugging tool (based on VME work) written for python - solved many problems
+	  <li> Timer task written and available for scheduling
+	</ul>
+   <li> Enstore Servers
+	<ul>
+	  <li> Underlying communication protocol very reliable.
+	  <li> Config Server - is now the sole location of all Enstore config information allowing easy maintenance.
+	  <li> Volume and File Clerks - more robust, disaster recovery procedures almost in place.
+	  <li> Library Manager - Priority, aging, optimal tape transversal
+	  <li> Mover - optimal and overlapped IO, flexible user  wrappering mechanism in place, CRC studies complete (adler32)
+	  <li> Log Server  - little work done, useful as is.
+          <li> Media Changer - converted to C module, CDF STK code encorporated, EMASS module almost written
+	       EMASS training attended by 3 of Enstore group.
+	  <li> Inquisitor and Alarms - new since last review, central location for user to see what is happening with system,
+	       many useful web pages, plots, patrol investigations begun.
+	</ul>
+
+   <li> Volume Import and Export - plan for remote sites understood (not done)
+   <li> Test System - constructed and working.
