@@ -313,7 +313,7 @@ class  FTTDriver(GenericDriver) :
 	part, block_loc, filenum = loc2int( self, eod_cookie )
 
         self.statisticsOpen = self.get_allStats(device)
-        Trace.log(e_errors.INFO,"Gathering statistics: sw_mount")
+        Trace.log(e_errors.INFO,"Gathering statistics: sw_mount, length = "+repr(len(self.statisticsOpen)) )
 
 	# make cur_loc_cookie such that an ordered list can be produced
 	# (for pnfs) i.e. partition, blk offset, filemarks
@@ -376,7 +376,7 @@ class  FTTDriver(GenericDriver) :
 	statistics['wr_access'] = self.wr_access,
 	statistics['rd_access'] = self.rd_access,
 	timeStamp = time.asctime(time.localtime(time.time()))
-	statistics['timeStamp'] = timeStamp
+	statistics['reporttime'] = timeStamp
 	result = hostaddr.gethostinfo()
 	statistics['hostname'] = result[0]
 	statistics['device'] = device
@@ -570,7 +570,7 @@ class  FTTDriver(GenericDriver) :
 
     def close( self, skip=1 ):
         self.statisticsClose = self.get_allStats()
-        Trace.log(e_errors.INFO,"Gathering statistics: close")
+        Trace.log(e_errors.INFO,"Gathering statistics: close, length = "+repr(len(self.statisticsClose)) )
 	if self.mode == 'r':
             if skip:
                 FTT.skip_fm( 1 )

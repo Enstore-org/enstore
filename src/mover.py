@@ -393,6 +393,7 @@ class MoverClient:
 	    try:
 	        stat = driver_object.send_statistics()
 	        self.driveStatistics['mount'] = stat['mount']
+                Trace.log(e_errors.LOG,"Mount statistics length = "+repr(len(stat['mount'])) )
 	    except KeyError:
                 Trace.log(e_errors.ERROR,"Mount statistics malformed.")
         return
@@ -404,6 +405,7 @@ class MoverClient:
 	    try:
 	        stat = driver_object.send_statistics()
 	        self.driveStatistics['dismount'] = stat['dismount']
+                Trace.log(e_errors.LOG,"Dismount statistics length = "+repr(len(stat['dismount'])) )
 	    except KeyError:
                 Trace.log(e_errors.ERROR,"Dismount statistics malformed.")
         return
