@@ -27,9 +27,12 @@ def try_a_port(host, port) :
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(host, port)
     except:
-        sock.close()
+	try:
+            sock.close()
+	except:
+	    pass
         Trace.trace(20,'}try_a_port failure')
-        return (0, sock) # failure
+        return (0, 0) # failure
     Trace.trace(20,'}try_a_port success')
     return (1, sock)     # success
 

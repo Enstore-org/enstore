@@ -33,9 +33,12 @@ def try_a_port(host, port) :
 	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(host, port)
     except:
-	sock.close()
+	try:
+            sock.close()
+        except:
+            pass
         Trace.trace(16,'}try_a_port FAILURE')
-        return (0 , sock)
+        return (0 , 0)
     Trace.trace(16,'}try_a_port sock='+repr(sock))
     return 1 , sock
 
