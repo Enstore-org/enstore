@@ -59,8 +59,6 @@ for des in \
         "Processor 2 Temp" \
         "Processor 1 Fan" \
         "Processor 2 Fan" \
-        "Baseboard Fan 1" \
-        "Baseboard Fan 2" \
         "Baseboard -12V" \
         "Baseboard 1.5V" \
         "Baseboard 2.5V" \
