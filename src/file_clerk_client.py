@@ -273,7 +273,7 @@ class FileClient(generic_client.GenericClient,
 		       "restore_dir"    : restore_dir } )
 	return r
 
-    # rename volume and volume map
+    # restore a deleted file
     def restore(self, bfid, file_family = None):
         ticket = {"work": "restore_file2",
                   "bfid": bfid}
@@ -281,6 +281,15 @@ class FileClient(generic_client.GenericClient,
             ticket['file_family'] = file_family
         r = self.send(ticket)
 	return r
+
+    # rebuild pnfs file entry
+    def rebuild_pnfs_file(self, bfid, file_family = None):
+        ticket = {"work": "restore_file2",
+                  "bfid": bfid,
+                  "check": 0}
+        if file_family:
+            ticket['file_family'] = file_family
+        return self.send(ticket)
 
     # get volume map name for given bfid
     def get_volmap_name(self, bfid = None):

@@ -343,7 +343,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     #
     # This is a newer version
 
-    def __restore_file(self, bfid, file_family = None):
+    def __restore_file(self, bfid, file_family = None, check = 1):
 
         try:
             record = self.dict[bfid]
@@ -362,16 +362,22 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.log(e_errors.ERROR, msg)
             return "ENOPNFSNAME", msg
 
-        if record["external_label"][-8:] == '.deleted':
-            msg = "volume %s is deleted"%(record["external_label"])
-            Trace.log(e_errors.ERROR, msg)
-            return "EACCES", msg
+        if check:
+            if record["external_label"][-8:] == '.deleted':
+                msg = "volume %s is deleted"%(record["external_label"])
+                Trace.log(e_errors.ERROR, msg)
+                return "EACCES", msg
 
         if record.has_key('deleted'):
-            if record['deleted'] != 'yes':
-                msg = "File %s is not deleted"%(bfid)
-                Trace.log(e_errors.ERROR, msg)
-                return "ENOTDELETED", msg
+            if check:
+                if record['deleted'] != 'yes':
+                    msg = "File %s is not deleted"%(bfid)
+                    Trace.log(e_errors.ERROR, msg)
+                    return "ENOTDELETED", msg
+            else:
+                if record['deleted'] == 'yes':
+                    # do nothing
+                    return e_errors.OK, None
 
         # find file_family
         if not file_family: 
@@ -421,10 +427,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        if ticket.has_key('file_family'):
-            ticket['status'] = self.__restore_file(bfid, ticket['file_family'])
-        else:
-            ticket['status'] = self.__restore_file(bfid)
+        file_family = ticket.get('file_family', None)
+        check = ticket.get('check', 1)
+        ticket['status'] = self.__restore_file(bfid, file_family, check)
         self.reply_to_caller(ticket)
         return
 
