@@ -879,10 +879,14 @@ class LibraryManagerMethods:
                 if self.mover_type(requestor) == 'DiskMover':
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
                 else:
+                    fsize = w['wrapper'].get('size_bytes', 0L)
+                    if w['method'] != "read_tape":
+                        # size has a meaning only for general rq
+                        fsize = fsize+self.min_file_size
                     ret = self.vcc.is_vol_available(rq.work,
                                                     w['fc']['external_label'],
                                                     w["vc"]["volume_family"],
-                                                    w["wrapper"]["size_bytes"]+self.min_file_size)
+                                                    fsize)
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
                         # temporarily save last state:
@@ -956,9 +960,13 @@ class LibraryManagerMethods:
         if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work, external_label, requestor)
         else:
+            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
+            if rq.ticket['method'] != "read_tape":
+                # size has a meaning only for general rq
+                fsize = fsize+self.min_file_size
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
-                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size)
+                                            fsize)
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -989,9 +997,10 @@ class LibraryManagerMethods:
         if self.mover_type(requestor) == 'DiskMover':
             ret = self.is_vol_available(rq.work,external_label, requestor)
         else:
+            fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
-                                            rq.ticket["wrapper"]["size_bytes"])
+                                            fsize)
         Trace.trace(11,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
             if ret['status'][0] == e_errors.BROKEN:
