@@ -59,29 +59,6 @@ def add_commas(str):
         j = j + 1
     return new_str
 
-# parse the encp line
-def parse_encp_line(line):
-    [etime, enode, etmp, euser, estatus, etmp2, erest] = string.split(line, None, 6)
-    if estatus == e_errors.sevdict[e_errors.INFO]:
-	try:
-	    [etype, erest] = string.split(erest, None, 1)
-	    [erest2, erest3] = string.splitfields(erest, ": ", 1)
-	    # erest2 has the file name info which we do not need, get the 
-	    # total data transfer rate from the end of erest3
-	    [erest2, tt] = string.splitfields(erest3, "(", 1)
-	    # check if this is a read from enstore or a write to enstore
-	    [tt, etmp] = string.splitfields(tt, ")",1)
-	    # pull out the name of the media changer
-	    mc = get_dict(etmp)
-	    [tt, etmp] = string.splitfields(tt, " ",1)
-	    erate = string.splitfields(erest2, " ")
-	except ValueError:
-	    # we do not handle this formatting
-	    return []
-	return [etime, enode, euser, estatus, tt, erate[0], "%s %s"%(erate[3], erate[4]), erate[6], mc, erate[3]]
-    else:
-	return [etime, enode, euser, estatus, erest]
-	
 
 # given a list of media changers and a log file message, see if any of the
 # media changers are mentioned in the log file message
@@ -92,6 +69,42 @@ def mc_in_list(msg, mcs):
                 return 1
     else:
         return 0
+
+class EncpLine:
+
+    def __init__(self, line):
+	self.line = line
+	[self.time, self.node, self.pid, self.user, self.status, self.server, 
+	 self.text] = string.split(line, None, 6)
+	# parse all success messages and pull out the interesting information
+	if self.status == e_errors.sevdict[e_errors.INFO]:
+	    try:
+		# split out the message type from the rest of the message text
+		[self.msg_type, self.text] = string.splitfields(self.text, None, 1)
+		[tmp1, tmp2] = string.splitfields(self.text, ": ", 1)
+		# get the file names (tmp_list[2] = "->" so ignore it)
+		tmp_list = string.splitfields(tmp1, None)
+		self.work = tmp_list[0]
+		self.infile = tmp_list[1]
+		self.outfile = tmp_list[3]
+		# get the total data transfer rate
+		[tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
+		[self.xfer_rate, tmp2] = string.splitfields(tmp2, " ",1)
+		# pull out the name of the media changer
+		self.mc = get_dict(tmp2)
+		tmp_list = string.splitfields(tmp1, " ")
+		self.bytes = tmp_list[0]
+		self.direction = tmp_list[3]
+		self.volume = tmp_list[4]
+		self.user_rate = tmp_list[6]
+		self.valid = 1
+	    except ValueError:
+		# we do not handle this formatting
+		self.valid = 0
+	else:
+	    # get rid of the MSG_TYPE=xxx information at the end of the line
+	    [self.text, tmp] = string.splitfields(self.text, Trace.MSG_TYPE)
+	    self.valid = 1
 
 class EnStatus:
 

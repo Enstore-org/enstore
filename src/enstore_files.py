@@ -23,19 +23,6 @@ TMP = ".tmp"
 START_TIME = "start_time"
 STOP_TIME = "stop_time"
 
-# ENCP line pieces from log file
-ETIME = 0
-ENODE = 1
-EUSER = 2
-ESTATUS = 3
-ETEXT = 4
-EXRATE = 4
-EBYTES = 5
-EDEV = 6
-EURATE = 7
-EDICTS = 8
-ETYPE = 9
-
 # message is either a mount request or an actual mount
 MREQUEST = 0
 MMOUNT = 1
@@ -184,16 +171,16 @@ class HTMLEncpStatusFile(EnStatusFile):
 
     def get_lines(self, day, lines, formatted_lines):
 	for line in lines:
-	    einfo = enstore_status.parse_encp_line(line)
-	    if len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.INFO]:
-		formatted_lines.append(["%s %s"%(day, einfo[ETIME]), einfo[ENODE], 
-					einfo[EUSER], einfo[EBYTES], einfo[EDEV], 
-					einfo[EXRATE], einfo[EURATE]])
-	    elif len(einfo) and einfo[ESTATUS] == e_errors.sevdict[e_errors.ERROR]:
-		# remove the MSG_TYPE=XXXXX from the output text
-		txt = string.split(einfo[ETEXT], Trace.MSG_TYPE)
-		formatted_lines.append(["%s %s"%(day, einfo[ETIME]), einfo[ENODE], 
-					einfo[EUSER], txt[0]])
+	    encp_line = enstore_status.EncpLine(line)
+	    if encp_line.valid:
+		if encp_line.status == e_errors.sevdict[e_errors.INFO]:
+		    formatted_lines.append(["%s %s"%(day, encp_line.time), encp_line.node, 
+					    encp_line.user, encp_line.bytes, 
+					    "%s %s"%(encp_line.direction, encp_line.volume), 
+					    encp_line.xfer_rate, encp_line.user_rate])
+		elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
+		    formatted_lines.append(["%s %s"%(day, encp_line.time), encp_line.node, 
+					    encp_line.user, encp_line.text])
 
     # output the encp info
     def write(self, day1, lines1, day2, lines2):
@@ -346,30 +333,21 @@ class EnMountDataFile(EnDataFile):
 	for line in self.lines:
 	    minfo = self.parse_line(line)
             if not mcs or enstore_status.mc_in_list(minfo[MDICTS], mcs):
-                self.data.append([minfo[MDEV], string.replace(minfo[ETIME],
+                self.data.append([minfo[MDEV], string.replace(minfo[0],
                                                               enstore_constants.LOG_PREFIX,
 							      ""), minfo[MSTART]])
 
 class EnEncpDataFile(EnDataFile):
 
-    # parse the encp line
-    def parse_line(self, line):
-	einfo = enstore_status.parse_encp_line(line)
-        if not len(einfo):
-            # nothing was returned skip this line
-            return []
-        # the time info may contain the file directory which we must
-        # strip off
-        einfo[ETIME] = enstore_functions.strip_file_dir(einfo[ETIME])
-        return [einfo[ETIME], einfo[EBYTES], einfo[EDICTS], einfo[ETYPE]]
-
     # pull out the plottable data from each line
     def parse_data(self, mcs):
 	for line in self.lines:
-	    einfo = self.parse_line(line)
-	    if einfo and (not mcs or enstore_status.mc_in_list(einfo[2], mcs)):
-	        self.data.append([string.replace(einfo[0], enstore_constants.LOG_PREFIX,
-						 ""), einfo[1], einfo[3]])
+	    encp_line = EncpLine(line)
+	    if encp_line.valid:
+		if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
+		    etime = enstore_functions.strip_file_dir(encp_line.time)
+		    self.data.append([string.replace(etime, enstore_constants.LOG_PREFIX, ""), 
+				      encp_line.bytes, encp_line.direction])
 
 class HtmlAlarmFile(EnFile):
 
