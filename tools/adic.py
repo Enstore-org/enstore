@@ -5,6 +5,12 @@ import string
 import re
 import time
 
+def stripdot(astring):
+    x=re.sub('^\.*','',astring)
+    x1=re.sub('Volser \.*','',x)
+    return re.sub('\.*$','',x1)
+
+
 log = os.popen("./adic.exp", 'r')
 
 cmd_dict = {}
@@ -29,7 +35,7 @@ while 1:
             day="%s %s->%s"%(dat,tim0,tim)
         else:
             day="%s %s->%s %s"%(dat0,tim0,dat,tim)
-        print string.join(cmd,' '), rest[0], day
+        print stripdot(string.join(cmd,' ')), rest[0], day
         del cmd_dict[seq]
     
 
