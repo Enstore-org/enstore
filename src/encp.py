@@ -922,7 +922,7 @@ def submit_one_request(ticket, verbose):
     
 ############################################################################
 
-def recieve_final_dialog(control_socket, work_ticket, max_retry):
+def receive_final_dialog(control_socket, work_ticket):
     # File has been sent - wait for final dialog with mover. 
     # We know the file has hit some sort of media.... 
     # when this occurs. Create a file in pnfs namespace with
@@ -1049,8 +1049,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                                   [], [], 15)
         #check control socket for error.
         if read_fd:
-            socket_dict = recieve_final_dialog(control_socket,
-                                               request_dictionary, 15)
+            socket_dict = receive_final_dialog(control_socket,
+                                               request_dictionary)
             socket_status = socket_dict.get('status', (e_errors.OK , None))
             request_dictionary = combine_dict(socket_dict, request_dictionary)
 
@@ -1187,7 +1187,7 @@ def calculate_rate(done_ticket, tinfo, verbose):
         if drive_time != 0:
             tinfo['drive_rate_%s'%(id,)] = MB_transfered / drive_time
         else:
-            tinfo['drive_rate_%s'%(id,)] = 0.0
+            tinfo['drive_rate_%s'%(id,)] = -1.0
             
         print_format = "Transfer %s -> %s:\n" \
                  "\t%d bytes copied %s %s at %.3g MB/S\n " \
@@ -1585,23 +1585,39 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, e):
             print "Verifying %s transfer.  elapsed=%s" % \
                   (work_ticket['outfile'],time.time()-tinfo['encp_start_time'])
 
-        # File has been sent - wait for final dialog with mover.
+        #Even though the functionality is there for this to be done in
+        # handle requests, this should be recieved outside since there must
+        # be one... not only receiving one on error.
+        done_ticket = receive_final_dialog(control_socket, work_ticket)
 
-        #Verify that everything is ok.
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     EXfer_ticket, control_socket,
-                                     e.max_retry, e.verbose)
-
-        #For simplicity combine everything together.
-        done_ticket = combine_dict(result_dict, work_ticket)
-        
+        #Close the files and sockets, they aren't needed anymore.
         try:
             control_socket.close()
             data_path_socket.close()
             in_file.close()
         except (socket.error, OSError):
-            #print "Error closeing something"
             pass
+
+        #Verify that everything is ok on this side of the transfer.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     EXfer_ticket, None,
+                                     e.max_retry, e.verbose)
+        
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif result_dict['status'][0] in e_errors.non_retriable_errors:
+            return done_ticket
+
+        #For simplicity combine everything together.
+        done_ticket = combine_dict(done_ticket, result_dict, work_ticket)
+
+        #Verify that everything is ok on the mover side of the transfer.
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, None,
+                                     e.max_retry, e.verbose)
+
+        #For simplicity combine everything together.
+        done_ticket = combine_dict(result_dict, done_ticket, work_ticket)
         
         if result_dict['status'][0] == e_errors.RETRY:
             continue
@@ -2293,10 +2309,15 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s" %
                     (control_socket,))
+        
+        #Even though the functionality is there for this to be done in
+        # handle requests, this should be recieved outside since there must
+        # be one... not only receiving one on error.
+        done_ticket = receive_final_dialog(control_socket, requests[j])
 
         #Verfy that the final responce from the mover is that everything is ok.
         result_dict = handle_retries(requests, requests[j],
-                                     done_ticket, control_socket,
+                                     done_ticket, None,
                                      e.max_retry, e.verbose)
         try:
             control_socket.close()
