@@ -36,7 +36,7 @@ exes: \
 testlib: $(LIBDIR)/libftt_test.a
 
 clean:
-	rm *.o ftt_test ftt_random ftt_copy
+	rm -f *.o ftt_test ftt_random ftt_copy
 
 install: all testlib exes scripts 
 
