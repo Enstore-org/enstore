@@ -77,8 +77,8 @@ get:
 	mkdir GETBIN
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP get.py
 	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp GET_TEMP/get GETBIN
-	cp $(ENSTORE_DIR)/ups/get.table GETBIN
+	cp GET_TEMP/get ../ups/chooseConfig GETBIN
+	sed -e 's/encp/get/g' $(ENSTORE_DIR)/ups/encp.table > GETBIN/get.table
 	- rm -rf GET_TEMP
 
 entv:
