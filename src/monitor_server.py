@@ -8,9 +8,12 @@ import string
 import types
 import os
 import socket
+import select
 import traceback
 import pprint
 import time
+import fcntl, FCNTL
+import errno
 
 # enstore imports
 import dispatching_worker
@@ -60,6 +63,7 @@ SEND_FROM_SERVER = "send_from_server"
 class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
     def __init__(self, csc):
+        self.timeout = 10
 	self.running = 0
 	self.print_id = MY_NAME
         print "Monitor Server at %s %s" %(csc[0], csc[1])
@@ -86,10 +90,51 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         localhost, localport, listen_sock = callback.get_callback(ip=data_ip)
         listen_sock.listen(1)
         ticket['mover']={'callback_addr': (localhost,localport)}
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(ticket['callback_addr'])
+
+        #Create the TCP socket, remeber the current settings (to reset them
+        # back later) and set the new file control flags.
+        sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
+        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
+
+        for retry in xrange(self.timeout):
+            try:
+                sock.connect(ticket['callback_addr'])
+                if not sock:
+                    print "unable to open connection to server"
+                    raise SERVER_CLOSED_CONNECTION
+                break #Success, so get out of the loop.
+            except socket.error, detail:
+                #We have seen that on IRIX, when the connection succeds, we
+                # get an ISCONN error.
+                if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+                    break
+                #Rename this error to be handled the same as the others.
+                elif detail[0] == errno.ECONNREFUSED:
+                    raise SERVER_CLOSED_CONNECTION, detail[0]
+                else:
+                    pass #somethin...something...something...
+                time.sleep(1)
+        else: #If we did not break out of the for loop, flag the error.
+            raise SERVER_CLOSED_CONNECTION
+
+        #Success on the connection!  Restore flag values.
+        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
+
+        #All this connect() timeout code, when this is all that it is used for.
         callback.write_tcp_obj(sock,ticket)
         sock.close()
+
+        #wait for a responce
+        r,w,ex = select.select([listen_sock], [], [listen_sock],
+                               self.timeout)
+        if not r :
+            print "passive listen did not hear back from monitor client via TCP"
+            reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
+            self.reply_to_caller(reply)
+            data_sock.close()
+            return
+
         data_sock, address = listen_sock.accept()
 
         interface=hostaddr.interface_name(data_ip)
@@ -103,29 +148,45 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         #When sending, the time isn't important.
+        sendstr = "S"*ticket['block_size']
         if ticket['transfer'] == SEND_FROM_SERVER:
-            sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
+                r,w,ex = select.select([], [data_sock], [data_sock],
+                               self.timeout)
+                if not w:
+                    print "passive write failed to reach monitor client via TCP"
+                    #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
+                    #self.reply_to_caller(reply)
+                    data_sock.close()
+                    return
                 data_sock.send(sendstr)
             reply['elapsed'] = -1
         #Since we are recieving the data, recording the time is important.
         elif ticket['transfer'] == SEND_TO_SERVER:
-            data=data_sock.recv(1)
-            if not data:
-                raise "Server closed connection"
-            bytes_received=len(data)
+            bytes_received = 0
             t0=time.time()
             while bytes_received < ticket['block_size']*ticket['block_count']:
+                r,w,ex = select.select([data_sock], [], [data_sock],
+                               self.timeout)
+                if not r:
+                    print "passive read did not hear back from monitor client via TCP"
+                    #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
+                    #self.reply_to_caller(reply)
+                    data_sock.close()
+                    return
+                    
                 data = data_sock.recv(ticket['block_size'])
                 if not data: #socket is closed
-                    raise "Server closed connection"
+                    print "Client closed connection before completion."
+                    data_sock.close()
+                    return
                 bytes_received=bytes_received+len(data)
             reply['elapsed']=time.time()-t0
 
         reply['status'] = ('ok', None)
         self.reply_to_caller(reply)
         data_sock.close()
-
+        
     def _become_html_gen_host(self, ticket):
         #setup for HTML output if we are so stimulated by a client
         #self.page is None if we have not setup.

@@ -11,7 +11,7 @@ import errno
 import pprint
 import socket
 import select
-import threading
+import fcntl, FCNTL
 
 # enstore imports
 import callback
@@ -32,6 +32,8 @@ MY_SERVER = "monitor"
 
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
+SERVER_CLOSED_CONNECTION = "Server closed connection"
+
 
 class MonitorServerClient(generic_client.GenericClient):
 
@@ -106,7 +108,13 @@ class MonitorServerClient(generic_client.GenericClient):
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
-
+        except SERVER_CLOSED_CONNECTION:
+            sys.exit(1)
+            #reply = {}
+            #reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
+            #reply['elapsed'] = self.timeout*10
+            #reply['block_count'] = 0
+        
         return reply
 
     # ping a server like ENCP would
@@ -119,7 +127,7 @@ class MonitorServerClient(generic_client.GenericClient):
                                self.timeout)
         if not r :
             if not self.summary:
-                print "passive open did not hear back from monitor server via TCP"
+                print "monitor server unresponsive via TCP"
             raise  errno.errorcode[errno.ETIMEDOUT]
 
         #simulate the control socket between encp and the mover
@@ -129,34 +137,70 @@ class MonitorServerClient(generic_client.GenericClient):
             
         returned_ticket = callback.read_tcp_obj(ms_socket)
         ms_socket.close()
-        data_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        data_socket.connect(returned_ticket['mover']['callback_addr'])
 
+        #Create the TCP socket, remeber the current settings (to reset them
+        # back later) and set the new file control flags.
+        data_socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        flags = fcntl.fcntl(data_socket.fileno(), FCNTL.F_GETFL)
+        fcntl.fcntl(data_socket.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
+
+        for retry in xrange(self.timeout):
+            try:
+                data_socket.connect(returned_ticket['mover']['callback_addr'])
+                if not data_socket:
+                    print "unable to open connection to server"
+                    raise SERVER_CLOSED_CONNECTION
+                break #Success, so get out of the loop.
+            except socket.error, detail:
+                #We have seen that on IRIX, when the connection succeds, we
+                # get an ISCONN error.
+                if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+                    break
+                #Rename this error to be handled the same as the others.
+                elif detail[0] == errno.ECONNREFUSED:
+                    raise SERVER_CLOSED_CONNECTION, detail[0]
+                else:
+                    pass #somethin...something...something...
+                time.sleep(1)
+        else: #If we did not break out of the for loop, flag the error.
+            raise SERVER_CLOSED_CONNECTION
+
+        #Success on the connection!  Restore flag values.
+        fcntl.fcntl(data_socket.fileno(), FCNTL.F_SETFL, flags)
+        
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         #Since we are recieving the data, recording the time is important.
         if ticket['transfer'] == SEND_FROM_SERVER:
-            data=data_socket.recv(1)
-            if not data:
-                raise "Server closed connection"
-            bytes_received=len(data)
+            bytes_received = 0
             t0=time.time()
-            while bytes_received<self.block_size*self.block_count:
-                data = data_socket.recv(self.block_size)
+            while bytes_received < ticket['block_size']*ticket['block_count']:
+                r,w,ex = select.select([data_socket], [], [data_socket],
+                                       self.timeout)
+                if not r:
+                    print "passive read did not hear back from monitor server via TCP"
+                    raise SERVER_CLOSED_CONNECTION
+                    
+                data = data_socket.recv(ticket['block_size'])
                 if not data: #socket is closed
-                    raise "Server closed connection"
+                    raise SERVER_CLOSED_CONNECTION
                 bytes_received=bytes_received+len(data)
             reply['elapsed']=time.time()-t0
+
         #When sending, the time isn't important.
         elif ticket['transfer'] == SEND_TO_SERVER:
             sendstr = "S"*ticket['block_size']
             for x in xrange(ticket['block_count']):
+                r,w,ex = select.select([], [data_socket], [data_socket],
+                               self.timeout)
+                if not w:
+                    print "passive write failed to reach monitor server via TCP"
+                    raise SERVER_CLOSED_CONNECTION
                 data_socket.send(sendstr)
             reply['elapsed'] = -1
 
         #If we get here, the status is ok.
         reply['status'] = ('ok', None)
-
         #Return the reply.
         return reply
 
@@ -233,6 +277,22 @@ class MonitorServerClient(generic_client.GenericClient):
             summary_d[hostname] = enstore_constants.WARNING
             summary_d[enstore_constants.NETWORK] = enstore_constants.WARNING
 
+
+    #Check on alive status.
+    #Override alive definition inside generic_client.
+    def alive(self, server, rcv_timeout=0, tries=0):
+        try:
+            x = self.u.send({'work':'alive'}, (self.c_hostip,
+                                               enstore_constants.MONITOR_PORT),
+                            rcv_timeout, tries)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            Trace.trace(14,"alive - ERROR, alive timed out")
+            x = {'status' : (e_errors.TIMEDOUT, None)}
+        except socket.error, message:
+            Trace.trace(14,"alive - ERROR, connection failed")
+            x = {'status' : (message.args[0], self.c_hostip)}
+        return x
+
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, flag=1, opts=[]):
@@ -251,7 +311,7 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
             return self.restricted_opts
         else:
             return self.help_options() +  self.alive_options() +\
-                   ["summary", "html-gen-host="]
+                   ["summary", "html-gen-host=", "hostip="]
 
 def get_all_ips(config_host, config_port, csc):
     """
