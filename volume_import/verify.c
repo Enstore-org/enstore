@@ -62,6 +62,7 @@ verify_file(char *pnfs_dir, char *strip, char *filename){
     struct stat sbuf;
     int status;
     char path[MAX_PATH_LEN];
+    char dest_path[MAX_PATH_LEN];
 
     if (!pnfs_dir){
 	fprintf(stderr,"%s: %s: no pnfs directory given\n", progname, filename);
@@ -85,8 +86,17 @@ verify_file(char *pnfs_dir, char *strip, char *filename){
 	}
 	if(strip_path(path, strip, filename))
 	    return -1;
+	join_path(dest_path, pnfs_dir, path);
+    } else {
+	join_path(dest_path, pnfs_dir, filename);
     }
     
+    if (!no_check){
+	status = search_db_destination(tape_db, dest_path);
+	if (status)
+	    return status;
+    }
+
     status = stat(filename, &sbuf);
     if (status){
 	fprintf(stderr,"%s: ", progname);
@@ -109,6 +119,78 @@ verify_file(char *pnfs_dir, char *strip, char *filename){
 
     return 0;
 }
+
+int 
+search_db_destination(char *db_dir, char *target){
+    
+    struct stat sbuf;
+    int status;
+    int exists=0;
+    char path[MAX_PATH_LEN];
+    char db_value[MAX_PATH_LEN];
+    
+    DIR *vold, *subd, *filed, *itemd;
+    struct dirent *vol, *sub, *file, *item;
+
+    verbage("checking to see if %s is in tape_db\n",path);
+
+    sprintf(path,"%s/volumes",tape_db);
+    
+    if ( (vold = opendir(path)) == (DIR*)0){
+	fprintf(stderr,"%s: opendir: ", progname);
+	perror("volumes");
+	return -1;
+    }
+    
+    while ( (vol=readdir(vold)) ){      
+	if (vol->d_name[0]=='.')
+	    continue;
+	verbage("searching in %s\n",vol->d_name);
+	sprintf(path, "%s/volumes/%s", tape_db, vol->d_name);
+	if ( (subd = opendir(path)) == (DIR*)0){
+	    fprintf(stderr,"%s: opendir: ", progname);
+	    perror(vol->d_name);
+	    return -1;
+	}
+	while ( (sub=readdir(subd)) ){
+	    if (sub->d_name[0]=='.')
+		continue;
+	    verbage("searching subdir %s\n", sub->d_name);
+	    if (!strcmp(sub->d_name,"files")){ /*per-file data*/
+		sprintf(path, "%s/volumes/%s/files", tape_db,vol->d_name);
+		if ( (filed = opendir(path)) == (DIR*)0){
+		    fprintf(stderr,"%s: opendir: ", progname);
+		    perror(path);
+		}
+		while ( (file=readdir(filed)) ){
+		    if (file->d_name[0]=='.')
+			continue;
+		    verbage("searching file %s\n", file->d_name);
+		    sprintf(path, "%s/volumes/%s/files/%s", tape_db,
+			    vol->d_name,
+			    file->d_name);
+		    if (read_db_s(path,"destination", db_value, 1)){
+			return 1;
+		    }
+		    verbage("test %s %s\n", db_value, target);
+		    
+		    if (!strcmp(db_value, target)){
+			fprintf(stderr, "Error: file %s is already written on volume %s, file %s\n",
+				db_value, vol->d_name, file->d_name);
+			return 1;
+		    }
+		}
+		closedir(filed);
+	    }
+	}
+	closedir(subd);
+    }
+    closedir(vold);
+    return 0;    
+}
+
+
+
 
 int
 check_volume_label_legal(){
