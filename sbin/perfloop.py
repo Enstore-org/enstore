@@ -239,20 +239,23 @@ def testNodes():
 # POSTCONDITION: ALL THE OUTPUT IS SELF ADJUSTING TO WHAT THE INPUT WAS.
 ##########################################################################
 def printResults():
-    maxColWidth = 0
+    strtColWidth = 0
     hdrLen = 0
     lpCntr = 0
 
-    while lpCntr < len(testList):                 # CENTERS 'TEST RESULTS' OVER THE GENERATED TABLE
-        if len(testList[lpCntr]) > maxColWidth:   # NO MATTER HOW WIDE THE TABLE.
-            maxColWidth = len(testList[lpCntr])
-            if maxColWidth < 7:
-                maxColWidth = 7
+    while lpCntr < len(testList):
+        if len(testList[lpCntr]) > strtColWidth:
+            strtColWidth = len(testList[lpCntr])
+        if len(testList[lpCntr]) < 7:
+            colWidth = 7
+        else:
+            colWidth = len(testList[lpCntr]) + 1
+        hdrLen = hdrLen + colWidth
         lpCntr = lpCntr + 1
-    strtColWidth = maxColWidth
-    maxColWidth = maxColWidth + 1
-    hdrLen = maxColWidth * len(testList)
-    sys.stdout.write(string.center("TEST RESULTS\n", (hdrLen + strtColWidth)))
+    if strtColWidth < 7:
+        strtColWidth = 7
+    hdrLen = hdrLen + strtColWidth
+    sys.stdout.write(string.center("TEST RESULTS\n", hdrLen))
     
     sys.stdout.write("\nfrom")
     lpCntr = 0
@@ -262,11 +265,15 @@ def printResults():
     sys.stdout.write("\\to")
     lpCntr = 0
     while lpCntr < len(testList):        # PRINTS THE TOP LINE LISTING THE 'TO' NODES
-        sys.stdout.write(string.rjust(testList[lpCntr], maxColWidth))
+        if len(testList[lpCntr]) < 7:
+            colWidth = 7
+        else:
+            colWidth = len(testList[lpCntr]) + 1
+        sys.stdout.write(string.rjust(testList[lpCntr], colWidth))
         lpCntr = lpCntr + 1
     sys.stdout.write("\n")
     lpCntr = 0
-    while lpCntr < strtColWidth + (maxColWidth * len(testList)): # UNDERLINES THE 'TO' NODES
+    while lpCntr < hdrLen:
         sys.stdout.write("-")
         lpCntr = lpCntr + 1
     sys.stdout.write("\n")
@@ -275,7 +282,11 @@ def printResults():
         sys.stdout.write(string.ljust(testList[fromPtr], strtColWidth))
         toPtr = 0
         while toPtr < len(testList): # PRINTS THE TEST RESULTS
-            sys.stdout.write(string.rjust(" %s" % resultdict["%s %s" % (testList[fromPtr], testList[toPtr])], maxColWidth))
+            if len(testList[toPtr]) < 7:
+                colWidth = 7
+            else:
+                colWidth = len(testList[toPtr]) + 1
+            sys.stdout.write(string.rjust(" %s" % resultdict["%s %s" % (testList[fromPtr], testList[toPtr])], colWidth))
             toPtr = toPtr + 1
         sys.stdout.write("\n")
         fromPtr = fromPtr + 1
