@@ -184,9 +184,9 @@ def is_volume_busy(self, external_label):
 		# for work at movers volume cannot be in unmounted state
 		check_vol_state = 1
 		at_mov = 1
-		rc = 1
-		Trace.log(e_errors.ERROR, "volume %s is in work_at_movers"%external_label)
-		break
+                Trace.log(e_errors.ERROR, "volume %s is in work_at_movers"%external_label)
+            rc = 1
+            break
     else: # for
 	# check if volume is in delayed dismount list
 	# this function is called when LM gets "idle" request and
@@ -238,7 +238,6 @@ def get_work_at_movers(self, external_label):
 ##############################################################
 # is there any work for any volume?
 def next_work_any_volume(self):
-
     # look in pending work queue for reading or writing work
     w=self.pending_work.get_init()
     while w:
@@ -384,7 +383,6 @@ def next_work_this_volume(self, v):
 ##############################################################
 # summon mover
 def summon_mover(self, mover, ticket):
-    if not summon: return
     # update mover info
     mover['last_checked'] = time.time()
     mover['state'] = 'summoned'
@@ -711,7 +709,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    mv_found = 1
 		    break
 
-	
 	# call handle_timeout to avoid the situation when due to
 	#requests from another encp clients TO did not work even if
 	#movers being summoned did not respond
@@ -847,7 +844,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    # check if tape is stuck in in the mounting state
 	    vol_info = self.vcc.inquire_vol(wt['fc']['external_label'])
 	    if vol_info['at_mover'][0] == 'mounting':
-                mcstate =  self.vcc.uupdate_mc_state(wt['fc']['external_label'])
+                mcstate =  self.vcc.update_mc_state(wt['fc']['external_label'])
 		format = "vol:%s state recovered to %s. mover:%s"
 		Trace.log(e_errors.INFO, format%(wt['fc']['external_label'],
 						 mcstate["at_mover"][0], 
@@ -1006,8 +1003,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		else:
 		    # check if dismount delay had expired
 		    if not mvr.has_key("del_dism"):
-			    # no delayed dismount: flag dismount
-			    dismount_vol = 1
+                        # no delayed dismount: flag dismount
+                        dismount_vol = 1
 		    else:
 			# do not dismount, rather send no work
 			self.reply_to_caller({'work': 'nowork'})
@@ -1158,14 +1155,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def schedule(self):
         while 1:
             w = next_work_any_volume(self)
-	    self.force_summon()
             if w["status"][0] == e_errors.OK or \
 	       w["status"][0] == e_errors.NOWORK:
+                self.force_summon()
                 return w
             # some sort of error, like write work and no volume available
             # so bounce. status is already bad...
             self.pending_work.delete_job(w)
 	    send_regret(self, w)
+            self.force_summon()
 	    Trace.trace(14,"schedule: Error detected %s" % w)
 
     # load mover list form the configuration server
@@ -1302,8 +1300,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if mv:
 		summon_mover(self, mv, w)
 	for w in self.del_dismount_list.list:
+            if w.has_key("del_dism"):
+                del w["del_dism"]
 	    mv = find_mover_by_name(w['mover'], movers)
 	    if mv:
+                if mv.has_key("del_dism"):
+                    del mv["del_dism"]
 		summon_mover(self, mv, w) 
 
 	# try to kick off the mover
