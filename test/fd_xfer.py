@@ -82,35 +82,35 @@ while loop <= loops:
     # THE BIND ##################################################################
     print "%s:         sw_mount... "%tt(),; sys.stdout.flush()
     hsm_driver.sw_mount( tapedev, 102400, 30520749568L, external_label, eod_cookie )
-    do = hsm_driver.open( tapedev, 'a+' )
-    if do.is_bot(do.tell()) and do.is_bot(eod_cookie):
+    driver_obj = hsm_driver.open( tapedev, 'a+' )
+    if driver_obj.is_bot(driver_obj.tell()) and driver_obj.is_bot(eod_cookie):
 	# write an ANSI label and update the eod_cookie
 	print '\n%s:         label...'%tt(),; sys.stdout.flush()
-	ll = do.format_label( external_label )
-	do.write( ll )
-	do.writefm()
-	eod_cookie = do.tell()
-	remaining_bytes = do.get_stats()['remaining_bytes']
+	ll = driver_obj.format_label( external_label )
+	driver_obj.write( ll )
+	driver_obj.writefm()
+	eod_cookie = driver_obj.tell()
+	remaining_bytes = driver_obj.get_stats()['remaining_bytes']
 	pass
-    do.close()
+    driver_obj.close()
 
     # THE XFER ##################################################################
-    do = hsm_driver.open( tapedev, 'a+' )
+    driver_obj = hsm_driver.open( tapedev, 'a+' )
     print '\n%s:         seek to %s... '%(tt(),eod_cookie),; sys.stdout.flush()
-    do.seek( eod_cookie )
-    print '\n%s:         do.fd_xfer( fo.fileno(), %s, 0,0 )'%(tt(),bytes),; sys.stdout.flush()
+    driver_obj.seek( eod_cookie )
+    print '\n%s:         driver_obj.fd_xfer( fo.fileno(), %s, 0,0 )'%(tt(),bytes),; sys.stdout.flush()
     t0 = time.time()
-    crc = do.fd_xfer( fo.fileno(), bytes, 0,0 )
+    crc = driver_obj.fd_xfer( fo.fileno(), bytes, 0,0 )
     t1 = time.time()
     print '\n%s:         writefm... '%tt(),; sys.stdout.flush()
-    do.writefm()
-    eod_cookie = do.tell()
+    driver_obj.writefm()
+    eod_cookie = driver_obj.tell()
     print '\n%s:         get_stats... '%tt(),; sys.stdout.flush()
     if isinstance( hsm_driver, driver.FTTDriver ): stats = FTT.get_stats()
-    else:                                          stats = do.get_stats()
+    else:                                          stats = driver_obj.get_stats()
     xx = tt()
     for ll in string.split( pprint.pformat(stats), '\012' ): print '\n%s:         %s'%(xx,ll),; sys.stdout.flush()
-    do.close()			# b/c of fm above, this is purely sw.
+    driver_obj.close()			# b/c of fm above, this is purely sw.
 
 
     print '\n%s:         crc is %s  %d bytes in %s seconds (%s bytes/sec)'%(tt(),
