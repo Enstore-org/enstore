@@ -9,16 +9,22 @@ Options:
 General use commands:
 
 encp [--config_host=  --config_port= --config_list --list --help ] inputfilename outputfilename
-	copies input to output
+        copies input to output
 
 pnfs [--test --status --file= --list --nolist  --help]
-	provides information about a file in pnfs space or runs pnfs tests
-	--test    runs pnfs tests
-	--file    specifies the file you want information about
+        provides information about a file in pnfs space or runs pnfs tests
+        --test    runs pnfs tests
+        --file    specifies the file you want information about
 
 econ [--config_host= --config_port= --config_file= --config_list --dict --load --help]
-	list/loads configuration server dictionary
-	--dict    dumps the dictionary
-	--load    load the file specified in --config_file
-	--config_file=  the name of the file to be loaded.
+        list/loads configuration server dictionary
+        --dict    dumps the dictionary
+        --load    load the file specified in --config_file
+        --config_file=  the name of the file to be loaded.
 
+rddt [--size= --device= --eod_cookie= --list --help]
+        tests the raw disk driver
+        --size    size of the disk file (ie, size of media)
+        --device  name of disk file
+        --eod_cookie  end-of-data cookie
+        --list
