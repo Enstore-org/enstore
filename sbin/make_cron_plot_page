@@ -2,4 +2,4 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-python $ENSTORE_DIR/src/enstore_make_plot_page.py --plot quota --description "Current quotas by storage group and type" --title "Enstore Tape Quotas" --input_dir "/fnal/ups/prd/www_pages/enstore/tape_inventory/quotas" --html_file "/fnal/ups/prd/www_pages/enstore/enstore_quotas.html"  --url "tape_inventory/quotas" --title_gif en_quota.gif
+python $ENSTORE_DIR/src/enstore_make_plot_page.py --plot cron
