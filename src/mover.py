@@ -1227,6 +1227,7 @@ if __name__ == '__main__':
             mover.serve_forever()
         except SystemExit:
             Trace.log(e_errors.INFO, "goodbye")
+            os._exit(0)
             break
         except:
             try:
