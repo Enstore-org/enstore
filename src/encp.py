@@ -45,6 +45,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
               "library"            : p.library,
+              "filename"           : unixfile,
               "file_family"        : p.file_family,
               "file_family_width"  : p.file_family_width,
               "uid"                : p.uid,

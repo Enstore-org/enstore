@@ -23,15 +23,11 @@ class FileClerkClient :
                          , external_label \
                          , sanity_cookie \
                          , complete_crc ) :
-
-        ticket = {"work"             : "new_bit_file", \
-                  "bof_space_cookie" : bof_space_cookie, \
-                  "external_label"   : external_label, \
-                  "sanity_cookie"    : sanity_cookie, \
-                  "complete_crc"     : complete_crc, \
-                  }
-
-        return self.send(ticket)
+        return self.send({"work"             : "new_bit_file", \
+                          "bof_space_cookie" : bof_space_cookie, \
+                          "external_label"   : external_label, \
+                          "sanity_cookie"    : sanity_cookie, \
+                          "complete_crc"     : complete_crc })
 
     def get_bfids(self):
         return self.send({"work" : "get_bfids"} )

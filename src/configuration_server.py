@@ -17,11 +17,14 @@ class ConfigurationDict(DispatchingWorker) :
         try:
             f = open(configfile)
         except :
-            return repr(configfile)+" does not exists"
+            msg = "Configuration Server: load_config"\
+                   +repr(configfile)+" does not exists"
+            print msg
+            return msg
         line = ""
 
         if list:
-            print "ConfigurationDict load_config: "\
+            print "Configuration Server load_config: "\
                   +"loading enstore configuration from ",configfile
         while 1:
             # read another line - appending it to what we already have
@@ -41,11 +44,12 @@ class ConfigurationDict(DispatchingWorker) :
             try :
                 exec ("x"+line)
             except :
-                print "ConfigurationDict load_config: "\
+                f.close()
+                msg = "Configuration Server: "\
                       +"can not process line: ",line \
                       ,"\ndictionary unchanged."
-                f.close()
-                return "bad"
+                print msg
+                return msg
             # start again
             line = ""
         f.close()
@@ -63,14 +67,13 @@ class ConfigurationDict(DispatchingWorker) :
             need = 1
         if need:
             configfile="/pnfs/enstore/.(config)(flags)/enstore.conf"
-            print "ConfigurationDict.config_exists: invalid dictionary, " \
+            print "Configuration Server: invalid dictionary, " \
                   +"loading ",configfile
             self.load_config(configfile)
 
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket) :
         self.config_exists()
-
         try :
             out_ticket = self.configdict[ticket["lookup"]]
         except KeyError:
