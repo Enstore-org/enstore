@@ -1542,8 +1542,6 @@ static void* thread_monitor(void *monitor_info)
        (start_read.tv_sec == read_info->start_transfer_function.tv_sec) && 
        (start_read.tv_usec == read_info->start_transfer_function.tv_usec))
     {
-      printf("read() is taking to long.\n");
-
       /* Tell the 'hung' thread to exit.  If we don't, then if/when it does
 	 continue the memory locations have already been freed and will cause
 	 a segmentation violation. */
@@ -1588,8 +1586,6 @@ static void* thread_monitor(void *monitor_info)
        (start_write.tv_sec == write_info->start_transfer_function.tv_sec) && 
        (start_write.tv_usec == write_info->start_transfer_function.tv_usec))
     {
-      printf("write() is taking to long.\n");
-
       /* Tell the 'hung' thread to exit.  If we don't, then if/when it does
 	 continue the memory locations have already been freed and will cause
 	 a segmentation violation. */
