@@ -607,7 +607,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
-            Trace.log(e_errors.INFO,"Init d_b LOG(%s): PS %s"%(result,))
+            Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
 
         
     def return_state(self):
