@@ -211,7 +211,6 @@ def write_to_hsm(input, output,
             try:
                 oldtick = work_ticket["encp"]["curpri"] # get a name error if this is new ticket
                 work_ticket["encp"]["basepri"] = work_ticket["encp"]["basepri"] + 4
-                work_ticket["priority"] = workticket["priority"]+4 # this will be deleted shortly
 
             # if no ticket, then this is a not a retry
             except NameError:
@@ -221,11 +220,9 @@ def write_to_hsm(input, output,
 
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
-                uinfo["delayed_dismount"] = delayed_dismount  # this will be deleted shortly
                 encp["delayed_dismount"] = delayed_dismount
                 uinfo["mtime"] = int(time.time())
                 work_ticket = {"work"               : "write_to_hsm",
-                               "priority"           : 1,
                                "callback_addr"      : callback_addr,
                                "vc"                 : volume_clerk,
                                "pinfo"              : pinfo[i],
@@ -654,7 +651,6 @@ def read_from_hsm(input, output,
 
                 uinfo["sanity_size"] = 5000
                 uinfo["size_bytes"] = file_size[i]
-                uinfo["delayed_dismount"] = delayed_dismount # this will be deleted shortly
                 encp["delayed_dismount"] = delayed_dismount
 
                 # generate the work ticket
