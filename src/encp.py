@@ -2345,8 +2345,7 @@ def receive_final_dialog(control_socket):
         Trace.log(e_errors.INFO, "Received final dialog for %s." %
                   done_ticket.get('unique_id', "Unknown"))
     except e_errors.TCP_EXCEPTION, msg:
-        done_ticket = {'status':(e_errors.TCP_EXCEPTION,
-                                 msg)}
+        done_ticket = {'status':(e_errors.TCP_EXCEPTION, str(msg))}
         
     return done_ticket
         
@@ -2777,7 +2776,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if e_errors.is_emailable(status[0]):
             Trace.alarm(e_errors.EMAIL, status[0], {
                 'infile':infile, 'outfile':outfile, 'status':status[1]})
-        if e_errors.is_alarmable(status[0]):
+        elif e_errors.is_alarmable(status[0]):
             Trace.alarm(e_errors.ERROR, status[0], {
                 'infile':infile, 'outfile':outfile, 'status':status[1]})
 
