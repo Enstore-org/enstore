@@ -53,7 +53,8 @@ case $node in
                  d0enmvr21a: \
                  d0enmvr22a: \
                  d0enmvr23a: \
-                 d0enmvr24a: "
+                 d0enmvr24a: \
+                 d0endca3a:"
           ;;
 
    cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4:  \
@@ -79,7 +80,7 @@ case $node in
           ;;
   stkmvr*|d0enmvr*|cdfenmvr*) type=mover
           ;;
-  stkendca*|cdfendca*) type=dcache
+  stkendca*|cdfendca*|d0endca*) type=dcache
           ;;
        *) type=UNKNOWN
           ;;
@@ -132,6 +133,7 @@ add*)
     /sbin/route add -host d0enmvr23a  eth0;   
     /sbin/route add -host d0enmvr24a  eth0;   
 
+    /sbin/route add -host d0endca3a   eth0;     
 
 ### stken
 
@@ -278,6 +280,7 @@ del*)
     /sbin/route del       d0enmvr23a      ;   
     /sbin/route del       d0enmvr24a      ;   
 
+    /sbin/route del       d0endca3a       ;
 
 ### stken
 
