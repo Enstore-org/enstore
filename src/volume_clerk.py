@@ -1233,7 +1233,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             now = time.time()
             if self.paused_lms[m_changer]['noaccess_cnt'] == 0:
                 self.paused_lms[m_changer]['noaccess_time'] = now
-            if self.paused_lms[m_changer]['noaccess_time'] - now <= self.noaccess_to:
+            if now - self.paused_lms[m_changer]['noaccess_time'] <= self.noaccess_to:
                 self.paused_lms[m_changer]['noaccess_cnt'] = self.paused_lms[m_changer]['noaccess_cnt'] + 1
             else:
                 self.paused_lms[m_changer]['noaccess_cnt'] = 1
