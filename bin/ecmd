@@ -11,6 +11,7 @@ ecmd stop    [--just server --xterm server ]
 ecmd restart [--just server --xterm server ]
 
 ecmd encp    [--verbose= --help ] inputfilename outputfilename
+ecmd encp    --queue [--verbose=] hostname
 
 ecmd config  [--server_verbose= --config_file=  --dict --load --verbose= --alive --help ]
 ecmd fcc     [--server_verbose= --bfids --bfid= --verbose= --alive --backup --help ]

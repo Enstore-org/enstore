@@ -259,6 +259,8 @@ class Interface:
 	        self.criteria['rem_bytes']=self.check(value)
             elif opt == "--dbname":
 	        self.dbname=value
+            elif opt == "--queue":
+	        self.queue_list=1
             elif opt == "-v":
 	        self.criteria['external_label']=string.split(value,',')
             elif opt == "-l":

@@ -28,6 +28,7 @@ import interface
 import e_errors
 import Trace
 import ECRC
+import library_manager_client
 
 d0sam_format = "INFILE=%s\n"+\
                "OUTFILE=%s\n"+\
@@ -875,6 +876,51 @@ def read_from_hsm(input, output,
     # its dictionary - this keeps things cleaner and stops memory from growing
     #u.send_no_wait({"work":"done_cleanup"}, (fticket['hostip'], fticket['port']))
 
+#######################################################################
+def query_lm_queue(node,
+                  config_host, config_port,
+                  ilist=0):
+    Trace.trace(6,"{query_lm_queue host="+node)
+
+    # check if there special d0sam printing requested. This is designated by
+    # the having bit 2^12 set (4096)
+    d0sam = (ilist & 0x1000) !=0
+    verbose = ilist & 0x0fff
+
+    # initialize - and get config, udp and log clients
+
+    global logc
+    (csc,u,uinfo) = clients(config_host,config_port,verbose)
+
+    keys = csc.get_keys()
+    for key in keys['get_keys']:
+	if string.find(key, "library_manager") != -1:
+	    lmc=library_manager_client.LibraryManagerClient(0, 0, key, config_host, config_port)
+	    ticket = lmc.getwork(0)
+	    pw_list = ticket["pending_work"]
+	    at_list = ticket["at movers"]
+	    for i in range(0, len(pw_list)):
+		host = pw_list[i]["wrapper"]["machine"][1]
+		user = pw_list[i]["wrapper"]["uname"]
+		pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
+		fn = pw_list[i]["wrapper"]["fullname"]
+		if host == node:
+		    print "%s %s %s %s P" % (host,user,pnfsfn,fn)
+		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s P" % (host,user,pnfsfn,fn)
+	    for i in range(0, len(at_list)):
+		host = pw_list[i]["wrapper"]["machine"][1]
+		user = pw_list[i]["wrapper"]["uname"]
+		pnfsfn = pw_list[i]["wrapper"]["pnfsFilename"]
+		fn = pw_list[i]["wrapper"]["fullname"]
+		if host == node:
+		    print "%s %s %s %s M" % (host,user,pnfsfn,fn)
+		    #print "node=%s,username=%s,pnfsFilename=%s,fullname=%s M" % (host,user,pnfsfn,fn)
+	    del(lmc)
+
+    #pprint.pprint(keys)
+    Trace.trace(6,"}query_lm_queue")
+
+
 ##############################################################################
 
 # submit read_from_hsm requests
@@ -1683,7 +1729,7 @@ class encp(interface.Interface):
         Trace.trace(16,"{encp.options")
 
         the_options = self.config_options()+\
-                      ["verbose=","nocrc","pri=","delpri=","agetime=","d0sam"]+\
+                      ["verbose=","nocrc","pri=","delpri=","agetime=","d0sam", "queue"]+\
                       self.help_options()
 
         Trace.trace(16,"}encp.options options="+repr(the_options))
@@ -1709,6 +1755,12 @@ class encp(interface.Interface):
 
         # normal parsing of options
         interface.Interface.parse_options(self)
+	try:
+	    if (self.queue_list and len(self.args) == 1):
+		self.command = "queue_list"
+		return
+	except:
+	    pass
 
         # bomb out if we don't have an input and an output
         arglen = len(self.args)
@@ -1765,33 +1817,42 @@ if __name__  ==  "__main__" :
     # use class to get standard way of parsing options
     e = encp()
 
-    # have we been called "encp unixfile hsmfile" ?
-    if e.intype=="unixfile" and e.outtype=="hsmfile" :
-        write_to_hsm(e.input,  e.output,
-                     e.config_host, e.config_port,
-                     e.verbose, e.chk_crc,
-                     e.pri, e.delpri, e.agetime, t0)
 
-    # have we been called "encp hsmfile unixfile" ?
-    elif e.intype=="hsmfile" and e.outtype=="unixfile" :
-        read_from_hsm(e.input, e.output,
-                      e.config_host, e.config_port,
-                      e.verbose, e.chk_crc,
-                      e.pri, e.delpri, e.agetime, t0)
+    # try encp command first
+    try:
+	if e.command == "queue_list":
+	    query_lm_queue(e.args[0], e.config_host, e.config_port, e.verbose)
+    except:
+	#traceback.print_exc()
+	# have we been called "encp unixfile hsmfile" ?
+	if e.intype=="unixfile" and e.outtype=="hsmfile" :
+	    write_to_hsm(e.input,  e.output,
+			 e.config_host, e.config_port,
+			 e.verbose, e.chk_crc,
+			 e.pri, e.delpri, e.agetime, t0)
 
-    # have we been called "encp unixfile unixfile" ?
-    elif e.intype=="unixfile" and e.outtype=="unixfile" :
-        print "encp copies to/from hsm. It is not involved in copying "\
-              +input," to ",output
+	# have we been called "encp hsmfile unixfile" ?
+	elif e.intype=="hsmfile" and e.outtype=="unixfile" :
+	    read_from_hsm(e.input, e.output,
+			  e.config_host, e.config_port,
+			  e.verbose, e.chk_crc,
+			  e.pri, e.delpri, e.agetime, t0)
 
-    # have we been called "encp hsmfile hsmfile?
-    elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
-        print "encp hsm to hsm is not functional. "\
-              +"copy hsmfile to local disk and them back to hsm"
+	# have we been called "encp unixfile unixfile" ?
+        elif e.intype=="unixfile" and e.outtype=="unixfile" :
+	    print "encp copies to/from hsm. It is not involved in copying "\
+		  +input," to ",output
 
-    else:
-        emsg = "ERROR: Can not process arguments "+repr(e.args)
-        Trace.trace(0,emgs)
-        jraise(errno.errorcode[errno.EPROTO],emsg)
+	# have we been called "encp hsmfile hsmfile?
+        elif e.intype=="hsmfile" and e.outtype=="hsmfile" :
+	    print "encp hsm to hsm is not functional. "\
+		  +"copy hsmfile to local disk and them back to hsm"
 
-    Trace.trace(1,"encp finished at "+repr(time.time()))
+	else:
+	    emsg = "ERROR: Can not process arguments "+repr(e.args)
+	    Trace.trace(0,emgs)
+	    jraise(errno.errorcode[errno.EPROTO],emsg)
+
+	Trace.trace(1,"encp finished at "+repr(time.time()))
+
+
