@@ -34,18 +34,18 @@ M2Status *s;
 		strncmp(s->status, "    ", 4)?s->status:s->status+4);
 }
 
-/* Tape History Log page */
+/* Log Entry */
 
-typedef struct thle	/* tape history log entry */
+typedef struct log_entry	/* log entry structure */
 {
 	unsigned char code;
 	char *name;
 	int len;
-}	TapeHistoryLogEntry;
+}	LogEntry;
 
 /* The index in tape_history_parameters is the parameter code! */
 
-TapeHistoryLogEntry tape_history_parameters[] =
+LogEntry tape_history_parameters[] =
 {
 	{0x00, "Length of this list",			40},
 	{0x01, "Tape ID",				8},
@@ -89,13 +89,66 @@ TapeHistoryLogEntry tape_history_parameters[] =
 	{0x27, "Lifetime SmartClean Cycles",		4}
 };
 
+/* Drive Usage */
+
+LogEntry drive_usage_parameters[] =
+{
+	{0x00, "Length of this list",		21},
+	{0x01, "Total Blocks Written",		8},
+	{0x02, "Total Blocks Rewritten",	8},
+	{0x03, "Total Blocks Read",		8},
+	{0x04, "Total ECC Corrections",		8},
+	{0x05, "Total Blocks Reread",		8},
+	{0x06, "Total Load Count",		3},
+	{0x07, "Minutes Since Last Clean",	3},
+	{0x08, "Minutes of Powered Time",	3},
+	{0x09, "Minutes of Tensioned Time",	3},
+	{0x0a, "Cleaning Count",		2},
+	{0x0b, "Vendor Unique",			2},
+	{0x0c, "Vendor Unique",			2},
+	{0x0d, "Vendor Unique",			2},
+	{0x0e, "Vendor Unique",			2},
+	{0x0f, "Vendor Unique",			2},
+	{0x10, "Vendor Unique",			2},
+	{0x11, "Time to Clean",			1},
+	{0x12, "Vendor Unique",			1},
+	{0x13, "Reserved",			3},
+	{0x14, "Reserved",			3}
+};
+
+/* Write Errors */
+
+LogEntry write_error_parameters[] =
+{
+	{0x00, "Length of this list",		7},
+	{0x01, "dummy",			0},
+	{0x02, "Total Rewrites",		3},
+	{0x03, "Total Errors Corrected",	3},
+	{0x04, "Total Times Errors Processed",	3},
+	{0x05, "Total Bytes Processed",		5},
+	{0x06, "Total Unrecoverable Errors",	2}
+};
+
+/* Read Errors */
+
+LogEntry read_error_parameters[] =
+{
+	{0x00, "Length of this list",		7},
+	{0x01, "dummy",			0},
+	{0x02, "Total Rereads",			3},
+	{0x03, "Total Errors Corrected",	3},
+	{0x04, "Total Times Errors Processed",	3},
+	{0x05, "Total Bytes Processed",		5},
+	{0x06, "Total Unrecoverable Errors",	2}
+};
+
 /* show_tape_history(buf) -- print parameters of tape history */
 
 void show_tape_history(buf)
 unsigned char *buf;
 {
 	unsigned char *ep;
-	TapeHistoryLogEntry *tp;
+	LogEntry *tp;
 	int code;
 
 	if (*buf != 0x35)	/* not a tape history log page */
@@ -123,9 +176,64 @@ unsigned char *buf;
 	}
 }
 		
+/* show_log(buf, parameter_list) -- print parameters of generic log */
+
+void show_log(buf, parameter_list)
+unsigned char *buf;
+LogEntry parameter_list[];
+{
+	unsigned char *ep;
+	LogEntry *tp;
+	int code;
+	char *title;
+
+	switch(*buf)
+	{
+	case 0x02:
+		title = "Write Error Counters";
+		break;
+	case 0x03:
+		title = "Read Error Counters";
+		break;
+	case 0x2e:
+		title = "Tape Alert";
+		break;
+	case 0x35:
+		title = "Tape History Log";
+		break;
+	case 0x39:
+		title = "Data Compression";
+		break;
+	case 0x3c:
+		title = "Drive Usage Information";
+		break;
+	case 0x3e:
+		title = "Drive Temperature";
+		break;
+	defaults:
+		return;		/* not a valid log page */
+	}
+
+	printf("%s:\n", title);
+
+	ep = buf + n_byte2int(buf+2, 2);
+
+	buf += 4;		/* skip Parameter List Header */
+
+	while (buf < ep)
+	{
+		code = n_byte2int(buf, 2);
+		tp = &parameter_list[code];
+		printf("%32s: ", tp->name);
+		printf("%d\n", n_byte2int(buf+4, tp->len));
+		buf += tp->len + 4;
+	}
+	printf("\n");
+}
+		
 /* Command Descriptor Block */
 
-/* READ BUFFER */
+/* READ BUFFER DISCRIPTOR */
 static unsigned char ftt_cdb_read_buffer_descriptor[] =
 	{0x3c, 0x03, 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00};
 
@@ -149,11 +257,22 @@ static unsigned char ftt_cdb_request_sense[] =
 static unsigned char ftt_cdb_log_sense[] =
 	{0x4d, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
 
+/* TAPE HISTORY -- a LOG SENSE on tape history */
+
 static unsigned char ftt_cdb_tape_history[] =
 	{0x4d, 0x00, 0x75, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00};
 
-/* TAPE HISTORY -- a LONG SENSE on tape history */
+/* DRIVE USAGE -- a LOG SENSE on drive usage */
+static unsigned char ftt_cdb_drive_usage[] =
+	{0x4d, 0x00, 0x7c, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00};
 
+/* WRITE ERRORS -- a LOG SENSE on write errors */
+static unsigned char ftt_cdb_write_errors[] =
+	{0x4d, 0x00, 0x42, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00};
+
+/* READ ERRORS -- a LOG SENSE on read errors */
+static unsigned char ftt_cdb_read_errors[] =
+	{0x4d, 0x00, 0x43, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00};
 
 /* ERASE */
 static unsigned char ftt_cdb_erase[] =
@@ -379,6 +498,38 @@ unsigned char *buf;
 	return (buf);
 }
 
+/* get_drive_usage(d, buf) -- a sense log on drive usage */
+
+unsigned char *get_drive_usage(d, buf)
+ftt_descriptor d;
+unsigned char *buf;
+{
+	int res;
+
+	res = ftt_do_scsi_command(d, "Sense Log", ftt_cdb_drive_usage,
+		10, buf, 1024, 10, 0);
+
+	return (buf);
+}
+
+/* get_log(d, buf, pcode) -- generic sense log on pcode */
+
+unsigned char *get_log(d, buf, pcode)
+ftt_descriptor d;
+unsigned char *buf, pcode;
+{
+	unsigned char ftt_cdb_log_sense[] =
+		{0x4d, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+	int res;
+
+	ftt_cdb_log_sense[2] |= pcode;
+	
+	res = ftt_do_scsi_command(d, "Sense Log", ftt_cdb_log_sense,
+		10, buf, 1024, 10, 0);
+
+	return (buf);
+}
+
 /* get_tape_id(d, buf) -- a sense log on tape history */
 
 char *get_tape_id(d, buf)
@@ -421,10 +572,13 @@ int len, l2;
 void usage(s)
 char *s;
 {
-	printf("\nusage:\n\n%s [-d] [-t] [-p prefix] [-o dump_file] [device]\n", s);
+	printf("\nusage:\n\n%s [-d] [-t] [-u] [-r] [-w] [-p prefix] [-o dump_file] [device]\n", s);
 	printf("	-h		print usage\n");
 	printf("	-d		make a dump\n");
 	printf("	-t		show tape history\n");
+	printf("	-u		show drive usage infromation\n");
+	printf("	-w		show write errors\n");
+	printf("	-r		show read errors\n");
 	printf("	-p prefix	use explicit prefix for dump file\n");
 	printf("	-o dump_file	use explicit dump file name\n");
 	printf("	device		use explicit device name\n\n");
@@ -449,22 +603,25 @@ char **argv;
 	DIR *dir;
 	struct dirent *dp;
 	int c;
-	int make_dump, list_tape_history;
+	int make_dump, list_tape_history, drive_info, read_error, write_error;
 
 	device = NULL;
 	output_file = NULL;
 	prefix = NULL;
-	make_dump = list_tape_history = 0;
+	make_dump = list_tape_history = drive_info = read_error = write_error = 0;
 /*
 	if (argc > 1) device = argv[1];
 	if (argc > 2) output_file = argv[2];
 */
-	while ((c = getopt(argc, argv, "dthp:o:")) != -1)
+	while ((c = getopt(argc, argv, "dhturwp:o:")) != -1)
 	{
 		switch(c)
 		{
 		case 'd':
 			make_dump = 1;
+			break;
+		case 'u':
+			drive_info = 1;
 			break;
 		case 't':
 			list_tape_history = 1;
@@ -472,6 +629,12 @@ char **argv;
 		case 'h':
 			usage(argv[0]);
 			exit(0);
+			break;
+		case 'r':
+			read_error = 1;
+			break;
+		case 'w':
+			write_error = 1;
 			break;
 		case 'p':
 			strcpy(prefix_buf, optarg);
@@ -544,6 +707,21 @@ char **argv;
 	{
 		printf("Tape history:\n");
 		show_tape_history(get_tape_history(d, buf));
+	}
+
+	if (drive_info)
+	{
+		show_log(get_log(d, buf, 0x3c), drive_usage_parameters);
+	}
+
+	if (read_error)
+	{
+		show_log(get_log(d, buf, 0x03), read_error_parameters);
+	}
+
+	if (write_error)
+	{
+		show_log(get_log(d, buf, 0x02), write_error_parameters);
 	}
 
 	ftt_close(d);
