@@ -105,6 +105,7 @@ def get_config():
 def get_default_interface_ip():
     hostip = ""
     msg = None
+    default = None
 
     #Try to determine the detfault ip to use for the local connection.
     # The minute loop is necessary when the DNS server is rebooted.
