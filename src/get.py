@@ -993,17 +993,16 @@ def readtape_from_hsm(e, tinfo):
             encp.create_zero_length_local_files(request)
         except (OSError, IOError, encp.EncpError), msg:
             if isinstance(msg, encp.EncpError):
-                #request = msg.ticket
-                request['status'] = (msg.type, str(msg))
-            if request.get('status', None) == None:
                 request['status'] = (msg.type, str(msg))
             elif isinstance(msg, OSError):
                 request['status'] = (e_errors.OSERROR, str(msg))
-            else:
+            elif isinstance(msg, IOError):
                 request['status'] = (e_errors.IOERROR, str(msg))
+            else:
+                request['status'] = (e_errors.UNKNOWN, str(msg))
 
             request['completion_status'] = FAILURE
-                
+            
             #Tell the calling process, this file failed.
             error_output(request)
             #Tell the calling process, of those files not attempted.
