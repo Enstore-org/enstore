@@ -341,7 +341,7 @@ class ConfigurationServer(ConfigurationDict, generic_server.GenericServer):
 
         # make a configuration dictionary
         cd =  ConfigurationDict()
-        Trace.trace(10,'init ConfigurationDict ',+repr(cd))
+        Trace.trace(10,'init ConfigurationDict '+repr(cd))
 
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, (host, port))
