@@ -26,7 +26,7 @@ def get_failures(log,grepv='GONE',grep=""):
     else:
         gang = ' '
     if gang == 'd0e':
-        grepv_ = "DC|"+grepv
+        grepv_ = grepv
     elif gang == 'stk':
         grepv_ = "JDE|"+grepv
     else:
