@@ -59,7 +59,7 @@ def too_long(start):
     return rtn
 
 def get_media_changer(cdict, config_d, config_d_keys, lm):
-    mcs = []
+    mc = ''
     movers = cdict.get_movers_internal({'library' : lm})
     for m in movers:
 	mc = config_d[m['mover']].get(enstore_constants.MEDIA_CHANGER, '')
