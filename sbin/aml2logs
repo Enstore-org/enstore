@@ -3,7 +3,7 @@
 BASEPATH=/fnal/ups/prd/www_pages/enstore
 
 if [ `uname -n | grep -c d0ensrv2` -ne 0 ]; then
-  BASE=/diskb/aml2Shadow/AMU/LOGS-TRC
+  BASE=/diska/aml2Shadow/AMU/LOGS-TRC
   DECODED=/diska/aml2-log
   REPORTED=/diska/aml2-report
 fi
