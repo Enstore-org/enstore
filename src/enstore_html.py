@@ -46,6 +46,9 @@ MOVERS = "Movers"
 THE_INQUISITOR = "The Inquisitor"
 THE_ALARM_SERVER = "The Alarm Server"
 
+RESOLVEALL = "Resolve All"
+RESOLVESELECTED = "Resolve Selected"
+
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
 	     [enstore_constants.MPD_FILE, "Mounts/Day"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency"],
@@ -1177,8 +1180,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	akeys = sort_keys(alarms)
 	for akey in akeys:
 	    alarm = alarms[akey].list_alarm()
-	    td = HTMLgen.TD(HTMLgen.Input(type="radio", name="alarm%s"%(i,),
-						     value=alarm[0]),
+	    td = HTMLgen.TD(HTMLgen.Input(type="checkbox", name="alarm%s"%(i,),
+					  value=alarm[0]),
 			    html_escape='OFF')
 	    td.append("%s%s"%(NBSP*3, alarm[0]))
 	    tr = HTMLgen.TR(td)
@@ -1194,18 +1197,20 @@ class EnAlarmPage(EnBaseHtmlDoc):
     def body(self, alarms, web_host):
 	table = self.table_top()
 	# now the data
-	exe = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Execute", type="submit")))
-	rst = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
 	form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
 	# get rid of the default submit button, we will add our own below
 	form.submit = ''
 	form.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
 	form.append(empty_row())
 	form.append(empty_row())
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Execute", 
-						 type="submit")))
+	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Resolve Selected", 
+						 type="submit",
+						 name=RESOLVESELECTED)))
+	tr.append(HTMLgen.TD(HTMLgen.Input(value="Resolve All", 
+						 type="submit",
+						 name=RESOLVEALL)))
 	tr.append(HTMLgen.TD(HTMLgen.Input(value="Reset", type="reset")))
-	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page."%(str(HTMLgen.Bold("Execute")),), html_escape='OFF'))
+	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page. All alarms may be cancelled by pressing the %s button."%(str(HTMLgen.Bold(RESOLVESELECTED)),str(HTMLgen.Bold(RESOLVEALL))), html_escape='OFF'))
 	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
