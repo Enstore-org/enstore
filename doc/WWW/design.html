@@ -90,6 +90,7 @@
 <li><a href="#d0req">8 D0 Requirements</a>
 <li><a href="#d0reqa">8.1 Summary of D0 Functional Specifications</a>
 <li><a href="#d0reqb">8.2 Sam/Enstore Interface Notes</a>
+<li><a href="#d0req3">8.3 Sam/Enstore Interface Notes</a>
 <li><a href="#manp">9 WBS and Effort Estimates</a>
 
 </ul>
@@ -1071,6 +1072,14 @@ extension to <em>encp</em>.
 <td NOSAVE>specify the time period, in minutes, after which the base priority could change</td>
 <td NOSAVE>--agetime=value</td>
 <td NOSAVE>0 (no aging of priority)</td>
+</tr>
+
+<tr NOSAVE>
+<td NOSAVE>give the library manager a hint that more work is coming for the
+volume and it should not dismount the volume "too quickly" when this
+transfer is completed </td>
+<td NOSAVE>--delayed_dismount</td>
+<td NOSAVE>None (immediate dismount on completion)</td>
 </tr>
 
 <tr NOSAVE>
@@ -5904,8 +5913,9 @@ direction for what is needed from Enstore.  We believe a close and working
 collaboration has been developed in which both SAM and Enstore have
 profited.
 
-We now present the requirements we have recieved from D0 and try to
-indicate how we fulfill them.
+In the followin subsections, we  present the requirements we have received from D0 and try to
+indicate how we fulfill them.  We want to work with D0 to satisfy them
+all. This should be possible since we control the source code.
 
 <h3><a name="d0reqa">
 8.1 Summary of D0 Functional Specifications
@@ -5913,7 +5923,7 @@ indicate how we fulfill them.
 
 <H3>
 The Functionality D0 expects of a Storage Management Layer</H3>
-There are 6 major functional areas.&nbsp; They are described in more detail
+There are 6 major functional areas. They are described in more detail
 and broken down further below.
 <UL>
 <LI>
@@ -5922,7 +5932,7 @@ Database Functions for Files and Tape Volumes</LI>
 
 <LI>
 Specification
-and Control of&nbsp; Tape Volume Storage Locations</LI>
+and Control of Tape Volume Storage Locations</LI>
 
 <LI>
 Control of various
@@ -5939,7 +5949,7 @@ between users machine/local disk and tape in robot.</LI>
 
 <LI>
 Operational procedures
-to run and manage the robot, the data stored in the system, the tape drives,&nbsp;
+to run and manage the robot, the data stored in the system, the tape drives,
 and the "databases"</LI>
 </UL>
 
@@ -5954,10 +5964,11 @@ to tape volume information</H3>
 <UL>
 <LI>
 reliable and backed up
-"database" of each volume and file. the volume location of each file,&nbsp;
+"database" of each volume and file. the volume location of each file,
 and the position within each volume for each file</LI>
 
-<p><it> Enstore has 2 simple internal databases, the <a href="#volume_clerk">volume</a> and <a href="#file_clerk_cmds">file</a>
+<p>
+     Enstore has 2 simple internal databases, the <a href="#volume_clerk">volume</a> and <a href="#file_clerk_cmds">file</a>
 databases and the <em>pnfs</em> databases. These databases are based on LIBTP and contain sufficient
 information to read each file in Enstore or write new volumes to available volumes.
 <p>
@@ -5972,20 +5983,79 @@ D0's experiment catalog can also contain the basic information in our
 databases. The initial loading of this information is done via the return
 information from <em>encp</em>.  And, since we do not expect any movement or compacting of data, this
 information should not change.  If it does, syncing methods will need to be developed.
-</it></P>
+<p>
+Enstore also stores data in <em>pnfs's</em> databases, such as the bit file
+id.  These <em>pnfs</em> databases have been reliable in our experience and
+they are supported by DESY.
+<P>
 
-<p> <b><it> <em>Pnfs</em> backup issues are not completely understood and will be treated in DESY visit this February </it></b></P>
+<p> <b><em>Pnfs</em> backup issues are not completely understood and will be treated in DESY visit this February </b></P>
 
 <LI>
 assurance that all movement
 of files/deletion of files is correctly reflected in the "database"</LI>
+<p>
+If an experimenter moves or deletes files in the <em>pnfs</em>
+file system, it is immediately reflected in the <em>pnfs</em> databases.  Therefore,
+in the case of moved files, Enstore still has the correct pointer information
+available to it for the transfers; for deleted files, the user won't
+be able to find the file in the namespace and won't be able to start
+the transfer.
+<p>
+In addition to the user namespace, Enstore maintains another namespace
+that is ordered by file family, tape and position on the tape.  The
+user can't delete or move items (UNIX permissions) in this namespace
+because it represents the physical ordering of files on
+tapes. Recovery of accidental deletions from the user's namespace can
+potentially be recovered by using this volume based namespace. [Not
+yet implemented.]
+<p>
+No changes in the internal Enstore databases are required when a user
+moves or deletes files since nothing has been moved or deleted on the
+physical media.  Initial tools are available to delete entire volumes,
+nothing is planned for compacting data on volumes.
+<P>
 
 <LI>
 notation of volume/file
 status (e.g. if unreadable or errors)</LI>
+<p>
+Enstore has implemented a special format, --d0sam, at the end of each file
+transfer. The status of the current file transfer is available in this
+way. The only successful status code is "OK" and an exit code of
+0. All other values represent failures.
+<p>
+Another possible return is NOACCESS, which indicates the volume
+can not be read. This return happens before submission to the library
+manager's queue, so it happens very quickly.
+<p>
+In principle, since SAM has the volume information as Enstore and
+could update its tables to reflect the NOACCESS returns. If the 
+volume is put back into service, a tool to reflect this change would
+have to be developed.
+Another possibility is for Enstore to flag the affected files from the
+NOACCESS volume in <em>pnfs</em> in pnfs for the user.
+<P>
+<p><b>
+A consistent, apriori way of marking all files from on a
+volume unreadable after the volume has been declared unreadable has not
+been fully worked through. (The general idea is that SAM never makes
+an <em>encp</em> request for files on unreadable tapes.)
+</b></P>
 
 <LI>
 tracking of the tape volume format</LI>
+<p>
+Enstore only one format is allowed per tape, it is not possible to mix
+formats. Enstore tracks this information in its volume database and errors
+out if it doesn't match.
+<p>
+Another more obvious method we are developing is to add the tape format
+to the file family name.  For example, the file family would be "top.cpio"
+and not just "top".  In this way, the user can select the format he wants
+to use and tapes automatically have just one format (since different
+formats would have different file family names.)
+<p>
 </UL>
 
 
@@ -6009,10 +6079,29 @@ and intuitively view all volumes in the system</LI>
 tools for viewing file/volume
 related information such as all files on a volume</LI>
 
+<p>
+Enstore uses the <em>pnfs</em> namespace from DESY and it furnishes all
+these items.
+<p>
+The library manager has commands to list all the volumes in the system or
+file family as well as the statistics about specific volumes. 
+
+<p>
+Enstore also manages a duplicate namespace that is ordered by file family
+and volumes and position on tape that also supplies this information for
+the user.
+<p>
+
 <LI>
-tools for exporting all,&nbsp;
-or recently changed parts,&nbsp; of the file and volume database to the
+tools for exporting all,
+or recently changed parts, of the file and volume database to the
 data access layer (for performance reasons) or to remote institutions</LI>
+
+<p><b>
+This has not been addressed.
+</b></P>
+
+
 </UL>
 
 
@@ -6023,32 +6112,49 @@ data access layer (for performance reasons) or to remote institutions</LI>
 <LI>
 ability
 to handle several distinct robot storage locations</LI>
-
+<p>
+Robot storage locations are controlled by the <em>pnfs</em> library
+tag. This is user settable.
+<p>
 <LI>
 ability
 to treat a single physical robot as multiple logical storage locations</LI>
-
-<LI>
-ability
-to handle various physical&nbsp; 'shelves' as possible storage locations</LI>
-
+<p>
+Enstore can divide a physical library into many virtual libraries.  Mover
+computers, and therefore, tape drives, can be assigned to one or more of
+these virtual libraries.
+<p>
 <LI>
 ability
 to migrate tape volumes between storage locations</LI>
+ability
+to handle various physical 'shelves' as possible storage locations</LI>
+<p>
+Enstore treats 'shelves' as just another library. Tools are available to
+change volumes between different libraries.  Insert/Eject tools are being
+developed for the EMASS robot to transfer  volumes from robotic storage to
+vault shelves.
+<p>
 
 <LI>
 ability
 to import volumes into storage locations (given sufficient meta-data in
 an acceptable format)</LI>
-
 <LI>
 ability
 to export volumes (with their associated meta-data)</LI>
-
+<p> Enstore is developing import and export tools that meet these
+requirements as described in <a
+href="#impexp">section 5</a>
+<p>
 <LI>
 possibly
 implementation of quota system for particular user/group within a storage
 location</LI>
+<p><b>
+This has not been addressed.
+</b><P>
+
 </UL>
 
 <H3>
@@ -6063,9 +6169,9 @@ and use of tape drives</H3>
 <UL>
 <LI>
 possibly specification of preference
-or affinity between certain access modes, users&nbsp; or groups, and certain
+or affinity between certain access modes, users or groups, and certain
 subsets or classes of physical tape drives</LI>
-<p> <b><it> Cannot do this right now, requires hook in Library Manager </it></b></P>
+<p> <b>This has not been addressed.</b><P>
 </UL>
 
 
@@ -6077,25 +6183,44 @@ are written to tape</H3>
 <LI>
 specification of "groupings" or File
 Families for files</LI>
-
 <LI>
 specification of "width" for a grouping
-- ie number of tapes allowed to be written in //</LI><!-- What // means? -->
-
+<p>
+File families and widths are a fundamental design notions of Enstore.
+<p>
+Enstore allows the user to change the file family and width tags in <em>pnfs</em>. Regular
+UNIX permissions prevent unauthorized changes.
+<P>
 <LI>
 possibly specification of a list of
 files to be treated logically as one 'work unit'</LI>
-
+<p>
+Enstore allows a cp-like syntax where the input files can be a list.
+<P>
 <LI>
-specification of&nbsp; "append to tapes"
+specification of "append to tapes"
 policy</LI>
-
+<p>
+Enstore tries to append to tapes to fill them to their capacity.  Tapes can
+also be marked "full" at any point 
+<p>
 <LI>
 specification of file wrappering format</LI>
-
+<p>
+Enstore has developed a flexible wrappering module. We want to be able to
+support any wrappering format an experiment chooses.  We promote the use of
+CPIO formats since it makes the tapes self-describing and readable on any
+UNIX machine.
+<p>
 <LI>
 association of tape volumes to a particular
 file family and tape library</LI>
+<p>
+All volumes are inherently assigned to a file family before they are
+written to by Enstore. The concept of File families has no meaning for reads.
+<p>
+Volumes can currently only be in one tape library.
+<p>
 </UL>
 
 <H3>
@@ -6105,8 +6230,8 @@ are read from tape</B></H3>
 <UL>
 <LI>
 specification of error/retry behavior</LI>
-<p> <b><it> Cannot do this dynamically, have static retry behavior, and will make
-     this comply to D0 needs. </it></b></P>
+<p> <b> Cannot do this dynamically, have static retry behavior, and will make
+     this comply to D0 needs. </b></P>
 </UL>
 <H3>
 <B>3.4) Control of parameters which govern</B> <B>access
@@ -6116,6 +6241,8 @@ to files and volumes</B></H3>
 <LI>
 access control based on user/group
 for each file and each file family</LI>
+<p>
+<em>Pnfs</em> provides this with normal UNIX file permissions.
 </UL>
 
 <H3>
@@ -6126,6 +6253,17 @@ routing between storage system Movers and client machines</B></H3>
 <LI>
 ability to choose optimal path to load
 balance in the case of multiple network interfaces on a single machine</LI>
+<p>
+Enstore provides this through the mover config file and the normal UNIX
+table routing files.
+<p>
+<p>
+A simple round-robin plan is envisioned for multiple interfaces.  This can be solved in any
+specific case, we are not addressing the general case.
+<p><b>
+This has not been fully addressed.
+</b><P>
+
 </UL>
 
 <H3>
@@ -6140,13 +6278,17 @@ for all transfers/work done for</LI>
 <UL>
 <LI>
 a particular user/group</LI>
+<p> The default value is the logged-in users default values
+<p>
 
 <LI>
 a particular file family</LI>
-
+<p> File families are inherited from the parent directory.
+<p>
 <LI>
 a particular storage location</LI>
-
+<p> Libraries are also inherited from the parent directory.
+<p>
 <LI>
 ? possibly others</LI>
 </UL>
@@ -6161,7 +6303,10 @@ recovery and tracking)</H3>
 <LI>
 Maintenance of a queue of work to do
 in case of excess demand on the robot or on the tape drives</LI>
-
+<p>
+Enstore's library manager maintains a queue of active work and pending
+work.
+<P>
 <LI>
 Ability to specify policies governing
 the ordering and manipulation of that queue of work, and therefore the
@@ -6171,46 +6316,65 @@ delay seen by the user, including (but not limited to)</LI>
 <LI>
 specification of a priority for all
 work requested</LI>
-
+<p>
+encp option --priority
+<p>
 <LI>
 specification of a priority increment
 and delta time in order to implement a priority boost/aging algorithm (or
 equivalent mechanisms)</LI>
-
+<p>
+encp option --delpri and --agetime
+<p>
 <LI>
-specification of&nbsp; policy for dismounting
+specification of policy for dismounting
 of tapes after work completed</LI>
-
+<p>
+encp option --delayed_dismount
+<p>
 <LI>
 other possible parameters to be decided
 based on tests/tuning of system</LI>
+<p>
 </UL>
 
 <LI>
 Cleanup of work queue in case of errors
 and canceled requesting processes</LI>
-
+<p>
+Enstore has spent considerable time developing robust error handling
+plans. The queues are cleaned up on errors or canceled requests.
+<p>
 <LI>
 Allocation of tape drives to units
 of work in the queue</LI>
-
+<p>
+Mover computers can be assigned to a specific library or multiple
+libraries. They can be changed dynamically, by an administrator, to reflect
+changing load conditions.
+<p>
 <LI>
 Retry of errored file reads/writes
 up to specified maximum</LI>
-
 <LI>
 Repeat attempts at failed work using
 alternate tape drive resources</LI>
+<p>
+Enstore's philosophy is to retry internally and only return to the user a
+success code or a fatal error.  Much work has been done towards this goal.
+<p>
 
 <LI>
 Notation and tracking of all work done,
 all errors encountered, all retries performed</LI>
-<p> <b><it> Does track retries in a user-visible way, the delay is apparent. </it></b></P>
+<p>
+encp option  --d0sam provides this functionality, including retries.
+<p>
 </UL>
 
 
 <H3>
-<B>5) Movement of Files&nbsp;
+<B>5) Movement of Files
 between users machine/local disk and tape in robot.</B></H3>
 
 <UL>
@@ -6218,26 +6382,41 @@ between users machine/local disk and tape in robot.</B></H3>
 ability
 to transfer files from any network-connected machine to/from tape drive
 in robot</LI>
-
+<p>
+Assuming a sufficient network connection, the only requirements are the <em>encp</em> client and the <em>pnfs</em>
+namespace. 
+<p>
 <LI>
 ability
 to transfer files reliably and with error detection, and correction by
 retry</LI>
-
+<p>
+This is inherent in Enstore's design
+<p>
 <LI>
 ability
 to transfer files at > N% of raw tape bandwidth. N is probably about 50.</LI>
-
+<p>
+Assuming a sufficient network connection, data should stream to tape at the
+maximum tape speed.  We have designed the mover module to get the most
+performance out of the hardware are we can. Operations such as mounting,
+spacing, rewinding, etc, slow the overall rate down
+and are somewhat beyond the control of Enstore.
+<p>
 <LI>
 nothing
 done to exclude the possibility of adding an intermediate disk cache layer
 to adjust rate of data movement from tape drive to end user data sink -
 should that become necessary</LI>
-
 <LI>
 nothing
 done to exclude the possibility of cooperation with the data access layer
 as a distributed disk cache of recently requested data</LI>
+
+<p>
+Disk buffering has not been excluded, as far as we can tell.
+<p>
+
 </UL>
 
 <H3>
@@ -6253,11 +6432,26 @@ tape drives and "databases"</H3>
 <LI>
 Well defined and safe procedures for
 dealing with repair and maintenance of the robot itself</LI>
-
+<p>
+There is a maintenance contract on the robot.
+<p>
+Three Enstore people have attended training in Denver on the EMASS robot
+<p>
+The ESH Department is involved and helping to specify safe
+operations. LOTO has already been instituted.
+<p>
 <LI>
 Procedures for monitoring the status
-of&nbsp; tape drives and for replacing faulty drives with drives which
+of tape drives and for replacing faulty drives with drives which
 have been checked and tested through another well-defined process.</LI>
+<p>
+Enstore keeps track of drive errors and marks drives as "unavailable" when
+they exceed some limit.  It is expected that an administrator review the
+bad drives in the morning.
+<p>
+Extensive 24 hour burn-in tests are planned for all repaired or replaced
+drives to ensure that the end-user sees high quality drives.
+<p>
 </UL>
 
 <H3>
@@ -6272,6 +6466,24 @@ system and Operator work/console system</LI>
 <LI>
 Definition of policies for executing
 batch imports/exports of tape volumes</LI>
+<p>
+Enstore's plans on queuing work requests for volumes that are not in the
+robot into 3 categories:
+<ul>
+  <li> Rejecting the request immediately
+  <li> Requesting an operator mount of the volume
+  <li> Storing the request into a Insert Volume Queue
+</ul>
+The policy for which one is chosen is TBD and will be up to the experiment.
+<p>
+It is expected that an operator will visit the robot at most once/day and
+exchange at most 100 volumes per visit.
+<p><b>
+This issue has not been addressed fully.
+<p></b>
+
+       
+
 </UL>
 
 <H3>
@@ -6281,22 +6493,39 @@ of the data and metadata</H3>
 <UL>
 <LI>
 Routine backup of "database"</LI>
-
+<p> Routine Live backups of Enstore databases almost finished now.
+<p><b> <em>Pnfs</em> backup is TBD </b>
+<p> SCSI RAID level 5 system needed for extra protection
+<p>
 <LI>
 Maintenance of a water-tight redo log
 of all transaction to be used in case of errors</LI>
-
+<p>
+All logs are kept online for at least 30 days and stored to tape after
+that. They are as complete as we can make them.
+<p>
 <LI>
 Recovery procedures in place, tested
 and executed in case of failures</LI>
-
+<p> We are working on recovery procedures and expect to have them completed
+shortly.
+<p>
 <LI>
 Ability to recover files and data on
 tape in case of complete and catastrophic loss of all "databases"</LI>
-
+<p>
+All volumes are self-describing. Metadata information can be recovered by
+scanning the tapes.  [This has not been written!]
 <LI>
 Routine checks on readability of sample
 of tapes - maintenance of statistics</LI>
+<p>
+Hopefully, normal transfers will allow a big enough sample to perform
+routine checks.
+<p><b>
+This has not been fully addressed.
+<p></b>
+
 </UL>
 
 
@@ -6315,15 +6544,15 @@ SAM/Enstore Interface</H3>
 The SAM data access layer uses the command/executable provided by Enstore
 to issue file commands.
 <P>The basic format of this command is one of the following:
-<P><em>encp</em>&nbsp; &lt;input file>&nbsp; &lt;destination directory
+<P><em>encp</em> &lt;input file> &lt;destination directory
 in <em>pnfs</em> space>
-<BR><em>encp</em>&nbsp; &lt;file in <em>pnfs</em> file space>&nbsp; &lt;output
+<BR><em>encp</em> &lt;file in <em>pnfs</em> file space> &lt;output
 file>
 <P>The exact syntax of the above may be changing somewhat, but is immaterial.
 <P>The following enhancements have been requested and (we think) agreed
 to by Enstore.
-<BR>&nbsp;
-<BR>&nbsp;
+<BR>
+<BR>
 
 <TABLE BORDER COLS=3 WIDTH="100%"  NOSAVE >
 <TR  NOSAVE>
@@ -6343,13 +6572,13 @@ Input wildcarding is allowed and furnished by the user's shell glob capabilities
 wildcarding doesn't make any sense -- Enstore allows the user to specify an
 input list of files and an output directory; in this case the input names
 are used in creating the output files in the directory (<it>i.e.</it>,
-similar to the UNIX cp command).</em>
+similar to the UNIX cp command).<P></em>
 </TD>
 
 <TD>Enstore will implement notification by writing a message to stdout.
 </TD>
 <TD>Permits a number of files to be supplied or dispatched serially with
-one <em>encp</em>.&nbsp;</TD>
+one <em>encp</em>.</TD>
 </TR>
 
 
@@ -6357,28 +6586,30 @@ one <em>encp</em>.&nbsp;</TD>
 <TD>Allow list of comma delimited files in input or output file spec
 <br><p><em>The notational issues in this items have not been addressed.
 Enstore provides cp-like list features and the delimiter in this case is a
-blank. Notification after each transfer is provided with the --d0sam switch.</em>
+blank. <p>Notification after each transfer is provided with the --d0sam switch.<p></em>
 </TD>
 
 <TD>Notification of each file arrival (or dispatch) as for wild cards.</TD>
 
 <TD>Permits a number of files to be supplied or dispatched serially with
-one <em>encp</em>.&nbsp;</TD>
+one <em>encp</em>.</TD>
 </TR>
 
 <TR>
 <TD>At the end of each file transaction provide information about the physical
 location of the file, its position on the tape, error/retries, which tape
-drive it was written on.&nbsp;</TD>
+drive it was written on.
+<br><p><em> encp provides this with the --d0sam option<p></em>
+</TD>
 
 <TD>This was originally discussed as being written to stdout along with
-informational messages about the state of the copy job.&nbsp; Latest thoughts
+informational messages about the state of the copy job. Latest thoughts
 appear to be to write all metadata related to the physical location of
 the file and how it got there into a separate, but parallel <em>pnfs</em> file system,
 into a file of the same name (we think?)</TD>
 
 <TD>It is very convenient when doing queries in order to gather information
-on files to optimize access patterns and when making reports,&nbsp; to
+on files to optimize access patterns and when making reports, to
 have all of the physical information on the files in the SAM Oracle file
 and event catalog. Multiple <em>pnfs</em> query calls would be awkward and unsymmetric
 with respect to files managed by SAM, but not stored in the Enstore Robot
@@ -6386,17 +6617,20 @@ space.</TD>
 </TR>
 
 <TR>
-<TD>Allow additional parameters on the enstore 'copy' command to control
-the positioning of the job in the enstore job queue.&nbsp; Initial priority,
-Aging Delta Time and Priority Increment would be sufficient.&nbsp;</TD>
+<TD>Allow additional parameters on the Enstore 'copy' command to control
+the positioning of the job in the Enstore job queue. Initial priority,
+Aging Delta Time and Priority Increment would be sufficient.
+<br><p><em> encp provides this with the --priority, --delpri and --agetime
+options<p></em>
+</TD>
 
 <TD>Exact implementation of the desired effect left to Enstore. Whether
 at a certain priority a job becomes pre-emptive of a job already in progress
 left for later stages of the project, after some experience with resource
-allocation.&nbsp;</TD>
+allocation.</TD>
 
 <TD>Need some degree of control over the ordering and priority of jobs
-already submitted to the enstore queue, in order to balance the flows of
+already submitted to the Enstore queue, in order to balance the flows of
 data and minimize job latency where necessary, but without rigid allocation
 of resources to particular access modes or projects</TD>
 </TR>
@@ -6404,7 +6638,9 @@ of resources to particular access modes or projects</TD>
 <TR>
 <TD>At the end of each file transaction provide information about the job
 which copied the file - dwell time in queue, final priority, robot arm
-wait time, file seek time, file transfer time and MBs, etc.&nbsp;</TD>
+wait time, file seek time, file transfer time and MBs, etc.
+<br><p><em> encp provides this with the --d0sam option<p></em>
+</TD>
 
 <TD>This is now going to be available in the parallel <em>pnfs</em> file metadata
 file system</TD>
@@ -6415,9 +6651,11 @@ mode.</TD>
 </TR>
 
 <TR>
-<TD>When an enstore job fails because of a tape error or failure of the
-receiving <em>encp</em> (or network or whatever) the job queue of enstore should
-be cleaned up appropriately.&nbsp;</TD>
+<TD>When an Enstore job fails because of a tape error or failure of the
+receiving <em>encp</em> (or network or whatever) the job queue of Enstore should
+be cleaned up appropriately.
+<br><em> Failed transfers are flushed from the Enstore queues. <p></em>
+</TD>
 
 <TD>Could live without this in 1st implementation, but would be nice to
 determine what is appropriate behavior in each of the possible failure
@@ -6432,19 +6670,91 @@ used in the File and Event Catalog</TD>
 
 <TR>
 <TD>If the STK robot and a couple of drives cannot be hooked up with an
-enstore test system by October 1, then Enstore needs to emulate the delays
+Enstore test system by October 1, then Enstore needs to emulate the delays
 of a robot for Tape mount, File seek time, and File transfer time, in order
-to test the Global Resource Manager.&nbsp;</TD>
+to test the Global Resource Manager.
+<br><p><em> SAM has used Enstore to write to both the STK robot and the EMASS robots. <p></em>
+</TD>
 
-<TD>Part of this is already implemented as a 'simple' model.&nbsp; Is this
-adequate - it is not installed yet, SAM have not tried it.&nbsp;</TD>
+<TD>Part of this is already implemented as a 'simple' model. Is this
+adequate - it is not installed yet, SAM have not tried it.</TD>
 
 <TD>Essential to simulate queuing for scarce resources - the tape drive,
-and the network bandwidth.&nbsp;</TD>
+and the network bandwidth.</TD>
 </TR>
 </TABLE>
 
-<BR>&nbsp;
+<BR>
+
+<h3><a name="d0reqc">
+8.3 Other D0 Requests to Enstore
+</h3>
+
+<ul>
+
+  <li> Enstore should assign drives randomly, not just the first few drives.
+       <p> Enstore uses all drives, not just the first ones, to allocate
+       work. <p>
+
+<li> Users, not just administrators, need easy access to the information
+   about successful and failed mounts and transfers. 
+     <p> Enstore logs will be available on the web for users to inspect. We
+     welcome help! <p>
+
+<li> A separate log with just mounts and a success/failure code would be
+   useful.
+     <p> Enstore will provide this capability, also available on the web. <p>
+
+<li> All information in a log needs to be on a single line, otherwise it is
+   impossible for mortals to parse.
+     <p> Enstore logs are all single, sometimes very long, lines. <p>
+
+<li> Enstore needs a procedure (certify job) that replaced drives must pass
+   before they are put back into service.  This procedure should last
+   around 24 hours and should exercise all functions.  It is foolish to put
+   drives back in service and have them fail again right away.
+     <p> This is planned. <p>
+
+<li> Broken drives should be replaced. This budget should rest outside of the
+   experiment.
+     <p> Enstore agrees but doesn't set this policy. <p>
+
+<li> Enstore should be able to deal in volumes. Ie, transfer a whole tape to
+   disk and vice versa.
+     <p> The current method of using lists might already be adequate. Otherwise,
+     this can be developed. <p>
+
+<li> D0 needs a scripts to create Enstore importable tapes.
+     <p> Enstore will provide these. <p>
+
+<li> D0 is not interested in file sets. The impact on the databases is not
+    so great that all the entries can't just in entered.
+     <p> Enstore will not implement any file set features. <p>
+
+<li> Enstore needs the capability to override its priority queue and do
+    things in the exact order requested.
+     <p><b> This is not straightforward and requires defeating the Enstore
+     system in many ways. More explicit needs will be addressed as they arise.</b> <p>
+
+<li> Enstore needs to guarantee a certain set of files are grouped on tape.
+     <p> This can be done with file families that have a (temporary) width
+     of 1. Or, it can be done if only 1 user is writing to the file family
+     at a time. <p>
+
+<li> Enstore needs to duplicate important data.
+     <p><b> This is part of the overall architecture, but it is not yet
+     developed.</b> <p>
+
+<li> Bad tapes need to be flagged for SAM to handle.  Maybe mark pnfs
+    filenames so transfer is never tried? What does DESY do?
+     <p><b> This is TBD.  We will discuss it with DESY during our upcoming
+     visit.</B> <p>
+
+<li> Direct RPC calls to the pnfs server might be nice so a user would not
+    have to mount pnfs.
+     <p><b> There are no current plans to implement this.</b> <p>
+
+</ul>
 
 <hr>
 <h2><a name="manp">
