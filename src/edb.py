@@ -27,9 +27,17 @@ import pg
 import ejournal
 import os
 
+default_database = 'enstoredb'
+
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
-	return time.mktime(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
+	if s == '1969-12-31 17:59:59':
+		return -1
+	else:
+		# take care of daylight saving time
+		tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
+		tt[-1] = -1
+		return time.mktime(tuple(tt))
 
 # time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
 def time2timestamp(t):
@@ -88,6 +96,7 @@ class DbTable:
 		self.table = table
 		self.pkey = pkey
 		self.auto_journal = auto_journal
+		self.backup_flag = 1
 
 		if self.auto_journal:
 			self.jou = ejournal.Journal(os.path.join(
@@ -126,7 +135,7 @@ class DbTable:
 
 		if len(res) == 0:	# insert
 			cmd = self.insert_query%get_fields_and_values(v1)
-			print cmd
+			# print cmd
 			res = self.db.query(cmd)
 		else:			# update
 			d = diff_fields_and_values(res[0], v1)
@@ -136,7 +145,7 @@ class DbTable:
 					setstmt = setstmt + i + ' = ' + str_value(d[i]) + ', '
 				setstmt = setstmt[:-2]	# get rid of last ', '
 				cmd = self.update_query%(setstmt, key)
-				print cmd
+				# print cmd
 				res = self.db.query(cmd)
 
 	def __delitem__(self, key):
@@ -163,8 +172,25 @@ class DbTable:
 	def __len__(self):
 		return self.db.query('select %s from %s;'%(self.pkey, self.table)).ntuples()
 
+	def start_backup(self):
+		self.backup_flag = 0
+		Trace.log(e_errors.INFO, "Start backup for "+self.table)
+		self.checkpoint()
+
+	def stop_backup(self):
+		Trace.log(e_errors.INFO, "End backup for "+self.name)
+		self.backup_flag = 1
+
+        #### NEED MORE WORK LATER
+	def checkpoint(self):
+		return
+
+	#### NEED MORE WORK LATER
+	def backup(self):
+		return
+
 class FileDB(DbTable):
-	def __init__(self, host='localhost', database='enstore'):
+	def __init__(self, host='localhost', database=default_database):
 		DbTable.__init__(self, host, database, table='file', pkey='bfid')
 		self.retrieve_query = "\
         		select \
@@ -216,7 +242,7 @@ class FileDB(DbTable):
 			}
 
 class VolumeDB(DbTable):
-	def __init__(self, host='localhost', database='enstore'):
+	def __init__(self, host='localhost', database=default_database):
 		DbTable.__init__(self, host, database, table='volume', pkey='label')
 		self.retrieve_query = "\
         		select \
@@ -245,11 +271,10 @@ class VolumeDB(DbTable):
 			insert into volume (%s) values (%s);"
 
 		self.update_query = "\
-			update volume set %s where lable = '%s';"
+			update volume set %s where label = '%s';"
 
 		self.delete_query = "\
 			delete from volume where label = '%s';"
-
 
 	def import_format(self, s):
 		sts = string.split(s['volume_family'], '.')
