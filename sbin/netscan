@@ -3,6 +3,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # this is cheap argument processing. Must be in this order when checking.
 if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
+if [ "${1:-}" = "-i" ] ; then IPMI=0; shift; else IPMI=1; fi
 
 . /usr/local/etc/setups.sh
 setup enstore
@@ -401,15 +402,17 @@ $ECHO "$dflines" | while read a b c d e rest; do
 done
 
 
-# we need a watchdog_reset file to make check_watchdog work
-if [ ! -r /etc/watchdog_reset ]; then
-   msg="/etc/watchdog_reset is missing"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
+if [ $IPMI -eq 1 ]; then
+   # we need a watchdog_reset file to make check_watchdog work
+   if [ ! -r /etc/watchdog_reset ]; then
+      msg="/etc/watchdog_reset is missing"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+   elif [ $QUIET -ne 1 ]; then
+      logit  "/etc/watchdog_reset, ok"
    fi
-elif [ $QUIET -ne 1 ]; then
-   logit  "/etc/watchdog_reset, ok"
 fi
 
 # check that we special jobs are running in crontab, or other files
@@ -420,29 +423,31 @@ filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, to
 filecheck "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror\""
 filecheck "boot_cleanup -x" /etc/rc.d/rc.local
 
-# check that ipmisrv is running without watchdog timer
-if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
-   msg="ipmisrv NO_DOG not running or misconfigured"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
+if [ $IPMI -eq 1 ]; then
+   # check that ipmisrv is running without watchdog timer
+   if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
+      msg="ipmisrv NO_DOG not running or misconfigured"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+   elif [ $QUIET -ne 1 ]; then
+      logit  "ipmisrv running, ok"
    fi
-elif [ $QUIET -ne 1 ]; then
-   logit  "ipmisrv running, ok"
-fi
 
-# check that watchdog timer action is to do nothing
-ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
-if [  $ACTION != "00"  ];then
-   msg="watchdog action is $ACTION. Should be 00"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-     enstore alarm --raise --severity "A" --root-error "$msg"
+   # check that watchdog timer action is to do nothing
+   ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
+   if [  $ACTION != "00"  ];then
+      msg="watchdog action is $ACTION. Should be 00"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+      # disable the action
+      /home/enstore/ipmi/dogdisarm
+   elif [ $QUIET -ne 1 ]; then
+      logit  "watchdog action, ok"
    fi
-   # disable the action
-   /home/enstore/ipmi/dogdisarm
-elif [ $QUIET -ne 1 ]; then
-   logit  "watchdog action, ok"
 fi
 
 
