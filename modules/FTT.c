@@ -625,6 +625,7 @@ FTT_fd_xfer(  PyObject *self
 {
 	int		fd;	    /* \   */
 	int		no_bytes;   /*  \  */
+	PyObject        *no_bytes_obj;
 	PyObject	*crc_fun_tp;/*   } no optional args (compare to EXfer) */
 	PyObject	*crc_tp;    /*  /  */
 	PyObject	*shm_tp;    /* /   */
@@ -640,9 +641,14 @@ FTT_fd_xfer(  PyObject *self
 	int		 dummy=0;
 	int		*read_bytes_ip=&dummy, *write_bytes_ip=&dummy;
 
-    sts = PyArg_ParseTuple(  args, "iiOOO", &fd, &no_bytes, &crc_fun_tp, &crc_tp
+    sts = PyArg_ParseTuple(  args, "iOOOO", &fd, &no_bytes_obj, &crc_fun_tp, &crc_tp
 			   , &shm_tp );
     if (!sts) return (NULL);
+
+    if (PyLong_Check(no_bytes_obj)) no_bytes = PyLong_AsUnsignedLong(no_bytes_obj);
+    else if (PyInt_Check(no_bytes_obj)) no_bytes = (unsigned)PyInt_AsLong(no_bytes_obj);
+    else return(raise_exception("FTT_fd_xfer - invalid no_bytes param"));
+
 
     if (!g_ftt_desc_tp) return (raise_exception("FTT_fd_xfer device not opened"));
 
