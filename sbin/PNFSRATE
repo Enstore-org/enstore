@@ -6,15 +6,15 @@ node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $gang in
   stken) mountpoint="/pnfs/eagle"
-          ndb=-1 # counters broken with new pnfs ???
+          ndb=45 
 	  lssizecmd="stkensrv1 /diska/pnfs/db"
           ;;
-   d0en) mountpoint="/pnfs/sam/mammoth"
-          ndb=-1 # counters broken with new pnfs ???
+   d0en) mountpoint="/pnfs/sam/dzero"
+          ndb=16
 	  lssizecmd="d0ensrv1 /diska/pnfs/db"
           ;;
-  cdfen) mountpoint="/pnfs/cdf"
-          ndb=-1 # counters broken with new pnfs ???
+  cdfen) mountpoint="/pnfs/cdfen"
+          ndb=12 
 	  lssizecmd="cdfensrv1 /diska/pnfs/db"
           ;;
        *) echo BUSTED
