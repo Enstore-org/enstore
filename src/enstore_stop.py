@@ -148,8 +148,9 @@ def detect_process(pid):
         os.kill(pid, 0)
         return 1
     except OSError, msg:
-        print msg
+        ##print msg
         if hasattr(msg, "errno") and msg.errno == errno.EPERM:
+            print msg
             return 1
         else:
             return 0
