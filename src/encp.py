@@ -2546,9 +2546,14 @@ def check_crc(done_ticket, encp_intf, fd=None):
 
     # Check the CRC in pnfs layer 2 (set by dcache).
     if encp_intf.chk_crc:
-        # Get the pnfs layer 2 for this file.
-        p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
-        data = p.readlayer(2)
+        try:
+            # Get the pnfs layer 2 for this file.
+            p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
+            data = p.readlayer(2)
+        except (IOError, OSError, TypeError):
+            #There is no layer 2 to check.  Skip the rest of the check.
+            #If there are ever any later checks added, this return is bad.
+            return
     
         # Define the match/search once before the loop.
         crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
