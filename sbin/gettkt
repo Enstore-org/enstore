@@ -2,10 +2,30 @@ defaultDomain=".fnal.gov"
 host=`uname -n`
 
 # we need the full domain name, if no domain is there, add default one on
-if expr $host : '.*\.' >/dev/null;then 
-   thisHost=$host;
+if expr $host : '.*\.' >/dev/null; then 
+   thisHost=$host
 else 
-   thisHost=${host}${defaultDomain};
+   thisHost=${host}${defaultDomain}
 fi
 
-/usr/krb5/bin/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+# reuse creds cache if it is owned by enstore; otherwise, make a new one
+OLDKRB5CCNAME=${KRB5CCNAME:-NONE}; export OLDKRB5CCNAME
+if [ $OLDKRB5CCNAME = NONE ]; then
+   KRB5CCNAME=/tmp/krb5cc_enstore_$$; export KRB5CCNAME
+elif [ `ls -l ${KRB5CCNAME#FILE:} | awk '{print $3}'` != enstore ]; then
+   KRB5CCNAME=/tmp/krb5cc_enstore_$$; export KRB5CCNAME
+fi
+
+if [ $KRB5CCNAME != $OLDKRB5CCNAME ]; then
+   ungettkt() {
+      /usr/krb5/bin/kdestroy -q
+      if [ $OLDKRB5CCNAME != NONE ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
+      unset -f ungettkt
+      }
+else
+   ungettkt() {
+      unset -f ungettkt
+      }
+fi
+
+/usr/krb5/bin/kinit -k -t /local/ups/kt/enstorekt enstore/cd/$thisHost
