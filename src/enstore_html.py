@@ -1283,7 +1283,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 			       help_file="serverStatusHelp.html",
 			       system_tag=system_tag)
 	self.title = "ENSTORE System Status"
-	self.script_title_gif = "ess.gif"
+	self.script_title_gif = "en_srvr.gif"
 	self.source_server = THE_INQUISITOR
 	self.description = ""
 	self.extra_queue_pages = {}
