@@ -20,8 +20,8 @@ LOG_PREFIX = "LOG-"
 MAX_LOG_FILE_SIZE = "max_log_file_size"
 NO_DEBUG_LOG = "no_debug_log"
 
-ALIVE = 1
-DEAD = 0
+IS_ALIVE = 1
+IS_DEAD = 0
 
 
 EXTRA_LINKS = "extra_links"
@@ -79,8 +79,12 @@ ALIVE_INTERVAL = "alive_interval"
 DEFAULT_ALIVE_INTERVAL = "default_alive_interval"
 CONFIG_SERVER_ALIVE_INTERVAL = 30 # there is none in config file
 NOT_MONITORING = "not monitoring"
-TIMED_OUT = "timed out"
 DEAD = "dead"
+NO_SUSPECT_VOLS = "CANNOT UPDATE SUSPECT VOLS"
+NO_WORK_QUEUE = "CANNOT UPDATE WORK QUEUE"
+NO_ACTIVE_VOLS = "CANNOT UPDATE ACTIVE VOLS"
+NO_STATE = "CANNOT UPDATE STATUS"
+TIMED_OUT = NO_STATE
 FILE_LIST_NAME = "enstore_files.html"
 PAGE_THRESHOLDS= "page_thresholds"
 FILE_LIST = "file_list"
