@@ -69,64 +69,64 @@ ftt_t_block.o :         ftt_t_block.c
 ftt_t_error.o :		ftt_t_error.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_label.o :		ftt_t_label.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_misc.o :		ftt_t_misc.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_name.o :		ftt_t_name.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_open.o :		ftt_t_open.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_position.o :	ftt_t_position.c			\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_rdwr.o :		ftt_t_rdwr.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
 ftt_t_stats.o :		ftt_t_stats.c				\
 			ftt_t_parse.h				\
 			ftt_t_macros.h				\
-			$(FTT_DIR)/ftt_lib/ftt.h		\
-			$(FTT_DIR)/ftt_lib/ftt_defines.h	\
-			$(FTT_DIR)/ftt_lib/ftt_voidtypes.h	\
-			$(FTT_DIR)/ftt_lib/ftt_common.h	
+			../ftt_lib/ftt.h		\
+			../ftt_lib/ftt_defines.h	\
+			../ftt_lib/ftt_voidtypes.h	\
+			../ftt_lib/ftt_common.h	
 
