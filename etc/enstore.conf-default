@@ -9,8 +9,8 @@ configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7515, 'logname':'INQSRV'
    'timeout':10, 'alive_rcv_timeout': 5, 'alive_retries':1, \
    'ascii_file':'/bakken/bakken/enstore_db/inquisitor.txt', \
    'html_file':'/products/www_pages/enstore/inquisitor.html', \
-   'default_server_timeout': 600,\
-   'timeouts' : { airedaledisk.library_manager: 600} }
+   'default_server_timeout': 600, \
+   'timeouts' : { 'airedaledisk.library_manager': 600} }
 
 configdict['hppcdisk.library_manager']     = { 'host':'hppc',     'port':7516, 'logname':'HPLIBM' }
 configdict['fntt1disk.library_manager']    = { 'host':'fntt1',    'port':7517, 'logname':'T1LIBM' }
