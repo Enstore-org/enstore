@@ -1651,6 +1651,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
         elif m_err[exit_status] in (e_errors.WRITE_BADMOUNT,
                                     e_errors.WRITE_UNLOAD,
                                     e_errors.READ_BADMOUNT,
+                                    e_errors.WRITE_BADSWMOUNT,
+                                    e_errors.READ_BADSWMOUNT,
                                     e_errors.READ_UNLOAD):
             next_req_to_lm = self.unilateral_unbind_next( m_err[exit_status] )
         elif m_err[exit_status] in (e_errors.READ_VOL1_READ_ERR,
