@@ -322,7 +322,7 @@ class Buffer:
         space = self._getspace()
         #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
         #bytes_read = driver.read(space, 0, nbytes)
-        bytes_read = driver.read(space, 0, self.buffer.blocksize)
+        bytes_read = driver.read(space, 0, self.blocksize)
 	#bytes_read = bytes_read - pad # SEVA FOO
         #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
