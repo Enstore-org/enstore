@@ -16,7 +16,7 @@ rm -f $out2
 
 echo `date` >$out2 2>&1
 echo >> $out2 2>&1
-grep \(NO $out  >> $out2 2>&1
+grep \(NO $out | grep -v 'migrated' >> $out2 2>&1
 echo >> $out2 2>&1
 echo `date` >>$out2 2>&1
 
