@@ -75,7 +75,7 @@ STK STK.c -I. -I$(STK_DIR)/include -L$(STK_DIR)/lib -lapi -lutl -lipc -lcl -lapi
 aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 derrno derrno_wrap.c -I$(ACI_DIR)/inc
 
-checksum checksum_wrap.c adler32.a
+checksum checksum_wrap_thread.c adler32.a
 
 socket_ext socket_ext_wrap.c
 
