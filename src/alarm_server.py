@@ -29,23 +29,25 @@ SERVER = "server"
 SUS_VOLS = "suspect_volumes"
 LM = "library_manager"
 
+SEVERITY = "severity"
+ROOT_ERROR = "root_error"
+
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     # pull out alarm info from the ticket and raise the alarm
     def post_alarm(self, ticket):
-        Trace.trace(12, "{post_alarm "+repr(ticket))
-        if ticket.has_key("severity"):
-            severity = ticket["severity"]
+        if ticket.has_key(SEVERITY):
+            severity = ticket[SEVERITY]
             # remove this entry from the dictionary, so if won't be included
             # as part of alarm_info
-            del ticket["severity"]
+            del ticket[SEVERITY]
         else:
             severity = e_errors.DEFAULT_SEVERITY
-        if ticket.has_key("root_error"):
-            root_error = ticket["root_error"]
+        if ticket.has_key(ROOT_ERROR):
+            root_error = ticket[ROOT_ERROR]
             # remove this entry from the dictionary, so if won't be included
             # as part of alarm_info
-            del ticket["root_error"]
+            del ticket[ROOT_ERROR]
         else:
             root_error = e_errors.DEFAULT_ROOT_ERROR
         # remove this entry from the dictionary, so it won't be included
@@ -53,17 +55,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         if ticket.has_key("work"):
             del ticket["work"]
 
-        self.alarm(severity, root_error, ticket)
+        theAlarm = self.alarm(severity, root_error, ticket)
 
         # send the reply to the client
-        ret_ticket = { 'status'   : (e_errors.OK, None) }
+        ret_ticket = { 'status' : (e_errors.OK, None),
+                       'alarm'  : repr(theAlarm.get_id()) }
         self.send_reply(ret_ticket)
-        Trace.trace(12, "}post_alarm")
 
     # raise the alarm
     def alarm(self, severity=e_errors.DEFAULT_SEVERITY,\
               root_error=e_errors.DEFAULT_ROOT_ERROR, alarm_info={}):
-        Trace.trace(12,"{alarm ")
         # find out where the alarm came from
         try:
             host = socket.gethostbyaddr(self.reply_address[0])[0]
@@ -72,13 +73,21 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         # get a new alarm
         theAlarm = alarm.Alarm(host, severity, root_error, alarm_info)
         # save it in memory for us now
-        self.alarms[theAlarm.timedate] = theAlarm
+        self.alarms[theAlarm.get_id()] = theAlarm
         # write it to the persistent file
         self.write_alarm_file(theAlarm)
         # write it out to the patrol file
         self.write_patrol_file()
-        Trace.trace(12,"}alarm ")
+        return theAlarm
 
+    def resolve_alarm(self, ticket):
+        # an alarm is being resolved, we must do the following -
+        #      remove it from our alarm dictionary
+        #      rewrite the entire enstore_alarm file
+        #      rewrite the enstore patrol file
+        #      log this fact
+        pass
+        
     def ens_status(self, ticket):
         # we have been sent some status.  we must examine it for an error
         # condition and possibly save it for future reference.  following
@@ -105,10 +114,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                 # find out what the suspect volume threshold is, it is either
                 # in the library managers config dict or use the one for the
                 # alarm server
-                if lm.has_key("sus_vol_thresh"):
-                    cthresh = lm["sus_vol_thresh"]
-                else:
-                    cthresh = self.sus_vol_thresh
+                cthresh = lm.get("sus_vol_thresh", self.sus_vol_thresh)
                 if len(ticket[SUS_VOLS]) >= cthresh:
                     ainfo = self.make_alarm_info()
                     ainfo.update({SUS_VOLS : ticket[SUS_VOLS],\
@@ -179,7 +185,6 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
-        Trace.trace(10, '{__init__')
         self.alarms = {}
         self.info_alarms = {}
         self.print_id = "ALRMS"
@@ -192,13 +197,9 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         keys = self.csc.get("alarm_server")
         self.hostip = keys['hostip']
         Trace.init(keys["logname"])
-        if keys.has_key("susp_vol_thresh"):
-            self.sus_vol_thresh = keys["susp_vol_thresh"]
-        else:
-            self.sus_vol_thresh = DEFAULT_SUSP_VOLS_THRESH
-
-        if keys.has_key('logname'):
-            self.print_id = keys['logname']
+        self.sus_vol_thresh = keys.get("susp_vol_thresh",
+                                       DEFAULT_SUSP_VOLS_THRESH)
+        self.print_id = keys.get("logname", self.print_id)
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
         # get a logger
@@ -216,23 +217,19 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         # look through all the alarms and see if we need to do anything with
         # them
         self.handle_alarms()
-        Trace.trace(10, '}__init__')
 
 class AlarmServerInterface(interface.Interface):
 
     def __init__(self):
-        Trace.trace(10,'{alrmi.__init__')
         # fill in the defaults for possible options
         self.verbose = 0
         interface.Interface.__init__(self)
 
         # now parse the options
         self.parse_options()
-        Trace.trace(10,'}iqsi.__init__')
 
     # define the command line options that are valid
     def options(self):
-        Trace.trace(16, "{}options")
         return self.config_options()+\
 	       ["verbose="] +\
 	       self.help_options()
