@@ -133,7 +133,7 @@ elif day1 != None:
 #g.write('plot "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with steps\n' % (thefile,thefile))
 #g.write('set log y\n')
 #g.write('replot\n')
-g.write('plot "%s.data" using 1:3 with impulses linewidth 10, "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with lines, "%s.1.data" using 1:2 with linespoints linewidth 10\n' % (thefile,thefile,thefile, thefile))
+g.write('plot "%s.data" using 1:3 with impulses linewidth 10, "%s.data" using 1:2 with impulses linewidth 10, "%s.data" using 1:3 with lines, "%s.1.data" using 1:2 w lp lt 3 lw 5 pt 5\n' % (thefile,thefile,thefile, thefile))
 g.close()
 
 #           'gv %s.ps' % (thefile,),
