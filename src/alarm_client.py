@@ -118,17 +118,11 @@ class AlarmClientInterface(generic_client.GenericClientInterface,\
                    ["raise", "severity=", "root_error=", "get_patrol_file",
                     "resolve=", "dump"]
 
-
-if __name__ == "__main__" :
-    Trace.init(MY_NAME)
-    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
-    # fill in interface
-    intf = AlarmClientInterface()
+def do_work(intf):
     # now get an alarm client
     alc = AlarmClient((intf.config_host, intf.config_port),
                       intf.alive_rcv_timeout, intf.alive_retries)
     Trace.init(alc.get_name(MY_NAME))
-
     ticket = alc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass
@@ -146,9 +140,15 @@ if __name__ == "__main__" :
     elif intf.get_patrol_file:
         ticket = alc.get_patrol_file()
         print(ticket.get('patrol_file', ""))
-        
+
     else:
-	intf.print_help()
+        intf.print_help()
         sys.exit(0)
     alc.check_ticket(ticket)
+
+if __name__ == "__main__" :
+    Trace.init(MY_NAME)
+    Trace.trace(6,"alrmc called with args "+repr(sys.argv))
+    # fill in interface
+    intf = AlarmClientInterface()
 
