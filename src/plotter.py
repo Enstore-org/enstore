@@ -40,7 +40,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
         config_d = self.csc.dump(rcv_timeout, rcv_retry)
         if enstore_functions.is_timedout(config_d):
-            Trace.trace(1, "plotter init - ERROR, getting config dict timed out")
+            Trace.trace(enstore_constants.PLOTTING,
+                        "plotter init - ERROR, getting config dict timed out")
             self.startup_state = e_errors.TIMEDOUT
             self.startup_text = enstore_constants.CONFIG_SERVER
             return
@@ -89,7 +90,9 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	# see if we should add a link to the burn rate plot
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
 	if os.path.isdir(dir):
-	    # there are plots here
+	    Trace.trace(enstore_constants.PLOTTING,
+                        "adding links to burn rate plots")
+            # there are plots here
 	    plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
 	    plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
 						   self.system_tag, "../")
@@ -103,6 +106,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    plot_links_d = extra_links[enstore_constants.ENSTORE_PLOTS]
 	    links = plot_links_d.keys()
 	    for link in links:
+                Trace.trace(enstore_constants.PLOTTING,
+                            "adding extra link from config file")
 		links_to_add.append((link, plot_links_d[link]))
 	# the first plotfile needs to have a link to the second one on it, if 
 	# the second one exists
@@ -245,7 +250,12 @@ if __name__ == "__main__":
 
     # get interface
     intf = PlotterInterface(user_mode=0)
-    Trace.trace(1, "plotter called with args %s"%(sys.argv,))
+
+    if intf.do_print:
+        Trace.do_print(intf.do_print)
+
+    Trace.trace(enstore_constants.PLOTTING,
+                "plotter called with args %s"%(sys.argv,))
 
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 
@@ -257,7 +267,7 @@ if __name__ == "__main__":
 		      intf.no_plot_html)
 
     if plotter.startup_state == e_errors.TIMEDOUT:
-        Trace.trace(1, 
+        Trace.trace(enstore_constants.PLOTTING,
                     "Plotter TIMED OUT when contacting %s"%(plotter.startup_text,))
     else:
 	plotter.plot(intf.encp, intf.mount, intf.sg, intf.total_bytes)
