@@ -220,6 +220,25 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 			str(sys.exc_info()[1]))
 	    return
 
+    # get list of the Library manager movers
+    def get_movers(self, ticket):
+	Trace.trace(6,"{get_movers")
+	ret = {}
+	#pprint.pprint(self.configdict)
+	if ticket.has_key('library'):
+	    # search for the appearance of this library manager
+	    # in all configured movers
+	    for key in self.configdict.keys():
+		if string.find (key, ".mover") != -1:
+		    item = self.configdict[key]
+		    if item.has_key('library'):
+			if item['library'] == ticket['library']:
+			    ret['mover'] = key
+			    ret['address'] = (item['hostip'], item['port'])
+	self.reply_to_caller(ret)
+	Trace.trace(6,"}get_movers"+repr(ret))
+
+
     def reply_configdict( self, ticket ):
         out_ticket = {"status" : "ok", "list" : self.configdict }
         self.reply_to_caller(out_ticket)
