@@ -1156,7 +1156,8 @@ class EnLmFullStatusPage(EnBaseHtmlDoc):
 	# CURRENT, BASE, DELTA, AGETIME, FILE, BYTES, ID
 	the_work = self.data_dict.get(enstore_constants.PENDING,
 				      enstore_constants.NO_PENDING)
-	if the_work and (the_work[enstore_constants.READ] or the_work[enstore_constants.WRITE]):
+        if the_work and not the_work == enstore_constants.NO_PENDING and \
+           (the_work[enstore_constants.READ] or the_work[enstore_constants.WRITE]):
 	    qelems = self.data_dict[enstore_constants.PENDING]['read'] + \
 		     self.data_dict[enstore_constants.PENDING]['write']
 	    rows = self.lm_queue_rows(qelems, enstore_constants.PENDING, PENDING)
