@@ -1815,7 +1815,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     location = cookie_to_long(self.vol_info['eod_cookie'])
                     if self.header_labels:
                         location = location+1
-                    self.tape_driver.seek(cookie_to_long(location), 0) #XXX is eot_ok needed?
+                    self.tape_driver.seek(location, 0) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
