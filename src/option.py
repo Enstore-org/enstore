@@ -168,6 +168,7 @@ DELPRI = "delpri"                            #encp
 DESCRIPTION = "description"                  #enstore_make_log_plot
 DESTROY = "destroy"                          #volume
 DIRECT_IO = "direct-io"                      #encp
+DISABLE = "disable"                          #quota
 DISMOUNT = "dismount"                        #media
 DO_ALARM = "do-alarm"
 DO_LOG = "do-log"
@@ -182,6 +183,7 @@ DUMP = "dump"                                #pnfs, alarm, inquisitor, mover
 DUPLICATE = "duplicate"                      #pnfs
 ECHO = "echo"                                #pnfs
 ECRC = "ecrc"                                #encp
+ENABLE = "enable"                            #quota
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
@@ -382,11 +384,11 @@ valid_option_list = [
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTROY,
-    DIRECT_IO, DISMOUNT,
+    DIRECT_IO, DISMOUNT, DISABLE,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE,
-    ECHO, ECRC, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
+    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FIND_SAME_FILE, FORCE,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
