@@ -753,6 +753,8 @@ def final_scan_volume(vol):
 		from_list = migrated_from(vol, db)
 		vol_list = ""
 		for i in from_list:
+			# set last access time to now
+			vcc.touch(i)
 			vol_list = vol_list + ' ' + i
 		if vol_list:
 			res = vcc.set_comment(vol, "<="+vol_list)
