@@ -90,8 +90,32 @@ ALARM_S = "alarm_server"
 LOG_S = "log_server"
 
 NO_PING = -1
+HUNG_TO_DEFAULT = 30
+HUNG_RETRIES_DEFAULT = 30
 
 class InquisitorMethods(dispatching_worker.DispatchingWorker):
+
+    # look for the hung_rcv_timeout value for the specified key in the inquisitor
+    # config info.  if it does not exist, return the default
+    def get_hung_to(self, key):
+	try:
+	    t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
+	    Trace.trace(13,"get_hung_to - ERROR, getting config dict timed out ")
+	    return HUNG_TO_DEFAULT
+	return t.get("hung_rcv_timeout", {}).get(key, HUNG_TO_DEFAULT)
+
+    # look for the hung_retries value for the specified key in the inquisitor
+    # config info.  if it does not exist, return the default
+    def get_hung_retries(self, key):
+	try:
+	    t = self.csc.get(MY_NAME, self.alive_rcv_timeout, self.alive_retries)
+	except errno.errorcode[errno.ETIMEDOUT]:
+	    self.htmlfile.output_noconfigdict(CONFIG_DICT_TOUT, time, key)
+	    Trace.trace(13,"get_hung_retries - ERROR, getting config dict timed out ")
+	    return HUNG_RETRIES_DEFAULT
+	return t.get("hung_retries", {}).get(key, HUNG_RETRIES_DEFAULT)
 
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), time, key):
@@ -164,8 +188,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 			    if not key == ALARM_S:
 				self.alarmc.u = udp_client.UDPClient()
 			    # Check on server status but wait a long time
-			    self.alive_rcv_timeout = 30
-			    self.alive_retries = 30
+			    self.alive_rcv_timeout = t.get("hung_rcv_timeout", 
+							   self.get_hung_to(key))
+			    self.alive_retries = t.get("hung_retries", 
+						       self.get_hung_retries(key))
+			    print self.alive_rcv_timeout
+			    print  self.alive_retries
 			    ret = self.alive_status(client, (t['host'], t['port']),
 						    time, key)
 			    if ret == TIMED_OUT:
