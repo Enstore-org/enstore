@@ -1,4 +1,5 @@
 #!/bin/sh
+# this is needed only for non "fermi" nodes
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
