@@ -113,6 +113,7 @@ class EncpLine:
 	self.storage_group = None
         self.mc = QUESTION
 	self.interface = QUESTION
+	self.mover = QUESTION
         # parse all success messages and pull out the interesting information
         if self.status == e_errors.sevdict[e_errors.INFO]:
             try:
@@ -155,6 +156,9 @@ class EncpLine:
                 self.direction = tmp_list[3]
                 self.volume = tmp_list[4]
                 self.user_rate = tmp_list[6]
+		tmp_list = string.splitfields(tmp2, " ")
+		tmp_list = string.splitfields(tmp_list[6], "=")
+		self.mover = tmp_list[1]
                 self.valid = 1
             except ValueError:
                 # we do not handle this formatting

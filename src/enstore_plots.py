@@ -18,6 +18,12 @@ import Trace
 YES = 1
 NO = 0
 WRITE = "to"
+TOTAL = "total"
+READS = "reads"
+WRITES = "writes"
+CTR = "ctr"
+LARGEST = "largest"
+SMALLEST = "smallest"
 
 # file extensions
 PTS = ".pts"
@@ -461,7 +467,7 @@ class XferDataFile(EnPlot):
     # make the file with the plot points in them
     def plot(self, data):
 	# write out the data points
-	for [xpt, ypt, type] in data:
+	for [xpt, ypt, type, mover] in data:
 	    if type == WRITE:
 		# this was a write request
 		self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
@@ -536,10 +542,12 @@ class BpdDataFile(EnPlot):
 	ndate[edate[0:10]] = 0.0
 	imon = string.atoi(sdate[5:7])
 	iday = string.atoi(sdate[8:10])
+	iday = iday - 1 # we will increment this at the beginning of the loop
 	iyr = string.atoi(sdate[0:4])
 	is_leap = calendar.isleap(iyr)
 	emon = string.atoi(edate[5:7])
 	eday = string.atoi(edate[8:10])
+	# there is a possible problem if the start date is after the end date
 	while 1:
 	    if (imon == emon) and (iday == eday):
 	        break
@@ -550,7 +558,12 @@ class BpdDataFile(EnPlot):
 		mday = calendar.mdays[imon]
 	    if iday <= mday:
 	        tmp = "%i-%02i-%02i" % (iyr, imon, iday)
-	        ndate[tmp] = 0.0
+		ndate[tmp] = {TOTAL: 0.0}
+	        ndate[tmp][READS] = 0.0
+	        ndate[tmp][WRITES] = 0.0
+		ndate[tmp][LARGEST] = 0.0
+		ndate[tmp][SMALLEST] = -1
+		ndate[tmp][CTR] = 0
 	        continue
 	    else:
 	        imon = imon + 1
@@ -566,69 +579,65 @@ class BpdDataFile(EnPlot):
     def plot(self, data):
 	# initialize the new data hash
 	ndata = self.init_date_hash(data[0][0], data[len(data)-1][0])
-	reads = self.init_date_hash(data[0][0], data[len(data)-1][0])
-	writes = self.init_date_hash(data[0][0], data[len(data)-1][0])
 	# sum the data together based on day boundaries. also save the largest
 	# smallest and average sizes and sum up reads and writes separately
-	mean = {}
-	smallest = {}
-	largest = {}
-	ctr = {}
 	read_ctr = 0
 	write_ctr = 0
-	for [xpt, ypt, type] in data:
+	for [xpt, ypt, type, mover] in data:
 	    adate = xpt[0:10]
 	    fypt = string.atof(ypt)
-	    if mean.has_key(adate):
-	        mean[adate] = mean[adate] + fypt
-	        ctr[adate] = ctr[adate] + 1
+	    day = ndata[adate]
+	    day[CTR] = day[CTR] + 1
+	    if fypt > day[LARGEST]:
+		day[LARGEST] = fypt
+	    if day[SMALLEST] == -1:
+		day[SMALLEST] = fypt
 	    else:
-	        mean[adate] = fypt
-	        ctr[adate] = 1
-	    if largest.has_key(adate):
-	        if fypt > largest[adate]:
-	            largest[adate] = fypt
-	    else:
-	        largest[adate] = fypt
-	    if smallest.has_key(adate):
-	        if fypt < smallest[adate]:
-	            smallest[adate] = fypt
-	    else:
-	        smallest[adate] = fypt
-	    ndata[adate] = ndata[adate] + fypt
+		if fypt < day[SMALLEST]:
+		    day[SMALLEST] = fypt
+	    day[TOTAL] = day[TOTAL] + fypt
 	    if type == WRITE:
-		dict = writes
+		day[WRITES] = day[WRITES] + fypt
 		write_ctr = write_ctr + 1
 	    else:
-		dict = reads
+		day[READS] = day[READS] + fypt
 		read_ctr = read_ctr + 1
-	    dict[adate] = dict[adate] + fypt
+	    if day.has_key(mover):
+		if type == WRITE:
+		    day[mover][1] = day[mover][1] + fypt
+		else:
+		    day[mover][0] = day[mover][0] + fypt
+	    else:
+		if type == WRITE:
+		    day[mover] = [0, fypt]
+		else:
+		    day[mover] = [fypt, 0]
+
+
 	# write out the data points
 	keys = ndata.keys()
 	keys.sort()
 	numxfers = 0
 	total = 0.0
 	for key in keys:
-	    if not ndata[key] == 0:
-	        self.openfile.write(key+" "+repr(ndata[key])+" "+\
-				    repr(reads[key])+" "+\
-				    repr(writes[key])+" "+\
-				    repr(smallest[key])+" "+\
-				    repr(largest[key])+" "+\
-				    repr(mean[key]/ctr[key])+"\n")
+	    day = ndata[key]
+	    if not day[TOTAL] == 0:
+	        self.openfile.write(key+" "+repr(day[TOTAL])+" "+\
+				    repr(day[READS])+" "+\
+				    repr(day[WRITES])+" "+\
+				    repr(day[SMALLEST])+" "+\
+				    repr(day[LARGEST])+" "+\
+				    repr(day[TOTAL]/day[CTR])+"\n")
 	    else:
 		# all data is 0
-	        #self.openfile.write(key+" "+repr(ndata[key])+" "+\
-		#		            repr(ndata[key])+" "+\
-		#		            repr(ndata[key])+"\n")
 	        self.openfile.write(key+"\n")
 	    # now find the total bytes transferred over all days and the mean
 	    # size of all transfers.
-	    total = total + ndata[key]
+	    total = total + day[TOTAL]
 	    # there may not be any transfers on a certain date, so check the key
 	    # first.  above ndata has all dates initialized to 0 so no check is
 	    # necessary.
-	    numxfers = numxfers + ctr.get(key, 0)
+	    numxfers = numxfers + day[CTR]
 	    
 	# we must create our gnu plot command file too
 	gnucmds = BpdGnuFile(self.gnufile)
