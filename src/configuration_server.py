@@ -175,8 +175,8 @@ class ConfigurationDict:
             # Record in the log file the successfull reload.
             Trace.log(e_errors.INFO, "Configuration reloaded.")
         else:
-            Trace.log(e_errors.ERROR,
-                      "Configuration reload failed: %s" % out_ticket['status'])
+            Trace.log(e_errors.ERROR, "Configuration reload failed: %s" %
+                      (out_ticket['status'],))
 
     # get list of the Library manager movers
     ## XXX this function is misleadingly named - it gives movers for a particular library
