@@ -304,11 +304,11 @@ once, ahead of all stanzas, "serial=0,19200n8".
 
 <li> For reasons I don't understand, the linux cyclades kernel appears
 to have to be built on d0ensrv3 and d0ensrv5 before it recognizes the
-cyclades hardware.  This seems to mean that the make process probes
+cyclades hardware.  This seems to mean that the kernel make process probes
 the hardware, which seems very unlikely.  In any event, right now the
 linux kernel needs to be remade (without changing any options in the
-config file) on each node.  This is a small problem not worth worrying
-about.
+config file) on each console server node.  This is a small problem not
+worth worrying about.
 
 <li> A backup of the system ide disk is made once per day to
 rip8:/fnal/enstore/servers/srv3 and rip8:/fnal/enstore/servers/srv5.
