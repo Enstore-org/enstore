@@ -457,8 +457,16 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	self.encpfile.close()
 	self.encpfile.install()
 
+    def all_servers_timed_out(self):
+	rtn = 1
+	for server in self.servers:
+	    if server.check_recent_alive() == monitored_server.NO_TIMEOUT:
+		rtn = 0
+		break
+	return rtn
+
     def ping_event_relay(self):
-	if self.event_relay.sent_own_alive == 2:
+	if self.event_relay.sent_own_alive == 2 or self.all_servers_timed_out():
 	    # we have sent several alive messages to the event relay and have gotten
 	    # nothing back.  mark it as dead
 	    self.mark_event_relay(DEAD)
