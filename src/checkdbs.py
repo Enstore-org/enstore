@@ -4,6 +4,7 @@ import db
 import edb
 import sys
 import string
+import time
 
 pf = None
 pv = None
@@ -162,6 +163,7 @@ def check_volume(vol):
 	return result
 
 if __name__ == '__main__':
+	print "start", time.ctime(time.time())
 	pf = edb.FileDB()
 	pv = edb.VolumeDB()
 	bf = db.DbTable('file', '.', '/tmp', ['external_label'], 0)
@@ -187,3 +189,4 @@ if __name__ == '__main__':
 	pv.close()
 	bf.close()
 	bv.close()
+	print "finish", time.ctime(time.time())
