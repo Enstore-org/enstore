@@ -4,7 +4,9 @@ configdict['file_clerk']   = { 'host':'pcfarm9', 'port':7511, 'logname':'FILC'}
 configdict['volume_clerk'] = { 'host':'pcfarm9', 'port':7512, 'logname':'VOLC'}
 configdict['admin_clerk']  = { 'host':'pcfarm9', 'port':7513, 'logname':'ADMC'}
 configdict['logserver']    = { 'host':'pcfarm9', 'port':7514, 'log_file_path':'/bakken/bakken/enstore_db' }
-configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7515, 'logname':'INQC', 'timeout':60, 'ascii_file':'/bakken/bakken/enstore_db/inquisitor.txt', \
+configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7515, 'logname':'INQC', 'timeout':60, \
+                               'ascii_file':'/bakken/bakken/enstore_db/inquisitor.txt', \
+                               'html_file':'/products/www_pages/enstore/inquisitor.html', \
                                'alive_rcv_timeout': 5, 'alive_retries':1 }
 
 configdict['hppcdisk.library_manager']     = { 'host':'hppc',     'port':7516, 'logname':'HLIBM' }
