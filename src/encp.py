@@ -692,8 +692,8 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
 def check_server(csc, server_name):
 
     # send out an alive request - if config not working, give up
-    rcv_timeout = 5
-    alive_retries = 5
+    rcv_timeout = 10
+    alive_retries = 360
     
     try:
         stati = csc.alive(server_name, rcv_timeout, alive_retries)
@@ -701,11 +701,11 @@ def check_server(csc, server_name):
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
     except:
-        #exc, msg, tb = sys.exc_info()
-        #print exc, msg
+        exc, msg = sys.exc_info()[:2]
         stati={}
-        stati["status"] = (e_errors.CONFIGDEAD,
-                           "Server %s is not responding." % server_name)
+        stati["status"] = (e_errors.BROKEN,
+                           "Unexpected error (%s, %s) while attempting to"
+                           "contact %s." % (str(exc), str(msg), server_name))
 
     #Quick translation for TIMEDOUT error.  The description part of the
     # error is None by default, this puts something there.
@@ -740,25 +740,7 @@ def clients():
             quit()
 
         Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
-                      (server, ticket['address']))
-
-    #While these servers are important, we should not fail the transfer
-    # over them.
-    for server in [log_client.MY_SERVER, alarm_client.MY_SERVER,
-                   accounting_client.MY_SERVER]:
-
-        Trace.message(CONFIG_LEVEL, "Contacting %s." % server)
-
-        ticket = check_server(csc, server)
-
-        #Handle the non-fatal error.
-        if not e_errors.is_ok(ticket['status']):
-            Trace.alarm(e_errors.WARNING, ticket['status'][0], ticket)
-            Trace.message(CONFIG_LEVEL, "Server %s not found." % (server,))
-        else:
-            Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
-                          (server, ticket.get('address', "Unknown")))
-    
+                      (server, ticket.get('address', "Unknown")))
     
     # get a logger client
     logc = log_client.LoggerClient(csc, 'ENCP', 'log_server')
