@@ -183,7 +183,12 @@ class EncpError(Exception):
         else:
             self.type = e_type
 
-        self.ticket = e_ticket
+        #If no usefull information was passed in (overriding the default
+        # empty dictionary) then set the ticket to being {}.
+        if e_ticket == None:
+            self.ticket = {}
+        else:
+            self.ticket = e_ticket
 
         #Generate the string that stringifying this obeject will give.
         self._string()
@@ -1098,8 +1103,12 @@ def __get_fcc(parameter = None):
         bfid = parameter
         
     else:
+        raise EncpError(None,
+                        "Invalid bfid (%s) specified." % bfid,
+                        e_errors.WRONGPARAMETER, {})
+
         #Set default value.
-        bfid = None
+        #bfid = None
 
     if bfid == None:
         if __fcc != None: #No bfid, but have cached fcc.
@@ -1229,8 +1238,12 @@ def __get_vcc(parameter = None):
         volume = parameter
 
     else:
+        raise EncpError(None,
+                        "Invalid volume (%s) specified." % volume,
+                        e_errors.WRONGPARAMETER, {})
+     
         #Set default value.
-        volume = None
+        #volume = None
 
     if volume == None: 
         if __vcc != None: #No volume, but have cached vcc.
@@ -5912,21 +5925,20 @@ def verify_read_request_consistancy(requests_per_vol):
 #######################################################################
 
 def get_file_clerk_info(bfid):
+    #While __get_fcc() can accept None as the parameter value,
+    # we expect that it will not be, since the purpose of
+    # get_file_clerk_info() is to return the information about a bfid.
 
     #Get the clerk info.
-    #fc_ticket = fcc.bfid_info(bfid, 5, 3)
     fcc, fc_ticket = __get_fcc(bfid)
 
     # Determine if the information returned is complete.
-    
-    if not e_errors.is_ok(fc_ticket['status'][0]):
+    if fc_ticket == None or \
+           not e_errors.is_ok(fc_ticket) or \
+           not fc_ticket.get('external_label', None):
         raise EncpError(None,
                         "Failed to obtain information for bfid %s." % bfid,
-                        e_errors.EPROTO, fc_ticket)
-    if not fc_ticket.get('external_label', None):
-        raise EncpError(None,
-                        "Failed to obtain information for bfid %s." % bfid,
-                        e_errors.EPROTO, fc_ticket)
+                        fc_ticket.get('status', e_errors.EPROTO), fc_ticket)
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
                         "File %s is marked %s." % (fc_ticket.get('pnfs_name0',
@@ -5940,18 +5952,20 @@ def get_file_clerk_info(bfid):
     return fc_ticket
 
 def get_volume_clerk_info(volume):
-
+    #While __get_vcc() can accept None as the parameter value,
+    # we expect that it will not be, since the purpose of
+    # get_volume_clerk_info() is to return the information about a bfid.
+    
     #Get the clerk info.
-    #vc_ticket = vcc.inquire_vol(volume)
     vcc, vc_ticket = __get_vcc(volume)
-
+    
     # Determine if the information returned is complete.
-
-    if not e_errors.is_ok(vc_ticket['status'][0]):
+    
+    if vc_ticket == None or not e_errors.is_ok(vc_ticket):
         raise EncpError(None,
                         "Failed to obtain information for external label %s."
                         % volume,
-                        vc_ticket['status'][0], vc_ticket)
+                        vc_ticket.get('status', e_errors.EPROTO), vc_ticket)
     if not vc_ticket.get('system_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain system_inhibit information."
@@ -5975,10 +5989,6 @@ def get_volume_clerk_info(volume):
     except (ValueError, AttributeError, TypeError,
             IndexError, KeyError), msg:
         raise EncpError(None, str(msg), e_errors.KEYERROR)
-        #print_data_access_layer_format(
-        #    ifullname, ofullname, file_size,
-        #    {'status':(e_errors.EPROTO, str(msg))})
-        #quit()
 
     # Determine if either the NOACCESS or NOTALLOWED inhibits are set for
     # the volume.  This is done after the above information is included
