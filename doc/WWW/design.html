@@ -1,0 +1,651 @@
+<html>
+<head>
+<title>
+The Design of Enstore
+</title>
+<body>
+<font size=7><b><i>
+Enstore Data Storage System
+</i></b></font>
+<p>
+<font color=#ff0000><blink>need section numbers and sub numbers to reflect the structure of this document</blink></font>
+<h2>
+1. Introduction
+</h2>
+Enstore system provides a generic interface for end users to efficiently
+use mass storage systems as easily as if they were native file systems.
+Enstore is architected as a <em>simple</em>, <em>efficient</em>,
+<em>reliable</em> and <em>very flexible</em><font color=#ff0000>(anything else?)</font>
+system.
+It is <em>simple</em> because most of the operations are transparent to users.
+It is <em>efficient</em> because the system performance is monitored
+and is fine tunable.
+It is <em>reliable</em> because a great deal of care have been taken to
+ensure it is able to prevent or to recover from the worst case scenario.
+It is <em>flexible</em> because it is based on a true client-server
+model that allows hot swaping components and dynamic configuration, and,
+it is platform independent and runs on heterogenious environments.
+This document is to address the architecture behind it.
+<p>
+Enstore system supports multiple distributed tape robots, which may
+handle multiple media types, and multiple distributed mover nodes.
+The system is written in <em>python</em>, a scripting language with
+advanced object-oriented features.
+<p>
+<font color=#ff0000><blink>Something is missing before jumping into
+software conponents</blink></font>
+<br>
+Enstore system has four major kinds of software components
+<ul>
+<li><em>Namespace</em>, implemented by the <em>pnfs</em> package from
+	<em>DESY</em>
+<li><em>servers</em>
+	<ul>
+	<li>Configuration server
+	<li>Volume clerk
+	<li>File clerk
+	<li>Multiple, distributed library managers
+	<li>Multiple, distributed movers
+        <li>Media changer
+	<li>Log server
+	</ul>
+<li><em>encp</em>, a program used to copy files to and from tape libraries
+<li><em>administration tools</em>.
+</ul>
+<p>
+<font color=#0000ff>(should mention "client-server", "hot-swaping/dynamic-configuration", "fault tolerance nature" and "error recovery")</font>
+<br>
+<font color=#0000ff>(should separate software architecture from system architecture)</font>
+<br>
+<font color=#0000ff>(should mention platform independency)</font>
+<br>
+<font color=#0000ff>(say something about the "transparent view from users")</font>
+<p>
+<font color=#ff0000><blink>need to rephrase the following paragraph</blink></font>
+<br>
+Enstore system can be described in the block diagram below.
+Components are connected via IP.
+Great care has been taken to ensure that the system will function well
+under extreme load conditions.
+By design, there is no preset limit on the number of concurrent user
+computers nor on the number of physical tape libraries or tape drives.
+The system is only limited by the availability of physical resources.
+We control all of the source code for the system.
+<p>
+<font color=#ff0000><blink>Will be replaced by real picture</blink></font>
+<pre>
+			+-----------------------------+
+			|   USERS COMPUTER            |
+			|  mkdir,ls           encp    |
+			|  find                       |
+			|  ....                       |
+			+-----------------------------+
+                          /                       \\
+                      info                        data
+                      /                             \\
++-----------------------------+	               +-----------------------------+
+|  pnfs                       |	               |   Enstore Servers           |
+|  surrogate files            |	               |                             |
+|  administrative files       |	               |                             |
+|  configuration files        |	               |                             |
+|                             |	               |                             |
++-----------------------------+	               +-----------------------------+
+                                                    |           ^
+                                                 write        read
+                                                    v           |
+             +---------------------------------------------------------------+
+             >           T A P E            T A P E          T A P E         >
+             <                                                               <
+             +---------------------------------------------------------------+
+</pre>
+<font color=#ff0000><blink>the figure is not quite right. need to say more about "info" and "data"</blink></font>
+<p>
+Version 1.0 does not yet support a disk cache in front of tape.
+However, one is conceivable once the basic design principles are proved.
+<p>
+Like <em>tcp</em>, the system is architected with distributed and
+peer-to-peer reliability.
+Each request originating from the <em>encp</em> prorgam is branded
+with a uniuque i.d.
+<em>encp</em> retries under well-defined circumstances, issuing
+an equivalent request with a new unique i.d.
+The system can instruct <em>encp</em> to re-try if it needs to back out
+of an operation.
+<p>
+<h2>
+Namespace
+</h2>
+The <em>pnfs</em> package implements an <em>nfs</em> daemon and mount
+daemon.
+These daemons do not actually serve a file system, but, instead make a
+collection of database entries that <em>look like</em> a file system,
+and provide control information for the system.
+<p>
+<p>
+<font color=#ff4400><blink>
+Not quite sure about what it means in the following paragaph...
+</blink></font><br>
+To inspect files, users mount the <em>pnfs</em> file system on their own
+computers, and interact with using the native operating system
+utilities.  For example, users can <em>ls</em>, <em>stat</em>,
+<em>mv</em>, <em>rm</em> or <em>touch</em> existing "regular files",
+but are given errors on attempts to read
+or write files in the name space.
+Users can <em>mkdir</em> and <em>rmdir</em>, and <em>ln</em> files.
+<p>
+Normal UNIX permissions and carefully administered export points
+are used to prevent unauthorized access to the name space.
+<p>
+<h2>
+ENCP
+</h2>
+Reading and writing files means interacting with tapes.
+This is done with an enstore-provided utility, <em>encp</em>.
+
+<em>encp</em> interacts with <em>pnfs</em> --
+<em>encp</em> accesses the pnfs system in a special way.
+There are three kinds of accesses:
+<dl>
+<dt>Interact with Administration --
+<dd>An administrator can create special files in <em>pnfs</em> name space.
+    For example, one type of file signifies that the system needs to be
+    drained. Existence of the file causes <em>ency</em> to stall.
+<dt>Configuration Information --
+<dd>When files are created on tape media quite a bit of information
+    needs to be provided.
+    When files are created, they are created in a specific part of the
+    name space.
+    <em>Enstore</em> looks up towards the root of the name space,
+    looking for special files with configuration information.
+    Examples of configuration information are:
+<pre>
+	pnfs_library = "activelibrary"
+	pnfs_quota_family = "family_raw"
+	pnfs_file_family = "family_raw"
+	pnfs_file_family_width = 2
+	pnfs_uid = 01000
+	pnfs_uname = "petravic"
+	pnfs_gid = 0100
+	pnfs_uname = "users"
+<font color=#ff4400><blink>	^^^^^^^^^^ why are there two "pnfs_uname"?</blink></font>
+	pnfs_file_mode = 0644
+</pre>
+
+    More  about some of this information later.
+<dt>File information --
+<dd>The rest of the system identifies a file by a 64-bit numeric
+    identifier, dubbed a "bit file id".
+    <em>pnfs</em> binds a bit file i.d. to names of regular files in
+    the <em>pnfs</em> name space.
+    <em>encp</em> can access this bit file id, giving it to the servers
+    when fetching data from tape.
+    After a file is written to tape, <em>encp</em> parks the bfid into
+    the <em>pnfs</em> name space.
+<dt>Throttling in <em>encp</em> --
+<dd>It is important not to swamp any system.
+    In <em>Enstore</em>, first level of throttling is implemented in
+    <em>encp</em>.
+    Control communications in <em>Enstore</em> use a simple reliable
+    request-response protocol using <em>UPD</em>, but data transfers
+    are implemented using two TCP ports.
+    A fixed number, currently 30, of pre-allocated TCP ports are
+    arbitrated among all instances of <em>encp</em> on a given machine.
+    Consequently, the system will survive the worst sort of abuse,
+    for example, a student forking off 200 copy requests,
+    since at most 15 will be active in the system at any time.
+</dl>
+
+<h2>Enstore servers</h2>
+
+Enstore servers are software entities which handle tape, and in a
+future release, disk caches.
+The high level  concepts are as follows:
+<ol>
+<li><em>Physical library:</em> represents a real, tangible collection of tapes
+along with stuff to manipulate, read and write and organize them.
+
+A physical library can be thought of as consisting of
+<ul>
+	<li>one or more virtual libraries
+	<li>a media changer
+	<li>one of more media export/import slots
+	<li>one of more drives (tape, cdrom, disk, etc.)
+	<li>volumes (tape cartridges, cdroms, etc.)
+</ul>
+<p>
+<em>Virtual Library</em> -- A virtual library contains one and only
+kind of media.
+For example, we are constrained to divid an STK powderhorn
+library holding 50, 20 and 10 GB redwood media into at least three
+virtual libraries.  In common usage, the term "library" in Enstore
+refers to virtual library. Writes are directed to a specific (virtual)
+library, thus selecting the media.
+<p>
+<em>Drives</em> -- Drives are bound to special processes called mover
+clients.
+In the near future, we might be supporting 50 AIT drives in a grau robot;
+today, we might have to support one redwood drive in a library with 3
+virtual libraries. Rest assured the system handles this, and the number
+of drives may be less than the number of virtual libraries.
+<p>
+<em>Volumes</em> -- Are uniquely identified by an external label,
+which is known to the media changer.
+<p>
+<li><em>Quota Family</em>:
+A set of pairs of media names and maximum number of volumes.
+All files are created with respect to a quota family.
+Creation of a file is not allowed if the maximum number of volumes
+in that family would be exceeded.
+<p>
+<li><em>File family</em>:
+A file family is specified by a name and an integer "width".
+A file family is associated with every file creation.
+Within a given library, the <em>Enstore</em> system keeps no more
+than <em>"width"</em> volumes, loaded on no more than <em>"width"</em>
+number of drives for writing at any given moment.
+This is not striping, but rather, the number of different volumes,
+and hence different files, which can be active at one time.
+Once a volume is associated with a file family, only files in that
+family will be placed on the volume.
+By design, there is no pre-set limit on the number of file families.
+Clever use of file families will allow volumes to be faulted out to
+"shelf", and also to decrease access times for subsequent reads.
+This can also effect transfer rates into the library by groups of users
+(that are writing file associated with a specific file family).
+<p>
+Twists to all of this are the special libraries -- shelf and
+manual mount libraries.
+<p>
+Shelf libraries bounce requests for tapes -- The net effect is that
+users are informed that this data is currently unavailable, and if
+they really want the data, arrangements should be made to have the
+tapes placed in a library which is accessible. (n.b. Enstore keeps a
+log file, which would allow an administrator to identify the tapes)
+<p>
+Manual Mount library are tapes in a drawer (or whatever) and an operator.
+</ol>
+<p>
+<h2>
+Volume Clerk
+</h2>
+The volume clerk has a single table database.
+There is one record for each volume known to the system.
+The record is looked up by a key.
+The key is the volume's external label.
+The information tracked for each volume described in the table below:
+
+<table>
+<td><b>Field</b>
+<td><b>Type</b>
+<td><b>Description</b>
+<tr>
+<td valign=top>file_family
+<td valign=top>String
+<td valign=top>File family used when writing volume
+<tr>
+<td valign=top>eod_cookie
+<td valign=top>String
+<td valign=top>Tells the driver how to space to the end of the volume.
+    It's meaning is driver specific, but this field is initialized
+    to "none" in newly introduced volumes.
+<tr>
+<td valign=top>capacity_bytes
+<td valign=top>64-bit int
+<td valign=top>Conservative estimate of the number of bytes that would fit on the
+    media
+<tr>
+<td valign=top>library
+<td valign=top>String
+<td valign=top>Tells the system which (virtual) library currently holds the volume
+<tr>
+<td valign=top>remaining_bytes
+<td valign=top>64-bit int
+<td valign=top>Conservative estimate of the number of bytes that will fit on
+    the volume, neglecting compression.
+    Only files of a size less than remaining_bytes shall be selected
+    for writing on this volume.
+<tr>
+<td valign=top>error_inhibit
+<td valign=top>enum 1<br>(below)
+<td valign=top>Enstore-generated limitations on the kind of access permitted to
+    this volume.  "writing" designates that this volume is either being
+    written to, or some catastrophe, like a system crash occurred,
+    and the eod_cookie is not to be trusted.
+<tr>
+<td valign=top>external_label
+<td valign=top>String
+<td valign=top>A repeat of the key
+<tr>
+<td valign=top>user_inhibit
+<td valign=top>enum 2<br>(below)
+<td valign=top>User specified access level for this volume.
+    Used if more restrictive than the enstore-generated "error_inhibit"
+    field above.
+<tr>
+<td valign=top>media_type
+<td valign=top>String
+<td valign=top>Just a string.
+</table>
+<p>
+Where<br>
+<em>Enum 1</em>: one of "none", "write", "all" or "writing"<br>
+<em>Enum 2</em>: one of "none", "write" or "all"
+<p>
+The volume clerk does short, atomic operations. Operations are:
+<table>
+<td><b>Operation</b>
+<td><b>Description</b>
+<tr>
+<td>addvol
+<td>Add a new volume
+<tr>
+<td>delvol
+<td>delete a volume
+<tr>
+<td>edit_vol
+<td>(Change a volume) Missing
+<tr>
+<td>inquire_vol
+<td>give volume record
+<tr>
+<td>set_writing
+<td>mark volume record as "writing"
+<tr>
+<td>set_remaining_bytes
+<td>set eod_cookie and remaining_bytes
+<tr>
+<td>next_write_volume
+<td>find another volume for this file family
+<tr>
+<td>set_system_readonly
+<td>(set error_inhibit to "read")missing
+<tr>
+<td>set_hung
+<td>(set error_inhibit to "none")missing
+</table>
+
+<h2>
+File Clerk
+</h2>
+The file clerk tracks files in the system. There is one record for each file
+in the system.
+The records are keyed.
+The key is the string version of the bitfile i.d.
+The fields tracked are as follows:
+<table>
+<td valign=top><b>Field</b>
+<td valign=top><b>Type</b>
+<td valign=top><b>Description</b>
+<tr>
+<td valign=top>complete_crc
+<td valign=top>Integer
+<td valign=top>crc of all the bits sent by the user.
+<tr>
+<td valign=top>bof_space_cookie
+<td valign=top>String
+<td valign=top>Driver specific string telling how to space to the file on tape
+<tr>
+<td valign=top>external_label
+<td valign=top>String
+<td valign=top>Key of volume in the volume clerk's database
+<tr>
+<td valign=top>sanity_crc
+<td valign=top>Integer
+<td valign=top>crc of the first 10,000 bytes of the file as lay ed down on the
+    media. (fewer bytes if the file is short, of course)
+</table>
+<p>
+The file clerk does short, atomic operations. Operations are:
+<table>
+<td><b>Operation</b>
+<td><b>Description</b>
+<tr>
+<td valign=top>read_from_hsm
+<td valign=top> originated by <em>encp</em>. Given a bit file i.d.
+    (and ancillary information), look up the file record,
+    call the volume clerk to determine which library is holding the
+    volume. Forward the request to the appropriate library manager.
+<tr>
+<td valign=top>new_bit_file
+<td valign=top>Make a new bit file record.
+</table>
+
+<h2>
+Library Manager
+</h2>
+The library manager is a server which queues up and dispatches work for
+a virtual library. There is one library manager for each virtual library
+It has three types clients
+<ul>
+<li><em>Users</em> -- seeking to have their files read or written files.
+<li><em>Movers</em> -- seeking to actually read or write files.
+<li><em>Publishers</em> -- seeking HTML describing the library's current work.
+</ul>
+
+User requests: 
+<ul>
+<li><em>Writes into the system</em> -- <em>pnfs</em> is used to identify
+    the library for a write request, so <em>encp</em> program composes
+    a write request and contacts the appropriate library manager
+    directly.
+    The library manager queues the work, and acknowledges the request.
+
+<li><em>Read from the system</em> -- <em>pnfs</em> holds only the bit
+    file i.d., so <em>encp</em> contact the bit file clerk, and that
+    software ultimately contacts the appropriate volume manager, which
+    queues up the work.
+</ul>
+The work is conceptually prioritized.
+Larger priority number means higher priority.
+Currently, write is of priority 10, read priority 1.
+The priority is conceptually more flexible than that.
+However, the system will exhaust all work for a volume,
+given that it has been mounted, regardless of priority.
+<p>
+Mover Requests:
+<p> 
+Movers seek to take data from tape and send it over a socket to users.
+Movers contact library managers seeking work. If the library manager
+has work, the mover is requested to mount a volume, and report
+back. When reporting back, the mover may be told to contact a waiting
+encp program and read or write a file.
+The mover may be told to unmount a volume as there is no more work for
+the volume.
+A mover may have dismounted a volume unilaterally because it ran into
+trouble.  This is summarized in the tables below
+<table>
+<td><b>Mover sends</b>
+<td><b>Library manager may respond</b>
+<tr>
+<td>idle_mover
+<td>bind a volume, or just acknowledge
+<tr>
+<td>have_bound_volume
+<td>read, write or unbind
+<tr>
+<td>unilateral_unbind
+<td>just acknowledge
+</table>
+
+<table>
+<td valign=top><b>Library has just responded</b>
+<td valign=top><b>Mover sends</b>
+<td valign=top><b>Library manager presumes</b>
+<tr>
+<td valign=top>bind or...<br>read or...<br>write
+<td valign=top>idle_mover
+<td valign=top>mover crashed and was re-started
+<tr>
+<td valign=top>
+<td valign=top>have_bnd_vol
+<td valign=top>look for work on that volume<br>
+    if work, give it<br>
+    if none, give unbind
+<tr>
+<td valign=top>
+<td valign=top>unilat_unbnd
+<td valign=top>take any work reserved for that mover and put it back
+   in the unassigned work queue
+<tr>
+<td valign=top>acknowledged a...<br>unilateral unbind or..<br>idle mover
+<td valign=top>idle_mover
+<td valign=top>mover is available for work, If I have work I may ask it to bind a
+    volume
+<tr>
+<td valign=top>
+<td valign=top>have_bnd_vol
+<td valign=top>I have been restarted, the mover had a volume from a previous
+    instance of me tell it to unbind
+<tr>
+<td valign=top>
+<td valign=top>Unilat_unbnd
+<td valign=top>Just ack.
+</table>
+
+Note that if a mover should crash holding a volume, the worst that can
+happen is that the library manager will be unable to schedule work for
+that volume. If the physical library has more than one drive, the system
+should be able to continue servicing requests.
+<p>
+Publisher Requests -- Publishers are not yet implemented.
+<h2>
+Mover
+</h2>
+A mover task is bound to a drive, and seeks to use that drive to service
+read and write requests.  It executes a protocol with a library manager,
+as desribed in the tables in the library manager section (above).
+<p>
+A mover is bound to a drive, and a drive may serve more than one
+virtual library.
+The mover hunts for work when it is idle by
+consulting a configuration server.
+The configuration server holds a
+configuration set by an administration.
+A mover's configuraiton gives a list of library managers to hunt among
+for work.
+If there is no work at any library manager,
+the mover sleeps for a while and begins the hunt again.
+While sleeping the mover is sensitive to datagrams at a
+specific UDP address. A library manager uses this mechanism to try to
+hasten a mover when the library manager has work queued up.
+<p>
+When a mover has found a library manager that has work, it attempts
+to mount the salient volume, by contacting the physical librarys media
+changer.  If there is some error, it issues a unilateral unbind to the
+library mamanegr. If all is well, it issues a have_bound_volume to the
+library manager.
+<p>
+Reads -- Once a volume is bound the mover may read a tape and send data
+to a waiting encp prorgam. Two tcp ports are involved.
+	The steps are:
+<ol>
+<li>Arbitrate for a TCP port for the data transfer
+<li>Open the tcp port (control port) specified in the request,
+    send the encp program the data transfer port address
+    hold the control port open. If it is dropped, abort.
+<li>Read the data from tape, (stripping any wrapper like tar headers)
+    verify the sanity crc. send the data to the user.
+<li>Close the data port
+<li>Tel the user done and all is well
+</ol>
+
+If any errors occur while reading the tape, an attempt is made to
+characterise them as either media or drive.
+If drive, mark the tape as hung, and kill ourselves.
+If media, mark the media as no access.
+<p>
+Writes -- Once a volume is bound the mover may recieve data and write it to
+tape. Two tcp ports are involved.
+	The steps are:
+<ol>
+<li>Arbitrate for a TCP port for the data transfer
+<li>Open the tcp port (control port) specified in the request,
+    send the encp program the data transfer port address
+    hold the control port open. If it is dropped, abort.
+<li>Mark the volume as "writing". That willcause the volume to
+    not be selected fro subsequent writes, should we crash.
+<li>using the eod_space_cookie, space to end of volume. Try
+    to verify that we are actaully at the end of volume.
+<li>Recieve data form encp. (wrapper it) write it to tape
+<li>Close the data port
+<li>compute new eod_cookie and tell volume clerk that the
+    volume is writeable. Update remainig bytes as well
+<li>compute the file location cookie, and tell the bit
+    file clerk about the new file. get a bit file i.d. in return
+<li>Give the bit file i.d. to encp. We are done.
+</ol>
+
+If any errors occur while writing the tape, an attempt is made to characterise them as
+either media or drive.  If drive, mark the tape as hung, and kill ourselves.
+If media, mark the media as no access.  If the user drops the control tcp
+channel unilaterally, assume he has aborted.
+<p>
+<h2>
+More Detailed Block Diagram
+</h2>
+<p>
+<font color=#ff0000><blink>Will be replaced by real picture</blink></font>
+<pre>
+                  3 user processes transfering
+                       # = data
+                       ! = control
+
+                            ! #         !         ! #         !         ! #
+____________________________!_#_________!____ ____!_#_________!_________!_#___
+Enstore                     ! #         !         ! #         !         ! #
+        ^                   ! #         !         ! #         !         ! #
+        ! various           ! #         !         ! #         !         ! #
+        ! connections       ! #         !         ! #         !         ! #
+        v                  +-----+      !        +-----+      !        +-----+
+ +--------+                |mover|      !        |mover|      !        |mover|
+ |cnfg.srv|                +-----+      !        +-----+      !        +-----+
+ +--------+\                  # ! \     !       / ! #   .*    !       / ! #
+ +--------+ \                 # !  \+---------+/  ! #    .+---------+/  ! #
+ |vol.clrk|  \                # !   |lib.mngrA|   ! #     |lib.mngrB|   ! #
+ +--------+   \               # !   +---------+   ! #     +---------+   ; #
+               } <--->        # !                 ; #                  /  #
+ +--------+   / various       #  \               /  #                 /   #
+ |fil.clrk|  / connections    #   \+-----------+/   #                /    #
+ +--------+ /                 #    |media chngr|----#---------------'     #
+ +--------+/                  #    +-----------+    #                     #
+ |log.srvr|                   #         !           #                     #
+ +--------+                   #         !           #                     #
+                              #         !           #                     #
+______________________________#_________!___________#_____________________#___
+Library                       v         v           v                     v
+                              #     +---------+     #                     #
+                              #     |lib.ctlr |-----#--------------.      #
+                              #     +---------+     #               \     #
+                           +-----+ /           \ +-----+             \ +-----+
+                           |drive|'             `|drive|              `|drive|
+                           +-----+               +-----+               +-----+
+
+</pre>
+<ul>
+<li>A mover, which is associated with one drive, gets a list of library managers
+to service.  This has two benefits.
+<p>
+First, since a library manager handles only one type of media, a drive which
+handles multiple types of media (i.e. different capacity media) can be shared
+without a static partitioning of the system.
+<p>
+Second, if we are partitioning resources in a library, we can assign a library
+manager to each type of use.  For example, suppose D0 and CDF want to share
+the capacity of a library.  (lib.mngrA and B may then control same media type.)
+
+<p>
+Suppose half the tapes belong to CDF and half to D0. We want to gaurantee that
+CDF have one third of the tape drives, D0 have one third, and the last third
+be shared.  We can configure the movers to do this.  And with some slight
+changes, this is how we can gaurantee resources to data acquisition.
+<p>
+The configuration is dynamic in the sense that each mover reads a new
+configuration when it dismounts a tape.
+</ul>
+<h2>
+Concluding Remarks
+</h2>
+<p>
+<font color=#ff0000><blink>Not done yet below this line</blink></font>
+<hr>
+</body>
