@@ -381,20 +381,23 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
             self.tape_driver.close()
             try: #see if there's a tape already loaded
-                self.tape_driver.open(self.device, mode=0, retry_count=2)
-                self.tape_driver.set_mode(compression = 0, blocksize = 0)
-                self.tape_driver.rewind()
-                buf=80*' '
-                self.tape_driver.read(buf, 0, 80)
-                ##self.tape_driver.close()
-                buf = string.split(buf)[0]
-                if buf[:4]=='VOL1':
-                    volname=buf[4:]
-                    self.current_volume = volname
-                    self.state = HAVE_BOUND
-                    Trace.log(e_errors.INFO,  "have vol %s at startup" % (self.current_volume,))
-            except (e_errors.READ_ERROR, ftt.FTTError), detail:
-                Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
+                have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
+                if have_tape == 1:
+                    self.tape_driver.set_mode(compression = 0, blocksize = 0)
+                    self.tape_driver.rewind()
+                    buf=80*' '
+                    try:
+                        self.tape_driver.read(buf, 0, 80)
+                    except (e_errors.READ_ERROR, ftt.FTTError), detail:
+                        Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
+
+                    buf = string.split(buf)[0]
+                    if buf[:4]=='VOL1':
+                        volname=buf[4:]
+                        self.current_volume = volname
+                        self.state = HAVE_BOUND
+                        Trace.log(e_errors.INFO,  "have vol %s at startup" % (self.current_volume,))
+
                 try:
                     self.tape_driver.close()
                 except:
@@ -1228,6 +1231,9 @@ if __name__ == '__main__':
     while 1:
         try:
             mover.serve_forever()
+        except SystemExit:
+            Trace.log(e_errors.INFO, "goodbye")
+            break
         except:
             try:
                 exc, msg, tb = sys.exc_info()
