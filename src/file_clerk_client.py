@@ -301,7 +301,7 @@ def do_work(intf):
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
-        print "bfid %s: sanity_cookie %s, complete_crc %s"%(bfid,ticket["sanity_cookie"],
+        print "bfid %s: sanity_cookie %s, complete_crc %s"%(`bfid`,ticket["sanity_cookie"],
                                                  `ticket["complete_crc"]`) #keep L suffix
     elif intf.set_crcs:
         bfid,sanity_size,sanity_crc,complete_crc=string.split(intf.set_crcs,',')
@@ -312,7 +312,7 @@ def do_work(intf):
         ticket=fcc.set_crcs(bfid,sanity_cookie,complete_crc)
         sanity_cookie = ticket['sanity_cookie']
         complete_crc = ticket['complete_crc']
-        print "bfid %s: sanity_cookie %s, complete_crc %s"%(bfid,ticket["sanity_cookie"],
+        print "bfid %s: sanity_cookie %s, complete_crc %s"%(`bfid`,ticket["sanity_cookie"],
                                                             `ticket["complete_crc"]`) #keep L suffix
         
     else:
