@@ -169,6 +169,19 @@ class AsciiAlarm(GenericAlarm):
 
 class LogFileAlarm(GenericAlarm):
 
+    def unpack_dict(self, dict):
+	if dict.has_key(enstore_constants.ROOT_ERROR):
+	    self.root_error = dict[enstore_constants.ROOT_ERROR]
+	    del dict[enstore_constants.ROOT_ERROR]
+	else:
+	    self.root_error = "UNKNOWN"
+	if dict.has_key(SEVERITY):
+	    self.severity = dict[SEVERITY]
+	    del dict[SEVERITY]
+	else:
+	    self.severity = e_errors.ALARM
+	self.alarm_info = dict
+
     def __init__(self, text, date):
 	GenericAlarm.__init__(self)
 
@@ -192,17 +205,44 @@ class LogFileAlarm(GenericAlarm):
                          self.timedate[6], self.timedate[7],
                          time.daylight)
 	self.id = str(self.timedate)
-
-	# split up the dictionary into components
-	dict = eval(string.strip(text))
-	if dict.has_key(enstore_constants.ROOT_ERROR):
-	    self.root_error = dict[enstore_constants.ROOT_ERROR]
-	    del dict[enstore_constants.ROOT_ERROR]
+	
+	text = string.strip(text)
+	# text may be only a dictionary or it may be of the following format -
+	#       root-error, {...} (severity : n)
+	if text[0] == "{":
+	    dict = eval(text)
+	    # split up the dictionary into components
+	    self.unpack_dict(dict)
 	else:
-	    self.root_error = "UNKNOWN"
-	if dict.has_key(SEVERITY):
-	    self.severity = dict[SEVERITY]
-	    del dict[SEVERITY]
-	else:
-	    self.root_error = "UNK"
-	self.alarm_info = dict
+	    index = string.find(text, ", {")
+	    if index == -1:
+		# we could not find the substring, punt
+		self.root_error = text
+		self.severity = e_errors.ALARM
+		self.alarm_info = {}
+	    else:
+		self.root_error = text[0:index]
+		# now pull out any dictionary, skip the ", "
+		index = index + 2
+		end_index = string.find(text, "} (")
+		if end_index == -1:
+		    # couldn't find it, punt again
+		    self.severity = e_errors.ALARM
+		    self.alarm_info = text[index:]
+		else:
+		    dict = eval(text[index:end_index+1])
+		    self.alarm_info = dict
+		    # now get the severity
+		    index = string.rfind(text, ")")
+		    if index == -1:
+			# could not find it
+			self.severity = e_errors.ALARM
+		    else:
+			sev = text[index -1]
+			for k,v in e_errors.sevdict.items():
+			    if v == sev:
+				self.severity = k
+				break
+			else:
+			    # there was no match
+			    self.severity = e_errors.ALARM
