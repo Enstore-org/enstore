@@ -2415,8 +2415,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     return
             self.bytes_written_last = self.bytes_written                
         if self.read_tape_running != 0:
+            # this is for the cases when transfer has completed
+            # but tape thread did not exit for some reason
+            # usually this happens with DLT tapes
             Trace.log(e_errors.INFO, "write_client waits for tape thread to exit")
-            for i in range(10):
+            for i in range(20):
                 time.sleep(1)
         self.transfer_completed()
         Trace.log(e_errors.INFO, "write_client exits")
