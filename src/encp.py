@@ -26,6 +26,7 @@ import configuration_client
 import udp_client
 import EXfer
 import interface
+import e_errors
 import Trace
 
 d0sam_format = "INFILE=%s\n"+\
@@ -37,7 +38,7 @@ d0sam_format = "INFILE=%s\n"+\
                "SEEK_TIME=%f\n"+\
                "MOUNT_TIME=%f\n"+\
                "QWAIT_TIME=%f\n"+\
-               "STATUS=%d\n"
+               "STATUS=%s\n"
 
 ##############################################################################
 
@@ -442,11 +443,11 @@ def write_to_hsm(input, output,
                    fsize,
                    done_ticket["fc"]["external_label"],
                    done_ticket["mover"]["device"],
-                   -1.0,
-                   -2.0,
-                   -3.0,
-                   -4.0,
-                   0)
+                   done_ticket["times"]["transfer_time"],
+                   done_ticket["times"]["seek_time"],
+                   done_ticket["times"]["mount_time"],
+                   done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                   e_errors.OK)
 
         logc.send(log_client.INFO, 2, format,
                   inputlist[i], outputlist[i], fsize,
@@ -884,11 +885,11 @@ def read_from_hsm(input, output,
                        fsize,
                        done_ticket["fc"]["external_label"],
                        done_ticket["mover"]["device"],
-                       -1.0,
-                       -2.0,
-                       -3.0,
-                       -4.0,
-                       0)
+                       done_ticket["times"]["transfer_time"],
+                       done_ticket["times"]["seek_time"],
+                       done_ticket["times"]["mount_time"],
+                       done_ticket["times"]["lm_dequeued"]-done_ticket["times"]["t0"],
+                       e_errors.OK)
 
             logc.send(log_client.INFO, 2, format,
                       inputlist[j], outputlist[j], fsize,
