@@ -73,7 +73,7 @@ color_dict = {
     #mover colors
     'mover_color':        rgbtohex(0, 0, 0), # black
     'mover_error_color':      rgbtohex(255, 0, 0), # red
-     'mover_offline_color':        rgbtohex(169, 169, 169), # grey
+    'mover_offline_color':        rgbtohex(169, 169, 169), # grey
     'mover_stable_color':        rgbtohex(0, 0, 0), # black
     'percent_color':        rgbtohex(0, 255, 0), # green
     'progress_bar_color':        rgbtohex(255, 255, 0), # yellow
@@ -155,57 +155,57 @@ class XY:
 
 class Mover:
     def __init__(self, name, display, index=0,N=0):
-        self.color                     = None
+        self.color                = None
         self.connection           = None         
-        self.display                  = display
-        self.height                    = 30
-        self.index                     = index
-        self.name                      = name
-        self.N                             =N
-        self.width                     = 125
-        self.x, self.y                  = 0, 0 # Not placed yet             
-        self.x, self.y                  = self.position(N)     
+        self.display              = display
+        self.height               = 30
+        self.index                = index
+        self.name                 = name
+        self.N                    =N
+        self.width                = 125
+        self.x, self.y            = 0, 0 # Not placed yet             
+        self.x, self.y            = self.position(N)     
         
         #These 3 pieces make up the progress gauge display
-        self.progress_bar                       = None
-        self.progress_bar_bg                 = None
+        self.progress_bar         = None
+        self.progress_bar_bg      = None
         self.progress_percent_display = None
         # This is the numeric value.  "None" means don't show the progress bar.
         self.percent_done = None
         
         # Other characteristics of a mover
-        self.state                  = "Unknown"
+        self.state                = "Unknown"
         self.volume               = None
 
 
         # Anything that deals with time
-        self.b0                          = 0
-        now                               = time.time()
-        self.last_activity_time = now
-        self.rate                         = 0.0
-        self.t0                            = 0
-        self.timer_seconds      = 0
-        self.timer_started        = now
-        self.timer_string           = '00:00:00'
+        self.b0                    = 0
+        now                        = time.time()
+        self.last_activity_time    = now
+        self.rate                  = 0.0
+        self.t0                    = 0
+        self.timer_seconds         = 0
+        self.timer_started         = now
+        self.timer_string          = '00:00:00'
         
         self.draw()
 
  
     def draw(self):
-        x, y                                       = self.x, self.y
-        bar_width                           = 38
-        img_offset                           =  XY(90, 2)
-        label_offset                        = XY(60, 40)
-        percent_disp_offset          = XY(60, 22)
-        progress_bar_offset          = XY(6, 22)
-        progress_bar_bg_offset1 = XY(5, 17)
-        progress_bar_bg_offset2 = XY(6, 26)
-        state_offset                         = XY(90, 8)
-        timer_offset                         = XY(100, 22)
+        x, y                       = self.x, self.y
+        bar_width                  = 38
+        img_offset                 =  XY(90, 2)
+        label_offset               = XY(60, 40)
+        percent_disp_offset        = XY(60, 22)
+        progress_bar_offset        = XY(6, 22)
+        progress_bar_bg_offset1    = XY(5, 17)
+        progress_bar_bg_offset2    = XY(6, 26)
+        state_offset               = XY(90, 8)
+        timer_offset               = XY(100, 22)
 
         # create color names
-        mover_color              = colors('mover_color')
-        percent_color           =  colors('percent_color')
+        mover_color                = colors('mover_color')
+        percent_color              =  colors('percent_color')
         progress_bar_color =  colors('progress_bar_color')
         progress_bg_color   = colors('progress_bg_color')
         state_color                 = colors('state_color') 
@@ -281,9 +281,9 @@ class Mover:
         self.volume.loaded = load_state
         self.volume.draw()
 
-    def unload_tape(self, volume_name):
-        if not (self.volume and self.volume.name == volume_name):
-            print "Mover ",self.name,"  does not have this tape : ", volume_name
+    def unload_tape(self):
+        if not self.volume:
+            print "Mover ",self.name," has no volume"
             return
             
         self.volume.loaded = 0
@@ -528,7 +528,7 @@ class Client:
             else:
                 i = 1 - i
         self.index = i
-        display.client_positions[i] = self
+        display.client_positions[i] = name
         self.x, self.y = scale_to_display(-0.9, i/10., display.width, display.height)
 
     def draw(self):
@@ -566,13 +566,8 @@ class Client:
                                           self.display.width, self.display.height)
         self.draw()
 
-    def destroy(self):
-        #print "client has", sys.getrefcount(self)-1, "references"
-        del self.display.client_positions[self.index]
-        del self.display.clients[self.name]
-        #print "client", self.name, "still has", sys.getrefcount(self)-1, "references"
-    
     def __del__(self):
+        del self.display.client_positions[self.index] ##Mark this spot as unoccupied
         self.undraw()
         
 class Connection:
@@ -580,6 +575,7 @@ class Connection:
     def __init__(self, mover, client, display):
         # we are passing instances of movers and clients
         self.mover = mover
+        client.n_connections = client.n_connections + 1
         self.client = client
         self.display = display
         self.dashoffset = 0 #current offset
@@ -587,7 +583,7 @@ class Connection:
         self.rate = 0 #pixels/second, not MB
         self.segment_start_time = 0
         self.segment_stop_time = 0
-
+        
     def draw(self):
         #print self.mover.name, " connecting to ", self.client.name
         mover_end = (self.mover.x,
@@ -606,6 +602,7 @@ class Connection:
         self.display.delete(self.line)
 
     def __del__(self):
+        self.client.n_connections = self.client.n_connections - 1
         self.undraw()
         
     def update_rate(self, rate):
@@ -852,25 +849,21 @@ class Display(Tkinter.Canvas):
             mover.b0 = 0
             connection.update_rate(0)
             connection.draw()
-            mover.client = client
             mover.connection = connection
-            client.n_connections = client.n_connections + 1
             return
         
-        if words[0]=='disconnect':
-            client_name = strip_domain(words[2])
-            client = self.clients.get(client_name)
-            #print "disconnecting with ", client_name, sys.getrefcount(client)-1, "references"
+        if words[0]=='disconnect': #Ignore the passed-in client name, disconnect from
+                               ## any currently connected client
 
-            if not client: ## this client is not displayed
-                print client_name, " not displayed"
+            if not mover.connection:
+                print "Mover is not connected"
                 return
-            if mover.connection:
-                mover.connection.client = None
-                mover.connection.mover = None
-                mover.connection = None
 
-            client.n_connections = client.n_connections - 1
+            client = mover.connection.client
+            
+            mover.connection.client = None
+            mover.connection.mover = None
+            mover.connection = None
             mover.t0 = time.time()
             mover.b0 = 0
             mover.show_progress(None)
@@ -887,9 +880,9 @@ class Display(Tkinter.Canvas):
             mover.load_tape(volume, load_state)
             return
         
-        if words[0]=='unload':
-            what_volume = words[2]
-            mover.unload_tape(what_volume)
+        if words[0]=='unload': # Ignore the passed-in volume name, unload
+                           ## any currently loaded volume
+            mover.unload_tape()
             return
 
         # command requires 4 words
@@ -954,12 +947,10 @@ class Display(Tkinter.Canvas):
             for client_name, client in self.clients.items():
                 if (client.n_connections > 0 or client.waiting == 1):
                     continue
-                if now - client.last_activity_time >  5: # grace period
+                if now - client.last_activity_time > 5: # grace period
                     print "It's been longer than 5 seconds, ", client_name," client must be deleted"
-                    #print "destroying client : ", client_name, "with", sys.getrefcount(client)-1, "references"
-                    client.destroy()
-                    client.undraw() #XXX This is wrong, wrong, wrong, but works for now!
-                    #print "done", sys.getrefcount(client)-1, "references left"
+                    del self.clients[client_name]
+
             #### Handle titling
             if self.title_animation:
                 if now > self.title_animation.stop_time:
