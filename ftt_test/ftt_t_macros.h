@@ -70,6 +70,8 @@ if (ftt_t_nerror > ftt_t_max_error)				\
       errstring = ftt_get_error(&error);				\
       if ((int)(error) != estatus)					\
          {								\
+	 fprintf (stderr, "command failed with %s\n",			\
+	    ftt_ascii_error[error]); 					\
  	 fprintf (stderr, "%s\n",errstring);				\
 	 FTT_T_INC_NERROR();						\
 	 return (error);						\
@@ -94,6 +96,8 @@ if (ftt_t_nerror > ftt_t_max_error)				\
       errstring = ftt_get_error(&error);				\
       if ((int)(error) != estatus)					\
          {								\
+	 fprintf (stderr, "command failed with %s\n",			\
+	    ftt_ascii_error[error]); 					\
  	 fprintf (stderr, "%s\n",errstring);				\
 	 FTT_T_INC_NERROR();						\
 	 return (error);						\

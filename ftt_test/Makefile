@@ -1,7 +1,6 @@
 SHELL=/bin/sh
-OS="`uname -s`+`uname -r | cut -c1`"
 
-LIBS=-L. -L../lib -lftt_test -lftt `cat libs.$$OS`
+LIBS=-L. -L../lib -lftt_test -lftt `cat ../ftt_lib/local/libs`
 
 SRC= ftt_t_cmdline.c ftt_t_cmdloop.c ftt_t_cmdproc.c ftt_t_parse.c \
  ftt_t_stats.c ftt_t_rdwr.c ftt_t_open.c ftt_t_position.c ftt_t_misc.c \
@@ -26,4 +25,4 @@ libftt_test.a: $(OBJ)
 	ar qv libftt_test.a $(OBJ)
 
 ftt_test: ftt_test.c libftt_test.a ../lib/libftt.a 
-	OS=$(OS); $(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)
+	$(CC) $(CFLAGS) -o ftt_test ftt_test.c  $(LIBS)

@@ -80,7 +80,7 @@ static int 	ndelay;				/* delay between writes */
 static char	*estatus_str;			/* expected status string */
 ftt_t_argt	argt[] = {
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
- 	{"-nblock",	FTT_T_ARGV_INT,		NULL,		&nblock},
+ 	{"-nblocks",	FTT_T_ARGV_INT,		NULL,		&nblock},
  	{"-bsize",	FTT_T_ARGV_INT,		NULL,		&bsize},
  	{"-delay",	FTT_T_ARGV_INT,		NULL,		&ndelay},
  	{"-delta",	FTT_T_ARGV_INT,		NULL,		&delta},
@@ -174,7 +174,7 @@ static int	filemark;			/* record is filemark */
 static char	*estatus_str;			/* expected status string */
 ftt_t_argt	argt[] = {
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
- 	{"-nblock",	FTT_T_ARGV_INT,		NULL,		&nblock},
+ 	{"-nblocks",	FTT_T_ARGV_INT,		NULL,		&nblock},
  	{"-delay",	FTT_T_ARGV_INT,		NULL,		&ndelay},
  	{"-oddbyte",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&oddbyte},
  	{"-filemark",	FTT_T_ARGV_CONSTANT,	(char *)TRUE,	&filemark},
@@ -290,7 +290,7 @@ static int	nblock;				/* number to read */
 static char	*estatus_str;			/* expected status string */
 ftt_t_argt	argt[] = {
  	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
- 	{"-nblock",	FTT_T_ARGV_INT,		NULL,		&nblock},
+ 	{"-nblocks",	FTT_T_ARGV_INT,		NULL,		&nblock},
  	{"-filename",	FTT_T_ARGV_STRING,	NULL,		&out_filename},
  	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
 

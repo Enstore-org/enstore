@@ -380,8 +380,9 @@ int		i;			/* counter */
 struct stat	buf;			/* stat buf */
 
 allname = ftt_list_all(ftt_t_fd);
-for (i = 0; allname[i]; aname = allname[i])
+for (i = 0; allname[i]; i++)
    {
+   aname = allname[i];
    status = stat(aname,&buf);
    if (status < 0) perror(aname);
    }

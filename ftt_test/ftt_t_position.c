@@ -418,6 +418,74 @@ return 0;
 
 }
 
+
+/* ============================================================================
+
+ROUTINE: ftt_t_test_status
+ 	
+==============================================================================*/
+int	ftt_t_test_status (int argc, char **argv)
+{
+int 		status;				/* status */
+int 		estatus = 0;			/* expected status */
+static int	nsec;				/* timeout */
+static char	*estatus_str;			/* expected status string */
+static int	abot, afm, aeot, aew, prot, online, busy;
+ftt_t_argt	argt[] = {
+ 	{"-timeout",	FTT_T_ARGV_INT,		NULL,		&nsec},
+ 	{"-status",	FTT_T_ARGV_STRING,	NULL,		&estatus_str},
+ 	{"-FTT_ABOT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&abot},
+ 	{"-FTT_AFM",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&afm},
+ 	{"-FTT_AEOT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&aeot},
+ 	{"-FTT_AEW",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&aew},
+ 	{"-FTT_PROT",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&prot},
+ 	{"-FTT_ONLINE",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&online},
+ 	{"-FTT_BUSY",	FTT_T_ARGV_CONSTANT,	(char *) TRUE,	&busy},
+ 	{NULL,		FTT_T_ARGV_END,		NULL,		NULL}};
+
+/* parse command line
+   ------------------ */
+
+abot = afm = aeot = aew = prot = online = busy = FALSE;
+estatus_str = 0; nsec = 0;
+status = ftt_t_parse (&argc, argv, argt);
+FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
+FTT_T_CHECK_ESTATUS (estatus_str, estatus);	/* check expected status opt */
+
+/* do the status 
+   ------------- */
+
+status = ftt_status(ftt_t_fd,nsec);
+if (status == -1) 
+   {
+   FTT_T_CHECK_CALL (status,estatus);
+   return 0;
+   }
+if (abot)
+   if (!(status & FTT_ABOT)) 
+      fprintf (stderr, "Expected to be at beginning of tape, but was not \n");
+if (afm)
+   if (!(status & FTT_AFM)) 
+      fprintf (stderr, "Expected to be just after filemark, but was not \n");
+if (aeot)
+   if (!(status & FTT_AEOT)) 
+      fprintf (stderr, "Expected to be at end of tape, but was not \n");
+if (aew)
+   if (!(status & FTT_AEW)) 
+      fprintf (stderr, "Expected to be at early warning mark, but was not \n");
+if (prot)
+   if (!(status & FTT_PROT)) 
+      fprintf (stderr, "Expected tape to be write protected, but was not \n");
+if (online)
+   if (!(status & FTT_ONLINE)) 
+      fprintf (stderr, "Expected tape to be online, but was not \n");
+if (busy)
+   if (!(status & FTT_BUSY)) 
+      fprintf (stderr, "Expected tape to be busy, but was not \n");
+
+return 0;
+
+}
 /* ============================================================================
  
 ROUTINE:
