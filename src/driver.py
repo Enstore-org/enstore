@@ -66,8 +66,9 @@ class GenericDriver:
 	self.blocksize = 0		# for the volume - from vc
 
 	# driver info
-	self.mode = 'r'			# aids in remaining_bytes calculations
-	self.cur_loc_cookie = None	# different for each driver
+	self.mode = ''			# Aids in remaining_bytes calculations
+					# and indicates open/close status
+	self.cur_loc_cookie = None	# Different for each driver
 
 	# per read/write info (clear on open for write/read)
 	self.file_marks = 0
@@ -366,20 +367,34 @@ class  FTTDriver(GenericDriver) :
 
 
     def offline( self, device ):
+	if self.mode == '':
+	    FTT.open( device, 'r' )
+	    need_cl = 1
+	else: need_cl = 0
+	# in the months prior to 7-7-99, when "mt offline" was used,
+	# every once in a great while "Input/output error" was returned
+	# and then, when the command was retried, no error was returned.
+	# Now, if any exception occurs, just retry the command.
+	# Note: "mt offline" was used when enstore was developed using
+	# Linux machines; it did not work when IRIX development started
+	# (mt unload); hence we now switch (back) to FTT.unload and
+	# code for exceptions.
 	x = 2;
 	while x:
-	    stat = os.system( 'sh -c "mt -t ' + device + ' offline 2>/dev/null"')
-	    stat = stat >> 8;
-	    # mt returns 0 upon success or 2 if no tape in device (i.e did
-	    # not need to offline)
-	    if stat == 0 or stat == 2: break
-	    Trace.log( e_errors.WARNING, 'offline returned status=%s'%stat )
-	    time.sleep( 1 )
-	    x = x - 1;
+	    try:
+		FTT.unload()
+		break
+	    except: time.sleep( 1 )
+	    x = x - 1
 	    pass
-	if x == 0:
-	    Trace.log( e_errors.ERROR, 'offline giving up after 2 tries' )
-	    raise "driver_ERROR"
+	# An exception will occur if the tape is already unloaded.
+	# (I could do an FTT.status and check for online 1st, but...
+	# I would still have to code for the exception as outlined above)
+	# Exception information:
+	# the ncr53c8xx driver version 3.1d returns 'Input/output error'
+	# the aic7xxx driver version 5.1.10/3.2.4 returns 'No medium found'
+	# the IRIX 6.2 driver (on fndaub on 7-7-99) returned 'Resource temporarily unavailable'
+	if need_cl: FTT.close()
 	return None
 
     def rewind(self):
@@ -549,6 +564,8 @@ class  FTTDriver(GenericDriver) :
                 pp,bb,ff = loc2int( self, self.cur_loc_cookie )
                 self.cur_loc_cookie = int2loc( self, (pp,bb,ff+1) )
                 pass
+	    pass
+	self.mode = ''			# indicate the the device is closed
 	return FTT.close()
 
     def loc_compare( self, loc1, loc2 ):
