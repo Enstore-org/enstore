@@ -1,0 +1,2 @@
+20 4 * * * $ENSTORE_SBIN/ecron -p backup-gzip backup-gzip /rip8a/enstore/db_backup  > /dev/null 2> /dev/null
+20 5 * * * $ENSTORE_SBIN/ecron -p backup-gzip backup-gzip /rip8a/enstore-sam/db_backup  > /dev/null 2> /dev/null
