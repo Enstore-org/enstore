@@ -1,0 +1,43 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# sbin/$RCSfile$  $Revision$
+
+
+if [ -z "${1-}" ]; then
+  echo "Usage: delfile pnfs-trash-can-path"
+  exit 1
+fi
+
+if [ -r "$1" ] ; then
+  a=`cat $1`
+else
+  echo "$1 is not readable"
+  exit 2
+fi
+
+bfid=`echo $a | awk '{print $9}'`
+if [ $? -ne 0 ]; then
+  echo "Can not get the bfid from $1"
+  echo $a
+  exit 1
+fi
+
+#I am assuming that enstore is setup, so ecmd is in my path
+echo ecmd fcc --bfid=$bifd --deleted=yes
+
+if [ $? -ne 0 ]; then
+  echo "Can not set bfid $bfid deleted from $1"
+  echo $a
+  exit 1
+else
+  echo rm $1
+  if [ $? -ne 0 ]; then
+     echo "Can not delete the file $1"
+     exit 1
+  fi
+fi
+
+exit 0
+
