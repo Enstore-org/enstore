@@ -175,7 +175,8 @@ if __name__ == '__main__':
 	while k:
 		count = count + 1
 		volume, size, deleted, crc, pnfs_path = getinfo(v)
-		if deleted == 'A':
+		if deleted == 'A' and string.find(pnfs_path, '.B_') == -1\
+			and string.find(pnfs_path, '.A_') == -1:
 			try:
 				ff = get_file_family(volume)
 				if ff:
