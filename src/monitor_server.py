@@ -113,7 +113,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
     def flush_measurements(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
         self._become_html_gen_host()
-        file = enstore_files.EnFile(self.html_dir + "/active_monitor.html")
+        file = enstore_files.EnFile("%s/%s"%(self.html_dir, 
+					     enstore_constants.NETWORKFILE))
         file.open()
         file.write(str(self.page))
         file.close()
