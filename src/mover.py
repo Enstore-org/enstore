@@ -480,7 +480,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mount_delay = 0
 
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
-        self.set_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
+        self.add_interval_func(self.update, self.update_interval) #this sets the period for messages to LM.
         self.set_error_handler(self.handle_mover_error)
         ##end of __init__
 

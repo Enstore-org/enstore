@@ -41,8 +41,8 @@ class DispatchingWorker:
         self.callback = {} #callback functions associated with above
         self.request_dict = {} # used to recognize UDP retries
         self.request_dict_ttl = 1800 # keep requests in request dict for this many seconds
-        self.interval_func = None # function to call periodically
-        self.last_interval = 0
+        self.interval_funcs = {} # functions to call periodically - key is function, value is [interval, last_called]
+
         
         ## flag for whether we are in a child process
         ## Server loops should be conditional on "self.is_child" rather than 'while 1'
@@ -55,13 +55,15 @@ class DispatchingWorker:
         fcntl.fcntl(self.server_socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
         self.server_bind()
 
-    def set_interval_func(self, func, interval):
-        self.interval_func = func
-        self.interval = interval
+    def add_interval_func(self, func, interval):
+        self.interval_funcs[func] = [interval, 0]
         self.rcv_timeout = min(interval, self.rcv_timeout)
 
-    def reset_interval_timer(self):
-        self.last_interval = time.time()
+    def remove_interval_func(self, func):
+        del self.interval_funcs[func]
+        
+    def reset_interval_timer(self, func):
+        self.interval_funcs[func][1] = time.time()
 
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
@@ -131,9 +133,11 @@ class DispatchingWorker:
         request, client_address = self.get_request()
         now=time.time()
 
-        if self.interval_func and now-self.last_interval >= self.interval:
-            self.last_interval=now
-            self.interval_func()
+        for func, time_data in self.interval_funcs.items():
+            interval, last_called = time_data
+            if now - last_called > interval:
+                self.interval_funcs[func] = [interval, now]
+                func()
 
         if request == '':
             # nothing returned, must be timeout
@@ -189,11 +193,14 @@ class DispatchingWorker:
             w = self.write_fds
 
             rcv_timeout = self.rcv_timeout
-            if self.interval_func:
-                time_left = self.interval - (time.time()-self.last_interval)
-                if time_left<0:
-                    time_left=0
-                rcv_timeout = min(rcv_timeout, time_left)
+
+            if self.interval_funcs:
+                now = time.time()
+                for func, time_data in self.interval_funcs.items():
+                    interval, last_called = time_data
+                    rcv_timeout = min(rcv_timeout, interval - (now - last_called))
+
+                rcv_timeout = max(rcv_timeout, 0)
 
             r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
 
@@ -205,8 +212,6 @@ class DispatchingWorker:
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
-            #now check for replies from send_async
-            #XXX
 
             #now handle other incoming requests
             for fd in r:
