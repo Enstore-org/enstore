@@ -989,10 +989,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
             if bytes_read <= 0:  #  The client went away!
                 Trace.log(e_errors.ERROR, "read_client: dropped connection")
-                if self.state is not DRAINING:
+                #if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, None)
-                self.state = HAVE_BOUND
                 return
             self.bytes_read = self.bytes_read + bytes_read
 
@@ -1337,17 +1336,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
-                if self.state is not DRAINING:
+                #if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, detail)
-                self.state = HAVE_BOUND
                 failed = 1
                 break
             if bytes_written < 0:
-                if self.state is not DRAINING:
+                #if self.state is not DRAINING: self.state = HAVE_BOUND
                 # if state is DRAINING transfer_failed will set it to OFFLINE
                 self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
-                self.state = HAVE_BOUND
                 failed = 1
                 break
             if bytes_written != nbytes:
