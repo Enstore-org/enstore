@@ -79,6 +79,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.ignored_sg_file = None
         return
 
+    # reconnect() -- re-establish connection to database
+    def reconnect(self):
+        self.dict.reconnect()
+
     # change_state(type, value) -- change a state
     def change_state(self, volume, type, value):
         q = "insert into state (volume, type, value) values (\
@@ -2348,6 +2352,10 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
+        except edb.pg.error, exp:
+            vc.reconnect()
+            Trace.alarm(e_errors.WARNING, "reconnect to database due to "+exp)
+            continue
         except SystemExit, exit_code:
             vc.dict.close()
             sys.exit(exit_code)
