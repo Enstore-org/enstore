@@ -63,24 +63,28 @@ while loop <= loops:
     print '%s: start loop %s'%(tt(),loop)
 
     if do_robot:
-	print "%s:         ejecting... "%tt(),
+	print "%s:         ejecting... "%tt(),;sys.stdout.flush()
 	os.system( "mt -f %s offline"%tapedev )
-	print "\n%s:         dismounting... "%tt(),
+	print "\n%s:         dismounting... "%tt(),;sys.stdout.flush()
 	os.system( 'rsh %s ". /usr/local/etc/setups.sh;setup enstore;dasadmin dismount -d %s"'%(dasnod,drvdesig) )
-	print "%s:         mounting... "%tt(),
+	print "%s:         mounting... "%tt(),;sys.stdout.flush()
 	os.system( 'rsh %s ". /usr/local/etc/setups.sh;setup enstore;dasadmin mount -t %s %s %s"'%(dasnod,drvtype,volume,drvdesig) )
+    else:
+	print "%s:         rewinding... "%tt(),;sys.stdout.flush()
+	os.system( "mt -f %s rewind"%tapedev )
+	print
 
     fo = open( infile, 'r' )
     hsm_driver = driver.FTTDriver()
     #hsm_driver = driver.NullDriver()
 
     # THE BIND ##################################################################
-    print "%s:         sw_mount... "%tt(),          #; sys.stdout.flush()
+    print "%s:         sw_mount... "%tt(),; sys.stdout.flush()
     hsm_driver.sw_mount( tapedev, 102400, 30520749568L, external_label, eod_cookie )
     do = hsm_driver.open( tapedev, 'a+' )
     if do.is_bot(do.tell()) and do.is_bot(eod_cookie):
 	# write an ANSI label and update the eod_cookie
-	print '\n%s:         label...'%tt(),
+	print '\n%s:         label...'%tt(),; sys.stdout.flush()
 	ll = do.format_label( external_label )
 	do.write( ll )
 	do.writefm()
@@ -91,20 +95,20 @@ while loop <= loops:
 
     # THE XFER ##################################################################
     do = hsm_driver.open( tapedev, 'a+' )
-    print '\n%s:         seek to %s... '%(tt(),eod_cookie),
+    print '\n%s:         seek to %s... '%(tt(),eod_cookie),; sys.stdout.flush()
     do.seek( eod_cookie )
-    print '\n%s:         do.fd_xfer( fo.fileno(), %s, 0,0 )'%(tt(),bytes),
+    print '\n%s:         do.fd_xfer( fo.fileno(), %s, 0,0 )'%(tt(),bytes),; sys.stdout.flush()
     t0 = time.time()
     crc = do.fd_xfer( fo.fileno(), bytes, 0,0 )
     t1 = time.time()
-    print '\n%s:         writefm... '%tt(),
+    print '\n%s:         writefm... '%tt(),; sys.stdout.flush()
     do.writefm()
     eod_cookie = do.tell()
-    print '\n%s:         get_stats... '%tt(),
+    print '\n%s:         get_stats... '%tt(),; sys.stdout.flush()
     if isinstance( hsm_driver, driver.FTTDriver ): stats = FTT.get_stats()
     else:                                          stats = do.get_stats()
     xx = tt()
-    for ll in string.split( pprint.pformat(stats), '\012' ): print '\n%s:         %s'%(xx,ll),
+    for ll in string.split( pprint.pformat(stats), '\012' ): print '\n%s:         %s'%(xx,ll),; sys.stdout.flush()
     do.close()			# b/c of fm above, this is purely sw.
 
 
@@ -119,7 +123,7 @@ while loop <= loops:
     try:
 	statinfo = os.stat( "pause" )
 	print_resume = 1
-	print 'paused...',
+	print 'paused...',; sys.stdout.flush()
 	while 1: time.sleep( 1 ); statinfo = os.stat( "pause" )
 	pass
     except:
