@@ -10,6 +10,7 @@ if [ "${1:-}" = "-a" ];  then USE_A_DRIVE=1;       shift; else USE_A_DRIVE=0;   
 if [ "${1:-}" = "-b" ] ; then MAKE_B_COPY=1;       shift; else MAKE_B_COPY=0;       fi
 if [ "${1:-}" = "-d" ] ; then DELETE_LOCAL_FILE=1; shift; else DELETE_LOCAL_FILE=0; fi
 if [ "${1:-}" = "-g" ] ; then GET_MISSING_FILES=1; shift; else GET_MISSING_FILES=0; fi
+if [ "${1:-}" = "-i" ] ; then IGNORE_DISK_QUOTA=1; shift; else IGNORE_DISK_QUOTA=0; fi
 if [ "${1:-}" = "-l" ] ; then MAKE_LOCAL_COPY=1;   shift; else MAKE_LOCAL_COPY=0;   fi
 if [ "${1:-}" = "-m" ] ; then VERIFY_META_DATA=1;  shift; else VERIFY_META_DATA=0;  fi
 if [ "${1:-}" = "-r" ] ; then READ_TO_DEV_NULL=1;  shift; else READ_TO_DEV_NULL=0;  fi
@@ -114,12 +115,14 @@ cat $dirs | while read dir; do
   if [ $READ_TO_DEV_NULL -eq 0 ]; then
     disk_copy=${local}$dir
     sl=0
-    while /bin/true; do
-       space=`df $partition|grep $partition |awk '{print $5}'|cut -f1 -d%`
-       if [ $space -lt 85 ]; then break; fi
-       if [ $sl -eq 0 ]; then echo `date` LOW SPACE on $partition $space percent left... waiting; sl=1;fi
-       sleep 300
-     done
+    if [ $IGNORE_DISK_QUOTA -eq 0 ]; then 
+      while /bin/true; do
+         space=`df $partition|grep $partition |awk '{print $5}'|cut -f1 -d%`
+         if [ $space -lt 85 ]; then break; fi
+         if [ $sl -eq 0 ]; then echo `date` LOW SPACE on $partition $space percent left... waiting; sl=1;fi
+         sleep 300
+       done
+    fi
   else
     disk_copy=/dev/null
   fi
