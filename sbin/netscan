@@ -232,6 +232,7 @@ ALLOW_SRV3="$ALLOW_SRV5
 # Extra for srv2
 ALLOW_SRV2="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
+       LISTEN,sendmail,:smtp,TCP,x
 "
 
 # Extra for d0ensrv4 - portmapper is needed for adic calls
