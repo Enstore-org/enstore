@@ -188,7 +188,7 @@ class Buffer:
             partial=space[:bytes_read]
             self.push(partial)
             self._freespace(space)
-        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
+##        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
         return bytes_read
         
     def block_write(self, nbytes, driver):
@@ -307,6 +307,17 @@ class Mover(dispatching_worker.DispatchingWorker,
     def __init__(self, csc_address, name):
         generic_server.GenericServer.__init__(self, csc_address, name)
         self.name = name
+        self.shortname = name
+        self.notify_transfer_threshold = 2*1024*1024
+        if self.shortname[-6:]=='.mover':
+            self.shortname = name[:-6]
+            
+    def __setattr__(self, attr, val):
+        #catch state changes
+        if attr == 'state':
+            if val != getattr(self, 'state', None):
+                Trace.notify("state %s %s" % (self.shortname, state))
+        self.__dict__[attr] = val
 
     def start(self):
         name = self.name
@@ -337,7 +348,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
-        self.udpc =  udp_client.UDPClient()
+        self.udpc = udp_client.UDPClient()
         self.state = IDLE
         self.last_error = (e_errors.OK, None)
         if self.check_lockfile():
@@ -366,7 +377,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
         self.config['device'] = os.path.expandvars(self.config['device'])
-
+        self.client_hostname = None
+        
         import net_driver
         self.net_driver = net_driver.NetDriver()
         self.client_socket = None
@@ -582,7 +594,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(8, "write_tape starting, bytes_to_write=%s" % (self.bytes_to_write,))
         driver = self.tape_driver
         count = 0
+        bytes_notified = 0L
+        threshold = self.notify_transfer_threshold
+        
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
+            if self.bytes_written - bytes_notified > threshold:
+                bytes_notified = self.bytes_written
+                Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_written, self.bytes_to_write))
+                
             if (self.bytes_read == self.bytes_to_read and self.buffer.empty()
                 or self.bytes_read < self.bytes_to_read and self.buffer.low()):
                 Trace.trace(9,"write_tape: buffer low %s/%s, wrote %s/%s"%
@@ -626,7 +645,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
             if not self.buffer.full():
                 self.buffer.read_ok.set()
-            
+
         Trace.trace(8, "write_tape exiting, wrote %s/%s bytes" %( self.bytes_written, self.bytes_to_write))
 
         if self.bytes_written == self.bytes_to_write:
@@ -655,8 +674,13 @@ class Mover(dispatching_worker.DispatchingWorker,
     def read_tape(self):
         Trace.trace(8, "read_tape starting, bytes_to_read=%s" % (self.bytes_to_read,))
         driver = self.tape_driver
+        bytes_notified = 0L
+        threshold = self.notify_transfer_threshold
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-            
+            if self.bytes_read - bytes_notified > threshold:
+                bytes_notified = self.bytes_read
+                #negative byte-count to indicate direction
+                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read)
             if self.buffer.full():
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
@@ -840,10 +864,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             client_hostname = ticket['wrapper']['machine'][1]
         except KeyError:
             client_hostname = ''
-
+        self.client_hostname = client_hostname
         if client_hostname:
             client_filename = client_hostname + ":" + client_filename
-            
+
         if self.mode == READ:
             self.files = (pnfs_filename, client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
@@ -960,10 +984,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
-
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
-
+        
         if self.state == ERROR:
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s, state=ERROR" % (msg,))
             return
@@ -991,14 +1015,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.maybe_clean()
             self.idle()
-
-
-
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
             self.current_volume, self.current_location))
-        
+        Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
         if self.mode == WRITE:
             self.vcc.update_counts(self.current_volume, wr_access=1)
         else:
@@ -1142,6 +1163,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "accepting client connection")
                 client_socket, address = listen_socket.accept()
                 listen_socket.close()
+                #client_hostname got set in setup_transfer.  Use this instead of doing DNS lookup
+                Trace.notify("connect %s %s" % (self.shortname, self.client_hostname))
                 self.net_driver.fdopen(client_socket)
                 return control_socket, client_socket
             else:
@@ -1231,6 +1254,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if ejected == -1:
                     self.error("Cannot eject tape")
             self.tape_driver.close()
+            Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
@@ -1271,7 +1295,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.error(status[-1], status[0])
             
-
     def mount_volume(self, volume_label, after_function=None):
         self.dismount_time = None
         self.state = MOUNT_WAIT
@@ -1285,6 +1308,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(10, 'mc replies %s' % (status,))
 
         if status and status[0] == e_errors.OK:
+            Trace.notify("load %s %s" % (self.shortname, volume_label))
             if self.mount_delay:
                 Trace.trace(25, "waiting %s seconds after mount"%(self.mount_delay,))
                 time.sleep(self.mount_delay)
