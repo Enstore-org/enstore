@@ -669,7 +669,8 @@ class Pnfs:
                 print "unknown OS:",machtype
 
             # we need to find the mount point and create the volume file there
-            command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
+            #command = 'df '+k+' | grep /pnfs| awk "{print \$'+item+'}" '
+            command = 'df '+k+' | grep /pnfs| awk "{print \$NF}" '
             print command
             mountpoints = os.popen(command,'r').readlines()
             print mountpoints
