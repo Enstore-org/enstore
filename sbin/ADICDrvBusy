@@ -99,6 +99,7 @@ plot \"$busy\" using 1:6 t \"LTO in use\" w impulses" >$pltcmd
          convert -rotate 90 $plotLTO.ps $plotLTO.jpg
 	 convert -geometry 120x120 -modulate -20 $plotLTO.jpg ${plotLTO}_stamp.jpg
 
+if /bin/false; then
          rm -f $pltcmd
          echo "set output \"$plotDLT.ps\"
 set terminal postscript color solid
@@ -116,7 +117,7 @@ plot \"$busy\" using 1:8 t \"DLT in use\" w impulses" >$pltcmd
          gnuplot $pltcmd
          convert -rotate 90 $plotDLT.ps $plotDLT.jpg
 	 convert -geometry 120x120 -modulate -20 $plotDLT.jpg ${plotDLT}_stamp.jpg
-
+fi
 
 
         else
