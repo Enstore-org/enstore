@@ -11,6 +11,7 @@ import errno
 import sys
 
 # enstore imports
+import e_errors
 import interface
 import Trace
 import ECRC
@@ -206,6 +207,11 @@ class UDPClient:
 		    Trace.trace(0,'send GOOFY TEST FEATURE')
 		    ident, number,  out, time  = eval(reply)
                     Trace.trace(20,'goofy test:'+repr((ident,number,out,time)))
+                # catch any error and keep going. server needs to be robust
+                except:
+                    Trace.log(e_errors.ERROR,"unexpected exception in udp_client:send "+
+                              str(sys.exc_info()[0])+" "+str(sys.exc_info()[1]))
+		    raise sys.exc_info()[0],sys.exc_info()[1]
 
 		# now (after receive), check...
 		if number != self.number :
