@@ -99,9 +99,9 @@ local:
 	if [ -d `uname -s` ] ;\
 	then \
 		ln -s `uname -s` local;\
-	elif [ -d "`uname -s`+`uname -r | cut -c1`" ] ;\
+	elif [ -d "`uname -s | sed -e ' s/IRIX64/IRIX/' `+`uname -r | cut -c1`" ] ;\
 	then \
-		ln -s "`uname -s`+`uname -r | cut -c1`" local ;\
+		ln -s "`uname -s | sed -e ' s/IRIX64/IRIX/'`+`uname -r | cut -c1`" local ;\
 	else \
 		ln -s GENERIC local;\
 	fi
