@@ -105,22 +105,22 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      ait   none 8MM     CA2901 10737418240 10737418240
-                      ait   none 8MM     CA2902 10737418240 10737418240
-                      ait   none 8MM     CA2903 10737418240 10737418240
-                      ait   none 8MM     CA2904 10737418240 10737418240
-                      ait   none 8MM     CA2905 10737418240 10737418240
-                      ait   none 8MM     CA2906 10737418240 10737418240
-                      ait   none 8MM     CA2907 10737418240 10737418240
-                      ait   none 8MM     CA2908 10737418240 10737418240
-                      ait   none 8MM     CA2909 10737418240 10737418240
-                      ait   none 8MM     CA2910 10737418240 10737418240
-                      ait   none 8MM     CA2911 10737418240 10737418240
-                      ait   none 8MM     CA2912 10737418240 10737418240
-                      ait   none 8MM     CA2913 10737418240 10737418240
-                      ait   none 8MM     CA2914 10737418240 10737418240
-                      ait   none 8MM     CA2915 10737418240 10737418240
-                      ait   none 8MM     CA2916 10737418240 10737418240
+                      ait   none 8MM     CA2901 26016563200 26016563200
+                      ait   none 8MM     CA2902 26016563200 26016563200
+                      ait   none 8MM     CA2903 26016563200 26016563200
+                      ait   none 8MM     CA2904 26016563200 26016563200
+                      ait   none 8MM     CA2905 26016563200 26016563200
+                      ait   none 8MM     CA2906 26016563200 26016563200
+                      ait   none 8MM     CA2907 26016563200 26016563200
+                      ait   none 8MM     CA2908 26016563200 26016563200
+                      ait   none 8MM     CA2909 26016563200 26016563200
+                      ait   none 8MM     CA2910 26016563200 26016563200
+                      ait   none 8MM     CA2911 26016563200 26016563200
+                      ait   none 8MM     CA2912 26016563200 26016563200
+                      ait   none 8MM     CA2913 26016563200 26016563200
+                      ait   none 8MM     CA2914 26016563200 26016563200
+                      ait   none 8MM     CA2915 26016563200 26016563200
+                      ait   none 8MM     CA2916 26016563200 26016563200
                      "
          ;;
   samait)rm -fr    /pnfs/sam/ait/*
@@ -135,11 +135,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samait   none 8MM     CA2945 16106127360 16106127360
-                      samait   none 8MM     CA2946 16106127360 16106127360
-                      samait   none 8MM     CA2947 16106127360 16106127360
-                      samait   none 8MM     CA2948 16106127360 16106127360
-                      samait   none 8MM     CA2949 16106127360 16106127360
+                      samait   none 8MM     CA2945 26016563200 26016563200
+                      samait   none 8MM     CA2946 26016563200 26016563200
+                      samait   none 8MM     CA2947 26016563200 26016563200
+                      samait   none 8MM     CA2948 26016563200 26016563200
+                      samait   none 8MM     CA2949 26016563200 26016563200
                      "
          ;;
   mam)   rm -fr    /pnfs/grau/mammoth/*
@@ -165,22 +165,22 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      mam   none 8MM     CA2251 10737418240 10737418240
-                      mam   none 8MM     CA2252 10737418240 10737418240
-                      mam   none 8MM     CA2253 10737418240 10737418240
-                      mam   none 8MM     CA2254 10737418240 10737418240
-                      mam   none 8MM     CA2255 10737418240 10737418240
-                      mam   none 8MM     CA2256 10737418240 10737418240
-                      mam   none 8MM     CA2257 10737418240 10737418240
-                      mam   none 8MM     CA2258 10737418240 10737418240
-                      mam   none 8MM     CA2259 10737418240 10737418240
-                      mam   none 8MM     CA2260 10737418240 10737418240
-                      mam   none 8MM     CA2261 10737418240 10737418240
-                      mam   none 8MM     CA2262 10737418240 10737418240
-                      mam   none 8MM     CA2263 10737418240 10737418240
-                      mam   none 8MM     CA2264 10737418240 10737418240
-                      mam   none 8MM     CA2265 10737418240 10737418240
-                      mam   none 8MM     CA2266 10737418240 10737418240
+                      mam   none 8MM     CA2251 20113227776 20113227776
+                      mam   none 8MM     CA2252 20113227776 20113227776
+                      mam   none 8MM     CA2253 20113227776 20113227776
+                      mam   none 8MM     CA2254 20113227776 20113227776
+                      mam   none 8MM     CA2255 20113227776 20113227776
+                      mam   none 8MM     CA2256 20113227776 20113227776
+                      mam   none 8MM     CA2257 20113227776 20113227776
+                      mam   none 8MM     CA2258 20113227776 20113227776
+                      mam   none 8MM     CA2259 20113227776 20113227776
+                      mam   none 8MM     CA2260 20113227776 20113227776
+                      mam   none 8MM     CA2261 20113227776 20113227776
+                      mam   none 8MM     CA2262 20113227776 20113227776
+                      mam   none 8MM     CA2263 20113227776 20113227776
+                      mam   none 8MM     CA2264 20113227776 20113227776
+                      mam   none 8MM     CA2265 20113227776 20113227776
+                      mam   none 8MM     CA2266 20113227776 20113227776
                      "
          ;;
   sammam)rm -fr    /pnfs/sam/mammoth/*
@@ -195,17 +195,17 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samman   none 8MM     CA2270 16106127360 16106127360
-                      samman   none 8MM     CA2271 16106127360 16106127360
-                      samman   none 8MM     CA2272 16106127360 16106127360
-                      samman   none 8MM     CA2273 16106127360 16106127360
-                      samman   none 8MM     CA2274 16106127360 16106127360
+                      samman   none 8MM     CA2270 20113227776 20113227776
+                      samman   none 8MM     CA2271 20113227776 20113227776
+                      samman   none 8MM     CA2272 20113227776 20113227776
+                      samman   none 8MM     CA2273 20113227776 20113227776
+                      samman   none 8MM     CA2274 20113227776 20113227776
                      "
          ;;
   dlt)   rm -fr    /pnfs/grau/dlt/*
          mkdir     /pnfs/grau/dlt/volmap
 	 chmod 777 /pnfs/grau/dlt/volmap
-         volumes_del="
+         volumes_del="35520749568
                       CA2501
                       CA2502
                       CA2503
@@ -225,22 +225,22 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      dlt   none DECDLT  CA2501 10737418240 10737418240
-                      dlt   none DECDLT  CA2502 10737418240 10737418240
-                      dlt   none DECDLT  CA2503 10737418240 10737418240
-                      dlt   none DECDLT  CA2504 10737418240 10737418240
-                      dlt   none DECDLT  CA2505 10737418240 10737418240
-                      dlt   none DECDLT  CA2506 10737418240 10737418240
-                      dlt   none DECDLT  CA2507 10737418240 10737418240
-                      dlt   none DECDLT  CA2508 10737418240 10737418240
-                      dlt   none DECDLT  CA2509 10737418240 10737418240
-                      dlt   none DECDLT  CA2510 10737418240 10737418240
-                      dlt   none DECDLT  CA2511 10737418240 10737418240
-                      dlt   none DECDLT  CA2512 10737418240 10737418240
-                      dlt   none DECDLT  CA2513 10737418240 10737418240
-                      dlt   none DECDLT  CA2514 10737418240 10737418240
-                      dlt   none DECDLT  CA2515 10737418240 10737418240
-                      dlt   none DECDLT  CA2516 10737418240 10737418240
+                      dlt   none DECDLT  CA2501 35520749568 35520749568
+                      dlt   none DECDLT  CA2502 35520749568 35520749568
+                      dlt   none DECDLT  CA2503 35520749568 35520749568
+                      dlt   none DECDLT  CA2504 35520749568 35520749568
+                      dlt   none DECDLT  CA2505 35520749568 35520749568
+                      dlt   none DECDLT  CA2506 35520749568 35520749568
+                      dlt   none DECDLT  CA2507 35520749568 35520749568
+                      dlt   none DECDLT  CA2508 35520749568 35520749568
+                      dlt   none DECDLT  CA2509 35520749568 35520749568
+                      dlt   none DECDLT  CA2510 35520749568 35520749568
+                      dlt   none DECDLT  CA2511 35520749568 35520749568
+                      dlt   none DECDLT  CA2512 35520749568 35520749568
+                      dlt   none DECDLT  CA2513 35520749568 35520749568
+                      dlt   none DECDLT  CA2514 35520749568 35520749568
+                      dlt   none DECDLT  CA2515 35520749568 35520749568
+                      dlt   none DECDLT  CA2516 35520749568 35520749568
                      "
          ;;
   samdlt)rm -fr    /pnfs/sam/dlt/*
@@ -255,11 +255,11 @@ case $1 in
                      "
 #                     lib   ff   medtype label  capacity    bytes left
          volumes="
-                      samdlt   none DECDLT  CA2545 16106127360 16106127360
-                      samdlt   none DECDLT  CA2546 16106127360 16106127360
-                      samdlt   none DECDLT  CA2547 16106127360 16106127360
-                      samdlt   none DECDLT  CA2548 16106127360 16106127360
-                      samdlt   none DECDLT  CA2549 16106127360 16106127360
+                      samdlt   none DECDLT  CA2545 35520749568 35520749568
+                      samdlt   none DECDLT  CA2546 35520749568 35520749568
+                      samdlt   none DECDLT  CA2547 35520749568 35520749568
+                      samdlt   none DECDLT  CA2548 35520749568 35520749568
+                      samdlt   none DECDLT  CA2549 35520749568 35520749568
                      "
          ;;
   rip6)  rm -fr    /pnfs/rip6/*
