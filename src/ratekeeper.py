@@ -176,6 +176,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 end_time = self.start_time + N * self.interval
                 remaining = end_time - now
 
+            if remaining <= 0: #Possible from ntp clock update???
+                continue
+
             r, w, x = select.select([self.sock], [], [], remaining)
 
             if not r:
