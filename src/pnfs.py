@@ -663,7 +663,7 @@ class Pnfs:
     # generate volmap directory name and filename
     # the volmap directory looks like:
     #         /pnfs/xxxx/volmap/origfilefamily/volumename/file_number_on_tape
-    def volmap_filename(self,vol="",kookie=""):
+    def volmap_filename(self,vol="",cookie=""):
         self.volume_file = UNKNOWN
         if self.valid != VALID or self.exists != EXISTS:
             return
@@ -682,8 +682,6 @@ class Pnfs:
         # cookie  not set until xref layer is filled in, has to be specified
         if self.location_cookie!=UNKNOWN:
             cookie = self.location_cookie
-        else:
-            cookie = kookie
 
         dir_elements = string.split(self.dir,'/')
         if dir_elements[1] != "pnfs":
@@ -711,21 +709,10 @@ class Pnfs:
 
     # create a directory
     def make_dir(self, dir_path, mod):
+        print "MD",dir_path
         try:
-            if os.path.exists(dir_path):
-                return e_errors.OK. None
-            d = ""
-            dir_elements = string.split(dir_path,'/')
-            for element in dir_elements:
-                
-                d=os.path.join(d,element)
-                
-                if not os.path.exists(d):
-                    # try to make the directory - just bomb out if we fail
-                    #   since we probably require user intervention to fix
-                    Trace.trace(11,'dir= %s, path=%s'%(d,dir_path))
-                    os.mkdir(d)
-                    os.chmod(d,mod)
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path, mod)
             return e_errors.OK, None
         except:
             exc, val, tb = e_errors.handle_error()
