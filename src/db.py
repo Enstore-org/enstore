@@ -90,7 +90,13 @@ class Jcursor:
 
 def advance_all(max, curlist):
 	for c in curlist:
-		key, value = c.current()
+		# Although libtpshelve.py should and will address this,
+		# it is not a bad idea to safe guard it in here.
+		try:
+			key, value = c.current()
+		except:		# c is a funny cursor
+			return None
+
 		while value < max:
 			key, value = c.nextDup()
 			if value == None:
