@@ -31,8 +31,8 @@ import struct, fcntl, FCNTL
 import configuration_client
 import dispatching_worker
 import generic_server
-##import event_relay_client
-##import monitored_server
+import event_relay_client
+import monitored_server
 import enstore_constants
 import interface
 import Trace
@@ -78,17 +78,15 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
-##	self.alive_interval = monitored_server.get_alive_interval(self.csc,
-##								  medch,
-##								  self.mc_config)
+        self.alive_interval = monitored_server.get_alive_interval(self.csc, medch, self.mc_config)
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
         self.timeInsert = time.time()
-	# start our heartbeat to the event relay process
-##	self.erc.start_heartbeat(self.name, self.alive_interval)
+        ##start our heartbeat to the event relay process
+        self.erc.start_heartbeat(self.name, self.alive_interval)
         
     # retry function call
     def retry_function(self,function,*args):
@@ -318,7 +316,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                self.workQueueClosed = 0
         # if not duplicate, fork the work
         pipe = os.pipe()
-        if self.fork(): #parent
+        if self.fork(ttl=None): #parent
             self.add_select_fd(pipe[0])
             os.close(pipe[1])
             # add entry to outstanding work 
@@ -516,7 +514,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
         external_label = ticket['external_label']
         media_type = ticket['media_type']
         stat,volstate = aml2.view(external_label,media_type)
-	state='U' # unknown
+        state='U' # unknown
         if stat!=0:
             return 'BAD', stat, 'aci_view return code', state
         if volstate == None:
@@ -672,16 +670,16 @@ class STK_MediaLoader(MediaLoaderMethods):
                    if self.logdetail:
                       Trace.log(e_errors.ERROR, 'retry_function: function %s  %s  sts[1] %s  sts[2] %s  count %s'%(repr(function),args,sts[1],sts[2],count)) 
                 if (sts[1] == 91 or           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-		    sts[1] == 99):            #STATUS_VOLUME_IN_USE
-			time.sleep(60)
-			fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
-			Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  fixsts[1] %s  fixsts[2] %s'%(args,fixsts[1],fixsts[2]))
+                    sts[1] == 99):            #STATUS_VOLUME_IN_USE
+                        time.sleep(60)
+                        fixsts=apply(self.STK.dismount,args)  #NOTE: seq not bumped. I know it has completed, so it is available.
+                        Trace.log(e_errors.INFO, 'Desperation STK.dismount after VOLUME_IN_DRIVE ERROR %s  fixsts[1] %s  fixsts[2] %s'%(args,fixsts[1],fixsts[2]))
                 if (sts[1] == 54 or          #IPC error
                     sts[1] == 68 or          #IPC error (usually)
                     sts[1] == 99 or          #STATUS_VOLUME_IN_USE
                     sts[1] == 91):           #STATUS_VOLUME_IN_DRIVE (indicates failed communication between mc and fntt)
-			time.sleep(60)
-			count = count - 1
+                        time.sleep(60)
+                        count = count - 1
                 else:
                     break
             except:
