@@ -1,7 +1,15 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 import string
 
 #This is for pnfs tags.
-charset=string.join((string.letters,string.digits,'_','-','/'),'')
+charset=string.join((string.letters,string.digits,'-','_','/'),'')
 
 #This is for filepaths.
 filenamecharset=string.join((string.printable),'')
