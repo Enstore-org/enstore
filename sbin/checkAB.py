@@ -163,14 +163,14 @@ def check(f):
 		return
 
 	f_o = pnfs.File(f)
-	if len(f_o) < 11:
+	if len(f_o.__dict__) < 11:
 		error(' missing layer 4')
 		print 'ERROR'
 		return
 
 	f_b = pnfs.File(fb)
 
-	if len(f_b) < 11:
+	if len(f_b.__dict__) < 11:
 		error(fb+' missing layer 4')
 		print 'ERROR'
 		return
