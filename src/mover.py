@@ -1132,7 +1132,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.low():
                 self.buffer.write_ok.set()
 
-            if bytes_notified==0 or self.bytes_read - bytes_notified > threshold:
+            if self.bytes_read - bytes_notified > threshold or \
+               bytes_notified==0 or self.bytes_read == self.bytes_to_read:
                 bytes_notified = self.bytes_read
                 Trace.notify("transfer %s %s %s network" % (self.shortname, self.bytes_read, self.bytes_to_read))
                 
@@ -1505,7 +1506,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if not self.buffer.full():
                 self.buffer.read_ok.set()
 
-            if bytes_notified==0 or self.bytes_written - bytes_notified > threshold:
+            if self.bytes_written - bytes_notified > threshold or \
+               bytes_notified==0 or self.bytes_written==self.bytes_to_write:
                 bytes_notified = self.bytes_written
                 #negative byte-count to indicate direction
                 Trace.notify("transfer %s %s %s network" % (self.shortname, -self.bytes_written, self.bytes_to_write))
