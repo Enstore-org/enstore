@@ -94,10 +94,11 @@ if __name__ == "__main__" :
     config_list = 0
     dict = 0
     load = 0
+    list = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file=","config_list"\
-               ,"dict","load","help"]
+               ,"list","dict","load","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -112,6 +113,8 @@ if __name__ == "__main__" :
             dict = 1
         elif opt == "--load" :
             load = 1
+        elif opt == "--list" :
+            list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
@@ -133,18 +136,15 @@ if __name__ == "__main__" :
 
     if dict:
         csc.list()
-        pprint.pprint(csc.config_list)
+        if list:
+            pprint.pprint(csc.config_list)
         stat = csc.config_list['status']
 
     elif load:
         stati= csc.load(config_file)
-        print stati
+        if list:
+            print stati
         stat=stati['status']
-
-    else :
-        csc.list()
-        stat = csc.config_list['status']
-
 
     if stat == 'ok' :
         sys.exit(0)

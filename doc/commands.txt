@@ -1,4 +1,20 @@
-Options:
+Environmental variables:
+=======================
+
+You can override the default configuration server by setting the
+following environmental variables:
+
+ENSTORE_CONFIG_HOST   host for configuration server
+ENSTORE_CONFIG_PORT   port for configuration server
+ENSTORE_CONFIG_FILE   file for configuration server
+
+If any are not set, then the default values are used
+
+
+
+
+Frequently available command options:
+====================================
 
 --help            lists the command syntax
 --config_host=    allows you to specify the host of the configuration server
@@ -6,43 +22,47 @@ Options:
 --config_list=    tells you about which configuration server you've connected to
 --list            commands are generally silent. Use this to get some chatter
 
-General use commands:
 
-encp [--config_host=  --config_port= --config_list --list --help ] inputfilename outputfilename
+
+
+General use commands:
+====================
+
+ecmd encp [--config_host=  --config_port= --config_list --list --help ] inputfilename outputfilename
         copies input to output
 
-pnfs [--test --status --file= --list --help]
+ecmd pnfs [--test --status --file= --list --help]
         provides information about a file in pnfs space or runs pnfs tests
         --test    runs pnfs tests
         --file    specifies the file you want information about
 
-econ [--config_host= --config_port= --config_file= --config_list --dict --load --help]
+ecmd config [--config_host= --config_port= --config_file= --config_list --dict --list --load --help]
         list/loads configuration server dictionary
         --dict    dumps the dictionary
         --load    load the file specified in --config_file
         --config_file=  the name of the file to be loaded.
 
-fcc  [--config_host= --config_port= -config_list --bfids --bfid= -list -help]
+ecmd fcc  [--config_host= --config_port= -config_list --bfids --bfid= --list --help]
         list the information from the file clerk and volume clerk about a specific bit field id
         --bfids   dumps all bit field ids
         --bfid=   dumps info about specific bit field id
 
-vcc  ['config_host=', 'config_port=', 'config_list', 'vols', 'vol=', 'list', 'help']
+ecmd vcc  [--config_host= --config_port= --config_list --vols --vol= --list --help]
         list the information from the volume clerk
         --vols    dumps all the currently known volumes
         --vol=    dumps info about a specific volume
 
-rddt [--size= --device= --eod_cookie= --list --help]
+ecmd rddt [--size= --device= --eod_cookie= --list --help]
         tests the raw disk driver
         --size    size of the disk file (ie, size of media)
         --device  name of disk file
         --eod_cookie  end-of-data cookie
         --list
 
-clbk <no options>
+ecmd clbk <no options>
         just checks to see if you call allocate callback ports on your node
 
-udpc ['msg=', 'host=', 'port=', 'list', 'help']
+ecmd udpc [--msg= --host= --port= --list --help]
         checks if messages come back from udp client
         --msg    message to be sent
         --host   where the message gets sent

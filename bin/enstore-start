@@ -10,6 +10,7 @@ place=`pwd`
 cd $ENSTORE_DIR/etc
 
 # the configuration server needs to be the 1st thing started
+echo "Starting configuration server on $config_host, port $config_port, using file $config_file"
 python $ENSTORE_DIR/src/configuration_server.py --config_host=$config_host --config_port=$config_port --config_file=$config_file &
 echo $! >> configuration_pids
 sleep 1
@@ -23,18 +24,22 @@ if [ $? -ne 0 ] ; then
 fi
 
 # volume clerk
+echo "Starting volume clerk"
 python $ENSTORE_DIR/src/volume_clerk.py    --config_host $config_host --config_port $config_port &
 echo $! >> volume_clerk_pids
 
 # file clerk
+echo "Starting file clerk"
 python $ENSTORE_DIR/src/file_clerk.py      --config_host $config_host --config_port $config_port &
 echo $! >> file_clerk_pids
 
 # library manager
+echo "Starting library manager"
 python $ENSTORE_DIR/src/library_manager.py --config_host $config_host --config_port $config_port activelibrary &
 echo $! >> library_manager_pids
 
 # mover: raw disk mover
+echo "Starting Raw Disk Mover"
 python $ENSTORE_DIR/src/mover.py fd0.mover --config_host $config_host --config_port $config_port &
 echo $! >> mover_pids
 
