@@ -1,5 +1,3 @@
-#!/usr/bin/make -f
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #  CVS/Build standard makefile template
 #  $Id$
