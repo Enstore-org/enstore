@@ -1,2 +1,2 @@
-./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/raid.in  22 0
-./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/fnal.in  23 0
+./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/raid.in  22 30
+./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/fnal.in  23 30

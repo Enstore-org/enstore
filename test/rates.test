@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 
 if [ -z "${1-}" ] ; then
-  drives="dm05 dm06 dm07 dm08"
+  drives="dm05 dm06 dm07 dc11 dc12"
 else
   drives="$1"
 fi
