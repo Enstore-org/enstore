@@ -122,8 +122,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return status, None, None
         
 
-	if string.find(string.lower(deleted),'y') !=-1 or \
-	   string.find(string.lower(deleted),'Y') !=-1:
+	if 'y' in string.lower(deleted):
 	    deleted = "yes"
 	    decr_count = 1
 	else:
@@ -167,7 +166,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         Trace.log(e_errors.INFO,
                   "%s = %s flagged as deleted:%s  volume=%s(%d)  mapfile=%s" %
-                  (bfid,record["pnfs_name0"],record["deleted"],record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
+                  (bfid,record["pnfs_name0"],record["deleted"],
+                   record["external_label"],vticket["non_del_files"],record["pnfs_mapname"]))
 
         # and return to the caller
         status = (e_errors.OK, None)
