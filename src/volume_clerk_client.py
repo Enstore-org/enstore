@@ -1,3 +1,6 @@
+import Trace
+Trace.init("VC client")
+Trace.trace(1,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #

@@ -1,3 +1,6 @@
+import Trace
+Trace.init("Vol Clerk")
+Trace.trace(1,"GO")
 ###############################################################################
 # src/$RCSfile$   $Revision$
 #
@@ -772,12 +775,14 @@ if __name__ == "__main__":
     # defaults
     #config_host = "localhost"
     (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
+    Trace.trace(1,"gethostbyaddr")
     config_port = "7500"
     config_list = 0
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
+    Trace.trace(1,"getopt")
     for (opt,value) in optlist:
         if opt == "--config_host":
             config_host = value
@@ -789,22 +794,31 @@ if __name__ == "__main__":
             print "python ",sys.argv[0], options
             print "   do not forget the '--' in front of each option"
             sys.exit(0)
+    Trace.trace(1,"for (opt,value)")
 
     # bomb out if can't translate host
     ip = socket.gethostbyname(config_host)
+    Trace.trace(1,"gethostbyname")
 
     # bomb out if port isn't numeric
     config_port = string.atoi(config_port)
 
     csc = configuration_client.ConfigurationClient(config_host,config_port,\
                                                     config_list)
+    Trace.trace(1,"configuration")
 
     keys = csc.get("volume_clerk")
+    Trace.trace(1,"keys")
+
     vc =  VolumeClerk((keys['hostip'], keys['port']), VolumeClerkMethods)
+    Trace.trace(1,"vc")
+    
     vc.set_csc(csc)
+    Trace.trace(1,"vc.set")
 
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
+
     vc.set_logc(logc)
     indlst=['media_type','file_family','library']
     dict = db.DbTable("volume",logc,indlst)
