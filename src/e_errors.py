@@ -22,7 +22,8 @@ CONFLICT = 'CONFLICT'
 TOOMANYSUSPVOLS = 'TOOMANYSUSPVOLS'
 UNKNOWN = 'UNKNOWN'
 NOALARM = 'NOALARM'
-
+DELETED = 'DELETED'
+                                                                                                                                                                                                                                                                                                                                                                                                                                            
 if 0: print KEYERROR,OK,DOESNOTEXIST,WRONGPARAMETER,NOWORK,\
             NOMOVERS,MOUNTFAILED,DISMOUNTFAILED,\
             MEDIA_IN_ANOTHER_DEVICE,MEDIAERROR,USERERROR,\
@@ -102,9 +103,17 @@ non_retriable_errors = (NOMOVERS, NOACCESS,
                         WRITE_NOTAPE, WRITE_NOBLANKS,
                         READ_NOTAPE, READ_BADMOUNT,
                         READ_BADLOCATE, READ_UNLOAD,
-                        UNMOUNT)
+                        UNMOUNT, DELETED)
 
 def is_retriable(e):
     if e in non_retriable_errors:
         return 0
     return 1
+
+
+
+
+
+
+
+
