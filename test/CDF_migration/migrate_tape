@@ -254,6 +254,8 @@ cat $files | while read file; do
             mkdir -p $bdir
     fi
     (cd $bdir; enstore pnfs --file-family $family )
+    ENSTORE_SPECIAL_LIB=CDF-Migration
+    export ENSTORE_SPECIAL_LIB
     echo `date` $n encp --delayed-dismount=$delay $options $lfile $bfile
                    encp --delayed-dismount=$delay $options $lfile $bfile &pid=$!
     echo $pid >> $pidsw
