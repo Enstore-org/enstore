@@ -2182,7 +2182,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                         ret = self.fcc.create_bit_file(self.file_info)
                         # update file info
-                        Trace.trace(98, "updated file info %s"%(ret,))
+                        ##Trace.trace(98, "updated file info %s"%(ret,)) Uncomment when fixed
+                        Trace.log(e_errors.INFO, "updated file info %s"%(ret,)) ## Remove when fixed
                         if ret['status'][0] != e_errors.OK:
                             Trace.log(e_errors.ERROR, "cannot assign new bfid %s"%(ret,))
                             self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
