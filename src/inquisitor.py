@@ -37,7 +37,7 @@ import e_errors
 import enstore_status
 
 def default_refresh():
-    return 8
+    return 120
 
 def default_timeout():
     return 5
