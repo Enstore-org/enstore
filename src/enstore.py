@@ -46,7 +46,10 @@ import enstore_start
 import enstore_stop
 import enstore_restart
 import backup
-import quota
+try:
+	import quota
+except:
+	import fake_quota as quota
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
