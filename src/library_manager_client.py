@@ -184,19 +184,17 @@ class LibraryManagerClient(generic_client.GenericClient) :
             raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for library manager callback"
         
         control_socket, address = listen_socket.accept()
-        listen_socket.close()
+
         if not hostaddr.allow(address):
             control_socket.close()
             listen_socket.close()
             raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
         ticket = callback.read_tcp_obj_new(control_socket)
+        listen_socket.close()
 
         if ticket["status"][0] != e_errors.OK:
             return ticket
-
-        # If the system has called us back with our own  unique id, call back
-        # the library manager on the library manager's port and read the
-        # work queues on that port.
         
         data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         data_path_socket.connect(ticket['library_manager_callback_addr'])
