@@ -1,0 +1,3 @@
+#!/usr/bin/env wish 
+button .b -text $argv -command exit
+pack .b
