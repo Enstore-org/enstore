@@ -165,9 +165,9 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
 
         generic_client.GenericClientInterface.parse_options(self)
 
-        self.complete_server_name()
+        self.completed_server_name()
 
-    def complete_server_name(self):
+    def completed_server_name(self):
         if self.just:
             count = 0
             for name in self.complete_names:

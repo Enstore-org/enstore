@@ -41,22 +41,6 @@ import ratekeeper_client
 import event_relay_client
 
 
-server_names = {
-    "coniguration_server":configuration_client.ConfigurationClient,
-    "event_relay":event_relay_client.EventRelayClient,
-    "log_server":log_client.LoggerClient,
-    "alarm_server":alarm_client.AlarmClient,
-    "volume_clerk":volume_clerk_client.VolumeClerkClient,
-    "file_clerk":file_clerk_client.FileClient,
-    #"db_checkpoint",
-    #"db_deadlock",
-    "inquisitor":inquisitor_client.Inquisitor,
-    "ratekeeper":ratekeeper_client.RatekeeperClient,
-    "library":library_manager_client.LibraryManagerClient,
-    "media":media_changer_client.MediaChangerClient,
-    "mover":mover_client.MoverClient,
-    }
-
 def get_csc():
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -186,9 +170,9 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
 
         generic_client.GenericClientInterface.parse_options(self)
 
-        self.complete_server_name()
+        self.completed_server_name()
 
-    def complete_server_name(self):
+    def completed_server_name(self):
         if self.just:
             count = 0
             for name in self.complete_names:
