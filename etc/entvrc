@@ -38,7 +38,7 @@
 #Fall colors.
 cdfensrv2.fnal.gov        354x800+792+0        #ffff00    animate
 d0ensrv2.fnal.gov         413x800+375+0        #ff9900    animate
-stkensrv2.fnal.gov        371x800+0+0          #dd0000    animate
+stkensrv2.fnal.gov        371x800+0+0          #ff3333    animate
 
 # Red, Green Blue display.
 #cdfensrv2.fnal.gov        354x800+792+0        #00dd00
