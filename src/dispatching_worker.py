@@ -32,6 +32,8 @@ class DispatchingWorker:
 		except KeyError:
 			ticket = {'status' : 
 			"cannot find requested function"}
+			self.reply_to_caller(ticket)
+			return
 		exec ("self." + function + "(ticket)")
 		return
 
@@ -40,6 +42,7 @@ class DispatchingWorker:
 		self.reply_with_list(reply) 
 
 	def reply_with_list(self, list) :
+		dict[id] = list
 		self.socket.sendto(`list`, self.reply_address)
 		return
 
