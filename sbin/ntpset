@@ -23,7 +23,7 @@ MKDIR="/bin/mkdir"
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
 
-ekill=/home/enstore/enstore/sbin/ekill
+EKILL=/home/enstore/enstore/sbin/ekill
 
 
 LOG=/tmp/ntpset.log
@@ -39,7 +39,7 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
           $ECHO "$1"
         }
 # if these processes are hanging around, kill them...
-ekill -v -9 "$XNTPDC|$NTPDATE" >>$LOG 2>&1
+$EKILL -v -9 "$XNTPDC|$NTPDATE" >>$LOG 2>&1
 
 # check that ntp is working, fix if not, complain if down more 6 times in a row (hour)
 if [ ! -r $TIME_SYNC_COUNTER ]; then
