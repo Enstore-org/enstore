@@ -495,6 +495,12 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
                      },
         }
 
+def is_there(name):
+    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
+    if rtn:
+        return 1
+    else:
+        return 0
 
 def do_work(intf):
     Trace.init(MY_NAME)
@@ -574,14 +580,6 @@ def do_work(intf):
     #Stop the configuration server.
     if intf.should_stop(enstore_constants.CONFIGURATION_SERVER):
         check_server(csc, enstore_constants.CONFIGURATION_SERVER)
-
-def is_there(name):
-    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
-    if rtn:
-        return 1
-    else:
-        return 0
-
 
 if __name__ == '__main__':
 
