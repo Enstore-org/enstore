@@ -39,8 +39,12 @@ class Aml2LogPage(LogPage):
     # get the date of the log file from the name of it
     def logfile_date(self, log):
 	plen = len(self.prefix)
-	day = int(log[plen:plen+2])
-	month = int(log[plen+2:plen+4])
+	try:
+	    day = int(log[plen:plen+2])
+	    month = int(log[plen+2:plen+4])
+	except ValueError:
+	    # value to int() is not an int
+	    return (self.prefix, 0, 0, 0)
 	# the year is not encoded in the aml log file names (bogus!!). so we must try to
 	# figure out what year this log is for.  if the date is greater than todays date, then
 	# assume it was last year.  else, assume it is this year.

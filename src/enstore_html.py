@@ -42,8 +42,10 @@ THE_INQUISITOR = "The Inquisitor"
 THE_ALARM_SERVER = "The Alarm Server"
 
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
-	     [enstore_constants.MPD_FILE, "Cumulative Mounts"],
+	     [enstore_constants.MPD_FILE, "Mounts/Day"],
 	     [enstore_constants.MLAT_FILE, "Mount Latency"],
+	     [enstore_constants.BPD_FILE_R, "Bytes Read/Day"],
+	     [enstore_constants.BPD_FILE_W, "Bytes Written/Day"],
 	     [enstore_constants.BPD_FILE, "Bytes/Day"], 
 	     [enstore_constants.XFERLOG_FILE, "Transfer Activity (log)"],
 	     [enstore_constants.XFER_FILE, "Transfer Activity"]]
@@ -240,11 +242,9 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	#              library managers
 	#              movers
 	#              media changers
-	#              blocksizes
 	self.servers = sort_keys(self.data_dict)
 	got_media_changers = 0
 	got_generic_servers = 0
-	got_blocksizes = 0
 	got_movers = 0
 	shortcut_lm = []
 	for server in self.servers:
@@ -257,8 +257,6 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	    elif not got_movers and enstore_functions.is_mover(server):
                 first_mover = server
 		got_movers = 1
-	    elif enstore_functions.is_blocksizes(server):
-		got_blocksizes = 1
 	# now we have the list of table data elements.  now create the table.
 	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts", 
 							    color=BRICKRED,
@@ -276,7 +274,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	for lm in shortcut_lm:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(lm,), lm)
-	# now finish up with the media changers, movers and blocksizes
+	# now finish up with the media changers, movers
 	if got_media_changers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(enstore_constants.MEDIA_CHANGER,),
@@ -284,12 +282,6 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(first_mover,), MOVERS)
-	if got_blocksizes:
-	    tr, num_tds_so_far = check_row(num_tds_so_far, tr, table)
-	    tr.append(HTMLgen.TD(HTMLgen.Bold(HTMLgen.Font(\
-		                 HTMLgen.Href("#blocksizes", "Blocksizes"), 
-				 size="+1")), bgcolor=YELLOW, align="LEFT"))
-	    num_tds_so_far = num_tds_so_far +1
 	# fill out the row if we ended with less than a rows worth of data
 	fill_out_row(num_tds_so_far, tr)
 	table.append(tr)
@@ -676,23 +668,6 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		# this is a mover. output its info
 		self.mv_row(server, table)
 
-    # output the table containing the blocksizes
-    def blocksize_row(self, table):
-	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold(\
-	     HTMLgen.Name("blocksizes", "Blocksizes")), size="+1")))
-	blsizes = self.data_dict.get(enstore_constants.BLOCKSIZES, {})
-	if blsizes:
-	    blkeys = sort_keys(blsizes)
-	    bl_table = HTMLgen.TableLite(cellpadding=0, cellspacing=0, 
-					 align="LEFT", bgcolor=YELLOW, 
-					 width="40%")
-	    for bl in blkeys:
-		trb = HTMLgen.TR(HTMLgen.TD(bl))
-		trb.append(HTMLgen.TD(blsizes[bl]))
-		bl_table.append(trb)
-	    tr.append(HTMLgen.TD(bl_table, colspan=5))
-	    table.append(tr)
-
     # generate the main table with all of the information
     def main_table(self):
 	# first create the table headings for each column
@@ -706,7 +681,6 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	self.library_manager_rows(table, skeys)
 	self.mover_rows(table, skeys)
 	self.media_changer_rows(table, skeys)
-	self.blocksize_row(table)
 	return table
 
     # generate the body of the file
@@ -955,6 +929,9 @@ class EnLogPage(EnBaseHtmlDoc):
 	dates = []
 	for log in lkeys:
 	    (prefix, year, month, day) = self.logfile_date(log)
+            if year == 0:
+                # there was an error in logfile_date
+                continue
 	    date = "%s %s"%(calendar.month_name[month], year)
 	    if not dates or not (year, month, date) in dates:
 		dates.append((year, month, date))

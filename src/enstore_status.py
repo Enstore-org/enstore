@@ -156,14 +156,6 @@ class EnStatus:
                     dict[enstore_constants.DEVICE] = fc['external_label']
 	    self.text[key][worktype].append(dict)
 
-    # output the blocksize info
-    def output_blocksizes(self, info):
-	if not self.text.has_key(enstore_constants.BLOCKSIZES):
-	    self.text[enstore_constants.BLOCKSIZES] = {}
-	for a_key in info.keys():
-	    if a_key != 'status':
-		self.text[enstore_constants.BLOCKSIZES][a_key] = info[a_key]
-
     # output the passed alive status
     def output_alive(self, host, port, state, time, key):
 	if not self.text.has_key(key):
