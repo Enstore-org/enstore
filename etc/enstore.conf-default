@@ -18,10 +18,9 @@ configdict['inquisitor']   = { 'host':'pcfarm9', 'port':7594, \
      'fndaprdisk.media_changer' : 90, 'airedaledisk.media_changer' : 90,\
      'fndapndisk.media_changer' : 90, 'b0du02disk.media_changer' : 90,\
      'igordisk.media_changer' : 90, 'pcfarm5disk.media_changer' : 90,\
-     'fntt2null.media_changer' : 90, 'FTT.media_changer' : 90,\
-     'STK.media_changer' : 90, \
+     'FTT.media_changer' : 90, 'STK.media_changer' : 90, \
      'hppcdisk.mover' : 40, 'fntt1disk.mover' : 40, 'fndaprdisk.mover' : 40, \
-     'fntt2null.mover' : 40, 'airedaledisk.mover' : 40, '8500.mover' : 40, \
+     'airedaledisk.mover' : 40, '8500.mover' : 40, \
      'fndapndisk.mover' : 40, 'b0du02disk.mover' : 40, 'igordisk.mover' : 40, \
      'pcfarm5disk.mover' : 40, 'stk0.mover' : 40, 'stk1.mover' : 40,\
      'file_clerk' : 60, 'config_server' : 60, 'volume_clerk' : 60, \
