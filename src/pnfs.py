@@ -2114,6 +2114,7 @@ class File:
 			f.write(self.location_cookie+'\n')
 			f.write(str(self.size)+'\n')
 			f.write(self.file_family+'\n')
+			f.write(self.path+'\n')
 			f.write(self.volmap+'\n')
 			# always use real pnfs id
 			f.write(self.get_pnfs_id()+'\n')
