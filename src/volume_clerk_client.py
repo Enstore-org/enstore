@@ -6,6 +6,7 @@ import sys
 import string
 import time
 import errno
+import socket
 import pprint
 
 # enstore imports
@@ -180,7 +181,9 @@ class VolumeClerkClient(generic_client.GenericClient,
         # If the system has called us back with our own  unique id, call back
         # the volume clerk on the volume clerk's port and read the
         # work queues on that port.
-        data_path_socket = callback.volume_server_callback_socket(ticket)
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
         ticket= callback.read_tcp_obj(data_path_socket)
         volumes = cPickle.loads(callback.read_tcp_raw(data_path_socket))
         ##while 1:
@@ -261,7 +264,10 @@ class VolumeClerkClient(generic_client.GenericClient,
         # If the system has called us back with our own  unique id, call back
         # the library manager on the library manager's port and read the
         # work queues on that port.
-        data_path_socket = callback.volume_server_callback_socket(ticket)
+
+        data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        data_path_socket.connect(ticket['volume_clerk_callback_addr'])
+        
         ticket= callback.read_tcp_obj(data_path_socket)
         volumes=''
         while 1:

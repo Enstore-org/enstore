@@ -9,6 +9,7 @@ import os
 import time
 import errno
 import string
+import socket
 
 # enstore imports
 import setpath
@@ -1271,9 +1272,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             volume_clerk_host, volume_clerk_port, listen_socket = callback.get_callback()
             listen_socket.listen(4)
-            ticket["volume_clerk_callback_host"] = volume_clerk_host
-            ticket["volume_clerk_callback_port"] = volume_clerk_port
-            self.control_socket = callback.user_callback_socket(ticket)
+            ticket["volume_clerk_callback_addr"] = (volume_clerk_host, volume_clerk_port)
+            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.control_socket.connect(ticket['callback_addr'])
+            callback.write_tcp_obj(self.control_socket, ticket)
             data_socket, address = listen_socket.accept()
             self.data_socket = data_socket
             listen_socket.close()
