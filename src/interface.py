@@ -406,6 +406,10 @@ class Interface:
                     print "bytecount may only be specified in test mode"
                     sys.exit(-1)
                 self.bytes = int(value)
+            elif opt == "--start_draining":
+                self.start_draining = 1
+            elif opt == "--stop_draining":
+                self.stop_draining = 1
             elif opt == "--help" :
                 self.print_help()
                 sys.exit(0)
