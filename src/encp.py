@@ -419,24 +419,56 @@ def write_to_hsm(input, output,
 			    str(sys.argv)+" "+\
                             str(sys.exc_info()[0])+" "+\
                             str(sys.exc_info()[1]))
+
+		# might as well close our end --- we will either exit or
+		# loop back around
+		data_path_socket.close()
+		in_file.close()
+
 		if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
-		    # assume network error
-		    print_d0sam_format(inputlist[i], outputlist[i],
-				       file_size[i], done_ticket)
-		    # exit here
-		    jraise(errno.errorcode[errno.EPROTO],
-			   " encp.write_to_hsm: nerwork problem "+\
-			   err_msg)
-		    
-                print "Error with encp EXfer - continuing"
-                traceback.print_exc()
-                retry = retry - 1
-                data_path_socket.close()
-                in_file.close()
-                done_ticket = callback.read_tcp_socket(control_socket,
-                                  "encp write_to_hsm, error dialog")
-                control_socket.close()
-                print done_ticket, "retrying"
+		    # could be network or could be mover closing socket...
+		    # try to get done_ticket
+		    try:
+			done_ticket = callback.read_tcp_socket(control_socket,
+							       "encp write_to_hsm, error dialog")
+		    except:
+			# assume network error...
+			# no done_ticket!
+			#print_d0sam_format(inputlist[i], outputlist[i],
+			#                   file_size[i], done_ticket)
+			# exit here
+			jraise(errno.errorcode[errno.EPROTO],
+			       " encp.write_to_hsm: network problem "+\
+			       err_msg)
+			pass
+
+		    control_socket.close()
+
+		    print_d0sam_format( inputlist[i], outputlist[i],
+					file_size[i], done_ticket )
+		    if not e_errors.is_retriable(done_ticket["status"][0]):
+			# exit here
+			jraise(errno.errorcode[errno.EPROTO],
+			       " encp.write_to_hsm: 2nd (post-file-send)"+\
+			       "mover callback on socket "+\
+			       +repr(address)+", failed to transfer: "+\
+			       "done_ticket[\"status\"]="+\
+			       repr(done_ticket["status"]))
+			pass
+		    print_error(errno.errorcode[errno.EPROTO],
+				" encp.write_to_hsm:2nd (post-file-send)"+\
+				"mover callback on socket "+\
+				repr(address)+", failed to transfer: "+\
+				"done_ticket[\"status\"]="+\
+				repr(done_ticket["status"]))
+		    retry = retry - 1
+		    continue
+
+		else:
+		    #some other error that needs coding
+		    traceback.print_exc()
+		    raise sys.exc_info()[0], sys.exc_info()[1]
+
 
 	    # close the data socket and the file, we've sent it 
 	    #to the mover
