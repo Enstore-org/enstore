@@ -34,7 +34,6 @@ def print_usage():
 
 def error_output(request):
     #Get the info.
-    pprint.pprint(request)
     lc = request['fc'].get("location_cookie", None)
     file_number = encp.extract_file_number(lc)
     message = request.get("status", (e_errors.UNKNOWN, None))
@@ -161,8 +160,8 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         done_ticket = transfer_file(data_path_socket.fileno(), out_fd)
 
         Trace.message(5, "Completed reading from tape.")
-        Trace.message(1, "DONE_TICKET:")
-        Trace.message(1, pprint.pformat(done_ticket))
+        Trace.message(10, "DONE_TICKET (transfer_file):")
+        Trace.message(10, pprint.pformat(done_ticket))
 
         # Verify that everything went ok with the transfer.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
@@ -201,7 +200,18 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
         Trace.message(5, "Received final dialog (2).")
         Trace.message(10, "MOVER_REQUEST:")
         Trace.message(10, pprint.pformat(mover_request))
-        
+
+        #For the case where we don't know how many files exist and we tried
+        # to read passed the last file, we don't want to handle any retries
+        # because we are done.
+        if mover_done_ticket['status'] == (e_errors.READ_ERROR,
+                                           e_errors.READ_EOD):
+            Trace.log(e_errors.INFO, str(mover_done_ticket['status']))
+            work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
+            # Close these descriptors before they are forgotten about.
+            encp.close_descriptors(out_fd, data_path_socket)
+            return work_ticket
+
         # Verify that everything went ok with the transfer.
         mover_result_dict = encp.handle_retries([work_ticket], work_ticket,
                                                 mover_done_ticket, None,
@@ -216,11 +226,11 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
             return work_ticket
 
         #Combine these tickets.
-        work_ticket = encp.combine_dict(mover_done_ticket, mover_result_dict,
+        work_ticket = encp.combine_dict(mover_done_ticket,
+                                        mover_result_dict,
                                         work_ticket)
 
-        #Check the crc.  Note: done_ticket has any error status set to it by
-        # check_crc.
+        #Check the crc.
         encp.check_crc(work_ticket, e, out_fd)
 
         # Close these descriptors before they are forgotten about.
@@ -228,7 +238,7 @@ def get_single_file(work_ticket, control_socket, udp_socket, e):
 
         # Verify that the crcs are correct and handle occordingly.
         result_dict = encp.handle_retries([work_ticket], work_ticket,
-                                          done_ticket, None,
+                                          work_ticket, None,
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
@@ -481,8 +491,8 @@ def main(e):
                                           udp_socket, e)
 
             #Print out the final ticket.
-            Trace.message(1, "DONE_TICKET (get_single_file):")
-            Trace.message(1, pprint.pformat(done_ticket))
+            Trace.message(10, "DONE_TICKET (get_single_file):")
+            Trace.message(10, pprint.pformat(done_ticket))
 
             #Everything is fine.
             if e_errors.is_ok(done_ticket):
@@ -543,11 +553,11 @@ def main(e):
                 request['completion_status'] = FAILURE
 
                 #Tell the calling process, this file failed.
-                error_output(request)
+                error_output(done_ticket)
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
-                encp.quit(1)
+                encp.quit(0)
             #Give up.
             elif e_errors.is_non_retriable(done_ticket['status'][0]) or \
                  e_errors.is_non_retriable(done_ticket['status'][0]):
@@ -563,7 +573,7 @@ def main(e):
                 request['completion_status'] = FAILURE
 
                 #Tell the calling process, this file failed.
-                error_output(request)
+                error_output(done_ticket)
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
