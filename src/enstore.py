@@ -311,8 +311,8 @@ class Enstore(EnstoreInterface):
                     servers = t.get("servers", "")
                     if servers:
                         # there may be more than one, we will use the first
-                        t = csc.get_uncached(servers[0], self.timeout,
-                                             self.retry)
+                        t = csc.get(servers[0], self.timeout,
+                                    self.retry)
                         # if there is no specified host, use the default
                         self.node = t.get("host", DEFAULT_AML2_NODE)
                     else:
