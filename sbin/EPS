@@ -39,7 +39,7 @@ case `uname` in
 esac
 
 if [ $returnpid -eq 0 ]; then
-  echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload | tee '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver'
+  echo "$x" | sort | egrep -v 'EPS| egrep | sort | ps |bash| tail | xnetload | tee '| egrep 'python|enstore|encp|reader|writer|dasadmin|mt |db_|dbserver|login'
 else
   echoed=0
   oldIFS="$IFS"
