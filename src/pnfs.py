@@ -634,6 +634,21 @@ class pnfs:
             os.chmod(self.volume_file,0644)  # disable write access except for owner
             os.chown(self.volume_file,0,0)   # make the owner root.root
 
+    # retore the original entry based on info from the duplicate
+    def restore_from_volmap(self):
+        # create the original entry and set its size
+        orig = pnfs(self.origname)
+        orig.touch()
+        orig.set_file_size(self.file_size)
+
+        # now copy the appropriate layers to the volmap file
+        for layer in [1,4]: # bfid and xref
+            inlayer = self.readlayer(layer)
+            value = ""
+            for e in range(0,len(inlayer)):
+                value=value+inlayer[e]
+                orig.writelayer(layer,value)
+
 
 ##############################################################################
 
@@ -694,9 +709,10 @@ if __name__ == "__main__":
     info = 0
     file = ""
     list = 0
+    restore = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["test","status","file=","list","verbose""help"]
+    options = ["test","status","file=","list","restore=","verbose""help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--test":
@@ -705,6 +721,9 @@ if __name__ == "__main__":
             status = 1
         elif opt == "--file":
             info = 1
+            file = value
+        elif opt == "--restore":
+            restore = 1
             file = value
         elif opt == "--list" or opt == "--verbose":
             list = 1
@@ -720,6 +739,10 @@ if __name__ == "__main__":
 
     elif status:
         print "not yet"
+
+    elif restore:
+        p=pnfs(file)
+        p.restore_from_volmap()
 
     elif test:
 
@@ -841,3 +864,4 @@ if __name__ == "__main__":
                     print "ERROR: File ",count\
                           ," is valid - but invvalid flag is set"
                     print p.pnfsFilename, "file is not a valid pnfs file"
+
