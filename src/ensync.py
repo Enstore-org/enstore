@@ -149,13 +149,19 @@ class EnsyncInterface(option.Interface):
 
         generic_client.GenericClientInterface.parse_options(self)
 
+        #Process these at the beginning.
+        if getattr(self, "help") and self.help:
+            ret = self.print_help()
+        if getattr(self, "usage") and self.usage:
+            ret = self.print_usage()
+
         #There should be two directories in self.args.  They correspond to
         # the to values in the parameters list (see below).
         if len(self.args) != 2:
             self.print_usage()
 
     #Required non switch options.
-    parameters = ["<src directory>", "<dst directory>"]
+    parameters = ["<src directory> <dst directory>"]
     
     ensync_options = {
         option.VERBOSE:{option.HELP_STRING:"print out information.",
