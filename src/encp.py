@@ -509,7 +509,7 @@ def write_to_hsm(input_files, output, output_file_family='',
 			    jraise('EPROTO',
 				   " encp.write_to_hsm: 2nd (post-file-send)"+
 				   "mover callback on socket "+
-				   +repr(address)+", failed to transfer: "+
+				   repr(address)+", failed to transfer: "+
 				   "done_ticket[\"status\"]="+
 				   repr(done_ticket["status"]))
 			    pass
