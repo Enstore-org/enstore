@@ -45,7 +45,7 @@ data_access_layer_format = "INFILE=%s\n"+\
 #######################################################################
 
 def write_to_hsm(input, output, output_file_family='',
-                 config_host, config_port,
+                 config_host=None, config_port=None,
                  ilist=0, chk_crc=0,
                  pri=1, delpri=0, agetime=0, delayed_dismount=0,
                  t0=0):
@@ -737,7 +737,7 @@ def write_to_hsm(input, output, output_file_family='',
 def read_from_hsm(input, output,
                   config_host, config_port,
                   ilist=0, chk_crc=0,
-                  pri=1, delpri=0, agetime=0, delayed_dismount,
+                  pri=1, delpri=0, agetime=0, delayed_dismount=None,
                   t0=0):
     if t0==0:
         t0 = time.time()

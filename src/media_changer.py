@@ -207,7 +207,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 
 # EMASS robot loader server
 class EMASS_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=10, csc):
+    def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
         import EMASS
         self.load=EMASS.mount
@@ -229,7 +229,7 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=10, csc):
+    def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
         import STK
         self.load=STK.mount
@@ -238,7 +238,7 @@ class STK_MediaLoader(MediaLoaderMethods) :
 
 # Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods) :
-    def __init__(self, medch, maxwork=1, csc):
+    def __init__(self, medch, maxwork=1, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 
     def view(self, external_label, media_type):
@@ -280,7 +280,7 @@ class Shelf_MediaLoader(MediaLoaderMethods) :
       'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
       }
 
-    def __init__(self, medch, maxwork=1, csc):
+    def __init__(self, medch, maxwork=1, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 	#self.prepare=self.unload  #  override prepare with dismount
 	self.prepare=self.unload #override prepare with dismount and deallocate
