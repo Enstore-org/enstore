@@ -46,7 +46,7 @@ Don't use these unless you know what you are doing:
 
    pcmd tagecho text tagname   echos text to the named tag
 
-   pcmd tagrm tag              removes the tag
+   pcmd tagrm tag              removes the tag (tricky, see DESY documents)
 
    pcmd io file                sets io mode (can't clear it easily)
 
