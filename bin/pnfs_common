@@ -140,7 +140,8 @@ pfile_family_width()
 
 
 penstore_state()  
-            { disabled="`p_pnfs`.(config)(flags)/disabled" 
+            { if [ -z "${1-}" ] ; then p_error "enstore_state <pnfs_directory>"; fi
+              disabled="`dirname $1`/.(config)(flags)/disabled" 
               if [ -r "$disabled" ] ; then
 	        why=`cat "$disabled"`
 		echo "Enstore disabled: $why"
@@ -149,5 +150,3 @@ penstore_state()
 	        echo "Enstore enabled"
 		exit 0
               fi; }
-
-
