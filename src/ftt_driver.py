@@ -218,7 +218,7 @@ class FTTDriver(generic_driver.Driver):
 
     def flush(self):
         if not self.ftt:
-            return 0
+            return 0,None
         Trace.trace(25, "flushing %s" % (self.ftt))
         now=time.time()
         Trace.trace(25, "transferred %s bytes in %s seconds"%(
@@ -229,13 +229,15 @@ class FTTDriver(generic_driver.Driver):
         try:
             #Trace.trace(42, "ftt.close_dev()")
             r = self.ftt.close_dev()
+            info = None
             #Trace.trace(42, "ftt.close_dev() done")
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.value))
             r = -1
+            info = detail
         Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
-        return r
+        return r, info
 
     def close(self):
         Trace.trace(25, "closing %s" % (self.ftt,))
