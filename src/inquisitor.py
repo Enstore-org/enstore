@@ -104,12 +104,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # get the alive status of the server and output it
     def alive_status(self, client, (host, port), prefix, time, key):
         Trace.trace(14,"{alive_status "+repr(host)+" "+repr(port))
-	try:
-	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
+	stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
+	if not stat['status'] == ('TIMEDOUT', None):
 	    self.asciifile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
 	    self.last_alive[key] = time
-	except errno.errorcode[errno.ETIMEDOUT]:
+	else:
 	    if self.last_alive.has_key(key):
 	        last_time = self.last_alive[key]
 	    else:
