@@ -166,6 +166,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc_address, name)
         Trace.init( self.log_name )
 
+        self.do_collect = 0 # Don't let dispatching_worker's loop do a waitpid, we want to catch children ourself.
         # get my (localhost) configuration from the configuration server
         self.mvr_config = self.csc.get( name )
         if self.mvr_config['status'][0] != 'ok':
@@ -226,7 +227,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         try:
             ss = driver_object.get_stats()
         except FTT.error, detail:
-            print "device=",self.mvr_config['device']
+            ##print "device=",self.mvr_config['device']
             exc,msg,tb=sys.exc_info()
             raise exc,msg
         
@@ -283,7 +284,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
             external_label=self.vol_info['external_label']
             label = driver_object.format_eov1_header( external_label, eod_cookie)
             Trace.log(e_errors.INFO, "unbind_volume: writing EOV1 label"+label)
-            if debug_paranoia: print "unbind_volume: writing EOV1 label", label
 	    driver_object.write( label )
 	    driver_object.writefm()
             driver_object.close()
@@ -574,11 +574,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
             #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
             if vol1_paranoia and self.mvr_config['driver']=='FTTDriver':
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], 'r' )
-                if debug_paranoia: print "Rewinding (pre check-label)"
                 Trace.log(e_errors.INFO, "Rewinding tape %s to check VOL1 label"%(external_label,))
                 r=driver_object.rewind()
                 header_type, header_label, cookie = driver_object.check_header()
-                if debug_paranoia: print "header_type=",header_type, "label=",header_label,"cookie=",cookie
                 if not (header_type == None or header_type == 'VOL1'):
                    header_type = "GARBAGE"    # needed for trace to not fail 
                    header_label = "GARBAGE"   # needed for trace to not fail 
@@ -590,8 +588,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     if driver_object.is_bot(tmp_vol_info['eod_cookie']):
                         infomsg="New tape, labelling %s"%(external_label,)
                         tape_is_labelled=0
-                        if debug_paranoia:
-                            print infomsg
                         Trace.log(e_errors.INFO, infomsg)
                     else:  #read error on tape, but eod!=bot
                         Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%(external_label,))
@@ -602,8 +598,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                         self.inhibit_eov=1
                         errmsg="wrong VOL1 header: got %s, expected %s" % (
                                 header_label, external_label)
-                        if debug_paranoia:
-                            print errmsg
                         Trace.log(e_errors.ERROR, errmsg)
                         return 'VOL1_WRONG'
                     else:
@@ -613,13 +607,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     self.inhibit_eov = 1
                     errmsg="no VOL1 header present for volume %s: read label %s %s" %\
                             (external_label, fix_nul(header_type), fix_nul(header_label))
-                    if debug_paranoia:
-                        print errmsg
                     Trace.log(e_errors.ERROR,errmsg)
                     tape_is_labelled=0
                     return 'VOL1_MISSING' 
                     
-                if debug_paranoia: print "Rewind (post check-label)"
                 Trace.log(e_errors.INFO, "Rewinding %s after checking label" % (external_label,))
                 # Note:  Closing the device seems to write a
                 #file mark (even though it was opened "r"!),
@@ -629,7 +620,6 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 r=driver_object.rewind()
                 x=driver_object.tell()
                 Trace.log(e_errors.ERROR, "CGWDEBUG tell %s"%(x,))
-                if debug_paranoia: print "tell", x
             ##end of paranoid checks    
             else:
                 driver_object = self.hsm_driver.open( self.mvr_config['device'], open_flag)
@@ -640,17 +630,14 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
                 # write an ANSI label and update the eod_cookie
                 label = driver_object.format_vol1_header( external_label )
-                if debug_paranoia: print "bind_volume: writing VOL1 label", label
                 Trace.log(e_errors.INFO, "bind_volume: writing VOL1 label"+label)
                 if tape_is_labelled:
-                    if debug_paranoia:
-                        print "Tape already labelled"
+
                     Trace.log(e_errors.INFO,"bind_volume: tape %s already labelled"%(external_label,))
                     driver_object.skip_fm(1) #Take me past the VOL1 label
                     eod_cookie = driver_object.tell()
                     
-                    if debug_paranoia:
-                        print "EOD_COOKIE=", eod_cookie
+
                     Trace.log(e_errors.INFO, "new EOD cookie=%s"%(eod_cookie,))
                 else:
                     driver_object.write( label )
@@ -659,16 +646,16 @@ class Mover(  dispatching_worker.DispatchingWorker,
                     if eov1_paranoia and not self.inhibit_eov:
                         label = driver_object.format_eov1_header  (
                         external_label, eod_cookie)
-                        if debug_paranoia: print "bind_volume: writing EOV1 label", label
+
                         Trace.log(e_errors.INFO,"bind_volume: writing EOV1 label"+label)
                         driver_object.write( label )
                         driver_object.writefm()
                         driver_object.skip_fm(-2)
                         x=driver_object.tell()
-                        if debug_paranoia: print "TELL", x
+
                         Trace.log(e_errors.INFO,"bind_volume: driver reports position=%s"%(x,))
 
-                if debug_paranoia: print "eod_cookie=", eod_cookie
+
                 Trace.log(e_errors.INFO,"bind_volume: volume %s, eod_cookie=%s" %(external_label,eod_cookie))
                 tmp_vol_info['eod_cookie'] = eod_cookie
                 tmp_vol_info['remaining_bytes'] = driver_object.get_stats()['remaining_bytes']
@@ -764,10 +751,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.vol_info['eod_cookie'] = driver_object.tell()
                 if check_eov:
                     eov_valid=1
-                    if debug_paranoia: print "checking EOV label"
+
                     Trace.log(e_errors.INFO,"checking EOV1 label for volume %s" %(external_label,))
                     header_type, header_label, cookie=driver_object.check_header()
-                    if debug_paranoia: print header_type, header_label, cookie
+
                     Trace.log(e_errors.INFO,"header_type=%s, label=%s, cookie=%s" %(header_type, header_label,cookie))
                     if header_type != "EOV1":
                         eov_valid = 0
@@ -891,8 +878,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 self.vcc.set_system_noaccess( external_label )
                 #self.vcc.set_system_readonly( external_label )
                 self.inhibit_eov = 1
-                if debug_paranoia:
-                    print errmsg
+
                 Trace.log(e_errors.ERROR,errmsg)
                 wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
                 self.vcc.update_counts( self.vol_info['external_label'],
@@ -1008,9 +994,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                 eod_cookie = self.vol_info['eod_cookie']
                 external_label = self.vol_info['external_label']
                 driver_object=self.hsm_driver.open( self.mvr_config['device'], 'w' )
-                if debug_paranoia: print "forked_read: writing EOV"
                 label = driver_object.format_eov1_header( external_label, eod_cookie)
-                if debug_paranoia: print "forked_read writing EOV1 label", label
                 Trace.log(e_errors.INFO,"forked_read_from_hsm: writing EOV1 label" + label)
                 driver_object.write( label )
                 driver_object.writefm()
@@ -1176,17 +1160,18 @@ class Mover(  dispatching_worker.DispatchingWorker,
             # hsm_driver_info (read: hsm_driver.position
             #                  write: position, eod, remaining_bytes)
             # recent (read) errors (part of vol_info???)
-            self.udpc.send_no_wait( {'work'       :'update_client_info',
-                                'address'    :origin_addr,
-                                'pid'        :os.getpid(),
-                                'exit_status':m_err.index(status),
-                                'vol_info'   :self.vol_info,
-                                'no_xfers'   :self.no_xfers,
-                                'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
-                                               'remaining_bytes':self.hsm_driver.remaining_bytes,
-                                               'vol_label'      :self.hsm_driver.vol_label,
-                                               'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
-                               (self.mvr_config['hostip'],self.mvr_config['port']) )
+            r=self.udpc.send_no_wait( {'work'       :'update_client_info',
+                                       'address'    :origin_addr,
+                                       'pid'        :os.getpid(),
+                                       'exit_status':m_err.index(status),
+                                       'vol_info'   :self.vol_info,
+                                       'no_xfers'   :self.no_xfers,
+                                       'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
+                                                      'remaining_bytes':self.hsm_driver.remaining_bytes,
+                                                      'vol_label'      :self.hsm_driver.vol_label,
+                                                      'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
+                                      (self.mvr_config['hostip'],self.mvr_config['port']) )
+            Trace.log(e_errors.INFO, "send_no_wait returns %s, exit %s"%(r, m_err.index(status)))
             sys.exit( m_err.index(status) )
             pass
         return self.status_to_request( status ) # return_or_update_and_exit
@@ -1446,7 +1431,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     def summon( self, ticket ):
 	wait=os.WNOHANG
-	next_req_to_lm = self.get_state_build_next_lm_req( wait, None )
+	next_req_to_lm = self.get_state_build_next_lm_req( wait, None ) #calls waitpid
 	if next_req_to_lm['state']=='busy' and not ticket['address'] in self.summoned_while_busy:
 	    self.summoned_while_busy.append(ticket['address'])
 	self.do_next_req_to_lm( next_req_to_lm, ticket['address'] )
@@ -1469,7 +1454,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
 		    # exists, be it network or tape.
 		    if time.time()-self.stall_time > 60.0:# arbitrary number
 			try:
-                            print "mover: freezing trace buffer"
+                            ##print "mover: freezing trace buffer"
                             os.system( 'traceMode 0>/dev/null' )
                             Trace.log(e_errors.INFO,"mover: freezing trace buffer")
 			except: pass
@@ -1533,7 +1518,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                            (rsp_ticket['work'],) )
                 if self.mvr_config['execution_env'][0:5] == 'devel':
                     Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
-                    print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
+                    ##print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
                     self.state = 'crazed'
                 Trace.log( e_errors.ERROR, 'mover changing work %s to "nowork"'%
                            (rsp_ticket['work'],) )
@@ -1548,7 +1533,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                            'FATAL ENSTORE - invalid rsp from libm: %s'%(rsp_ticket,) )
                 if self.mvr_config['execution_env'][0:5] == 'devel':
                     Trace.log( e_errors.ERROR, 'FATAL ENSTORE in devel env. => crazed' )
-                    print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
+                    ##print 'FATAL ENSTORE in devel env. => crazed (check the log!)'
                     self.state = 'crazed'
                 Trace.log( e_errors.ERROR, 'mover changing invalid rsp to "nowork"' )
                 client_function = 'nowork'
@@ -1686,9 +1671,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
 
     def sigterm(self, sig, stack ):
-        print '%d sigterm called'%(os.getpid(),)
+        Trace.log(e_errors.INFO, '%d sigterm called'%(os.getpid(),))
         if self.pid:
-            print 'attempt kill of mover subprocess', self.pid
+            Trace.log(e_errors.INFO, 'attempt kill of mover subprocess %d'%( self.pid,))
             os.kill( self.pid, signal.SIGTERM )
             pass
 
@@ -1702,10 +1687,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
         except: pass
         try: msg = self.hsm_driver.msg
         except: pass
-        print 'deleting sem (id=%d) and msg (id=%d)'%(sem,msg)
-        try: del self.hsm_driver.sem; print '%d deleted sem'%(os.getpid(),)
+        try: del self.hsm_driver.sem 
         except: pass			# wacky things can happen with forking
-        try: del self.hsm_driver.msg; print '%d deleted msg'%(os.getpid(),)
+        try: del self.hsm_driver.msg
         except: pass			# wacky things can happen with forking
         #print '%d sigterm exiting'%os.getpid()
         sys.exit( 0 )   # anything other than 0 causes traceback
@@ -1723,6 +1707,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         return None
 
     def sigsegv( self, sig, stack ):
+        Trace.log(e_errors.INFO, "SEGV")
         if self.pid:
             os.kill( self.pid, signal.SIGTERM )
             time.sleep(3)
