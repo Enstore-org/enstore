@@ -70,10 +70,10 @@ eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 # python modules
 import errno
 import pprint
-import signal				# signal - to del shm on sigterm, etc
-import sys				# exit
-import time				# .sleep
-import string				# find
+import signal				
+import os,sys				
+import time				
+import string				
 import select
 import types				
 
@@ -93,6 +93,8 @@ import EXfer				# needed for EXfer.error
 import e_errors
 import write_stats
 import udp_client
+import socket_ext
+import hostaddr
 
 MoverError = "Mover error"
 
@@ -1276,6 +1278,13 @@ class Mover(  dispatching_worker.DispatchingWorker,
         ticket["callback_port"] = port
         control_socket = callback.user_callback_socket(ticket)
         data_socket, address = listen_socket.accept()
+        data_socket.setsockopt(socket.SOL_SOCKET,socket.SO_DONTROUTE,1)
+        interface = hostaddr.interface_name(host)
+        if interface:
+            Trace.log(16,"bindtodev %s %s %s",host,address,interface)
+            status = socket_ext.bindtodev(data_socket.fileno(),interface)
+            if status and status != errno.ENOSYS:
+                Trace.log(16,"bindtodev %s",os.strerror(status))
         listen_socket.close()
         return control_socket, data_socket
 
