@@ -98,6 +98,22 @@ class Inquisitor(generic_client.GenericClient):
         Trace.trace(16,"}get_max_ascii_size")
 	return s
 
+    def max_encp_lines (self, value):
+	Trace.trace(16,"{max_encp_lines")
+	# tell the inquisitor to set the value for the max num of displayed
+	# encp lines
+	s = self.send({"work"       : "set_max_encp_lines" ,\
+	               "max_encp_lines"  : value })
+        Trace.trace(16,"}max_encp_lines")
+	return s
+
+    def get_max_encp_lines (self):
+	Trace.trace(16,"{get_max_encp_lines")
+	# tell the inquisitor to return the maximum displayed encp lines
+	s = self.send({"work"       : "get_max_encp_lines" } )
+        Trace.trace(16,"}get_max_encp_lines")
+	return s
+
     def refresh (self, value):
 	Trace.trace(16,"{refresh")
 	# tell the inquisitor to set the value for the html file refresh
@@ -144,6 +160,8 @@ class InquisitorClientInterface(interface.Interface):
 	self.dump = 0
 	self.refresh = 0
 	self.get_refresh = 0
+	self.max_encp_lines = 0
+	self.get_max_encp_lines = 0
         interface.Interface.__init__(self)
 
         # now parse the options
@@ -171,7 +189,8 @@ class InquisitorClientInterface(interface.Interface):
                ["timeout=", "get_timeout", "reset_timeout"] +\
 	       ["update", "timestamp", "max_ascii_size="] +\
 	       ["get_max_ascii_size", "dump"] +\
-	       ["refresh=", "get_refresh"] +\
+	       ["refresh=", "get_refresh", "max_encp_lines="] +\
+	       ["get_max_encp_lines"] +\
                self.help_options()
 
 
@@ -185,8 +204,7 @@ if __name__ == "__main__" :
     intf = InquisitorClientInterface()
 
     # now get an inquisitor client
-    iqc = Inquisitor(0, intf.verbose, intf.config_host, \
-                          intf.config_port)
+    iqc = Inquisitor(0, intf.verbose, intf.config_host, intf.config_port)
 
     if intf.alive:
         ticket = iqc.alive(intf.alive_rcv_timeout,intf.alive_retries)
@@ -238,6 +256,15 @@ if __name__ == "__main__" :
     elif intf.get_max_ascii_size:
         ticket = iqc.get_max_ascii_size()
 	generic_cs.enprint(ticket['max_ascii_size'], generic_cs.PRETTY_PRINT)
+	msg_id = generic_cs.CLIENT
+
+    elif intf.max_encp_lines:
+        ticket = iqc.max_encp_lines(intf.max_encp_lines)
+	msg_id = generic_cs.CLIENT
+
+    elif intf.get_max_encp_lines:
+        ticket = iqc.get_max_encp_lines()
+	generic_cs.enprint(ticket['max_encp_lines'], generic_cs.PRETTY_PRINT)
 	msg_id = generic_cs.CLIENT
 
     del iqc.csc.u
