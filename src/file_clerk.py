@@ -834,7 +834,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     def unique_bit_file_id(self):
         bfid = time.time()
         bfid = long(bfid)*100000
-        while self.dict.has_key(str(bfid)):
+        while self.dict.has_key(self.brand+str(bfid)):
             bfid = bfid + 1
         return self.brand+str(bfid)
 
