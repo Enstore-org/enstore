@@ -91,7 +91,7 @@ typedef struct {
 	int n_parts; 
 	int max_parts; 
 	int partsizes[64];
-} *ftt_partbuf;
+} ftt_partition_table, *ftt_partbuf;
 
 extern ftt_partbuf 	ftt_alloc_parts();
 extern void 		ftt_free_parts(ftt_partbuf);

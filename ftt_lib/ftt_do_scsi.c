@@ -513,12 +513,6 @@ int ftt_format_ait(ftt_descriptor d, int size) {
 	mod_sen31[6] = { 0x1a, 0x00, 0x31, 0x00, MS31_LEN, 0x00},
 	mod_sel31[6] = { 0x15, 0x10, 0x00, 0x00, MS31_LEN, 0x00},
 
-	mod_sen32[6] = { 0x1a, 0x00, 0x32, 0x00, MS32_LEN, 0x00},
-	mod_sel32[6] = { 0x15, 0x10, 0x00, 0x00, MS32_LEN, 0x00},
-
-	mod_sen11[6] = { 0x1a, 0x00, 0x11, 0x00, MS11_LEN, 0x00},
-	mod_sel11[6] = { 0x15, 0x10, 0x00, 0x00, MS11_LEN, 0x00},
-
         logsense31[10]={0x4d, 0x00, 0x31, 0x00, 0x00,0x00,0x00, 0x00, 255, 0x00},
 	mod_sel10[6] = { 0x15, 0x10, 0x00, 0x00, 28, 0x00},
 
@@ -529,86 +523,39 @@ int ftt_format_ait(ftt_descriptor d, int size) {
     int res;
     int parttotal;
 
+    ftt_partition_table pb;
+
 
     ENTERING("ftt_ait_format");
     CKNULL("ftt_descriptor", d);
     DEBUG2(stderr, "Entering ftt_ait_format\n");
     res = 0;
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
+
         res = ftt_open_scsi_dev(d);        
         if(res < 0) return res;
 
         /* Get the device configuration */
         DEBUG2(stderr, "CALLING ----- mod_sen31\n");
         res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, devbuf, MS31_LEN, 5, 0);
-        if(res < 0) return res;
-         printf("MOD SENSE 31 result\n");
-         hprint(devbuf,MS31_LEN,16,1,0);
+        if (res < 0) return res;
 
         /* Set AIT MIC mode on device*/
         DEBUG2(stderr, "CALLING ----- mod_sel31 with\n");
         devbuf[0] = 0;
         devbuf[4+8+2] = devbuf[4+8+2] | 0xc0;    /*AIT native,create opt dev area*/
-         printf("MOD SEL 31 \n");
-         hprint(devbuf,MS31_LEN,16,1,0);
         res = ftt_do_scsi_command(d,"Mode select", mod_sel31, 6, devbuf, MS31_LEN, 5, 1);
         if(res < 0) return res;
 
         /* Get the device configuration */
         DEBUG2(stderr, "CALLING ----- mod_sen31\n");
         res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, devbuf, MS31_LEN, 5, 0);
-         printf("MOD SENSE 31 result again \n");
-         hprint(devbuf,MS31_LEN,16,1,0);
         if(res < 0) return res;
 
-        /* Get medium partions param page */
-        DEBUG2(stderr, "CALLING ----- mod_sen11\n");
-        res = ftt_do_scsi_command(d, "Mode sense", mod_sen11, 6, medbuf, MS11_LEN, 5, 0);
-         printf("MOD SENSE 11 result \n");
-         hprint(medbuf,MS11_LEN,16,1,0);
-        if(res < 0) return res;
-	parttotal=((medbuf[20]<<8) + medbuf[21]);
-/*
-        medbuf[0] = 0;
-        medbuf[12+8]=parttotal/2;
-        medbuf[12+9]=0;
-        medbuf[12+10]=parttotal/2;
-        medbuf[12+11]=0;
-         printf("MOD SEL 11  with \n");
-         hprint(medbuf,MS11_LEN,16,1,0);
-        res = ftt_do_scsi_command(d,"Mode select", mod_sel11, 6, medbuf, MS11_LEN, 5, 1);
-        if(res < 0) return res;
-*/
-        /* Get last partition number */
-        DEBUG2(stderr, "CALLING ----- logsense31 \n");
-        res = ftt_do_scsi_command(d, "Log sense", logsense31, 10, bigbuf, 128, 5, 0);
-         printf("LOG SENSE 31 result\n");
-         hprint(bigbuf,128,16,1,0);
-        if(res < 0) return res;
+        res = ftt_get_partitions(d,&pb);
+        if (res < 0) return res;
+	res = ftt_write_partitions(d,&pb);
 
-        /* Get some thing in the data for modsel31 - I think there is no modesense32 */
-        DEBUG2(stderr, "CALLING ----- mod_sen31\n");
-        res = ftt_do_scsi_command(d,"Mode sense", mod_sen31, 6, ap_buf, MS32_LEN, 5, 0);
-        if(res < 0) return res;
-         printf("BUF from modesense31\n");
-         hprint(ap_buf,MS32_LEN,16,1,0);
-
-        ap_buf[0] =0x00;
-        bzero(&ap_buf[12],10);
-        ap_buf[12]=0x32;
-        ap_buf[13]=0x08;
-        ap_buf[16]=0x10;
-        /* ap_buf[18]=0x02; */
-        ap_buf[20]=0x10;	/* part size (in MB) 0x1000 = 4096 MB */
-        ap_buf[21]=0;		/* part size - byte 0*/
-
-        /* Add an additional parttion */
-        DEBUG2(stderr, "CALLING ----- mod_sel32\n");
-         printf("BUF BEFORE modesel32\n");
-         hprint(ap_buf,22,16,1,0);
-        res = ftt_do_scsi_command(d, "Mode Select", mod_sel32, 6, ap_buf, MS32_LEN, 5000, 1);
-        if(res < 0) return res;
-        res = ftt_close_scsi_dev(d);
     } else {
         ftt_close_dev(d);
         ftt_close_scsi_dev(d);
@@ -624,11 +571,11 @@ int ftt_format_ait(ftt_descriptor d, int size) {
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
 		if (ftt_debug) {
-		 execlp("ftt_suid", "ftt_suid", "-x", "-C", s1, d->basename, 0);
+		 execlp("ftt_suid", "ftt_suid", "-x", "-A", s1, d->basename, 0);
 		} else {
-		 execlp("ftt_suid", "ftt_suid", "-C", s1, d->basename, 0);
+		 execlp("ftt_suid", "ftt_suid", "-A", s1, d->basename, 0);
 		}
-		ftt_eprintf("ftt_set_compression: exec of ftt_suid failed");
+		ftt_eprintf("ftt_format_ait: exec of ftt_suid failed");
 		ftt_errno=FTT_ENOEXEC;
 		ftt_report(d);
 
