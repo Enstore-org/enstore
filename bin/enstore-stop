@@ -48,7 +48,20 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
     turnoff "$PID_DIR/`uname -n`-volume_clerk*pids"    "volume_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
-    turnoff_s "$PID_DIR/`uname -n`-mover*pids"           "movers"
+    host=`expr $(hostname) : '\([^.]*\)'`
+    movers=`conf.sh "" 2 2 | grep "mover:$host"`
+    if [ "$movers" ];then
+        for ll in $movers;do
+            name=`expr "$ll" : '\([^:]*\)'`
+            echo "Stopping $name"
+            node=`expr "$ll" : '[^:]*:\([^:]*\)'`
+            port=`expr "$ll" : '.*:\(.*\)'`
+            udp_sendWaitReply-withTimeout.sh $node $port 3 --work shutdown >/dev/null
+        done
+    else
+        echo "No movers running"
+    fi
+    #turnoff_s "$PID_DIR/`uname -n`-mover*pids"           "movers"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
     turnoff "$PID_DIR/`uname -n`-media_changer*pids"   "media_changers"
