@@ -17,7 +17,7 @@ from SocketServer import UDPServer, TCPServer
 from configuration_client import configuration_client
 from dispatching_worker import DispatchingWorker
 from generic_server import GenericServer
-
+from log_client import *
 import string
 
 list = 0
@@ -183,20 +183,27 @@ if __name__ == "__main__" :
 
     keys = csc.get(args[0])
 
+
     # here we need to define what is the class of the media changer
     # and create an object of that class based on the value of args[0]
     # for now there is just one possibility
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
+	ml_name = 'ML_STK'
     elif args[0] == 'FTT.media_changer' :
         mls =  FTT_MediaLoader((keys['host'], keys['port']),
                                FTT_MediaLoaderMethods)
+	ml_name = 'ML_FTT'
     else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-
+	ml_name = 'ML_RDD'
     mls.set_csc(csc)
+
+    # create a log client
+    logc = LoggerClient(csc, ml_name, 'logserver', 0)
+    logc.send(INFO, "Starting Media Changer. Type=%s", args[0])
 
     while 1:
         try:
@@ -204,3 +211,5 @@ if __name__ == "__main__" :
         except:
             print sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
+
+
