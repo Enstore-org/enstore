@@ -463,13 +463,15 @@ class LibraryManagerMethods:
     # only one work can be in the work_at_movers for
     # a given volume. That's why external label is used
     # to identify the work
-    def get_work_at_movers(self, external_label):
+    def get_work_at_movers(self, external_label, mover):
         rc = {}
         if not external_label: return rc
+        if not mover: return rc
         for w in self.work_at_movers.list:
             if w["fc"]["external_label"] == external_label:
-                rc = w
-                break
+                if w.has_key('mover') and w['mover'] == mover: 
+                    rc = w
+                    break
         return rc
 
     # if returned ticket has no external label use the
@@ -1924,7 +1926,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller({'work': 'no_work'})
             return
         # just did some work, delete it from queue
-        w = self.get_work_at_movers(mticket['external_label'])
+        w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
         if w:
             # check if it is a backed up request
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
@@ -2051,12 +2053,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         #    self.postponed_requests.update(sg, -1)
         # get the work ticket for the volume
         if mticket['external_label']:
-            w = self.get_work_at_movers(mticket['external_label'])
+            w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
         else:
             # use alternative fuction
             w = self.get_work_at_movers_m(mticket['mover'])
         if w:
-            Trace.trace(14,"mover_error: work_at_movers %s"%(w,))
+            Trace.trace(11,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
         if mticket['state'] == mover_constants.OFFLINE: # mover finished request and went offline
             self.volumes_at_movers.delete(mticket)
