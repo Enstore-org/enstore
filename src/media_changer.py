@@ -286,34 +286,38 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             if not self.fork():
                 # if in child process
 	        if ticket['function'] == "mount" or ticket['function'] == "dismount":
-                    Trace.log(e_errors.INFO, 'mcDoWork>>> forked (child) %s %s %s'%
-                              (ticket['function'],ticket['vol_ticket']['external_label'],
-                               ticket['drive_id']))
+                    msg="%s %s %s" % (ticket['function'],ticket['vol_ticket']['external_label'], ticket['drive_id'])
                 else:
-                    Trace.log(e_errors.INFO, 'mcDoWork>>> %s'%(ticket['function'],))
+                    msg="%s" % (ticket['function'],)
+                Trace.log(e_errors.INFO, 'mcDoWork> child begin %s '%msg)
                 os.close(pipe[0])
 		# do the work ...
                 # ... if this is a mount, dismount first
                 if ticket['function'] == "mount":
-                    Trace.trace(e_errors.INFO, 'mcDoWork>dismount for mount (prepare)')
+                    Trace.log(e_errors.INFO, 'mcDoWork> child prepare dismount for %s'%(msg,))
 		    sts=self.prepare(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
+                    Trace.log(e_errors.INFO,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts))
                 if (ticket['function'] == 'insert' or
                     ticket['function'] == 'eject' or
                     ticket['function'] == 'homeAndRestart' or
                     ticket['function'] == 'cleanCycle' or
                     ticket['function'] == 'getVolState'):
+                    Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
                     sts = function(ticket)
+                    Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
                 else:
+                    Trace.log(e_errors.INFO, 'mcDoWork> child doing %s'%(msg,))
                     sts = function(
                         ticket['vol_ticket']['external_label'],
                         ticket['drive_id'],
                         ticket['vol_ticket']['media_type'])
+                    Trace.log(e_errors.INFO,'mcDoWork> child %s returned %s'%(msg,sts))
 
                 # send status back to MC parent via pipe then via dispatching_worker and WorkDone ticket
-                Trace.trace(10, 'mcDoWork<<< sts'+repr(sts))
+                Trace.trace(10, 'mcDoWork< sts'+repr(sts))
                 ticket["work"]="WorkDone"	# so dispatching_worker calls WorkDone
                 ticket["status"]=sts
                 msg = repr(('0','0',ticket))
@@ -329,7 +333,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                 os.close(pipe[1])
                 # add entry to outstanding work 
                 self.work_list.append(ticket)
-                Trace.trace(10, 'mcDoWork<<< Parent')
+                Trace.trace(10, 'mcDoWork< Parent')
     
     def WorkDone(self, ticket):
         # dispatching_worker sends "WorkDone" ticket here and we reply_to_caller
@@ -339,11 +343,16 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
               self.work_list.remove(i)
               break
         # report back to original client - probably a mover
-	if ticket['function'] == "mount" or ticket['function'] == "dismount":
-            Trace.log(e_errors.INFO, 'FINISHED %s %s %s' %
-                      (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id']))
+        fstat = ticket.get('status', None)
+        if fstat=="ok":
+            level = e_errors.INFO
         else:
-            Trace.log(e_errors.INFO, 'FINISHED %s'%(ticket['function']),)
+            level = e_errors.ERROR
+	if ticket['function'] == "mount" or ticket['function'] == "dismount":
+            Trace.log(level, 'FINISHED %s %s %s  returned %s' %
+                      (ticket['function'], ticket['vol_ticket']['external_label'],ticket['drive_id'],fstat))
+        else:
+            Trace.log(level, 'FINISHED %s returned %s'%(ticket['function'],fstat))
         # reply_with_address uses the "ra" entry in the ticket
         self.reply_with_address(ticket)
 	self.robotNotAtHome = 1
@@ -576,29 +585,100 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
-    def __init__(self, medch, maxwork=10, csc=None):
-        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+
+    def __init__(self, medch, maxwork=1, csc=None):
         import STK
-        self.load=STK.mount
-        self.unload=STK.dismount
-        self.prepare=STK.dismount
+        import lockfile
+        ###maxwork=1 # VERY BAD, BUT THIS IS ALL THAT CAN BE HANDLED CORRECTLY FOR NOW. JAB 2/16/00
+        MediaLoaderMethods.__init__(self,medch,maxwork,csc)
+        self.prepare = self.unload
+        self.SEQ_LOCK_DIR = "/tmp/enstore"
+        self.SEQ_LOCK_FILE="stk_seq_lock"
+        self.SEQ_LOCK=os.path.join(self.SEQ_LOCK_DIR, self.SEQ_LOCK_FILE)
+        if not os.access(self.SEQ_LOCK_DIR,os.W_OK):
+            os.mkdir(SEQ_LOCK_DIR)
+        lockf = open (self.SEQ_LOCK, "w")
+        lockfile.writelock(lockf)  #holding write lock = right to bump sequence
+        lockf.write("0")
+        lockfile.unlock(lockf)
+        lockf.close()
+        
+        print "STK MediaLoader initialized"
+
+    def next_seq(self):
+        import lockfile
+        # First acquire the seq lock.  Once we have it, we have the exclusive right
+        # to bump the sequence.  Lock will (I hope) properly serlialze the
+        # waiters so that they will be services in the order of arrival.
+        # Because we use file locks instead of semaphores, the system will
+        # properly clean up, even on kill -9s.
+        lockf = open (self.SEQ_LOCK, "r+")
+        lockfile.writelock(lockf)  #holding write lock = right to bump sequence
+        sequence = lockf.readline()
+        try:
+            seq=string.atoi(sequence)
+        except:
+            exc,val,tb = e_errors.handle_error()
+            seq=0
+        seq = seq + 1
+        if seq > 0xFFFE:
+            seq = 1
+        lockf.seek(0)
+        lockf.write("%5.5d\n"%seq)
+        lockfile.unlock(lockf)
+        lockf.close()
+        return seq
+    
+    # retry function call
+    def retry_function(self,function,*args):
+        count = self.getNretry()
+        sts=("",0,"")
+        while count > 0 and sts[0] != e_errors.OK:
+            try:
+                sts=apply(function,args)
+                if sts[1] != 0:
+                   Trace.log(e_errors.ERROR, 'function %s error %s'%(repr(function),sts[2])) 
+                if (sts[1] == 54 or          #IPC error
+                    sts[1] == 68):           #IPC error (usually)
+                    time.sleep(10)
+                    count = count - 1
+                    time.sleep(20)
+                else:
+                    break
+            except:
+                exc,val,tb = e_errors.handle_error()
+                return exc,0,""
+        return sts
+    
+    # load volume into the drive;
+    def load(self,
+             external_label,    # volume external label
+             drive,             # drive id
+             media_type):	# media type
+        import STK
+        seq=self.next_seq()
+        return self.retry_function(STK.mount,external_label,drive,media_type,seq)
+    
+    # unload volume from the drive
+    def unload(self,
+               external_label,  # volume external label
+               drive,           # drive id
+	       media_type):     # media type
+        import STK
+        seq=self.next_seq()
+        return self.retry_function(STK.dismount,external_label,drive,media_type,seq)
 
     def getVolState(self, ticket):
         import STK
-	"get current state of the tape"
 	external_label = ticket['external_label']
 	media_type = ticket['media_type']
-        #print "calling query_volume",external_label, media_type
-	rt = self.retry_function(STK.query_volume,external_label, media_type)
-        #print "query_volume returned: ",rt
+        seq=self.next_seq()
+	rt = self.retry_function(STK.query_volume,external_label,media_type,seq)
         Trace.trace( 11, "getVolState returned %s"%(rt,))
         if rt[3] == '\000':
-            Trace.trace( 11, "RT3 is 0")
             state=''
         else :
-            Trace.trace( 11, "RT3 is %s"%(rt[3],))
             state = rt[3]
-        #print "getVolState returning: ",rt[0], rt[1], rt[2], state
         return (rt[0], rt[1], rt[2], state)
 	
 

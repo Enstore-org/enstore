@@ -140,6 +140,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 	self.update = 0
 	self._import = 0
 	self._export = 0
+        self.mount = 0
+        self.dismount = 0
 	self.viewattrib = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
@@ -151,7 +153,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         else:
             return self.client_options()+\
                    ["maxwork=","update=","get_work","import",
-                    "export"]
+                    "export","mount","dismount"]
     #  define our specific help
     def parameters(self):
         return "media_changer"
@@ -161,7 +163,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         interface.Interface.parse_options(self)
 	if self._import:
             if len(self.args) < 2:
-	        self.missing_parameter("media_changer/insertNewLib")
+	        self.missing_parameter("--import media_changer insertNewLib")
                 self.print_help()
                 sys.exit(1)
             else:
@@ -173,7 +175,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 		        self.ioarea.append(self.args[pos])
 	elif self._export:
             if len(self.args) < 3:
-	        self.missing_parameter("media_changer/media_type/volumeList")
+	        self.missing_parameter("--export media_changer media_type volumeList")
                 self.print_help()
                 sys.exit(1)
             else:
@@ -182,6 +184,24 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 		self.volumeList = []
 		for pos in range(2,len(self.args)):
 		    self.volumeList.append(self.args[pos])
+	elif self.mount:
+            if len(self.args) < 3:
+	        self.missing_parameter("--mount media_changer external_label drive")
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.media_changer = self.args[0]
+                self.volume=self.args[1]
+                self.drive = self.args[2]
+	elif self.dismount:
+            if len(self.args) < 3:
+	        self.missing_parameter("--dismount media_changer external_lable drive")
+                self.print_help()
+                sys.exit(1)
+            else:
+                self.media_changer = self.args[0]
+                self.volume=self.args[1]
+                self.drive = self.args[2]
 	else:
             if len(self.args) < 1 :
 	        self.missing_parameter("media_changer")
@@ -192,7 +212,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         if (self.alive == 0) and (self.max_work==-1) and \
            (self.get_work==0) and (self.update == 0) and \
            (self._import==0) and (self._export == 0) and \
-	   (self.viewattrib == 0):
+	   (self.viewattrib == 0) and \
+           (self.mount == 0) and (self.dismount == 0):
             # bomb out if number of arguments is wrong
             self.print_help()
 	    sys.exit(1)
@@ -200,8 +221,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
     # print out our extended help
     def print_help(self):
         interface.Interface.print_help(self)
-        print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
-        print "        --get_work          List operations in progress"
+        #print "        --max_work=N        Max simultaneous operations allowed (may be 0)"
+        #print "        --get_work          List operations in progress"
         #print "        --update volume"
         #print "        --import insertNewLib [IOarea]"
         #print "        --export media_type volume1 [volume2 ...]"
@@ -223,6 +244,19 @@ def do_work(intf):
 	m_type = v_ticket['media_type']
 	ticket=mcc.viewvol(volume, m_type)
 	del vcc
+    elif intf.mount:
+        vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        v = vcc.set_at_mover(intf.volume, 'mounting', intf.drive)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        ticket = mcc.loadvol(vol_ticket, intf.drive, intf.drive, vcc)
+	del vcc
+    elif intf.dismount:
+        vcc = volume_clerk_client.VolumeClerkClient(mcc.csc)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        v = vcc.set_at_mover(intf.volume, 'unmounting', intf.drive)
+        vol_ticket = vcc.inquire_vol(intf.volume)
+        ticket = mcc.unloadvol(vol_ticket, intf.drive, intf.drive, vcc)
     elif intf._import:
 	ticket=mcc.insertvol(intf.ioarea, intf.insertNewLib)
     elif intf._export:
