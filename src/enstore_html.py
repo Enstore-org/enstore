@@ -238,7 +238,7 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
 	
     def server_heading(self, server):
-	return HTMLgen.Bold(HTMLgen.Font(server, size="+1"))
+	return HTMLgen.Name(server, HTMLgen.Bold(HTMLgen.Font(server, size="+1")))
 
     def set_refresh(self, refresh):
 	self.refresh = refresh
@@ -626,7 +626,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	cols = 5
 	# first the alive information
 	lm_status = self.data_dict[lm][enstore_constants.STATUS]
-	table.append(self.alive_row(HTMLgen.Name(lm, lm), lm_status))
+	table.append(self.alive_row(lm, lm_status))
 	# we may have gotten an error while trying to get the info, 
 	# so check for a piece of it first
 	if self.data_dict[lm].has_key(enstore_constants.LMSTATE):
@@ -702,17 +702,15 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# we may not have any other info on this mover as the inq may not be
 	# watching it.
 	moverd = self.data_dict.get(mover, {})
-	mover_name = HTMLgen.Name(mover, mover)
 	if moverd:
 	    # we may have gotten an error when trying to get it, 
 	    # so look for a piece of it.  
 	    if moverd.has_key(enstore_constants.STATE):
 		if moverd[enstore_constants.STATE] in self.BAD_MOVER_STATES:
-		    table.append(self.alive_row(mover_name, 
+		    table.append(self.alive_row(mover, 
 						moverd[enstore_constants.STATUS], FUSCHIA))
 		else:
-		    table.append(self.alive_row(mover_name, 
-						moverd[enstore_constants.STATUS]))
+		    table.append(self.alive_row(mover, moverd[enstore_constants.STATUS]))
 
 		tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Font("Completed%sTransfers"%(NBSP,),
 							color=BRICKRED, html_escape='OFF')))
@@ -758,7 +756,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		table.append(tr)
 	    else:
 		# all we have is the alive information
-		table.append(self.alive_row(mover_name, moverd[enstore_constants.STATUS]))
+		table.append(self.alive_row(mover, moverd[enstore_constants.STATUS]))
 
     # output all of the library manager rows and their associated movers
     def library_manager_rows(self, table, skeys):
@@ -773,7 +771,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	for server in skeys:
 	    if enstore_functions.is_media_changer(server):
 		# this is a media changer. output its alive info
-		table.append(self.alive_row(HTMLgen.Name(server, server),
+		table.append(self.alive_row(server,
 					self.data_dict[server][enstore_constants.STATUS]))
 
     # output all of the mover rows 
@@ -1444,7 +1442,11 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    alt_key = key
 	if make_link != 0:
 	    # make the name be a link to the server status page element
-	    h_alt_key = HTMLgen.Href("%s#%s"%(self.status_file_name, alt_key), alt_key)
+	    if enstore_constants.SERVER_NAMES.has_key(alt_key):
+		name = enstore_constants.SERVER_NAMES[alt_key]
+	    else:
+		name = alt_key
+	    h_alt_key = HTMLgen.Href("%s#%s"%(self.status_file_name, name), alt_key)
 	else:
 	    h_alt_key = alt_key
 	if offline_dict.has_key(key):

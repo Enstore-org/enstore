@@ -58,6 +58,13 @@ CONFIG_SERVER = "config_server"  # included for use by inquisitor
 WWW_SERVER = "www_server"
 EVENT_RELAY = "event_relay"
 
+SERVER_NAMES = {LOGS : LOG_SERVER,
+		ALARMS : ALARM_SERVER,
+		FILEC : FILE_CLERK,
+		INQ : INQUISITOR,
+		VOLC : VOLUME_CLERK,
+		CONFIGS : CONFIG_SERVER}
+
 OUTAGEFILE = "enstore_outage.py"
 SAAGHTMLFILE = "enstore_saag.html"
 BASENODE = "base_node"
