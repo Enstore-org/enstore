@@ -2,9 +2,7 @@
 # restore.py
 #
 
-#import copy
 import db
-import regsub
 import os
 import sys
 
@@ -57,7 +55,7 @@ class DbTable(db.DbTable):
 				l = f.readline()
 				if len(l) == 0: break
 				if l[0:3] == 'del':
-					k = regsub.split(l, "'")[1]
+					k = string.split(l, "'")[1]
 					if not self.dict.has_key(k):
 						self.deletes.append(k)
 			f.close()
