@@ -216,6 +216,23 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                                                            new_label))
          return e_errors.OK, None
 
+    # rename_volume() -- server version of __rename_volume()
+
+    def rename_volume2(self, ticket):
+        try:
+            old = ticket['old']
+            new = ticket['new']
+        except KeyError, detail:
+            msg =  "Volume Clerk: key %s is missing"  % (detail)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        ticket['status'] = self.__rename_volume(old, new)
+        self.reply_to_caller(ticket)
+        return
+            
     # remove deleted volume and all information about it
     def remove_deleted_volume(self, external_label):
      try:
