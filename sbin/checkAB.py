@@ -284,7 +284,7 @@ if __name__ == '__main__':
 		for v2 in sys.argv[2:]:
 			print 'checking', v2, '...',
 			vol = vcc.inquire_vol(v2)
-			if vol['staus'] != e_errors.OK:
+			if vol['status'] != e_errors.OK:
 				print 'does not exist ... ERROR'
 				continue
 			if vol['system_inhibit'][1] == 'migrated':
