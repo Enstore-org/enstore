@@ -53,12 +53,14 @@ class GenericAlarm:
         # of the dictionary
         if self.severity >= len(e_errors.sevdict):
             self.severity = len(e_errors.sevdict)-1
+        if self.severity < 0:
+            self.severity = 0
 
         # format ourselves to be a straight ascii line of the same format as
         # mentioned above
         if self.patrol:
             host = string.split(self.host,".")
-            return string.join((host[0], "Enstore", "2", \
+            return string.join((host[0], "Enstore", repr(self.severity), \
                                 enstore_status.format_time(self.timedate), \
                                 repr(self.pid), repr(self.uid), \
                                 e_errors.sevdict[self.severity], self.source, \

@@ -113,7 +113,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                     ainfo = self.make_alarm_info()
                     ainfo.update({SUS_VOLS : ticket[SUS_VOLS],\
                                   LM : ticket[SERVER] })
-                    self.alarm(e_errors.WARNING, "TOOMANYSUSPVOLS", ainfo)
+                    self.alarm(e_errors.WARNING, e_errors.TOOMANYSUSPVOLS,
+                               ainfo)
                     self.info_alarms[akey] = 1
 
     def make_alarm_info(self):
@@ -196,10 +197,8 @@ class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
         else:
             self.sus_vol_thresh = DEFAULT_SUSP_VOLS_THRESH
 
-        try:
+        if keys.has_key('logname'):
             self.print_id = keys['logname']
-        except KeyError:
-            pass
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'], \
 	                                              keys['port']))
         # get a logger
