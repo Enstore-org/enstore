@@ -416,7 +416,7 @@ def print_volume_quotas_status(volume_quotas, output_file):
         quotas.sort()
         for keys in quotas:
             formated_tuple = volume_quotas[keys][0:7] + \
-                             format_storage_size(volume_quotas[keys][6]) + \
+                             format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
             vq_file.write("%-10s %-13s %-6s %-9d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
                           % formated_tuple)
