@@ -117,11 +117,14 @@ F=/tmp/\${thisnode}.special.tgz
 rm -fr \$F
 tar -czf \$F \\
   /var/adm/krb5/* \\
+  /etc/hosts.* \\
   /fnal/ups/kt/*  \\
   /etc/krb5.keytab \\
   /etc/krb5.conf \\
   /home/*/.k5login \\
+  /root/.k5login \\
   /home/*/.k5user \\
+  /root/.k5user \\
   /etc/sysconfig/network \\
   /etc/sysconfig/network-scripts/ifcfg* \\
   /var/spool/cron/*
