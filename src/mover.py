@@ -87,7 +87,7 @@ class Mover :
 
     # we don't have any work. setup to see if we can get some
     def nowork(self, ticket) :
-        time.sleep(0.05)
+        time.sleep(0.5)
 
         # get (possibly new) info about the library manager this mover serves
         mconfig = self.csc.get_uncached(self.name)
@@ -146,7 +146,7 @@ class Mover :
             #   more work for library manager arrives and is given to a
             #     new mover before the old volume was given back to the library
             if lmticket["status"] == "media_in_another_device" :
-                sleep (10)
+                time.sleep (10)
             self.unilateral_unbind_next()
             return
 
