@@ -47,3 +47,9 @@ window 1                       window 2
 
 			       gdb python_path/python pid
                                
+
+-------------------
+To make with #ifdef's set, use:
+    $ make WARN="-DNO_READ -Wall"
+This is a example for Linux (i.e. -Wall)
+
