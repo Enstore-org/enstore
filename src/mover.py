@@ -305,7 +305,7 @@ class MoverClient:
     def unbind_volume( self, ticket ):
         #if last action was write, and the feature is enabled, write an EOV label before
         #unloading tape.  
-        if eov1_paranoia and self.mode=='w' and mvr_config['driver']!='NullDriver':
+        if eov1_paranoia and self.mode=='w' and mvr_config['driver']=='FTTDriver':
             driver_object = self.hsm_driver.open( mvr_config['device'], 'a+')
             eod_cookie=self.vol_info['eod_cookie']
             external_label=self.vol_info['external_label']
@@ -431,7 +431,7 @@ def bind_volume( object, external_label ):
 	except: return 'BADMOUNT' # generic, not read or write specific
 
         #Paranoia:  We may have the wrong tape.  Check the VOL1 header!
-        if vol1_paranoia and mvr_config['driver']!='NullDriver':
+        if vol1_paranoia and mvr_config['driver']=='FTTDriver':
             driver_object = object.hsm_driver.open( mvr_config['device'], 'r' )
             if debug_paranoia: print "Rewinding (pre check-label)"
             r=driver_object.rewind()
@@ -441,14 +441,16 @@ def bind_volume( object, external_label ):
             if debug_paranoia: print header_type, header_label
             if header_type == None:  #This only happens if
                                      ##there was a read error
+                Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%external_label)
                 return 'VOL1_READ_ERR'
             elif header_type == 'VOL1':
                 if header_label != external_label:
                     vcc.set_system_noaccess( external_label )
-                    if debug_paranoia:
-                        print "wrong VOL1 header: got %s, expected %s" % (
+                    errmsg="wrong VOL1 header: got %s, expected %s" % (
                             header_label, external_label)
-                    ##XXX alarm ???
+                    if debug_paranoia:
+                        print errmsg
+                    Trace.log(e_errors.ERROR, errmsg)
                     return 'VOL1_WRONG'
             else:
                 if not driver_object.is_bot(tmp_vol_info['eod_cookie']):
@@ -456,10 +458,11 @@ def bind_volume( object, external_label ):
                     ## This tape really should have been labelled!
                     if debug_paranoia: print "Tape should have been labeled"
                     vcc.set_system_noaccess( external_label )
-                    if debug_paranoia:
-                        print "no VOL1 header present for volume %s" %\
+                    errmsg="no VOL1 header present for volume %s" %\
                               external_label
-                    ##XXX alarm/log?
+                    if debug_paranoia:
+                        print errmsg
+                    Trace.log(e_errors.ERROR,errmsg)
                     return 'VOL1_MISSING' 
         
             if debug_paranoia: print "Rewind (post check-label)"
@@ -493,7 +496,7 @@ def bind_volume( object, external_label ):
 	    Trace.trace( 18, 'wrote label, new eod/remaining_byes = %s/%s'%
 			 (tmp_vol_info['eod_cookie'],
 			  tmp_vol_info['remaining_bytes']) )
-            if eov1_paranoia and mvr_config['driver']!='NullDriver':
+            if eov1_paranoia and mvr_config['driver']=='FTTDriver':
                 ll = driver_object.format_eov1_header  (
                     external_label, eod_cookie)
                 if debug_paranoia: print "writing EOV1 label", ll
@@ -549,7 +552,7 @@ def forked_write_to_hsm( self, ticket ):
     # have to fork early b/c of early user (tcp) check
     # but how do I handle vol??? - prev_vol, this_vol???
     check_eov=0
-    if eov1_paranoia and self.mode!='w' and mvr_config['driver']!='NullDriver':
+    if eov1_paranoia and self.mode!='w' and mvr_config['driver']=='FTTDriver':
         check_eov=1
     if mvr_config['do_fork']: do_fork( self, ticket, 'w' )
     
@@ -753,7 +756,7 @@ def forked_read_from_hsm( self, ticket ):
     # if we're changing state from writing to reading, and the feature is enabled,
     # put an eov label on the tape before repositioning
     write_eov=0
-    if eov1_paranoia and self.mode=='w' and mvr_config['driver']!='NullDriver':
+    if eov1_paranoia and self.mode=='w' and mvr_config['driver']=='FTTDriver':
         #cgw
         write_eov=1
     
@@ -1464,7 +1467,7 @@ def status_to_request( client_obj_inst, exit_status ):
     else:
 	# new error
         Trace.log( e_errors.ERROR, 'FATAL ERROR - MOVER - unknown transfer status - fix me now' )
-	while 1: time.sleep( 100 )		# NEVER RETURN!?!?!?!?!?!?!?!?!?!?!?!?
+	while 1: time.sleep( 100 )		# let the Inquisitor restart us
 	pass
     return next_req_to_lm
 
