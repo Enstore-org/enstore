@@ -83,6 +83,9 @@ class GenericClient:
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    Trace.trace(14,"alive - ERROR, alive timed out")
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
+        except KeyError, detail:
+            print "Unknown server", server
+            sys.exit(-1)
         return x
 
     # examine the final ticket to check for any errors
