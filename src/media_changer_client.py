@@ -34,7 +34,7 @@ class MediaChangerClient(generic_client.GenericClient):
         self.u = udp_client.UDPClient()
 
     # default TO is set to 0 which means that receive will try forever
-    # for legthy operations rcv_timeout will be set to 300 and tries=10
+    # for lengthy operations rcv_timeout will be set to 300 and tries=10
     def send (self, ticket, rcv_timeout=0, tries=0) :
         vticket = self.csc.get(self.media_changer)
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
@@ -45,7 +45,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
                   }
-	rt = self.send(ticket,300,10)
+	rt = self.send(ticket, 300, 10)
 	if rt['status'][0] == e_errors.OK:
 	    v = vcc.set_at_mover(vol_ticket['external_label'], 'mounted',mover)
 	    if v['status'][0] != e_errors.OK:
