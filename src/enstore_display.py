@@ -342,11 +342,20 @@ class Mover:
                     font = self.font, text=self.state, fill=self.state_color)
 
     def draw_timer(self):
-        if self.timer_display:
-            self.display.itemconfigure(self.timer_display,
-                                       text=self.timer_string)
-        else:
-            self.timer_display = self.display.create_text(
+        #if self.timer_display:
+        #    self.display.itemconfigure(self.timer_display,
+        #                               text=self.timer_string)
+        #else:
+        #    self.timer_display = self.display.create_text(
+        #        self.x + self.timer_offset.x, self.y + self.timer_offset.y,
+        #        text = self.timer_string, fill = self.timer_color,
+        #        font = self.font)
+        try:
+            self.display.delete(self.timer_display)
+        except TclError:
+            pass
+        
+        self.timer_display = self.display.create_text(
                 self.x + self.timer_offset.x, self.y + self.timer_offset.y,
                 text = self.timer_string, fill = self.timer_color,
                 font = self.font)
@@ -446,8 +455,6 @@ class Mover:
         #Display the connection.
         if self.connection:
             self.connection.draw()
-
-        #self.display.update()
 
     #########################################################################
 
@@ -858,13 +865,21 @@ class Connection:
         
     def draw(self):
         #Draw or update the line.
-        if self.line:
-            self.display.coords(self.line, tuple(self.path))
-            self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
-        else:
-            self.line = self.display.create_line(self.path, dash='...-',
-                                                 width=2, smooth=1,
-                                                 dashoffset = self.dashoffset)
+        #if self.line:
+        #    self.display.coords(self.line, tuple(self.path))
+        #    self.display.itemconfigure(self.line,dashoffset = self.dashoffset)
+        #else:
+        #    self.line = self.display.create_line(self.path, dash='...-',
+        #                                         width=2, smooth=1,
+        #                                         dashoffset = self.dashoffset)
+        #After analyzing the profile output, this appears to work faster.
+        try:
+            self.display.delete(self.line)
+        except TclError:
+            pass
+        self.line = self.display.create_line(self.path, dash='...-',
+                                             width=2, smooth=1,
+                                             dashoffset = self.dashoffset)
 
     def undraw(self):
         try:
@@ -884,10 +899,7 @@ class Connection:
     
         if new_offset != self.dashoffset:  #we need to redraw the line
             self.dashoffset = new_offset
-            if self.line:
-                self.display.itemconfigure(self.line, dashoffset=new_offset)
-            else:
-                self.draw()
+            self.draw()
                 
     #########################################################################
                 
@@ -1073,6 +1085,8 @@ class Display(Tkinter.Canvas):
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinititalize)
         self.bind('<Configure>', self.resize)
+        self.bind('<Destroy>', self.window_killed)
+        self.bind('<Button-2>', self.print_canvas)
 
     def __del__(self):
         self.connections = {}        
@@ -1098,6 +1112,9 @@ class Display(Tkinter.Canvas):
 
     def reinit(self):
         self._init()
+
+    def attempt_reinit(self):
+        return self._reinit
         
     #########################################################################
     
@@ -1157,8 +1174,11 @@ class Display(Tkinter.Canvas):
         self._reinit = 1
         self.quit()
 
-    def attempt_reinit(self):
-        return self._reinit
+    def print_canvas(self, event):
+        self.postscript(file="/home/zalokar/entv.ps", pagewidth="8.25i")
+
+    def window_killed(self, event):
+        self.stopped = 1
 
     #########################################################################
 
@@ -1499,10 +1519,10 @@ if __name__ == "__main__":
         title = sys.argv[1]
     else:
         title = "Enstore"
+
     display = Display(master=None, title=title,
                       window_width=700, window_height=1600,
                       canvas_width=1000, canvas_height=2000,
                       background=rgbtohex(173, 216, 230))
     display.mainloop()
-
 

@@ -344,9 +344,19 @@ def main():
         Trace.trace(1, "message thread finished")
 
 if __name__ == "__main__":
+
     if "--debug" in sys.argv or "-d" in sys.argv:
         Trace.init("ENTV")
         for x in xrange(0, 10):
             Trace.do_print(x)
-    
-    main()
+        main()
+    elif "--profile" in sys.argv or "-p" in sys.argv:
+            import profile
+            import pstats
+            profile.run("main()", "/tmp/entv_profile")
+            p=pstats.Stats("/tmp/entv_profile")
+            p.sort_stats('cumulative').print_stats(100)
+            
+    else:
+        main()
+
