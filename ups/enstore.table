@@ -96,6 +96,9 @@ COMMON:
                 pathPrepend(PATH, "${UPS_PROD_DIR}/sbin")
                 pathPrepend(PATH, "${UPS_PROD_DIR}/bin")
 
+                # the place where mail gets sent when there are problems
+                envSet(ENSTORE_MAIL,`${UPS_PROD_DIR}/ups/chooseConfig mail`)
+
                 # dot, tgif, htmldoc, ghostview ximagetools and imagemagick are for generating documenation only
                 # dot and graphviz are the same product with different names!
                 # I don't care which version I get so don't specify any
@@ -131,7 +134,7 @@ COMMON:
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up and use it
-                setupOptional("python v1_5_2_E_3")
+                setupOptional("python v1_5_2_E_3") 
                 # if no python from ups available, we need it from the user's path
                 exeAccess("python")
                 # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
@@ -176,9 +179,6 @@ COMMON:
 
                 # all systems use port 7500 for the well-know port to the configuration port
                 envSet(ENSTORE_CONFIG_PORT, 7500)
-
-                # the place where mail gets sent when ther are problems
-                envSet(ENSTORE_MAIL,"enstore-auto@fnal.gov")
 
                 # special treatment for libds.a on IRIX64
                 execute("uname", UPS_ENV, ENSTORE_OSV)
