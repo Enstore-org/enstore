@@ -1,7 +1,8 @@
 #!/bin/sh
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-set -u  # force better programming and ability to use check for not set
+#set -u  # force better programming and ability to use check for not set
+set +u  # I don't like this, but it is needed for the eval command at bottom
 
 phelp()     { usage="
 pcmd is a tool to control, manipulate and query pnfs files.
@@ -74,16 +75,15 @@ pxref()     { pcat $1 4 ; }
 #internal routine only
 pinfo_helper()  { choice=$1
                   c=0
-                  export x="parse-error"
                   echo "$xref" | while read x; do
                     c=`expr $c + 1`
-                    if   [ $c -eq $choice ] ; then break
-                    elif [ $c -eq $choice ] ; then break
-                    elif [ $c -eq $choice ] ; then break
-                    elif [ $c -eq $choice ] ; then break
+                    if   [ $c -eq $choice ] ; then echo $x; break
+                    elif [ $c -eq $choice ] ; then echo $x; break
+                    elif [ $c -eq $choice ] ; then echo $x; break
+                    elif [ $c -eq $choice ] ; then echo $x; break
+                    echo "parse-error"; break
                     fi
-                  done
-                  echo "$x"; }
+                  done ; }
 
 pinfo()     { bfid=`pbfid $@`
               xref=`pxref $@`
@@ -95,23 +95,22 @@ pinfo()     { bfid=`pbfid $@`
                    `echo $SHELL | grep -c /sh`   -ne 0 -o \
                    `echo $SHELL | grep -c /ksh`  -ne 0 -o \
                    `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
-              echo "bfid=$bfid;
-volume=$volume;
-cookie=$cookie;
-file_family=$file_family;
-orig_name=$orig_name;"
+              echo "bfid=\"$bfid\";
+volume=\"$volume\";
+cookie=\"$cookie\";
+file_family=\"$file_family\";
+orig_name=\"$orig_name\";"
               else
-              echo "set bfid=$bfid;
-set volume=$volume;
-set cookie=$cookie;
-set file_family=$file_family;
-set orig_name=$orig_name;"
+              echo "set bfid=\"$bfid\";
+set volume=\"$volume\";
+set cookie=\"$cookie\";
+set file_family=\"$file_family\";
+set orig_name=\"$orig_name\";"
                fi; }
 
 pls()       { eval ls -alsF `p_use $@` ; }
 
 pecho()     { uj="Usage:  pecho text file [container number]"
-              echo "currently broken if space in text message"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
               pt="$1"
               shift 1
@@ -196,7 +195,6 @@ ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
               for i in `ptagdir $dir`; do v=`eval cat '$i'`; echo $i " = " $v; done ; }
 
 ptagecho()  { uj="Usage:  ptagecho text tagname"
-              echo "currently broken if space in text message"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
               pt="$1"
               shift 1
@@ -205,6 +203,11 @@ ptagecho()  { uj="Usage:  ptagecho text tagname"
 ptagrm()    { echo "The attempt to remove a tag results in an unpredictable behavior and may corrupt the entire directory"
               echo "If you insist on doing this, try   eval echo -n \"\" >| `p_tag tagname`" ; }
 
+#debugging routine - space in arguments are being eaten by eval
+pdog()      { echo $#
+              echo $1
+              echo $2
+              echo $3;          }
 
 if [ -z "${1-}" ] ; then
   cmd="phelp"
@@ -213,6 +216,9 @@ else
   shift
 fi
 
-eval $cmd $@
+
+#eval $cmd $@ # the eval command eats spaces in the positional arguments, so this doesn't work!
+eval $cmd \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" # not happy with this, but it works
 stat=$?
+if [ $stat -ne 0 ] ; then phelp; fi
 exit $stat
