@@ -1,0 +1,33 @@
+#
+# @(#) $Id$
+#
+#===============================================================================
+# This will test locate versus file skip...
+# It assumes that the tape has been written with twrite
+#===============================================================================
+ 
+ftt_open -readonly
+
+ftt_rewind
+
+ftt_test_status -FTT_ABOT
+#===============================================================================
+# first check to see if when we forward skip a file we are where
+# we should be.
+#===============================================================================
+ftt_skip_fm 1
+ftt_verify_tblock -n 3
+ftt_get_stats
+ftt_echo "We should be at BLOC_LOC == 5"
+ftt_extract_stat FTT_BLOC_LOC
+ftt_rewind
+ftt_locate 5
+ftt_echo "We should again be at BLOC_LOC == 5"
+ftt_get_stats
+ftt_extract_stat FTT_BLOC_LOC
+
+ftt_rewind
+
+ftt_close
+quit
+
