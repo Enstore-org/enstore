@@ -19,7 +19,7 @@ def cmd(command):
     return lines
 
 
-def get_failures(log,grepv='GONE|NUL',grep=""):
+def get_failures(log,grepv='GONE|NUL|DSKMV|disk',grep=""):
     thisnode = os.uname()[1]
     if len(thisnode) > 2:
         gang = thisnode[0:3]
