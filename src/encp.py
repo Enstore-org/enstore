@@ -460,8 +460,9 @@ def filesystem_check(target_filesystem, inputfile):
     #Get filesize
     size = get_file_size(inputfile)
 
-    #Since, the file should not exist yet, check the directory.
-    if os.path.isfile(target_filesystem):
+    #os.pathconf likes its targets to exist.  If the target is not a directory,
+    # use the parent directory.
+    if not os.path.isdir(target_filesystem):
         target_filesystem = os.path.split(target_filesystem)[0]
 
     #Not all operating systems support this POSIX limit yet (ie OSF1).
