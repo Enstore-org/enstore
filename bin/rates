@@ -33,6 +33,13 @@ nodes=`conf.sh`
 host=`echo "$nodes" | grep -i $mover | grep mover| cut -f2 -d:`
 port=`echo "$nodes" | grep -i $mover | grep mover| cut -f3 -d:`
 mvr=`echo "$nodes" | grep -i $mover | grep mover| cut -f1 -d:| cut -f1 -d.`
+case $mvr in
+  *DLT*) rate=5.0 ;;
+  *MAM*) rate=2.8 ;;
+  *AIT*) rate=2.7 ;;
+      *) rate=100.;;
+esac
+
 #echo $host
 #echo $port
 
@@ -49,37 +56,47 @@ import traceback
 import udp_client
 import errno
 u = udp_client.UDPClient()
-t=-1
 tfmt="%a %m-%d-%Y-%H:%M:%S"
 while 1==1:
   try:
-    s = u.send( {"work":"status"}, ("'$host'",'$port'), '${opt_udp_timeout:-3}', '${opt_udp_retries:-2}' )
+    s = u.send( {"work":"status"}, ("'$host'",'$port'), '${opt_udp_timeout:-5}', '${opt_udp_retries:-2}' )
     #print "s=",s
     sts = 0
-    state = "unknown"
     if s["state"]=="idle":
-      state = "idle"
-      wr_rate = 0.
-      rd_rate = 0.
-      print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), 0.,      0.,      0,       0,       0,       0., "idle", "'$mvr'","'$host'",'$port')
+      print "%s %s wr=%.2f rr=%.2f w=%.10i r=%.10i l2w=%.10i dt=%.1f %8.8s %i %s %s %i" %\
+             (time.strftime(tfmt,time.localtime(time.time())), "         ", 0.,      0.,      0,       0,       0,       0.,\
+              "idle", s["no_xfers"],"'$mvr'","'$host'",'$port')
     elif s["mode"]=="w" and s["state"]=="busy":
-      state = "writing"
       dt = s["time_stamp"]-s["zlast_status"]["time_stamp"]
       written = s["wr_bytes"]-s["zlast_status"]["wr_bytes"]
       readten = s["rd_bytes"]-s["zlast_status"]["rd_bytes"]
       left2write = s["rd_bytes"]-s["wr_bytes"]
       wr_rate = written/dt/1024./1024.
       rd_rate = readten/dt/1024./1024.
-      print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), wr_rate, rd_rate, written, readten, left2write, dt, state, "'$mvr'","'$host'",'$port')
-    sys.stdout.flush()
-    time.sleep('${opt_update_delay:-60}')
+      blocksize=102400
+      if wr_rate*1.05 < '$rate':
+        if left2write>blocksize:
+          condition = "TAPE SLOW"
+        elif left2write!=0:
+          condition = "USER SLOW"
+        else:
+          condition = "         "
+      else:
+        condition = "         "
+      print "%s %s wr=%.2f rr=%.2f w=%.10i r=%.10i l2w=%.10i dt=%.1f %8.8s %i %s %s %i" %\
+             (time.strftime(tfmt,time.localtime(time.time())), condition, wr_rate, rd_rate, written, readten, left2write, dt,\
+              "writing", s["no_xfers"],"'$mvr'","'$host'",'$port')
   except errno.errorcode[errno.ETIMEDOUT]:
-    print "%s wr_rate=%.3f rd_rate=%.3f wrote=%.10i read=%.10i left2write=%.10i dt=%.1f %9.9s %s %s %i" % (time.strftime(tfmt,time.localtime(time.time())), 0.,      0.,      0,       0,       0,       0., "timeout", "'$mvr'","'$host'",'$port')
-    sys.stdout.flush()
+    print "%s %s wr=%.2f rr=%.2f w=%.10i r=%.10i l2w=%.10i dt=%.1f %8.8s %i %s %s %i" %\
+           (time.strftime(tfmt,time.localtime(time.time())), "         ", 0.,      0.,      0,       0,       0,       0.,\
+            "timeout", 0,"'$mvr'","'$host'",'$port')
   except:
     traceback.print_exc()
     sts=1
     break
+  sys.stdout.flush()
+  time.sleep('${opt_update_delay:-5}')
+
 del u
 sys.exit( sts )
 '
