@@ -63,6 +63,11 @@ def is_on_host(host):
 
 def check_csc(csc):
 
+    info = csc.get("configuration_server", 5, 3)
+    if not info.get('host', None) in this_host() and \
+           not info.get('hostip', None) in this_host():
+        return
+
     rtn = csc.alive(configuration_client.MY_SERVER, 5, 3)
 
     if not e_errors.is_ok(rtn):
@@ -234,6 +239,12 @@ def do_work(intf):
         print "Unable to determine database directory."
         sys.exit(1)
 
+    #The movers need to run as root, check for sudo.
+    if os.system("sudo -V > /dev/null 2> /dev/null"): #if true sudo not found.
+        sudo = ""
+    else:
+        sudo = "sudo"  #found
+
     #Start the event relay.
 
     if intf.should_start("event_relay"):
@@ -282,10 +293,10 @@ def do_work(intf):
             for mover in csc.get_movers(library):
                 mover = mover['mover']
                 check_server(csc, mover,
-                         "python $ENSTORE_DIR/src/mover.py %s &" % mover)
+                    "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, mover))
     elif intf.just[-6:] == ".mover":
         check_server(csc, intf.just,
-                 "python $ENSTORE_DIR/src/media_changer.py %s &" % intf.just)
+                "%s python $ENSTORE_DIR/src/mover.py %s &" % (sudo, intf.just))
 
 if __name__ == '__main__':
 
