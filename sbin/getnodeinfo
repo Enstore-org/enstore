@@ -54,7 +54,7 @@ cat << EOF >>$output
 </tr>
 EOF
 
-for i in `cat /usr/local/etc/farmlets/d0en-all /usr/local/etc/farmlets/ripe /usr/local/etc/farmlets/stken-alla`; do
+for i in `cat /usr/local/etc/farmlets/d0en-alla /usr/local/etc/farmlets/ripe /usr/local/etc/farmlets/stken-alla`; do
   echo "<tr><td align=center><font color=\"$color\">$i</font></td>" >>$output
   enrsh $i Nodeinfo >> $output
   echo "</tr>">>$output
