@@ -1,0 +1,164 @@
+<html> <head>
+
+<title> Items to check </title>
+
+</head>
+
+<body BGCOLOR=#FFFFFF>
+
+<font size=7><b><i>
+<center>Items to Watch to Make Sure Enstore Runs Smoothly</center>
+</i></b></font>
+<br><p>
+
+<br><p>
+<center>$Revision$</center>
+<center>$Date$GMT</center>
+<br><p>
+
+<br><p>
+
+Enstore was written to monitor itself and take appropriate action
+whenever it can.  Sometimes this is not possible.  Keeping an eye on
+the following items allows an administrator to be proactive and ensure
+that the system keeps running efficiently.
+
+<ul>
+
+<li> Keep an eye on the status page http://www-d0en.fnal.gov/enstore/status_enstore_system.html
+
+<p>
+<li> Keep an eye on the transfer page http://d0ensrv2/enstore/encp_enstore_system.html
+
+<p>
+<li> Keep an eye on the alarms page http://www-d0en.fnal.gov/enstore/enstore_alarms.html
+
+<p>
+<li> Keep an eye on the patrol page http://www-d0en.fnal.gov:/patrol/patrol.html
+
+<p>
+<li> Watch the log for errors
+
+<p>
+<li> Check the volumes for NOACCESS...
+
+<p>
+<li> Check the plots to make sure things look "ok"
+
+<p>
+<li> Check the drive status in the AML/2 robot.
+ <ul>
+
+  <li> A <a
+  href="http://www-doen.fnal.gov/enstore/aml2_drive_status.txt">recent
+  snapshot</a> (updated every 10 (?) ) minutes is available.
+
+  <li> You can also query the aml/2 drive status directly by logging
+  onto one of the d0en server nodes, preferably one of the console
+  server nodes, d0ensrv3 or d0ensrv5, and issuing the command
+  "dasadmin listd2".
+
+  <li> DECDLT drives DE01-02, Mammoth-1 drives DC03-DC06 and AIT-1
+  drives DM07-DM12 should have their state "st: UP" and be assigned to
+  "client: rip5".  These drives are used for enstore testing.
+
+  <li> DECDLT drives DE13-14, Mammoth-1 drives DC15-DC17, DC20-29 and
+  AIT-1 drives DM18-DM19 should have their state "st: UP" and be
+  assigned to "client: d0ensrv4".  These drives are used for D0
+  production.
+
+  <li> The "clean_count" indicates how many times a tape has been
+  mounted in the drive.  For you information, the way you tell how
+  many times a tape has been mounted, is by using the command
+  "dasadmin view -t [8MM|DECDLT] tape_label.
+
+  <li> "volser: label" indicates which tape is currently mounted, if
+  any, in the tape drive.
+
+ </ul>
+<p>
+<li> Check the D0 Enstore system node status:
+ <ul>
+
+  <li> A <a
+  href="http://www-doen.fnal.gov/enstore/enstore_node_uptimes.txt">recent
+  snapshot</a> (updated every 10 (?) minutes is available.
+
+  <li> You can also query the aml/2 drive status directly by logging
+  onto one of the d0en server nodes, preferably one of the console
+  server nodes, d0ensrv3 or d0ensrv5, and issuing the command
+  "rgang -n d0en /usr/local/bin/uptime"
+
+  <li> The first item listed is the nodename.  Movers should be listed
+  twice since there are 2 ethernet ports. [Both respond with the "a"
+  mover name.]
+
+  <li> Next is a item "bogo" which lists the bogomips for each
+  processor on the node.  Since all nodes, except the console servers,
+  have dual 450 MHz, you should see 2 bogo values around 450.  If
+  there is just 1, that means only 1 processor is active.  The 2
+  console servers have dual 400 MHz so they should have 2 values both
+  around 400.
+
+  <li> Next is "memf/mtot" which is the ratio of memory free to memory
+  total.  All nodes have 512 MB of memory (which is reduced to 505
+  somehow?)
+
+  <li> Next you'll see the current time.  All the nodes are ntp
+  synced, so they should all have the correct time.  Earilier nodes
+  may show a minute earlier than the later ones since the information
+  is currently gathered serially for all the nodes.
+
+  <li> Next you'll see the uptime.  Generally the nodes should be up
+  for a long time.  Look for nodes that seemed to have booted recently
+  and find out why.
+
+  <li> Next is number of users.  Typically, only the console servers
+  should have users on them. Find out who is using the nodes and why.
+
+  <li> Mext is the load average.  There are 3 numbers showing what the
+  average has been during the last minute, 5 minutes and 15 minutes.
+  High numbers, anything about 3 are probably bad.
+
+   <li> Finally is listed the kernel version and when it was compiled.
+   They should all be alike, except for the console servers.
+ </ul>
+
+<p>
+<li> Check the <a
+href="http://www-d0en.fnal.gov/enstore/cron_pics.html"> cronjob
+status</a>.
+
+ <ul>
+
+  <li> Each graph shows exit status on the y axis and job time on the
+  x axis. The graph goes back 1 week in time.  The date on the right
+  most part of the graph should be tomorrow's date. If it's not, you
+  are looking at old graphs.  The graphs are remade once per hour (via
+  a cronjob, of course.) The graphs will be titled with the node name
+  and the name of thecron job.
+
+  <li> Each time a cron job is started, an "x" is made on the graph at
+  10. Look for a "regular" pattern. Investigate unusual empty places
+  on the graphs.
+
+  <li> When a cronjob finishes, an "x" is made on the graph with its
+  exit status. The only correct status is 0. Investigate all non-zero
+  values.
+ </ul>
+
+<p>
+<li> Check the SDR records. http://d0ensrv2.fnal.gov:/enstore/SDR.html
+
+<p>
+<li> Check the BigA switch info for errors http://airedale.fnal.gov/biga.html
+
+<p> Check the AML/2 log for
+errors. http://www-d0en.fnal.gov:/enstore/aml2log.html and http://www-d0en.fnal.gov:/enstore/aml2rpt.html
+
+
+</ul>
+
+
+</BODY>
+</HTML>
