@@ -177,6 +177,7 @@ ALLOW_BASE="
        LISTEN,inetd,:eklogin,TCP,x
        LISTEN,inetd,:netperf,TCP,x
        LISTEN,python,:,TCP,/home/enstore/enstore/bin|/home/enstore/enstore/src|/home/petravic/Zope|inquisitor|ftpcp.py
+       LISTEN,dccp,:,TCP,x
        LISTEN,netserver,:,TCP,x
        LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh
        UDP,python,:7499,UDP,/home/enstore/enstore/src/monitor_server.py
