@@ -4,6 +4,8 @@
 # Generic server class for enstore
 
 #system imports
+import string
+import sys
 
 # Import SOCKS module if it exists, else standard socket module socket
 # This is a python module that works just like the socket module, but uses
@@ -19,12 +21,9 @@ except ImportError:
 import Trace
 import generic_cs
 import traceback
+import timeofday
 
 class GenericServer(generic_cs.GenericCS):
-
-    # we must call the init of our inherited class
-    def __init__(self):
-	generic_cs.GenericCS.__init__(self)
 
     # this overrides the server_bind in TCPServer for the hsm system
     def server_bind(self):
