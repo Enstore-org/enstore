@@ -370,6 +370,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             record['first_access'] = -1
             record['system_inhibit'] = ["none", "none"]
             record['user_inhibit'] = ["none", "none"]
+            record['sum_rd_access'] = 0
+            record['sum_wr_access'] = 0
             record['sum_wr_err'] = 0
             record['sum_rd_err'] = 0
             record['non_del_files'] = 0
