@@ -166,8 +166,9 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	return -1;
     }
 
-    if (errno == 75) {	/* linux gives this for skipping past eot... */
-	terrno = ENOSPC;
+    if (errno == 75 && opn == FTT_OPN_READ) {	/* linux gives this at eof??? */
+	terrno = 0;
+	res = 0;
     }
     if (errno >= MAX_TRANS_ERRNO) {
         terrno = MAX_TRANS_ERRNO - 1;
