@@ -799,7 +799,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = None #external label of current mounted volume
         self.last_location = 0L
         self.last_volume = None
-        self.mode = None # READ or WRITE
+        self.mode = None # READ, WRITE or ASSERT
+        self.setup_mode = None
         self.compression = None # use default
         self.bytes_to_transfer = 0L
         self.bytes_to_read = 0L
@@ -1780,6 +1781,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=ticket['vc']['address'])
         self.mount_volume(ticket['vc']['external_label'])
+        if self.state == ERROR:
+            Trace.log(e_errors.ERROR, "ASSERT failed %s" % (self.current_work_ticket['status'],))
+            self.current_work_ticket['status'] = (e_errors.MOUNTFAILED, None)
+            callback.write_tcp_obj(self.control_socket, ticket)
+            return
         #At this point the media changer claims the correct volume is loaded;
         have_tape = 0
         for retry_open in range(3):
@@ -1853,22 +1859,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info.update(vc)
         self.file_info.update(fc)
         self.volume_family=vc['volume_family']
-        ### cgw - abstract this to a check_valid_filename method of the driver ?
-        if self.config['driver'] == "NullDriver": 
-            filename = ticket['wrapper'].get("pnfsFilename",'')
-            if "NULL" not in string.split(filename,'/'):
-                ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
-                self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
-                self.state = self.save_state
-                return 0
-            wrapper_type = volume_family.extract_wrapper(self.vol_info['volume_family'])
-            if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
-                ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
-                self.send_client_done(ticket, e_errors.USERERROR,
-                                      'only "null" wrapper is allowed for NULL mover')
-                self.state = self.save_state
-                return 0
-
         delay = 0
         if ticket['work'] == 'read_from_hsm':
             sanity_cookie = ticket['fc']['sanity_cookie']
@@ -2522,9 +2512,34 @@ class Mover(dispatching_worker.DispatchingWorker,
             fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
+                ### cgw - abstract this to a check_valid_filename method of the driver ?
+                null_err = 0
+                if self.config['driver'] == "NullDriver": 
+                    filename = ticket['wrapper'].get("pnfsFilename",'')
+                    if "NULL" not in string.split(filename,'/'):
+                        ticket['status']=(e_errors.USERERROR, "NULL not in PNFS path")
+                        #self.send_client_done(ticket, e_errors.USERERROR, "NULL not in PNFS path")
+                        Trace.log(e_errors.USERERROR, "NULL not in PNFS path")
+                        self.state = self.save_state
+                        null_err = 1
+                    if not null_err:
+                        wrapper_type = volume_family.extract_wrapper(self.tmp_vf)
+                        if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
+                            ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for NULL mover')
+                            #self.send_client_done(ticket, e_errors.USERERROR,
+                            #                      'only "null" wrapper is allowed for NULL mover')
+                            self.state = self.save_state
+                            null_err = 1
+                
                 if self.setup_mode == ASSERT:
                     ticket['status'] = (e_errors.OK, None)
+                Trace.log (e_errors.INFO,"SENDING %s"%(ticket,))
                 callback.write_tcp_obj(control_socket, ticket)
+                if null_err:
+                    self.control_socket, self.client_socket = None, None
+                    self.run_in_thread('finish_transfer_setup_thread', self.finish_transfer_setup)
+                    return
+                    
                 # for ASSERT finish here
                 if self.setup_mode == ASSERT:
                     listen_socket.close()
@@ -2604,6 +2619,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 status = error_info
         elif state in (ERROR, OFFLINE):
             work = "mover_error"  ## XXX If I'm offline should I send mover_error? I don't think so....
+            if self.setup_mode == ASSERT:
+                volume_label = self.tmp_vol
+                volume_family = self.tmp_vf
+                
             if error_info is None:
                 status = self.last_error
             else:
@@ -2865,7 +2884,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         Trace.notify("loading %s %s" % (self.shortname, volume_label))        
-        Trace.log(e_errors.INFO, "mounting %s"%(volume_label,),
+        Trace.log(e_errors.INFO, "mounting %s %d"%(volume_label, self.config['product_id']),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
 
         self.current_location = 0L
@@ -2881,7 +2900,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if status and status[0] == e_errors.OK:
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             self.init_stat(self.device, self.logname)
-            Trace.log(e_errors.INFO, "mounted %s"%(volume_label,),
+            Trace.log(e_errors.INFO, "mounted %s %s"%(volume_label,self.config['product_id']),
                   msg_type=Trace.MSG_MC_LOAD_DONE)
 
             if self.mount_delay:
@@ -3183,7 +3202,8 @@ class DiskMover(Mover):
             self.state = OFFLINE
         self.current_volume = None #external label of current mounted volume
         self.last_volume = None
-        self.mode = None # READ or WRITE
+        self.mode = None # READ, WRITE or ASSERT
+        self.setup_mode = None
         self.bytes_to_transfer = 0L
         self.bytes_to_read = 0L
         self.bytes_to_write = 0L
@@ -3692,16 +3712,6 @@ class DiskMover(Mover):
         self.file_info.update(fc)
         self.vol_info.update(vc)
         self.volume_family=vc['volume_family']
-        ### cgw - abstract this to a check_valid_filename method of the driver ?
-        filename = ticket['wrapper'].get("pnfsFilename",'')
-        wrapper_type = volume_family.extract_wrapper(self.volume_family)
-        if ticket['work'] == 'write_to_hsm' and wrapper_type != "null":
-            ticket['status']=(e_errors.USERERROR, 'only "null" wrapper is allowed for disk mover')
-            self.send_client_done(ticket, e_errors.USERERROR,
-                                  'only "null" wrapper is allowed for disk mover')
-            self.state = self.save_state
-            return 0
-
         delay = 0
         if ticket['work'] == 'read_from_hsm':
             sanity_cookie = ticket['fc']['sanity_cookie']
