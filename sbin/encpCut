@@ -219,13 +219,6 @@ fi
 if [ $setrev -eq 1 ]; then
   INSTALLDIR=${INSTALLDIR}/${REV}
 fi
-if [ -d $INSTALLDIR ]; then
-    check_status 1 "$INSTALLDIR already exists"
-fi
-mkdir -p $INSTALLDIR
-check_status $? "protections bad??  mkdir -p $INSTALLDIR"
-rm -fr $INSTALLDIR
-check_status $? "protections bad??  rm -fr $INSTALLDIR"
 
 ##############################################################################
 # we need to know what steps we are supposed to perform during the cut
@@ -382,6 +375,9 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                  echo "$INSTALLDIR does not exist... making it"
                  mkdir -p $INSTALLDIR
                  check_status $? "mkdir -p $INSTALLDIR"
+              else
+                 rm -fr $INSTALLDIR
+                 check_status $? "protections bad??  rm -fr $INSTALLDIR"
               fi
 
               if [ $product = "encp" ]; then
@@ -432,6 +428,10 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 check_status $? "ln -s ../src/encp.py encp"
                 ln -s ../src/enstore_admin.py enstore
                 check_status $? "ln -s ../src/enstore_admin.py enstore"
+                cd $INSTALLDIR/sbin
+                check_status $? "cd $INSTALLDIR/sbin"
+                ln -s encpCut enstoreCut
+                check_status $? "ln -s encpCut enstoreCut"
                 manifest=$INSTALLDIR/ups/.encpCut.manifest
              fi
 
