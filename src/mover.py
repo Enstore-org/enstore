@@ -1034,9 +1034,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.maybe_clean()
             self.idle()
-
-        # XXX hack - force another update in 2 seconds.  reset_timer should provide a way to do this!
-        self.last_interval = self.last_interval - (self.update_interval-2)
+        self.schedule_update(3)
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -1065,8 +1063,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
 
-        # XXX hack - force another update in 2 seconds.  reset_timer should provide a way to do this!
-        self.last_interval = self.last_interval - (self.update_interval-2)
+        self.schedule_update(3)
+
             
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
