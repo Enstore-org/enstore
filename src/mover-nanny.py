@@ -174,7 +174,7 @@ def reboot(mover):
             p = os.popen('enstore mov --start-draining=1 %s' % (other,),'r')
             print p.read()
             s = p.close()
-            print ssh(host, "rm /tmp/enstore/root/mover_lock%s"%(other.))
+            print ssh(host, "rm /tmp/enstore/root/mover_lock%s"%(other,))
             draining.append(other)
 
     time.sleep(1)

@@ -2820,7 +2820,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def lockfile_name(self):
         d=os.environ.get("ENSTORE_TMP","/tmp")
-        return os.path.join(d, "mover_lock")
+        return os.path.join(d, "mover_lock%s"%(self.name,))
         
     def create_lockfile(self):
         filename=self.lockfile_name()
