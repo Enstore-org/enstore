@@ -490,7 +490,7 @@ class EnDataFile(EnFile):
                 l = self.openfile.readline()
 		if l:
 		    # this is a gross hsck
-		    if not string.find(l, "set_route(131.225."):
+		    if notstring.find(l, "set_route(131.225.") == -1:
 			self.lines.append(l)
 			i = i + 1
                 else:
