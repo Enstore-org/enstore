@@ -737,7 +737,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 
     def get_in_vol_order(self, table):
 	started_extra_page = 0
-	num_done = 20
+	num_done = 0
 	num_extra = 0
 	for elem in self.r_vols:
 	    if num_done > self.max_lm_rows and not self.max_lm_rows == DEFAULT_ALL_ROWS:
@@ -789,7 +789,7 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 
     def get_in_ff_order(self, table):
 	started_extra_page = 0
-	num_done = 20
+	num_done = 0
 	num_extra = 0
 	for elem in self.w_ff:
 	    if num_done > self.max_lm_rows and not self.max_lm_rows == DEFAULT_ALL_ROWS:
