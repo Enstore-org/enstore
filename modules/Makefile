@@ -31,15 +31,15 @@ LIBSO=		`$(PYMAKE) -s echodestshared`
 
 # Put the object files for your module here:
 
-WARN=  `if [ \`uname\` = Linux ];then echo "-Wall"; fi`
+WARN=  `if [ \`uname\` = Linux ];then echo -Wall; fi`
 CFLAGS=-g $(WARN) -I./ -I$(FTT_DIR)/include
 
 MAKEIT=  $(PYMAKE)  INCLDIR=$(INCLUDEPY) CONFIGINCLDIR=$(LIBPL) \
                 ASHAREDMODULE=$$MODULE \
-                ASHAREDMODULESOBS=$$OBS \
-                ASHAREDMODULESEXTRA=$$YOURLIBS \
-                'OPT=$(CFLAGS)' \
-                'srcdir=$(SRCDIR)' \
+                ASHAREDMODULESOBS="$$OBS" \
+                ASHAREDMODULESEXTRA="$$YOURLIBS" \
+                OPT="$(CFLAGS)" \
+                srcdir=$(SRCDIR) \
                 asharedmodule
 
 
