@@ -22,7 +22,6 @@ import db
 import Trace
 import e_errors
 import configuration_client
-import bfid_db
 import volume_family
 import sg_db
 import enstore_constants
@@ -64,31 +63,6 @@ MIN_LEFT=long(0) # for now, this is disabled.
 
 
 MY_NAME = "volume_clerk"
-
-# This is a bfid_db replacement. A prototype for now.
-
-class newBfidDB:
-	def __init__(self, dbHome):
-		self.db = db.Index(None, dbHome, 'file', 'external_label')
-
-	def get_all_bfids(self, external_label):
-		return self.db[external_label]
-
-	def rename_volume(self, old_label, new_label):
-		# do onthing
-		return
-
-	def delete_all_bfids(self, external_label):
-		# do nothing
-		return
-
-	def init_dbfile(self, external_label):
-		# do nothing
-		return
-
-	def add_bfid(self, external_label, bfid):
-		# do nothing
-		return
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
@@ -143,6 +117,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             else: ret = e_errors.NOSPACE
         return ret
 
+    # get_all_bfids(self, vol) -- return a list of bfids in a volume
+    def get_all_bfids(self, vol):
+        return self.bfid_db[vol]
+
     # rename deleted volume
     def rename_volume(self, old_label, new_label, restore="no"):
      try:
@@ -169,7 +147,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
              
          fcc = file_clerk_client.FileClient(self.csc)
          # get volume map name
-         bfid_list = self.bfid_db.get_all_bfids(old_label)
+         bfid_list = self.get_all_bfids(old_label)
          if bfid_list:
              fcc.bfid = bfid_list[0]
              vm_ticket = fcc.get_volmap_name()
@@ -195,8 +173,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
          self.dict[new_label] = cur_rec
          # remove current record from the database
          del self.dict[old_label]
-         # update the bitfile id database too
-         self.bfid_db.rename_volume(old_label,new_label)
          Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old_label,
                                                            new_label))
          return e_errors.OK, None
@@ -240,7 +216,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
              Trace.log(e_errors.ERROR, "failed to rename %s to %s"%(old, new))
              return r['status']
 
-         self.bfid_db.rename_volume(old,new)
          Trace.log(e_errors.INFO, "volume renamed %s->%s"%(old, new))
          return e_errors.OK, None
 
@@ -396,8 +371,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 return status
         else:    # never written
             del self.dict[vol]
-            # take care of bfid_db
-            self.bfid_db.delete_all_bfids(vol)
             status = e_errors.OK, None
             Trace.log(e_errors.INFO, 'Empty volume "%s" has been deleted'%(vol))
 
@@ -573,7 +546,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
          else:
              # remove all bfids for this volume
              fcc = file_clerk_client.FileClient(self.csc)
-             bfid_list = self.bfid_db.get_all_bfids(external_label)
+             bfid_list = self.get_all_bfids(external_label)
              vm_dir = ''
              for bfid in bfid_list:
                  fcc.bfid = bfid
@@ -590,8 +563,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                  os.rmdir(vm_dir)
              # remove current record from the database
              del self.dict[external_label]
-             # update the bfid database too
-             self.bfid_db.delete_all_bfids(external_label)
              new_label = string.replace(external_label, '.deleted','')
              rec = self.dict[new_label]
              rec['system_inhibit'] = ['none', 'none']
@@ -766,8 +737,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # write the ticket out to the database
         self.dict[external_label] = record
         if inc_counter: self.sgdb.inc_sg_counter(library, sg)
-        # initialize the bfid database for this volume
-        self.bfid_db.init_dbfile(external_label)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -847,8 +816,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 
         del self.dict[external_label]
-        #clear the bfid database file too
-        self.bfid_db.delete_all_bfids(external_label)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -919,8 +886,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
                 if vol_count == 0: self.sgdb.delete_sg_counter(library, sg)
             del self.dict[external_label]
-            #clear the bfid database file too
-            self.bfid_db.delete_all_bfids(external_label)
             ticket["status"] = (e_errors.OK, None)
         else:
             record["system_inhibit"][0] = e_errors.DELETED
@@ -959,8 +924,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     cur_rec['non_del_files'] = 0
                     # write the new record out to the database
                     self.dict[new_label] = cur_rec
-                    # initialize the bfid database for this volume
-                    self.bfid_db.init_dbfile(new_label)
             
                     Trace.log(e_errors.INFO,"Volume %s is deleted"%(external_label,))
 
@@ -995,7 +958,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         ticket["status"] = status
         if status[0] == e_errors.OK:
             record = self.dict[external_label]
-            bfid_list = self.bfid_db.get_all_bfids(external_label)
+            bfid_list = self.get_all_bfids(external_label)
             record["system_inhibit"] = ["none","none"]
             if restore_vm == "yes":
                 record["non_del_files"] = len(bfid_list)
@@ -1444,17 +1407,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # update the non-deleted file count if we wrote a new file to the tape
         bfid = ticket.get("bfid") #will be present when a new file is added
         if bfid:
-            # exception may occur in the bfid_db
-            # it is either generated by bfid_db(BfidDbError)
-            # or IOError.
-            # This exception is not crucial for the operation of the
-            # system, but must be recorded. We set the alarm and log the event
-            try:
-                self.bfid_db.add_bfid(external_label, bfid)
-            except (bfid_db.BfidDbError, IOError), detail:
-                Trace.alarm(e_errors.ERROR, str(detail), record)
-                # this exception does not cause any major problem, hence
-                # returned status is still OK 
             record['non_del_files'] = record['non_del_files'] + 1
             
         # record our changes
@@ -1463,26 +1415,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.reply_to_caller(record)
         return
 
-
-    def add_bfid(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-            bfid = ticket['bfid']
-        except KeyError, detail:
-            msg= "Volume Clerk: key %s is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        status = (e_errors.OK, None)
-        try:
-            self.bfid_db.add_bfid(external_label, bfid)
-        except (bfid_db.BfidDbError, IOError), detail:
-            status =  (e_errors.KEYERROR, str(detail))
-        self.reply_to_caller({'status':status})
-        return
-        
     # decrement the file count on the volume
     def decr_file_count(self, ticket):
         try:
@@ -2072,8 +2004,14 @@ class VolumeClerk(VolumeClerkMethods):
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
         self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
-        self.bfid_db=bfid_db.BfidDb(dbHome)
-        # self.bfid_db=newBfidDB(dbHome)
+        try:
+            self.bfid_db = db.Index(None, dbHome, 'file', 'external_label')
+        except:
+            msg = os.path.join(dbHome, 'file.external_label.index')+' does not exists. Volume Clerk quiting ...'
+            Trace.log(e_errors.ERROR, msg)
+            print msg
+            sys.exit(1)
+
         self.sgdb = sg_db.SGDb(dbHome)
 
         self.noaccess_cnt = 0
@@ -2113,6 +2051,7 @@ if __name__ == "__main__":
             vc.serve_forever()
         except SystemExit, exit_code:
             vc.dict.close()
+            vc.bfid_db.close()
             sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)
