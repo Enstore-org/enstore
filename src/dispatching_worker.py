@@ -15,7 +15,8 @@ import sys
 # See http://www.w3.org/People/Connolly/support/socksForPython.html or
 # goto www.python.org and search for "import SOCKS"
 try:
-    import SOCKS; socket = SOCKS
+    import SOCKS
+    socket = SOCKS
 except ImportError:
     import socket
 
@@ -44,6 +45,7 @@ def purge_stale_entries(request_dict):
 
 import pdb
 def dodebug(a,b):
+    Trace.trace(20,'dodebug called'+repr(a)+' '+repr(b))
     pdb.set_trace()
 
 import signal
@@ -59,13 +61,13 @@ def collect_children():
             #generic_cs.enprint("Child reaped: pid= "+repr(pid)+" status= "+\
 	    #                    repr(status))
             count = count+1
-            Trace.trace(21,"collect_children reaped pid="+repr(pid))
+            Trace.trace(21,"collect_children reaped pid="+repr(pid)+' '+repr(status))
     except os.error:
         if sys.exc_info()[1][0] != errno.ECHILD:
             Trace.trace(0,"collect_children "+str(sys.exc_info()[0])+\
                         str(sys.exc_info()[1]))
             raise sys.exc_info()[0],sys.exc_info()[1]
-    Trace.trace(20,"}collect_children count=%d",count)
+    Trace.trace(20,"}collect_children count=%d",count+' '+repr(status))
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -151,6 +153,7 @@ class DispatchingWorker:
 
         f = self.server_fds + [self.socket.fileno()]
         r, w, x = select.select(f,[],f, self.rcv_timeout)
+        Trace.trace(20,'get_request select r,w,x='+repr(r)+' '+repr(w)+' '+repr(x))
         
         if r:
             # if input is ready from server process pipe, handle it first
@@ -209,8 +212,8 @@ class DispatchingWorker:
 
     def handle_timeout(self):
 	# override this method for specific timeout hadling
-	#self.enprint("timeout handler")
-	pass
+        if 0:
+            self.enprint("timeout handler")
 
     def fileno(self):
         """Return socket file number.
@@ -310,8 +313,9 @@ class DispatchingWorker:
 
     # cleanup if we are done with this unique id
     def done_cleanup(self,ticket):
+        Trace.trace(20,'{done_cleanup '+repr(ticket))
         try:
-            Trace.trace(20,"{done_cleanup id="+repr(self.current_id))
+            Trace.trace(20,"done_cleanup id="+repr(self.current_id))
             del request_dict[self.current_id]
         except KeyError:
             pass
@@ -388,5 +392,5 @@ class DispatchingWorker:
         Trace.trace(19,"}reply_with_address "+ \
                    repr(self.reply_address)+" "+ \
                    repr(self.current_id)+" " + \
-                   repr(self.client_number))
+                   repr(self.client_number)+" "+repr(reply))
         self.reply_to_caller(ticket)
