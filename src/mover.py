@@ -302,7 +302,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.config['do_eject'][0] in ('n','N'):
                 self.do_eject = 0
 
-
         
         self.mc_device = self.config.get('mc_device', 'UNDEFINED')
         self.media_type = self.config.get('media_type', '8MM') #XXX
@@ -355,6 +354,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.default_dismount_delay = 31536000 #1 year
         self.max_dismount_delay = self.config.get('max_dismount_delay', 600)
 
+
+        
         self.libraries = []
         lib_list = self.config['library']
         if type(lib_list) != type([]):
@@ -363,8 +364,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             lib_config = self.csc.get(lib)
             self.libraries.append((lib, (lib_config['hostip'], lib_config['port'])))
 
+        self.single_filemark=self.config.get('single_filemark', 0)
+        ##Setting this attempts to optimize filemark writing by writing only
+        ## a single filemark after each file, instead of using ftt's policy of always
+        ## writing two and backspacing over one.  However this results in only
+        ## a single filemark at the end of the volume;  causing some drives
+        ## (e.g. Mammoth-1) to have trouble spacing to end-of-media.
+            
         if self.driver_type == 'NullDriver':
             self.device = None
+            self.single_filemark = 1 #need this to cause EOD cookies to update.
+            ##XXX should this be more encapsulated in the driver class?
             import null_driver
             self.tape_driver = null_driver.NullDriver()
         elif self.driver_type == 'FTTDriver':
@@ -575,7 +585,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     (state_name(self.state), self.bytes_written, self.bytes_to_write))
 
         if self.bytes_written == self.bytes_to_write:
-            self.tape_driver.writefm()
+            if self.single_filemark:
+                self.tape_driver.writefm()
+            else:
+                self.tape_driver.writefm()
+                self.tape_driver.writefm()
+                self.tape_driver.skipfm(-1)
+            ##We don't ever want to let ftt handle the filemarks for us, because its
+            ##default behavior is to write 2 filemarks and backspace over both
+            ##of them.
             self.tape_driver.flush()
             if self.update_after_writing():
                 self.transfer_completed()
@@ -802,7 +820,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.error("cannot open tape device for positioning")
             return
         
-        self.state = SEEK
+        self.state = SEEK  ##XXX start a timer here
 
         eod = self.vol_info['eod_cookie']
         if eod=='none':
