@@ -22,15 +22,17 @@ cat $f | while read tape; do
   files=/tmp/scan.$tape
   command=/tmp/command.$tape
   rm -f $files $command 2>/dev/null
-  
-  echo
-  echo
-  sys_inh=`enstore vol --vol $tape | grep system_inhibit|cut -f2 -d:`
 
+  V=`enstore vol --vol $tape`
+  lib=`echo "$V" | grep library|cut -f2 -d:`
+  vf=`echo "$V" | grep volume_family|cut -f2 -d:`
+  sys_inh=`echo "$V" | grep system_inhibit|cut -f2 -d:`
+  n=unknown
   notallowed=`echo $sys_inh|grep -c NOTALLOWED`
   migrated=`echo $sys_inh|grep -c migrated`
+
   if [ $notallowed -ne 1 -a $migrated -ne 1 ]; then 
-      echo `date` Starting tape $tape $sys_inh
+      echo `date` Starting tape $tape $sys_inh $lib $vf $n files
       echo `date` ERROR $tape wrong initial state +++++++++MIGRATION ERROR +++++++++++
       echo
       echo `date` check /tmp/finalscanXXX  on `uname -n` for errors | /usr/bin/Mail -s "$tape +++++++++MIGRATION ERROR +++++++++++" enstore-admin@fnal.gov 
@@ -40,7 +42,9 @@ cat $f | while read tape; do
   enstore fil --ls-active $tape | sed -e  's$/pnfs/fs/usr/$/pnfs/$g' > $files 2>&1
   #cat $files
   n=`wc $files|awk '{print $1}'`
-  echo `date` Starting tape $tape $sys_inh, $n files
+  echo
+  echo
+  echo `date` Starting tape $tape $sys_inh $lib $vf $n files
   
   echo "encp --delayed=3 --priority=300000 "          >> $command
   cat $files | while read f; do
