@@ -7,9 +7,8 @@ if [ "${ENSTORE_DIR}" = "" ];
 then
  . /usr/local/etc/setups.sh
  setup enstore
-else
- . /usr/local/etc/setups.sh
- setup python
 fi
 
+# do this so do not pick up python from /usr/bin
+setup python
 enstore alarm --raise --root_error="${1}"
