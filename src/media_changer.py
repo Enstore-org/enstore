@@ -818,6 +818,7 @@ class stk_MediaLoader(MediaLoaderMethods):
 	       string.find(l,'Remove cartridges from CAP') != -1 or \
 	       string.find(l,'Library error, LSM offline') != -1 or \
 	       string.find(l,'Library error, Transport failure') != -1 or \
+	       string.find(l,'LMU Recovery Complete') != -1 or \
 	       string.find(l,': Offline.') != -1 or \
 	       string.find(l,': Online.') != -1 or \
 	       string.find(l,'Clean drive') != -1 or \
