@@ -51,6 +51,8 @@ class NetDriver(driver.Driver):
         r = 0
         if self.sock is not None:
             r = self.sock.close()
+            if r:
+                Trace.log(e_errors.ERROR, "NetDriver:error closing socket %s"%(r,))
         self.sock = None
         return r
 
