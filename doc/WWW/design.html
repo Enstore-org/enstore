@@ -38,7 +38,7 @@
 <li><a href="#encp_queue">1.2.4 <em>Encp</em> Transfer Lists</a>
 <li><a href="#encp_errors">1.2.5 <em>Encp</em> Return Status</a>
 <li><a href="#encp_client">1.2.6 <em>Encp</em> Client Installation</a>
-<li><a href="#servers">1.3 Enstore Servers</a>
+<li><a href="#servers">1.3.0 Enstore Servers</a>
 <li><a href="#servers_cmds">1.3.0.1 General Command Line Control of Servers</a>
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#volume_clerk_cmds">1.3.1.1 Command Line Control of the Volume Clerk</a>
@@ -310,13 +310,22 @@ Enstore has four major kinds of software components:
         <li>File Clerk
         <li>Multiple, distributed Library Managers
         <li>Multiple, distributed Movers
-        <li>Media Changer
+        <li>Media Changer (1 per Library Manager)
         <li>Log Server
         <li>Inquisitor
         <li>Alarm Server
         </ul>
 <li><em>administration tools</em>
 </ul>
+The planned implementation is to have one Media changer serving a physical
+library.  The Media Changer would accept commands, fork and send the request to
+the physical library.  Single Media Changers allow a central place to:
+<ul>
+<li>balance the requests between each robot arm
+<li>limit the number of requests (EMASS has a queue limit)
+<li>pause arm activity to allow import/eject functions to occur
+</ul>
+<p>
 These software components, as well as hardware components,
 are shown schematically in the following system context diagram.
 Hardware components are connected via IP.
@@ -352,6 +361,8 @@ information about <em>pnfs</em> can be found on the DESY
 and
 <a href=http://watphrakeo.desy.de/pnfs/>http://watphrakeo.desy.de/pnfs/</a>
 web pages. The <em>pnfs</em> servers can not be installed without the permission of DESY.
+However, DESY has provided permission to Fermilab to use <em>pnfs</em> for 
+Enstore work and support of the product has been superb.
 <p>
 The DESY <em>pnfs</em> package  implements an <em>nfs-v2</em> daemon and mount daemon.
 These daemons do not actually serve a file system, but, instead make a
@@ -419,7 +430,8 @@ Enstore uses <em>pnfs</em> for three different kinds of access and information:
 on a 200 MHz Pentium Pro Linux machine with SCSI disks.  The <em>pnfs</em> code had
 not been run extensively on Linux machines before and there were a few minor
 glitches found during initial running. Support from DESY was outstanding
-and all problems were solved quickly.
+and all problems were solved quickly.  The Fermilab installation was the first on
+Linux platforms.  DESY supports <em>pnfs</em> on all major platforms.
 
 As a test of <em>pnfs'</em> capabilities, the February 1998 set of 250K HPSS filenames
 were put into <em>pnfs</em>. Approximately 20 <em>pnfs</em> databases were used for this
@@ -462,7 +474,9 @@ The UPD version can be decoded as follows: "v3_1_3a" is the DESY version of
 <em>pnfs</em>, and the "-f4" signifies the 4th Fermi "release". None of the
 DESY code is modified - Fermilab only adds its UPS packaging framework and
 some local installation instructions. All fixes, changes, or updates to
-<em>pnfs</em>, will always come from DESY.
+<em>pnfs</em>, will always come from DESY.  DESY has allowed Fermilab full access
+to the <em>pnfs</em> source code, and as such, we could, in principle, solve
+problems if DESY were unable to continue their support.
 
 It is expected that there will be only a few <em>pnfs</em> servers at
 Fermilab. To date, <em>pnfs</em> servers have been installed on 3 Linux
@@ -526,7 +540,9 @@ simple.
 easily mount the namespaces after reboots.
 <p>
 Finally, it should be noted that a Run II <em>pnfs</em> server will need 
-a SCSI RAID level 5 disk system for its databases.
+a SCSI RAID level 5 disk system for its databases.  RAID level 5 is needed for
+redundancy and reliability.  This is the system that DESY uses for their 
+<em>pnfs</em> system.
 <p>
 *** Live Backups of database and recovery procedures *** - to be discussed during March trip to
 DESY. This has not been a priority yet.
@@ -575,7 +591,9 @@ package that allow users to view and control the special features of
 called pcmd, that allows users to control, manipulate and query <em>pnfs</em> files
 that Enstore creates. The pcmd tool is distributed along with the <em>encp</em>
 client. It is almost entirely written in shell, and therefore, it is
-stand alone and doesn't require any other products, including python.
+stand alone and doesn't require any other products, including python.  Pcmd is
+based on DESY scripts and tailored for Enstore, as such it is not a general
+<em>pnfs</em> tool.
 <p>
 Commonly used commands are:
 <P>
@@ -679,7 +697,7 @@ $ pcmd bfid testfile
 </TR>
 
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>lists the last parked location of the file <br>parked feature is not implemented</TD>
+<TD NOSAVE>*** lists the last parked location of the file <br>parked feature is not implemented</TD>
 <TD NOSAVE>pcmd parked file</TD>
 <TD NOSAVE>&nbsp;<pre>
 </pre></TD>
@@ -985,8 +1003,8 @@ not want want all the "baggage" products (python, ftt libraries, libtp...)
 that is required to run a complete Enstore system.  To this end, we
 distribute a separate product, called <em>encp</em> along with
 Enstore. This product basically consists of 1 stand-alone binary executable,
-<em>encp</em> and one UPS table file. This executable, and the mounting of
-<em>pnfs</em> is the only thing that clients need to access their data on
+<em>encp</em>, and one UPS table file. This executable, and the mounting of
+<em>pnfs</em>, is the only thing that clients need to access their data on
 the robot.
 
 <em>Encp</em> is very similar to the <em>cp</em> command in UNIX, and we
@@ -1115,17 +1133,17 @@ since at most 15 will be active in the system at any time.
 multiple input files from the HSM: <br><br> <em>encp</em> [options]
 source... directory<br><br> That is, the final item has to be a directory when
 specifying an input list.  There is one caveat when specifying multiple files
-using a single <em>encp</em> command: there is at most one mover processing your
-request list at a time. If you want more than one mover active, you should use
+using a single <em>encp</em> command: there is at most one Mover processing your
+request list at a time. If you want more than one Mover active, you should use
 multiple <em>encp</em> commands when you are reading lists of files from more than
-one volume.  The reason <em>encp</em> uses just one mover is to keep the system
-simple (if you want to use multiple movers, then use many <em>encp</em>
+one volume.  The reason <em>encp</em> uses just one Mover is to keep the system
+simple (if you want to use multiple Movers, then use many <em>encp</em>
 commands).
 <p>
 
 On reads from the HSM, <em>encp</em> scans all specified files and groups them according
 to which volume they are on, orders them according to location on a tape, and then submits all the file requests that are
-on one specific volume, reads all the files for that volume from the hsm,
+on one specific volume, reads all the files for that volume from the HSM,
 and then proceeds to the next volume.  <em>Encp</em> processes the volumes in any
 order it chooses.
 <p>
@@ -1134,7 +1152,7 @@ On writes to the HSM, <em>encp</em> processes each input file sequentially. Sinc
 the user must specify a single output directory, all input files must belong to
 the same file family, and hence could all go to the same tape (if
 possible). <em>Encp</em> sets a flag,"don't dismount the volume too quickly -
-there's more files coming for the same family", that the mover uses to
+there's more files coming for the same family", that the Mover uses to
 postpone the dismount and thereby avoid the extra times involved in the
 volume manipulations.  Please note that there is no guarantee that all the
 files will go to one tape (there might not be room) or that they will be
@@ -1215,7 +1233,7 @@ rip4.fnal.gov bakken /raid/1MB.trand /pnfs/grau/ait/jon2/1MB.trand M
 The 1st field in the output is the node name, the 2nd is the requester, the
 3rd is the input filename, and the 4th is the output filename.  The 5th and
 last field can have 2 values: "P" denotes a <u>P</u>ending transfer still
-in the library manager queues and "M"
+in the Library Manager queues and "M"
 signifies a active transfer at a <u>M</u>over.
 
 <h3><a name="encp_errors">
@@ -1422,7 +1440,8 @@ parse the Python code and all its modules to produce a binary that people who
 don't have Python can run.  <p>
 
 Typically 2 <em>encp</em> products are available in UPD, one for general
-use and one explicitly tailored for D0/SAM.
+use and one explicitly tailored for D0/SAM.  This tailorint is simply for SAM's
+convenience.  There will only be one version in the future.
 <pre>
 $ upd list -a encp
 
@@ -1533,7 +1552,8 @@ A file family is associated with every file creation.
 Within a given library, Enstore keeps no more
 than <em>"width"</em> volumes open for writing, and loads volumes on
 no more than <em>"width"</em>
-number of drives at any given moment.
+number of drives at any given moment.  There currently is no width for reading,
+this could be added if deemed important.
 This is not striping, but rather, the number of different volumes,
 and hence different files, which can be active at one time.
 Once a volume is associated with a file family, only files in that
@@ -1694,7 +1714,7 @@ and inelegant information.  This will be fixed in the future.
 <td NOSAVE>ecmd restart</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>stop and then restart only the inquisitor on the current node</td>
+<td NOSAVE>stop and then restart only the Inquisitor on the current node</td>
 <td NOSAVE>ecmd restart --just inq</td>
 </tr>
 <tr NOSAVE>
@@ -1830,7 +1850,7 @@ The Volume Clerk does the following operations:
 </ul>
 
 <h4><a name="volume_clerk_cmds">
-1.3.8.1 Command Line Control of the Volume Clerk
+1.3.1.1 Command Line Control of the Volume Clerk
 </h4>
 The user may interact with the Volume Clerk directly through the <em>ecmd vcc</em>
 command.<p>
@@ -1921,7 +1941,7 @@ The File Clerk supports the following requests:
 </ul>
 
 <h4><a name="file_clerk_cmds">
-1.3.8.1 Command Line Control of the File Clerk
+1.3.2.1 Command Line Control of the File Clerk
 </h4>
 Users may interact with File Clerk directly through <em>ecmd fcc</em>
 command.
@@ -2013,7 +2033,7 @@ When the Mover starts, it sends the command("idle_mover") to all Library Manager
 associated with it to declare itself active and available. If the Library Manager
 does not have this Mover in its Mover List, it will be added to the list upon
 receipt of this command. This Mover - Library Manager initial communication
-allowsthe dynamic configuration of Movers.
+allows the dynamic configuration of Movers.
 
 <h3><a name="user_request">
 1.3.3.1 Users' Requests
@@ -2046,7 +2066,7 @@ associated with the destination directory, identifies
      Then <em>encp</em> sends the read request to this Library Manager.
 <dt>Inquiries
 <dd>Currently there is only one kind of Inquiry request allowing a user to observe
-     requests queued in the Library Manager queues. This command asks the Library Manager to provide information about all current requests from user node sphinx.fnal.gov. The output format is: <br>
+     requests queued in the Library Manager queues. This command asks the Library Manager to provide information about all current requests from a particular user node. The output format is: <br>
 [user node] [user name] [input file] [output file] [request status]
      request status can be either P (pending) or M (at Mover)<br>
      The example of the output is given in 1.2.4
@@ -2055,7 +2075,7 @@ associated with the destination directory, identifies
 Work can be prioritized.
 Smaller priority number means higher priority.
 Currently, write and read are both priority 1 for our test purposes.
-Any priority mechanism should be able to be developed.
+Any priority mechanism chould be developed to replace the existing one.
 However, the system will exhaust all work for a volume,
 given that it has been mounted, regardless of priority.
 <p>
@@ -2082,8 +2102,8 @@ When the Library Manager "summons" a Mover it changes the Mover state into the
 Mover List to "summoned" and puts it into the Summoned Movers List. Every time
 the Library Manager sends a message there is a time out handler that is being
 invoked if a response does not arrive before the time out expires. The time out
-handler will retry to "summon" the mover whose time out has expired and,
-eventually remove the Mover for which "summon" retries expire, from the Mover
+handler will retry to "summon" the Mover whose time out has expired and,
+eventually remove the Mover for which "summon" retries expire from the Mover
 List.
 
 <h3><a name="mover_request">
@@ -2462,38 +2482,38 @@ data. This feature had been discussed but not implemented as a specific
 method of implementation has not been decided upon. The following are
 among the possible implementations:
 <ul>
-  <li> Assign two tape drives to one mover.  If the mover has a list of two
-       volumes in the write_to_hsm response, the mover binds both volumes
-       and writes to both drives.  This mover could be give a single volume
+  <li> Assign two tape drives to one Mover.  If the Mover has a list of two
+       volumes in the write_to_hsm response, the Mover binds both volumes
+       and writes to both drives.  This Mover could be give a single volume
        for "normal" data writing.
-  <li> Have the library manager summon two movers and tell one it is a
+  <li> Have the Library Manager summon two Movers and tell one it is a
        master and the other it is a slave. The master receives data from
        the user and in addition to writing to it's tape drive, it also sends
-       the data on to the slave mover. The slave mover receives data from
-       the master mover.
+       the data on to the slave Mover. The slave Mover receives data from
+       the master Mover.
 </ul>
 
 <p>
 <!-- ----------------------------------------------------->
 When the Mover starts up, the 'idle_mover' request/command is sent to each
 Library Manager configured and the responses from the Library Managers are
-acted upon.  After the startup, the mover waits until it is 'summoned' by a
+acted upon.  After the startup, the Mover waits until it is 'summoned' by a
 Library Manager.
 
 <p>
 When a Mover is summoned by a Library Manager, it will send one of three
-request/commands to the Library Manager that summoned the mover:
+request/commands to the Library Manager that summoned the Mover:
 <ol>
   <li> idle_mover
   <li> have_bound_volume, idle
   <li> have_bound_volume, busy
 </ol>
 
-When the mover is busy, the Library Manager should respond with 'no_work.'
+When the Mover is busy, the Library Manager should respond with 'no_work.'
 Otherwise, the Library Manager can respond with 'no_work,'
 'read_from_hsm,' or 'write_to_hsm.'
 
-When the mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
+When the Mover receives 'read_from_hsm' or 'write_to_hsm' it forks a
 subprocess which handles the transfer utilizing a shared memory buffer for
 both data transfer and communication with parent process. The
 main Mover process can read shared memory locations to get the status of
@@ -2608,31 +2628,31 @@ $ ecmd mov --status fndaprdisk.mover<br>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>host</TD>
-<TD NOSAVE>node where mover runs</TD>
+<TD NOSAVE>node where Mover runs</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>hppc</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>port</TD>
-<TD NOSAVE>UDP port for mover communication</TD>
+<TD NOSAVE>UDP port for Mover communication</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>7516</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>logname</TD>
-<TD NOSAVE>ascii value used for id in messages to log server</TD>
+<TD NOSAVE>ascii value used for id in messages to Log Server</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>FMOV</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>library</TD>
-<TD NOSAVE>list of libraries that the mover will contact when it starts up.</TD>
+<TD NOSAVE>list of libraries that the Mover will contact when it starts up.</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>['fndaprdisk.library_manager']</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>media_changer</TD>
-<TD NOSAVE>the name of the media changer server that will be communicated
+<TD NOSAVE>the name of the Media Changer server that will be communicated
 with in order to load and unload tape cartridges.</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>'fndaprdisk.media_changer</TD>
@@ -2640,7 +2660,7 @@ with in order to load and unload tape cartridges.</TD>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>mc_device</TD>
 <TD NOSAVE>a device name or number to include with communications with the
-media changer.</TD>
+Media Changer.</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>1</TD>
 </TR>
@@ -2652,7 +2672,7 @@ media changer.</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>driver</TD>
-<TD NOSAVE>the hsm driver</TD>
+<TD NOSAVE>the HSM driver</TD>
 <TD NOSAVE>&nbsp;</TD>
 <TD NOSAVE>'FTTDriver'</TD>
 </TR>
@@ -2835,47 +2855,47 @@ the Mover. One Media Changer can serve multiple drives and libraries. When the d
 Media Changer is the interface to the robotic software. 
 <p>
 The Media Changer issues multiple simultaneous commands by forking processes
-that do the work.  A media changer parameter, MAXWORK, limits the maximum number of
-simultaneous outstanding operations.   If the media changer receives
+that do the work.  A Media Changer parameter, MAXWORK, limits the maximum number of
+simultaneous outstanding operations.   If the Media Changer receives
 mount/dismount requests while there are  MAXWORK unfinished operations then
-the new operations are ignored, the mover request will time out, and the
-mover will reissue the mount/dismount request.
+the new operations are ignored, the Mover request will time out, and the
+Mover will reissue the mount/dismount request.
 <p>
 The reason for the MAXWORK parameter is because when the EMASS robot has an operation for ten minutes
 it reports a timeout failure even though it eventually finishes the operation.  The MAXWORK parameter
 can be set to 0 when it is necessary to perform work on a robot.
 <p>
-The media changer returns three status values:
+The Media Changer returns three status values:
 <ul>
 <li>The status returned by the underlying agent
 <li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GENERAL_ERR
 <li>A text description returned by the underlying agent
 </ul>
 <p>
-The media changer supports the following requests:
+The Media Changer supports the following requests:
 <ul>
 <li>LOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
 <li>UNLOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
 <li>MAXWORK &lt max simultaneous operation&gt 
 </ul>
 <p>
-The media changer mounting agents:
+The Media Changer mounting agents:
 <ul>
 <li>EMASS/Grau robot
 <li>STK robot
-<li>null media changer used by the disk movers and stand alone tape drives
+<li>null Media Changer used by the disk Movers and stand alone tape drives
 <li>OCS operator assisted mounts - to be implemented
 </ul>
 <h3>
 Tape Cleaning
 </h3>
-The media changer is not involved with tape cleaning.  The EMASS AMU and the
+The Media Changer is not involved with tape cleaning.  The EMASS AMU and the
 STK ACSLS tape library systems keep tape drive usage statistics and automatically
 mount cleaning tapes.
 <h3>
 Tape statistics
 </h3>
-The media changer does not keep tape drive or cartridge statistics.  Summary statistics
+The Media Changer does not keep tape drive or cartridge statistics.  Summary statistics
 are not very useful and the media does not run on the machine connected to the tape drive.
 <p>
 Enstore writes detail error statistics to its log when a file is closed.
@@ -2906,7 +2926,7 @@ from the logserver every 135 seconds.  However the plots are not updated
 automatically and may be updated by a user initiated command or by a cron job
 for example.  The information for plotting is obtained from the log files.
 <p>
-The inquisitor will listen for command
+The Inquisitor will listen for command
 line requests sent to it and will periodically check to see if it is time to
 update information for any of the servers that it is monitoring.  If so, then the
 server in question is contacted and the resulting information is formated for
@@ -2934,47 +2954,47 @@ set in the Enstore config file.
 <TD NOSAVE>continuous Ascii status file and<br><em>encp</em> html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>admin_clerk</TD>
+<TD NOSAVE>Admin Clerk</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>config_server</TD>
+<TD NOSAVE>Configuration Server</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>file_clerk</TD>
+<TD NOSAVE>File Clerk</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>inquisitor</TD>
+<TD NOSAVE>Inquisitor</TD>
 <TD NOSAVE>alive status<br>refetch config file from config server</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>library manager(s)</TD>
+<TD NOSAVE>Library Manager(s)</TD>
 <TD NOSAVE>alive status<br>suspect volume list<br>mover list<br>work queues</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>logserver</TD>
+<TD NOSAVE>Log Server</TD>
 <TD NOSAVE>alive_status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>media changer(s)</TD>
+<TD NOSAVE>Media Changer(s)</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>mover(s)</TD>
-<TD NOSAVE>alive status<br>mover activity status</TD>
+<TD NOSAVE>Mover(s)</TD>
+<TD NOSAVE>alive status<br>Mover activity status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>volume_clerk</TD>
+<TD NOSAVE>Volume Clerk</TD>
 <TD NOSAVE>alive status</TD>
 <TD NOSAVE>continuous Ascii status file and<br>html snapshot file</TD>
 </TR>
@@ -3017,7 +3037,7 @@ mentioned in the table below may be replaced by any legal server name.
 <TD NOSAVE>refresh time</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>get the frequency for monitoring the volume clerk</TD>
+<TD NOSAVE>get the frequency for monitoring the Volume Clerk</TD>
 <TD NOSAVE>ecmd inq --get_timeout volume_clerk</TD>
 <TD NOSAVE>volume_clerk timeout value</TD>
 </TR>
@@ -3092,7 +3112,7 @@ mentioned in the table below may be replaced by any legal server name.
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
-<TD NOSAVE>monitor the log server now</TD>
+<TD NOSAVE>monitor the Log Server now</TD>
 <TD NOSAVE>ecmd inq --update logserver</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
@@ -3139,7 +3159,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>host</TD>
-<TD NOSAVE>node where inquisitor runs</TD>
+<TD NOSAVE>node where Inquisitor runs</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3149,7 +3169,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>logname</TD>
-<TD NOSAVE>ascii value used for id in messages to log server</TD>
+<TD NOSAVE>ascii value used for id in messages to Log Server</TD>
 <TD NOSAVE>INQS</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3164,7 +3184,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>port</TD>
-<TD NOSAVE>udp port for inquisitor communication</TD>
+<TD NOSAVE>udp port for Inquisitor communication</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3174,7 +3194,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>timeout</TD>
-<TD NOSAVE>frequency that inquisitor looks for work</TD>
+<TD NOSAVE>frequency that Inquisitor looks for work</TD>
 <TD NOSAVE>5</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
@@ -3184,7 +3204,7 @@ config file.  All frequencies are specified in seconds.<BR>
 </TR>
 </TABLE></center>
 <P>
-In addition to the information listed above, the inquisitor will look for the
+In addition to the information listed above, the Inquisitor will look for the
 <em>inq_timeout</em> dictionary element in each of the individual server sections.
 If present, the value of this dictionary element will be used to specify the 
 timeout frequency for monitoring this server.  This is the same as if the 
@@ -3194,8 +3214,8 @@ in order to monitor the file_clerk every 65 seconds, the Enstore config file
 must have one of the following in it:<BR>
 
 <UL>
-<LI>in the inquisitor section - a dictionary element, within the <em>timeouts</em>
-dictionary element, for the file clerk set to 65
+<LI>in the Inquisitor section - a dictionary element, within the <em>timeouts</em>
+dictionary element, for the File Clerk set to 65
 <LI>in the file_clerk section - the dictionary element <em>inq_timeout</em> set to
 65
 </UL>
@@ -3232,16 +3252,16 @@ monitored by the Inquisitor.  It contains the following information:<br>
 <ul>
 <li>block size information as recorded in the Enstore config file
 <li>alive status for each server including node, port, and time
-<li>library manager specific information
+<li>Library Manager specific information
 <ul>
 <li>suspect volumes
-<li>list of known movers, their ports, state, last time they were summoned and
+<li>list of known Movers, their ports, state, last time they were summoned and
 number of attempts to summon them
 <li>work queue including:
 <ul>
-<li>assigned mover
-<li>node, node type, and port where mover is located
-<li>work that mover is doing
+<li>assigned Mover
+<li>node, node type, and port where Mover is located
+<li>work that Mover is doing
 <li>device label
 <li>file family and file family width
 <li>priorities of the work
@@ -3256,10 +3276,10 @@ number of attempts to summon them
 <li>associated times
 </ul>
 </ul>
-<li>mover specific information
+<li>Mover specific information
 <ul>
 <li>number of completed transfers
-<li>current state of the mover
+<li>current state of the Mover
 <li>number of bytes read and written on the last transfer (if idle)
 <li>number of bytes read and written so far on the current transfer (if working)
 </ul>
@@ -3354,12 +3374,10 @@ ait.library_manager : alive on (rip5, 7507) at 1999-Jan-7 00:00:27
           JOB SUBMITTED: 1999-Jan-6 23:51:29
           FILE MODIFIED: 1999-Jan-6 23:51:30
 
-backup : NOT SUPPORTED IN INQUISITOR
 blocksizes      : diskfile : 512,  redwood : 131072,  DECDLT : 131072,
                   floppy : 512,  cartridge : 512,  exabyte : 131072,
                   cassette : 512,  8MM : 131072
 config server   : alive on (rip6.fnal.gov, 7500) at 1999-Jan-7 00:00:27
-database : NOT SUPPORTED IN INQUISITOR
 dc11.media_changer : alive on (rip1, 7521) at 1999-Jan-7 00:00:27
 dc12.media_changer : alive on (rip1, 7522) at 1999-Jan-7 00:00:27
 de13.media_changer : alive on (rip10, 7517) at 1999-Jan-7 00:00:27
@@ -3577,6 +3595,9 @@ developed at SLAC and enhanced and modified at DESY.  It is currently in use at
 these institutions and at Fermilab.  We have begun investigating its use in
 association with the Enstore system. ***
 <p>
+*** Monitoring and recording of a variety of information is being 
+investigated. This will allow system statistics to be kept. ***
+<p>
 <center><img src="patrol-status.gif"></center>
 <p>
 
@@ -3588,17 +3609,17 @@ association with the Enstore system. ***
 <p>
 Communications between clients and servers is implemented in the python modules udp_client.py
 and dispatching_worker.py which contain the classes UDPclient and DispatchingWorker respectively.
-For example, a mover is a client of the edia_changer; i.e., it sends mount and dismount requests
+For example, a Mover is a client of the edia_changer; i.e., it sends mount and dismount requests
 to the media_changer and waits for replies.  The client and the server may run on the same or
 different machines and messages, that is requests and replies, are passed using the UDP network protocol.
 UDP is not a guaranteed reliable protocol but the Enstore protocols, described later, implement reliability.
 
 <p>
 Generally, each server module has a corresponding client module that implements the client interface
-to the server.   For the media_changer, the mover imports media_change_client.py, which 
+to the server.   For the media_changer, the Mover imports media_change_client.py, which 
 implements load and unload methods.
 So,  mover.py imports media_changer_client which encapsulates the media_changer interface and media_changer_client
-imports udp_client which encapsulates the UDP communications.   On the server side, media changer
+imports udp_client which encapsulates the UDP communications.   On the server side, Media Changer
 imports dispatching_worker which encapsulates server UDP implementation.
 So far, we have mentioned modules that are imported with the python "import" command.  Within the
 modules, there are python "new" commands that instantiate the corresponding classes.
@@ -3615,13 +3636,13 @@ When the server reads a request it also gets the address (host, port) of the cli
 and uses it to reply.
 <p>
 Client requests are called tickets and they are python dictionaries.  The items in the dictionary
-are agreed upon between the client and the server.   For example the media changer ticket
+are agreed upon between the client and the server.   For example the Media Changer ticket
 must contain a volume id and a drive id.
 <p>
 One item required in the ticket dictionary is "work".  The "work" item in the dictionary
 is used in dispatching_worker as a method name and a corresponding method in the server
-is called to perform the work that the client requests.   For example, the media changer
-ticket must contain a "work" item with a value "load"  or "unload" and the media changer
+is called to perform the work that the client requests.   For example, the Media Changer
+ticket must contain a "work" item with a value "load"  or "unload" and the Media Changer
 server has methods named load and unload.
 <p>
 When UDPClient sends a request it first prepends a client identification stamp and a request time stamp (which
@@ -3645,7 +3666,7 @@ and calls the method specified by the "work" item in the ticket.   If any of the
 then the request is ignored presuming the client will resend the request.
 <p>
 The "work" is a text string but python is interpreted and allows runtime evaluation of method
-names.  In the media changer the load method is in the media_changer.py module which has imported
+names.  In the Media Changer the load method is in the media_changer.py module which has imported
 and instantiated a DispatchingWorker class.   When the work method is finished it calls the DispatchingWorker
 method reply_to_caller with a status result ticket.
 <p>
@@ -3666,7 +3687,7 @@ than 30 minutes are deleted.
 
 The scheme described so far requires that servers handle one request at a time and that clients
 queue in the servers udp input buffer waiting their turn.  This is satisfactory if requests
-are guaranteed to finish quickly; however, the media changers operation may take a long time to complete
+are guaranteed to finish quickly; however, the Media Changers operation may take a long time to complete
 while other operations might be done simultaneously.   To accommodate this, dispatching_worker was extended
 to allow forking in servers.
 <p>
@@ -3689,7 +3710,7 @@ Trace is widely used in all of the <em>Enstore</em> modules.
 </h2>
 Enstore uses databases to store persistent information.
 Aside from the databases associated with <em>pnfs</em>, there are two databases, "file" and "volume" used by
-file clerk and volume clerk respectively.
+File Clerk and Volume Clerk respectively.
 <p>
 The database used in Enstore must provide the following:
 <ul>
@@ -3881,6 +3902,8 @@ database directory.
 <h2><a name="admin_tools">
 2.3 Administrative Tools
 </h2>
+*** Administrative tools will exist in a layer on top the current Enstore system
+and as such will not require any redesign or reimplementation of existing code.
 
 Administrative tools will provide the following operations:
 <ul>
@@ -4170,7 +4193,7 @@ system running a process crashes.  This is summarized in the table below:
 <TR VALIGN=TOP>
 <TD> <P>Library Manager </FONT> </TD>
 <TD> <P>In-memory lists of what work is queued, and what work
-is at what mover </FONT> </TD>
+is at what Mover </FONT> </TD>
 <TD> <P>Recovery of state is not yet implemented. Recovery of state is possible through <em>encp</em> retries. </FONT> </TD>
 
 <TR VALIGN=TOP>
@@ -4354,7 +4377,7 @@ interim, Enstore will make the following working assumptions:
 		</TD>
 		<TD>
 			<P>A volume is already in drive. Enstore bug or
-			misconfiguration. Note: mover waits for automatic cleaning tape to
+			misconfiguration. Note: Mover waits for automatic cleaning tape to
 			be ejected. </FONT>
 		</TD>
 		<TD>
@@ -4615,7 +4638,7 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P><B>WRITE_MOVER_CRASH</B></FONT></TD>
 		<TD>
-			<P>If mover is connected to an <em>encp</em>, <em>encp</em> will notice
+			<P>If Mover is connected to an <em>encp</em>, <em>encp</em> will notice
 			its sockets being torn down prematurely. </FONT>
 		</TD>
 		<TD>
@@ -4720,7 +4743,7 @@ interim, Enstore will make the following working assumptions:
 		</TD>
 		<TD>
 			<P>A volume is already in drive. Enstore bug or
-			misconfiguration. Note: mover waits for automatic cleaning tape to
+			misconfiguration. Note: Mover waits for automatic cleaning tape to
 			be ejected. </FONT>
 		</TD>
 		<TD>
@@ -5016,7 +5039,7 @@ interim, Enstore will make the following working assumptions:
 		<TD>
 			<P>If a Mover is connected to an <em>encp</em>, <em>encp</em> will
 			notice its sockets being torn down prematurely. The volume is tied
-			up at a mover. </FONT>
+			up at a Mover. </FONT>
 		</TD>
 		<TD>
 			<P>Check volume and drive in the morning </FONT>
@@ -5156,7 +5179,7 @@ interim, Enstore will make the following working assumptions:
 			<P><BR>
 		</TD>
 		<TD>
-			<P>Remove from list when mover fails to respond to
+			<P>Remove from list when Mover fails to respond to
 			summon </FONT>
 		</TD>
 		<TD>
@@ -5335,7 +5358,7 @@ to fit into the Enstore name space.
 
 <p> Since the objective is to import a large amount of data, it is required to
 generate metadata for each tape; otherwise the tape will have to be scanned to
-determine the metadata and this defeats the purpose if importing volumes!
+determine the metadata and this defeats the purpose of importing volumes!
 
 
 <p> Metadata for each tape is:
@@ -5551,7 +5574,7 @@ that will most likely be used in conjunction with the EMASS robot.
      <td> 2 Redwoods
      <td> (5 of 200 tapes allocated)
      </table></center>
-<li> Disk test movers
+<li> Disk test Movers
 </ul>
 
 <h3>Preliminary Rates Measurements:</h3>
@@ -5791,7 +5814,7 @@ management project, the main features of the D0 system are:
  economical RISC work stations provided by the lowest bidder.  Whether there
  are "I/O nodes" associated with the farm is  TBD.
 
- <li>An Enstore system with about 8-10 mover nodes, and sufficient other
+ <li>An Enstore system with about 8-10 Mover nodes, and sufficient other
       nodes to run the rest of the system.
 </ul>
 
@@ -5870,8 +5893,8 @@ testing the SAM group has done on Enstore.
 </h3>
 
 Below is a list of functional specifications on Enstore generated by D0.
-For the most part, the product complies in software features. Exceptions
-are noted. The operational procedures (Section 6)are mostly to be constructed.
+The product complies in all software features except where noted.
+The operational procedures (Section 6)are mostly to be constructed.
 
 <H3>
 The Functionality we expect of a Storage Management Layer</H3>
@@ -6065,7 +6088,7 @@ for each file and each file family</LI>
 
 <H3>
 <B>3.5) Control of parameters which govern network
-routing between storage system movers and client machines</B></H3>
+routing between storage system Movers and client machines</B></H3>
 
 <UL>
 <LI>
@@ -6150,7 +6173,7 @@ alternate tape drive resources</LI>
 <LI>
 Notation and tracking of all work done,
 all errors encountered, all retries performed</LI>
-<p> <b><it> Does not track retries in a user-visible way, except that the delay is apparent. </it></b></P>
+<p> <b><it> Does track retries in a user-visible way, the delay is apparent. </it></b></P>
 </UL>
 
 
@@ -6251,12 +6274,13 @@ of tapes - maintenance of statistics</LI>
 
 
 Below are notes on the SAM/Enstore interface provided by D0.
+Enstore complies in all software features except where noted.
 For the most part, Enstore complies in software features. Exceptions
 are noted.
 
 <H3>
 SAM/Enstore Interface</H3>
-The SAM data access layer will use the command/executable provided by Enstore
+The SAM data access layer uses the command/executable provided by Enstore
 to issue file commands.
 <P>The basic format of this command is one of the following:
 <P><em>encp</em>&nbsp; &lt;input file>&nbsp; &lt;destination directory
