@@ -84,6 +84,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         #   get our port and host from the name server
         #   exit if the host is not this machine
         self.mc_config = self.csc.get(medch)
+        self.acls_host  =  self.mc_config.get('acls_host', 'UNKNOWN')
+	self.acls_uname =  self.mc_config.get('acls_uname','UNKNOWN')
+
         self.alive_interval = monitored_server.get_alive_interval(self.csc, medch, self.mc_config)
         dispatching_worker.DispatchingWorker.__init__(self,
                                                       (self.mc_config['hostip'], self.mc_config['port']))
@@ -737,7 +740,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             try:
                 #I know this is hard-coded and inflexible. That is what I want so as to
                 #prevent any possible security problem.
-                os.execv('/usr/bin/rsh',['fntt','-l','acsss',command])  #note 'fntt' is arvg[1] ???
+
+                os.execv('/usr/bin/rsh',[self.acls_host,'-l',self.acls_uname,command])
             finally:
                 exc, msg, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR, "timed_command execv failed:  %s %s %s"% (exc, msg, traceback.format_tb(tb)))
