@@ -14,7 +14,9 @@ import string
 import hostaddr
 
 import interface
-import configuration_client
+import generic_client
+import e_errors
+import Trace
 
 # define in 1 place all the hoary pieces of the command needed to access an
 # entire enstore system.
@@ -48,7 +50,7 @@ def send_dbs_cmd(intf, farmlet, db):
 # compare the 2 input nodes to see if they are the same.  one may be of the 
 # form node.fnal.gov and the other just 'NODE' and they should still be reported 
 # as the same.
-def compare_nodes(node1, node2):
+def is_same_node(node1, node2):
     dot = "."
     # do all comparisons in lowercase
     lnode1 = string.lower(node1)
@@ -66,11 +68,15 @@ def compare_nodes(node1, node2):
     else:
 	return 1
 
-def do_node_check(csc, dbs, intf):
+def get_nodes(csc, server):
     this_node = hostaddr.gethostinfo()[0]
-    vc = csc.get("volume_clerk")
-    vc_node = vc.get("host", "")
-    if not compare_nodes(vc_node, this_node):
+    server = csc.get(server)
+    server_node = server.get("host", "")
+    return (server_node, this_node)
+
+def do_node_check(csc, dbs, intf, server):
+    (vc_node, this_node) = get_nodes(csc, server)
+    if not is_same_node(vc_node, this_node):
 	    # we are not running on the volume_clerk node but we need
 	    # to access it's db, so we must send a command to do
 	    # this remotely and delete it from the things to do
@@ -179,13 +185,21 @@ def restore(csc, intf, dbs, dbHome, jouHome):
 		else:
 			print i+" is OK"
 
+def send_inquisitor_cmd(csc, cmd):
+    # find out the node the inquisitor is on
+    (inq_node, this_node) = get_nodes(csc, "inquisitor")
+    if is_same_node(inq_node, this_node):
+	os.system("enstore %s --just inquisitor"%cmd)
+    else:
+	os.system("enstore E%s %s --just inquisitor"%(cmd, inq_node))
+
 def do_work(intf):
     rtn = 0
-    csc = configuration_client.ConfigurationClient((intf.config_host,
-						    intf.config_port))
+    dtools = DBS((intf.config_host, intf.config_port))
+
     # find dbHome and jouHome
     try:
-	    dbInfo = csc.get('database')
+	    dbInfo = dtools.csc.get('database')
 	    dbHome = dbInfo['db_dir']
 	    try:  # backward compatible
 		    jouHome = dbInfo['jou_dir']
@@ -204,14 +218,25 @@ def do_work(intf):
 	    if not intf.nocheck:
 		    # find out if we are running on the volume_clerk node.
 		    # get the node that the volume clerk runs on, and our's
-		    dbs = do_node_check(csc, dbs, intf)
+		    dbs = do_node_check(dtools.csc, dbs, intf, "volume_clerk")
 	    if dbs:
-		os.system("enstore stop --just file_clerk")
-		os.system("enstore stop --just volume_clerk")
-		os.system("enstore stop --just data")
-		restore(csc, intf, dbs, dbHome, jouHome)
-		os.system("enstore start --just file_clerk")
-		os.system("enstore start --just volume_clerk")
+		    # we must stop the inquisitor first, otherwise it will try and restart
+		    # the file_clerk and volume_clerk after we stop them.
+		    Trace.log(e_errors.INFO, "Stopping Inquisitor to do db restore")
+		    send_inquisitor_cmd(dtools.csc, "stop")
+		    Trace.log(e_errors.INFO, "Stopping File Clerk to do db restore")
+		    os.system("enstore stop --just file_clerk")
+		    Trace.log(e_errors.INFO, "Stopping Volume Clerk to do db restore")
+		    os.system("enstore stop --just volume_clerk")
+		    Trace.log(e_errors.INFO, "Stopping db_checkpoint and db_deadlock to do db restore")
+		    os.system("enstore stop --just data")
+		    restore(dtools.csc, intf, dbs, dbHome, jouHome)
+		    Trace.log(e_errors.INFO, "Starting File Clerk after db restore")
+		    os.system("enstore start --just file_clerk")
+		    Trace.log(e_errors.INFO, "Starting Volume Clerk after db restore")
+		    os.system("enstore start --just volume_clerk")
+		    Trace.log(e_errors.INFO, "Starting Inquisitor after db restore")
+		    send_inquisitor_cmd(dtools.csc, "start")
     else:
 	    if not intf.all:
 		    dbs = intf.args
@@ -222,7 +247,7 @@ def do_work(intf):
 	    if not intf.nocheck:
 		    # find out if we are running on the volume_clerk node.
 		    # get the node that the volume clerk runs on, and our's
-		    dbs = do_node_check(csc, dbs, intf)
+		    dbs = do_node_check(dtools.csc, dbs, intf, "volume_clerk")
 
 	    if intf.status:
 		    work_done = 1
@@ -258,10 +283,15 @@ def do_work(intf):
 
     return rtn
 
+class DBS(generic_client.GenericClient):
+    
+    def __init__(self, csc):
+	# mainly we want to get the config client and log client.
+	generic_client.GenericClient.__init__(self, csc, "DBS")
+
 cursor_open = 0
 
 # similar to db.DbTable, without automatic journaling and backup up.
-
 class DbTable(db.DbTable):
 
 	# __init__() is almost the same as db.DbTable.__init__()
