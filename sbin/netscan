@@ -6,22 +6,52 @@ if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 . /usr/local/etc/setups.sh
 setup enstore
 
+# Things checked:
+# . Correct configuration files
+# . Correct ntp time sync (allow * and ~ on 1st line)
+# . Check for open LISTEN sockets
+
+# Known vunerabilities:
+# . I know I don't check everything!
+# . Only check for LISTEN, igorning TCP and UDP for now.
+#        TCP could be done, but UDP seems very hard (sh, mt... open lots of sockets!).
+# . Depend on installed version of os (grep, lsof...) 
+#        Should download a static version each time.
+# . Swapped out versions of jobs with open connections - allowed, not checked.
+#        Should look into the proc file system to get cmdline and check that.
+#        Should also buy more memory to make sure nothing is swapped out.
+# . Allow all tasks run from enstore/bin or enstore/src
+#        Should check for individual applications
+# . RPM - could be modified
+#        Too many exceptions in rpm -Va to be useful...
+
 set -u  # force better programming and ability to use check for not set
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`gang`
 
+UNAME="/bin/uname"
 PS="/bin/ps -wwwwf"
+CMP="/usr/bin/cmp"
+ECHO="/bin/echo"
+XNTPDC="/usr/sbin/xntpdc"
+LSOF="/usr/local/bin/lsof"
+EGREP="/bin/egrep"
+AWK="/bin/awk"
+WC="/usr/bin/wc"
+RPM="/bin/rpm"
 
-right_file() { if ! cmp $1 $2 2>/dev/null; then
+node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`/home/enstore/enstore/sbin/gang`
+
+
+right_file() { if ! $CMP $1 $2 2>/dev/null; then
                   msg1="BAD CONFIGURATION: $1 $2  do not match"
-                  echo $msg1
+                  $ECHO $msg1
                   if [ $ALARM -eq 1 ]; then
                     enstore alarm --raise --severity "A" --root-error "$msg1"
                   fi
                else
                   if [ $QUIET -ne 1 ]; then
-                    echo Matching version of $1
+                    $ECHO Matching version of $1
                   fi
                fi
              }
@@ -34,14 +64,14 @@ right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
 right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 
-#rpm -Va | grep bin
+#rpm -Va | $EGREP bin | | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
 
-if [ "`/usr/sbin/xntpdc -p|egrep '^\*|^~'|wc|awk '{print $1}'`" != "1" ]; then 
-    echo NO TIME SYNC
-    /usr/sbin/xntpdc -p
+if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
+    $ECHO NO TIME SYNC
+    $XNTPDC -p
 fi
 
-N=`/usr/local/bin/lsof -i TCP -i UDP`
+N=`$LSOF -i TCP -i UDP`
 
 ALLOW_BASE="
        LISTEN,inetd,:ftp,TCP,x
@@ -104,14 +134,11 @@ ALLOW_SRV1="$ALLOW_BASE
 ALLOW_DCA="$ALLOW_BASE
        LISTEN,httpd,:http,TCP,/local/ups/prd/apache/
        LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]
-"    
+"
 
 ALLOW_MVR="$ALLOW_BASE
 "
 
-
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-gang=`gang`
 
 case $node in
      *srv1) ALLOW=$ALLOW_SRV1;;
@@ -126,23 +153,23 @@ esac
 
 allow() { tt=$1
           for i in $ALLOW; do
-            t=`echo $i | cut -f1 -d,`
+            t=`$ECHO $i | cut -f1 -d,`
             if [ $t != $tt ]; then continue; fi
-            a=`echo $i | cut -f2 -d,`
-            b=`echo $i | cut -f3 -d,`
-            c=`echo $i | cut -f4 -d,`
-            p=`echo $i | cut -f5 -d,`
-            if [ $command = "$a" -a `echo $rest | grep -c "$b"`  -ne 0 -a `echo $rest | grep -c "$c"` -ne 0 ]; then
+            a=`$ECHO $i | cut -f2 -d,`
+            b=`$ECHO $i | cut -f3 -d,`
+            c=`$ECHO $i | cut -f4 -d,`
+            p=`$ECHO $i | cut -f5 -d,`
+            if [ $command = "$a" -a `$ECHO $rest | $EGREP -c "$b"`  -ne 0 -a `$ECHO $rest | $EGREP -c "$c"` -ne 0 ]; then
               if [ $p != "x" ]; then
-                 psline=`$PS -p $pid|egrep -v PPID`
-		 if [ -z "$psline" ] ; then
-                    psline=`echo "$PSfirst" | awk "/ $pid / {print} "`
-		 fi
-                 if [ `echo $psline | egrep -c "$p"` -eq 0 ]; then
+                 psline=`$PS -p $pid|$EGREP -v PPID`
+                 if [ -z "$psline" ] ; then
+                    psline=`$ECHO "$PSfirst" | $AWK "/ $pid / {print} "`
+                 fi
+                 if [ `$ECHO $psline | $EGREP -c "$p"` -eq 0 ]; then
                     msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
-                    msg2=`$PS -p $pid|grep -v PPID`
-                    echo $msg1
-                    echo $msg2
+                    msg2=`$PS -p $pid|$EGREP -v PPID`
+                    $ECHO $msg1
+                    $ECHO $msg2
                     if [ $ALARM -eq 1 ]; then
                       enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
                     fi
@@ -152,15 +179,15 @@ allow() { tt=$1
                 p=""
               fi
               if [ $QUIET -ne 1 ]; then
-                echo Allowing $node $c $tt $a $b $p
+                $ECHO Allowing $node $c $tt $a $b $p
               fi
               return 0
             fi
           done
           msg1="UNAUTHORIZED NETWORK SERVICE! $node $tt $command $pid $rest"
-          msg2=`$PS -p $pid|grep -v PPID`
-          echo $msg1
-          echo $msg2
+          msg2=`$PS -p $pid|$EGREP -v PPID`
+          $ECHO $msg1
+          $ECHO $msg2
           if [ $ALARM -eq 1 ]; then
             enstore alarm --raise --severity "A" --root-error "$msg1  $msg2"
          fi
@@ -169,16 +196,17 @@ allow() { tt=$1
 
 PSfirst=`$PS`
 
-echo "$N" | while read command pid rest; do
+$ECHO "$N" | while read command pid rest; do
     if [ $pid = "PID" ] ; then continue; fi
-    if [ `echo $rest | grep -c "LISTEN"` -ne 0 ]; then
+    if [ `$ECHO $rest | $EGREP -c "LISTEN"` -ne 0 ]; then
       allow LISTEN
-      x=1
-    elif [ `echo $rest | grep -c "UDP"` -ne 0 ]; then
-      #allow UDP
-      x=2
-    elif [ `echo $rest | grep -c "TCP"` -ne 0 ]; then
-      #allow TCP
-      x=3
+    elif [ `$ECHO $rest | $EGREP -c "UDP"` -ne 0 ]; then
+      if [ $QUIET -ne 1 ]; then
+         $ECHO Ignoring open UDP connections...
+      fi
+    elif [ `$ECHO $rest | $EGREP -c "TCP"` -ne 0 ]; then
+      if [ $QUIET -ne 1 ]; then
+         $ECHO Ignoring open TCP connections...
+      fi
     fi
 done
