@@ -135,7 +135,6 @@ class GenericClient:
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
-            print "Server %s found at %s." % (server, (t['hostip'], t['port']))
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
             x = {'status' : (e_errors.TIMEDOUT, None)}
