@@ -1547,6 +1547,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             lm_responce = submit_one_request(request_dictionary)
 
         except KeyError:
+            lm_responce = {'status':(e_errors.NET_ERROR,
+                            "Unable to obtain responce from library manager.")}
             sys.stderr.write("Error processing resubmition of %s.\n" %
                              (request_dictionary['unique_id']))
             sys.stderr.write(pprint.pformat(request_dictionary))
