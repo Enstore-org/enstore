@@ -1,0 +1,75 @@
+pnfs interface: rounded to 725
+        pnfs.py    724
+
+encp client: rounded to 1475
+        encp.py   1471
+
+mover: rounded to 4475
+     108*.8 Devcodes.c
+     505*.8 ECRC.c
+     444*.8 ETape.c
+     995*.8 EXfer.c
+     906*.8 FTT.c
+     430*.8 IPC.c
+       0*.8 Devcodes.h
+      20*.8 ETape.h
+      18*.8 IPC.h
+     252*.8 zconf.h
+     888*.8 zlib.h
+        741 mover.py
+         77 mover_client.py
+
+servers: rounded to 11300
+     198*.8 EMASS.c
+     307*.8 STK.c
+     355*.8 Trace.c
+     399*.8 trace.c
+     546*.8 traceShow.c
+      77*.8 trace_delta.c
+      28*.8 mc.h
+     115*.8 trace.h
+        179 admin_clerk.py
+        166 admin_clerk_client.py
+         95 alarm_client.py
+         87 alarm_server.py
+        145 backup.py
+         12 backup_client.py
+        254 callback.py
+        181 configuration_client.py
+        315 configuration_server.py
+        279 cpio.py
+        231 db.py
+         79 dbutil.py
+         34 dict_to_a.py
+        274 dispatching_worker.py
+        388 driver.py
+         55 e_errors.py
+        399 enstore_status.py
+        307 file_clerk.py
+        152 file_clerk_client.py
+         35 generic_client.py
+        114 generic_cs.py
+         52 generic_server.py
+         11 idlemovers.py
+        980 inquisitor.py
+        238 inquisitor_client.py
+        251 interface.py
+         91 journal.py
+        995 library_manager.py
+        131 library_manager_client.py
+         16 lockfile.py
+        175 log_client.py
+        150 log_server.py
+        123 manage_queue.py
+        234 media_changer.py
+         90 media_changer_client.py
+        816 mover.py
+         77 mover_client.py
+          5 timeofday.py
+         47 timer_task.py
+        304 udp_client.py
+        728 volume_clerk.py
+        390 volume_clerk_client.py
+
+
+Total: 17975 (comments add about 20% more)
