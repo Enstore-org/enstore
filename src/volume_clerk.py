@@ -413,7 +413,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def is_vol_available(self, ticket):
 	work = ticket["action"]
 	label = ticket["external_label"]
-	record = self.dict[label]  ## was deepcopy
+	record = self.dict[label]  
         ret_stat = (e_errors.OK,None)
 	if record["system_inhibit"][0] == e_errors.DELETED:
 	    ret_stat = (record["system_inhibit"][0],None)
@@ -532,10 +532,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # if not, is there an "earlier" volume that we have already found?
             if len(vol) == 0:
                 Trace.trace(17,label+" ok")
-                vol = v  ## was deepcopy
+                vol = v  
             elif v['declared'] < vol['declared']:
                 Trace.trace(17,label+' ok')
-                vol = v  ## was deepcopy
+                vol = v  
             else:
                 Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
         c.close()
@@ -599,17 +599,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 v["wrapper"] = wrapper_type
                 Trace.log(e_errors.INFO, "Assigning blank volume "+label+" to "+library+" "+file_family)
                 c.close()
-                self.dict[label] = v  ## was deepcopy
+                self.dict[label] = v  
                 v["status"] = (e_errors.OK, None)
                 self.reply_to_caller(v)
                 return
             # if not, is this an "earlier" volume that one we already found?
             if len(vol) == 0:
                 Trace.trace(17,label+" ok")
-                vol = v  ## was deepcopy
+                vol = v  
             elif v['declared'] < vol['declared']:
                 Trace.trace(17,label+" ok")
-                vol = v  ## was deepcopy
+                vol = v  
             else:
                 Trace.trace(17,label+" rejected "+vol['external_label']+' declared eariler')
         c.close()
@@ -623,7 +623,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             vol["wrapper"] = wrapper_type
             Trace.log(e_errors.INFO,
                       "Assigning blank volume "+label+" to "+library+" "+file_family)
-            self.dict[label] = vol  ## was deepcopy
+            self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
             return
@@ -659,7 +659,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
      # get the current entry for the volume
      try:
-         v = self.dict[external_label]  ## was deepcopy
+         v = self.dict[external_label]  
          # for backward compatibility for at_mover field
          try:
              at_mover = v['at_mover']
@@ -713,7 +713,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -749,7 +749,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -803,7 +803,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    	record["bfids"] = []
 	    record["bfids"].append(bfid)
         # record our changes
-        self.dict[external_label] = record  ## was deepcopy
+        self.dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -823,7 +823,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -836,7 +836,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # decrement the number of non-deleted files on the tape
         record ["non_del_files"] = record["non_del_files"] - count
-        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -856,7 +856,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -891,7 +891,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             record['non_del_files'] = record['non_del_files'] + \
                                       ticket['wr_access']
         # record our changes
-        self.dict[external_label] = record  ## was deepcopy
+        self.dict[external_label] = record  
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -911,7 +911,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
             record["status"] = e_errors.OK, None
             self.reply_to_caller(record)
             return
@@ -934,7 +934,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         external_label = ticket['external_label']
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label +" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -957,7 +957,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         if (record['at_mover'][0] == 'unmounted' and
             record['system_inhibit'][0] == 'writing'):
             record['system_inhibit'][0] = "none"
-        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -982,7 +982,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -1010,12 +1010,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     ll[0] = ret
                 
                 record['at_mover']=tuple(ll)
-                self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+                self.dict[external_label] = record   # THIS WILL JOURNAL IT
                 record["status"] = (e_errors.OK, None)
         else:
             # if it is not record["system_inhibit"][0] just set it to none
             record[inhibit][position] = "none"
-	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	    self.dict[external_label] = record   # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -1057,7 +1057,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # get the current entry for the volume
         try:
-            record = self.dict[external_label]  ## was deepcopy
+            record = self.dict[external_label]  
         except KeyError:
             msg="Volume Clerk: volume "+external_label+" no such volume"
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -1075,7 +1075,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             record['non_del_files'] = record['sum_wr_access']
 
-        self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+        self.dict[external_label] = record   # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
         return
@@ -1086,11 +1086,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	new_library = ticket["new_library"]
 
 	# get the current entry for the volume
-	record = self.dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  
 	
 	# update the library field with the new library
 	record ["library"] = new_library
-	self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	self.dict[external_label] = record   # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
 	self.reply_to_caller(record)
 	return
@@ -1099,12 +1099,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_system_inhibit(self, ticket, flag, index=0):
 	external_label = ticket["external_label"]
 	# get the current entry for the volume
-	record = self.dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  
 
 	# update the fields that have changed
 	record["system_inhibit"][index] = flag
 
-	self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	self.dict[external_label] = record   # THIS WILL JOURNAL IT
 	record["status"] = (e_errors.OK, None)
 	Trace.log(e_errors.INFO,external_label+" system inhibit set to "+flag)
 	self.reply_to_caller(record)
@@ -1140,7 +1140,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # set at_mover flag
     def set_at_mover(self, ticket):
 	external_label = ticket["external_label"]
-	record = self.dict[external_label]  ## was deepcopy
+	record = self.dict[external_label]  
 	at_mover = record.get('at_mover',('unmounted','none'))
 	
 	# update the fields that have changed
@@ -1176,7 +1176,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 record['system_inhibit'][0] == "writing"):
                 record['system_inhibit'][0] = "none"
 
-	    self.dict[external_label] = record  ## was deepcopy # THIS WILL JOURNAL IT
+	    self.dict[external_label] = record   # THIS WILL JOURNAL IT
 	    record["status"] = (e_errors.OK, None)
 	self.reply_to_caller(record)
 	return
