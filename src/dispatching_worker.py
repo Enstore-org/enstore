@@ -39,7 +39,8 @@ class DispatchingWorker:
         self.server_address = server_address
         try:
             self.node_name, self.aliaslist, self.ipaddrlist = \
-                socket.gethostbyaddr(self.server_address[0])
+                socket.gethostbyname_ex(
+                    socket.gethostbyaddr(self.server_address[0])[0])
         except socket.error:
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 self.server_address[0], [], [self.server_address[0]]
