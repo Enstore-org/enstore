@@ -511,6 +511,9 @@ if __name__ == "__main__" :
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
 
-    while (1) :
-        mv = Mover(config_host,config_port)
-        mv.move_forever (args[0])
+    while 1:
+        try:
+            mv = Mover(config_host,config_port)
+            mv.move_forever (args[0])
+        except:
+            continue

@@ -218,4 +218,9 @@ if __name__ == "__main__" :
     ticket = csc.get("file_clerk")
     cs = FileClerk( (ticket["host"], ticket["port"]), FileClerkMethods)
     cs.set_csc(csc)
-    cs.serve_forever()
+
+    while 1:
+	try:
+	    cs.serve_forever()
+	except:
+	    continue

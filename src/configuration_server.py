@@ -173,4 +173,9 @@ if __name__ == "__main__" :
               , " using config file ",config_file
     cs =  ConfigurationServer( server_address, config_file, list)
 
-    cs.serve_forever()
+    while 1:
+	try:
+	    cs.serve_forever()
+	except:
+	    continue
+

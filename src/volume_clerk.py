@@ -467,4 +467,9 @@ if __name__ == "__main__" :
     keys = csc.get("volume_clerk")
     vs =  VolumeClerk((keys['host'], keys['port']), VolumeClerkMethods)
     vs.set_csc(csc)
-    vs.serve_forever()
+
+    while 1:
+	try:
+	    vs.serve_forever()
+	except:
+	    continue

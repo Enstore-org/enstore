@@ -339,5 +339,11 @@ if __name__ == "__main__" :
     methods =  LibraryManagerMethods()
     lm =  LibraryManager( (keys['host'], keys['port']), methods)
     lm.set_csc(csc)
-    lm.serve_forever()
+
+    while 1:
+	try:
+	    lm.serve_forever()
+	except:
+	    continue
+
 

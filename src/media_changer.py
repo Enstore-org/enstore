@@ -183,4 +183,8 @@ if __name__ == "__main__" :
     #mls.loadvol('VSN001', '0,0,9,1')
     #mls.unloadvol('VSN001', '0,0,9,1')
 
-    mls.serve_forever()
+    while 1:
+        try:
+            mls.serve_forever()
+        except:
+            continue
