@@ -149,14 +149,14 @@ static char *messages[] = {
 };
 
 extern int errno;
-static int keep_errno;
 
 int
 ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
-    int terrno;
+    int terrno;		/* trimmed errno to fit in table size */
     static ftt_stat sbuf;
     char *p;
-    int save1, save2;
+    int keep_errno;   /* errno when we started */
+    int guess_errno;  /* best guess so far */
 
     keep_errno = errno;
 
@@ -171,119 +171,94 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 
     if (keep_errno == 75) {	/* linux gives this when out of buffers... */
 	terrno = ENOMEM;
-        ftt_errno = d->errortrans[opn][terrno];
+        guess_errno = d->errortrans[opn][terrno];
 	errno = keep_errno;
         return ftt_describe_error(d, opn, op, res, what, recoverable);
     }
+
     if (keep_errno >= MAX_TRANS_ERRNO) {
         terrno = MAX_TRANS_ERRNO - 1;
     } else {
 	terrno = keep_errno;
     } 
 
-    ftt_errno = d->errortrans[opn][terrno];
+    guess_errno = d->errortrans[opn][terrno];
 
 
     if (0 == res && FTT_OPN_READ == opn && 0 !=(d->flags&FTT_FLAG_VERIFY_EOFS)) {
-	/* 
-	** save errno and ftt_errno so we can restore them 
-	** after getting status 
-	*/
-        save1 = ftt_errno;
-	save2 = errno;
-
 	DEBUG2(stderr, "translate_error: Verifying an eof...\n");
 	ftt_get_stats(d, &sbuf);
-	errno = save2;
 
 	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
 	    DEBUG3(stderr, "Saw blank check sense key\n");
 	    res = -1;
-	    save1 = ftt_errno = FTT_EBLANK;
+	    guess_errno = FTT_EBLANK;
 	} else {
 	    DEBUG3(stderr, "Sense key was %s\n", p);
-	    ftt_errno = save1;
 	    if (0 != (p = ftt_extract_stats(&sbuf,FTT_BLOC_LOC))) {
 		DEBUG3(stderr, "Current loc %s, last loc %d\n", p, d->last_pos);
 		if ((d->last_pos > 0 && atoi(p) == d->last_pos) || atoi(p) == 0) {
-		    ftt_errno = FTT_EBLANK;
+		    guess_errno = FTT_EBLANK;
 		    res = -1;
-		} else {
-		    ftt_errno = save1;
 		}
 		d->last_pos = atoi(p);
 	    } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_REMAIN_TAPE))) {
 		DEBUG3(stderr, "Current remain %s, last remain %d\n", p, d->last_pos);
 		if (d->last_pos > 0 && atoi(p) == d->last_pos) {
-		    ftt_errno = FTT_EBLANK;
+		    guess_errno = FTT_EBLANK;
 		    res = -1;
-		} else {
-		    ftt_errno = save1;
 		}
 		d->last_pos = atoi(p);
-	    } else {
-		ftt_errno = save1;
 	    }
 
 	}
 	
-        if (FTT_EBLANK == ftt_errno && atoi(ftt_extract_stats(&sbuf,FTT_BOT))) {
-	    ftt_errno == FTT_ELEADER;
+        if (FTT_EBLANK == guess_errno && atoi(ftt_extract_stats(&sbuf,FTT_BOT))) {
+	    guess_errno == FTT_ELEADER;
 	}
     }
 
 #   define CHECKS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC\
 			|FTT_OP_READ)
 
-    if ( -1 == res && ((1<<opn)&CHECKS) && keep_errno == 5 ) {
-
-	 /* good old catch-all errno 5 -- figure out what really happened... */
+    if ( -1 == res && ((1<<opn)&CHECKS) && guess_errno == FTT_EIO ) {
+	int statres;
 
 	 DEBUG3(stderr, "Checking for blank tape on other error\n");
-	 ftt_get_stats(d, &sbuf);
-         ftt_errno = save1;
+	 statres = ftt_status(d, 0);
 
-	 if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY)) && 8 == atoi(p)) {
-	     DEBUG3(stderr, "Saw blank check sense key\n");
-	     ftt_errno = FTT_EBLANK;
+         if (statres & FTT_AEOT) {
+	     guess_errno = FTT_EBLANK;
 	     res = -1;
-
-	 } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_EOM)) && 1 == atoi(p)) {
-	     ftt_errno = FTT_EBLANK;
-	     res = -1;
-	 } else if (0 != (p = ftt_extract_stats(&sbuf,FTT_BOT)) && 1 == atoi(p)) {
-	     ftt_errno = FTT_ELEADER;
+	 } else if ( statres & FTT_ABOT ) {
+	     guess_errno = FTT_ELEADER;
 	     res = -1;
 	 } else {
 
-	    DEBUG2(stderr, "translate_error: checking for empty tape error...\n");
 
-	    if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_READ &&
+	    if (FTT_EBLANK == guess_errno && opn == FTT_OPN_READ &&
 			d->current_file == 0 && d->current_block == 0 &&
 			(d->scsi_ops & FTT_OP_READ) == 0 && d->scsi_ops != 0 ) {
 
-		save1 = ftt_errno;
+	        DEBUG2(stderr, "translate_error: checking for empty tape error...\n");
 		res = ftt_verify_blank(d);
-		ftt_errno = save1;
 		if ( 0 <= res && ftt_errno == FTT_SUCCESS) {
-		     ftt_errno = FTT_EIO;
+		     guess_errno = FTT_EIO;
 		     res = -1;
 		}
-	    } else {
-	         ftt_errno = FTT_EIO;
-		 res = -1;
 	    }
         }
     }
 
-    if (FTT_EBLANK == ftt_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {
+    if (FTT_EBLANK == guess_errno && opn == FTT_OPN_WRITE || opn == FTT_OPN_WRITEFM ) {
 
 	/* people don't take  "Blank" seriously on writes... */
 
-	ftt_errno = FTT_EIO;
+	guess_errno = FTT_EIO;
     }
 
     errno = keep_errno;
+    ftt_errno = guess_errno;
     return ftt_describe_error(d, opn, op, res, what, recoverable);
 }
 

@@ -109,6 +109,60 @@ int ftt_trans_in[MAX_TRANS_ERRNO] = {
 	/*   48 EFORMAT */	FTT_EBLANK,
 	/*   50 default */	FTT_EIO,
 };
+
+int ftt_trans_in_Linux[MAX_TRANS_ERRNO] = {
+	/*    0 NOERROR	*/	FTT_SUCCESS,
+	/*    1	EPERM	*/	FTT_EPERM,
+	/*    2	ENOENT	*/	FTT_ENOENT,
+	/*    3	ESRCH	*/	FTT_ENOENT,
+	/*    4	EINTR	*/	FTT_EUNRECOVERED,
+	/*    5	EIO	*/	FTT_EBLANK,
+	/*    6	ENXIO	*/	FTT_ENXIO,
+	/*    7	E2BIG	*/	FTT_EBLKSIZE,
+	/*    8	ENOEXEC	*/	FTT_ENOEXEC,
+	/*    9	EBADF	*/	FTT_ENOENT,
+	/*   10	ECHILD	*/	FTT_ENOTSUPPORTED,
+	/*   11	EAGAIN	*/	FTT_ENOTAPE,
+	/*   12	ENOMEM	*/	FTT_ENOMEM,
+	/*   13	EACCES	*/	FTT_EPERM,
+	/*   14	EFAULT	*/	FTT_EFAULT,
+	/*   15	ENOTBLK	*/	FTT_ENOTSUPPORTED,
+	/*   16	EBUSY	*/	FTT_EBUSY,
+	/*   17	EEXIST	*/	FTT_ENOTSUPPORTED,
+	/*   18	EXDEV	*/	FTT_ENOTSUPPORTED,
+	/*   19	ENODEV	*/	FTT_ENOENT,
+	/*   20	ENOTDIR	*/	FTT_ENOENT,
+	/*   21	EISDIR	*/	FTT_ENOENT,
+	/*   22	EINVAL	*/	FTT_ERANGE,
+	/*   23	ENFILE	*/	FTT_ENFILE,
+	/*   24	EMFILE	*/	FTT_ENFILE,
+	/*   25	ENOTTY	*/	FTT_ENOTTAPE,
+	/*   26	ETXTBSY	*/	FTT_ENOENT,
+	/*   27	EFBIG	*/	FTT_EBLKSIZE,
+	/*   28	ENOSPC	*/	FTT_EBLANK,
+	/*   29	ESPIPE	*/	FTT_ENOTSUPPORTED,
+	/*   30	EROFS	*/	FTT_EROFS,
+	/*   31	EMLINK	*/	FTT_ENOTSUPPORTED,
+	/*   32 EMPIPE  */	FTT_EPIPE,
+	/*   33 EDOM  */	FTT_ENOTTAPE,
+	/*   34 ERANGE  */	FTT_ENOTSUPPORTED,
+	/*   35 ENOMSG  */	FTT_ENOTSUPPORTED,
+	/*   36 EIDRM  */	FTT_ENOTSUPPORTED,
+	/*   37 ECHRNG  */	FTT_ENOTSUPPORTED,
+	/*   38 EL2NSYNC  */	FTT_ENOTSUPPORTED,
+	/*   39 EL3HLT  */	FTT_ENOTSUPPORTED,
+	/*   40 EL3RST  */	FTT_ENOTSUPPORTED,
+	/*   41 ELNRNG  */	FTT_ENOTSUPPORTED,
+	/*   42 EUNATCH  */	FTT_ENOTSUPPORTED,
+	/*   43 ENOCSI  */	FTT_ENOTSUPPORTED,
+	/*   44 EL2HLT  */	FTT_ENOTSUPPORTED,
+	/*   45 EDEADLK  */	FTT_EBUSY,
+/* AIX specific */
+	/*   46 ENOTREADY*/	FTT_ENOTAPE,
+	/*   47 EWRPROTECT */	FTT_EROFS,
+	/*   48 EFORMAT */	FTT_EBLANK,
+	/*   50 default */	FTT_EIO,
+};
 int ftt_trans_in_AIX[MAX_TRANS_ERRNO] = {
 	/*    0 NOERROR	*/	FTT_SUCCESS,
 	/*    1	EPERM	*/	FTT_EPERM,
@@ -665,6 +719,26 @@ int *ftt_trans_table_AIX[] = {
     /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
     /* FTT_OPN_RSKIPFM		17 */ ftt_trans_skipr_AIX,
 };
+int *ftt_trans_table_Linux[] = {
+    /* none...but just to be safe0 */ ftt_trans_in,
+    /* FTT_OPN_READ		     1 */ ftt_trans_in_Linux,
+    /* FTT_OPN_WRITE		 2 */ ftt_trans_out,
+    /* FTT_OPN_WRITEFM		 3 */ ftt_trans_out,
+    /* FTT_OPN_SKIPREC		 4 */ ftt_trans_skiprec,
+    /* FTT_OPN_SKIPFM		 5 */ ftt_trans_skipf,
+    /* FTT_OPN_REWIND		 6 */ ftt_trans_skipr,
+    /* FTT_OPN_UNLOAD		 7 */ ftt_trans_skipf,
+    /* FTT_OPN_RETENSION	 8 */ ftt_trans_skipf,
+    /* FTT_OPN_ERASE		 9 */ ftt_trans_out,
+    /* FTT_OPN_STATUS		10 */ ftt_trans_in,
+    /* FTT_OPN_GET_STATUS	11 */ ftt_trans_in,
+    /* FTT_OPN_ASYNC 		12 */ ftt_trans_in,
+    /* FTT_OPN_PASSTHRU     13 */ ftt_trans_out,
+    /* FTT_OPN_CHALL        14 */ ftt_trans_chall,
+    /* FTT_OPN_OPEN         15 */ ftt_trans_open,
+    /* FTT_OPN_RSKIPREC		16 */ ftt_trans_skiprec,
+    /* FTT_OPN_RSKIPFM		17 */ ftt_trans_skipr,
+};
 int *ftt_trans_table[] = {
     /* none...but just to be safe0 */ ftt_trans_in,
     /* FTT_OPN_READ		     1 */ ftt_trans_in,
@@ -850,7 +924,7 @@ static char Win32find_dev[] = "";
 
 ftt_dev_entry devtable[] = {
     {"Linux", "DLT7", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER,
-	FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+	FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -875,7 +949,7 @@ ftt_dev_entry devtable[] = {
        { 0 },
     }},
     {"Linux", "DLT4", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER,
-	FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+	FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -898,7 +972,7 @@ ftt_dev_entry devtable[] = {
        { 0 },
     }},
     {"Linux", "DLT2", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , 
-	FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+	FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -919,7 +993,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-82", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-82", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -931,7 +1005,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-8505", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-8505", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -947,7 +1021,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-85", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-85", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -961,7 +1035,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-89", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-89", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -978,7 +1052,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "DLT7", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"Linux", "DLT7", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1002,7 +1076,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "DLT4", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"Linux", "DLT4", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1024,7 +1098,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "DLT2", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, DLT_density_trans,
+    {"Linux", "DLT2", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, DLT_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1045,7 +1119,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-82", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-82", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1061,7 +1135,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-8505", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-8505", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1077,7 +1151,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-85", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-85", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1091,7 +1165,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "EXB-89", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Exabyte_density_trans,
+    {"Linux", "EXB-89", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Exabyte_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1108,7 +1182,7 @@ ftt_dev_entry devtable[] = {
        { "dev/st%d",      1,  0, 0x15,  0,  0,FTT_RWOC, 1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
+    {"Linux", "", "SCSI",  FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Generic_density_trans,
        "rmt/tps%dd%d", "rmt/tps%dd%dn", 2, LINUXrmtfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */
@@ -1120,7 +1194,7 @@ ftt_dev_entry devtable[] = {
        { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
-    {"Linux", "", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table, Generic_density_trans,
+    {"Linux", "", "SCSI", FTT_FLAG_VERIFY_EOFS|FTT_FLAG_MODE_AFTER|FTT_FLAG_BSIZE_AFTER , FTT_OP_GET_STATUS, ftt_trans_table_Linux, Generic_density_trans,
        "dev/%*[ns]t%d", "dev/nst%d", 1, LINUXfind, {
     /*   string          den mod hwd  pas fxd rewind   1st */
     /*   ======          === === ===  === === ======   === */

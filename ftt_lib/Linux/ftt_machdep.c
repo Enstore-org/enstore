@@ -11,7 +11,6 @@ static char rcsid[] = "@(#)$Id$";
 #include <ftt_private.h>
 
 
-#ifdef IT_WOULD_BE_NICE_IF_THIS_WORKED
 int
 ftt_status(ftt_descriptor d, int time_out) {
     int res;
@@ -54,59 +53,11 @@ ftt_status(ftt_descriptor d, int time_out) {
     if (GMT_BOT(buf.mt_gstat))     res |= FTT_ABOT;
     if (GMT_WR_PROT(buf.mt_gstat)) res |= FTT_PROT;
     if (GMT_ONLINE(buf.mt_gstat))  res |= FTT_ONLINE;
+    DEBUG2(stderr,"ftt_status: returning %x\n", res );
 
     return res;
 }
-#else
-int
-ftt_status(ftt_descriptor d, int time_out) {
-    static ftt_stat block;
-    int res;
-    char *p;
 
-    res = ftt_get_stats(d,&block);
-    if (res < 0) {
-	if (ftt_errno == FTT_EBUSY) {
-	    return FTT_BUSY;
-	} else {
-	    return res;
-	}
-    }
-
-	while (time_out > 0 ) {
-		p = ftt_extract_stats(&block, FTT_READY);
-		if ( p && atoi(p)) {
-			break;
-		}
-		sleep(1);
-		time_out--;
-		res = ftt_get_stats(d,&block);
-	}
-    res = 0;
-    p = ftt_extract_stats(&block, FTT_BOT);
-    if ( p && atoi(p)) {
-	DEBUG3(stderr,"setting ABOT flag\n");
-	res |= FTT_ABOT;
-    }
-    p = ftt_extract_stats(&block, FTT_EOM);
-    if ( p && atoi(p)) {
-	DEBUG3(stderr,"setting AEOT flag\n");
-	res |= FTT_AEOT;
-	res |= FTT_AEW;
-    }
-    p = ftt_extract_stats(&block, FTT_WRITE_PROT);
-    if ( p && atoi(p)) {
-	DEBUG3(stderr,"setting PROT flag\n");
-	res |= FTT_PROT;
-    }
-    p = ftt_extract_stats(&block, FTT_READY);
-    if ( p && atoi(p)) {
-	DEBUG3(stderr,"setting ONLINE flag\n");
-	res |= FTT_ONLINE;
-    }
-    return res;
-}
-#endif
 
 int
 ftt_set_compression(ftt_descriptor d, int compression) {
