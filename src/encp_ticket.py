@@ -72,7 +72,7 @@ def write_request_ok(ticket):
         if not ticket['wrapper'].has_key(key):
             return key
         
-    return ''
+    return None
 
 def read_request_ok(ticket):
     ticket_keys = {#'callback_addr': ('', 0),
@@ -168,7 +168,7 @@ def read_request_ok(ticket):
         if not ticket['wrapper'].has_key(key):
             return key
         
-    return ''
+    return None
 
     
 if __name__ == "__main__" :
@@ -262,7 +262,7 @@ if __name__ == "__main__" :
     pprint.pprint(w_ticket)
 
     key=write_request_ok(w_ticket)
-    if key == '':
+    if key == None:
         print "correct write request"
     else:
         print "wrong ticket format. key %s is not present"%(key,)
@@ -270,7 +270,7 @@ if __name__ == "__main__" :
     pprint.pprint(r_ticket)
     
     key=read_request_ok(r_ticket)
-    if key == '':
+    if key == None:
         print "correct read request"
     else:
         print "wrong ticket format. key %s is not present"%(key,)
