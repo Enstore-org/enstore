@@ -31,10 +31,15 @@ def send(msg):
     print "sending",   msg
     s.sendto(msg, dst)
 
+DEFAULTPORT = 60126 #same as enstore_display.py
+    
 def main():
     global s, dst
-    
-    if len(sys.argv) != 3:
+
+    if len(sys.argv) == 1:
+        host = os.uname()[1]
+        port = DEFAULTPORT
+    elif len(sys.argv) != 3:
         print "Usage: %s host port" % (sys.argv[0],)
         print "  host and port refer to the host and port enstore_display is running on"
         sys.exit(1)
