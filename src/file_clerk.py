@@ -34,6 +34,12 @@ MY_NAME = "file_clerk"
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
+    # set_brand(brand) -- set brand
+
+    def set_brand(self, brand):
+        self.brand = brand
+        return
+
     # we need a new bit field id for each new file in the system
     def new_bit_file(self, ticket):
         # input ticket is a file clerk part of the main ticket
@@ -856,7 +862,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         bfid = long(bfid)*100000
         while self.dict.has_key(str(bfid)):
             bfid = bfid + 1
-        return str(bfid)
+        return self.brand+str(bfid)
 
     # get_bfids(self, ticket) -- get bfids of a certain volume
     #        This is almost the same as tape_list() yet it does not
@@ -1180,6 +1186,7 @@ class FileClerk(FileClerkMethods, generic_server.GenericServer):
         # start our heartbeat to the event relay process
         self.erc.start_heartbeat(enstore_constants.FILE_CLERK, 
                                  self.alive_interval)
+        self.brand = ""
 
 
 class FileClerkInterface(generic_server.GenericServerInterface):
@@ -1195,6 +1202,19 @@ if __name__ == "__main__":
     fc = FileClerk((intf.config_host, intf.config_port))
     fc.handle_generic_commands(intf)
     Trace.log(e_errors.INFO, '%s' % (sys.argv,))
+
+    # find the brand
+
+    Trace.log(e_errors.INFO,"find the brand")
+    try:
+        brand = configuration_client.ConfigurationClient(
+                (intf.config_host, intf.config_port)).get('file_clerk')['brand']
+        Trace.log(e_errors.INFO,"The brand is %s"%(brand))
+    except:
+        Trace.log(e_errors.INFO,"No brand is found")
+        brand = ""
+
+    fc.set_brand(brand)
 
     Trace.log(e_errors.INFO,"determine dbHome and jouHome")
     try:
