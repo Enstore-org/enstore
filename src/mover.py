@@ -131,6 +131,15 @@ vol1_paranoia=1 #check VOL1 headers (robot grabbed wrong tape)
 eov1_paranoia=0 #write and check EOV1 headers (spacing error)
 ### eov1 checks are still a "work in progress", do not enable this!
 
+def fix_nul(s):
+    r=""
+    for c in s:
+        if c=='\0':
+            r=r+'@'
+        else:
+            r=r+c
+    return r
+
 
 def sigterm( sig, stack ):
     print '%d sigterm called'%os.getpid()
@@ -440,11 +449,18 @@ def bind_volume( object, external_label ):
             if debug_paranoia:
                 print "pre check-label rewind complete, returned",r
             header_type, header_label = driver_object.check_header()
-            if debug_paranoia: print header_type, header_label
-            if header_type == None:  #This only happens if
-                                     ##there was a read error
-                Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%external_label)
-                return 'VOL1_READ_ERR'
+            if debug_paranoia: print "header_type=",header_type, "label=",header_label
+            if header_type == None:
+                ##This only happens if there was a read error, which is
+                ##OK for a brand-new tape
+                if driver_object.is_bot(tmp_vol_info['eod_cookie']):
+                    infomsg="New tape, labelling %s"%external_label
+                    if debug_paranoia:
+                        print infomsg
+                    Trace.log(e_errors.INFO, infomsg)
+                else:  #read error on tape, but eod!=bot
+                    Trace.log(e_errors.ERROR,"VOL1_READ_ERR %s"%external_label)
+                    return 'VOL1_READ_ERR'
             elif header_type == 'VOL1':
                 if header_label != external_label:
                     vcc.set_system_noaccess( external_label )
@@ -455,17 +471,13 @@ def bind_volume( object, external_label ):
                     Trace.log(e_errors.ERROR, errmsg)
                     return 'VOL1_WRONG'
             else:
-                if not driver_object.is_bot(tmp_vol_info['eod_cookie']):
-                    if debug_paranoia: print tmp_vol_info['eod_cookie']
-                    ## This tape really should have been labelled!
-                    if debug_paranoia: print "Tape should have been labeled"
-                    vcc.set_system_noaccess( external_label )
-                    errmsg="no VOL1 header present for volume %s" %\
-                              external_label
-                    if debug_paranoia:
-                        print errmsg
-                    Trace.log(e_errors.ERROR,errmsg)
-                    return 'VOL1_MISSING' 
+                vcc.set_system_noaccess( external_label )
+                errmsg="no VOL1 header present for volume %s: read label %s %s" %\
+                        (external_label, fix_nul(header_type), fix_nul(header_label))
+                if debug_paranoia:
+                    print errmsg
+                Trace.log(e_errors.ERROR,errmsg)
+                return 'VOL1_MISSING' 
         
             if debug_paranoia: print "Rewind (post check-label)"
             # Note:  Closing the device seems to write a
