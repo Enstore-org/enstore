@@ -167,6 +167,32 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
              # update the bfid database too
              self.bfid_db.delete_all_bfids(external_label)
 	     Trace.log(e_errors.INFO, "volume removed %s"%(external_label,))
+
+             # return volume to its pool
+             
+             new_label = string.replace(cur_rec['external_label'], '.deleted', '')
+             if not self.dict.has_key(new_label):
+                 import volume_family
+                 cur_rec['exrenal_label'] = new_label
+                 cur_rec['volume_family'] = string.join((volume_family.extract_storage_group(cur_rec['volume_family']),
+                                                                                            'none'),'.')
+                 cur_rec['remaining_bytes'] = cur_rec['capacity_bytes']
+                 cur_rec['eod_cookie'] = 'none'
+                 cur_rec['last_access'] = -1
+                 cur_rec['first_access'] = -1
+                 cur_rec['declared'] = time.time()
+                 cur_rec['system_inhibit'] = ["none", "none"]
+                 cur_rec['at_mover'] = ("unmounted", "none")
+                 cur_rec['user_inhibit'] = ["none", "none"]
+                 cur_rec['sum_wr_err'] = 0
+                 cur_rec['sum_rd_err'] = 0
+                 cur_rec['sum_wr_access'] = 0
+                 cur_rec['sum_rd_access'] = 0
+                 cur_rec['non_del_files'] = 0
+                 # write the new record out to the database
+                 self.dict[new_label] = cur_rec
+                 # initialize the bfid database for this volume
+                 self.bfid_db.init_dbfile(new_label)
 	     return e_errors.OK, None
      # even if there is an error - respond to caller so he can process it
      except:
