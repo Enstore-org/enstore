@@ -217,14 +217,14 @@ ALLOW_MVR="$ALLOW_BASE
 
 # make the choice
 case $node in
-       *srv1) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
-       *srv2) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
-       *srv3) ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
-    d0ensrv4) ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
- *srv5|*srv7) ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
-       *mvr*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
-       *dca*) ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
-           *) ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
+       *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
+       *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
+       *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
+    d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to d0ensrv4";;
+ *srv5|*srv7)      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
+       *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
+       *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
+           *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
 esac
 
 
@@ -269,7 +269,11 @@ fi
 right_file /home/enstore/enstore/etc/$gang.enstore.k5login /home/enstore/.k5login
 right_file /home/enstore/enstore/sbin/routes /root/routes
 right_file /home/enstore/enstore/etc/root.k5login /root/.k5login
-right_file /home/enstore/enstore/etc/$gang.hosts.allow /etc/hosts.allow
+if [ `echo $node | grep -c ^rip[1-8]` -ne 0 ]; then
+  right_file /home/enstore/enstore/etc/d0en.hosts.allow /etc/hosts.allow
+else
+  right_file /home/enstore/enstore/etc/$gang.
+fi
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
 right_file /home/enstore/enstore/etc/sudoers /etc/sudoers
@@ -283,6 +287,8 @@ elif [ $node = "cdfenmvr3a" -o $node = "cdfenmvr4a" ]; then
   right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
 elif [ $node = "cdfenmvr5a" -o $node = "cdfenmvr6a" ]; then
   right_file /home/enstore/enstore/etc/cdf.step-tickers /etc/ntp/step-tickers
+elif [ `echo $node | grep -c ^rip[1-8]` -ne 0 ]; then
+  right_file /home/enstore/enstore/etc/d0en.step-tickers /etc/ntp/step-tickers
 else
   right_file /home/enstore/enstore/etc/$gang.step-tickers /etc/ntp/step-tickers
 fi
