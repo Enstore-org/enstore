@@ -180,7 +180,7 @@ cat $files | while read file; do
   else
     afile_size=`stat  $file|grep Size |awk '{print $2 }'`
     lfile_size=`stat $lfile|grep Size |awk '{print $2 }'`
-    if [ $lfile_size -eq 0 ]; then
+    if [ $lfile_size -eq 0 -a $afile_size -ne 0 ]; then
        echo `date` ERROR: 0 length file $lfile tape $tape
        if [ $RM_0 -eq 1 ]; then
         #echo rm -f $lfile
@@ -240,7 +240,7 @@ cat $files | while read file; do
         else
            bfile_size=`stat  $bfile|grep Size |awk '{print $2 }'`
            lfile_size=`stat $lfile|grep Size |awk '{print $2 }'`
-           if [ $bfile_size -eq 0 ]; then
+           if [ $bfile_size -eq 0 -a $lfile_size -ne 0 ]; then
               echo `date` ERROR: 0 length file $bfile tape $tape
               echo 1 >| $rc
            fi
