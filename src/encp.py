@@ -947,41 +947,40 @@ def read_from_hsm(input, output,
     bytes = 0
     while files_left:
 
-	for vol in vols_needed.keys():
-	    system_enabled(p) # make sure system is still enabled before submitting
-	    (submitted,Qd) = submit_read_requests(request_list,
-							     client, tinfo, 
-							     vol, files_left,
-							     verbose, 
-							     retry_flag)
+	system_enabled(p) # make sure system is still enabled before submitting
+	(submitted,Qd) = submit_read_requests(request_list,
+					      client, tinfo, 
+					      vols_needed.keys(),
+					      files_left,
+					      verbose, 
+					      retry_flag)
 
 
-	    tinfo["send_ticket"] = time.time() - t1 #---------------------------End
-	    if verbose:
-		print Qd
-	    if verbose>1:
-		print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
+	tinfo["send_ticket"] = time.time() - t1 #---------------------------End
+	if verbose:
+	    print Qd
+	if verbose>1:
+	    print "  dt:",tinfo["send_ticket"], "   cumt=",time.time()-t0
 
-	    # We have placed our work in the system and now we have to 
-	    # wait for resources. All we need to do is wait for the system
-	    # to call us back, and make sure that is it calling _us_ back,
-	    # and not some sort of old call-back to this very same port. 
-	    # It is dicey to time out, as it is probably legitimate to 
-	    # wait for hours....
-
-	    if submitted != 0:
-		files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
-						   files_left, request_list,
-						   tinfo, 
-						   chk_crc, data_access_layer, 
-						   maxretry, verbose)
-		bytes = bytes + brcvd
-		if verbose: print "FILES_LEFT ", files_left
-		if files_left > 0:
-		    retry_flag = 1
-	    else: 
-		files_left = 0
-		error = 1
+	# We have placed our work in the system and now we have to 
+	# wait for resources. All we need to do is wait for the system
+	# to call us back, and make sure that is it calling _us_ back,
+	# and not some sort of old call-back to this very same port. 
+	# It is dicey to time out, as it is probably legitimate to 
+	# wait for hours....
+	if submitted != 0:
+	    files_left, brcvd, error = read_hsm_files(listen_socket, submitted,
+						      files_left, request_list,
+						      tinfo, 
+						      chk_crc, data_access_layer, 
+						      maxretry, verbose)
+	    bytes = bytes + brcvd
+	    if verbose: print "FILES_LEFT ", files_left
+	    if files_left > 0:
+		retry_flag = 1
+	else: 
+	    files_left = 0
+	    error = 1
 
     # we are done transferring - close out the listen socket
     listen_socket.close()
@@ -1058,17 +1057,21 @@ def query_lm_queue(node,
 
 # submit read_from_hsm requests
 
-def submit_read_requests(requests, client, tinfo, vol, ninput, verbose, 
+def submit_read_requests(requests, client, tinfo, vols, ninput, verbose, 
 			 retry_flag):
 
-    t2 = time.time() #--------------------------------------------Lap-Start
-    rq_list = []
-    for rq in requests: 
-	Trace.trace(7,"submit_read_requests:"+repr(rq['infile'])+" t2="+repr(t2))
-    Qd=""
-    current_library = ''
-    submitted = 0
+
+  t2 = time.time() #--------------------------------------------Lap-Start
+  rq_list = []
+  for rq in requests: 
+      Trace.trace(7,"submit_read_requests:"+repr(rq['infile'])+" t2="+repr(t2))
+  Qd=""
+  current_library = ''
+  submitted = 0
+  
+  for vol in vols:
     # create the time subticket
+
     times = {}
     times["t0"] = tinfo["abs_start"]
     pid = os.getpid()
@@ -1119,96 +1122,95 @@ def submit_read_requests(requests, client, tinfo, vol, ninput, verbose,
 		  }
 	    rq_list.append(rq)
 
-    # now when we have request list per volume lets sort it
-    # according file location
-    #print "BEFORE SORTING"
-    #for j in range(0, len(rq_list)):
-	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
+  # now when we have request list per volume lets sort it
+  # according file location
+  #print "BEFORE SORTING"
+  #for j in range(0, len(rq_list)):
+      #print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
 
-    rq_list.sort(compare_location)
+  rq_list.sort(compare_location)
 
-    #print "AFTER SORTING"
-    #for j in range(0, len(rq_list)):
-	#print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
+  #print "AFTER SORTING"
+  #for j in range(0, len(rq_list)):
+      #print rq_list[j]["work_ticket"]["fc"]["location_cookie"]
 
-    # submit requests
-    for j in range(0, len(rq_list)):
-	# send tickets to library manger
-	Trace.trace(8,"submit_read_requests q'ing:"+repr(rq_list[j]["work_ticket"]))
-		
+  # submit requests
+  for j in range(0, len(rq_list)):
+      # send tickets to library manger
+      Trace.trace(8,"submit_read_requests q'ing:"+repr(rq_list[j]["work_ticket"]))
 
-	# get LM info from Config Server only if it is different
-	if (current_library != rq_list[j]["library"]):
-	    current_library = rq_list[j]["library"]
-	    Trace.trace(8,"submit_read_requests calling config server\
-	    to find "+rq_list[j]["library"]+".library_manager")
-	if verbose > 3:
-	    print "calling Config. Server to get LM info for", \
-		  current_library
-	lmticket = client['csc'].get(current_library+".library_manager")
-	if lmticket["status"][0] != e_errors.OK:
-	    pprint.pprint(lmticket)
-            # this error used to be a 0
-	    Trace.trace(6,"submit_read_requests. lmget failed"+ \
-			repr(lmticket["status"]))
-	    print_data_access_layer_format(rq_list[j]["infile"], 
-                                           rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
-                                           rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-                                           lmticket)
-	    print_error(errno.errorcode[errno.EPROTO],\
-			" submit_read_requests. lmget failed "+\
-			repr(lmticket["status"]))
-	    continue
+      # get LM info from Config Server only if it is different
+      if (current_library != rq_list[j]["library"]):
+	  current_library = rq_list[j]["library"]
+	  Trace.trace(8,"submit_read_requests calling config server\
+	  to find "+rq_list[j]["library"]+".library_manager")
+      if verbose > 3:
+	  print "calling Config. Server to get LM info for", \
+		current_library
+      lmticket = client['csc'].get(current_library+".library_manager")
+      if lmticket["status"][0] != e_errors.OK:
+	  pprint.pprint(lmticket)
+	  # this error used to be a 0
+	  Trace.trace(6,"submit_read_requests. lmget failed"+ \
+		      repr(lmticket["status"]))
+	  print_data_access_layer_format(rq_list[j]["infile"], 
+					 rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+					 rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+					 lmticket)
+	  print_error(errno.errorcode[errno.EPROTO],\
+		      " submit_read_requests. lmget failed "+\
+		      repr(lmticket["status"]))
+	  continue
 
-	Trace.trace(8,"submit_read_requests "+ current_library+\
-		    ".library_manager at host="+\
-		    repr(lmticket["hostip"])+\
-		    " port="+repr(lmticket["port"]))
-	# send to library manager and tell user
-	ticket = client['u'].send(rq_list[j]["work_ticket"], 
-				  (lmticket['hostip'], lmticket['port']))
-	if verbose > 3:
-	    print "ENCP:read_from_hsm. LM read_from_hsm returned"
-	    pprint.pprint(ticket)
-	if ticket['status'][0] != "ok" :
-	    print_data_access_layer_format(rq_list[j]["infile"], 
-                                           rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
-                                           rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
-                                           ticket)
-	    print_error(errno.errorcode[errno.EPROTO],\
-			" encp.read_from_hsm: from"\
-			+"u.send to LM at "+lmticket['hostip']+"/"\
-			+repr(lmticket['port']) +", ticket[\"status\"]="\
-			+repr(ticket["status"]))
-	    continue
-	submitted = submitted+1
+      Trace.trace(8,"submit_read_requests "+ current_library+\
+		  ".library_manager at host="+\
+		  repr(lmticket["hostip"])+\
+		  " port="+repr(lmticket["port"]))
+      # send to library manager and tell user
+      ticket = client['u'].send(rq_list[j]["work_ticket"], 
+				(lmticket['hostip'], lmticket['port']))
+      if verbose > 3:
+	  print "ENCP:read_from_hsm. LM read_from_hsm returned"
+	  pprint.pprint(ticket)
+      if ticket['status'][0] != "ok" :
+	  print_data_access_layer_format(rq_list[j]["infile"], 
+					 rq_list[j]["work_ticket"]["wrapper"]["fullname"], 
+					 rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],
+					 ticket)
+	  print_error(errno.errorcode[errno.EPROTO],\
+		      " encp.read_from_hsm: from"\
+		      +"u.send to LM at "+lmticket['hostip']+"/"\
+		      +repr(lmticket['port']) +", ticket[\"status\"]="\
+		      +repr(ticket["status"]))
+	  continue
+      submitted = submitted+1
 
-	tinfo["send_ticket"+repr(rq_list[j]["index"])] = time.time() - t2 #------Lap-End
-	if verbose :
-	    if len(Qd)==0:
-		format = "  Q'd: %s %s bytes: %d on %s %s "\
-			 "dt: %f   cumt=%f"
-		Qd = format %\
-		     (rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
-		      rq_list[j]["bfid"],\
-		      rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
-		      rq_list[j]["work_ticket"]["fc"]["external_label"],\
-		      rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
-		      tinfo["send_ticket"+repr(rq_list[j]["index"])], \
-		      time.time()-tinfo['abs_start'])
-	    else:
-		Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
-		     "dt: %f   cumt=%f" %\
-		     (Qd,\
-		      rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
-		      rq_list[j]["bfid"],\
-		      rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
-		      rq_list[j]["work_ticket"]["fc"]["external_label"],\
-		      rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
-		      tinfo["send_ticket"+repr(rq_list[j]["index"])], \
-		      time.time()-tinfo['abs_start'])
+      tinfo["send_ticket"+repr(rq_list[j]["index"])] = time.time() - t2 #------Lap-End
+      if verbose :
+	  if len(Qd)==0:
+	      format = "  Q'd: %s %s bytes: %d on %s %s "\
+		       "dt: %f   cumt=%f"
+	      Qd = format %\
+		   (rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
+		    rq_list[j]["bfid"],\
+		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
+		    rq_list[j]["work_ticket"]["fc"]["external_label"],\
+		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
+		    tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		    time.time()-tinfo['abs_start'])
+	  else:
+	      Qd = "%s\n  Q'd: %s %s bytes: %d on %s %s "\
+		   "dt: %f   cumt=%f" %\
+		   (Qd,\
+		    rq_list[j]["work_ticket"]["wrapper"]["fullname"],\
+		    rq_list[j]["bfid"],\
+		    rq_list[j]["work_ticket"]["wrapper"]["size_bytes"],\
+		    rq_list[j]["work_ticket"]["fc"]["external_label"],\
+		    rq_list[j]["work_ticket"]["fc"]["location_cookie"],\
+		    tinfo["send_ticket"+repr(rq_list[j]["index"])], \
+		    time.time()-tinfo['abs_start'])
     
-    return submitted, Qd
+  return submitted, Qd
 
 
 #############################################################################
