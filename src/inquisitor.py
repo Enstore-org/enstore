@@ -1411,16 +1411,31 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    Trace.log(e_errors.ERROR,
 		      "Could not read file %s/%s"%(self.html_dir, 
 						   enstore_constants.OUTAGEFILE))
+    def send_mail(self, ticket, action):
+        server_l = string.split(ticket["servers"], ",")
+        real_names = ""
+        for server in server_l:
+            num, real_server = self.find_server_match(server)
+            if real_names:
+                real_names = "%s, %s"%(real_names, real_server)
+            else:
+                real_names = real_server
+        else:
+            enstore_functions2.send_mail(MY_NAME, "REASON: %s"%(ticket.get("time", "None"),),
+                                     "%s marked %s"%(real_names, action))
+
 
     def up(self, ticket):
 	self.update_schedule_file(ticket, UP)
         self.send_reply(ticket)
+        self.send_mail(ticket, "up")
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
 				   "mark server up work from user")
 
     def down(self, ticket):
 	self.update_schedule_file(ticket, DOWN)
         self.send_reply(ticket)
+        self.send_mail(ticket, "down")
         enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
 				   "mark server down work from user")
 
