@@ -90,7 +90,7 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
 def do_work(intf):
 
-    Trace.init("ENSTORE_RESTART")
+    Trace.init(MY_NAME)
 
     enstore_start.check_user()
 
