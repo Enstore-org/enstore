@@ -34,8 +34,7 @@ TRANSFER_MAX=16384
 def get_client() :
     #Pick an interface based on the current load of the system.
     #host = host_config.check_load_balance()['ip']
-    #host = host_config.choose_interface()['ip']
-    host = host_config.get_default_interface()['ip']
+    host = host_config.choose_interface()['ip']
     sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((host, 0))
     host, port = sock.getsockname()
@@ -178,8 +177,7 @@ class UDPClient:
 
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is dst[0].
-        if not host_config.is_route_in_table(dst[0]):
-            host_config.setup_interface(dst[0], tsd.host)
+	host_config.setup_interface(dst[0], tsd.host)
 
         n_sent = 0
         while max_send==0 or n_sent<max_send:
@@ -195,6 +193,9 @@ class UDPClient:
                     rcvd_txn_id, out, t = self._eval_reply(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
+			#Before returning the error, we should clean up the
+			# changes to the routing table.
+			host_config.unset_route(dst[0])
                         return out
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
@@ -210,10 +211,15 @@ class UDPClient:
                     Trace.log(e_errors.INFO, message)
                     rcvd_txn_id=None
             else: # we got a good reply
+		#Before returning the error, we should clean up the
+		# changes to the routing table.
+		host_config.unset_route(dst[0])
                 return out
 	    
         #If we got here, it's because we didn't receive a response to the
-	# message we sent.
+	# message we sent.  Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(dst[0])
         raise errno.errorcode[errno.ETIMEDOUT]
         
     # send message without waiting for reply and resend
@@ -223,11 +229,14 @@ class UDPClient:
         
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is address[0].
-        if not host_config.is_route_in_table(address[0]):
-            host_config.setup_interface(address[0], tsd.host)
+	host_config.setup_interface(address[0], tsd.host)
 
         reply = tsd.socket.sendto( message, address )
 	
+	#Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(address[0])
+
 	return reply
 
     # send message, return an ID that can be used in the recv_deferred function
@@ -238,11 +247,14 @@ class UDPClient:
         
         #set up the static route before sending.
 	# outgoing interface_ip is tsg.host and destination is address[0].
-        if not host_config.is_route_in_table(address[0]):
-            host_config.setup_interface(address[0], tsd.host)
+	host_config.setup_interface(address[0], tsd.host)
 
         bytes_sent = tsd.socket.sendto( message, address )
 	
+	#Before returning the error, we should clean up the
+	# changes to the routing table.
+	host_config.unset_route(address[0])
+
         if bytes_sent < 0:
             return -1
         return txn_id
@@ -272,7 +284,7 @@ class UDPClient:
                 except TypeError:
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
-                    exc, msg, tb = sys.exc_info()
+                    exc, msg, tb = sys.exec_info()
                     try:
                         message = "%s: %s: From server %s:%s" % \
                                   (exc, msg, server, reply[:100])

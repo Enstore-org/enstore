@@ -206,23 +206,10 @@ def get_netstat_r():
 
     return output
 
-_cached_netstat = None
-
-def get_routes():
-    global _cached_netstat
-    if not _cached_netstat:
-        _cached_netstat = get_netstat_r()
-    return _cached_netstat
-
-def update_cached_routes():
-    global _cached_netstat
-    _cached_netstat = get_netstat_r()
-    return _cached_netstat
-
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
-    route_table = get_routes()
+    route_table = get_netstat_r()
     for route in route_table:
         #Most platforms attempt to give names instead of FQDN, convert the
         # names to ip addresses.
@@ -369,5 +356,3 @@ def setup_interface(dest, interface_ip):
     #Set the static route.
     set_route(dest, interface_ip)
 
-    #Since the routing table just changed, the cached version needs updating.
-    update_cached_routes()
