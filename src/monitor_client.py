@@ -188,7 +188,7 @@ class MonitorServerClient(generic_client.GenericClient):
             sock.connect(mon_serv_addr) #Start the TCP handshake.
         except socket.error, detail:
             #We have seen that on IRIX, when the connection succeds, we
-            # get an ISCONN error.
+            # get an EISCONN error.
             if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
                 pass
             #The TCP handshake is in progress.
