@@ -22,7 +22,6 @@ import hostaddr
 import option
 
 MY_NAME = "CONFIG_CLIENT"
-#MY_SERVER = "configuration_server"
 MY_SERVER = enstore_constants.CONFIGURATION_SERVER
 
 class ConfigurationClient(generic_client.GenericClient):
@@ -63,8 +62,7 @@ class ConfigurationClient(generic_client.GenericClient):
     def get(self, key, timeout=0, retry=0):
         self.timeout = timeout #Remember this.
         self.retry = retry     #Remember this.
-        if key == 'configuration_server' or key == MY_SERVER or \
-           key == enstore_constants.CONFIGURATION_SERVER:
+        if key == enstore_constants.CONFIGURATION_SERVER:
             ret = {'hostip':self.server_address[0],
                    'port':self.server_address[1],
                    'status':(e_errors.OK, None)}
