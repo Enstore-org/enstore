@@ -582,9 +582,31 @@ rip6 node) are:
 </ol>
 Of course, the actual steps depend on the <em>pnfs</em> installation.
 <p>
-*** Auto-mounting will be investigated in early Feb 99 *** It is expected to work without
-problems. This is deemed especially important since it will streamline the production
-farm nodes disk mount administration.
+
+<em>Pnfs</em> filesystems in any way that other NFS filesystems can be mounted:
+<ul>
+  <li> Explicit mount commands via root
+  <li> User mount commands if <em>pnfs</em> entries in in fstab have the option "user"
+  <li> Automounting of needed filesystems
+</ul>
+<p>
+
+<em>Pnfs</em> supports automounting as one would expect.  There is a
+general problem with automounting that the <em>pnfs</em> mountpoints
+exacerbate: automouting works fine if the mountpoint is only 1 level deep -
+but if one tries to mount deeper in a mounted tree, the automounter will
+not work properly.  To circumvent this difficulty, one needs to employ a
+link gambit, provided by Ramon Pasetes of the OSS Department.  The solution
+uses an intermediate node where the filesystem are mounted in the 1st
+level, a series of links that make it make the file system appear to be
+mounted as deep as it need be, and an export map to get the mountpoints to
+the client machines. Here, as an example of this solution, is the current
+auto.pnfs indirect maps that the OSS department are using for the Run II
+farm nodes:
+<p>
+
+INSERT FARM MAP
+
 <p>
 
 Finally, it should be noted that mounting <em>the </em>pnfs namespace does
