@@ -38,8 +38,9 @@ nodeplus_servers=`conf.sh $local_host 3 2`
 
 # check if Configuration Server is up
 if [ $? -ne 0 ] ; then
-    echo "   ...Configuration Server not reachable..."
-    exit 1
+    config_running=0
+else
+    config_running=1
 fi
 
 # now just isolate the servers for this node
@@ -55,8 +56,9 @@ if [ ! "$node_servers" ];then
     nodeplus_servers=`conf.sh $hh 3 2`
     # check if Configuration Server is up
     if [ $? -ne 0 ] ; then
-	echo "   ...Configuration Server not reachable..."
-	exit 1
+       config_running=0
+    else
+       config_running=1
     fi
 
     node_servers=`echo "$nodeplus_servers" | grep :$hh: | sed -e "s/:$hh//"`
@@ -74,20 +76,28 @@ turnoff_s() { for pid in $1; do
             done; }
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
     turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
     turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep inq |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
     turnoff "$PID_DIR/`uname -n`-inquisitor*pids"      "inquisitor"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep fil |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep fil |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
     turnoff "$PID_DIR/`uname -n`-file_clerk*pids"      "file_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep vol |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep vol |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
     turnoff "$PID_DIR/`uname -n`-volume_clerk*pids"    "volume_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
@@ -96,7 +106,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
         #echo "serv is <$serv>  opt_just_ere is <$opt_just_ere> do_server is <$do_server>"
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        if [ $config_running -eq 1 ] ; then
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff_s "$serv*"           "movers"
@@ -107,7 +119,9 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
 	if [ `echo "$serv" | grep -c "\-\*\-"` -eq 1 ] ; then continue; fi
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        if [ $config_running -eq 1 ] ; then
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff "$serv*"   "media_changers"
@@ -118,21 +132,27 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
 	if [ `echo "$serv" | grep -c "\-\*\-"` -eq 1 ] ; then continue; fi
         do_server=`echo $serv | egrep "$opt_just_ere"`
         if [ ! "$do_server" ];then continue; fi
-	udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+        if [ $config_running -eq 1 ] ; then
+  	  udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep "$opt_just_ere" |sed -e 's/.*://'` $timeout --work quit >/dev/null
+	fi
 
         # note: turnoff function assumes filename globbing, so we must add an *
         turnoff "$serv*" "library managers"
     done
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host $ENSTORE_CONFIG_PORT $timeout --work quit >/dev/null
+    if [ $config_running -eq 1 ] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host $ENSTORE_CONFIG_PORT $timeout --work quit >/dev/null
+    fi
     turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration server"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
-    udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    if [ $config_running -eq 1] ; then
+      udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log |sed -e 's/.*://'` $timeout --work quit >/dev/null
+    fi
     turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log server"
 fi
 
-#    turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
+#   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
 
 exit
