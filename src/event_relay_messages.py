@@ -13,7 +13,7 @@ TRANSFER = "transfer"
 DISCONNECT = "disconnect"
 CONNECT = "connect"
 UNLOAD = "unload"
-LOADING = "loading"
+LOADED = "loaded"
 MSG_FIELD_SEPARATOR = " "
 
 def decode_type(msg):
@@ -195,7 +195,7 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      ALIVE :  EventRelayAliveMsg,
 		      NEWCONFIGFILE : EventRelayNewConfigFileMsg,
 		      CLIENT : EventRelayClientMsg,
-		      STATE : EventRelaystateMsg 
+		      STATE : EventRelayStateMsg,
 		      TRANSFER : EventRelayTransferMsg,
 		      DISCONNECT : EventRelayDisconnectMsg,
 		      CONNECT : EventRelayConnectMsg,
