@@ -56,7 +56,6 @@ class Relay:
             tok = string.split(msg)
             if not tok:
                 continue
-	    print msg
             if tok[0]==NOTIFY:
                 try:
                     ip = tok[1]
