@@ -165,7 +165,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                                 i = 0
                                 self.alive_retries = 1
                                 Trace.log(e_errors.INFO,
-                                          "Attempting restart of %s"%i)
+                                          "Attempting restart of %s"%key)
                                 while i < 3:
                                     Trace.trace(7, "Server restart: try %s"%i)
                                     os.system('ecmd restart --just %s'%key)
