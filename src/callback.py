@@ -123,10 +123,12 @@ def read_tcp_raw(sock, timeout=15*60):
     try:
         bytecount = int(tmp)
     except:
-        Trace.handle_error()
         bytecount = None
-    if len(tmp)!=8 or bytecount is None:
-        Trace.log(e_errors.ERROR,"read_tcp_raw: bad bytecount %s"%(tmp,))
+    if len(tmp)!=8 or bytecount == None:
+        try:
+            Trace.log(e_errors.ERROR,"read_tcp_raw: bad bytecount %s"%(tmp,))
+        except ValueError, msg:
+            Trace.log(e_errors.ERROR,"read_tcp_raw: %s"%(msg,))
         return ""
     tmp = timeout_recv(sock,8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
