@@ -6,14 +6,17 @@ class LockingDict:
 
     def __init__(self):
         self.dict = {}
-        self.locked = 0
+        self._locked = 0
 
     def lock(self):
-        self.locked = 1
+        self._locked = 1
 
     def unlock(self):
-        self.unlocked = 0
+        self._locked = 0
 
+    def locked(self):
+        return self._locked
+        
     def __getitem__(self,key):
         return self.dict[key]
 
@@ -23,8 +26,12 @@ class LockingDict:
 
         self.dict[key]=value
 
-    def __repr__(self):
-        return repr(self.dict)
+
+    def __len__(self):
+        return  len(self.dict)
+    
+    def __getattr__(self,attr):
+        return getattr(self.dict,attr)
 
     
         
