@@ -303,9 +303,9 @@ class LibraryManager(EnstoreServer):
                                                                      self.lstate,
                                                                      self.seen_down_d[self.format_name]))
             else:
-                self.writemail("%s is in %s state. "%(self.format_name,
-                                                      self.lstate))
-                
+                self.writemail("%s is in %s state. Down counter %s"%(self.format_name,
+                                                                     self.lstate,
+                                                                     self.seen_down_d[self.format_name]))
 	else:
 	    EnstoreServer.is_alive(self)
 
