@@ -61,8 +61,6 @@ static PyObject* ET_OpenRead(PyObject *self, PyObject *args)
   int position;
   int loc;
   int sts;
-  long *thisET;
-  PyObject *ETobj;
   ET_descriptor *ET_desc;
 /*
 	Allocate an ETApe desciptor block
@@ -121,9 +119,6 @@ static PyObject* ET_ReadBlock(PyObject *self, PyObject *args)
 {
   ET_descriptor *ET_desc;
   int len;
-  int datalen;
-  int bytesleft;
-  char *returnptr;
 /*
 	Get the arguments
 */
@@ -339,8 +334,6 @@ static PyObject* ET_Rewind(PyObject *self, PyObject *args)
   ET_descriptor *ET_desc;
 
   int sts;
-  ftt_descriptor ftt_desc;
-  
 
   PyArg_ParseTuple(args, "ss", &cartid, &fname);
 /*
