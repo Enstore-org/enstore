@@ -106,6 +106,7 @@ class DispatchingWorker:
         Trace.trace(4,"{serve_forever")
         while 1:
                 self.handle_request()
+		collect_children()
 	Trace.trace(2,"}server_forever")
 
     def handle_request(self):
