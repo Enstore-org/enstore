@@ -84,12 +84,13 @@ class FTTDriver(driver.Driver):
                 self.fd = self.ftt.open_dev()
                 break
             except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.errno))
+                Trace.log(e_errors.ERROR, "ftt open dev: %s %s" %(detail, detail.value))
                 if detail.errno == ftt.EBUSY:
                     time.sleep(5)
                 elif detail.errno == ftt.EROFS:
-                    ###XXX HACK!
-                    Trace.log(e_errors.ERROR, "ftt open dev: %s %s: reopening read-only" %(detail, detail.errno))
+                    ###XXX HACK!  Tape may have write-protect tab set.  But we really
+                    ### ought to get readonly status of the tape from the volume database
+                    Trace.log(e_errors.INFO, "ftt open dev: %s %s: reopening read-only" %(detail, detail.value))
                     self.ftt.close()
                     self.ftt = ftt.open(self.device, ftt.RDONLY)
                 else:
@@ -101,7 +102,7 @@ class FTTDriver(driver.Driver):
             Trace.trace(25, "ftt_rewind returns %s" % (r,))
             return r
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "rewind: %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "rewind: %s %s" % (detail, detail.value))
             return -1
 
     def tell(self):
@@ -112,7 +113,7 @@ class FTTDriver(driver.Driver):
             file, block = self.ftt.get_position()
             Trace.trace(25, "ftt_get_position returns %s %s" % (file, block))
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
             return -1
         return file
     
@@ -141,14 +142,14 @@ class FTTDriver(driver.Driver):
                     ### XXX Damn, this is unrecoverable (for AIT2, at least). What to do?
                     pass
                 else:
-                    Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.errno))
+                    Trace.log(e_errors.ERROR, "seek: %s %s" % (detail, detail.value))
                     raise ftt.FTTError, detail
         else:
             try:
                 self.ftt.skip_fm(target-current-1)
                 self.ftt.skip_fm(1)
             except ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.errno))
+                Trace.log(e_errors.ERROR, "skip_fm: %s %s" % (detail, detail.value))
                 raise ftt.FTTError, detail
         current = self.tell()
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
@@ -168,7 +169,7 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.close_dev()
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "close_dev %s %s" % (detail, detail.value))
         Trace.trace(25, "ftt_close_dev returns %s" % (r,))
         self.fd = -1
         return r
@@ -179,7 +180,7 @@ class FTTDriver(driver.Driver):
             r = self.ftt.close()
             Trace.trace(25, "ftt_close returns %s" % (r,))
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "close %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "close %s %s" % (detail, detail.value))
             r = -1
         self.ftt = None
         self.fd = -1
@@ -194,7 +195,7 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.read(buf, nbytes)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "read %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "read %s %s" % (detail, detail.value))
             raise e_errors.READ_ERROR, detail
         if r > 0:
             now = time.time()
@@ -214,7 +215,7 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.write(buf, nbytes)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.value))
             raise e_errors.WRITE_ERROR, detail
         if r > 0:
             now = time.time()
@@ -235,7 +236,7 @@ class FTTDriver(driver.Driver):
             ## was a writefm.  So we tell a lie to ftt...
             ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "write %s %s" % (detail, detail.value))
         if r==-1:
             ftt.raise_ftt()
         return r
@@ -244,7 +245,7 @@ class FTTDriver(driver.Driver):
         try:
             return self.ftt.unload()
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "eject %s %s" % ( detail, detail.errno))
+            Trace.log(e_errors.ERROR, "eject %s %s" % ( detail, detail.value))
             return -1
         
     def set_mode(self, density=None, compression=None, blocksize=None):
@@ -252,7 +253,7 @@ class FTTDriver(driver.Driver):
         try:
             mode = self.ftt.get_mode()
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.value))
             return -1
         
         if density is None:
@@ -265,13 +266,13 @@ class FTTDriver(driver.Driver):
         try:
             r = self.ftt.set_mode(density, compression, blocksize)
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "set_mode %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "set_mode %s %s" % (detail, detail.value))
             return -1
 
         try:
             self.fd = self.ftt.open_dev()
         except ftt.FTTError, detail:
-            Trace.log(e_errors.ERROR, "open_dev %s %s" % (detail, detail.errno))
+            Trace.log(e_errors.ERROR, "open_dev %s %s" % (detail, detail.value))
             return -1
 
         return r

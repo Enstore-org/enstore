@@ -24,26 +24,26 @@ def cleanup(s):
         map(string.strip, string.split(s,'\n')),
         ' ')
 
-
 class FTTError(exceptions.Exception):
     def __init__(self, args):
         self.strerror = cleanup(args[0])
         self.errno = args[1]
+        self.value = args[2]
     def __str__(self):
         return ascii_error[self.errno]
 
-def raise_ftt(err=None):
+def raise_ftt(err=None, value=None):
     if err is None:
         err=_ftt.ftt_get_error()
+    err = err + (value,)
     if err[1]!=0:
         raise FTTError(err)
     else:
-        raise FTTError(("Unspecified error", 0))
+        raise FTTError(("Unspecified error", 0, value))
 
 class stat_buf:
     def __init__(self):
         self.b = _ftt.ftt_alloc_stat()
-
         
     def __del__(self):
         try:
@@ -70,12 +70,14 @@ class stat_buf:
     
     
 def check(r, e=-1):
+    """first arg is return code from _ftt call, second arg is value or values to be
+    considered error returns"""
     if type(e) is not type(()):
         e=(e,)
     if r not in e:
         return r
     else:
-        raise_ftt()
+        raise_ftt(value=r)
     return r
 
 
@@ -153,7 +155,7 @@ class FTT:
     def get_position(self):
         status, file, block = _ftt.ftt_get_position(self.d)
         if status:
-            raise_ftt()
+            raise_ftt(value=status)
         else:
             return file, block
     def get_stats(self):
