@@ -24,6 +24,7 @@ TRANSFER_MAX=16384
 
 # see if we can allocate a specific port on a specific host
 def try_a_port(host, port) :
+    Trace.trace("try_a_port: trying udp port %s %s" % (host, port))
     try:
 	sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((host, port))
@@ -32,7 +33,6 @@ def try_a_port(host, port) :
             sock.close()
 	except:
 	    pass
-        Trace.trace(20,'try_a_port failure')
         return (0, 0) # failure
     Trace.trace(20,'try_a_port success')
     return (1, sock)     # success
@@ -42,10 +42,10 @@ def try_a_port(host, port) :
 def get_client() :
     (hostname,ha,hi) = hostaddr.gethostinfo()
     host = hi[0]
-    port1 = 7600
+    port1 = 7000
     port2 = 8000
     while  1:
-        for port in range (port1, port2) : # range (7600, 7600) has 0 members...
+        for port in range (port1, port2) : 
             success, sockt = try_a_port (host, port)
             if success :
                 Trace.trace(20,'get_client '+repr((host,port))+" "+repr(sockt)+" "+repr((hostname,ha,hi)))
