@@ -15,6 +15,7 @@ import exceptions
 import sys
 try:
     import threading
+    import thread
     thread_support=1
 except ImportError:
     thread_support=0
@@ -79,7 +80,6 @@ def wait_rsp( sock, address, rcv_timeout ):
     r, w, x, rcv_timeout = cleanUDP.Select( [sock], [], [sock], rcv_timeout)
     if r:
         reply , server = sock.recvfrom( TRANSFER_MAX, rcv_timeout)
-
     elif x or w :
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO,
@@ -104,10 +104,15 @@ class UDPClient:
         self.reinit()
 
     def reinit(self):
+        #Obtain necessary values.
         pid = self._os.getpid()
-        tsd = Container()
-        self.tsd[pid] = tsd
         host, port, socket = udp_common.get_default_callback()
+        if thread_support:
+            tid = thread.get_ident() #Obtain unique identifier.
+        else:
+            tid = 1
+        #Build thread specific data.
+        tsd = Container()
         tsd.host = host
         tsd.port = port
         tsd.socket = socket
@@ -116,12 +121,18 @@ class UDPClient:
         tsd.ident = self._mkident(host, port, pid)
         tsd.send_done = {}
         if thread_support:
-            tsd.thread = threading.currentThread() 
+            tsd.thread = threading.currentThread()
+        #Cache the tsd and return.
+        self.tsd[tid] = tsd
         return tsd
 
     def get_tsd(self):
-        pid = self._os.getpid()
-        tsd = self.tsd.get(pid)
+        #pid = self._os.getpid()
+        if thread_support:
+            tid = thread.get_ident() #Obtain unique identifier.
+        else:
+            tid = 1
+        tsd = self.tsd.get(tid)
         if not tsd:
             if thread_support:
                 for key, value in self.tsd.items():
@@ -289,7 +300,7 @@ class UDPClient:
 	# outgoing interface_ip is tsg.host and destination is address[0].
         if not host_config.is_route_in_table(address[0]):
             host_config.setup_interface(address[0], tsd.host)
-
+        
         bytes_sent = tsd.socket.sendto( message, address )
 	
         if bytes_sent < 0:
@@ -312,7 +323,6 @@ class UDPClient:
                     reply, server = tsd.socket.recvfrom(TRANSFER_MAX, timeout)
                 if not reply: # receive or select timed out
                     break
-
                 try:
                     rcvd_txn_id, out, t = self._eval_reply(reply)
                     if type(out) == type({}) and out.has_key('status') \
@@ -341,7 +351,8 @@ class UDPClient:
             else: # we got a good reply
                 return out
 
-        ##if we got here, it's because we didn't receive a response to the message we sent.
+        ##If we got here, it's because we didn't receive a response to the
+        ## message we sent.
         raise errno.errorcode[errno.ETIMEDOUT]
 
         
@@ -349,21 +360,61 @@ class UDPClient:
         
 if __name__ == "__main__" :
 
+    #This test can be run in a number of ways.  The usage of this test
+    # will look like:
+    #   python $ENSTORE_DIR/SRC/udp_client.py
+    #   python $ENSTORE_DIR/SRC/udp_client.py deferred
+    #   python $ENSTORE_DIR/SRC/udp_client.py nowait
+    #
+    #Before running this test, start a udp_server:
+    #   python $ENSTORE_DIR/SRC/udp_server.py
+    #
+    #A sample session should look like this:
+    # UDPServer:
+    #   $ python udp_server.py
+    # <Note: Nothing happens until the message arives.>
+    #   Message {'message': 'TEST MESSAGE'}
+    #   finished
+    #
+    # UDPClient:
+    #   $ python udp_client.py
+    #   Sending message {'message': 'TEST MESSAGE'} to ('localhost', 7700)
+    #   using callback ('131.225.84.1', 60853).
+    #   Recieved message {'message': 'TEST MESSAGE'}.
+
     status = 0
 
     # get a UDP client
     u = UDPClient()
+    tsd = u.get_tsd()
+    msg = {'message' : "TEST MESSAGE"}
+    address = ("localhost", 7700)
+    
+    print "Sending message %s to %s using callback %s." \
+          % (msg, address, (tsd.host, tsd.port))
 
-    msg="TEST MESSAGE"
-    print "Sending message", msg, "to", u.host, " with callback on port ", u.port
+    try:
+        if "deferred" in  sys.argv:
+            txn_id = u.send_deferred(msg, address)
+            print "Sleeping for 5 sec."
+            time.sleep(5)
+            back = u.recv_deferred(txn_id, 5)
+            print "Recieved message %s." % (back)
 
-    back = u.send_no_wait(msg, (u.host, u.port))
-    print "sleeping for 5 sec"
-    time.sleep(5)
+        elif "nowait" in sys.argv:
+            back = u.send_no_wait(msg, address)
+            print "Sent message."
+
+        else:
+            back = u.send(msg, address, rcv_timeout = 10)
+            print "Recieved message %s." % (back)
+
+    except:
+        exc, msg = sys.exc_info()[:2]
+        print "Unable to complete test: %s: %s" % (str(exc), str(msg))
+        status = 1
+
     del u
-    print "sleeping for 5 sec"
-    time.sleep(5)
-    print "back"
 
     sys.exit(status)
     
