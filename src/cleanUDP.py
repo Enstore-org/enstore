@@ -40,13 +40,12 @@ def Select (R, W, X, timeout) :
 		timeout = timeout - (time.time() - t0)
 		timeout = max(0.0, timeout)
 
-		if r == cleaned_r == [] and timeout:
-			#Keep waiting for a responce.  This loop appears
-			# necessary since select.select() seems to timeout
-			# after a time less than the variable "timeout"
-			# says to.
-			continue
                 if r == cleaned_r :
+			#If the timeout specified hasn't run out and
+			# we don't have a ready socket keep trying.
+			if r == w == x == [] and timeout > 0.0:
+				continue
+			
                         # all except FD's as the same as not scrubbed
                         # previously.
                         return r, w, x, timeout
