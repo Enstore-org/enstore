@@ -50,10 +50,11 @@ def get_vol_filenames(output_dir):
         total_bytes_file = os.path.join(output_dir, "TOTAL_BYTES_ON_TAPE")
         declaration_error = os.path.join(output_dir, "DECLARATION_ERROR")
         migrated_volumes = os.path.join(output_dir, "MIGRATED_VOLUMES")
+        recyclable_volume = os.path.join(output_dir, "RECYCLABLE_VOLUMES")
     return last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file, volumes_too_many_mounts_file, \
-                      declaration_error, migrated_volumes
+                      declaration_error, migrated_volumes, recyclable_volume
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -672,7 +673,7 @@ def inventory(output_dir, cache_dir):
     last_access_file, volume_size_file, volumes_defined_file, \
 		      volume_quotas_file, volume_quotas_format_file, \
 		      total_bytes_file, volumes_too_many_mounts_file, \
-                      declaration_error, migrated_volumes \
+                      declaration_error, migrated_volumes, recyclable_volume \
                       = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
@@ -712,6 +713,7 @@ def inventory(output_dir, cache_dir):
     tm_file = open(volumes_too_many_mounts_file, "w")
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
+    rc_file = open(recyclable_volume, "w")
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
@@ -735,6 +737,11 @@ def inventory(output_dir, cache_dir):
         time.ctime(time.time())))
     mv_file.write("These migrated volumes can be recycled or deleted from system:\n\n")
 
+    rc_file.write("Date this listing was generated: %s\n\n"%(
+        time.ctime(time.time())))
+    rc_file.write("These volumes are full and have only deleted files.")
+    rc_file.write("They MAY be recycled.\n\n")
+
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
     de_count = 0
 
@@ -754,6 +761,7 @@ def inventory(output_dir, cache_dir):
     n_unchanged = 0
     n_changed = 0
     n_migrated = 0
+    n_recyclable = 0
 
     # read volume ... one by one
 
@@ -877,8 +885,14 @@ def inventory(output_dir, cache_dir):
 
         # is this a migrated volume?
         if vv['system_inhibit'][1] == 'migrated' and active == 0:
-		mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
-		n_migrated = n_migrated + 1
+            mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+            n_migrated = n_migrated + 1
+
+        # can it be recycled?
+        if (vv['system_inhibit'][1] == 'full' or \
+            vv['system_inhibit'][1] == 'migrated') and active == 0:
+            rc_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+            n_recyclable = n_recyclable + 1
 
         # check if the volume is declared right
         if vk[:3] != 'CLN':
@@ -1033,6 +1047,9 @@ def inventory(output_dir, cache_dir):
     # write out the count of migrated volumes
     mv_file.write("\n(%d volumes)"%(n_migrated))
     mv_file.close()
+    # write out the count of recyclable volumes
+    rc_file.write("\n(%d volumes)"%(n_recyclable))
+    rc_file.close()
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
