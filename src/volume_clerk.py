@@ -788,7 +788,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        inc_counter = 0
         # first check quota
         if ticket.has_key('library') and ticket.has_key('storage_group'):
             library = ticket['library']
@@ -803,7 +802,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
-                inc_counter = 1
         else:
             msg= "Volume Clerk: key %s or %s is missing" % ('library', 'storage_group')
             ticket["status"] = (e_errors.KEYERROR, msg)
@@ -875,7 +873,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record['blocksize'] = msize
         # write the ticket out to the database
         self.dict[external_label] = record
-        if inc_counter: self.sgdb.inc_sg_counter(library, sg)
+        # increase the sg count
+        self.sgdb.inc_sg_counter(library, sg)
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
@@ -1321,6 +1320,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                         msg="Volume Clerk: (%s, %s) quota exceeded while drawing from common pool. Contact enstore admin."%(library, sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.alarm(e_errors.ERROR, e_errors.QUOTAEXCEEDED, msg)
+                        ic = inquisitor_client.Inquisitor(self.csc)
+                        ic.override(enstore_constants.ENSTORE, enstore_constants.RED)
+                        # release ic
+                        del ic
                         self.reply_to_caller(ticket)
                         return
 
