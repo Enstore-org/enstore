@@ -146,11 +146,19 @@ ftt_set_mode(ftt_descriptor d, int density, int mode, int blocksize) {
     PCKNULL("ftt_descriptor", d);
     
     ftt_close_dev(d);
+    d->density_is_set = 0;
     for( i = 0; d->devinfo[i].device_name != 0; i++ ){
 	if (d->devinfo[i].density == density &&
 		    d->devinfo[i].mode == mode &&
 		    (d->devinfo[i].fixed == 0) == (blocksize == 0) && 
 		    d->devinfo[i].rewind == 0) {
+
+	    /* clear flag if we are switching density */
+
+	    if (d->devinfo[i].hwdens != d->devinfo[d->which_is_default].hwdens){
+		d->density_is_set = 0;
+	    }
+
 	    d->which_is_default = i;
 	    d->default_blocksize = blocksize;
 	    return d->devinfo[i].device_name;
@@ -166,23 +174,36 @@ int
 ftt_get_mode_dev(ftt_descriptor d, char *devname, int *density, 
 			int *mode, int *blocksize, int *rewind) {
     int i;
+    int hwdens;
+    int found;
 
     ENTERING("ftt_get_mode_dev");
     CKNULL("ftt_descriptor", d);
     
-    for( i = 0; d->devinfo[i].device_name != 0; i++ ){
-	if (0 == strcmp(d->devinfo[i].device_name, devname)) {
+    hwdens = ftt_get_hwdens(d);
+    for( i = 0; d->devinfo[i].device_name != 0; i++ ) {
+	if (0 == strcmp(d->devinfo[i].device_name, devname)){
+	    found = 1;
 	    if (density)   *density = d->devinfo[i].density;
 	    if (mode)      *mode = d->devinfo[i].mode;
 	    if (blocksize) *blocksize =  d->devinfo[i].fixed;
 	    if (rewind)    *rewind = d->devinfo[i].rewind;
-	    return 0;
+
+	    if (d->devinfo[i].hwdens == hwdens) {
+		/* hardware density match is a better match */
+		/* otherwise keep looking */
+		break; 
+	    }
 	}
     }
-    ftt_eprintf("ftt_get_mode_dev: device name %s was not found in the ftt tables for basename %s\n",
-	devname, d->basename);
-    ftt_errno = FTT_ENODEV;
-    return -1;
+    if (found) {
+	return 0;
+    } else {
+	ftt_eprintf("ftt_get_mode_dev: device name %s was not found in the ftt tables for basename %s\n",
+	    devname, d->basename);
+	ftt_errno = FTT_ENODEV;
+	return -1;
+    }
 }
 
 int 
@@ -209,6 +230,10 @@ ftt_set_mode_dev(ftt_descriptor d, char *devname, int blocksize, int force) {
 	    ftt_errno = FTT_ENOMEM;
 	    ftt_eprintf("ftt_set_mode_dev: tried to add a new device entry to the table when there was not room for it");
 	    return -1;
+	}
+	/* clear flag if we are switching density */
+	if (d->devinfo[i].hwdens != d->devinfo[d->which_is_default].hwdens) {
+	    d->density_is_set = 0;
 	}
 	/* so add it to the table */
 	d->devinfo[i].device_name = devname;

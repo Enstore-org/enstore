@@ -63,7 +63,7 @@ ftt_scsi_open(const char *pc) {
 	DEBUG2(stderr,"trying /dev/cam/string parsing\n");
         /* /dev/cam/sc0l0d0 style pseudo-device name */
 
-	n = fscanf(pf, "/dev/cam/sc%dd%dl%d",
+	n = sscanf(pc, "/dev/cam/sc%dd%dl%d",
 		    &open_devs[slot].id, &open_devs[slot].targid,
 		    &open_devs[slot].lun);
 	if (n != 3) {
@@ -150,6 +150,15 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     int res;
     static UAGT_CAM_CCB ua_ccb;
     static CCB_SCSIIO ccb;
+    static int gotstatus = 0;
+    static char acSense[255];
+
+    if (gotstatus && pcCmd[0] == 0x03) {
+	/* we already have mode sense data, so fake it */
+	memcpy(pcRdWr, acSense, nRdWr);
+	gotstatus = 0;
+	return 0;
+    }
 
     ccb.cam_ch.my_addr = (struct ccb_header *)&ccb;
     ccb.cam_ch.cam_ccb_len = sizeof(ccb);
@@ -157,12 +166,11 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ccb.cam_ch.cam_path_id    = open_devs[(int)n].id;
     ccb.cam_ch.cam_target_id  = open_devs[(int)n].targid;
     ccb.cam_ch.cam_target_lun = open_devs[(int)n].lun;
-    ccb.cam_ch.cam_flags = CAM_DIS_AUTOSENSE | 
-			   (iswrite ? CAM_DIR_OUT : CAM_DIR_IN);
+    ccb.cam_ch.cam_flags = (iswrite ? CAM_DIR_OUT : CAM_DIR_IN);
 
     ccb.cam_data_ptr = pcRdWr;
     ccb.cam_dxfer_len = nRdWr;
-    ccb.cam_timeout = delay;
+    ccb.cam_timeout = delay <= 5 ? CAM_TIME_DEFAULT: CAM_TIME_INFINITY;
     ccb.cam_cdb_len = nCmd;
     memcpy(ccb.cam_cdb_io.cam_cdb_bytes, pcCmd, nCmd);
 
@@ -170,8 +178,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     ua_ccb.uagt_ccblen = sizeof(CCB_SCSIIO);
     ua_ccb.uagt_buffer = pcRdWr;
     ua_ccb.uagt_buflen = nRdWr;
-    ua_ccb.uagt_snsbuf = (u_char *)NULL;
-    ua_ccb.uagt_snslen = 0;
+    ua_ccb.uagt_snsbuf = (u_char *)acSense;
+    ua_ccb.uagt_snslen = 255;
     ua_ccb.uagt_cdb = (CDB_UN *)NULL;
     ua_ccb.uagt_cdblen = 0;
 
@@ -182,6 +190,8 @@ ftt_scsi_command(scsi_handle n, char *pcOp,unsigned char *pcCmd, int nCmd, unsig
     if (res < 0) {
 	return res;
     }
+    gotstatus = ccb.cam_scsi_status != 0;
+
     res = ftt_scsi_check(n,pcOp,ccb.cam_scsi_status);
 
     if (pcRdWr != 0 && nRdWr != 0){

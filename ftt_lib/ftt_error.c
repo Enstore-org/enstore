@@ -53,8 +53,9 @@ char *ftt_ascii_error[] = {
 /* FTT_EWRONGVOLTYP	25 */ "FTT_EWRONGVOLTYP",
 /* FTT_ELEADER		26 */ "FTT_ELEADER",
 /* FTT_EFILEMARK	27 */ "FTT_EFILEMARK",
-/* FTT_ELOST		29 */ "FTT_ELOST",
-/* FTT_MAX_ERROR	28 */ "FTT_MAX_ERROR",
+/* FTT_ELOST		28 */ "FTT_ELOST",
+/* FTT_ENOTBOT  	29 */ "FTT_ENOTBOT",
+/* FTT_MAX_ERROR	30 */ "FTT_MAX_ERROR",
 0 
 };
 
@@ -127,7 +128,9 @@ static char *messages[] = {
     "A Filemark was encountered before completing the operation",
 	/* FTT_ELOST	28 */
     "We do not yet know our current tape position.",
-	/* FTT_MAX_ERROR	29 */ 
+	/* FTT_ENOTBOT  	29 */ 
+    "FTT_ENOTBOT",
+	/* FTT_MAX_ERROR	30 */ 
     "FTT_MAX_ERROR",
     0
 };
@@ -135,20 +138,58 @@ static char *messages[] = {
 int
 ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, int recoverable) {
     extern int errno;
+    int terrno;
+    static ftt_stat sbuf;
+    char *p;
+    int save1, save2;
+
+    DEBUG3(stderr,"Entering ftt_translate_error -- opn == %d, op = %s, res=%d, what=%s recoverable=%d\n",
+	opn,op, res, what, recoverable);
 
     if( 0 == d ) {
 	ftt_eprintf("%s called with NULL ftt_descriptor\n", op);
 	ftt_errno = FTT_EFAULT;
 	return -1;
     }
+
+    if (errno >= MAX_TRANS_ERRNO) {
+        terrno = MAX_TRANS_ERRNO - 1;
+    } else {
+	terrno = errno;
+    } 
+
+    ftt_errno = d->errortrans[opn][terrno];
+
+#   define SKIPS (FTT_OP_SKIPFM|FTT_OP_RSKIPFM|FTT_OP_SKIPREC|FTT_OP_RSKIPREC)
+
+    if ((0 == res && FTT_OPN_READ == opn) || (-1 == res && ((1<<opn)&SKIPS) )) {
+	/* 
+	** save errno and ftt_errno so we can restore them 
+	** after getting status 
+	*/
+        save1 = ftt_errno;
+	save2 = errno;
+
+	ftt_get_stats(d, &sbuf);
+	errno = save2;
+
+	if (0 != (p = ftt_extract_stats(&sbuf,FTT_SENSE_KEY))) {
+	    if (8 == atoi(p)){
+		res = -1;
+		ftt_errno = FTT_EBLANK;
+	    } else {
+		ftt_errno = save1;
+	    }
+	} else {
+	    ftt_errno = save1;
+	}
+    }
+
     if (res >= 0) {
+	ftt_errno = FTT_SUCCESS;
 	return res;
     }
-    if (errno >= MAX_TRANS_ERRNO) {
-        ftt_errno = FTT_ENOTSUPPORTED;
-    } else {
-        ftt_errno = d->errortrans[opn][errno];
-    }
+
     ftt_eprintf( "\
 %s: doing %s on %s returned %d,\n\
 	errno %d, => ftt error %s(%d), meaning \n\
@@ -164,7 +205,8 @@ ftt_translate_error(ftt_descriptor d, int opn, char *op, int res, char *what, in
 	d->unrecovered_error = 1;
 	d->current_valid = 0;
     }
-    return -1;
+
+    return res;
 }
 
 #ifdef TESTTABLES

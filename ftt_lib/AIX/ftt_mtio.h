@@ -19,9 +19,9 @@
 #define FTT_TAPE_ERASE STERASE
 #define FTT_TAPE_REW STREW
 #define FTT_TAPE_RSF STRSF
+#define FTT_TAPE_FSF STFSF
 #define FTT_TAPE_RSR STRSR
 #define FTT_TAPE_FSR STFSR
-#define FTT_TAPE_FSF STFSF
 #define FTT_TAPE_WEOF STWEOF
 /* pre 3.2 doesn't have offline */
 #ifdef STOFFL

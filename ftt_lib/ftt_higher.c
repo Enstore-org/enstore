@@ -64,10 +64,11 @@ ftt_verify_vol_label(ftt_descriptor d, int type, char *vollabel,
 			errno);
 	    return -1;
 	}
+	memset(buf,0,blocksize);
 	res = ftt_read(d,buf,blocksize); 	/* errors to guess_label */
 	res = ftt_guess_label(buf,res,&pname, &len);if(res < 0) return res;
-	if (type == res && 0 == strncmp(vollabel,pname,len) && len ==
-		    strlen(vollabel)) {
+	if (type == res && (len == 0 || 
+		(0 == strncmp(vollabel,pname,len) && len == strlen(vollabel)))){
 	    return 0;
 	}
 
@@ -304,7 +305,7 @@ ftt_dump_stats(ftt_stat_buf b, FILE *pf) {
 				ftt_stat_names[i], b->value[i]);
 		}
 	}
-	fprintf(pf, "\n");
+	fprintf(pf, "- is -\n");
 	return 0;
 }
 
@@ -325,7 +326,7 @@ ftt_undump_stats(ftt_stat_buf b, FILE *pf) {
 	** line we have read in is that stat we set it
 	** and get the next line.
 	*/
-	fscanf(pf, "%s is %[a-zA-Z0-9 ]\n", name, value);
+	fscanf(pf, "%s is %[^\n]\n", name, value);
 	for( i = 0 ; i < FTT_MAX_STAT; i++ ) {
 	    if (0 != b->value[i]) {
 		free(b->value[i]);

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #==============================================================================
 # This will verify the data from the test tape.
 # It assumes that the tape has been written with write.ftt.

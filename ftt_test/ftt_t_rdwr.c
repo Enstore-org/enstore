@@ -220,7 +220,7 @@ for (i = 0; i < nblock; i++)
       fprintf (stderr, "verify test block could not get file position: \n%s\n",
 	 ftt_get_error(&myerror));
       FTT_T_INC_NERROR();
-      return status;
+      return 0;
       }
 
 /* delay

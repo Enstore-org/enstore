@@ -50,6 +50,8 @@ install: all
 	cp local/libs $(FTT_DIR)/lib
 	rm -f $(FTT_DIR)/bin/ftt_suid
 	cp ftt_suid $(FTT_DIR)/bin
+	-chown root ../bin/ftt_suid
+	-chmod 4755 ../bin/ftt_suid
 	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h ftt_defines.h \
 		$(FTT_DIR)/include
 

@@ -3,23 +3,25 @@
 #include <ftt_private.h>
 
 void
-demo_with_delay(int n) {
+demo_with_delay(char *dev, int n) {
 	ftt_descriptor d;
 	char *pc; int err, res;
 	extern int ftt_debug, ftt_errno;
 
-	d = ftt_open("/dev/rmt0", 0);
+	d = ftt_open(dev, 0);
 	printf( "opened...\n");
 	ftt_open_dev(d);
 	printf( "open_deved...\n");
 	ftt_rewind(d);
 	printf( "rewound...\n");
-	ftt_debug = 3;
+
 	switch(ftt_fork(d)){
 
 	case 0:	/* child */
 		printf( "childs play...\n");
-		ftt_skip_fm(d,2);
+
+		ftt_skip_fm(d,1);
+		ftt_debug= 3;
 		ftt_rewind(d);
 		ftt_report(d);
 
@@ -32,8 +34,10 @@ demo_with_delay(int n) {
 		system("ps -l");
 		res = ftt_check(d);
 		printf("ftt_check returns %d ftt_errno %d\n", res, ftt_errno);
+		ftt_debug= 3;
 		res = ftt_wait(d);
 		printf("ftt_wait returns %d ftt_errno %d\n", res, ftt_errno);
+		ftt_debug = 0;
 		break;
 
 	case -1: /* error */
@@ -46,9 +50,9 @@ demo_with_delay(int n) {
 }
 
 int
-main() {
-/* 	demo_with_delay(10); */
-	printf( "starting...\n");
-	demo_with_delay(0);
+main(int argc, char **argv) {
+	
+	demo_with_delay(argv[1],10); 
+	demo_with_delay(argv[1],0);
 	return 0;
 }

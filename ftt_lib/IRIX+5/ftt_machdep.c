@@ -49,25 +49,27 @@ ftt_status(ftt_descriptor d, int time_out) {
     if( buf.mt_dposn & MT_EOT )     res |= FTT_AEW;
 
     if (buf.mt_dposn & MT_BOT )     res |= FTT_ABOT;
-    if (buf.mt_dposn & MT_FMK )     res |= FTT_AFM;
     if (buf.mt_dposn & MT_WPROT )   res |= FTT_PROT;
     if (buf.mt_dposn & MT_ONL )     res |= FTT_ONLINE;
 
-    if (res & FTT_ABOT) {
-	d->current_file = 0;
-	d->current_block = 0;
-	d->current_valid = 1;
-    }
     return res;
 }
 
 int
-ftt_set_hwdens_blocksize(ftt_descriptor d, int hwdens, int blocksize) {
+ftt_set_compression(ftt_descriptor d, int compression) {
+   return 0;
+}
+int
+ftt_set_hwdens(ftt_descriptor d, int hwdens) {
+    /* ignore hwdens, 'cause we opened the right device node */
+   return 0;
+}
+
+int
+ftt_set_blocksize(ftt_descriptor d, int blocksize) {
     static struct mtop buf;
     static int recursing = 0;
     int res;
-
-    /* ignore hwdens, 'cause we opened the right device node */
 
     if (recursing) {
 	/* 
@@ -77,8 +79,7 @@ ftt_set_hwdens_blocksize(ftt_descriptor d, int hwdens, int blocksize) {
 	*/
 	return 0;
     }
-    DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %x %d\n", 
-	   hwdens, blocksize);
+    DEBUG1(stderr,"entering ftt_set_hwdens_blocksize %d\n", blocksize);
     recursing = 1;
     if (0 > (res = ftt_open_dev(d))) { 
 	return res;
@@ -97,5 +98,13 @@ ftt_set_hwdens_blocksize(ftt_descriptor d, int hwdens, int blocksize) {
 				"an MTSPECOP/MTSCSI_SETFIXED ioctl()", res,
 				"an ftt_open_dev",1);
     }
+    return res;
+}
+
+int
+ftt_get_hwdens(ftt_descriptor d) {
+    int res;
+
+    res = d->devinfo[d->which_is_default].hwdens;
     return res;
 }

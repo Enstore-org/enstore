@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #==============================================================================
 # This will verify all modes of device file
 #==============================================================================
@@ -15,5 +15,6 @@ ftt_test << EOD
 ftt_open
 ftt_rewind
 ftt_verify_modes
+ftt_rewind
 ftt_close
 EOD

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 # ============================================================================
 # test routine to run all of the reasonably fast ftt tests.
 # it requires no human intervention; however, at the end the
@@ -51,6 +51,11 @@ echo "==============================================================="
 $FTT_DIR/ftt_test/scripts/mode
 
 echo "==============================================================="
+echo "close test"
+echo "==============================================================="
+$FTT_DIR/ftt_test/scripts/close
+
+echo "==============================================================="
 echo "label test"
 echo "==============================================================="
 $FTT_DIR/ftt_test/scripts/label
@@ -63,7 +68,7 @@ $FTT_DIR/ftt_test/scripts/stats
 echo "==============================================================="
 echo "write test"
 echo "==============================================================="
-$FTT_DIR/ftt_test/scripts/write
+$FTT_DIR/ftt_test/scripts/twrite
 
 echo "==============================================================="
 echo "read_only test"

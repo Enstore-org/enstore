@@ -132,6 +132,7 @@ extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 #define FTT_ELEADER		26
 #define FTT_EFILEMARK		27
 #define FTT_ELOST		28
+#define FTT_ENOTBOT		29
 
 
 

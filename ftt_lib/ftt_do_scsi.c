@@ -38,7 +38,7 @@ ftt_open_scsi_dev(ftt_descriptor d) {
         devname = ftt_get_scsi_devname(d);
 	d->scsi_descriptor = ftt_scsi_open(devname);
 	if (d->scsi_descriptor < 0) {
-	    return ftt_translate_error(d,FTT_OPN_PASSTHRU,"a SCSI open",
+	    return ftt_translate_error(d,FTT_OPN_OPEN,"a SCSI open",
 				d->scsi_descriptor,"ftt_scsi_open",1);
 	}
     }

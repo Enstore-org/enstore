@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #===============================================================================
 # This will test positioning withing a test tape.
 # It assumes that the tape has been written with write.ftt.
@@ -22,7 +22,6 @@ ftt_test_status -FTT_ABOT
 #===============================================================================
 ftt_skip_fm 1
 ftt_skip_fm 1
-ftt_test_status -FTT_AFM
 ftt_verify_position 2 0
 ftt_verify_tblock -nblock 1
 ftt_rewind
@@ -88,5 +87,6 @@ ftt_verify_tblock -filemark
 ftt_verify_tblock -filemark -status FTT_EBLANK
 ftt_echo "look at output. next line should say File no: 5 block no: 0"
 ftt_get_position
+ftt_rewind
 ftt_close
 EOD

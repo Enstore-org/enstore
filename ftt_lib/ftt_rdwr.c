@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <ftt_private.h>
-#include <ftt_cdb.h>
 
 int
 ftt_get_position(ftt_descriptor d, int *file, int *block) {

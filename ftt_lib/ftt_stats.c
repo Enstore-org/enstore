@@ -73,6 +73,7 @@ set_stat( ftt_stat_buf b, int n, char *pcStart, char *pcEnd) {
 	save = *pcEnd;
 	*pcEnd = 0;
     }
+    DEBUG3(stderr,"Setting stat %d(%s) to %s\n",n,ftt_stat_names[n],pcStart);
     b->value[n] = strdup(pcStart);
     if (pcEnd != 0) {
 	*pcEnd = save;
@@ -201,7 +202,7 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     while( page < (buf + length) ) {
 	thisparam = pack(0,0,page[0],page[1]);
 	thislength = page[3];
-	value = 0;
+	value = 0.0;
 	for(i = 0; i < thislength ; i++) {
 	    value = value * 256 + page[4+i];
 	}
@@ -214,13 +215,13 @@ decrypt_ls(ftt_stat_buf b,unsigned char *buf, int param, int stat, int divide) {
     }
 }
 
-static int
+int
 ftt_get_stat_ops(char *name) {
     int i;
     DEBUG1(stderr, "entering get_stat_ops\n");
     for (i = 0; ftt_stat_op_tab[i].name != 0; i++ ) {
 	if (ftt_matches(name, ftt_stat_op_tab[i].name)) {
-            DEBUG2(stderr, "found stat_op\n");
+            DEBUG2(stderr, "found stat_op == %x\n", i);
 	    return ftt_stat_op_tab[i].stat_ops;
 	}
     }
@@ -248,13 +249,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 
 	case 0:  /* child */
 		fflush(stdout);	/* make async_pf stdout */
-		fflush(d->async_pf);
+		fflush(d->async_pf_parent);
 		close(1);
-		dup2(fileno(d->async_pf),1);
-		execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
+		dup2(fileno(d->async_pf_parent),1);
+		if (d->data_direction == FTT_DIR_WRITING) {
+		     execlp("ftt_suid", "ftt_suid", "-w", "-s", d->basename, 0);
+		} else {
+		     execlp("ftt_suid", "ftt_suid", "-s", d->basename, 0);
+		}
 
 	default: /* parent */
-		ftt_undump_stats(b,d->async_pf);
+		ftt_undump_stats(b,d->async_pf_child);
 		res = ftt_wait(d);
 	}
     }
@@ -283,15 +288,84 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
     /* various mode checks */
     stat_ops = ftt_get_stat_ops(d->prod_id);
 
-    if (stat_ops & FTT_DO_TUR) {
-        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    if (stat_ops & FTT_DO_RS) {
+	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   30, 0x00};
 
-	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
-	set_stat(b,FTT_TUR_STATUS,itoa((long)-res), 0);
-	if (res < 0) {
-	    set_stat(b,FTT_READY,"0",0);
+	/* request sense data */
+	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 30, 10, 0);
+	if(res < 0){
+	    ftt_errno = FTT_EPARTIALSTAT;
+	    return res;
 	} else {
-	    set_stat(b,FTT_READY,"1",0);
+	    static char *sense_key_trans[] = {
+		"NO_SENSE", "NOT_USED", "NOT_READY", "MEDIUM_ERROR",
+		"HARDWARE_ERROR", "ILLEGAL_REQUEST", "UNIT_ATTENTION",
+		"DATA_PROTECT", "BLANK_CHECK", "EXABYTE", "COPY_ABORTED",
+		"ABORTED_COMMAND", "NOT_USED", "VOLUME_OVERFLOW",
+		"NOT_USED", "RESERVED",
+	    };
+	    set_stat(b,FTT_SENSE_KEY, itoa(buf[2]&0xf), 0);
+	    set_stat(b,FTT_TRANS_SENSE_KEY, sense_key_trans[buf[2]&0xf], 0);
+	    set_stat(b,FTT_FMK, itoa(bit(7,buf[2])), 0);
+	    set_stat(b,FTT_EOM, itoa(bit(6,buf[2])),0);
+	    set_stat(b,FTT_ILI, itoa(bit(5,buf[2])),0);
+	    set_stat(b,FTT_SCSI_ASC,itoa((long)buf[12]),0);
+	    set_stat(b,FTT_SCSI_ASCQ,itoa((long)buf[13]),0);
+
+	    /* ASC/ASCQ data parsing
+	    **
+	    ** these are the codes from the DLT book, because 
+	    ** it appears from the book that we may sometimes
+	    ** get them filled in with a sense code of 0 to
+	    ** indicate end of tape, etc.
+	    **
+	    ** it is not clear that this has ever actually happened,
+	    ** but we wanted to be complete.
+	    */
+	    switch( pack(0,0,buf[12],buf[13]) ){
+	    case 0x0005: /* peot */
+			set_stat(b,FTT_PEOT,"1",0);
+			break;
+	    case 0x0400: /* volume not mounted */
+	    case 0x0401: /* rewinding or loading */
+	    case 0x0402: /* load needed */
+	    case 0x0403: /* manual intervention needed */
+	    case 0x3a00: /* medium not present */
+	    case 0x3a80: /* cartridge not present */
+			set_stat(b,FTT_READY,"0",0);
+			break;
+	    case 0x0002: /* EOM encountered */
+			set_stat(b,FTT_EOM,"1",0);
+			break;
+	    case 0x0004:
+			set_stat(b,FTT_BOT,"1",0);
+			break;
+	    case 0x8002:
+			set_stat(b,FTT_CLEANING_BIT,"1",0);
+			break;
+	    }
+
+	    if (stat_ops & FTT_DO_EXBRS) {
+		set_stat(b,FTT_BOT,         itoa(bit(0,buf[19])), 0);
+		set_stat(b,FTT_TNP,	    itoa(bit(1,buf[19])), 0);
+		set_stat(b,FTT_PF,          itoa(bit(7,buf[19])), 0);
+		set_stat(b,FTT_WRITE_PROT,  itoa(bit(5,buf[20])), 0);
+		set_stat(b,FTT_PEOT,        itoa(bit(2,buf[21])), 0);
+		set_stat(b,FTT_CLEANING_BIT,itoa(bit(3,buf[21])), 0);
+		set_stat(b,FTT_CLEANED_BIT, itoa(bit(4,buf[21])), 0);
+
+		remain_tape=pack(0,buf[23],buf[24],buf[25]);
+		set_stat(b,FTT_REMAIN_TAPE,itoa((long)remain_tape),0);
+
+	    }
+	    if (stat_ops & FTT_DO_05RS) {
+		set_stat(b,FTT_TRACK_RETRY, itoa((long)buf[26]), 0);
+		set_stat(b,FTT_UNDERRUN,    itoa((long)buf[11]), 0);
+	    }
+	    if (stat_ops & FTT_DO_DLTRS) {
+		set_stat(b,FTT_MOTION_HOURS,itoa(pack(0,0,buf[19],buf[20])),0);
+		set_stat(b,FTT_POWER_HOURS, itoa(pack(buf[21],buf[22],buf[23],buf[24])),0);
+	    }
 	}
     }
     if (stat_ops & FTT_DO_INQ) {
@@ -316,6 +390,17 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		free(tmp);
 		stat_ops = ftt_get_stat_ops(d->prod_id);
 	    }
+	}
+    }
+    if (stat_ops & FTT_DO_TUR) {
+        static unsigned char cdb_tur[]	     = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+	res = ftt_do_scsi_command(d,"Test Unit Ready", cdb_tur, 6, 0, 0, 10, 0);
+	set_stat(b,FTT_TUR_STATUS,itoa((long)-res), 0);
+	if (res < 0) {
+	    set_stat(b,FTT_READY,"0",0);
+	} else {
+	    set_stat(b,FTT_READY,"1",0);
 	}
     }
     if (stat_ops & FTT_DO_SN) {
@@ -355,6 +440,32 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_BLOCK_SIZE,  itoa((long)block_length),0);
 	    set_stat(b,FTT_BLOCK_TOTAL, itoa((long)n_blocks),    0);
 
+	    if (stat_ops & FTT_DO_EXBRS) {
+		/* 
+		** the following lies still allow reasonable results
+		** from doing before/after deltas
+		** we'll override them with log sense data if we have it.
+		** The following is a fudge factor for the amount of
+		** tape thats shows as the difference between tape size
+		** and remaining tape on an EXB-8200 when rewound
+		*/
+#define 	EXB_FUDGE_FACTOR 1279
+		error_count = pack(0,buf[16],buf[17],buf[18]);
+		
+		if (d->data_direction ==  FTT_DIR_READING) {
+		    set_stat(b,FTT_READ_COUNT,itoa(
+			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
+		    set_stat(b,FTT_WRITE_COUNT,"0",0);
+		} else {
+		    set_stat(b,FTT_WRITE_COUNT,itoa(
+			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
+		    set_stat(b,FTT_READ_COUNT,"0",0);
+		}
+	        set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
+	        set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
+		set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
+	    }
+
 	    for ( i = 0; d->devinfo[i].device_name !=0 ; i++ ) {
 		if( buf[4] == d->devinfo[i].hwdens ) {
 		    set_stat(b,FTT_TRANS_DENSITY, itoa((long)d->devinfo[i].density),0);
@@ -375,119 +486,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    return res;
 	} else {
 	    set_stat(b,FTT_TRANS_COMPRESS,     itoa((long)buf[18]), 0);
-	}
-    }
-    if (stat_ops & FTT_DO_RS) {
-	static unsigned char cdb_req_sense[] = {0x03, 0x00, 0x00, 0x00,   30, 0x00};
-
-	/* request sense data */
-	res = ftt_do_scsi_command(d,"Req Sense", cdb_req_sense, 6, buf, 30, 10, 0);
-	if(res < 0){
-	    ftt_errno = FTT_EPARTIALSTAT;
-	    return res;
-	} else {
-	    static char *sense_key_trans[] = {
-		"NO SENSE", "NOT USED", "NOT READY", "MEDIUM ERROR",
-		"HARDWARE ERROR", "ILLEGAL REQUEST", "UNIT ATTENTION",
-		"DATA PROTECT", "BLANK CHECK", "EXABYTE", "COPY ABORTED",
-		"ABORTED COMMAND", "NOT USED", "VOLUME OVERFLOW",
-		"NOT USED", "RESERVED",
-	    };
-	    set_stat(b,FTT_SENSE_KEY, itoa(buf[2]&0xf), 0);
-	    set_stat(b,FTT_TRANS_SENSE_KEY, sense_key_trans[buf[2]&0xf], 0);
-	    set_stat(b,FTT_FMK, itoa(bit(7,buf[2])), 0);
-	    set_stat(b,FTT_EOM, itoa(bit(6,buf[2])),0);
-	    set_stat(b,FTT_ILI, itoa(bit(5,buf[2])),0);
-	    set_stat(b,FTT_SCSI_ASC,itoa((long)buf[12]),0);
-	    set_stat(b,FTT_SCSI_ASCQ,itoa((long)buf[13]),0);
-
-	    /* ASC/ASCQ data parsing
-	    **
-	    ** these are the codes from the DLT book, because 
-	    ** it appears from the book that we may sometimes
-	    ** get them filled in with a sense code of 0 to
-	    ** indicate end of tape, etc.
-	    **
-	    ** it is not clear that this has ever actually happened,
-	    ** but we wanted to be complete.
-	    */
-	    switch( pack(0,0,buf[12],buf[13]) ){
-	    case 0x0005: /* peot */
-			set_stat(b,FTT_PEOT,"1",0);
-			break;
-	    case 0x0400: /* volume not mounted */
-	    case 0x0401: /* rewinding or loading */
-	    case 0x0402: /* load needed */
-	    case 0x0403: /* manual intervention needed */
-	    case 0x3a00: /* medium not present */
-	    case 0x3a80: /* cartridge not present */
-			set_stat(b,FTT_READY,"0",0);
-			break;
-	    case 0x0002: /* EOM encountered */
-			set_stat(b,FTT_EOM,"1",0);
-			break;
-	    case 0x0004:
-			set_stat(b,FTT_BOT,"1",0);
-			d->current_file = 0;
-			d->current_block = 0;
-			d->current_valid = 1;
-			break;
-	    case 0x8002:
-			set_stat(b,FTT_CLEANING_BIT,"1",0);
-			break;
-	    }
-
-	    if (stat_ops & FTT_DO_EXBRS) {
-		set_stat(b,FTT_BOT,         itoa(bit(0,buf[19])), 0);
-		if(bit(0,buf[19])){
-		    d->current_file = 0;
-		    d->current_block = 0;
-		    d->current_valid = 1;
-		}
-		set_stat(b,FTT_TNP,	    itoa(bit(1,buf[19])), 0);
-		set_stat(b,FTT_PF,          itoa(bit(7,buf[19])), 0);
-		set_stat(b,FTT_WRITE_PROT,  itoa(bit(5,buf[20])), 0);
-		set_stat(b,FTT_PEOT,        itoa(bit(2,buf[21])), 0);
-		set_stat(b,FTT_CLEANING_BIT,itoa(bit(3,buf[21])), 0);
-		set_stat(b,FTT_CLEANED_BIT, itoa(bit(4,buf[21])), 0);
-
-		remain_tape=pack(0,buf[23],buf[24],buf[25]);
-		set_stat(b,FTT_REMAIN_TAPE,itoa((long)remain_tape),0);
-
-		/* 
-		** the following lies still allow reasonable results
-		** from doing before/after deltas
-		** we'll override them with log sense data if we have it.
-		** The following is a fudge factor for the amount of
-		** tape thats shows as the difference between tape size
-		** and remaining tape on an EXB-8200 when rewound
-		*/
-#define 	EXB_FUDGE_FACTOR 1279
-		error_count = pack(0,buf[16],buf[17],buf[18]);
-		
-		if (d->data_direction ==  FTT_DIR_READING) {
-		    set_stat(b,FTT_READ_ERRORS,itoa(error_count),0);
-		    set_stat(b,FTT_READ_COUNT,itoa(
-			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
-		    set_stat(b,FTT_WRITE_ERRORS,"0",0);
-		    set_stat(b,FTT_WRITE_COUNT,"0",0);
-		} else {
-		    set_stat(b,FTT_WRITE_ERRORS,itoa(error_count),0);
-		    set_stat(b,FTT_WRITE_COUNT,itoa(
-			tape_size - remain_tape - EXB_FUDGE_FACTOR),0);
-		    set_stat(b,FTT_READ_ERRORS,"0",0);
-		    set_stat(b,FTT_READ_COUNT,"0",0);
-		}
-	        set_stat(b,FTT_COUNT_ORIGIN,"Exabyte_Extended_Sense",0);
-	    }
-	    if (stat_ops & FTT_DO_05RS) {
-		set_stat(b,FTT_TRACK_RETRY, itoa((long)buf[26]), 0);
-		set_stat(b,FTT_UNDERRUN,    itoa((long)buf[11]), 0);
-	    }
-	    if (stat_ops & FTT_DO_DLTRS) {
-		set_stat(b,FTT_MOTION_HOURS,itoa(pack(0,0,buf[19],buf[20])),0);
-		set_stat(b,FTT_POWER_HOURS, itoa(pack(buf[21],buf[22],buf[23],buf[24])),0);
-	    }
 	}
     }
     if (stat_ops & FTT_DO_LSRW) {
@@ -548,11 +546,6 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    }
 	} else {
 	    set_stat(b,FTT_BOT,     itoa(bit(7,buf[0])), 0);
-	    if( bit(7,buf[0]) ) {
-		d->current_file = 0;
-		d->current_block = 0;
-		d->current_valid = 1;
-	    }
 	    set_stat(b,FTT_PEOT,    itoa(bit(6,buf[0])), 0);
 	    set_stat(b,FTT_BLOC_LOC,itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
 	}
@@ -573,7 +566,7 @@ ftt_clear_stats(ftt_descriptor d) {
 	case 0:  /* child */
 		fflush(stdout);	/* make async_pf stdout */
 		close(1);
-		dup(fileno(d->async_pf));
+		dup(fileno(d->async_pf_parent));
 		return execlp("ftt_suid", "ftt_suid", "-c", d->basename, 0);
 
 	default: /* parent */
@@ -593,13 +586,13 @@ ftt_clear_stats(ftt_descriptor d) {
 
 	/* double check our id... */
 	res = ftt_do_scsi_command(d,"Inquiry", cdb_inquiry, 6, buf, 56, 10, 0);
-	buf[16] = 0;
-	if ( 0 != strcmp((char *)d->prod_id,(char *)buf+8)) {
+	buf[32] = 0;
+	if ( 0 != strcmp((char *)d->prod_id,(char *)buf+16)) {
 	    char *tmp;
 
 	    /* update or product id and stat_ops if we were wrong */
 	    tmp = d->prod_id;
-	    d->prod_id = strdup((char *)buf+8);
+	    d->prod_id = strdup((char *)buf+16);
 	    free(tmp);
 	    stat_ops = ftt_get_stat_ops(d->prod_id);
 	}
@@ -607,11 +600,13 @@ ftt_clear_stats(ftt_descriptor d) {
     if (stat_ops & FTT_DO_EXBRS) {
     	static unsigned char cdb_clear_rs[]  = { 0x03, 0x00, 0x00, 0x00, 30, 0x80 };
 	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_rs, 6, buf, 30, 10, 0);
+	if (res < 0) return res;
     }
     if (stat_ops & FTT_DO_LSRW) {
         static unsigned char cdb_clear_ls[] = { 0x4c, 0x02, 0x40, 0x00, 0x00, 0x00, 
 					0x00, 0x00, 0x00, 0x00};
-	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_ls, 10, buf, 256, 10, 0);
+	res = ftt_do_scsi_command(d,"Clear Request Sense", cdb_clear_ls, 10, 0, 0, 10, 1);
+	if (res < 0) return res;
     }
     return res;
 }

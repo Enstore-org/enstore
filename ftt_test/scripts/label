@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #===============================================================================
 # This will test writing all of the various label types.
 #===============================================================================
@@ -26,7 +26,7 @@ ftt_write_vol_label -label mydog -type FTT_CPIO_HEADER
 ftt_verify_vol_label -label mydog -type FTT_CPIO_HEADER 
 ftt_rewind
 ftt_write_tblock -nblock 1
-ftt_verify_vol_label -label mydog -type FTT_UNKNOWN_HEADER 
+ftt_verify_vol_label -label "" -type FTT_UNKNOWN_HEADER 
 # ==========
 # bad labels
 # ==========

@@ -5,9 +5,11 @@
 
 void
 usage(void) {
-   fprintf(stderr, "usage: ftt_suid -s basename		   # print stats\n");
-   fprintf(stderr, "       ftt_suid -c basename		   # clear stats\n");
-   fprintf(stderr, "       ftt_suid -b dens bsize basename # set mode\n");
+   fprintf(stderr, "usage: ftt_suid [-w] -s basename	 # print stats\n");
+   fprintf(stderr, "       ftt_suid -c basename		 # clear stats\n");
+   fprintf(stderr, "       ftt_suid -b arg basename      # set blocksize\n");
+   fprintf(stderr, "       ftt_suid -C arg basename      # set compression\n");
+   fprintf(stderr, "       ftt_suid -d arg basename      # set density\n");
    exit(-1);
 }
 
@@ -19,32 +21,48 @@ main(int argc, char **argv) {
 	char *pc;
 	char *basename;
 	char command;
-	int dens, bsize;
+	int  arg;
+	int direction = FTT_DIR_READING;
 
 	if (argc <= 2 || argv[1][0] != '-') {
 		usage();
 	}
 
-	switch (argv[1][1]) {
-	case 'c':
-	case 's': 
-		if (argc != 3) {
+	while(1){
+		switch (argv[1][1]) {
+		case 'x':
+			ftt_debug = 4;
+			argv++;
+			argc--;
+			continue;
+		case 'w':
+			direction = FTT_DIR_WRITING;
+			argv++;
+			argc--;
+			continue;
+		case 'e':
+		case 'c':
+		case 's': 
+			if (argc != 3) {
+				usage();
+			}
+			command = argv[1][1];
+			basename = argv[2];
+			break;
+		case 'C':
+		case 'b': 
+		case 'd': 
+			if (argc != 4) {
+				usage();
+			}
+			command = argv[1][1];
+			arg = atoi(argv[2]);
+			basename = argv[3];
+			break;
+		default:
 			usage();
 		}
-		command = argv[1][1];
-		basename = argv[2];
 		break;
-	case 'b': 
-		if (argc != 5) {
-			usage();
-		}
-		command = argv[1][1];
-		dens = atoi(argv[2]);
-		bsize = atoi(argv[3]);
-		basename = argv[4];
-		break;
-	default:
-		usage();
 	}
 
 	if (geteuid() != 0) {
@@ -55,16 +73,23 @@ main(int argc, char **argv) {
 	/* ftt_debug = 3; */
 	d = ftt_open(basename,FTT_RDONLY);
 
+	d->data_direction = direction;
+
 	if (0 == d) {
+		/* fake an ftt_report to stdout */
 		printf("-1\n");
 		pc = ftt_get_error(&n);
 		printf("%d\n%s\n", n, pc);
+		exit(1);
 	}
 
 	/* attach our ftt_report() channel to stdout */
-	d->async_pf = stdout;
+	d->async_pf_parent = stdout;
 
 	switch(command){
+	case 'e':
+		res = ftt_erase(d);
+		break;
 	case 's':
 		b = ftt_alloc_stat(); 		if (b == 0) break;
 		res = ftt_get_stats(d,b);	if (res < 0) break;
@@ -74,11 +99,14 @@ main(int argc, char **argv) {
 	case 'c':
 		ftt_clear_stats(d);
 		break;
+	case 'C':
+		res = ftt_set_compression(d,arg);
+		break;
 	case 'b':
-		res = ftt_set_hwdens_blocksize(d,dens,bsize);
-		if (res > 0){
-			ftt_open_dev(d);
-		}
+		res = ftt_set_blocksize(d,arg);
+		break;
+	case 'd':
+		res = ftt_set_hwdens(d,arg);
 		break;
 	}
 	ftt_report(d);

@@ -77,16 +77,19 @@ if (bsize > 11) if (buff_int[2] != blockno)
       fileno,blockno,blockno, buff_int[2]);
    }
 
-for (i = 12, j = 0; i < (bsize); i++,j++)
+if (status == 0) /* only check bytes if block numbers matched */
    {
-   echar = (fileno + blockno + j) % 256;
-   if (echar != buff[i])
+   for (i = 12, j = 0; i < (bsize); i++,j++)
       {
-      status = 1;
-      fprintf (stderr,"File %d, block %d: Verify error byte %d: Expected %x, got %x\n",
-         fileno,blockno,i,echar, buff[i]);
-      }
-   } 
+      echar = (fileno + blockno + j) % 256;
+      if (echar != buff[i])
+	 {
+	 status = 1;
+	 fprintf (stderr,"File %d, block %d: Verify error byte %d: Expected %x, got %x\n",
+	    fileno,blockno,i,echar, buff[i]);
+	 }
+      } 
+   }
 return status;
 }
 

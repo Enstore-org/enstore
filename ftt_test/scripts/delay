@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #===============================================================================
 # This will read/write with a random delay to see if we can dredge up
 # any bugs.

@@ -44,7 +44,7 @@ extern ftt_descriptor	ftt_open(const char*, int);
 extern int		ftt_open_dev(ftt_descriptor);
 extern ftt_descriptor	ftt_open_logical(const char*,char*,char*,int);
 extern int		ftt_read(ftt_descriptor, char*, int);
-extern void		ftt_report(ftt_descriptor);
+extern int		ftt_report(ftt_descriptor);
 extern int		ftt_retension(ftt_descriptor);
 extern int		ftt_rewind(ftt_descriptor);
 extern char * 		ftt_set_mode(ftt_descriptor, int density, int,  int );

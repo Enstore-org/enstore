@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #===============================================================================
 # This will test the statistics routine.
 #===============================================================================
@@ -19,20 +19,29 @@ ftt_get_stats
 ftt_dump_stats
 
 #***********************************
-ftt_echo "writing 20k of data" 
+ftt_echo "writing 200k of data" 
 ftt_echo "look at output, make sense?" 
 #***********************************
 ftt_init_stats
-ftt_write_tblock -nblock 10 -bsize 2048
+ftt_write_tblock -nblock 100 -bsize 2048
 ftt_close_dev
 ftt_update_stats -part_display
 
 #***********************************
-ftt_echo "reading 20k of data"
+ftt_echo "reading 200k of data"
 ftt_echo "look at output, make sense?"
 #***********************************
 ftt_rewind
-ftt_verify_tblock -nblock 10
+ftt_init_stats
+ftt_verify_tblock -nblock 100
+ftt_close_dev
+ftt_update_stats -part_display
+#***********************************
+ftt_echo "writing additional 200k of data"
+ftt_echo "look at output, make sense?"
+#***********************************
+ftt_write_fm 
+ftt_write_tblock -nblock 100 -bsize 2048
 ftt_close_dev
 ftt_update_stats -part_display
 ftt_close

@@ -103,6 +103,7 @@ ftt_open_logical(const char *name, char *os, char *drivid, int rdonly) {
     /* string together device names and flags into our descriptor */
 
     d.controller = devtable[i].controller;
+    d.current_blocksize = -1;
     d.which_is_default = 0;
     d.which_is_open = -1;
     d.scsi_descriptor = -1;
@@ -190,7 +191,7 @@ ftt_close(ftt_descriptor d){
 
 int
 ftt_open_dev(ftt_descriptor d) {
-    int res;
+    int res, status_res;
 
     ENTERING("ftt_open_dev");
     CKNULL("ftt_descriptor" , d);
@@ -205,15 +206,6 @@ ftt_open_dev(ftt_descriptor d) {
     ftt_close_scsi_dev(d);
 
     if (d->which_is_open < 0) {
-	DEBUG3(stderr,"setting density...\n");
-	res = ftt_set_hwdens_blocksize(d, 
-		d->devinfo[d->which_is_default].hwdens, 
-		d->default_blocksize);
-	if (res < 0) {
-	    return res;
-	}
-    }
-    if (d->which_is_open < 0) {
 	/*
 	** it looks like we should just do a readonly open if we're a 
 	** read-only, descriptor and a read/write open if we're read/write 
@@ -227,6 +219,21 @@ ftt_open_dev(ftt_descriptor d) {
 	** recurse infinitely 'cause the recursive call will be readonly.
 	** we dont go ahead and open it readonly 'cause status may need
 	** the scsi device open instead.
+	**
+	** Also, we need to set density if the drive is opened read/write
+	** and it is a different density than we currently have.  This
+	** needs to fail if we're not at BOT.  If we're readonly, drives
+	** will autosense, so we ignore the density we've been given.
+	**
+	** The more disgusting qualities of the following are due to
+	** the fact that 
+	** 1) changing density in mid-tape doesn't work
+	** 2) setting densities on AIX causes the next
+	**    open to rewind (thats right, the next *open*),
+	**    even if you are setting it to the same density.
+	**    therefore we go to great lengths to make sure
+	**    we only change density if we need to, at BOT
+	**    when we are read/write...
 	*/
 	if (d->readonly == FTT_RDWR ) {
 
@@ -236,12 +243,12 @@ ftt_open_dev(ftt_descriptor d) {
 	       (which can't get here 'cause it is now read-only) to open 
 	       the regular device, *or* a scsi open to get status that way */
 
-	    res = ftt_status(d,0);
+	    status_res = ftt_status(d,0);
 
-	    DEBUG3(stderr,"ftt_status returned %d\n", res);
-	    if (res < 0) {
+	    DEBUG3(stderr,"ftt_status returned %d\n", status_res);
+	    if (status_res < 0) {
 		/* should we fail here or ??? */
-		return res;
+		return status_res;
 	    }
 
 	    /* close dev and scsi dev in case ftt_status used them... */
@@ -252,17 +259,47 @@ ftt_open_dev(ftt_descriptor d) {
 	    d->readonly = FTT_RDWR;
 
 	    /* coimplain if neccesary */
-	    if (res & FTT_PROT) {
+	    if (status_res & FTT_PROT) {
 		ftt_errno = FTT_EROFS;
 		ftt_eprintf("ftt_open_dev: called with a read/write ftt_descriptor and a write protected tape.");
 		return -1;
 	    }
+	    if (!d->density_is_set) {
+	        ftt_set_compression(d,d->devinfo[d->which_is_default].mode);
+		if (ftt_get_hwdens(d) != d->devinfo[d->which_is_default].hwdens) {
+		    if (status_res & FTT_ABOT) {
+			DEBUG3(stderr,"setting density...\n");
+			res = ftt_set_hwdens(d, 
+				d->devinfo[d->which_is_default].hwdens);
+			if (res < 0) {
+			    return res;
+			}
+			d->density_is_set = 1;
+		    } else {
+			ftt_errno = FTT_ENOTBOT;
+			ftt_eprintf("ftt_open_dev: Need to change tape density for writing, but not at BOT");
+			return -1;
+		    }
+		} else {
+		    d->density_is_set = 1;
+		}
+	    }
+
 	}
 
+        if (d->default_blocksize != d->current_blocksize && 
+					!(d->flags&FTT_FLAG_BSIZE_AFTER)) {
+	    res = ftt_set_blocksize(d, d->default_blocksize);
+	    if (res < 0) {
+	       return res;
+	    } else {
+	       d->current_blocksize = d->default_blocksize;
+	    }
+	}
 	/* 
 	** now we've checked for the ugly read-write with write protected
-	** tape error, we can go on and open the device with the appropriate
-	** flags.
+	** tape error, and set density if needed, we can go on and open the 
+	** device with the appropriate flags.
 	*/
 	d->which_is_open = d->which_is_default;
         DEBUG2(stderr,"Actually opening\n");
@@ -275,6 +312,15 @@ ftt_open_dev(ftt_descriptor d) {
 	    d->file_descriptor = ftt_translate_error(d,FTT_OPN_OPEN, "an open() system call",
 			d->file_descriptor, "ftt_open_dev",1);
 	    d->which_is_open = -1;
+	}
+        if (d->default_blocksize != d->current_blocksize && 
+					(d->flags&FTT_FLAG_BSIZE_AFTER)) {
+	    res = ftt_set_blocksize(d, d->default_blocksize);
+	    if (res < 0) {
+	       return res;
+	    } else {
+	       d->current_blocksize = d->default_blocksize;
+	    }
 	}
     }
     DEBUG2(stderr,"Returing %ld\n", d->file_descriptor);

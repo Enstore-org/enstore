@@ -33,11 +33,12 @@ typedef struct {
 	char		**densitytrans;		/* density names */
 	char 		readonly;		/* we were opened readonly */
 	char 		unrecovered_error;	/* waiting for rewind... */
-	long 		file_descriptor;	/* fd or scsi handle */
+	int 		file_descriptor;	/* fd or scsi handle */
 	char 		current_valid;		/* see below */
 	long 		current_block;		/* postion on tape */
 	long 		current_file;
-	FILE * 		async_pf;		/* pipe fd for async ops */
+	FILE * 		async_pf_parent;	/* pipe fd for async ops */
+	FILE * 		async_pf_child;		/* pipe fd for async ops */
 	int 		async_pid;		/* proc id for async ops */
 	int 		last_operation;		/* operation num last done */
 	long		scsi_ops;		/* operation nums to passthru*/
@@ -48,6 +49,8 @@ typedef struct {
 	int 		which_is_open;		/* devinfo index open now */
 	int 		which_is_default;	/* devinfo index for open_dev*/
 	int		default_blocksize;	/* blocksize for open_dev */
+	int		current_blocksize;	/* blocksize for open_dev */
+	int		density_is_set;		/* we already set density */
 	int		data_direction;		/* are we reading/writing */
 	int		nreads, nwrites;	/* operation counts */
 	scsi_handle     scsi_descriptor;
@@ -93,6 +96,8 @@ typedef struct {
 #define FTT_OP_PASSTHRU      	(1 <<  FTT_OPN_PASSTHRU )
 #define FTT_OP_CHALL           	(1 <<  FTT_OPN_CHALL )
 #define FTT_OP_OPEN            	(1 <<  FTT_OPN_OPEN )
+#define FTT_OP_RSKIPREC		(1 <<  FTT_OPN_RSKIPREC)
+#define FTT_OP_RSKIPFM		(1 <<  FTT_OPN_RSKIPFM)
 
 /* flags values (system/device dependant) */
 #define FTT_FLAG_FSF_AT_EOF	0x00000001	/* fsf to get past eof  */
@@ -101,6 +106,7 @@ typedef struct {
 #define FTT_FLAG_REOPEN_R_W	0x00000008	/* reopen on r/w switch */
 #define FTT_FLAG_SUID_SCSI	0x00000010	/* must be root to do scsi */
 #define FTT_FLAG_CHK_BOT_AT_FMK	0x00000020	/* check for reset/rewinds */
+#define FTT_FLAG_BSIZE_AFTER	0x00000040	/* set blocksize after open */
 
 typedef struct {
 	char *value[FTT_MAX_STAT];
@@ -156,7 +162,10 @@ extern int ftt_write_fm_if_needed(ftt_descriptor);
 extern int ftt_matches(char*, char*);
 extern int ftt_do_scsi_command(ftt_descriptor, char *,unsigned char *, 
 				int, unsigned char *, int, int, int);
-extern int ftt_set_hwdens_blocksize(ftt_descriptor, int, int); 
+extern int ftt_set_hwdens(ftt_descriptor, int); 
+extern int ftt_set_compression(ftt_descriptor, int); 
+extern int ftt_set_blocksize(ftt_descriptor, int); 
+extern int ftt_get_hwdens(ftt_descriptor); 
 extern int ftt_findslot(char*, char*, char*, int*, int*, char *);
 extern void ftt_set_transfer_length(unsigned char *, int);
 extern int ftt_skip_fm_internal(ftt_descriptor, int);

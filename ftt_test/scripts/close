@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 #===============================================================================
 # This will test that close puts you in the suspected position
 #===============================================================================
@@ -21,6 +21,7 @@ ftt_rewind
 ftt_write_tblock -nblock 10
 ftt_close_dev
 ftt_skip_rec -10
-ftt_test_status -FTT_ABOT
+ftt_verify_position 0 0
+ftt_verify_tblock -nblock 1
 ftt_close
 EOD

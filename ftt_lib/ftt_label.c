@@ -19,21 +19,26 @@ int
 ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
     char *p;
     
-    ENTERING("ftt_guess_label");
+    /* don't clear errors yet, need to look at ftt_errno */
+    char *_name = "ftt_guess_label";
+    DEBUG1(stderr, "Entering %s\n", _name);
     CKNULL("label data buffer pointer", buf);
 
     if (-1 == length && ftt_errno == FTT_EBLANK) {
+	ftt_eprintf("Ok\n");
+	ftt_errno = FTT_SUCCESS;
 	return FTT_BLANK_HEADER;
     } else if ( length < 80 ) {
+	ftt_eprintf("Ok\n");
+	ftt_errno = FTT_SUCCESS;
+	*vol = "";
+	*vlen = 0;
 	return FTT_UNKNOWN_HEADER;
     }
+
+    /* okay, now we can clear errors... */
     ftt_eprintf("Ok\n");
     ftt_errno = FTT_SUCCESS;
-    if( 0 == buf ) {
-	ftt_eprintf("ftt_guess_label called with NULL buffer pointer\n");
-	ftt_errno = FTT_EFAULT;
-	return -1;
-    }
 
     switch(pack(buf[0],buf[1],buf[2],buf[3])) {
 
@@ -64,6 +69,8 @@ ftt_guess_label(char *buf, int length, char **vol, int *vlen) {
 	if (vlen) *vlen = p - buf;
 	return FTT_FMB_HEADER;
     }
+    *vol = "";
+    *vlen = 0;
     return FTT_UNKNOWN_HEADER;
 }
 
@@ -99,7 +106,8 @@ ftt_format_label( char *buf, int length, char *vol, int vlen, int type) {
     case FTT_CPIO_HEADER:
 	 if (length >= 512) {
 	     memset(buf, 0, (size_t)512); 
-	     sprintf(buf, "070701000086f6000081a4000006c5000011ad0000000130f68764000000000000001e0000000500000000000000000000000a00000000%s\00007070100000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000b00000000TRAILER!!!", vol);
+	     sprintf(buf, "070701000086f6000081a4000006c5000011ad0000000130f68764000000000000001e0000000500000000000000000000000a00000000%s", vol);
+	     sprintf(buf + strlen(buf) +1 , "0007070100000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000b00000000TRAILER!!!");
 	     return 512;
 	 } else {
 	    ftt_errno = FTT_EBLKSIZE;
