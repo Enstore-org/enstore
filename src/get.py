@@ -62,7 +62,7 @@ def transfer_file(in_fd, out_fd):
 
     while 1:
 
-        r, w, x = select.select([in_fd], [], [], 15 * 60)
+        r, w, unused = select.select([in_fd], [], [], 15 * 60)
 
         if in_fd not in r:
             status = (e_errors.TIMEDOUT, "Read")
@@ -84,7 +84,7 @@ def transfer_file(in_fd, out_fd):
             return {'status' : status, 'bytes' : bytes, 'encp_crc' : crc}
             break
 
-        r, w, x = select.select([], [out_fd], [], 15 * 60)
+        r, w, unused = select.select([], [out_fd], [], 15 * 60)
 
         if out_fd not in w:
             status = (e_errors.TIMEDOUT, "Write")
@@ -185,8 +185,8 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         Trace.message(5, "Waiting for data")
 
         # Stall starting the count until the first byte is ready for reading.
-        read_fd, write_fd, exc_fd = select.select([data_path_socket], [], [],
-                                                  e.mover_timeout)
+        read_fd, unused, unused = select.select([data_path_socket], [], [],
+                                                e.mover_timeout)
 
         if data_path_socket not in read_fd:
             work_ticket['status'] = (e_errors.TIMEDOUT, "No data received")
@@ -319,7 +319,7 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
            work_ticket.get('fc', {}).get('bfid', "no_bfid") == None:
 
             #Get the file info list dump of the tape.
-            vcc, fcc = encp.get_clerks(e.volume)
+            unused, fcc = encp.get_clerks(e.volume)
             tape_ticket = fcc.tape_list(e.volume)
             
             #First check that everything is okay.
@@ -433,7 +433,13 @@ def set_metadata(ticket, intf):
     #Set these now so the metadata can be set correctly.
     ticket['wrapper']['fullname'] = ticket['outfile']
     ticket['wrapper']['pnfsFilename'] = ticket['infile']
-    ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
+    try:
+        ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
+    except:
+        sys.stderr.write("Unexpected error setting metadata.\n")
+        sys.stderr.write(pprint.pformat(ticket))
+        exc, msg, tb = sys.exc_info()
+        raise exc, msg, tb
 
     #Create the pnfs file.
     try:
@@ -557,7 +563,7 @@ def main(e):
 
     #Some globals are expected to exists for normal operation (i.e. a logger
     # client).  Create them.
-    client = encp.clients()
+    encp.clients()
 
     #Initialize the Trace module.
     Trace.init("GET")
@@ -569,7 +575,7 @@ def main(e):
     command_line = "Command line: %s" % (string.join(sys.argv),)
     Trace.log(e_errors.INFO, command_line)
 
-    exit_status = 0 #For rembering failures.
+    #exit_status = 0 #For rembering failures.
     files_transfered = 0
 
     #Get a port to talk on and listen for connections
@@ -629,6 +635,11 @@ def main(e):
     if not e_errors.is_ok(reply_ticket):
         sys.stderr.write("Unable to read volume %s: %s\n" %
                          (e.volume, reply_ticket['status']))
+        encp.quit(1)
+    if submitted != 1:
+        sys.stderr.write("Unknown failure subitting request for file " \
+                         "%s on volume %s.\n" %
+                         (request['infile'], e.volume))
         encp.quit(1)
 
     while requests_outstanding(requests_per_vol[e.volume]):
@@ -701,6 +712,19 @@ def main(e):
                 encp.quit(1)
 
         Trace.message(4, "Opened control socket.")
+
+        #Compare expected unique id with the returned unique id.
+        if ticket.get('unique_id', None) != request['unique_id']:
+            sys.stderr.write(
+                "Unexpected unique_id received from %s.  Expected "
+                "unique id %s, received %s instead.\n" %
+                (mover_address, request['unique_id'], ticket['unique_id']))
+            Trace.log(e_errors.ERROR,
+                      "Unexpected unique id received from %s.  Expected "
+                      "unique id %s, received %s instead.\n" %
+                      (mover_address, request['unique_id'],
+                       ticket.get('unique_id', None)))
+            encp.quit(1)
  
         #If this is a volume where the file information is not known and
         # the user did not specify the filenames...
@@ -799,7 +823,7 @@ def main(e):
                 #Set the metadata if it has not already been set.
                 try:
                     p = pnfs.Pnfs(request['infile'])
-                    pnfs_bfid = p.get_bit_file_id()
+                    p.get_bit_file_id()
                 except (IOError, OSError, TypeError):
                     Trace.message(5, "Updating metadata for %s." %
                                   request['infile'])
@@ -891,7 +915,7 @@ def do_work(intf):
     try:
         main(intf)
         encp.quit(0)
-    except SystemExit, msg:
+    except SystemExit:
         encp.quit(1)
 
 if __name__ == '__main__':
