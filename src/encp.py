@@ -1037,7 +1037,7 @@ def get_callback_addr(encp_intf, ip=None):
     listen_socket.listen(4)
 
     Trace.message(CONFIG_LEVEL,
-                  "Waiting for mover(s) to call back on (%s, %s)." %
+                  "Listening for mover(s) to call back on (%s, %s)." %
                   callback_addr)
 
     return callback_addr, listen_socket
@@ -1060,7 +1060,7 @@ def get_routing_callback_addr(encp_intf, udps=None):
     route_callback_addr = (udps.server_address[0], udps.server_address[1])
     
     Trace.message(CONFIG_LEVEL,
-                  "Waiting for mover(s) to send route back on (%s, %s)." %
+                  "Listening for mover(s) to send route back on (%s, %s)." %
                   route_callback_addr)
 
     return route_callback_addr, udps
