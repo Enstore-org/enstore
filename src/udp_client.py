@@ -196,9 +196,11 @@ class UDPClient:
                     # an "expected string without null bytes".
                     exc, msg, tb = sys.exec_info()
                     try:
-                        message = "%s: %s: %s" % (exc, msg, reply[:100])
+                        message = "%s: %s: From server %s:%s" % \
+                                  (exc, msg, server, reply[:100])
                     except IndexError:
-                        message = "%s: %s: %s" % (exc, msg, reply)
+                        message = "%s: %s: From server %s: %s" % \
+                                  (exc, msg, server, reply)
 
                     Trace.log(e_errors.INFO, message)
                     rcvd_txn_id=None
