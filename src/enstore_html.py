@@ -50,16 +50,6 @@ def empty_row(cols=0):
     # output an empty row
     return HTMLgen.TR(empty_data(cols))
 
-def find_label(text):
-    # compare the passed text with the files listed in PLOT_INFO. if there
-    # is a match, return the associated text.  else return a default string.
-    for file_label in PLOT_INFO:
-	if string.find(text, file_label[0]) == 0:
-	    # this is a match
-	    return file_label[1]
-    else:
-	return DEFAULT_LABEL
-
 def is_this(server, suffix):
     stype = string.split(server, ".")
     if stype[len(stype)-1] == suffix:
@@ -1036,6 +1026,16 @@ class EnPlotPage(EnBaseHtmlDoc):
 	self.script_title_gif = gif
 	self.description = description
 
+    def find_label(self, text):
+        # compare the passed text with the files listed in PLOT_INFO. if there
+        # is a match, return the associated text. else return a default string.
+        for file_label in PLOT_INFO:
+            if string.find(text, file_label[0]) == 0:
+                # this is a match
+                return file_label[1]
+        else:
+            return DEFAULT_LABEL
+
     def find_ps_file(self, jpg_file, pss):
 	# see if there is a corresponding ps file
 	ps = 0
@@ -1072,7 +1072,7 @@ class EnPlotPage(EnBaseHtmlDoc):
 	    else:
 		td = HTMLgen.TD(HTMLgen.Image(stamp))
 	    trs.append(td)
-	    label = find_label(stamp)
+	    label = self.find_label(stamp)
 	    td = HTMLgen.TD("%s%s"%(label, NBSP*2) , html_escape='OFF')
 	    if ps:
 		# we have a corresponding ps file
