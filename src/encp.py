@@ -2853,6 +2853,13 @@ def verify_read_request_consistancy(requests_per_vol, e):
                         'pnfs_location_cookie':p.location_cookie,
                         'db_size':long(request['fc']['size']),
                         'pnfs_size':long(p.size),
+                        'db_file_family':volume_family.extract_file_family(
+                             request['vc']['volume_family']),
+                        'pnfs_file_family':p.origff,
+                        'db_pnfsid':request['fc']['pnfsid'],
+                        'pnfs_pnfsid':p.pnfsid_file,
+                        'db_bfid':request['fc']['bfid'],
+                        'pnfs_bfid':p.bfid,
                         'status':"Probable database conflict with pnfs."}
                 Trace.alarm(e_errors.ERROR, e_errors.CONFLICT, rest)
                 request['status'] = (e_errors.CONFLICT, rest['status'])
