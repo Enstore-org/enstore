@@ -1,3 +1,16 @@
-ftt                                NOT DECLARED
-                                   Version: v1_2         Flavor: SunOS+5
+
+          Verbose versions of ftt:
+
+Instance: 		v1_2
+Database: 		/afs/fnal/products/ups_database/declared
+Flavor : 		OSF1+V3
+Home_dir:		/afs/.fnal.gov/products/OSF1/ftt/v1_2
+Declared date:		8-22-96
+Declarer:		mengel
+Master Source:		Source not available
+Distribution:		Unrestricted
+Tarfiledirectory:	No tar file directory
+Authorized_nodes:	All
+Requirements:		None
+
 

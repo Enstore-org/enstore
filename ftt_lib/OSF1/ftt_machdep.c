@@ -1,3 +1,4 @@
+static char rcsid[] = "$Id$";
 #include <sys/utsname.h>
 #include <string.h>
 #include <ctype.h>

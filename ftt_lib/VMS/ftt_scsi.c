@@ -1,3 +1,4 @@
+static char rcsid[] = "$Id$";
 /*
  ****************************Copyright Notice***********************************
  *             Copyright (c)1992 Universities Research Association, Inc.,      *

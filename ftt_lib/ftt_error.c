@@ -1,3 +1,4 @@
+static char rcsid[] = "$Id$";
 #include <stdarg.h>
 #include <stdio.h>
 #include <ftt_private.h>

@@ -1,3 +1,4 @@
+static char rcsid[] = "$Id$";
 /* Ftt main test routine
 
 Authors:        Margaret Votava
