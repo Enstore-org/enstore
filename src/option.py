@@ -94,6 +94,7 @@ ADMIN = "admin"
 INTEGER = "integer"
 STRING = "string"
 FLOAT = "float"
+RANGE = "range"
 
 #default action
 FORCE = 1
@@ -374,17 +375,23 @@ class Interface:
 
     trace_options = {
         DO_PRINT:{VALUE_USAGE:REQUIRED,
-                    HELP_STRING:"turns on more verbose output"},
+                  VALUE_TYPE:RANGE,
+                  HELP_STRING:"turns on more verbose output"},
         DONT_PRINT:{VALUE_USAGE:REQUIRED,
-                      HELP_STRING:"turns off more verbose output"},
+                    VALUE_TYPE:RANGE,
+                    HELP_STRING:"turns off more verbose output"},
         DO_LOG:{VALUE_USAGE:REQUIRED,
-                  HELP_STRING:"turns on more verbose logging"},
+                VALUE_TYPE:RANGE,
+                HELP_STRING:"turns on more verbose logging"},
         DONT_LOG:{VALUE_USAGE:REQUIRED,
-                    HELP_STRING:"turns off more verbose logging"},
+                  VALUE_TYPE:RANGE,
+                  HELP_STRING:"turns off more verbose logging"},
         DO_ALARM:{VALUE_USAGE:REQUIRED,
-                    HELP_STRING:"turns on more alarms"},
+                  VALUE_TYPE:RANGE,
+                  HELP_STRING:"turns on more alarms"},
         DONT_ALARM:{VALUE_USAGE:REQUIRED,
-                      HELP_STRING:"turns off more alarms"}
+                    VALUE_TYPE:RANGE,
+                    HELP_STRING:"turns off more alarms"}
         }
 
     test_options = {
@@ -814,6 +821,24 @@ class Interface:
                     #                 (argv[i], opt_with_dashes))
                     argv[i] = opt_with_dashes
 
+    #This function is copied from the original interface code.  It parses,
+    # a string into a list of integers (aka range).
+    #Note: This should probably be looked at to be more robust.
+    def parse_range(self, s):
+        if ',' in s:
+            s = string.split(s,',')
+        else:
+            s = [s]
+        r = []
+        for t in s:
+            if '-' in t:
+                lo, hi = string.split(t,'-')
+                lo, hi = int(lo), int(hi)
+                r.extend(range(lo, hi+1))
+            else:
+                r.append(int(t))
+        return r
+
     #Take the passed in short option and return its long option equivalent.
     def short_to_long(self, short_opt):
         if not self.is_short_option(short_opt):
@@ -975,6 +1000,8 @@ class Interface:
             return int(value)
         elif opt_dict.get(VALUE_TYPE, STRING) == FLOAT:
             return float(value)
+        elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
+            return self.parse_range(value)
         else: #STRING
             return str(value)
 
@@ -983,6 +1010,8 @@ class Interface:
             return int(value)
         elif opt_dict.get(DEFAULT_TYPE, STRING) == FLOAT:
             return float(value)
+        elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
+            return self.parse_range(value)
         else: #STRING
             return str(value)
 
