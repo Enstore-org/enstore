@@ -107,9 +107,7 @@ class Interface:
                 self.check_host(hostaddr.gethostinfo()[0])
             else:            
                 self.check_host(host)
-
             self.check_port(port)
-
             self.parse_options()
 
     def check_host(self, host):
@@ -191,9 +189,8 @@ class Interface:
     def strip(self, value):
 	return value
 
-    # This is a dummy option(), the derived class should supply a real
+    # This is a dummy options(), the derived class should supply a real
     # one
-
     def options(self):
         return []
 
