@@ -232,8 +232,19 @@ def get_entvrc(intf):
                 continue
             
             #Split the string and look for problems.
-            words = line.split()
+            words = line.strip().split()
             if not words:
+                continue
+            #If the line gives outline color for movers based on their
+            # library manager, pass this information along.
+            if words[0] == "library":
+                print "1111111"
+                try:
+                    library_colors[words[1]] = words[2]
+                    print "2222222"
+                except (IndexError, KeyError, AttributeError, ValueError,
+                        TypeError):
+                    pass
                 continue
 
             if socket.getfqdn(words[0])==socket.getfqdn(address):
@@ -260,7 +271,50 @@ def get_entvrc(intf):
         geometry = "700x1600+0+0"
         background = DEFAULT_BG_COLOR
 
-    return {'geometry':geometry, 'background':background, 'animate':animate}
+    library_colors = {}
+    client_colors = {}
+
+    #Pass through the file looking for library color lines.
+    for line in get_entvrc_file():
+
+        #Check the line for problems or things to skip, like comments.
+        if len(line) == 0:
+            continue
+        if line[0] == "#": #Skip comment lines.
+            continue
+
+        #Split the string and look for problems.
+        words = line.strip().split()
+        if not words:
+            continue
+        
+        #If the line gives outline color for movers based on their
+        # library manager, pass this information along.
+        if words[0] == "library_color":
+            try:
+                library_colors[words[1]] = words[2]
+            except (IndexError, KeyError, AttributeError, ValueError,
+                    TypeError):
+                pass
+            continue
+
+        #If the line gives fill color for clients based on their nodename.
+        if words[0] == "client_color":
+            try:
+                client_colors[words[1]] = words[2]
+            except (IndexError, KeyError, AttributeError, ValueError,
+                    TypeError):
+                pass
+            continue
+
+    rtn_dict = {}
+    rtn_dict['geometry'] = geometry
+    rtn_dict['background'] = background
+    rtn_dict['animate'] = animate
+    rtn_dict['library_colors'] = library_colors
+    rtn_dict['client_colors'] = client_colors
+
+    return rtn_dict
 
 def set_entvrc(display, intf):
 

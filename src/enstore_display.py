@@ -119,7 +119,9 @@ def rgbtohex(r,g,b):
 color_dict = {
     #client colors
     'client_wait_color' :   rgbtohex(100, 100, 100),  # grey
-    'client_active_color' : rgbtohex(0, 255, 0), # green
+    #'client_active_color' : rgbtohex(0, 255, 0), # green
+    'client_color' : rgbtohex(0, 255, 0), # black
+    'client_font_color' : rgbtohex(0, 0, 0), # white
     #mover colors
     'mover_color':          rgbtohex(0, 0, 0), # black
     'mover_error_color':    rgbtohex(255, 0, 0), # red
@@ -285,9 +287,11 @@ class Mover:
             minfo = csc.get(self.name+".mover")
             #64GB is the default listed in mover.py.
             self.max_buffer = long(minfo.get('max_buffer', 67108864))
+            self.library = minfo.get('library', "Unknown")
         except AttributeError:
             self.max_buffer = 67108864
-
+            self.library = "Unknown"
+            
         self.update_state("Unknown")
         
         self.draw()
@@ -309,7 +313,8 @@ class Mover:
         if self.outline:
             self.display.coords(self.outline, x, y,
                                 x+self.width, y+self.height)
-            self.display.itemconfigure(self.outline, fill=self.mover_color)
+            self.display.itemconfigure(self.outline, fill=self.mover_color,
+                                       outline=self.library_color)
         else:
             self.outline = self.display.create_rectangle(x, y, x+self.width,
                                                          y+self.height,
@@ -721,6 +726,7 @@ class Mover:
         #label_stable_color  = colors('label_stable_color')
         #tape_offline_color  = colors('tape_offline_color')
         #label_offline_color = colors('label_offline_color')
+        
 
         #These mover colors stick around.
         self.percent_color       =  colors('percent_color')
@@ -738,6 +744,7 @@ class Mover:
                             'Unknown':state_idle_color,
                             'IDLE':state_idle_color}.get(self.state,
                                                          state_stable_color)
+        self.library_color = self.display.get_mover_color(self.library)
         
         #Update the time in state counter for the mover.
         now = time.time()
@@ -970,7 +977,10 @@ class Client:
             #self.display.itenconfigure(self.outline, fill=self.color)
         else:
             self.outline = self.display.create_oval(x, y, x+self.width,
-                                               y+self.height, fill=self.color)
+                                                    y+self.height,
+                                                    fill=self.color,
+                                                    outline=self.outline_color,
+                                                    width=1)
 
         if self.label:
             self.display.coords(self.label,
@@ -980,7 +990,8 @@ class Client:
             self.label = self.display.create_text(x+self.width/2,
                                                   y+self.height/2,
                                                   text=self.name,
-                                                  font=self.font)
+                                                  font=self.font,
+                                                  fill=self.font_color)
 
     def undraw(self):
         try:
@@ -1002,11 +1013,14 @@ class Client:
         ### color
         client_wait_color   = colors('client_wait_color')
         client_active_color = colors('client_active_color')
-        
+
+        self.color = colors('client_color')
+        self.font_color = colors('client_font_color')
         if self.waiting:
-            self.color = client_wait_color 
+            self.outline_color = client_wait_color 
         else:
-            self.color =  client_active_color
+            #self.color =  client_active_color
+            self.outline_color = self.display.get_client_color(self.name)
 
         if self.outline:
             self.display.itemconfigure(self.outline, fill = self.color) 
@@ -1014,7 +1028,7 @@ class Client:
     #########################################################################
 
     def resize(self):
-        self.width = self.display.width/12
+        self.width = self.display.width/8
         self.height =  self.display.height/28
         self.font = get_font(self.height/2.5, 'arial')
 
@@ -1032,7 +1046,7 @@ class Client:
         self.index = i
         self.display.client_positions[i] = self.name
         
-        self.x, self.y = scale_to_display(-0.9, self.index/10.,
+        self.x, self.y = scale_to_display(-0.95, self.index/10.,
                                           self.display.width,
                                           self.display.height)        
         
@@ -1243,6 +1257,8 @@ class Display(Tkinter.Canvas):
         y_position = entvrc_info.get('y_position', None)
         title = entvrc_info.get('title', "")
         animate = int(entvrc_info.get('animate', 1))#Python true for animation.
+        self.library_colors = entvrc_info.get('library_colors', {})
+        self.client_colors = entvrc_info.get('client_colors', {})
 
         tk = Tkinter.Tk()
         #Don't draw the window until all geometry issues have been worked out.
@@ -1612,6 +1628,38 @@ class Display(Tkinter.Canvas):
         for k in range(N):
             mover_name = mover_names[k]
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
+
+    def get_mover_color(self, library):
+        #If this is the first mover from this library.
+        if not getattr(self, "library_colors", None):
+            self.library_colors = {}
+
+        #Make some adjustments.
+        if type(library) == type([]):
+            library = library[0]
+        if library[-16:] == ".library_manager":
+            library = library[:-16]
+
+        #If this mover's library is already remembered.
+        if self.library_colors.get(library, None):
+            return self.library_colors[library]
+
+        self.library_colors[library] = rgbtohex(0, 0, 0)
+
+        return self.library_colors[library]
+
+    def get_client_color(self, client):
+        #If this is the first client.
+        if not getattr(self, "client_colors", None):
+            self.client_colors = {}
+
+        #If this mover's library is already remembered.
+        if self.client_colors.get(client, None):
+            return self.client_colors[client]
+
+        self.client_colors[client] = colors('client_active_color')
+
+        return self.client_colors[client]
 
     #########################################################################
 
