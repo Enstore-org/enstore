@@ -39,8 +39,9 @@ LIB = None
 try:
     #Determine the expected location of the local copy of Tcl/Tk.
     if ENSTORE_DIR:
-        TCLTK_DIR=os.path.join(ENSTORE_DIR, 'etc','TclTk')
-
+        TCLTK_DIR = os.path.join(ENSTORE_DIR, 'etc','TclTk')
+        IMAGE_DIR = os.path.join(ENSTORE_DIR, 'etc', 'Images')
+        
         #If the local copy of tcl/tk is found, use it.
         temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
         temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
@@ -49,22 +50,24 @@ try:
            os.path.exists(temp_dir_lib):
             os.environ["TCL_LIBRARY"] = temp_dir_tcl
             os.environ["TK_LIBRARY"] = temp_dir_tk
-            LIB = temp_dir_lib
-            IMAGE_DIR = os.path.join(ENSTORE_DIR, 'etc', 'Images')
+            LIB = temp_dir_lib            
         else:
             #Don't use the local copy.
             temp_dir = os.path.join(PYTHONLIB, "lib-dynload")
             if(os.path.exists(temp_dir)):
                 LIB = temp_dir
     elif ENTV_DIR:
-        TCLTK_DIR=ENTV_DIR
+        TCLTK_DIR = ENTV_DIR
+        IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
+
+        #When using the cut version the libraries are shipped with it.
         temp_dir_tcl = os.path.join(TCLTK_DIR, 'tcl8.3')
         temp_dir_tk = os.path.join(TCLTK_DIR, 'tk8.3')
         if os.path.exists(temp_dir_tcl) and os.path.exists(temp_dir_tk):
             os.environ["TCL_LIBRARY"] = temp_dir_tcl
             os.environ["TK_LIBRARY"] = temp_dir_tk
             LIB = None
-            IMAGE_DIR = os.path.join(ENTV_DIR, 'Images')
+
 except:
     pass
 
