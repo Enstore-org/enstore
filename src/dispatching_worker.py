@@ -93,8 +93,9 @@ class DispatchingWorker:
             t.port=server_address[1]
             t.start()
         except:
-            import traceback
-            traceback.print_exc()
+            pass
+            #import traceback
+            #traceback.print_exc()
                                             
         Trace.trace(10,"}__init__")
 
