@@ -1957,7 +1957,7 @@ def create_write_requests(callback_addr, e, tinfo):
         except (OSError, IOError), detail:
             print_data_access_layer_format(
                 inputlist[i], outputlist[i], file_size[i],
-                {'status':(errno.errorcode(detail.errno), str(detail))})
+                {'status':(errno.errorcode[detail.errno], str(detail))})
             quit()
         except (IndexError,), detail:
             print_data_access_layer_format(
@@ -2583,7 +2583,7 @@ def create_read_requests(callback_addr, tinfo, e):
         except (OSError, IOError), detail:
             print_data_access_layer_format(
                 inputlist[i], outputlist[i], file_size[i],
-                {'status':(errno.errorcode(detail.errno), str(detail))})
+                {'status':(errno.errorcode[detail.errno], str(detail))})
             quit()
         except (IndexError,), detail:
             print_data_access_layer_format(
