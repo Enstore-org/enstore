@@ -324,8 +324,9 @@ for pass in $passes; do
 
 # the event_relay needs to be next
 if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep event`" != "" \) -a $enstore_start_event -eq 1 ];then
+    thisNode=`uname -n`
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
-      if   [ ! "${opt_nocheck-}" ] && enstore EPS ripsgi|grep event_relay.py >/dev/null; then
+      if   [ ! "${opt_nocheck-}" ] && enstore EPS $thisNode|grep event_relay.py >/dev/null; then
         echo "Event Relay already started"
       else
         echo "`date` Starting Event Relay"
@@ -345,10 +346,7 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep event`" != "" \) -a $ens
 
       if [ ! "${opt_async-}" ];
       then
-	a=`enstore EPS ripsgi|grep event_relay >/dev/null`
-	if [ "${a}" == "" ]; then 
-	    check_event_relay event_relay $PID_DIR/`uname -n`-event_relay_pids
-	fi
+	check_event_relay event_relay $PID_DIR/`uname -n`-event_relay_pids
       fi
     
     else
