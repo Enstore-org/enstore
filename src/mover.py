@@ -516,7 +516,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             ##XXX should this be more encapsulated in the driver class?
             import null_driver
             self.tape_driver = null_driver.NullDriver()
-        elif self.driver_type == 'FTTDriver':
+        elif self.state is IDLE and self.driver_type == 'FTTDriver':
             self.device = self.config['device']
             import ftt_driver
             import ftt
