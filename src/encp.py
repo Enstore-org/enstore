@@ -92,7 +92,7 @@ TWO_G = 2 * long(ONE_G) - 1     #Used in int32()
 MAX_FILE_SIZE = long(ONE_G) * 2 - 1    # don't get overflow
 
 #############################################################################
-# verbose: Roughly, five verbose levels are used.
+# verbose: Roughly, 10 verbose levels are used.
 # 0: Print nothing except fatal errors.
 # 1: Print message for complete success.
 # 2: Print non-fatal error messages.
@@ -121,6 +121,10 @@ data_access_layer_requested = 0
 _counter = 0
 #Initial seed for generate_unique_msg_id().
 _msg_counter = 0
+
+#This is the largest 16 bit prime number.  It is used for converting the
+# 1 seeded dcache CRCs with the 0 seeded enstore CRCs.
+BASE = 65521
 
 # int32(v) -- if v > 2^31-1, make it long
 #
@@ -228,6 +232,21 @@ def generate_unique_id():
 
 def generate_location_cookie(number):
     return "0000_000000000_%07d" % int(number)
+
+def convert_0_adler32_to_1_adler32(crc, filesize):
+    #Convert to ingeter types, and determine other values.
+    crc = int(crc)
+    filesize = long(filesize)
+    #Modulo the size with the largest 16 bit prime number.
+    size = int(filesize % BASE)
+    #Extract existing s1 and s2 from the 0 seeded adler32 crc.
+    s1 = int(crc & 0xffff)
+    s2 = int((crc >> 16) &  0xffff)
+    #Modify to reflect the corrected crc.
+    s1 = (s1 + 1) % BASE
+    s2 = (size + s2) % BASE
+    #Return the 1 seeded adler32 crc.
+    return (s2 << 16) + s1
 
 ############################################################################
 
@@ -2526,34 +2545,34 @@ def check_crc(done_ticket, encp_intf, fd=None):
                 return
 
     # Check the CRC in pnfs layer 2 (set by dcache).
-    ### Note: This is commented out because encp has used zero as the initial
-    ###       seed value for the adler32 function for years.  Typically,
-    ###       one is used; not zero.  The dcache uses one, thus the values
-    ###       don't match when compared.
-    #if encp_intf.chk_crc:
-    #    # Get the pnfs layer 2 for this file.
-    #    p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
-    #    data = p.readlayer(2)
-    #
-    #    # Define the match/search once before the loop.
-    #    crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
-    #
-    #    # Loop over every line in the output looking for the crc.
-    #    for line in data:
-    #        result = crc_match.search(line)
-    #        if result != None:
-    #            #Get the hex strings of the two CRCs.
-    #            hex_dcache_string = "0x" + result.group().split(":")[1]
-    #            hex_encp_string = hex(encp_crc)
-    #            #Convert hex values to upper case for comparison.
-    #            hex_dcache_string = string.lower(hex_dcache_string)
-    #            hex_encp_string = string.lower(hex_encp_string)
-    #            #Test to make sure they are the same.
-    #            if hex_dcache_string != hex_encp_string:
-    #                msg = "CRC dcache mismatch: %s != %s" % (hex_dcache_string,
-    #                                                         hex_encp_string)
-    #                done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
-    #                return
+    if encp_intf.chk_crc:
+        # Get the pnfs layer 2 for this file.
+        p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
+        data = p.readlayer(2)
+    
+        # Define the match/search once before the loop.
+        crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+    
+        # Loop over every line in the output looking for the crc.
+        for line in data:
+            result = crc_match.search(line)
+            if result != None:
+                #First convert the 0 seeded adler32 crc used by enstore
+                # to the 1 seeded adler32 crc used by dcache.
+                fixed_encp_crc = convert_0_adler32_to_1_adler32(encp_crc,
+                                                     done_ticket['file_size'])
+                #Get the hex strings of the two CRCs.
+                hex_dcache_string = "0x" + result.group().split(":")[1]
+                hex_encp_string = hex(fixed_encp_crc)
+                #Convert hex values to upper case for comparison.
+                hex_dcache_string = string.lower(hex_dcache_string)
+                hex_encp_string = string.lower(hex_encp_string)
+                #Test to make sure they are the same.
+                if hex_dcache_string != hex_encp_string:
+                    msg = "CRC dcache mismatch: %s != %s" % (hex_dcache_string,
+                                                             hex_encp_string)
+                    done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
+                    return
 
 ############################################################################
             
