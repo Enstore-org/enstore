@@ -362,7 +362,7 @@ class LibraryManagerMethods:
             Trace.trace(11,"send_regret %s" % (ticket,))
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | FCNTL.O_NONBLOCK)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | os.O_NONBLOCK)
             # the following insertion is for antispoofing
             host = ticket['wrapper']['machine'][1]
             if ticket.has_key('route_selection') and ticket['route_selection']:

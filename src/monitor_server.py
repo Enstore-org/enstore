@@ -194,7 +194,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         #Create the socket and put it into non-blocking mode.
         sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
-        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
+        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|os.O_NONBLOCK)
 
         try:
             sock.connect(client_addr) #Start the TCP handshake.
