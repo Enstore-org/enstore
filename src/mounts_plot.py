@@ -159,7 +159,7 @@ if __name__ == '__main__':
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_hist_out+"'\n")
 	outf.write("set title 'Tape Mounts (plotted at %s)'\n"%(time.ctime(time.time())))
-	outf.write("plot '%s' notitle with impulse lw 5\n"%(tmp_data))
+	outf.write("plot '%s' notitle with impulse lw 20\n"%(tmp_data))
 	outf.close()
 
 	os.system("gnuplot %s"%(tmp_gnuplot_cmd))
