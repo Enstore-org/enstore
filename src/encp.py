@@ -60,13 +60,13 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               }
 
     # ask configuration server what port the right library manager is using
-    vticket = csc.get(p.library + ".library_manager")
+    vticket = csc.get(p.library)
 
     # send the work ticket to the library manager
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
     if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
-              +p.library+".library_manager at "\
+              +p.library+" at "\
               +vticket['host']+"/"+repr(vticket['port'])\
               +", ticket[\"status\"]="+ticket["status"]
     if list :

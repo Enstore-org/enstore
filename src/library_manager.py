@@ -331,7 +331,7 @@ if __name__ == "__main__" :
         print "Connecting to configuration server at ",config_host,config_port
     csc = configuration_client(config_host,config_port)
 
-    keys = csc.get(args[0] + ".library_manager")
+    keys = csc.get(args[0])
 
     #  set ourself up on that port and start serving
     methods =  LibraryManagerMethods()

@@ -17,7 +17,7 @@ class LibraryManagerClient :
 
     def send (self, ticket) :
         # who's our library manger that we should send the ticket to?
-        lticket = self.csc.get(self.name+".library_manager")
+        lticket = self.csc.get(self.name)
         # send user ticket and return answer back
         return self.u.send(ticket, (lticket['host'], lticket['port']) )
 
@@ -44,7 +44,7 @@ class LibraryManagerClient :
         if ticket['status'] != "ok" :
             raise errorcode[EPROTO],"lmc.getwork: sending ticket"+repr(ticket)
         if list :
-            print "Q'd: getwork from",self.name+".library_manager"
+            print "Q'd: getwork from",self.name
 
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,

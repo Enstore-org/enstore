@@ -62,7 +62,7 @@ class Mover :
 
                 # now get info asssociated with our volume manager
                 self.csc = configuration_client(self.config_host,self.config_port)
-                lconfig = self.csc.get_uncached(self.library + ".library_manager")
+                lconfig = self.csc.get_uncached(self.library)
                 self.library_manager_host = lconfig["host"]
                 self.library_manager_port = lconfig["port"]
 
