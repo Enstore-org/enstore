@@ -22,7 +22,7 @@ DIR=$(DEFAULT_DIR)
 
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_6
+            VERS=v2_7
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
            CHAIN=test
@@ -269,7 +269,7 @@ build_n_test:
 # utility targets; check for variables, test file list generation
 #---------------------------------------------------------------------------
 CHECKIT_DEF= checkit() {\
-	    test ! -z "$$1"||(echo "$$2 needs to be set";false)\
+	    test ! -z "$$1"||(echo "$$2 needs to be set";false);\
 	}
 
 dproducts_is_set: check_template_vars

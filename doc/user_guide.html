@@ -1,10 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
   <head>
-    <meta http-equiv="Content-Type" content=
-    "text/html; charset=iso-8859-1">
-    <meta name="GENERATOR" content=
-    "Mozilla/4.08 [en] (X11; I; Linux 2.0.35 i686) [Netscape]">
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
     <title>
       Fermi Tape Tools (ftt) Library User's Guide
     </title>
@@ -51,6 +48,9 @@
           writing a simple ftt based tape copy program, and also
           provide a complete call reference of the routines
           provided for tape input, output, and information
+        </p>
+        <p>
+           This document corresponds to version v2_7 of the ftt package.
         </p>
       </blockquote>
     </blockquote>
@@ -111,7 +111,7 @@
             </ol>
           </li>
           <li>
-            <a href="#head8">Reading/Writing</a>
+            <a href="#head8x">Reading/Writing</a>
             <ol>
               <li>
                 <a href="#head13.9">int <b>ftt_read
@@ -662,9 +662,11 @@ ftt_close(d);
     called (you guessed it) <b>ftt_read</b> and <b>ftt_write</b>.
     Both take as arguments the <b>descriptor</b> for the tape drive
     involved, a character pointer to the data buffer, and the
-    number of bytes requested to be read or written. Both return
-    the number of bytes actually transferred, or -1 to indicate an
-    error. The calls look like: 
+    number of bytes requested to be read or written. Both
+    return the number of bytes actually transferred, or a negative value to 
+    indicate an error.
+
+The calls look like: 
 <pre>
 length = ftt_read(d, buffer, buffer_length);
 </pre>
@@ -1202,14 +1204,15 @@ ftt_descriptor d;
 int status;
 status = ftt_close_dev(d);
 </pre>
-    4 
-    <p>
+<!--NewPage-->
+    <h2>
+      <a name="head8x"> </a>
       Reading/Writing
-    </p>
+    </h2>
     <p>
-      All of these routines return -1 on failure, for which more
-      information can be obtained as described in the section on
-      <i>Finding out what went wrong.</i>
+      All of these routines return negative numbers on failure, 
+      for which more information can be obtained as described in 
+      the section on <i>Finding out what went wrong.</i>
     </p>
     <h3>
       <a name="head13.9"></a> 
@@ -1246,8 +1249,13 @@ status = ftt_read(d,data,32768);
     </h3>
     The ftt_write entry transfers as much as possible of the block
     in buffer <i>buf</i> of <i>length</i> to the tape, and returns
-    the length written, unless an error occurs, in which case -1 is
-    returned. The tape is positioned after the written block. 
+    the length written, unless an error occurs, in which case a negative
+    value is returned. The tape is positioned after the written block. 
+    <p>
+      Note that the result of a write should be checked for equality
+      to the length passed in, in most conditions a short write is
+      considered an error.
+    </p>
     <p>
       In the case of an unrecoverable error, an error number of
       FTT_UNRECOVERED will be returned for this call, and all
