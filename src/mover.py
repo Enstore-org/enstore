@@ -55,7 +55,6 @@ import log_client			#   >-- 3 common clients
 import udp_client			# -'
 import callback
 import cpio
-from driver import RawDiskDriver, FTTDriver
 import Trace
 
 class Mover:
@@ -511,6 +510,8 @@ if __name__ == "__main__":
     import getopt
     import string
     import socket
+    Trace.init("mover")
+    Trace.trace(1,"mover called with args "+repr(sys.argv))
 
     # defaults
     #config_host = "localhost"
@@ -552,6 +553,7 @@ if __name__ == "__main__":
         try:
             Trace.init(args[0][0:6]+'.mvr')
             mv = Mover(config_host,config_port)
+            Trace.trace(1,'Mover (re)starting')
             mv.move_forever(args[0])
         except:
             traceback.print_exc()
@@ -563,4 +565,6 @@ if __name__ == "__main__":
             csc = configuration_client.configuration_client(config_host,config_port, 0)
             logc = log_client.LoggerClient(csc, 'MOVER', 'logserver', 0)
             logc.send(log_client.ERROR, 1, format)
+            Trace.trace(0,format)
             continue
+    Trace.trace(1,"Mover finished (impossible)")
