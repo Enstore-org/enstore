@@ -1316,48 +1316,48 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    if mv and mv.has_key("work_ticket"):
 		del(mv["work_ticket"])
 
-	    if ticket['state'] != 'offline':
-                # mount / dismount failed
-                if (ticket['status'][0] == e_errors.READ_BADMOUNT or
-                    ticket['status'][0] == e_errors.WRITE_BADMOUNT or
-                    ticket['status'][0] == e_errors.READ_UNLOAD or
-                    ticket['status'][0] == e_errors.WRITE_UNLOAD):
+        if ticket['state'] != 'offline':
+            # mount / dismount failed
+            if (ticket['status'][0] == e_errors.READ_BADMOUNT or
+                ticket['status'][0] == e_errors.WRITE_BADMOUNT or
+                ticket['status'][0] == e_errors.READ_UNLOAD or
+                ticket['status'][0] == e_errors.WRITE_UNLOAD):
+                self.reply_to_caller({"work" : "nowork"})
+                
+            else:
+                
+                # change volume state to unmounting and send unmount request
+                v = self.vcc.set_at_mover(ticket['external_label'], 
+                                          'unmounting', 
+                                          ticket["mover"])
+                if v['status'][0] != e_errors.OK:
+                    state,mover=v.get('at_mover')
+                    format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
+                    Trace.log(e_errors.INFO, format %\
+                              (ticket['external_label'],
+                               mover, 
+                               state))
                     self.reply_to_caller({"work" : "nowork"})
-
                 else:
-                    
-                    # change volume state to unmounting and send unmount request
-                    v = self.vcc.set_at_mover(ticket['external_label'], 
-                                              'unmounting', 
-                                              ticket["mover"])
-                    if v['status'][0] != e_errors.OK:
-                        state,mover=v.get('at_mover')
-                        format = "cannot change to 'unmounting' vol=%s mover=%s state=%s"
-                        Trace.log(e_errors.INFO, format %\
-                                  (ticket['external_label'],
-                                   mover, 
-                                   state))
-                        self.reply_to_caller({"work" : "nowork"})
-                    else:
-                        timer_task.msg_cancel_tr(summon_mover, 
-                                                 self, mv['mover'])
-                        format = "unbind vol %s mover=%s"
-                        Trace.log(e_errors.ERROR, format %\
-                                  (ticket['external_label'],
-                                   ticket["mover"]))
-                        self.reply_to_caller({"work" : "unbind_volume"})
-	    else:
-                if ticket['state'] == "draining":
-                    if mv in movers:
-                        movers.remove(mv)
-                        mover_cnt = mover_cnt - 1
-                        if (self.mover_index >= mover_cnt and 
-                            self.mover_index > 0):
-                            self.mover_index = mover_cnt - 1
+                    timer_task.msg_cancel_tr(summon_mover, 
+                                             self, mv['mover'])
+                    format = "unbind vol %s mover=%s"
+                    Trace.log(e_errors.ERROR, format %\
+                              (ticket['external_label'],
+                               ticket["mover"]))
+                    self.reply_to_caller({"work" : "unbind_volume"})
+        else:
+            if ticket['state'] == "draining":
+                if mv in movers:
+                    movers.remove(mv)
+                    mover_cnt = mover_cnt - 1
+                    if (self.mover_index >= mover_cnt and 
+                        self.mover_index > 0):
+                        self.mover_index = mover_cnt - 1
 
-                    Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
-                Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
-		self.reply_to_caller({"work" : "nowork"})
+                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % (mv,))
+            Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
+            self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
 	# yes set volume as having no access and send a regret: noaccess.
