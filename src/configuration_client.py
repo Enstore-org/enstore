@@ -63,18 +63,13 @@ class ConfigurationClient(generic_client.GenericClient):
 
     # output the socket error
     def output_socket_error(self, id):
-        if sys.exc_info()[1][0] == errno.CONNREFUSED:
+        exc, msg, tb = sys.exc_info()
+        if msg.errno == errno.CONNREFUSED:
             delay = 3
-            Trace.trace(6,repr(id)+" retrying "+ \
-	                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
-            Trace.trace(10,str(sys.exc_info()[1][0])+" "+\
-	                 "socket error. configuration sending to "+\
-	                 repr(self.config_address)+\
-                         "server down?  retrying in "+repr(delay)+" seconds")
+            Trace.trace(6,"%s retrying %s %s" % (id, exc, msg))
             time.sleep(delay)
         else:
-            exc, msg, tb = sys.exc_info()
-            Trace.trace(6, repr(id)+" "+str(exc)+" "+str(msg))
+            Trace.trace(6, "%s %s %s" % (id, exc, msg))
             raise exc, msg
 
     # return cached (or get from server) value for requested item

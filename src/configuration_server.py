@@ -29,8 +29,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         try:
             f = open(configfile,'r')
         except:
-            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config"
-                   +str(configfile)+" does not exist")
+            msg = (e_errors.DOESNOTEXIST,"Configuration Server: read_config %s: does not exist"%
+                   configfile)
             Trace.log( e_errors.ERROR, msg[1] )
             return msg
         code = string.join(f.readlines(),'')
@@ -43,9 +43,9 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
             ##I would like to do this in a restricted namespace, but
             ##the dict uses modules like e_errors, which it does not import
         except:
-            x = sys.exc_info()
-            tb=x[2]
-            fmt =  traceback.format_exception(x[0],x[1],x[2])[2:]
+            exc,msg,tb = sys.exc_info()
+            fmt =  traceback.format_exception(exc,msg,tb)[2:]
+            ##report the name of the config file in the traceback instead of "<string>"
             fmt[0] = string.replace(fmt[0], "<string>", configfile)
             msg = "Configuration Server: "+string.join(fmt, "")
             Trace.log(e_errors.ERROR,msg)
@@ -97,7 +97,8 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
         # even if there is an error - respond to caller so he can process it
         except:
-            return (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            exc,msg,tb=sys.exc_info()
+            return str(exc), str(msg)
 
 
     # just return the current value for the item the user wants to know about
@@ -127,10 +128,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
         # even if there is an error - respond to caller so he can process it
         except:
-            ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+            exc, msg, tb = sys.exc_info()
+            ticket["status"] = (str(exc), str(msg))
             self.reply_to_caller(ticket)
-            Trace.trace(6,"lookup "+str(sys.exc_info()[0])+
-                        str(sys.exc_info()[1]))
+            Trace.trace(6,"lookup %s %s"%(exc,msg))
             return
 
     # return a list of the dictionary keys back to the user
@@ -144,11 +145,11 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
         # even if there is an error - respond to caller so he can process it
         except:
-             ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
-             self.reply_to_caller(ticket)
-             Trace.trace(6,"get_keys "+str(sys.exc_info()[0])+
-                         str(sys.exc_info()[1]))
-             return
+            exc, msg, tb = sys.exc_info()
+            ticket["status"] = str(exc), str(msg)
+            self.reply_to_caller(ticket)
+            Trace.trace(6,"get_keys %s %"%(exc,msg))
+            return
 
 
     # return a dump of the dictionary back to the user
@@ -162,13 +163,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
         # even if there is an error - respond to caller so he can process it
         except:
-            ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            exc,msg,tb=sys.exc_info()
+            ticket["status"] = str(exc),str(msg)
             try:
                 self.reply_to_caller(ticket)
             except:
                 pass
-            Trace.trace(6,"dump "+str(sys.exc_info()[0])+
-                        str(sys.exc_info()[1]))
+            Trace.trace(6,"dump %s %s"%(exc,msg))
 
 
     # reload the configuration dictionary, possibly from a new file
@@ -185,10 +186,10 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
 
 	# even if there is an error - respond to caller so he can process it
 	except:
-	    ticket["status"] = (str(sys.exc_info()[0]),str(sys.exc_info()[1]))
+            exc,msg,tb=sys.exc_info()
+	    ticket["status"] = str(exc),str(msg)
 	    self.reply_to_caller(ticket)
-	    Trace.trace(6,"load "+str(sys.exc_info()[0])+
-			str(sys.exc_info()[1]))
+	    Trace.trace(6,"load %s %s"%(exc,msg))
 	    return
 
     # get list of the Library manager movers

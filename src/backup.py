@@ -25,7 +25,7 @@ def logthis(code, message):
     log_client.logthis(code,message)
     print "Logging", code, message
 
-def get_size(dbFile):
+def get_size(dbHome,dbFile):
 
     cmd = "db_stat -h " + dbHome + " -d " + dbFile + " | grep \"Number of keys in the tree\" | awk '{print $1}'"
     nkeys = os.popen(cmd).readline()[:-1]
@@ -33,11 +33,11 @@ def get_size(dbFile):
 
     return (nkeys, size)
 
-def backup_dbase():
+def backup_dbase(dbHome):
 
     dbFile=""
     for name in os.popen("db_archive -s  -h"+dbHome).readlines():
-        (nkeys, size) = get_size(name[:-1])
+        (nkeys, size) = get_size(dbHome,name[:-1])
         stmsg = name[:-1] + " : Number of keys = "+nkeys+"  Database size = " + repr(size)
         logthis(e_errors.INFO, stmsg)
         fp = open(name[:-1]+".stat", "w")
@@ -55,13 +55,13 @@ def backup_dbase():
 	os.system("rm "+name[:-1])
     os.system("rm *.stat")
 
-def archive_backup():
+def archive_backup(hst_back,hst_local):
 
     if hst_bck == hst_local:
 	try:
 	   os.mkdir(dir_bck)
-	except os.error:
-	   logthis(e_errors.INFO,"Error: "+dir_bck+" "+str(sys.exc_info()[1][1]))
+	except os.error, msg:
+	   logthis(e_errors.INFO,"Error: %s %s"%(dir_bck,msg))
 	   sys.exit(1)
 
         # try to compress the tared file
@@ -160,10 +160,9 @@ if __name__=="__main__":
         jouHome=dbHome
     try:
     	os.chdir(dbHome)
-    except os.error:
+    except os.error, msg:
 	logthis(e_errors.INFO,
-                  "Backup Error: os.chdir "+dbHome+" "+\
-                  str(sys.exc_info()[0])+(sys.exc_info()[1]))
+                "Backup Error: os.chdir(%s): %s"%(dbHome,msg))
 	sys.exit(1)
 
     #backup_config = configuration_client.ConfigurationClient(\
@@ -179,12 +178,12 @@ if __name__=="__main__":
 	bckHome="/tmp/backup"
         try:
 	    os.mkdir(bckHome)
-	except  os.error :
-	    if sys.exc_info()[1][0] == errno.EEXIST :
+	except  os.error, msg :
+	    if msg.errno == errno.EEXIST :
 		pass
 	    else :
-                logthis(e_errors.INFO, "backup Error - mkdir "+bckHome+\
-                            str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+                logthis(e_errors.INFO, "backup Error - os.mkdir(%s): %s" %
+                        (bckHome, msg))
 		sys.exit(1)
     dir_bck=bckHome+"/dbase."+repr(time.time())
     hst_local,junk,junk=hostaddr.gethostinfo()

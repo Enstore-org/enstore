@@ -857,10 +857,8 @@ class EnDataFile(EnFile):
 	    os.system(cdcmd+"grep "+text+" "+inFile+fproc+"> "+oFile)
 	except:
 	    self.file_name = ""
-	    format = str(sys.argv)+" "+\
-	             str(sys.exc_info()[0])+" "+\
-	             str(sys.exc_info()[1])+" "+\
-	             "inquisitor plot system error"
+            exc, msg, tb=sys.exc_info()
+	    format = "%s: inquisitor plot system error: %s" % (sys.argv,msg)
 	    Trace.trace(9,"__init__ "+format)
 
     def read(self, max_lines):
