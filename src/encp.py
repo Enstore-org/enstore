@@ -1119,7 +1119,7 @@ def receive_final_dialog(control_socket, work_ticket):
 
 #Returns two-tuple.  First is dictionary with 'status' element.  The next
 # is an integer of the crc value.  On error returns 0.
-def transfer_file(input_fd, output_fd, control_socket, request, e):
+def transfer_file(input_fd, output_fd, control_socket, request, tinfo, e):
 
     encp_crc = 0
     
@@ -1140,8 +1140,8 @@ def transfer_file(input_fd, output_fd, control_socket, request, e):
         Trace.log(e_errors.WARNING, "transfer file EXfer error: %s" % (msg,))
 
     # File has been read - wait for final dialog with mover.
-    Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.")
-
+    Trace.message(TRANSFER_LEVEL,"Waiting for final mover dialog.  elapsed=%s"
+                  % (time.time() - tinfo['encp_start_time'],))
     #Even though the functionality is there for this to be done in
     # handle requests, this should be recieved outside since there must
     # be one... not only receiving one on error.
@@ -1807,11 +1807,12 @@ def create_write_request(input_file, output_file,
 
 ############################################################################
 
-def submit_write_request(work_ticket, encp_intf):
+def submit_write_request(work_ticket, tinfo, encp_intf):
 
     Trace.message(TRANSFER_LEVEL, 
-                  "Submitting %s write request.   time=%s" % \
-                  (work_ticket['outfile'], time.time()))
+                  "Submitting %s write request.  elapsed=%s" % \
+                  (work_ticket['outfile'],
+                   time.time() - tinfo['encp_start_time']))
 
     # send the work ticket to the library manager
     while work_ticket['retry'] <= encp_intf.max_retry:
@@ -1922,7 +1923,8 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         lap_time = time.time() #------------------------------------------Start
 
         done_ticket, encp_crc = transfer_file(in_fd, data_path_socket.fileno(),
-                                              control_socket, work_ticket, e)
+                                              control_socket, work_ticket,
+                                              tinfo, e)
 
         tstring = '%s_elapsed_time' % work_ticket['unique_id']
         tinfo[tstring] = time.time() - lap_time #--------------------------End
@@ -2071,7 +2073,7 @@ def write_to_hsm(e, tinfo):
     Trace.trace(20,'write_to_hsm got callback host=%s port=%s listen_socket=%s'
                 % (host,port,listen_socket))
 
-    Trace.message(TRANSFER_LEVEL,
+    Trace.message(CONFIG_LEVEL,
                   "Waiting for mover(s) to call back on (%s, %s)." %
                   (host, port))
 
@@ -2124,7 +2126,7 @@ def write_to_hsm(e, tinfo):
                       (library[i], time.time() - tinfo['encp_start_time']))
 
         #Send the request to write the file to the library manager.
-        done_ticket = submit_write_request(work_ticket, e)
+        done_ticket = submit_write_request(work_ticket, tinfo, e)
 
         Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
         Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
@@ -2533,9 +2535,9 @@ def submit_read_requests(requests, tinfo, encp_intf):
     while requests_to_submit:
         for req in requests_to_submit:
 
-            Trace.message(TRANSFER_LEVEL,
-                          "Submitting %s read request.   time=%s" % \
-                          (req['infile'], time.time()))
+            Trace.message(TRANSFER_LEVEL, 
+                  "Submitting %s read request.  elapsed=%s" % \
+                  (req['outfile'], time.time() - tinfo['encp_start_time']))
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
 
@@ -2644,7 +2646,8 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
         lap_start = time.time() #----------------------------------------Start
 
         done_ticket, encp_crc = transfer_file(data_path_socket.fileno(),out_fd,
-                                              control_socket, request_ticket,e)
+                                              control_socket, request_ticket,
+                                              tinfo, e)
 
         lap_end = time.time()  #-----------------------------------------End
         tstring = "%s_elapsed_time" % request_ticket['unique_id']
@@ -2808,7 +2811,7 @@ def read_from_hsm(e, tinfo):
     callback_addr = (host, port)
     listen_socket.listen(4)
 
-    Trace.message(TRANSFER_LEVEL,
+    Trace.message(CONFIG_LEVEL,
                   "Waiting for mover(s) to call back on (%s, %s)." %
                   (host, port))
 
