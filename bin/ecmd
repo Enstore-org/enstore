@@ -14,8 +14,8 @@ ecmd restart (no options/arguments)
 ecmd encp    [--config_list --verbose --help ] inputfilename outputfilename
 
 ecmd config  [--config_list --config_file=  --dict --load --verbose --alive --help ]
-ecmd fcc     [--config_list --bfids --bfid= --verbose --alive --help ]
-ecmd vcc     [--config_list --vols  --vol=  --verbose --alive --help ']
+ecmd fcc     [--config_list --bfids --bfid= --verbose --alive --backup --help ]
+ecmd vcc     [--config_list --vols  --vol=  --verbose --alive --backup --help ']
 ecmd lmc     [--config_list --getwork     --verbose --alive --help '] library
 ecmd mcc     [--config_list -list --alive --help ']  media_changer volume drive
 
