@@ -3,6 +3,7 @@ import sys
 import tempfile
 import popen2
 import string
+import types
 
 def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     pnfsd_s = os.path.split(pnfsDir)
@@ -90,10 +91,12 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         rc = -1 #poll() returns -1 when the process is still alive.
         line = 1 #Somethig true.
         while rc == -1 or line:
-            line = pipeObj.fromchild.readline()[:-1]
-            if rc == -1:
-                rc = pipeObj.poll() # Don't get if we already have it.
+            line = pipeObj.fromchild.readline()
+            #if rc == -1:
+            #    rc = pipeObj.poll() # Don't get if we already have it.
             if line:
+                #Remove trailing newline.
+                line = line[:-1]
                 #This will put all of the standard out and err output from
                 # get to sdsscp's standard out.  There is probably a better
                 # way, but for now this will work.
@@ -106,8 +109,8 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
                         sys.stderr.write("%s\n" % (detail,))
             else:
                 #Get the exit status when the pipe has been closed.
-                if rc == -1:
-                    rc = pipeObj.wait()
+                #if rc == -1:
+                rc = pipeObj.wait()
                 break
 
         rc = rc >> 8 #This needs to be shifted 8.
