@@ -490,7 +490,8 @@ def return_or_update_and_exit( self, origin_addr, status ):
 	udpc.send_no_wait( {'work':"update_client_info",
 			    'address':origin_addr,
 			    'pid':os.getpid(),
-			    'hsm_driver':{'position':self.hsm_driver.position},
+			    'hsm_driver':{'position':self.hsm_driver.position,
+					  'vol_label':self.hsm_driver.vol_label},
 			    'vol_info':self.vol_info},
 			   (self.config['hostip'],self.config['port']) )
 	sys.exit( m_err.index(status) )
@@ -617,6 +618,8 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	self.client_obj_inst.vol_info = ticket['vol_info']
 	self.client_obj_inst.hsm_driver.position = \
 					     ticket['hsm_driver']['position']
+	self.client_obj_inst.hsm_driver.vol_label = \
+					     ticket['hsm_driver']['vol_label']
 	wait = 0
 	next_req_to_lm = get_state_build_next_lm_req( self, wait )
 	do_next_req_to_lm( self, next_req_to_lm, ticket['address'] )
