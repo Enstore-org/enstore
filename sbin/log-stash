@@ -3,20 +3,21 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
-# Description...
 
+here=`pwd`
+thisYear=`date +%Y`
+thisMonth=`date +%m`
+thisDay=`date +%d`
+
+
+# let's start with the logs that enstore creates
 if [ -z "${1-}" ] ; then
   LOGS=/fnal/ups/prd/www_pages/enstore/log
 else
   LOGS=$1
 fi
 
-here=`pwd`
 cd $LOGS
-
-thisYear=`date +%Y`
-thisMonth=`date +%m`
-thisDay=`date +%d`
 
 HISTORY=history
 if ! [ -d $HISTORY ]; then
@@ -38,5 +39,38 @@ done
 
 cd $HISTORY
 find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
+
+
+# now do it again, but this time for the adic robot logs
+if [ -z "${2-}" ] ; then
+  LOGS=/fnal/ups/prd/www_pages/enstore/adiclog
+else
+  LOGS=$2
+fi
+
+cd $LOGS
+
+HISTORY=history
+if ! [ -d $HISTORY ]; then
+   mkdir $HISTORY
+fi
+
+logfiles=`ls -1 log*.ascii`
+for log in $logfiles; do
+  year=$thisYear  # THIS IS A PROBLEM WHEN THE YEAR ROLLS OVER!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  month=`echo $log | cut -b6-7`
+  day=`  echo $log | cut -b4-5`
+  stash=0
+  if [ $year  -lt $thisYear  ]; then stash=1;fi
+  if [ $month -lt $thisMonth ]; then stash=1;fi
+  if [ $stash -eq 0 ]; then continue; fi
+  mkdir -p $HISTORY/$year/$month  
+  mv $log $HISTORY/$year/$month  
+done
+
+cd $HISTORY
+find . -type f -name "log*.ascii" -exec gzip {} \; 2>/dev/null
+
+
 
 cd $here
