@@ -43,15 +43,6 @@ class MediaChangerClient(generic_client.GenericClient):
         return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
 
     def loadvol(self, vol_ticket, mover, drive, vcc):
-        # do a check for cleaning the drive here and issue a doCleaningCycle work ticket
-        if cleaning_bit_set:
-	    ticket = {'work'   : 'doCleaningCycle',
-                  'drive_id'   : drive,
-                  'media_type' : vol_ticket['media_type'],
-		  'vcc'        : vcc
-                  }
-	    rt = self.send(ticket)
-        # once that is done, issue the loadvol work ticket
 	ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
                   'drive_id'       : drive
