@@ -5,6 +5,7 @@ import string
 import sys
 import time
 
+now = time.strftime("%c",time.localtime(time.time()))
 # the next line causes the program to traceback and exit if it is not called properly
 thefile = sys.argv[1]
 suffix = string.find(thefile,'.tapes')
@@ -74,13 +75,14 @@ o.close()
 g = open(thefile+".gnuplot", "w")
 g.write('set terminal postscript color solid\n')
 g.write('set output "%s.ps"\n' % (thefile,))
-g.write('set title "%s   TapesUsed=%s (%s)   TapesBlank=%s  "\n' % (thefile,wv,su,bv))
+g.write('set title "%s   TotTapesUsed=%s (%s)   TapesBlank=%s  "\n' % (thefile,wv,su,bv))
 g.write('set ylabel "Gigabytes Written"\n')
 g.write('set xdata time\n')
 g.write('set timefmt "%d-%b-%y"\n')
 g.write('set format x "%m-%d-%y"\n')
 g.write('set grid\n')
 g.write('set nokey\n')
+g.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (now,))
 if day1 != None and day2 != None:
     g.write('set xrange["%s":"%s"]\n' % (day1,day2))
 elif day1 != None:

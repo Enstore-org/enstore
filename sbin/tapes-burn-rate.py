@@ -11,13 +11,30 @@ cmd = 'rm *.ps *.jpg *.data *.gnuplot *.tapes *.volumes drivestat.html'
 print cmd
 os.system(cmd)
 
+#d1='01-NOV-01'
+#d2='01-MAY-02'
+
+d1 = None
+d2 = None
+for when in 'date --date "4 months ago"  +"%b-%y"','date --date "2 months"  +"%b-%y"':
+    d = os.popen(when,'r')
+    dat=d.readlines()
+    d.close()
+    if d1 == None:
+       d1 = '01-'+dat[0][:-1]
+       d1 = string.upper(d1)
+    else:
+       d2 = '01-'+dat[0][:-1]
+       d2 = string.upper(d2)
+print 'Generating burn-rate plots from', d1, ' to ',d2
+
 
 href="http://miscomp.fnal.gov/misweb/cgi/misweb.pl\
 ?owner=SYS\
 &dbname=procprd1\
 &tables=DRIVESTAT_LOG\
 &columns=time_stamp%2C%20Tape_Volser%2C%20Mb_User_Write\
-&wheres=%20%20Time_Stamp%20%3E%3D%20to_date%28%2701-JAN-02%27%2C%27DD-MON-YY%27%29%20%20AND%20Operation%20%3D%20upper%28%27ABSOLUTE%27%29%20AND%20Mb_User_Write%20%3E%200\
+&wheres=%20%20Time_Stamp%20%3E%3D%20to_date%28%27"+d1+"%27%2C%27DD-MON-YY%27%29%20%20AND%20Operation%20%3D%20upper%28%27ABSOLUTE%27%29%20AND%20Mb_User_Write%20%3E%200\
 &output_type=application/xls\
 &orders=time_stamp%20Asc%0D%0A\
 &drill_wheres=Yes\
@@ -124,7 +141,7 @@ while 1:
         beagle.write('%s' % (line,))
     else:
         print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
-        
+
 
 for g in group_fd.keys():
     o = group_fd[g]
@@ -133,8 +150,6 @@ for g in group_fd.keys():
 #import pprint
 #pprint.pprint(QUOTAS)
 
-d1='01-JAN-02'
-d2='01-APR-02'
 for g in group_fd.keys():
     if QUOTAS.has_key(g):
         (wv,bv,su) = QUOTAS[g]
