@@ -9,4 +9,7 @@ set xrange [ : ]
 set ylabel 'Bytes'
 set grid
 set format x "%m-%d"
-plot 'bytes.pts' using 1:2 t '' with boxes
+set key top
+plot 'bytes.pts' using 1:2 t '' w boxes, 'bytes.pts' using 1:3 t 'largest file size' w points, 'bytes.pts' using 1:4 t 'smallest file size' w points, 'bytes.pts' using 1:5 t 'mean file size' w points
+
+
