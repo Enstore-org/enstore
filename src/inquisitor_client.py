@@ -193,7 +193,8 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.nooverride = ""
 	self.saagstatus = ""
 	self.update_and_exit = 0
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,

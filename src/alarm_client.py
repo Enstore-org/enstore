@@ -109,7 +109,8 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
         self.severity = e_errors.DEFAULT_SEVERITY
         self.root_error = e_errors.DEFAULT_ROOT_ERROR
         self.get_patrol_file = 0
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.trace_options, self.alive_options,

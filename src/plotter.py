@@ -101,10 +101,10 @@ class PlotterInterface(generic_client.GenericClientInterface):
 
 class PlotterInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flag=1, opts=[]):
+    def __init__(self, args=sys.argv, user_mode=1):
         # fill in the defaults for the possible options
-        self.do_parse = flag
-        self.restricted_opts = opts
+        #self.do_parse = flag
+        #self.restricted_opts = opts
         self.alive_rcv_timeout = 5
         self.alive_retries = 1
 	self.logfile_dir = None
@@ -118,7 +118,8 @@ class PlotterInterface(generic_client.GenericClientInterface):
 	self.encp = None
 	self.mount = None
 	self.sg = None
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
         
     plotter_options = {
         option.ENCP:{option.HELP_STRING:"create the bytes transfered and " \

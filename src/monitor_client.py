@@ -459,7 +459,8 @@ class MonitorServerClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 10
         self.alive_retries = 3
         self.hostip = ""
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.alive_options, self.monitor_options)

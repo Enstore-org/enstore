@@ -135,7 +135,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.viewattrib = 0
         self.drive = 0
         self.show = 0
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,

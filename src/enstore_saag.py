@@ -41,7 +41,8 @@ class SaagInterface(generic_client.GenericClientInterface):
 	#self.do_parse = flag
 	#self.restricted_opts = opts
 	self.html_gen_host = None
-	generic_client.GenericClientInterface.__init__(self)
+	generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.saag_options)

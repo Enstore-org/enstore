@@ -615,7 +615,8 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.volume = None
         self.assign_sg = None
         
-        generic_client.GenericClientInterface.__init__(self)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,

@@ -61,7 +61,7 @@ class CronPlotPage(enstore_html.EnPlotPage):
 
 class PlotPageInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flag=1):
+    def __init__(self, flag=1, args=sys.argv, user_mode=1):
 	# fill in the defaults for the possible options
         self.do_parse = flag
 	self.description = "Graphical representation of the exit status of Enstore cron jobs."
@@ -71,7 +71,8 @@ class PlotPageInterface(generic_client.GenericClientInterface):
 	self.input_dir = "%s/CRONS"%(self.dir,)
 	self.html_file = "%s/cron_pics.html"%(self.dir,)
         self.url = "CRONS/"
-	generic_client.GenericClientInterface.__init__(self)
+	generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def options(self):
 	return self.help_options() +\

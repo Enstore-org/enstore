@@ -133,7 +133,9 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.alive_rcv_timeout = 0
         self.alive_retries = 0
         self.summary = 0
-        generic_client.GenericClientInterface.__init__(self)
+
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
         # if we are using the default host and port, warn the user
         option.check_for_config_defaults()
@@ -145,7 +147,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     config_options = {
         option.SHOW:{option.HELP_STRING:"print the current configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
-		     option.USER_LEVEL:option.ADMIN},
+                     option.USER_LEVEL:option.ADMIN},
         option.LOAD:{option.HELP_STRING:"load a new configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN},

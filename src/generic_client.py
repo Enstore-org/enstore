@@ -17,7 +17,7 @@ import option
 
 class GenericClientInterface(option.Interface):
 
-    def __init__(self):
+    def __init__(self, args=sys.argv, user_mode=1):
         self.dump = 0
         self.alive = 0
         self.alive_rcv_timeout = 0
@@ -28,14 +28,13 @@ class GenericClientInterface(option.Interface):
         self.dont_log = []
         self.do_alarm = []
         self.dont_alarm = []
-        option.Interface.__init__(self)
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
 
     def client_options(self):
-        return (self.config_options() + 
-               self.alive_options()  + 
-               self.trace_options() + 
-               self.help_options() )
-
+        return (self.alive_options()  + 
+                self.trace_options() + 
+                self.help_options() )
+    
     def complete_server_name(self, server_name, server_type):
         if not server_name:
             return server_name

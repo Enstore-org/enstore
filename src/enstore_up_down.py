@@ -432,7 +432,8 @@ class UpDownInterface(generic_client.GenericClientInterface):
 	self.summary = do_output
 	self.no_mail = 0
 	self.make_html = 0
-	generic_client.GenericClientInterface.__init__(self)
+	generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.updown_options)
