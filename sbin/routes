@@ -23,8 +23,6 @@ case $node in
                  stkenmvr9a: \
                  d0enmvr4a:  \
                  d0enmvr7a:  \
-		 cdfenmvr1a: \
-		 cdfenmvr2a: \
                  stkendca3a: stkendca4a: stkendca5a: \
                  rip9: rip10:"
           ;;
@@ -54,6 +52,8 @@ case $node in
           ;;
 
    cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4:  \
+		 cdfenmvr1a: \
+		 cdfenmvr2a: \
                  cdfenmvr3a: \
                  cdfenmvr4a: \
                  cdfenmvr5a: \
