@@ -151,7 +151,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
             for line in returned_message:
                 self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
         # send reply to caller
-        self.reply_to_caller(out_ticket)
+      self.reply_to_caller(out_ticket)
 
     # unload volume from the drive
     def unload(self, external_label, tape_drive) :
