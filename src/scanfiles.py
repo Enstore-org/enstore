@@ -157,6 +157,8 @@ def check(f):
 def check_file(f):
     if not os.access(f, os.F_OK):
         error(f+' ... does not exist')
+    elif os.path.islink(f):    # skip links
+        pass
     # if f is a directory, recursively check its files
     elif os.path.isdir(f):
         # skip symbolic link to a directory
