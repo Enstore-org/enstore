@@ -15,7 +15,9 @@ setup enstore
 # . Check that eth1 is working (if present)
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
-# . Check that root's crontab has reset of watchdog. Verify ipmisrv in /usr/local/bin is same as one in enstore
+# . Check that root's crontab has reset of watchdog. 
+# . Check that ipmisrv in /usr/local/bin is same as one in enstore
+# . Check that ipmisrv is running and has NO_DOG option
 
 # Known vunerabilities:
 # . I know I don't check everything!
@@ -371,6 +373,14 @@ if ! $CMP /usr/local/bin/ipmisrv /home/enstore/ipmi/ipmisrv >/dev/null 2>/dev/nu
    fi
 elif [ $QUIET -ne 1 ]; then
    logit  "/usr/local/bin/ipmisrv, ok"
+fi
+if [ `$PS -ef | $EGREP -c "/usr/local/bin/ipmisrv NO_DOG"` -ne 1 ];then
+   msg="/usr/local/bin/ipmisrv NO_DOG not running"
+   if [ $ALARM -eq 1 ]; then
+     enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif [ $QUIET -ne 1 ]; then
+   logit  "/usr/local/bin/ipmisrv running, ok"
 fi
 
 # get open files - twice - get ps in between - only take connections that survive past this
