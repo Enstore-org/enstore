@@ -701,7 +701,8 @@ if __name__ == "__main__":
         sys.exit(0)
 
     #Retrieve the necessary directories from the enstore servers.
-    (backup_dir, extract_dir, current_dir) = \
+    # Extract_dir is ignored by inventory.py.
+    (backup_dir, extract_dir, current_dir, backup_node) = \
                  checkBackedUpDatabases.configure()
     (inventory_dir, inventory_tmp_dir,
      inventory_extract_dir, inventory_rcp_dir) = inventory_dirs()
@@ -756,7 +757,7 @@ if __name__ == "__main__":
 
     #If the backup needs to be extracted (the defualt) then do.
     if "-f" not in sys.argv and "-v" not in sys.argv:
-        container = checkBackedUpDatabases.check_backup(backup_dir)
+        container = checkBackedUpDatabases.check_backup(backup_dir,backup_node)
         checkBackedUpDatabases.extract_backup(inventory_extract_dir, container)
 
     #Inventory is the main function that does work.
