@@ -142,14 +142,10 @@ class Index:
 			self.db = libtpshelve.open(dbEnv,self.idxFile,type='btree', dup = 1, dupsort = 1)
 			t = self.primary_db.txn()
 			c = self.primary_db.cursor(t)
-			try:
-				key, val = c.first()
-				while 1:
-					self.db[(val[field], t)] = key
-					key, val = c.next()
-			except:
-                                traceback.print_exc()
-				pass
+			key, val = c.first()
+			while val != None:
+				self.db[(val[field], t)] = key
+				key, val = c.next()
 			c.close()
 			t.commit()
 
