@@ -1831,7 +1831,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                      (self.shortname, -self.bytes_read,
                       self.bytes_to_read, self.buffer.nbytes(), time.time()))
 
-            
+        t_started = time.time()    
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
             Trace.trace(33,"total_bytes_to_read %s total_bytes_read %s"%(self.bytes_to_read, self.bytes_read))
             Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
@@ -1966,7 +1966,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # if data is tranferred slowly
         # the false "too long in state.." may be generated
         # to aviod this just make a trick with time_in_state 
-        self.time_in_state = time.time()
+        self.time_in_state = time.time()- t_started
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
                 
