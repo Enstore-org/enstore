@@ -20,6 +20,7 @@ water=131.225.84.1
 airedale=airedale.fnal.gov
 odyssey=odyssey,fnal,gov
 sirius=sirius
+lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
 
 complain=1
 
@@ -83,6 +84,12 @@ case $node in
 	    ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
             ;;
+  lancs)
+	    ENSTORE_CONFIG_HOST=$lancs
+	    ENSTORE_CONFIG_FILE=lancs.conf
+	    ENSTORE_MAIL=enstore
+	    complain=0
+	    ;;
   *)        ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             ;;
