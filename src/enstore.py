@@ -381,12 +381,13 @@ class Enstore(EnstoreInterface):
             return
         # 1st three letters return the "production" cluster, almost
         gang = node[0:3]
-        print 'gang', gang
         # there are just 3 clusters we deal with right now... (code this better?)
-        if gang in ('stk','d0e','rip'):
+        clusters = ('stk','d0e','rip')
+        if gang in clusters:
             thisnode = os.uname()[1]
             thisgang = thisnode[0:3]
-            print 'thisnode, thisgang',thisnode,thisgang
+            if thisgang not in clusters:
+                return 1
             # if we are trying to execute a command from a node in the same cluster, just do it
             if thisgang == gang:
                 return 1
