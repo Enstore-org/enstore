@@ -6,7 +6,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # start enstore processes on the current node
 
 
-opts_wo_args='ping|nocheck|new'
+opts_wo_args='ping|nocheck'
 opts_w_args='xterm|just'
 USAGE="`basename $0`: [--{$opts_w_args} <arg>] [--{$opts_wo_args}]"
 while opt=`expr "${1-}" : '--\(.*\)'`;do
@@ -226,12 +226,6 @@ fi
 
 # library manager
 
-if [ "${opt_new-}" != "" ]; then
-    summon=' '
-else
-    summon=' --nosummon '
-fi
-
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
     for i in $enstore_libraries; do
         if [ ! "${opt_ping-}" ];then
@@ -242,7 +236,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
             else
                 echo "Starting $i Library Manager"
                 cmd="python $ENSTORE_DIR/src/library_manager.py \
-                    ${summon} --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|lib' >/dev/null; then
                     title="Enstore Library Manager $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
@@ -307,7 +301,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 echo "$i Mover already started"
             else
                 echo "Starting $i Mover"
-                cmd="python $ENSTORE_DIR/src/mover${opt_new+.new}.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
+                cmd="python $ENSTORE_DIR/src/mover.new.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $i"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
