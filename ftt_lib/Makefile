@@ -45,15 +45,18 @@ print.ps: $(PRINTEM)
 slides.ps: $(PRINTEM)
 	a2ps -c -p -1 -n -l80 $(PRINTEM) > slides.ps
 
-install: all
-	cp libftt.a $(FTT_DIR)/lib
-	cp local/libs $(FTT_DIR)/lib
-	rm -f $(FTT_DIR)/bin/ftt_suid
-	cp ftt_suid $(FTT_DIR)/bin
+install: all ../lib ../bin ../include
+	cp libftt.a ../lib
+	cp local/libs ../lib
+	rm -f ../bin/ftt_suid
+	cp ftt_suid ../bin
 	-chown root ../bin/ftt_suid
 	-chmod 4755 ../bin/ftt_suid
 	cp ftt.h ftt_common.h ftt_scsi.h ftt_voidtypes.h ftt_defines.h \
-		$(FTT_DIR)/include
+		../include
+
+../lib ../bin ../include:
+	mkdir $@
 
 local:
 	rm -f local ;\
