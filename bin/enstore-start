@@ -5,6 +5,24 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # start enstore processes on the current node
 
+# Make sure we are running as enstore on the production or test systems.
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case $node in
+  stken*|d0en*|rip*)
+     if [ `whoami` = "root" ]; then
+	# if running as root, rerun as enstore
+	exec su enstore -c "/bin/sh $0 $*"
+     elif [ `whoami` = "enstore" ]; then
+	# running as enstore
+	: # Do nothing
+     else
+	# not root or enstore
+	echo "You should run this as user enstore" >&2
+	exit 1
+     fi
+     ;;
+esac
+
 # function to redirect input/output when there is not a controlling terminal
 output() { tty -s
            if [ $? -ne 0 ] ; then
@@ -482,7 +500,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" != "" ];then
                 echo "`date` Starting $i Mover"
                 out=$PID_DIR/mover_$i
                 rm -f $out
-                cmd="python $ENSTORE_DIR/src/mover.py $i `output $out`"
+                cmd="sudo python $ENSTORE_DIR/src/mover.py $i `output $out`"
                 if [ "${opt_xterm-}" ] && echo ${opt_xterm-} | egrep 'all|mov' >/dev/null; then
                     title="Enstore Mover $i"
                     eval "xterm -sl 2500 -T \"$title\" -e $cmd &"
