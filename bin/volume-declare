@@ -205,7 +205,7 @@ case $1 in
   dlt)   rm -fr    /pnfs/grau/dlt/*
          mkdir     /pnfs/grau/dlt/volmap
 	 chmod 777 /pnfs/grau/dlt/volmap
-         volumes_del="35520749568
+         volumes_del="
                       CA2501
                       CA2502
                       CA2503
