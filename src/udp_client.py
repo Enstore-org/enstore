@@ -135,7 +135,7 @@ class UDPClient:
             elif exc == exceptions.TypeError:
                 logmsg = logmsg + ": " + reply
             Trace.log(e_errors.ERROR, logmsg)
-            raise exc, msg
+            raise exc, msg, tb
         return number, out, t
 
 
