@@ -1221,6 +1221,32 @@ class Mover(dispatching_worker.DispatchingWorker,
         count = 0
         defer_write = 1
         failed = 0
+        if self.header_labels:
+            try:
+                bytes_written = driver.write(self.header_labels, 0, len(header_labels))
+            except:
+                exc, detail, tb = sys.exc_info()
+                #Trace.handle_error(exc, detail, tb)
+                # bail out gracefuly
+
+                # set volume to readlonly
+                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
+                            (self.current_volume,))
+                self.vcc.set_system_readonly(self.current_volume)
+                # trick ftt_close, so that it does not attempt to write FM
+                if self.driver_type == 'FTTDriver':
+                    import ftt
+                    ftt._ftt.ftt_set_last_operation(self.tape_driver.ftt.d, 0)
+                #initiate cleaning
+                self.force_clean = 1
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                return
+            if bytes_written != len(header_labels):
+                self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
+                                     (bytes_written, nbytes), error_source=TAPE)
+                return
+            self.tape_driver.writefm()
+            
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             if self.tr_failed:
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
@@ -1309,6 +1335,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 ##We don't ever want to let ftt handle the filemarks for us, because its
                 ##default behavior is to write 2 filemarks and backspace over both
                 ##of them.
+                eofs = self.wrapper.eof_labels(self.buffer.complete_crc)
+                if eofs:
+                    bytes_written = driver.write(self.header_labels, 0, len(header_labels))
+                    if bytes_written != len(header_labels):
+                        self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
+                                             (bytes_written, nbytes), error_source=TAPE)
+                        return
+                    self.tape_driver.writefm()
                 self.tape_driver.flush()
             except:
                 exc, detail, tb = sys.exc_info()
@@ -1329,7 +1363,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "error positioning tape for selective CRC check", error_source=TAPE)
                     return
                 try:
-                    self.tape_driver.seek(cookie_to_long(self.vol_info['eod_cookie']), 0) #XXX is eot_ok needed?
+                    location = self.vol_info['eod_cookie']
+                    if self.header_labels:
+                        location = location+1
+                    self.tape_driver.seek(cookie_to_long(location, 0)) #XXX is eot_ok needed?
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape for selective CRC check")
@@ -1791,6 +1828,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.mode == WRITE:
             self.files = (client_filename, pnfs_filename)
             if self.wrapper:
+                self.header_labels = self.wrapper.hdr_labels(self.current_work_ticket)
+                # note! eof_labels will be called when write is done and checksum is calculated
                 self.header, self.trailer = self.wrapper.headers(self.current_work_ticket['wrapper'])
             else:
                 self.header = ''
@@ -2122,6 +2161,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def update_after_writing(self):
         previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
+        eod_increment = 0
+        if self.header_labels:
+           eod_increment = eod_increment + 1
+        if self.eof_labels:
+           eod_increment = eod_increment + 1
+            
         self.current_location = self.tape_driver.tell()
         if self.current_location <= previous_eod:
             Trace.log(e_errors.ERROR, " current location %s <= eod %s" %
@@ -2164,7 +2209,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info['eod_cookie'] = eod
         sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
         complete_crc = self.buffer.complete_crc
-        fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod),
+        fc_ticket = {  'location_cookie': loc_to_cookie(previous_eod+eod_increment),
                        'size': self.bytes_to_transfer,
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
@@ -3398,6 +3443,7 @@ class DiskMover(Mover):
         ticket['mover']['device'] = "%s:%s" % (self.config['host'], self.config['device'])
 
         self.current_work_ticket = ticket
+        del(self.current_work_ticket['fc']['external_label'])
         self.run_in_thread('client_connect_thread', self.connect_client)
 
     def finish_transfer_setup(self):
@@ -3451,7 +3497,7 @@ class DiskMover(Mover):
         self.reset(sanity_cookie, client_crc_on)
         # restore self.current_work_ticket after it gets cleaned in the reset()
         self.current_work_ticket = ticket
-        self.current_volume =  self.file_info['external_label']
+        self.current_volume =  self.file_info.get('external_label', None)
         if self.current_work_ticket['encp'].has_key('delayed_dismount'):
             if ((type(self.current_work_ticket['encp']['delayed_dismount']) is type(0)) or
                 (type(self.current_work_ticket['encp']['delayed_dismount']) is type(0.))):
@@ -3470,7 +3516,7 @@ class DiskMover(Mover):
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
         self.unique_id = self.current_work_ticket['unique_id']
-        volume_label = fc['external_label']
+        volume_label = self.current_volume
         self.current_location = 0L
         if volume_label:
             self.vol_info.update(self.vcc.inquire_vol(volume_label))
@@ -3728,6 +3774,7 @@ class DiskMover(Mover):
         fc_ticket['complete_crc'] = complete_crc 
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
+        Trace.trace(15,"inquire volume %s"%(self.current_volume,))
         v = self.vcc.inquire_vol(self.current_volume)
         import statvfs
         stats = os.statvfs(self.config['device'])
