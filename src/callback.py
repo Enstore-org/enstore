@@ -214,7 +214,7 @@ def mover_callback_socket(ticket, use_multiple=1, verbose=0) :
                 repr(host)+" port="+\
                 repr(port))
     ##sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    localhost, localport, sock = get_callback_port(7000, 8000, use_multiple=use_multiple,
+    localhost, localport, sock = get_callback_port(7001, 8000, use_multiple=use_multiple,
                                                    verbose=verbose)
     Trace.trace(16, "mover_callback_socket: using %s %s" % (localhost, localport))
     sock.connect(host, port)
