@@ -87,6 +87,7 @@ class MonitorServerClient(generic_client.GenericClient):
             reply=self._send_probe(ticket) #raises exeption on timeout
             sim_thread.join() #wait for the read times to exist.
         except errno.errorcode[errno.ETIMEDOUT]:
+            reply = {}
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
