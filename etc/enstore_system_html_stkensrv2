@@ -1,3 +1,3 @@
-enstore_system_top.html
-dcache_link.html
-enstore_system_info.html
+$ENSTORE_DIR/etc/enstore_system_top.html
+$ENSTORE_DIR/etc/dcache_link.html
+$ENSTORE_DIR/etc/enstore_system_info.html

@@ -7,10 +7,16 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+print_error() {
+   echo " "
+   echo "$1"
+   echo " "
+}
+
 if [ "$#" != "1" ];
 then
    # we need the name of the file listing the files to include
-   echo "\nERROR: please enter a file name as 1st parameter.\n"
+   print_error "USAGE: $0 [-x] <filename>"
    exit 1
 fi
 
@@ -25,7 +31,7 @@ then
        . /fnal/ups/etc/setups.sh
        setup enstore
     else
-       echo "\nERROR: Cannot find UPS to setup enstore, set it up first.\n"
+       print_error "ERROR: Cannot find UPS to setup enstore, set it up first."
     fi
 fi
 
@@ -41,11 +47,11 @@ then
   # now fill the file
   for file in `cat $1`;
   do
-     cat $file >> $tmp_output
+     eval cat $file >> $tmp_output
   done
   # now create the real file
   mv $tmp_output $real_output
 else
-  echo "\nERROR: entered file does not exist or is not a normal file.\n"
+  print_error "ERROR: entered file does not exist or is not a normal file."
   exit 1
 fi
