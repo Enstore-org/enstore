@@ -71,7 +71,7 @@ main(  int	argc
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [delta_time [lines]]\n"
 			, trc_basename(argv[0],'/') );
-		fprintf(  stderr, "valid options: nohdr,lvl,noindent,-r,-nr\n" );
+		fprintf(  stderr, "valid options: -nohdr,-lvl,-noindent,-r,-nr,-ct\n" );
 		exit( 1 );
 	    }
 	}
