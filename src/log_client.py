@@ -98,7 +98,7 @@ class LoggerClient(BaseDefaults, ClientDefaults):
 
     # our help stuff 
     def help_line(self):
-        print BaseDefaults.help_line(self), "media_changer volume drive",
+        return BaseDefaults.help_line(self)+" media_changer volume drive"
 
     """ send the request to the Media Loader server and then send answer
     to user.

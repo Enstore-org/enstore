@@ -26,7 +26,7 @@ class LibraryManagerClient(BaseDefaults, ClientDefaults) :
 
     #  define our specific help
     def help_line(self):
-        print BaseDefaults.help_line(self), "library",
+        return BaseDefaults.help_line(self)+" library"
 
     # parse the options like normal but make sure we have a library manager
     def parse_options(self):
