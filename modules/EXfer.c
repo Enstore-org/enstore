@@ -872,7 +872,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
   if (sts == 0)
   {
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd timeout", 0.0, __FILE__, __LINE__);
+		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
   return sts;
@@ -904,7 +904,7 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
   if (sts == 0)
   {
     pack_return_values(info, 0, errno, TIMEOUT_ERROR,
-		       "fd timeout", 0.0, __FILE__, __LINE__);
+		       "fd write timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
   
