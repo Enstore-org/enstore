@@ -21,6 +21,7 @@ if sys.version_info < (2, 2, 0):
 import re
 # enstore imports
 import setpath
+import copy
 
 import volume_clerk_client
 import callback
@@ -49,19 +50,26 @@ MB=1L<<20
 GB=1L<<30
 
 def convert_version(version):
-    dig=0.
-    dash_cnt = 0
-    for ch in version:
-        if ch == '_' or ch == '-':
-          dash_cnt = dash_cnt + 1
+    v1 = version.replace('-','_')
+    v2 = v1.replace('_','.')
+    s= v2.split('.')
+    ipart = 0.
+    fract = 0.
+    
+    for ch in s[0]:
         if ch.isdigit():
-            if dash_cnt < 1:
-                dig=dig*10.+(ord(ch)-ord('0'))*1.
-            else:
-                dig = dig + (ord(ch)-ord('0'))*0.1
+            ipart = ipart * 10. +(ord(ch)-ord('0'))*1.
+    l = len(s[1])-1
+    for i in range(0, len(s[1])):
+        if s[1][i].isalpha():
+            if l > 0: l = l-1
+    for i in range(0, len(s[1])):
+        if s[1][l].isdigit():
+            fract = fract + (ord(s[1][l])-ord('0'))*0.1**(l+1)
+            l = l-1
+            if l < 0:
                 break
-    dig = int(dig*10)
-    return dig
+    return ipart+fract
     
 def get_storage_group(dict):
     sg = dict.get('storage_group', None)
