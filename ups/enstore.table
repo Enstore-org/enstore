@@ -21,7 +21,6 @@ QUALIFIERS=d0en
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
 		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/sam.conf)
-		#envSet(ACI_TIMEOUT_MOVE, 300)
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
@@ -72,7 +71,6 @@ QUALIFIERS=""
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
                 envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/`${UPS_PROD_DIR}/ups/chooseConfig file`)
-		##envSet(ACI_TIMEOUT_MOVE, 300)
                 exeActionRequired(COMMON_SETUP)
         ACTION=DECLARE
                 execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
@@ -115,8 +113,8 @@ COMMON:
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
-                setupOptional("aci v1_3_0_c7")
-                ###soon setupOptional("aci v3_0_1")
+                ###setupOptional("aci v1_3_0_c7")
+                setupOptional("aci v3_0_2")
 
                 # stk is the STK tape library
                 # the media changer is the only server that interfaces to it
