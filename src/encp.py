@@ -2193,25 +2193,25 @@ def check_crc(done_ticket, encp_intf, fd=None):
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
 
-    #If the user wants a paranoid crc check of the new output file (reads
+    #If the user wants a crc readback check of the new output file (reads
     # only) calculate it and compare.
     if encp_intf.ecrc:
         #If passed a file descriptor, make sure it is to a regular file.
         if fd and (type(fd) == types.IntType) and \
            stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
             try:
-                paranoid_crc = EXfer.ecrc(fd)
+                readback_crc = EXfer.ecrc(fd)
             except EXfer.error, msg:
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
                 return
 
             #Put the ecrc value into the ticket.
-            done_ticket['ecrc'] = paranoid_crc
+            done_ticket['ecrc'] = readback_crc
 
             #If we have a valid crc value returned, compare it.
-            if paranoid_crc != mover_crc:
-                msg = "Paranoid CRC mismatch: %d != %d" % (mover_crc,
-                                                           paranoid_crc)
+            if readback_crc != mover_crc:
+                msg = "CRC readback mismatch: %d != %d" % (mover_crc,
+                                                           readback_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
                 
@@ -3413,7 +3413,8 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
         try:
             delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
         except (IndexError, KeyError):
-            Trace.log(e_errors.WARNING, "unable to register bfid")
+            pass
+            #Trace.log(e_errors.WARNING, "unable to register bfid")
         
         Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
                       (work_ticket['outfile'],
