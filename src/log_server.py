@@ -57,6 +57,11 @@ import log_client
 MY_NAME = "log_server"
 FILE_PREFIX = "LOG-"
 
+def format_date(tm=None):
+    if not tm:
+	tm = time.localtime(time.time())          # get the local time
+    return '%04d-%02d-%02d' % (tm[0], tm[1], tm[2])
+
 class Logger(  dispatching_worker.DispatchingWorker
 	     , generic_server.GenericServer):
 
@@ -91,9 +96,27 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    self.logfile_dir_path =  keys["log_file_path"]
 	self.test = test
 
+	# get the dictionary of ancillary log files
+	self.msg_type_logs = keys.get('msg_type_logs', {})
+	self.msg_type_keys = self.msg_type_logs.keys()
+	self.extra_logfiles = {}
+
 	# start our heartbeat to the event relay process
 	self.erc.start_heartbeat(enstore_constants.LOG_SERVER, 
 				 self.alive_interval)
+
+    def open_extra_logs(self, mode='w'):
+	for msg_type in self.msg_type_keys:
+	    filename = self.msg_type_logs[msg_type]
+	    file_path = "%s/%s-%s"%(self.logfile_dir_path, filename,
+				    format_date())
+	    self.extra_logfiles[msg_type] = open(file_path, mode)
+
+    def close_extra_logs(self):
+	for msg_type in self.msg_type_keys:
+	    self.extra_logfiles[msg_type].close()
+	else:
+	    self.extra_logfiles = {}
 
     def open_logfile(self, logfile_name) :
         dirname, file = os.path.split(logfile_name)
@@ -105,10 +128,12 @@ class Logger(  dispatching_worker.DispatchingWorker
                 os.mkdir(dirname)
             self.logfile = open(logfile_name, 'a')
             self.debug_logfile = open(debug_file_name, 'a')
+	    self.open_extra_logs('a')
         except :
 	    try:
 		self.logfile = open(logfile_name, 'w')
                 self.debug_logfile = open(debug_file_name, 'a')
+		self.open_extra_logs('w')
 	    except:
                 print  "cannot open log %s"%(logfile_name,)
                 sys.stderr.write("cannot open log %s\n"%(logfile_name,))
@@ -162,6 +187,14 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    rtn = 1
 	return rtn
 
+    def write_to_extra_logfile(self, message):
+	for msg_type in self.msg_type_keys:
+	    if not string.find(message, msg_type) == -1:
+		# this message has a message type of msg_type
+		self.extra_logfiles[msg_type].write(message)
+		self.extra_logfiles[msg_type].flush()
+		return
+
     # log the message recieved from the log client
     def log_message(self, ticket) :
         if not ticket.has_key('message'):
@@ -198,6 +231,7 @@ class Logger(  dispatching_worker.DispatchingWorker
             self.logfile.flush()
         res = self.debug_logfile.write(message)    # write log message to the file
         self.debug_logfile.flush()
+	self.write_to_extra_logfile(message)
 
     def serve_forever(self):                      # overrides UDPServer method
         self.repeat_count=0
@@ -207,7 +241,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         if self.test :
             min = current_min = tm[4]
         # form the log file name
-        fn = '%s%04d-%02d-%02d' % (FILE_PREFIX, tm[0], tm[1], tm[2])
+        fn = '%s%s' % (FILE_PREFIX, format_date(tm))
         if self.test:
             ft = '-%02d-%02d' % (tm[3], tm[4])
             fn = fn + ft
@@ -231,6 +265,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                     # day changed: close the current log file
                     self.logfile.close()
                     self.debug_logfile.close()
+		    self.close_extra_logs()
 	            self.last_logfile_name = self.logfile_name
                     current_day = day;
                     # and open the new one
