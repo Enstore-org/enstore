@@ -606,7 +606,7 @@ class BpdDataFile(EnPlot):
 	keys = ndata.keys()
 	keys.sort()
 	numxfers = 0
-	total = 0
+	total = 0.0
 	for key in keys:
 	    if not ndata[key] == 0:
 	        self.openfile.write(key+" "+repr(ndata[key])+" "+\
