@@ -13,16 +13,16 @@
 #  $Id$
 
 import os
-from SocketServer import UDPServer, TCPServer
-from configuration_client import configuration_client
-from dispatching_worker import DispatchingWorker
-from generic_server import GenericServer
-# from log_client import *
+import SocketServer
+import configuration_client
+import dispatching_worker
+import generic_server
+import log_client
 import string
 
 list = 0
 # media loader template class
-class MediaLoaderMethods(DispatchingWorker) :
+class MediaLoaderMethods(dispatching_worker.DispatchingWorker) :
 
     # load volume into the drive
     def load(self,
@@ -59,7 +59,7 @@ class IBM3494_MediaLoaderMethods(MediaLoaderMethods) :
         print 'I am unload function and my type is IBM3494'
         self.reply_to_caller({'status' : 'ok'})
 
-# FTT tape drives with no robot
+# FTT tape drives with no robot 
 class FTT_MediaLoaderMethods(MediaLoaderMethods) :
 
     # assumes volume is in drive
@@ -97,7 +97,7 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                 out_ticket = {"status" : "ok"}
                 break
         # send reply to caller
-        print out_ticket
+	print out_ticket
         self.reply_to_caller(out_ticket)
         if list: print "status " + out_ticket["status"]
 
@@ -124,15 +124,21 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
         if list: print "status " + out_ticket["status"]
 
 # STK media loader server
-class STK_MediaLoader(STK_MediaLoaderMethods, GenericServer, UDPServer) :
+class STK_MediaLoader(STK_MediaLoaderMethods, 
+		      generic_server.GenericServer, 
+		      SocketServer.UDPServer) :
     pass
 
 # Raw Disk media loaded server
-class RDD_MediaLoader(MediaLoaderMethods, GenericServer, UDPServer) :
+class RDD_MediaLoader(MediaLoaderMethods, 
+		      generic_server.GenericServer, 
+		      SocketServer.UDPServer) :
     pass
 
 # Raw Disk media loaded server
-class FTT_MediaLoader(FTT_MediaLoaderMethods, GenericServer, UDPServer) :
+class FTT_MediaLoader(FTT_MediaLoaderMethods, 
+		      generic_server.GenericServer, 
+		      SocketServer.UDPServer) :
     pass
 
 if __name__ == "__main__" :
@@ -149,7 +155,7 @@ if __name__ == "__main__" :
 
     # see what the user has specified. bomb out if wrong options specified
     options = ["config_host=","config_port=","config_file="\
-               ,"config_list","list","verbose","help"]
+               ,"config_list","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist :
         if opt == "--config_host" :
@@ -158,7 +164,7 @@ if __name__ == "__main__" :
             config_port = value
         elif opt == "--config_list" :
             config_list = 1
-        elif opt == "--list" or opt == "--verbose":
+        elif opt == "--list" :
             list = 1
         elif opt == "--help" :
             print "python ",sys.argv[0], options, "media changer"
@@ -179,7 +185,7 @@ if __name__ == "__main__" :
 
     if config_list :
         print "Connecting to configuration server at ",config_host,config_port
-    csc = configuration_client(config_host,config_port)
+    csc = configuration_client.configuration_client(config_host,config_port)
 
     keys = csc.get(args[0])
 
@@ -190,24 +196,26 @@ if __name__ == "__main__" :
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
-        ml_name = 'ML_STK'
+	ml_name = 'ML_STK'
     elif args[0] == 'FTT.media_changer' :
         mls =  FTT_MediaLoader((keys['host'], keys['port']),
                                FTT_MediaLoaderMethods)
-        ml_name = 'ML_FTT'
+	ml_name = 'ML_FTT'
     else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)
-        ml_name = 'ML_RDD'
+	ml_name = 'ML_RDD'
     mls.set_csc(csc)
 
     # create a log client
-#    logc = LoggerClient(csc, ml_name, 'logserver', 0)
-#    logc.send(INFO, "Starting Media Changer. Type=%s", args[0])
+    logc = log_client.LoggerClient(csc, ml_name, 'logserver', 0)
+    logc.send(log_client.INFO, "Starting Media Changer. Type=%s", args[0])
 
     while 1:
         try:
             mls.serve_forever()
         except:
-            print sys.argv,sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
+            print sys.exc_info()[0],sys.exc_info()[1],"\ncontinuing"
             continue
+
+
