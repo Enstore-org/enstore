@@ -59,6 +59,7 @@ gang=`/home/enstore/enstore/sbin/gang`
 
 LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
+TIME_NOT_SYNCD=/root/time_not_syncd
 
 # function to log messages, optionally print the ps state
 logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
@@ -270,16 +271,20 @@ fi
 
 
 
-# check that ntp is working, fix if not
+# check that ntp is working, fix if not, complain if down more than once
 if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     x=`$XNTPDC -p`
     logit "NO TIME SYNC"
     logit "$x"
     if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+      if [ -r $TIME_NOT_SYNCD ]; then
+        enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
+      fi
     fi
+    touch $TIME_NOT_SYNCD
     $XNTP restart >>$LOG 2>&1
 else
+  rm -f $TIME_NOT_SYNCD
   if [ $QUIET -ne 1 ]; then
     logit  "TIME SYNCD, ok"
   fi
