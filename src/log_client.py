@@ -184,7 +184,7 @@ def genMsgType(msg, ln, severity):
     if string.find(lowLine, "unmount") >= 0:
         fKey = "unmount"
     elif string.find(lowLine, "write_to_hsm") >= 0:
-        fKey = "write_hsm"
+        fKey = "write_aml2"
     elif string.find(lowLine, "dismount") >= 0:
         fKey = "dismount"
     elif string.find(lowLine, "unload") >= 0:
