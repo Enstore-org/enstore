@@ -191,6 +191,9 @@ if __name__ == "__main__" :
     if args[0] == 'STK.media_changer' :
         mls =  STK_MediaLoader((keys['host'], keys['port']),
                                STK_MediaLoaderMethods)
+    elif args[0] == 'FTT.media_changer' :
+        mls =  FTT_MediaLoader((keys['host'], keys['port']),
+                               FTT_MediaLoaderMethods)
     else :
         mls =  RDD_MediaLoader((keys['host'], keys['port']),
                                MediaLoaderMethods)

@@ -57,6 +57,7 @@ class ConfigurationDict(DispatchingWorker) :
 
      # even if there is an error - respond to caller so he can process it
      except:
+         print  sys.exc_info()[0]+sys.exc_info()[1]
          return sys.exc_info()[0]+sys.exc_info()[1]
 
 
