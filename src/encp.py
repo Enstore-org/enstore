@@ -808,8 +808,8 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
             mover_addr = ticket['mover']['callback_addr']
         except KeyError:
             exc, msg, tb = sys.exc_info()
-            sys.stderr.write("Sub ticket 'mover' not found.")
-            sys.stderr.write("%s: %s", (exc, msg))
+            sys.stderr.write("Sub ticket 'mover' not found.\n")
+            sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
             sys.stderr.write(pprint.pformat(ticket))
             return None, None, ticket
 
