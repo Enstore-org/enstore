@@ -19,14 +19,14 @@ def cmd(command):
     return lines
 
 
-def get_failures(log,grepv='GONE',grep=""):
+def get_failures(log,grepv='GONE|NUL',grep=""):
     thisnode = os.uname()[1]
     if len(thisnode) > 2:
         gang = thisnode[0:3]
     else:
         gang = ' '
     if gang == 'd0e':
-        grepv_ = grepv
+        grepv_ = " DI|"+" DC|"+grepv
     elif gang == 'stk':
         grepv_ = "JDE|"+grepv
     else:
