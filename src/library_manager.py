@@ -664,7 +664,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 		    else:
 			# mover is dead. Remove it from all lists
 			Trace.log(e_errors.ERROR,"mover %s is dead" % (mv,))
-			movers.remove(mv)
+                        if mv in movers: movers.remove(mv)
 			self.summon_queue.remove(mv)
 			# decrement mover counter
 			mover_cnt = mover_cnt - 1
