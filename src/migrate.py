@@ -402,7 +402,7 @@ def copy_files(files):
 			if os.access(tmp, os.F_OK):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
 				os.remove(tmp)
-			cmd = "encp --priority 0 --ignore-fair-share --ecrc %s %s"%(src, tmp)
+			cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(src, tmp)
 			res = encp.encp(cmd)
 			if res == 0:
 				ok_log(MY_TASK, "%s %s to %s"%(bfid, src, tmp))
@@ -649,7 +649,7 @@ def final_scan():
 		log(MY_TASK, "start checking %s %s"%(bfid2, src))
 		ct = is_checked(bfid2, db)
 		if not ct:
-			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(src)
+			cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(src)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_checked(bfid, bfid2, db)
@@ -750,7 +750,7 @@ def final_scan_volume(vol):
 				continue
 
 			open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
-			cmd = "encp --priority 0 --ignore-fair-share %s /dev/null"%(pnfs_path)
+			cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
