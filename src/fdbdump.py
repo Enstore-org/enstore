@@ -22,7 +22,7 @@ def formatedf(file):
 	sanity_cookie_1 = file.get('sanity_cookie', (None, None))[1]
 	if sanity_cookie_0 == None:
 		sanity_cookie_0 = 0
-	if sanity_cookie_1 == None
+	if sanity_cookie_1 == None:
 		sanity_cookie_1 = 0
 	size = file.get('size', 0)
 	res = '%s\t%d\t%c\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d'% (
