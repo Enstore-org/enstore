@@ -9,7 +9,7 @@ OBJ= ftt_t_cmdline.o ftt_t_cmdloop.o ftt_t_cmdproc.o ftt_t_parse.o \
  ftt_t_error.o ftt_t_block.o ftt_t_name.o ftt_t_label.o
 
 # CFLAGS=-I. -I../ftt_lib -g -xansi -fullwarn 
-# CFLAGS=-I. -I../ftt_lib -g -fullwarn 
+CFLAGS=-I. -I../ftt_lib -g -fullwarn 
 
 all: ftt_test
 
