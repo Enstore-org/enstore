@@ -297,7 +297,7 @@ def write_to_hsm(input, output, output_file_family='',
             #unique_id[i] = time.time()  # note that this is down to mS
 	    unique_id[i] = "%s-%f-%d" \
 			   % (thishost, time.time(), pid)
-            wrapper["fullname"] = outputlist[i]
+            wrapper["fullname"] = inputlist[i]
 	    wrapper["type"] = ff_wrapper[i]
             # store the pnfs information info into the wrapper
             for key in pinfo[i].keys():
@@ -415,7 +415,9 @@ def write_to_hsm(input, output, output_file_family='',
                        "1st (pre-file-send) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
                        +"ticket[\"status\"]="+repr(ticket["status"]),2)
-            data_path_socket = callback.mover_callback_socket(ticket)
+		pass
+	    if not ticket['mover']['local_mover']:
+		data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
             dt = time.time() - t1 #-----------------------------Lap-End
@@ -430,103 +432,110 @@ def write_to_hsm(input, output, output_file_family='',
                       "   cumt=",time.time()-t0
             t1 = time.time() #-------------------------------Lap-Start
 
-            # Call back mover on mover's port and send file on that port
-            in_file = open(inputlist[i], "r")
-            fsize = file_size[i]
-            mycrc = 0
-            bufsize = 65536*4
-            Trace.trace(7,"write_to_hsm: sending data to EXfer file="+\
-                        inputlist[i]+" socket="+\
-			repr(data_path_socket)+\
-                        " bufsize="+repr(bufsize)+" chk_crc="+\
-			repr(chk_crc))
-            statinfo = os.stat(inputlist[i])
-            if statinfo[stat.ST_SIZE] != fsize:
-                jraise(errno.errorcode[errno.EPROTO],
-		       " encp.write_to_hsm: TILT "\
-                       " file size has changed: was "+repr(fsize)+\
-		       " and now is "+
-                       repr(statinfo[stat.ST_SIZE]))
+	    fsize = file_size[i]
 
-            try:
-		if chk_crc != 0: crc_fun = ECRC.ECRC
-		else:            crc_fun = None
-                mycrc = EXfer.fd_xfer( in_file.fileno(),
-				       data_path_socket.fileno(), 
-				       fsize, bufsize, crc_fun )
-                #retry = 0
-            except (EXfer.error), err_msg:
-                Trace.trace(0,"write_to_hsm EXfer error:"+\
-			    str(sys.argv)+" "+\
-                            str(sys.exc_info()[0])+" "+\
-                            str(sys.exc_info()[1]))
+	    if not ticket['mover']['local_mover']:
+		# Call back mover on mover's port and send file on that port
+		in_file = open(inputlist[i], "r")
+		mycrc = 0
+		bufsize = 65536*4
+		Trace.trace(7,"write_to_hsm: sending data to EXfer file="+\
+			    inputlist[i]+" socket="+\
+			    repr(data_path_socket)+\
+			    " bufsize="+repr(bufsize)+" chk_crc="+\
+			    repr(chk_crc))
+		statinfo = os.stat(inputlist[i])
+		if statinfo[stat.ST_SIZE] != fsize:
+		    jraise(errno.errorcode[errno.EPROTO],
+			   " encp.write_to_hsm: TILT "\
+			   " file size has changed: was "+repr(fsize)+\
+			   " and now is "+
+			   repr(statinfo[stat.ST_SIZE]))
+		    pass
+		try:
+		    if chk_crc != 0: crc_fun = ECRC.ECRC
+		    else:            crc_fun = None
+		    mycrc = EXfer.fd_xfer( in_file.fileno(),
+					   data_path_socket.fileno(), 
+					   fsize, bufsize, crc_fun )
+		except (EXfer.error), err_msg:
+		    Trace.trace(0,"write_to_hsm EXfer error:"+\
+				str(sys.argv)+" "+\
+				str(sys.exc_info()[0])+" "+\
+				str(sys.exc_info()[1]))
 
-		# might as well close our end --- we will either exit or
-		# loop back around
+		    # might as well close our end --- we will either exit or
+		    # loop back around
+		    data_path_socket.close()
+		    in_file.close()
+
+		    #if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
+		    if err_msg[0] == errno.EPIPE:
+			# could be network or could be mover closing socket...
+			# try to get done_ticket
+			try:
+			    done_ticket = callback.read_tcp_socket(control_socket,
+								   "encp write_to_hsm, error dialog")
+			except:
+			    # assume network error...
+			    # no done_ticket!
+			    #print_data_access_layer_format(inputlist[i], outputlist[i],
+			    #                               file_size[i], done_ticket)
+			    # exit here
+			    jraise(errno.errorcode[errno.EPROTO],
+				   " encp.write_to_hsm: network problem or mover crash "+\
+				   str(err_msg))
+			    pass
+
+			control_socket.close()
+
+			print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
+			if not e_errors.is_retriable(done_ticket["status"][0]):
+			    # exit here
+			    jraise(errno.errorcode[errno.EPROTO],
+				   " encp.write_to_hsm: 2nd (post-file-send)"+\
+				   "mover callback on socket "+\
+				   +repr(address)+", failed to transfer: "+\
+				   "done_ticket[\"status\"]="+\
+				   repr(done_ticket["status"]))
+			    pass
+			print_error(errno.errorcode[errno.EPROTO],
+				    " encp.write_to_hsm:2nd (post-file-send)"+\
+				    "mover callback on socket "+\
+				    repr(address)+", failed to transfer: "+\
+				    "done_ticket[\"status\"]="+\
+				    repr(done_ticket["status"]))
+			retry = retry - 1
+			continue
+
+		    else:
+		        #some other error that needs coding
+			traceback.print_exc()
+			raise sys.exc_info()[0], sys.exc_info()[1]
+		    pass
+
+		# close the data socket and the file, we've sent it 
+	        #to the mover
 		data_path_socket.close()
 		in_file.close()
 
-		#if str(err_msg) =="(32, 'fd_xfer - write - Broken pipe')":
-		if err_msg[0] == errno.EPIPE:
-		    # could be network or could be mover closing socket...
-		    # try to get done_ticket
-		    try:
-			done_ticket = callback.read_tcp_socket(control_socket,
-							       "encp write_to_hsm, error dialog")
-		    except:
-			# assume network error...
-			# no done_ticket!
-			#print_data_access_layer_format(inputlist[i], outputlist[i],
-			#                               file_size[i], done_ticket)
-			# exit here
-			jraise(errno.errorcode[errno.EPROTO],
-			       " encp.write_to_hsm: network problem or mover crash "+\
-			       str(err_msg))
+		tinfo1["sent_bytes"+repr(i)] = time.time()-t1 #-----Lap-End
+		if verbose>1:
+		    if tinfo1["sent_bytes"+repr(i)]!=0:
+			wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+\
+							     repr(i)]
+		    else:
+			wdrate = 0.0
+			print "  bytes:",fsize, " Socket Write Rate = ",\
+			      wtrate," MB/S"
+			print "  dt:",tinfo1["sent_bytes"+repr(i)],\
+			      "   cumt=",time.time()-t0
 			pass
 
-		    control_socket.close()
+		    pass
 
-		    print_data_access_layer_format( inputlist[i], outputlist[i], file_size[i], done_ticket )
-		    if not e_errors.is_retriable(done_ticket["status"][0]):
-			# exit here
-			jraise(errno.errorcode[errno.EPROTO],
-			       " encp.write_to_hsm: 2nd (post-file-send)"+\
-			       "mover callback on socket "+\
-			       +repr(address)+", failed to transfer: "+\
-			       "done_ticket[\"status\"]="+\
-			       repr(done_ticket["status"]))
-			pass
-		    print_error(errno.errorcode[errno.EPROTO],
-				" encp.write_to_hsm:2nd (post-file-send)"+\
-				"mover callback on socket "+\
-				repr(address)+", failed to transfer: "+\
-				"done_ticket[\"status\"]="+\
-				repr(done_ticket["status"]))
-		    retry = retry - 1
-		    continue
+		pass
 
-		else:
-		    #some other error that needs coding
-		    traceback.print_exc()
-		    raise sys.exc_info()[0], sys.exc_info()[1]
-
-
-	    # close the data socket and the file, we've sent it 
-	    #to the mover
-	    data_path_socket.close()
-	    in_file.close()
-
-	    tinfo1["sent_bytes"+repr(i)] = time.time()-t1 #-----Lap-End
-	    if verbose>1:
-		if tinfo1["sent_bytes"+repr(i)]!=0:
-		    wtrate = 1.*fsize/1024./1024./tinfo1["sent_bytes"+\
-							 repr(i)]
-		else:
-		    wdrate = 0.0
-		print "  bytes:",fsize, " Socket Write Rate = ",\
-		      wtrate," MB/S"
-		print "  dt:",tinfo1["sent_bytes"+repr(i)],\
-		      "   cumt=",time.time()-t0
 	    if verbose>1:
 		print "Waiting for final mover dialog",\
 		      "   cumt=",time.time()-t0
