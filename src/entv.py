@@ -763,6 +763,21 @@ def main(intf):
             pass #If the window is already destroyed (i.e. user closed it)
                  # then this error will occur.
         del display
+
+        #Perform the following two deletes explicitly to avoid obnoxios
+        # tkinter warning messages printed to the terminal when using
+        # python 2.2.
+        try:
+            del enstore_display._font_cache
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+        try:
+            del enstore_display._image_cache
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+
         
 if __name__ == "__main__":
 
