@@ -36,13 +36,13 @@ mover_index = 0  # index if current mover in the queue
 def add_mover(name, address):
     global mover_cnt
     Trace.trace(4, "{add_mover " + repr(name) + " " + repr(address))
-    mover = {'mover'   : name,
-	     'address' : address,
-	     'state'   : 'idle_mover',
-	     'last_checked' : time.time(),
-	     'summon_try_cnt' : 0,
-	     'tr_error' : 'ok',
-	     'file_family':''
+    mover = {'mover'   : name,             # mover name
+	     'address' : address,          # mover address
+	     'state'   : 'idle_mover',     # mover state
+	     'last_checked' : time.time(), # last time the mover has been updated
+	     'summon_try_cnt' : 0,         # number of summon attempts till succeeded
+	     'tr_error' : 'ok',            # transmission error
+	     'file_family':''              # last file family the mover had worked with
 	     }
     movers.append(mover)
     mover_cnt = mover_cnt + 1
@@ -79,8 +79,6 @@ def find_mover(mover, mover_list, verbose=0):
     found = 0
     try:
 	for mv in mover_list:
-	    # if ((mover['mover'] == mv['mover']) and
-	    # (mover['address'] == mv['address'])):
 	    if (mover['address'] == mv['address']):
 		found = 1
 		break
@@ -103,25 +101,32 @@ def update_mover_list(self, mover, state):
     Trace.trace(3,"{update_mover_list " + repr(mover))
     mv = find_mover(mover, movers, self.verbose)
     if mv == None:
+	# there is no such mover: return
 	return mv
     if not mv:
+	# list was empty: add mover
 	add_mover(mover['mover'], mover['address'])
+	# to get the mover call find_mover
 	mv = find_mover(mover, movers, self.verbose)
 	
     # change mover state
     generic_cs.enprint("changing mover state", generic_cs.SERVER, self.verbose)
     if mv['mover'] != mover['mover']:
+	# mover name has changed: report and modify it's name
 	format = "Mover name changed from %s to %s"
         logticket = self.logc.send(log_client.INFO, 2, format,
 				   mv['mover'], mover['mover'])
 	mv['mover'] = mover['mover']
+    # change the state of the mover
     mv['state'] = state
     mv['last_checked'] = time.time()
     Trace.trace(3,"}update_mover_list " + repr(mv))
     generic_cs.enprint("MOVER_LIST"+repr(movers), generic_cs.SERVER, \
 	               self.verbose)
+    """
     for i in movers:
         generic_cs.enprint(i, generic_cs.SERVER, self.verbose)
+    """
     return mv
 
 # remove mover from list
@@ -152,6 +157,7 @@ work_at_movers = []
 def busy_vols_in_family (vc, family_name, verbose):
     Trace.trace(4,"{busy_vols_in_family " + repr(family_name))
     vols = []
+    # look in the list of work_at_movers
     for w in work_at_movers:
      try:
 	 if w["vc"]["file_family"] == family_name:
@@ -170,12 +176,15 @@ def busy_vols_in_family (vc, family_name, verbose):
 	 if mv["file_family"] == family_name:
 	     vol_info = vc.inquire_vol(mv["external_label"])
 	     if vol_info['at_mover'][0] != 'unmounted':
+		 # volume is potentially available if not unmounted
 		 vol_found = 0
 		 for vol in vols:
 		     if vol == mv["external_label"]:
+			 # volume is already in the volume veto list
 			 vol_found = 1
 			 break
 		 if not vol_found:
+		     # add volume to the volume veto list
 		     vols.append(mv["external_label"])
 	     # check if this mover can do the work
 	     if vol_info['at_mover'][0] == 'mounted':
@@ -219,6 +228,7 @@ def get_work_at_movers(external_label):
 def next_work_any_volume(self, csc, verbose):
     Trace.trace(3,"{next_work_any_volume "+repr(csc))
 
+    # instantiate volume clerk client
     vc = volume_clerk_client.VolumeClerkClient(csc)
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
@@ -233,7 +243,6 @@ def next_work_any_volume(self, csc, verbose):
             # ok passed criteria
 	    # sort requests according file locations
 	    w = pending_work.get_init_by_location()
-	    #print "LOCATION COOKIE1:", w["fc"]["location_cookie"]
 	    # return read work ticket
 	    return w
 
@@ -245,7 +254,8 @@ def next_work_any_volume(self, csc, verbose):
 							    w["vc"]["file_family"],
 							    verbose)
 	    for mov in work_movers:
-		# summon this mover
+		# found mover that can do the work: check if we can
+		# write to the volume belonging to this mover
 		v_info = vc.can_write_volume (w["vc"]["library"],
 					      w["wrapper"]["size_bytes"],
 					      w["vc"]["file_family"],
@@ -254,7 +264,9 @@ def next_work_any_volume(self, csc, verbose):
 		if v_info['status'][0] == e_errors.OK:
 		    Trace.trace(3,"{next_work_any_volume MV TO SUMMON"+\
 				 repr(mov))
+		    # summon this mover
 		    summon_mover(self, mov, w)
+		    # and return no work to the idle requester mover
 		    return {"status" : (e_errors.NOWORK, None)}
 		else:
 		    Trace.trace(3,"{next_work_any_volume:can_write_volume returned"+repr(v_info['status']))
@@ -317,8 +329,6 @@ def next_work_this_volume(v):
     # look in pending work queue for reading or writing work
     w=pending_work.get_init()
     while w:
-	#print "next_work_this_volume", w
-	#print "COMP", w["vc"]["file_family"]+"."+w["vc"]["wrapper"]
         # writing to this volume?
         if (w["work"]                == "write_to_hsm"   and
             (w["vc"]["file_family"]+"."+w["vc"]["wrapper"]) == v['vc']["file_family"] and
@@ -350,21 +360,22 @@ def next_work_this_volume(v):
     return {"status" : (e_errors.NOWORK, None)}
 
 ##############################################################
-def hello(a,b):
-    print "hello", a, b
-##############################################################
 
+# summon mover
 def summon_mover(self, mover, ticket):
     if not summon: return
     self.enprint("SUMMON", generic_cs.DEBUG, self.verbose)
     self.enprint(mover, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, self.verbose)
     Trace.trace(3,"{summon_mover " + repr(mover))
+    # update mover info
     mover['last_checked'] = time.time()
     mover['state'] = 'summoned'
     mover['summon_try_cnt'] = mover['summon_try_cnt'] + 1
+    # find the mover in summon queue
     mv = find_mover(mover, self.summon_queue, self.verbose)
     self.enprint("MV= "+repr(mv), generic_cs.DEBUG, self.verbose)
     if not mv:
+	# add it to the summon queue
 	self.summon_queue.append(mover)
     mover['work_ticket'] = {}
     mover['work_ticket'] = ticket
@@ -373,6 +384,7 @@ def summon_mover(self, mover, ticket):
 		 'address': self.server_address }
     
     self.enprint("summon_rq "+repr(summon_rq), generic_cs.DEBUG, self.verbose)
+    # send summon request
     mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
     self.enprint("summon_queue", generic_cs.DEBUG, self.verbose)
     self.enprint(self.summon_queue, generic_cs.DEBUG|generic_cs.PRETTY_PRINT, \
@@ -420,6 +432,7 @@ def idle_mover_next(self,external_label):
     else:
 	mv = None
     Trace.trace(3,"}idle_mover_next " + repr(mv))
+    # return next idle mover
     return mv
 
 # send a regret
@@ -533,6 +546,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				if mover_index >= mover_cnt:
 				    mover_index = mover_cnt - 1
 			    if mover_cnt == 0:
+				# no movers left send regrets to clients
 				generic_cs.enprint("handle_timeout: no movers left",
 	                                       generic_cs.DEBUG, 
 					       self.verbose)
@@ -557,7 +571,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    next_mover = idle_mover_next(self, 
 								 mv["work_ticket"]["fc"]["external_label"])
 				except:
-				    # must be write
+				    # there was no external label: must be write
 				    next_mover = idle_mover_next(self, None)
 				self.enprint("current mover "+repr(mv)+\
 					     " next mover "+repr(next_mover),
@@ -574,6 +588,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				summon_mover(self,next_mover,mv["work_ticket"])
 				break
 			    else:
+				# no movers left
 				generic_cs.enprint("handle_timeout: no movers left",
 	                                       generic_cs.DEBUG, 
 					       self.verbose)
@@ -592,6 +607,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    
 				
 	else:
+	    # no movers
 	    # check if there are any pending works and remove them
 	    w = pending_work.get_init()
 	    while w:
@@ -817,7 +833,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 				    + repr(item))
 			return
 
-	    # chech the volume state and try to lock it
+	    # check the volume state and try to lock it
 	    vc = volume_clerk_client.VolumeClerkClient(self.csc)
 	    vol_info = vc.inquire_vol(w['fc']['external_label'])
 
@@ -948,29 +964,36 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # if the pending work queue is empty, then we're done
         elif  w["status"][0] == e_errors.NOWORK:
 	    mv = find_mover(mticket, movers, self.verbose)
-	    # check if delayed_dismount set
+	    # check if delayed_dismount is set
 	    mvr_found = 0
 	    if len(self.del_dismount_list) != 0:
+		# find mover in the delayed dismount list
 		mvr = find_mover(mticket,self.del_dismount_list,self.verbose)
 		if (mvr != None) and mvr: 
 		    mvr_found = 1
 	    try:
 		if (delayed_dismount):
 		    if not mvr_found:
+			# add mover to delayed dismount list
 			self.del_dismount_list.append(mv)
 		    else:
+			# it was already there, cancel timer func. for
+			# the previous ticket
 			timer_task.msg_cancel_tr(summon_mover, 
 						 self, mvr['mover'])
+		    # add timer func. for this tisket
 		    timer_task.msg_add(delayed_dismount*60, 
 				       summon_mover, self, mv, w)
+		    # do not dismount, rather send no work
 		    self.reply_to_caller({'work': 'nowork'})
 		    Trace.trace(3,"}have_bound_volume delayed dismount"+\
 				repr(w))
 		    return
 		else:
+		    # no delayed dismount: flag dismount
 		    mvr_found = 1
 	    except:
-		traceback.print_exc()
+		# no delayed dismount: flag dismount
 		mvr_found = 1 
 
 	    if mvr_found:
@@ -1007,7 +1030,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         # alas
         else:
-	    Trace.trace(0,"}have_bound_volume: assertion error " \
+	    Tracse.trace(0,"}have_bound_volume: assertion error " \
 			+ repr(w) + " " + repr(mticket))
             self.enprint("assertion error in have_bound_volume w=, mticket=", \
 	                 generic_cs.SERVER, self.verbose)
