@@ -11,7 +11,14 @@ import sys
 import string
 
 def find_config_file():
-    filename = os.environ.get("ENSTORE_CONF", "/etc/enstore.conf")
+    config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
+    if config_host:
+        filename = '/etc/'+config_host+'.enstore.conf'
+    	if not os.path.exists(filename):
+            filename = '/etc/enstore.conf'
+    else:
+        filename = '/etc/enstore.conf'
+    filename = os.environ.get("ENSTORE_CONF", filename)
     if os.path.exists(filename):
         return filename
     return None
