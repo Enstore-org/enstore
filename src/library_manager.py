@@ -882,6 +882,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
             sg_limits = self.keys['storage_group_limits']
+        self.legal_encp_version = self.keys.get('legal_encp_version','')
         LibraryManagerMethods.__init__(self, csc, sg_limits)
         self.set_udp_client()
 
@@ -935,6 +936,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.rcv_timeout = 10 # set receive timeout
 
     def write_to_hsm(self, ticket):
+        if ticket.has_key('version'):
+            version=ticket['version'].split()[0]
+            if self.legal_encp_version:
+                if self.legal_encp_version > version:
+                    ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                        "encp version too old. Must be later than %s"%(self.legal_encp_version,))
+                    self.reply_to_caller(ticket)
+                    return
+            
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
             del(ticket['mover'])
@@ -1010,6 +1020,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
+        if ticket.has_key('version'):
+            version=ticket['version'].split()[0]
+            if self.legal_encp_version:
+                if self.legal_encp_version > version:
+                    ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                        "encp version too old. Must be later than %s"%(self.legal_encp_version,))
+                    self.reply_to_caller(ticket)
+                    return
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
             del(ticket['mover'])
