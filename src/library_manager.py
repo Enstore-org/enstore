@@ -644,6 +644,7 @@ class LibraryManagerMethods:
         while rq:
             if rq.ticket.has_key('reject_reason'): del(rq.ticket['reject_reason'])
             if rq.work == "read_from_hsm":
+                if self.process_for_bound_vol
                 rq, key = self.process_read_request(rq, requestor)
                 if rq:
                     Trace.trace(16,"process_read_request returned %s %s %s" % (rq.ticket, key,self.continue_scan))
@@ -909,7 +910,7 @@ class LibraryManagerMethods:
                 exc_limit_rq = rq
             if exc_limit_rq:
                 # if storage group limit for this volume has been exceeded
-                # try to get any work
+                # try to get any work with online priority
                 rq, status = self.schedule(requestor, bound=external_label)
                 Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
                 # no work means: use what we have
@@ -936,7 +937,10 @@ class LibraryManagerMethods:
                             rq = exc_limit_rq
                         #elif (rq.ticket.has_key('reject_reason') and
                         #      rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
-                        #    rq = exc_limit_rq                            
+                        #    rq = exc_limit_rq
+                        else:
+                            if rq.ticket['encp']['adminpri'] <0:
+                                rq = exc_limit_rq
                 Trace.trace(14, "s3 rq %s" % (rq.ticket,))
             
             if rq.work == 'write_to_hsm':
@@ -1162,7 +1166,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             # nowrite -- locked for write requests
             # noread -- locked for read requests
 
-            if self.keys['lock'] in ('locked', 'unlocked', 'ignore', 'pause', 'nowrite', 'noread'): 
+            if self.keys['lock'] in (e_errors.LOCKED, 'unlocked', 'ignore', 'pause', e_errors.NOWRITE, e_errors.NOREAD): 
                 return self.keys['lock']
         try:
             lock_file = open(self.lockfile_name(), 'r')
@@ -1248,10 +1252,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'write'
         ff = ticket['vc']['file_family']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause', 'nowrite', e_errors.BROKEN):
-            #if self.lm_lock in  ('locked', 'nowrite'):
-            if self.lm_lock in  ('locked',):
-                ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+        if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, e_errors.BROKEN):
+            if self.lm_lock in  (e_errors.LOCKED, e_errors.NOWRITE):
+                ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
@@ -1286,14 +1289,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 args.remove({})
                 args.append(ticket)
             ret = apply(getattr(self,fun), args)
-            if ret and (action in ('locked', 'ignore', 'pause', 'nowrite', 'reject')):
+            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, 'reject')):
                 format = "access restricted for %s : library=%s family=%s requester:%s "
                 Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["file_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action == 'locked':
-                    ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+                if action in (e_errors.LOCKED, e_errors.NOWRITE):
+                    ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, ff, action))
                 return
@@ -1366,10 +1369,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'read'
         vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
-        if self.lm_lock in ('locked', 'ignore', 'pause', 'noread', e_errors.BROKEN):
-            #if self.lm_lock in ('locked', 'noread'):
-            if self.lm_lock in ('locked',):
-                ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+        if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, e_errors.BROKEN):
+            if self.lm_lock in (e_errors.LOCKED, e_errors.NOREAD):
+                ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
             else:
                 ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
@@ -1384,14 +1386,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 args.remove({})
                 args.append(ticket)
             ret = apply(getattr(self,fun), args)
-            if ret and (action in ('locked', 'ignore', 'pause', 'noread', 'reject')):
+            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, 'reject')):
                 format = "access restricted for %s : library=%s family=%s requester:%s"
                 Trace.log(e_errors.INFO, format%(ticket['wrapper']['pnfsFilename'],
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["volume_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action is 'locked':
-                    ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+                if action in (e_errors.LOCKED, e_errors.NOREAD):
+                    ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, vol, action))
                 return
@@ -1925,7 +1927,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # change state of the library manager
     def change_lm_state(self, ticket):
         if ticket.has_key('state'):
-            if ticket['state'] in ('locked', 'ignore', 'unlocked', 'pause', 'noread', 'nowrite'):
+            if ticket['state'] in (e_errors.LOCKED, 'ignore', 'unlocked', 'pause', e_errors.NOREAD, e_errors.NOWRITE):
                 self.lm_lock = ticket['state']
                 self.set_lock(ticket['state'])
                 ticket["status"] = (e_errors.OK, None)
