@@ -24,30 +24,10 @@ HOURS_IN_DAY = ["00", "01", "02", "03", "04", "05", "06", "07", "08", \
 
 STAMP_JPG = "%s%s"%(enstore_constants.STAMP, enstore_constants.JPG)
 
-def find_jpg_files(dir):
-    # given the directory to look in, find all files with ".jpg" in them. fill
-    # in the lists above with those files with and without the "_stamp" 
-    # string from this group. also find the ps files
-    files = os.listdir(dir)
-    tmp_stamps = []
-    jpg_stamp_files = []
-    jpg_files = []
-    ps_files = []
-    for file in files:
-	if not string.find(file, enstore_constants.JPG) == -1:
-	    # this file has '.jpg' in it
-	    if not string.find(file, STAMP_JPG) == -1:
-		# this is a postage stamp file
-		tmp_stamps.append(file)
-	    else:
-		jpg_files.append(file)
-	elif not string.find(file, enstore_constants.PS) == -1:
-	    # this file has '.ps' in it
-            ps_files.append(file)
-    jpg_files.sort()
-    ps_files.sort()
+def sort_jpg_files(tmp_stamps):
     # sort the stamp files so that all of the mount per hour stamps are at the end in
     # descending date order.  first get the other plots to the front.
+    jpg_stamp_files = []
     tmp_stamps.sort()
     # now move all the list elements that are not mph stamps to a new list, and delete them
     # from the old
@@ -65,6 +45,37 @@ def find_jpg_files(dir):
     # left in tmp_stamps.  reverse sort these and add them at the end of the other stamps
     tmp_stamps.reverse()
     jpg_stamp_files = jpg_stamp_files + tmp_stamps
+    return (jpg_stamp_files)
+
+def find_files(files):
+    # find all files with ".jpg" in them. fill
+    # in the lists above with those files with and without the "_stamp" 
+    # string from this group. also find the ps files
+    tmp_stamps = []
+    jpg_files = []
+    ps_files = []
+    for file in files:
+	if not string.find(file, enstore_constants.JPG) == -1:
+	    # this file has '.jpg' in it
+	    if not string.find(file, STAMP_JPG) == -1:
+		# this is a postage stamp file
+		tmp_stamps.append(file)
+	    else:
+		jpg_files.append(file)
+	elif not string.find(file, enstore_constants.PS) == -1:
+	    # this file has '.ps' in it
+            ps_files.append(file)
+    return (jpg_files, tmp_stamps, ps_files)
+
+def find_jpg_files(dir):
+    # given the directory to look in, find all files with ".jpg" in them. fill
+    # in the lists above with those files with and without the "_stamp" 
+    # string from this group. also find the ps files
+    files = os.listdir(dir)
+    jpg_files, stamp_files, ps_files = find_files(files)
+    jpg_files.sort()
+    ps_files.sort()
+    jpg_stamp_files = sort_stamp_files(tmp_stamps)
     return (jpg_files, jpg_stamp_files, ps_files)
 
 def convert_to_jpg(psfile, file_name):
