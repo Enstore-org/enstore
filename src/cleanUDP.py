@@ -79,7 +79,7 @@ class cleanUDP :
 
 	# Mitigate case 1 -- ECONNREFUSED from previous sendto
 	def recvfrom(self, bufsize, rcv_timeout=10) :
-		data = ''
+		data = ("", ("", 0))
 		for n in range(self.retry_max) :
 			try:
 				r,junk,junk=select.select([self.socket],[],[],rcv_timeout)
@@ -95,7 +95,7 @@ class cleanUDP :
 		self.previous_sendto_address = self.this_sendto_address
 		self.this_sendto_address = address
 
-		for n in range(0, self.retry_max - 1) :
+		for n in range(self.retry_max) :
 			try:
 				return self.socket.sendto(data, address)
 			except socket.error:
