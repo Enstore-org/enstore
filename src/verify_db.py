@@ -8,17 +8,18 @@ def verify_db(dbname):
     count=0
     try:
         d = db.DbTable(dbname,'.','.',[])
-        d.cursor('open')
+        c = d.newCursor()
         t0 = time.time()
-        k,v = d.cursor('first')
+        k,v = c.first()
 
         while k:
             count=count+1
             v=d[k]
-            k,v=d.cursor('next')
+            k,v = c.next()
 
         delta = time.time()-t0
 
+        c.close()
         if not count:
             print "DATABASE",dbname,"IS CORRUPT. NO KEYS FOUND"
             return 1
