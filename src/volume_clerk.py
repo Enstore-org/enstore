@@ -1227,6 +1227,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             return ticket["status"]
 
         # update the fields that have changed
+        if flag is "readonly":
+            # check if volume is blank
+            if record['non_del_files'] == 0:
+                record['status'] = (e_errors.CONFLICT, "volume is blank")
+                self.reply_to_caller(record)
+                return record["status"]
         record["system_inhibit"][index] = flag
 
         self.dict[external_label] = record   # THIS WILL JOURNAL IT
