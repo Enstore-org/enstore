@@ -225,7 +225,7 @@ case $gang in
          wa=/pnfs/archive/dcache-tests/$N.dcache_page_a_$$
          l=/pnfs/archive/dcache-tests/$N1
 	 strip_dir="/pnfs"
-         dcache=d0endca3a
+         dcache=d0dca
 	 dcache_saag="dcache_d0"
           ;;
        *) namespace="UNKNOWN"
@@ -302,8 +302,8 @@ case $gang in
 	then
 	    $testToDo $wa
 	else
-	    dccp_test
 	    get_ticket
+	    dccp_test
 	    kftp_test
 	    ftp_test $wa
 	fi
@@ -315,8 +315,8 @@ case $gang in
 	then
 	    $testToDo $wa
 	else
-	    dccp_test
 	    get_ticket
+	    dccp_test
 	    kftp_test
 	    ftp_test $wa
 	fi
@@ -326,8 +326,8 @@ case $gang in
 	then
 	    $testToDo $wa
 	else
-	    dccp_test
 	    get_ticket
+	    dccp_test
 	    kftp_test
 	    ftp_test $wa
 	fi
