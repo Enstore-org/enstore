@@ -127,6 +127,10 @@ host/stkenmvr23a.fnal.gov@FNAL.GOV
 host/stkenmvr24a.fnal.gov@FNAL.GOV
 host/stkenmvr25a.fnal.gov@FNAL.GOV
 host/stkenmvr26a.fnal.gov@FNAL.GOV
+host/stkenmvr28a.fnal.gov@FNAL.GOV
+host/stkenmvr29a.fnal.gov@FNAL.GOV
+host/stkenmvr30a.fnal.gov@FNAL.GOV
+host/stkenmvr31a.fnal.gov@FNAL.GOV
 host/stkendm1a.fnal.gov@FNAL.GOV
 host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV
@@ -161,4 +165,11 @@ host/cdfenmvr20a.fnal.gov@FNAL.GOV
 host/cdfenmvr21a.fnal.gov@FNAL.GOV
 host/cdfenmvr22a.fnal.gov@FNAL.GOV
 host/cdfenmvr23a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, d0ensrv1, `enstore/cd/d0dca.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, d0ensrv1, `enstore/cd/d0dcam.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, stkensrv1, `enstore/cd/stkendca3a.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cdfensrv1, `enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV', `dnl')
