@@ -1,19 +1,14 @@
 # system imports
 #
-import time
-import string
 import sys
 
 # enstore imports
 import configuration_client
 import generic_client
 import generic_cs
-import backup_client
 import udp_client
-import callback
 import interface
 import Trace
-import e_errors
 
 class AlarmClient(generic_client.GenericClient):
 
@@ -42,14 +37,14 @@ class AlarmClient(generic_client.GenericClient):
         Trace.trace(12,"}send"+repr(s))
         return s
 
-    def status(self, str, server, verbose=0):
-	Trace.trace(16,"{send_status "+repr(str))
+    def status(self, str, server):
+	Trace.trace(16,"{status "+repr(str))
 	# format the ticket to send to the alarm server
 	ticket = {"work" : "status", \
 	          "status" : str , \
 	          "server" : server }
 	s = self.send(ticket)
-	Trace.trace(16,"}send_status ")
+	Trace.trace(16,"}status ")
 	return s
 	
 class AlarmClientInterface(interface.Interface):
@@ -121,7 +116,7 @@ if __name__ == "__main__" :
 	msg_id = generic_cs.CLIENT
 
     elif not intf.status == "":
-        ticket = alc.status(intf.status, intf.server, intf.verbose)
+        ticket = alc.status(intf.status, intf.server)
 	msg_id = generic_cs.CLIENT
 
     else:

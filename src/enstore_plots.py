@@ -11,9 +11,6 @@ import time
 import enstore_status
 import Trace
 
-START_TIME = "start_time"
-STOP_TIME = "stop_time"
-
 # file extensions
 PTS = ".pts"
 PS = ".ps"
@@ -45,6 +42,20 @@ class EnPlot(enstore_status.EnFile):
 	Trace.trace(10,"{install "+dir)
 	os.system("gnuplot "+self.gnufile+";cp "+self.psfile+" "+dir)
 	Trace.trace(10,"}install ")
+
+class MphGnuFile(enstore_status.EnFile):
+
+    def write(self, outfile, gnuinfo):
+	Trace.trace(10,"{MphGnuFile write ")
+	self.filedes.write("set output '"+outfile+ \
+                           "'\nset terminal postscript color\n"+ \
+	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
+	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
+	for info in gnuinfo:
+	    self.filedes.write("set title 'Mount Count For "+info[0]+ \
+	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
+	                       "' using 1:2 t '' with boxes\n")
+	Trace.trace(10,"}MphGnuFile write ")
 
 class MphDataFile(EnPlot):
 
@@ -105,19 +116,23 @@ class MphDataFile(EnPlot):
 	    gnucmds.close()
 	Trace.trace(12,"}plot ")
 
-class MphGnuFile(enstore_status.EnFile):
+class MlatGnuFile(enstore_status.EnFile):
 
-    def write(self, outfile, gnuinfo):
-	Trace.trace(10,"{MphGnuFile write ")
-	self.filedes.write("set output '"+outfile+ \
-                           "'\nset terminal postscript color\n"+ \
-	                   "set xlabel 'Hour'\nset yrange [0 : ]\n"+ \
-	                   "set xrange [ : ]\nset ylabel 'Mounts'\nset grid\n")
-	for info in gnuinfo:
-	    self.filedes.write("set title 'Mount Count For "+info[0]+ \
-	                       " (Total = "+info[1]+")'\nplot '"+info[2]+ \
-	                       "' using 1:2 t '' with boxes\n")
-	Trace.trace(10,"}MphGnuFile write ")
+    def write(self, outfile, ptsfile):
+	Trace.trace(10,"{MlatGnuFile write ")
+	self.filedes.write("set output '"+outfile+"\n"+ \
+                           "set terminal postscript color\n"+ \
+                           "set title 'Mount Latency in Seconds'\n"+ \
+                           "set xlabel 'Date'\n"+ \
+                           "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                           "set logscale y\n"+ \
+	                   "set xdata time\n"+ \
+	                   "set xrange [ : ]\n"+ \
+	                   "set ylabel 'Latency'\n"+ \
+	                   "set grid\n"+ \
+	                   "set format x \"%m-%d\"\n"+ \
+	                   "plot '"+ptsfile+"' using 1:2 t '' with points\n")
+	Trace.trace(10,"}MlatGnuFile write ")
 
 class MlatDataFile(EnPlot):
 
@@ -129,7 +144,18 @@ class MlatDataFile(EnPlot):
     # make the mount latency plot file
     def plot(self, data):
 	Trace.trace(12,"{plot ")
-	self.order_mount_data(data)
+        # mount data (mount requests and the actual mounting) are not 
+	# necessarily time ordered when read from the files.  2 or more 
+	# mount requests may occur before any actual volume has been mounted.
+	# also, since log files are closed/opened on day boundaries with no
+	# respect as to whats going on in the system, a log file may begin
+	# with several mount satisfied messages which have no matching 
+	# requests in the file.  also the file may end with several requests
+	# that are not satisfied until the next day or the next log file.
+	# to make things simpler for us to plot, the data will be ordered 
+	# so that each mount request is immediately followed by the actual
+        # mount satisfied message.
+	data.sort()
 	last_mount_req = ""
 	# write out the data points
 	for [dev, time, strt] in data:
@@ -152,21 +178,6 @@ class MlatDataFile(EnPlot):
 	gnucmds.close()
 	Trace.trace(12,"}plot ")
 
-    # mount data (mount requests and the actual mounting) are not necessarily
-    # time ordered when read from the files.  2 or more mount requests may
-    # occur before any actual volume has been mounted.  also, since log files
-    # are closed/opened on day boundaries with no respect as to whats going on
-    # in the system, a log file may begin with several mount satisfied messages
-    # which have no matching requests in the file.  also the file may end with
-    # several requests that are not satisifed until the next day or the next
-    # log file. to make things simpler for us to plot, the data will be 
-    # ordered so that each mount request is immediately followed by the actual
-    # mount satisfied message.
-    def order_mount_data(self, data):
-	# order data so that all the requests for each device are grouped
-	# together and in addition are time ordered
-	data.sort()
-
     # subtract two times and return their difference
     def latency(self, time1, time2):
 	Trace.trace(10,"{latency ")
@@ -183,24 +194,31 @@ class MlatDataFile(EnPlot):
 	Trace.trace(10,"}latency ")
 	return (time.mktime(t2) - time.mktime(t1))
 
+class XferGnuFile(enstore_status.EnFile):
 
-class MlatGnuFile(enstore_status.EnFile):
-
-    def write(self, outfile, ptsfile):
-	Trace.trace(10,"{MlatGnuFile write ")
-	self.filedes.write("set output '"+outfile+"\n"+ \
-                           "set terminal postscript color\n"+ \
-                           "set title 'Mount Latency in Seconds'\n"+ \
-                           "set xlabel 'Date'\n"+ \
-                           "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
-                           "set logscale y\n"+ \
+    def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
+	Trace.trace(10,"{XferGnuFile write ")
+	self.filedes.write("set output '"+outfile2+"'\n"+ \
+	                   "set terminal postscript color\n"+ \
+	                   "set title 'Individual Transfer Activity'\n"+ \
+	                   "set xlabel 'Date'\n"+ \
+	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
 	                   "set xdata time\n"+ \
 	                   "set xrange [ : ]\n"+ \
-	                   "set ylabel 'Latency'\n"+ \
+	                   "set ylabel 'Bytes per Transfer'\n"+ \
 	                   "set grid\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
-	                   "plot '"+ptsfile+"' using 1:2 t '' with points\n")
-	Trace.trace(10,"}MlatGnuFile write ")
+	                   "set format x \"%y-%m-%d\"\n"+ \
+	                   "set logscale y\n"+ \
+	                   "plot '"+ptsfile1+\
+	                   "' using 1:2 t '' with points\n"+ \
+	                   "set output '"+outfile1+"'\n"+ \
+	                   "set pointsize 2\n"+ \
+	                   "set nologscale y\n"+ \
+	                   "set yrange [0: ]\n"+ \
+	                   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
+	                   "'"+ptsfile2+\
+	                   "' using 1:5 t 'mean file size' w points 3 5\n")
+	Trace.trace(10,"}XferGnuFile write ")
 
 class XferDataFile(EnPlot):
 
@@ -235,31 +253,23 @@ class XferDataFile(EnPlot):
 	          ";cp "+self.logfile+" "+dir)
 	Trace.trace(10,"}install ")
 
-class XferGnuFile(enstore_status.EnFile):
+class BpdGnuFile(enstore_status.EnFile):
 
-    def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
-	Trace.trace(10,"{XferGnuFile write ")
-	self.filedes.write("set output '"+outfile2+"'\n"+ \
+    def write(self, outfile, ptsfile):
+	Trace.trace(10,"{BpdGnuFile write ")
+	self.filedes.write("set output '"+outfile+"'\n"+ \
 	                   "set terminal postscript color\n"+ \
-	                   "set title 'Individual Transfer Activity'\n"+ \
+	                   "set title 'Total Bytes Transferred Per Day'\n"+ \
 	                   "set xlabel 'Date'\n"+ \
-	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+	                   "set timefmt \"%Y-%m-%d\"\n"+ \
 	                   "set xdata time\n"+ \
 	                   "set xrange [ : ]\n"+ \
-	                   "set ylabel 'Bytes per Transfer'\n"+ \
+	                   "set ylabel 'Bytes'\n"+ \
 	                   "set grid\n"+ \
-	                   "set format x \"%y-%m-%d\"\n"+ \
-	                   "set logscale y\n"+ \
-	                   "plot '"+ptsfile1+\
-	                   "' using 1:2 t '' with points\n"+ \
-	                   "set output '"+outfile1+"'\n"+ \
-	                   "set pointsize 2\n"+ \
-	                   "set nologscale y\n"+ \
 	                   "set yrange [0: ]\n"+ \
-	                   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
-	                   "'"+ptsfile2+\
-	                   "' using 1:5 t 'mean file size' w points 3 5\n")
-	Trace.trace(10,"}XferGnuFile write ")
+	                   "set format x \"%m-%d\"\n"+ \
+	                   "plot '"+ptsfile+"' using 1:2 t '' w boxes\n")
+	Trace.trace(10,"}BpdGnuFile write ")
 
 class BpdDataFile(EnPlot):
 
@@ -346,21 +356,3 @@ class BpdDataFile(EnPlot):
 	            iyr = iyr + 1
 	Trace.trace(12,"}init_date_hash ")
 	return ndate
-
-class BpdGnuFile(enstore_status.EnFile):
-
-    def write(self, outfile, ptsfile):
-	Trace.trace(10,"{BpdGnuFile write ")
-	self.filedes.write("set output '"+outfile+"'\n"+ \
-	                   "set terminal postscript color\n"+ \
-	                   "set title 'Total Bytes Transferred Per Day'\n"+ \
-	                   "set xlabel 'Date'\n"+ \
-	                   "set timefmt \"%Y-%m-%d\"\n"+ \
-	                   "set xdata time\n"+ \
-	                   "set xrange [ : ]\n"+ \
-	                   "set ylabel 'Bytes'\n"+ \
-	                   "set grid\n"+ \
-	                   "set yrange [0: ]\n"+ \
-	                   "set format x \"%m-%d\"\n"+ \
-	                   "plot '"+ptsfile+"' using 1:2 t '' w boxes\n")
-	Trace.trace(10,"}BpdGnuFile write ")

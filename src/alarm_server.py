@@ -1,43 +1,21 @@
 #
 # system import
 import sys
-import time
-import copy
-import errno
-import string
-import regsub
-import types
-import os
 
 # enstore imports
-import timeofday
-import traceback
-import callback
 import log_client
 import configuration_client
-import volume_clerk_client
-import file_clerk_client
-import admin_clerk_client
-import library_manager_client
-import media_changer_client
-import mover_client
 import dispatching_worker
 import interface
 import generic_server
-import generic_cs
-import udp_client
 import Trace
 import e_errors
-import enstore_status
 
 def default_alive_rcv_timeout():
     return 5
 
 def default_alive_retries():
     return 2
-
-TRUE = 1
-FALSE = 0
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
