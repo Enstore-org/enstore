@@ -1,1 +1,0 @@
-* * * * * sh -c 'OUT=/home/bakken/enstore-delfile.out;. /usr/local/etc/setups.sh 1>>$OUT 2>&1;setup enstore 1>>$OUT 2>&1;TRASH_CAN=/rip6a/pnfs/trash/4 1>>$OUT 2>&1;export TRASH_CAN 1>>$OUT 2>&1;$ENSTORE_DIR/sbin/delfile 1>>$OUT 2>&1;'

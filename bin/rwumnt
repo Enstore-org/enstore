@@ -1,5 +1,0 @@
-#!/bin/sh
-# rwumnt <drive>    where is <drive> is 1 or 3
-if [ $# != 1 ] ; then echo "`basename $0` <drive>" ; exit -1; fi
-rsh fntt -l acsss "echo dismount 0 0,0,9,$1 force | /export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null
-

@@ -1,7 +1,0 @@
-#!/bin/sh
-#rwmount <volumn> <drive>    
-# where <volumn>  is like 0000XX
-# and   <drive>   is 1 or 3
-echo $#
-if [ $# != 2 ] ; then echo "`basename $0` <volumn> <drive>" ; exit -1; fi
-rsh fntt -l acsss "echo mount $1 0,0,9,$2 | /export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" < /dev/null
