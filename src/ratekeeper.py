@@ -195,7 +195,7 @@ if __name__ == "__main__":
     
     ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING') #Info about local node.
-    ratekeeper_port = ratekeep.get('port','MISSING')
+    ratekeeper_port = 55510 #ratekeep.get('port','MISSING')
     ratekeeper_name = ratekeep.get('name','MISSING') #info about remote node.
     ratekeeper_node = ratekeep.get('name','MISSING')
     ratekeeper_nodes = ratekeep.get('nodes','MISSING')
