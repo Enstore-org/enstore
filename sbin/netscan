@@ -20,6 +20,7 @@ set -u
 # . Check that ngop is installed and running
 # . Check enstore scripts in /etc/rc.d/init.d
 # . Check that rc.local contains boot_cleanup
+# . Check that rc.local contains ipmi_startup
 # . Check that eth1 is working (if present)
 # . Correct ntp time sync (allow * and ~ on 1st line)
 ## . Check that two processors are active
@@ -27,14 +28,16 @@ set -u
 # . Check that root crontab includes reset of watchdog, netscan, and ntpset
 # . Check that enstore and root .forward files contain enstore-admin@fnal.gov
 # . Check that hyperthreading is enabled on dual Xeon platforms
-# . Check that there are less than N processes running on the node
-# . Check for correct number of pnfs daemons running on servers
 # . Check all pnfs database sizes on srv1 nodes
 # . Check for running pnfs manager on srv1 nodes
 # . Check the largest of today's log files on srv2 nodes
 # . Check the date and time on the connected Sun system
+# . Check that lock status of library managers is consistent with config
+# . Check for reasonable number of processes running on the node
+# . Check for correct number of pnfs daemons running on servers
 ## . If file or volume clerk are running, then db_{checkpoint,deadlock} are running, too
 # . Generate informational alarm if we detect server has just rebooted
+# . Verify hosts, k5login, and farmlets files contain this host's name
 # . Check that web servers are running on right nodes and not elsewhere
 # . Check cgi scripts on web server nodes
 # . Check the /etc/krb5.keytab and /local/ups/kt/enstorekt files for legal values
@@ -125,34 +128,46 @@ gang=`$ENSTORE_DIR/sbin/gang`
 let uptime=`$CUT -d. -f1 /proc/uptime`/900
 
 # did we just reboot?
-if [ $uptime -eq 0 ]
+if (( uptime > 0 ))
 then
-  REBOOT=1
-else
   REBOOT=0
+else
+  REBOOT=1
 fi
 
 # are we an enstore server?
 if $ECHO $node | $EGREP '^(d0|stk|cdf)ensrv[0-7]$' >/dev/null
 then
   SERVER=1
+  nodetype=srv
 elif [ $node = cmspnfs1 ]
 then
   SERVER=1
+  nodetype=srv
 else
   SERVER=0
 fi
 
+# are we an enstore mover?
+if $ECHO $node | $EGREP '^(d0|stk|cdf)enmvr[1-9][0-9]?a$' >/dev/null
+then
+  MOVER=1
+  nodetype=mvr
+else
+  MOVER=0
+fi
+
 # are we a dcache server?
-if $ECHO $node | $EGREP '^stkendca[3-8]a$' >/dev/null
+if $ECHO $node | $EGREP '^stkendca([2-9]|1[0-2])a$' >/dev/null
 then
   DCACHE=1
+  nodetype=dca
 else
   DCACHE=0
 fi
 
 # once a day, or after reboot, override quiet mode and log verbose information
-[ $((uptime % 97)) -eq 0 ] && QUIET=0
+(( ! (uptime % 97) )) && QUIET=0
 
 # function to log messages, optionally print the ps state
 
@@ -163,12 +178,22 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
 	  $ECHO "$1"
 	}
 
+# this script requires bash 2.05, usually /bin/bash (not /usr/local/bin/bash)
+if [ $BASH = "/usr/local/bin/bash" -o $BASH_VERSION \< "2.05" ]; then
+   msg="Insufficient version of bash: $BASH $BASH_VERSION"
+   logit "$msg"
+   if (( ALARM )); then
+      enstore alarm --raise --severity "W" --root-error "$msg"
+   fi
+fi
+
 # function to parse file mode from terse output of stat(1)
 
 getfilemode() { set `stat -t $1 2>/dev/null`
-		if [ $# -eq 15 ]; then
+		if (( $# == 15 )); then
 		   # 0x4000 => directory
 		   # 0x8000 => regular file
+		   # 0xa000 => symbolic link
 		   # 0xc000 => socket
 		   $OCTAL $((0x$4 & 0777))
 		else
@@ -184,7 +209,7 @@ check_owner() { local theUsr=${2:-enstore}
 		if [ ! -r $1 ]; then
 		  msg1="BAD CONFIGURATION: $1 does not exist"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
 		else
@@ -195,10 +220,10 @@ check_owner() { local theUsr=${2:-enstore}
 		     [ -e /PRODUCTION ] && $CHOWN "${theOwn/%.products/.4525}" $1
 		     msg1="Changing $1 owner ($chkOwn to $theOwn)"
 		     logit "$msg1"
-		     if [ $ALARM -eq 1 -a -e /PRODUCTION ]; then
+		     if (( ALARM )) && [ -e /PRODUCTION ]; then
 			enstore alarm --raise --severity "I" --root-error "$msg1"
 		     fi
-		  elif [ $QUIET -ne 1 ]; then
+		  elif (( ! QUIET )); then
 		     logit "$1 owner is $theOwn, ok"
 		  fi
 		fi
@@ -215,25 +240,25 @@ check_owner() { local theUsr=${2:-enstore}
 check_mode() { if [ ! -r $1 ]; then
 		 msg1="BAD CONFIGURATION: $1 does not exist"
 		 logit "$msg1"
-		 if [ $ALARM -eq 1 ]; then
+		 if (( ALARM )); then
 		    enstore alarm --raise --severity "A" --root-error "$msg1"
 		 fi
 	       else
 		 local fmode=`getfilemode $1`
-		 if [ $((fmode)) -ne $(($2)) ]; then
+		 if (( fmode != $2 )); then
 		    [ -e /PRODUCTION ] && $CHMOD $2 $1
 		    msg1="Changing $1 mode ($fmode to $2)"
 		    logit "$msg1"
-		    if [ $ALARM -eq 1 -a -e /PRODUCTION ]; then
+		    if (( ALARM )) && [ -e /PRODUCTION ]; then
 		       enstore alarm --raise --severity "I" --root-error "$msg1"
 		    fi
 		 else
-		    if [ $QUIET -ne 1 ]; then
+		    if (( ! QUIET )); then
 		       logit "$1 mode is $2, ok"
 		    fi
-		    if [ $# -eq 3 ]; then
+		    if (( $# == 3 )); then
 		       check_owner $1 $3
-		    elif [ $# -eq 4 ]; then
+		    elif (( $# == 4 )); then
 		       check_owner $1 $3 $4
 		    elif $DIRNAME $1 | $EGREP '^/($|etc|root)' >/dev/null; then
 		       check_owner $1 root
@@ -242,33 +267,44 @@ check_mode() { if [ ! -r $1 ]; then
 	       fi
 	     }
 
-# function to check for a string within a crontab
+# function to check for a regular expression within a crontab
+#
+# If no file is specified, check within the root crontab.
+#
+# Otherwise, check file mode against 3rd argument, if present.
+# Note that the 3rd argument, if specified, must be in octal,
+# with a leading 0 (for example, 0755).
 
-check_cron() { if [ $# -eq 1 ]; then
+check_cron() { if (( $# == 1 )); then
 		  local theFile=/var/spool/cron/root
-		  local aString=$1
+		  local aRegExp=$1
 	       else
 		  local theFile=$1
-		  local aString=$2
+		  local aRegExp=$2
 	       fi
 	       if [ ! -r "$theFile" ]; then
 		  msg1="BAD CONFIGURATION: $theFile is missing"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
-	       elif ! $GREP -v '^#' "$theFile" | $EGREP "$aString" >/dev/null; then
-		  msg1="BAD CONFIGURATION: $theFile is missing $aString"
+	       elif ! $GREP -v '^#' "$theFile" | $EGREP "$aRegExp" >/dev/null; then
+		  msg1="BAD CONFIGURATION: $theFile is missing $aRegExp"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
-	       elif [ $QUIET -ne 1 ]; then
-		  logit "$aString in $theFile, ok"
+	       else
+		  if (( ! QUIET )); then
+		     logit "$aRegExp in $theFile, ok"
+		  fi
+		  if (( $# == 3 )); then
+		     check_mode "$theFile" $3
+		  fi
 	       fi
 	     }
 
-# function to check for a string within a file
+# function to check for a regular expression within a file
 #
 # Also confirm that files under /, /etc or /root are owned by
 # root, and check file mode against 3rd argument, if present.
@@ -276,24 +312,24 @@ check_cron() { if [ $# -eq 1 ]; then
 # with a leading 0 (for example, 0755).
 
 check_file() { local theFile=$1
-	       local aString=$2
+	       local aRegExp=$2
 	       if [ ! -r "$theFile" ]; then
 		  msg1="BAD CONFIGURATION: $theFile is missing"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
-	       elif ! $EGREP "$aString" "$theFile" >/dev/null; then
-		  msg1="BAD CONFIGURATION: $theFile is missing $aString"
+	       elif ! $EGREP "$aRegExp" "$theFile" >/dev/null; then
+		  msg1="BAD CONFIGURATION: $theFile is missing $aRegExp"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
 	       else
-		  if [ $QUIET -ne 1 ]; then
-		     logit "$aString in $theFile, ok"
+		  if (( ! QUIET )); then
+		     logit "$aRegExp in $theFile, ok"
 		  fi
-		  if [ $# -eq 3 ]; then
+		  if (( $# == 3 )); then
 		     check_mode "$theFile" $3
 		  elif $DIRNAME "$theFile" | $EGREP '^/($|etc|root)' >/dev/null; then
 		     check_owner "$theFile" root
@@ -319,12 +355,20 @@ check_file() { local theFile=$1
 right_file() { local src=$1; local dst=$2
 	       srcfile=`$BASENAME $src .m4`
 	       [ -d $dst ] && dst=$dst/$srcfile
-	       if [ ${src%.m4} = $src -a -r $src.m4 ]; then
+	       if [ $src = ${src%.m4} -a -r $src.m4 ]; then
+		  if [ -f $src ]; then
+		     msg1="Removing obsolete source $src"
+		     logit "$msg1"
+		     $RM -f $src
+		     if (( ALARM )); then
+			enstore alarm --raise --severity "I" --root-error "$msg1"
+		     fi
+		  fi
 		  src=$src.m4
 		  if [ ! -r $dst ]; then
 		     msg1="BAD CONFIGURATION: $dst does not exist"
 		     logit "$msg1"
-		     if [ $ALARM -eq 1 ]; then
+		     if (( ALARM )); then
 			enstore alarm --raise --severity "A" --root-error "$msg1"
 		     fi
 		     return
@@ -332,39 +376,37 @@ right_file() { local src=$1; local dst=$2
 	       elif [ ! -r $src -o ! -r $dst ]; then
 		  msg1="BAD CONFIGURATION: $src $dst do not both exist"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
 		  return
 	       fi
-	       if [ ${src%.m4} != $src ]; then
+	       if [ $src = ${src%.m4}.m4 ]; then
 		  tmp=/tmp/${srcfile}_$$
 		  $M4 -DHOSTNAME=$node $src >$tmp 2>/dev/null
 		  if ! $CMP $tmp $dst >/dev/null; then
 		     msg1="BAD CONFIGURATION: $src $dst do not match"
 		     logit "$msg1"
 		     $RM -f $tmp
-		     if [ $ALARM -eq 1 ]; then
+		     if (( ALARM )); then
 			enstore alarm --raise --severity "A" --root-error "$msg1"
 		     fi
 		     return
-		  elif [ $QUIET -ne 1 ]; then
+		  elif (( ! QUIET )); then
 		     logit "$dst matches $src, ok"
-		     $RM -f $tmp
-		  else
-		     $RM -f $tmp
 		  fi
+		  $RM -f $tmp
 	       elif ! $CMP $src $dst >/dev/null; then
 		  msg1="BAD CONFIGURATION: $src $dst do not match"
 		  logit "$msg1"
-		  if [ $ALARM -eq 1 ]; then
+		  if (( ALARM )); then
 		     enstore alarm --raise --severity "A" --root-error "$msg1"
 		  fi
 		  return
-	       elif [ $QUIET -ne 1 ]; then
+	       elif (( ! QUIET )); then
 		  logit "$dst matches $src, ok"
 	       fi
-	       if [ $# -eq 3 ]; then
+	       if (( $# == 3 )); then
 		  check_mode $dst $3
 	       elif $DIRNAME $dst | $EGREP '^/($|etc|root)' >/dev/null; then
 		  check_owner $dst root
@@ -398,7 +440,7 @@ allow() { tt=${1:-UNKNOWN}
 	    else
 	      p=""
 	    fi
-	    if [ $QUIET -ne 1 ]; then
+	    if (( ! QUIET )); then
 	       logit "Allowing $node $c $tt $a $b $p, ok"
 	    fi
 	    return 0
@@ -411,7 +453,7 @@ allow() { tt=${1:-UNKNOWN}
 	  fi
 	  msg1="UNAUTHORIZED NETWORK SERVICE, type ${type}! $node $tt $command $pid $rest"
 	  logit "$msg1 $psline" "ps"
-	  if [ $ALARM -eq 1 ]; then
+	  if (( ALARM )); then
 	     enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
 	  fi
 	  return $type
@@ -486,9 +528,11 @@ ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort\n
 	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE_DIR/src/inquisitor.py\n
 "
+
 # Extra for srv1 - pnfs server
 ALLOW_SRV1="$ALLOW_BASE
 	LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]\n
+	LISTEN,python,(d0|stk|cdf)ensrv1.fnal.gov:,TCP,migrate.py\n
 "
 
 # Extra for adic
@@ -535,9 +579,14 @@ ALLOW_SSRV2="$ALLOW_SRV2
 
 # Extra for cmspnfs1 - pnfs server
 ALLOW_CMS1="$ALLOW_SRV1
-	LISTEN,postmaste,:(postgres|5432),TCP,x\n
 	LISTEN,sendmail,:smtp,TCP,x\n
+	LISTEN,sshd,:,TCP,/usr/sbin/sshd\n
+	LISTEN,postmaste,:(postgres|5432),TCP,x\n
+	LISTEN,iperf,:5001,TCP,/opt/iperf/bin/iperf\n
+	LISTEN,gmond,:8649,TCP,/usr/sbin/gmond\n
+	LISTEN,python,cmspnfs1.fnal.gov:,TCP,migrate.py\n
 "
+#	LISTEN,sshd,(:ssh|localhost:x11-ssh-offset),TCP,/usr/sbin/sshd\n
 
 # Extra for movers
 ALLOW_MVR="$ALLOW_BASE
@@ -575,10 +624,9 @@ esac
 
 
 # try to start - but if one netscan already running, then exit
-$MKDIR $ACTIVE 1>/dev/null 2>/dev/null
-if [ $? -ne 0 ]; then
+if ! $MKDIR $ACTIVE 1>/dev/null 2>/dev/null; then
    # ok, this is terrible..., but I don't know what else to do.  Dang kerberos!
-   # the most likely thing that has failed, or hung is the task that access the net.  Kill it.
+   # the most likely thing that has failed or hung is the task that accesses the net.  Kill it.
    # kill the farmlets task
    $PS axwww | $GREP "farmlets" | $GREP -v grep | while read pid line
    do
@@ -595,11 +643,10 @@ if [ $? -ne 0 ]; then
       $KILL -9 $pid
    done
    $SLEEP 30
-   $MKDIR $ACTIVE 1>/dev/null 2>/dev/null
-   if [ $? -ne 0 ]; then
+   if ! $MKDIR $ACTIVE 1>/dev/null 2>/dev/null; then
       msg="ERROR: netscan on $node already ACTIVE... exiting"
       logit "$msg"
-      if [ $ALARM -eq 1 ]; then
+      if (( ALARM )); then
 	 enstore alarm --raise --severity "A" --root-error "$msg"
       fi
       exit 1
@@ -615,10 +662,10 @@ fi
 
 
 # generate an informational alarm if we detect a server has rebooted
-if [ $REBOOT -eq 1 -a $SERVER -eq 1 ]; then
+if (( REBOOT && SERVER )); then
    msg="Server $node has rebooted"
    logit "$msg"
-   if [ $ALARM -eq 1 ]; then
+   if (( ALARM )); then
       enstore alarm --raise --severity "I" --root-error "$msg"
    fi
 fi
@@ -627,6 +674,7 @@ fi
 right_file $ENSTORE_DIR/sbin/routes			/root/routes
 right_file $ENSTORE_DIR/sbin/gettkt			/home/enstore/gettkt
 right_file $ENSTORE_DIR/etc/root.k5login		/root/.k5login
+right_file $ENSTORE_DIR/etc/products.k5login		/local/ups/.k5login
 right_file $ENSTORE_DIR/etc/$gang.enstore.k5login	/home/enstore/.k5login
 right_file $ENSTORE_DIR/etc/$gang.hosts.allow		/etc/hosts.allow
 right_file $ENSTORE_DIR/etc/hosts.deny			/etc/hosts.deny
@@ -638,7 +686,7 @@ right_file $ENSTORE_DIR/bin/enstore-boot		/etc/rc.d/init.d	0755
 right_file $ENSTORE_DIR/bin/monitor_server-boot		/etc/rc.d/init.d	0755
 
 # check these files only on db server nodes
-[ $SERVER -eq 1 ] && case $node in
+(( SERVER )) && case $node in
   d0ensrv6|stkensrv6|cdfensrv6)
     right_file $ENSTORE_DIR/sbin/enstore-drivestat	/etc/rc.d/init.d	0755
     right_file $ENSTORE_DIR/sbin/enstore-pgdb		/etc/rc.d/init.d	0755
@@ -648,8 +696,6 @@ right_file $ENSTORE_DIR/bin/monitor_server-boot		/etc/rc.d/init.d	0755
     ;;
   d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1)
     check_mode /etc/rc.d/init.d/pnfs			0755
-    ;;
-  *)
     ;;
 esac
 
@@ -663,8 +709,17 @@ then
    check_mode	/PRODUCTION			0644
 fi
 
-if $ECHO $node | $EGREP '^(d0|stk|cdf)en(srv[0-9]|mvr[1-9][0-9]?a)$' >/dev/null
+if (( MOVER || SERVER ))
 then
+
+  # verify hosts, k5login, and farmlets files contain this host's name
+  check_file	/etc/hosts			"${node}.fnal.gov"
+  check_file	/root/.k5login			"host/${node}.fnal.gov@FNAL.GOV"
+  check_file	/home/enstore/.k5login		"enstore/cd/${node}.fnal.gov@FNAL.GOV"
+  for f in /usr/local/etc/farmlets/{$gang$nodetype,${gang}-all,$gang,$node,enstore}
+  do
+    check_file	$f				"$node"
+  done
 
   # check ups and product support
   check_file	/local/ups/etc/upsdb_list	"/local/ups/db"
@@ -684,120 +739,124 @@ then
   done
 
   # check ngop configuration files
-  for i in $ENSTORE_DIR/ngop/check*.py
+  NGOP_DIR=$ENSTORE_DIR/ngop
+  for i in $NGOP_DIR/check*.py
   do
-    right_file	$i					/var/ngop/include		0644
+    right_file	$i				/var/ngop/include		0644
   done
-  right_file	$ENSTORE_DIR/ngop/raise_enstore_alarm	/var/ngop/include		0755
-  right_file	$ENSTORE_DIR/ngop/local_cronjob.xml	/var/ngop/cron_agent		0644
-  right_file	$ENSTORE_DIR/ngop/start_cron		/var/ngop/cron_agent/.start	0755
-  if   [ $SERVER -eq 1 ]; then
+  right_file	$NGOP_DIR/raise_enstore_alarm	/var/ngop/include		0755
+  right_file	$NGOP_DIR/local_cronjob.xml	/var/ngop/cron_agent		0644
+  right_file	$NGOP_DIR/start_cron		/var/ngop/cron_agent/.start	0755
+  if   (( SERVER )); then
     lh_xml=srv_linuxHealth	# server
-  elif [ $DCACHE -eq 1 ]; then
+  elif (( DCACHE )); then
     lh_xml=dca_linuxHealth	# dcache
   else
     lh_xml=linuxHealth		# movers
   fi
-  right_file	$ENSTORE_DIR/ngop/${lh_xml}.xml		/var/ngop/plugins_agent		0644
+  right_file	$NGOP_DIR/${lh_xml}.xml		/var/ngop/plugins_agent		0644
+  unset NGOP_DIR
 
-  # are both ngop agents running?
+  # are both ngop agents running? (but don't check immediately after reboot)
 
-  set +u
-  setup ngop
-  set -u
-  agents=`ngop check`
-  if [ `$ECHO "$agents" | $WC -l` -ne 2 ] ||
-     [ `$ECHO "$agents" | $AWK '$1 != "dead" && $2 == "root"' | $WC -l` -ne 2 ] ||
-      ! $ECHO "$agents" | $GREP "ngop plugins_agent -c /var/ngop/plugins_agent/${lh_xml}\.xml" >/dev/null ||
-      ! $ECHO "$agents" | $GREP "/var/ngop/cron_agent/\.start -c /var/ngop/cron_agent/local_cronjob\.xml" >/dev/null
-  then
-     msg=`$ECHO -e "problem with ngop agent(s):\n$agents"`
-     logit "$msg"
-     if [ $ALARM -eq 1 ]; then
-	enstore alarm --raise --severity "A" --root-error "$msg"
+  if (( ! REBOOT )); then
+     set +u
+     setup ngop
+     set -u
+     agents=`ngop check`
+     if [ `$ECHO "$agents" | $WC -l` -ne 2 ] ||
+	[ `$ECHO "$agents" | $AWK '$1 != "dead" && $2 == "root"' | $WC -l` -ne 2 ] ||
+	 ! $ECHO "$agents" | $GREP "ngop plugins_agent -c /var/ngop/plugins_agent/${lh_xml}\.xml" >/dev/null ||
+	 ! $ECHO "$agents" | $GREP "/var/ngop/cron_agent/\.start -c /var/ngop/cron_agent/local_cronjob\.xml" >/dev/null
+     then
+	msg=`$ECHO -e "problem with ngop agent(s):\n$agents"`
+	logit "$msg"
+	if (( ALARM )); then
+	   enstore alarm --raise --severity "A" --root-error "$msg"
+	fi
+	ngop stop >>$LOG 2>&1
+	$SLEEP 3
+	ngop start >>$LOG 2>&1
+     elif (( ! QUIET )); then
+	logit "two ngop agents running, ok"
      fi
-     ngop stop >>$LOG 2>&1
-     $SLEEP 3
-     ngop start >>$LOG 2>&1
-  elif [ $QUIET -ne 1 ]; then
-     logit "two ngop agents running, ok"
   fi
 
 fi
 
-
-# it seems we almost always change the mode of /dev/console after reboot, so don't alarm then
-if [ $REBOOT -eq 1 ]; then
+# it seems we almost always change the mode of /dev/console after reboot,
+# so don't alarm then
+if (( REBOOT )); then
  (
   ALARM=0
-  check_mode /dev/console	0622
+  check_mode	/dev/console		0622
  )
 else
-  check_mode /dev/console	0622
+  check_mode	/dev/console		0622
 fi
 
 # there needs to be more logic for xinetd or inetd files
 if [ "$INETD" = unknown ]; then
   # neither file existed, this is a problem
-  enstore alarm --raise --severity "A" --root-error "MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
+  msg="MISSING CONFIGURATION: no inetd.conf or xinetd.conf in /etc"
+  logit "$msg"
+  if (( ALARM )); then
+    enstore alarm --raise --severity "A" --root-error "$msg"
+  fi
 else
-  right_file $ENSTORE_DIR/etc/${INETD}.conf		/etc/${INETD}.conf
+  right_file	$ENSTORE_DIR/etc/${INETD}.conf		/etc/${INETD}.conf
   if [ "$INETD" = xinetd ]; then
-     right_file $ENSTORE_DIR/etc/ftp			/etc/xinetd.d/ftp
-     right_file $ENSTORE_DIR/etc/klogin			/etc/xinetd.d/klogin
-     right_file $ENSTORE_DIR/etc/kshell			/etc/xinetd.d/kshell
-     right_file $ENSTORE_DIR/etc/telnet			/etc/xinetd.d/telnet
-     right_file $ENSTORE_DIR/etc/eklogin		/etc/xinetd.d/eklogin
+    right_file	$ENSTORE_DIR/etc/ftp			/etc/xinetd.d/ftp
+    right_file	$ENSTORE_DIR/etc/klogin			/etc/xinetd.d/klogin
+    right_file	$ENSTORE_DIR/etc/kshell			/etc/xinetd.d/kshell
+    right_file	$ENSTORE_DIR/etc/telnet			/etc/xinetd.d/telnet
+    right_file	$ENSTORE_DIR/etc/eklogin		/etc/xinetd.d/eklogin
   fi
 fi
 
-right_file $ENSTORE_DIR/etc/enstore.bashrc	  	/home/enstore/.bashrc
-right_file $ENSTORE_DIR/etc/enstore.bash_profile	/home/enstore/.bash_profile
-right_file $ENSTORE_DIR/etc/$gang.step-tickers		/etc/ntp/step-tickers
-right_file $ENSTORE_DIR/etc/ntp.conf			/etc/ntp.conf
-#right_file $ENSTORE_DIR/etc/services			/etc/services
-
-#check_mode /var/lib/ntp	0755	ntp
-#check_mode /var/lib/ntp/drift	0644	ntp
-
+right_file	$ENSTORE_DIR/etc/enstore.bashrc		/home/enstore/.bashrc
+right_file	$ENSTORE_DIR/etc/enstore.bash_profile	/home/enstore/.bash_profile
+right_file	$ENSTORE_DIR/etc/$gang.step-tickers	/etc/ntp/step-tickers
+right_file	$ENSTORE_DIR/etc/ntp.conf		/etc/ntp.conf
+if [ $FLAVOR = 'Linux+2.4' ]; then
+  right_file	$ENSTORE_DIR/etc/services		/etc/services
+  check_mode	/var/lib/ntp		0755	ntp
+  check_mode	/var/lib/ntp/drift	0644	ntp
+fi
 
 # check that no rpm binaries have been tampered with
 # disabled... we made changes, check is not robust.
 #$RPM -Va | $GREP bin | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
 
-
 # check that eth1 is working, fix if not
 eth1_err="eth1: card reports no RX buffers"
 if $TAIL -n 10 /var/log/messages | $EGREP "$eth1_err" >/dev/null; then
    logit "ERROR: $eth1_err"
-   if [ $ALARM -eq 1 ]; then
+   if (( ALARM )); then
       enstore alarm --raise --severity "A" --root-error "$eth1_err"
    fi
    [ -e /PRODUCTION ] && $IFDOWN eth1 >>$LOG 2>&1
    [ -e /PRODUCTION ] && $IFUP   eth1 >>$LOG 2>&1
-elif [ $QUIET -ne 1 ]; then
+elif (( ! QUIET )); then
    logit "No eth1 errors found in messages, ok"
 fi
-
 
 # check that ntp is working, fix if not, complain if down more than once
 # check only in this job.  Separate cronjob sets time if needed.
 msg=`$ENSTORE_DIR/sbin/ntpset -a -c 2>&1`
-if [ $QUIET -ne 1 ]; then
+if (( ! QUIET )); then
    logit "$msg"
 fi
-
 
 # check that we have two processors running
 #if [ `$GREP -c '^processor' /proc/cpuinfo` -ne 2 ]; then
 #  logit "ONLY 1 PROCESSOR RUNNING"
-#  if [ $ALARM -eq 1 ]; then
+#  if (( ALARM )); then
 #     enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
 #  fi
-#elif [ $QUIET -ne 1 ]; then
+#elif (( ! QUIET )); then
 #  logit "Two processors found, ok"
 #fi
-
 
 # check that we have sufficient disk space available.
 #dflines=`$DF -P`
@@ -806,20 +865,19 @@ fi
 #  if [ `$ECHO $e | $GREP -c %` -eq 1 ]; then
 #    cap=`$ECHO $e | $SED -e 's/%//'`
 #    mess="$a $b $c $d $e $rest"
-#    if [ $cap -ge 90 ]; then
+#    if (( $cap >= 90 )); then
 #      msg="DISK FULL: $mess"
 #      logit "$msg"
-#      if [ $ALARM -eq 1 ]; then
+#      if (( ALARM )); then
 #         enstore alarm --raise --severity "A" --root-error "$msg"
 #      fi
 #    else
-#      if [ $QUIET -ne 1 ]; then
+#      if (( ! QUIET )); then
 #         logit "DISK $a at $cap%, ok"
 #      fi
 #    fi
 #  fi
 #done
-
 
 OEMline=`$GREP '^OEM' /var/log/dmesg`
 if [ -n "${OEMline:-}" ]; then
@@ -838,7 +896,7 @@ if [ "${motherboard:-Unknown}" = Unknown ]; then
       *)	motherboard=Unknown	;;
    esac
 fi
-if [ $QUIET -ne 1 ]; then
+if (( ! QUIET )); then
    logit "Motherboard is $motherboard"
 fi
 
@@ -846,7 +904,7 @@ if [ -e /PRODUCTION ]; then
    if [ $motherboard = Unknown ]; then
       msg="Unknown or undetermined motherboard"
       logit "msg"
-      if [ $ALARM -eq 1 ]; then
+      if (( ALARM )); then
 	 enstore alarm --raise --severity "I" --root-error "$msg"
       fi
    fi
@@ -856,10 +914,10 @@ if [ -e /PRODUCTION ]; then
    if [ -z "${ipmiVersion:-}" ]; then
       msg="No current ups version of ipmi"
       logit "$msg"
-      if [ $ALARM -eq 1 ]; then
+      if (( ALARM )); then
 	 enstore alarm --raise --severity "I" --root-error "$msg"
       fi
-   elif [ $QUIET -ne 1 ]; then
+   elif (( ! QUIET )); then
       logit "Current ups version of ipmi is $ipmiVersion"
    fi
    case ${motherboard}_${ipmiVersion} in
@@ -873,11 +931,11 @@ if [ -e /PRODUCTION ]; then
    if [ -z "${IPMISRV:-}" ]; then
       msg="Current ups version of ipmi is incompatible with this motherboard"
       logit "$msg"
-      if [ $ALARM -eq 1 ]; then
+      if (( ALARM )); then
 	 enstore alarm --raise --severity "A" --root-error "$msg"
       fi
       NOIPMI=1
-   elif [ $QUIET -ne 1 ]; then
+   elif (( ! QUIET )); then
       logit "Current ups version of ipmi is compatible with this motherboard"
    fi
    # for now, ipmi seg faults on SE7505VB2 boards
@@ -902,17 +960,17 @@ case `$AWK -F: '$1 ~ "model name" {print $2}' /proc/cpuinfo | $GREP -c "Xeon"` i
   0) ;;
   1) msg="BAD CONFIGURATION: Hyperthreading and one processor disabled"
      logit "$msg"
-     if [ $ALARM -eq 1 ]; then
+     if (( ALARM )); then
 	enstore alarm --raise --severity "A" --root-error "$msg"
      fi
      ;;
   2) msg="BAD CONFIGURATION: Hyperthreading or one processor disabled"
      logit "$msg"
-     if [ $ALARM -eq 1 ]; then
+     if (( ALARM )); then
 	enstore alarm --raise --severity "A" --root-error "$msg"
      fi
      ;;
-  4) if [ $QUIET -ne 1 ]; then
+  4) if (( ! QUIET )); then
 	logit "Hyperthreading, both processors enabled, ok"
      fi
      ;;
@@ -921,10 +979,10 @@ esac
 check_file	/etc/rc.d/rc.local	"boot_cleanup"
 check_file	/etc/rc.d/rc.local	"ipmi_startup"
 if [ $FLAVOR = 'Linux+2.4' ]; then
-   check_cron	/etc/cron.d/sysstat	"/usr/lib/sa/sa1"	# system accounting
+   check_cron	/etc/cron.d/sysstat	"/usr/lib/sa/sa1"		# system accounting
 fi
-check_cron	/etc/cron.d/netscan	"netscan -a -c -q"	# not so dumb, because we can run netscan manually, too
-check_mode	/etc/cron.d/netscan	0644
+# not so dumb, because we can run netscan manually, too
+check_cron	/etc/cron.d/netscan	"netscan -a -c -q"		0644
 
 for f in /{root,home/enstore}/.forward
 do
@@ -935,116 +993,168 @@ done
 check_owner /local/ups/kt
 check_owner /local/ups/kt/enstorekt
 
+# in Fermi Linux 7.3.x, $HOME is not yet defined when monitor_server starts,
+# so the .output file goes in / instead of /root.
+    if $GREP 'Linux 7.3' /proc/version >/dev/null; then
+       monRoot=""
+    else
+       monRoot="/root"
+    fi
 # verify ownership of log files (but no alarms right after a reboot)
 if [ -e /PRODUCTION ]; then
-   if [ $REBOOT -eq 1 ]; then
+   if (( REBOOT )); then
     (
      ALARM=0
      check_owner ~enstore/`$HOSTNAME`.startup
-     check_owner /`$HOSTNAME`.monitor_server.output	   root
+     check_owner $monRoot/`$HOSTNAME`.monitor_server.output	root
     )
    else
      check_owner ~enstore/`$HOSTNAME`.startup
-     check_owner /`$HOSTNAME`.monitor_server.output	   root
+     check_owner $monRoot/`$HOSTNAME`.monitor_server.output	root
    fi
 fi
 
-# check that we don't have too many processes running
-NPROC=`$LS -d /proc/[1-9]* | $WC -l`
+# get open files - twice - get ps in between - only take connections that survive past this
+# otherwise it is impossible to compare and see if they are allowed - this is a small hole
+# also need to go through a file - because argument to echo is too large!!!
+netscan_n1=`$DIRNAME $LOG`/netscan_n1
+netscan_n2=`$DIRNAME $LOG`/netscan_n2
+rm -f $netscan_n1
+rm -f $netscan_n2
+# sometimes we get no output from ps command
+#let try=3
+#while [ $((try-=1)) -ge 0 ]
+for (( try=3; try; try-=1 ))
+do
+  $LSOF -i TCP -i UDP > $netscan_n1
+  PSfirst=`$PS --no-headers afuwwwx | $CUT -c1-250`
+  $LSOF -i TCP -i UDP > $netscan_n2
+  if [ -n "${PSfirst:-}" ]; then
+    break
+  fi
+  $SLEEP 2
+done
+
+# start with a generic base of 100 processes
 let maxproc=100
-[ $SERVER -eq 1 ] && let maxproc+=100
-[ $DCACHE -eq 1 ] && let maxproc+=100
-
-if [ $NPROC -ge "$maxproc" ]; then
-   msg="$NPROC processes running. Way too many"
-   logit "$msg"
-   if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "$msg"
-   fi
-elif [ $QUIET -ne 1 ]; then
-   logit "$NPROC processes, ok"
-fi
-
-# count the number of pnfsd processes running on server nodes
-if [ $SERVER -eq 1 ]; then
-   case $node in
-     *ensrv1|cmspnfs1)
-       npnfsd=`$AWK -F = '/^pnfscopies=/ {print $NF}' /usr/etc/pnfsSetup`
-       if [ "${npnfsd:-0}" -eq 0 ]; then
-	  msg="pnfscopies is 0 or not defined in /usr/etc/pnfsSetup"
-	  logit "$msg"
-	  if [ $ALARM -eq 1 ]; then
-	     enstore alarm --raise --severity "W" --root-error "$msg"
-	  fi
-	  npnfsd="-1"
-       fi
-       ;;
-     *)
-       npnfsd=0
-       ;;
-   esac
-
-   NPROC=`$PS --no-headers -C pnfsd | $WC -l`
-   if [ $NPROC -ne 0 -a $NPROC -ne "$npnfsd" ]; then
-      msg="$NPROC pnfsd processes running. Should be $npnfsd"
-      logit "$msg"
-      if [ $ALARM -eq 1 ]; then
-	 enstore alarm --raise --severity "W" --root-error "$msg"
-      fi
-   elif [ $QUIET -ne 1 ]; then
-      logit "$NPROC pnfsd processes, ok"
-   fi
-fi
 
 today=`$DATE -I`
 
-[ $SERVER -eq 1 ] && case $node in
+(( SERVER )) && case $node in
 
   d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1)
     # check all pnfs database sizes on srv1 nodes
     #  - but don't make too much noise about it
-    if [ $QUIET -ne 1 -a -r /diska/pnfs/db/info/D-0000 ]; then
-       # establish directory for database sizes
-       dbfdir=/tmp/pnfs-db-sizes
-       [ -d $dbfdir ] || $MKDIR $dbfdir
-       # loop over all current enabled databases
-       for db in `$GREP enabled /diska/pnfs/db/info/D-* | $CUT -d: -f6`
-       do
-	 dbname=`$BASENAME $db`
-	 dbfile=$dbfdir/$dbname
-	 if [ -d /diska/pnfs/db/data/base ]; then
-	    set +u
-	    setup pnfs		# needed for psql
-	    set -u
-	    dbpgid=`psql -t -A -U enstore template1 -c "select OID from pg_database where datname='$dbname'"`
-	    dbszKB=`$DU -ks /diska/pnfs/db/data/base/$dbpgid | $AWK '{print $1}'`
-	 else
-	    dbsize=`$LS -l $db | $AWK '{print $5}'`
-	    dbszKB=$(( (dbsize+512)>>10 ))
-	 fi
-	 if [ -r $dbfile ]; then
-	    if [ $dbszKB -gt 1740800 ] && [ $dbszKB -gt $(<$dbfile) ]; then
-	       msg="DATABASE TOO BIG: $dbname - $(( (dbszKB+512)>>10 )) MB, exceeds 1700 MB and is growing"
-	       logit "$msg"
-	       if [ $ALARM -eq 1 ]; then
-		  enstore alarm --raise --severity "W" --root-error "$msg"
-	       fi
+    # also count the number of gdbm and postgres sql databases
+    let ngdbm=0
+    let npsql=0
+    if [ -r /diska/pnfs/db/info/D-0000 ]; then
+       # determine the psql database path
+       if [ -d /diska/pnfs/db/data/base ]; then
+	 psqldb=data/base
+       elif [ -d /diska/pnfs/db/psql-data/base ]; then
+	 psqldb=psql-data/base
+       else
+	 psqldb=
+       fi
+       if (( QUIET )); then
+	  # loop over all current enabled databases
+	  for db in `$GREP enabled /diska/pnfs/db/info/D-* | $CUT -d: -f6`
+	  do
+	    if [ -s $db ]; then
+	       let ngdbm+=1
 	    else
-	       logit "$dbname - $(( (dbszKB+512)>>10 )) MB, not too big or not growing, ok"
+	       let npsql+=1
 	    fi
-	 fi
-	 $ECHO $dbszKB > $dbfile
-       done
+	  done
+       else
+	  set +u
+	  setup pnfs	   # needed for psql
+	  set -u
+	  # establish directory for database sizes
+	  dbfdir=/tmp/pnfs-db-sizes
+	  [ -d $dbfdir ] || $MKDIR $dbfdir
+	  # loop over all current enabled databases
+	  for db in `$GREP enabled /diska/pnfs/db/info/D-* | $CUT -d: -f6`
+	  do
+	    dbname=`$BASENAME $db`
+	    dbfile=$dbfdir/$dbname
+	    if [ -s $db ]; then
+	       let ngdbm+=1
+	       dbsize=`$LS -l $db | $AWK '{print $5}'`
+	       dbszKB=$(( (dbsize+512)>>10 ))
+	       dbszMB=$(( (dbsize+524288)>>20 ))
+	    else
+	       let npsql+=1
+	       dbpgid=`psql -t -A -U enstore template1 -c "select OID from pg_database where datname='$dbname'"`
+	       dbszKB=`$DU -ks /diska/pnfs/db/$psqldb/$dbpgid | $AWK '{print $1}'`
+	       dbszMB=$(( (dbszKB+512)>>10 ))
+	    fi
+	    if [ -r $dbfile ]; then
+	       if (( dbszKB > 2097152 && dbszKB > $(<$dbfile) )); then
+		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 2048 MB and is growing"
+		  logit "$msg"
+		  if (( ALARM )); then
+		     enstore alarm --raise --severity "E" --root-error "$msg"
+		  fi
+	       elif (( dbszKB > 1740800 && $dbszKB > $(<$dbfile) )); then
+		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 1700 MB and is growing"
+		  logit "$msg"
+		  if (( ALARM )); then
+		     enstore alarm --raise --severity "W" --root-error "$msg"
+		  fi
+	       else
+		  logit "$dbname - $dbszMB MB, not too big or not growing, ok"
+	       fi
+	    fi
+	    $ECHO $dbszKB > $dbfile
+	  done
+	  (( npsql > 0 )) && logit "number of pnfs databases (psql): $npsql"
+	  (( ngdbm > 0 )) && logit "number of pnfs databases (gdbm): $ngdbm"
+       fi
     fi
-    # check for pnfs manager for dCache on production server
-    if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
+    # how many pnfs daemons?
+    npnfsd=`$AWK -F = '/^pnfscopies=/ {print $NF}' /usr/etc/pnfsSetup`
+    reproc="${npnfsd:-0}"
+    if (( reproc == 0 )); then
+       msg="pnfscopies is 0 or not defined in /usr/etc/pnfsSetup"
+       logit "$msg"
+       if (( ALARM )); then
+	  enstore alarm --raise --severity "W" --root-error "$msg"
+       fi
+       npnfsd="-1"
+    fi
+    # in Fermi Linux LTS and Scientific Linux, all java threads count as one process
+    if $EGREP 'Fermi Linux LTS|Scientific Linux' /etc/redhat-release >/dev/null; then
+       let reproc+=1
+    else
+       let reproc+=50		# order of magnitude estimate
+    fi
+    # there are many replicated processes on pnfs servers:
+    #	    pnfsd		pnfscopies in /usr/etc/pnfsSetup
+    #	    dbserver		1 per gdbm or psql database
+    #	    postgres		1 per psql database, plus 2
+    #	    postgres		6 per psql database addt'l with slon
+    #	    java pnfs.batch	many for FL 7.3.x, 1 for LTS or SL 3+
+    #	    slon pnfs_replica	1 per psql database
+    let reproc+=$((ngdbm+2+2*npsql))
+    # if present, slon adds 7 processes per psql database
+    if [ -x /etc/rc.d/init.d/slon-boot ]; then
+       let reproc+=$((7*npsql))
+    fi
+    if (( ! QUIET )); then
+       logit "allowing $reproc replicated processes for pnfs server"
+    fi
+    let maxproc+=reproc
+    # skip pnfs manager check for non-production nodes, and immediately after a reboot
+    if (( ! REBOOT )) && [ -e /PRODUCTION ]; then
        if [ `$PS --no-headers -C pnfs | $WC -l` -ne 1 ]; then
-	  msg="ERROR: pnfs manager process not found"
+	  msg="ERROR: problem with pnfs manager process"
 	  logit "$msg"
-	  if [ $ALARM -eq 1 ]; then
+	  if (( ALARM )); then
 	     enstore alarm --raise --severity "W" --root-error "$msg"
 	  fi
-       elif [ $QUIET -ne 1 ]; then
+       elif (( ! QUIET )); then
 	  logit "pnfs manager process found, ok"
        fi
     fi
@@ -1059,32 +1169,52 @@ today=`$DATE -I`
     logname=`$BASENAME $logpath`
     logfdir=/tmp/logfile-sizes
     logfile=$logfdir/$logname
-    if [ $logsize -gt 1073741824 ]; then
-       msg="LOG FILE TOO BIG: $logname - $(( (logsize+524288)>>20 )) MB, exceeds 1 GB"
-       logit "$msg"
-       if [ $ALARM -eq 1 ]; then
-	  enstore alarm --raise --severity "W" --root-error "$msg"
-       fi
-    elif [ $logsize -gt 536870912 ]; then
+    if (( logsize > 536870912 )); then
        # establish directory for logfile sizes
        [ -d $logfdir ] || $MKDIR $logfdir
-       let logszKB=$(( (logsize+512)>>10 ))
+       logszKB=$(( (logsize+512)>>10 ))
        if [ -r $logfile ]; then
 	  let dt=logtime-`$DATE -r $logfile +%s`	# seconds
 	  let ds=logszKB-$(<$logfile)			# KBytes
-	  if [ $(( (`$DATE -d 2359 +%s`-logtime)*ds )) -gt $(( (1048576-logszKB)*dt )) ]; then
-	     msg="LOG FILE GROWING TOO FAST: $logname may exceed 1 GB by midnight"
-	     logit "$msg"
-	     if [ $ALARM -eq 1 ]; then
-		enstore alarm --raise --severity "W" --root-error "$msg"
+	  current=0
+	  if (( logsize > 1073741824 )); then
+	     if [ -r /tmp/logfile-too-big ]; then
+		current=$(</tmp/logfile-too-big)
 	     fi
-	  elif [ $QUIET -ne 1 ]; then
-	     logit "$logname - $(( (logsize+524288)>>20 )) MB, not growing too fast, ok"
+	     $ECHO $((++current)) > /tmp/logfile-too-big
+	     msg="LOG FILE TOO BIG: $logname - $(( (logsize+524288)>>20 )) MB, exceeds 1 GB"
+	     logit "$msg"
+	     if (( ALARM )); then
+		complain=1
+		# back off the frequency with which we complain (Fibonacci wise)
+		fminus1=$complain
+		until (( complain >= current )); do
+		  fminus2=$fminus1
+		  fminus1=$complain
+		  complain=$((fminus2 + fminus1))
+		done
+		if (( complain == current )); then
+		   enstore alarm --raise --severity "W" --root-error "$msg"
+		fi
+	     fi
+	  else
+	     let dt=logtime-`$DATE -r $logfile +%s`	# seconds
+	     let ds=logszKB-$(<$logfile)		# KBytes
+	     if (( (`$DATE -d 2359 +%s`-logtime)*ds > (1048576-logszKB)*dt )); then
+		msg="LOG FILE GROWING FAST: $logname may exceed 1 GB by midnight"
+		logit "$msg"
+		if (( ALARM )); then
+		   enstore alarm --raise --severity "W" --root-error "$msg"
+		fi
+	     elif (( ! QUIET )); then
+		logit "$logname - $(( (logsize+524288)>>20 )) MB, not growing fast, ok"
+	     fi
 	  fi
        else
 	  $ECHO $logszKB > $logfile
+	  $RM -f /tmp/logfile-too-big
        fi
-    elif [ $QUIET -ne 1 ]; then
+    elif (( ! QUIET )); then
        logit "$logname - $logsize not too big, ok"
     fi
     ;;
@@ -1098,24 +1228,74 @@ today=`$DATE -I`
     fi
     dateFmt="(10#%S+60*(10#%M+60*(10#%H+24*10#%j)))"
     let delta=`$DATE +"$dateFmt"`-`su -c "/usr/bin/rsh -l acsss $SUN \"$DATE +$dateFmt\"" enstore`
-    if [ $delta -lt 0 ]; then
+    if (( delta < 0 )); then
        let delta=-delta
        off=fast
     else
        off=slow
     fi
-    if [ $delta -gt 59 ]; then
+    if (( delta > 59 )); then
        msg="Clock on $SUN is $off by $((delta/60)) minutes, $((delta%60)) seconds"
        logit "$msg"
-       if [ $ALARM -eq 1 ]; then
+       if (( ALARM )); then
 	  enstore alarm --raise --severity "I" --root-error "$msg"
        fi
-    elif [ $QUIET -ne 1 ]; then
+    elif (( ! QUIET )); then
        logit "Clock on $SUN is $off by $delta seconds, ok"
     fi
+    # check lock status of library managers
+    $ECHO "$PSfirst" | $GREP library_manager | $AWK '{print $NF}' | while read libman
+    do
+      lm_lock_config=`enstore config --show $libman |
+	$AWK -F: '/\<lock\>/ {match($2, ".*(locked|ignore|pause|noread|nowrite).*", a); print a[1]}'`
+      [ -z "$lm_lock_config" ] && continue
+      lm_lock_status=`enstore lib --status  $libman |
+	$AWK -F: '/LM state/ {match($2, ".*(unlocked|ignore|pause|noread|nowrite|broken).*", a); print a[1]}'`
+      [ -z "$lm_lock_status" ] && continue
+      if [ "$lm_lock_status" != "$lm_lock_config" ] &&
+	 [ "$lm_lock_status" != ignore -o "$lm_lock_config" = locked ] &&
+	 [ "$lm_lock_status" != pause  -o \( "$lm_lock_config" != noread -a "$lm_lock_config" != nowrite \) ]
+      then
+	 msg="LM $libman, status ($lm_lock_status) inconsistent with config ($lm_lock_config)"
+	 logit "$msg"
+	 if (( ALARM )); then
+	    enstore alarm --raise --severity "W" --root-error "$msg"
+	 fi
+      elif (( ! QUIET )); then
+	 logit "LM $libman, status ($lm_lock_status) consistent with config ($lm_lock_config), ok"
+      fi
+    done
     ;;
 
 esac
+
+# check that we don't have too many processes running
+NPROC=`$LS -d /proc/[1-9]* | $WC -l`
+(( SERVER )) && let maxproc+=100
+(( DCACHE )) && let maxproc+=100
+if (( NPROC > maxproc )); then
+   msg="$NPROC processes running. Way too many"
+   logit "$msg"
+   if (( ALARM )); then
+      enstore alarm --raise --severity "A" --root-error "$msg"
+   fi
+elif (( ! QUIET )); then
+   logit "$NPROC total processes, ok"
+fi
+
+# count the number of pnfsd processes running on server nodes
+if (( SERVER )); then
+   NPROC=`$PS --no-headers -C pnfsd | $WC -l`
+   if (( NPROC > 0 && NPROC != npnfsd )); then
+      msg="$NPROC pnfsd processes running. Should be $npnfsd"
+      logit "$msg"
+      if (( ALARM )); then
+	 enstore alarm --raise --severity "W" --root-error "$msg"
+      fi
+   elif (( ! QUIET )); then
+      logit "$NPROC pnfsd processes, ok"
+   fi
+fi
 
 # check that db_deadlock and db_checkpoint are running if file or vol clerk running:
 #if $PS axuwww|$GREP python|$GREP -v 'grep'|$EGREP '(file|volume)_clerk.py' >/dev/null; then
@@ -1124,29 +1304,29 @@ esac
 #     if [ `$PS axuwww|$GREP -v 'grep'|$GREP -c $need` -ne 1 ]; then
 #	msg="$need not running (or more than 1 running) and file/volume clerk are running."
 #	logit "$msg"
-#	if [ $ALARM -eq 1 ]; then
+#	if (( ALARM )); then
 #	   enstore alarm --raise --severity "A" --root-error "$msg"
 #	fi
-#     elif [ $QUIET -ne 1 ]; then
+#     elif (( ! QUIET )); then
 #	logit "$need running, ok"
 #     fi
 #   done
-#elif [ $QUIET -ne 1 ]; then
+#elif (( ! QUIET )); then
 #  logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
 #fi
 
 # check for web servers
 case $node in
-# web servers should be running on these nodes
+  # web servers should be running on these nodes (but no alarms right after a reboot)
   rip7|d0ensrv2|stkensrv2|cdfensrv2|stkendca3a)
-    if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
+    if (( ! REBOOT )) && [ -e /PRODUCTION ]; then
        if [ `$PS --no-headers -C httpd | $WC -l` -eq 0 ]; then
 	  msg="httpd web server not running"
 	  logit "$msg"
-	  if [ $ALARM -eq 1 ]; then
+	  if (( ALARM )); then
 	     enstore alarm --raise --severity "A" --root-error "$msg"
 	  fi
-       elif [ $QUIET -ne 1 ]; then
+       elif (( ! QUIET )); then
 	  logit "httpd web server running, ok"
        fi
     fi
@@ -1155,27 +1335,25 @@ case $node in
        right_file $i /local/ups/prd/httpd/cgi-bin/enstore 0755
     done
     ;;
-# web servers may be running on these nodes, but don't need to be
+  # web servers may be running on these nodes, but don't need to be
   stkendca[678]|cachen[12]a|d0enout[12]a)
     ;;
-# web servers should not be running on any other nodes
+  # web servers should not be running on any other nodes
   *)
     if [ `$PS --no-headers -C httpd | $WC -l` -ne 0 ]; then
        msg="httpd web server running on illegal node"
        logit "$msg"
-       if [ $ALARM -eq 1 ]; then
+       if (( ALARM )); then
 	  enstore alarm --raise --severity "A" --root-error "$msg"
        fi
-    elif [ $QUIET -ne 1 ]; then
+    elif (( ! QUIET )); then
        logit "httpd web server not running, ok"
     fi
     ;;
 esac
 
-
 # check that the keytabs are "correct"
-$KEYTAB_CHECK `[ $ALARM -eq 1 ] && $ECHO '-a'`  `[ $QUIET -eq 1 ] && $ECHO '-q'`
-
+$KEYTAB_CHECK `(( ALARM )) && $ECHO '-a'`  `(( QUIET )) && $ECHO '-q'`
 
 # look for "lost" files - non-empty lost+found directories - in mounted local file systems
 for dsk in `$AWK '$3 ~ /ext[23]/ {print $2}' /proc/mounts`
@@ -1187,16 +1365,16 @@ do
 	siz=`$DU -ks $dsk/lost+found | $AWK '{print $1}'`
 	msg="Files in $dsk/lost+found: $siz KB"
 	logit "$msg"
-	if [ $ALARM -eq 1 ]; then
+	if (( ALARM )); then
 	   enstore alarm --raise --severity "I" --root-error "$msg"
 	fi
-     elif [ $QUIET -ne 1 ]; then
+     elif (( ! QUIET )); then
 	logit "$dsk/lost+found empty, ok"
      fi
-  elif [ $QUIET -ne 1 ]; then
+  elif (( ! QUIET )); then
      msg="No lost+found for $dsk"
      logit "$msg"
-     if [ $ALARM -eq 1 ]; then
+     if (( ALARM )); then
 	enstore alarm --raise --severity "I" --root-error "$msg"
      fi
   fi
@@ -1213,46 +1391,23 @@ do
 	siz=`$DU -ks $dsk | $AWK '{print $1}'`
 	msg="Files hidden behind $dsk: $siz KB"
 	logit "$msg"
-	if [ $ALARM -eq 1 ]; then
+	if (( ALARM )); then
 	   enstore alarm --raise --severity "I" --root-error "$msg"
 	fi
-     elif [ $QUIET -ne 1 ]; then
+     elif (( ! QUIET )); then
 	logit "$dsk empty, ok"
      fi
-  elif [ $QUIET -ne 1 ]; then
+  elif (( ! QUIET )); then
      msg="No mount point for $dsk"
      logit "$msg"
-     if [ $ALARM -eq 1 ]; then
+     if (( ALARM )); then
 	enstore alarm --raise --severity "I" --root-error "$msg"
      fi
   fi
 done
 
-
-# get open files - twice - get ps in between - only take connections that survive past this
-# otherwise it is impossible to compare and see if they are allowed - this is a small hole
-# also need to go through a file - because argument to echo is too large!!!
-netscan_n1=`$DIRNAME $LOG`/netscan_n1
-netscan_n2=`$DIRNAME $LOG`/netscan_n2
-rm -f $netscan_n1
-rm -f $netscan_n2
-# sometimes we get no output from ps command
-let try=3
-while [ $((try-=1)) -ge 0 ]
-#for (( try=3; try--; ))
-do
-  $LSOF -i TCP -i UDP > $netscan_n1
-  PSfirst=`$PS --no-headers afuwwwx | $CUT -c1-250`
-  $LSOF -i TCP -i UDP > $netscan_n2
-  if [ -n "${PSfirst:-}" ]; then
-    break
-  fi
-  $SLEEP 2
-done
-
-
 # skip IPMI checks for non-production nodes, and immediately after reboot
-if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
+if (( ! REBOOT )) && [ -e /PRODUCTION ]; then
 
    if [ ${IPMISRV:-0} -eq 1 ]; then
       # we need ipmi device to make ipmisrv work
@@ -1264,11 +1419,11 @@ if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
 	 if [ `$ECHO "$PSfirst" | $GREP -c "ipmisrv NO_DOG"` -ne 1 ]; then
 	    msg="ipmisrv NO_DOG is not running or misconfigured"
 	    logit "$msg"
-	    if [ $ALARM -eq 1 ]; then
+	    if (( ALARM )); then
 	       enstore alarm --raise --severity "A" --root-error "$msg"
 	    fi
 	    NOIPMI=1
-	 elif [ $QUIET -ne 1 ]; then
+	 elif (( ! QUIET )); then
 	    logit "ipmisrv NO_DOG running, ok"
 	 fi
       else
@@ -1279,11 +1434,11 @@ if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
       if $ECHO "$PSfirst" | $GREP "ipmisrv" >/dev/null; then
 	 msg="ipmisrv is running, but should not be running"
 	 logit "$msg"
-	 if [ $ALARM -eq 1 ]; then
+	 if (( ALARM )); then
 	    enstore alarm --raise --severity "A" --root-error "$msg"
 	 fi
 	 NOIPMI=1
-      elif [ $QUIET -ne 1 ]; then
+      elif (( ! QUIET )); then
 	 logit "ipmisrv is not running, ok"
       fi
    fi
@@ -1291,9 +1446,9 @@ if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
    if [ ${NOIPMI:-0} -ne 1 ]; then
       # check that watchdog timer action is to do nothing
       # try a few times until we read something
-      let try=3
-      while [ $((try-=1)) -ge 0 ]
-      #for (( try=3; try--; ))
+      #let try=3
+      #while [ $((try-=1)) -ge 0 ]
+      for (( try=3; try; try-=1 ))
       do
 	ACTION=`$IPMI_DIR/dogread | $AWK '/^Actions:/ {print $2}'`
 	if [ -n "${ACTION:-}" ]; then
@@ -1307,46 +1462,45 @@ if [ -e /PRODUCTION -a $REBOOT -ne 1 ]; then
 	    current=$(</tmp/watchdog-action-null)
 	 fi
 	 $ECHO $((++current)) > /tmp/watchdog-action-null
-	 msg="watchdog action read failed $current times"
+	 msg="watchdog action read failed $current times consecutively"
 	 logit "$msg"
-	 complain=3
-	 # back off the frequency with which we complain (Fibonacci wise)
-	 fminus1=$complain
-	 until [ $complain -ge $current ]; do
-	   fminus2=$fminus1
-	   fminus1=$complain
-	   complain=$((fminus2 + fminus1))
-	 done
-	 if [ $complain -eq $current ]; then
-	    if [ $ALARM -eq 1 ]; then
+	 if (( ALARM )); then
+	    complain=3
+	    # back off the frequency with which we complain (Fibonacci wise)
+	    fminus1=$complain
+	    until (( complain >= current )); do
+	      fminus2=$fminus1
+	      fminus1=$complain
+	      complain=$((fminus2 + fminus1))
+	    done
+	    if (( complain == current )); then
 	       enstore alarm --raise --severity "A" --root-error "$msg"
 	    fi
 	 fi
       elif [ "$ACTION" != "00" ]; then
 	 msg="watchdog action is ${ACTION:-NULL} - should be 00"
 	 logit "$msg"
-	 if [ $ALARM -eq 1 ]; then
+	 if (( ALARM )); then
 	    enstore alarm --raise --severity "A" --root-error "$msg"
 	 fi
 	 # disable the action
 	 $IPMI_DIR/dogdisarm
-      elif [ $QUIET -ne 1 ]; then
+      elif (( ! QUIET )); then
 	 logit "watchdog action is $ACTION, ok"
       fi
-      [ $current -eq 0 ] && $RM -f /tmp/watchdog-action-null
+      (( current == 0 )) && $RM -f /tmp/watchdog-action-null
    fi
 
 fi
 
-
 # scan open files and check if allowed
 $SORT $netscan_n1 $netscan_n2 | $UNIQ -d | while read command pid rest
 do
-    [ $pid = PID ] && continue
+    [ $pid = "PID" ] && continue
     if $ECHO $rest | $GREP LISTEN >/dev/null; then
        allow LISTEN
     elif $ECHO $rest | $EGREP 'UDP|TCP' >/dev/null; then
-       if [ $QUIET -ne 1 ]; then
+       if (( ! QUIET )); then
 	  logit "Ignoring open connection $command $pid $rest ..."
        fi
     fi
@@ -1360,27 +1514,26 @@ done
 # reduce load on base nodes by doing this less frequently.
 
 # check that farmlets match
-if [ $((uptime % 11)) -eq 0 ] && [ $gang != "rip" ]; then
-   if [ $ALARM -eq 1 ]; then
+if (( ! (uptime % 11) )) && [ $gang != "rip" ]; then
+   if (( ALARM )); then
      msg="`$FARMLETS -a 2>&1`"
    else
      msg="`$FARMLETS 2>&1`"
    fi
-   if [ $? -ne 0 ]; then
+   if (( $? )); then
       logit "$msg"
-   elif [ $QUIET -ne 1 ]; then
+   elif (( ! QUIET )); then
       logit "$msg"
    fi
 fi
 
-
 # if we're not in /etc/cron.d, create us there
-if [ ! -r /etc/cron.d/netscan ]; then
+if [ -e /PRODUCTION -a ! -r /etc/cron.d/netscan ]; then
    $ECHO "7,22,37,52 * * * * root /home/enstore/enstore/sbin/netscan -a -c -q >/dev/null 2>/dev/null" > /etc/cron.d/netscan
 fi
 
 # if we're still in the root crontab, remove us
-if [ -r /var/spool/cron/root ]; then
+if [ -e /PRODUCTION -a -r /var/spool/cron/root ]; then
    if $GREP -v '^#' /var/spool/cron/root | $GREP "netscan -a -q" >/dev/null; then
       $CRONTAB -l | $TAIL -$((`$CRONTAB -l | $WC -l`-3)) | $SED '/netscan -a -q/ s/^/#/' > /tmp/crontab.root
       $CRONTAB /tmp/crontab.root
