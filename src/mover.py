@@ -44,6 +44,7 @@ import socket_ext
 import hostaddr
 import string_driver
 import disk_driver
+import accounting_client
 
 import Trace
 
@@ -630,6 +631,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # third -  reset timer
         # fourth - error source
         self.need_lm_update = (0, None, 0, None)
+        self.asc = None
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -893,6 +895,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.media_transfer_time = 0.
         self.mcc = media_changer_client.MediaChangerClient(self.csc,
                                                            self.config['media_changer'])
+        self.asc = accounting_client.accClient(self.csc)
         mc_keys = self.csc.get(self.mcc.media_changer)
         # STK robot can eject tape by either sending command directly to drive or
         # by pushing a corresponding button
@@ -986,7 +989,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                         self.dismount_time = time.time() + self.default_dismount_delay
                         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-
                     else:
                         # failed to read label eject tape
                         Trace.alarm(e_errors.ERROR, "failed to read volume label on startup")
@@ -3060,15 +3062,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 return
         self.tape_driver.close()
-        Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
-        Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.last_volume = self.current_volume
         self.last_location = self.current_location
 
         if (self.vol_info.has_key('external_label')
             and self.vol_info['external_label']
             and self.vol_info['external_label'] != self.current_volume):
-            # mover has arequest for a different volume (adminpi request)
+            # mover has request for a different volume (adminpi request)
             vol_info = self.vcc.inquire_vol(self.current_volume)
         else: vol_info = None
         if not self.vol_info.get('external_label'):
@@ -3093,10 +3093,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vol_info['media_type'] = self.media_type #kludge
 
         if not vol_info: vol_info = self.vol_info
+        Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
+        Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
+        self.asc.log_start_dismount(self.current_volume,self.config['product_id'])
         mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
 
         status = mcc_reply.get('status')
         if status and status[0]==e_errors.OK:
+            self.asc.log_finish_mount(self.current_volume)
             tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "dismounted %s %s %s"%(self.current_volume,self.config['product_id'], time_msg))
@@ -3122,6 +3126,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
 ##            self.error(status[-1], status[0])
             
+            self.asc.log_finish_mount_err(self.current_volume)
             broken = "dismount failed: %s %s" %(status[-1], status[0])
             if self.current_volume:
                 try:
@@ -3201,9 +3206,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("loading %s %s" % (self.shortname, volume_label))
         tm = time.localtime(time.time()) # get the local time
         time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
-        Trace.log(e_errors.INFO, "mounting %s %s %s"%(volume_label, self.config['product_id'], time_msg),
+        Trace.log(e_errors.INFO, "mounting %s %s %s"%(volume_label, self.config['product_id'],time_msg),
                   msg_type=Trace.MSG_MC_LOAD_REQ)
 
+        self.asc.log_start_mount(self.current_volume,self.config['product_id'])
+                                 
         self.current_location = 0L
         mcc_reply = self.mcc.loadvol(self.vol_info, self.name, self.mc_device)
         self.timer('mount_time')
@@ -3216,6 +3223,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
+            self.asc.log_finish_mount(self.current_volume)
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             self.init_stat(self.device, self.logname)
             tm = time.localtime(time.time()) # get the local time
@@ -3231,6 +3239,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 after_function()
         else: #Mount failure, do not attempt to recover
             self.last_error = status
+            self.asc.log_finish_mount_err(volume_label)
             Trace.log(e_errors.ERROR, "mount %s: %s" % (volume_label, status))
 ##            "I know I'm swinging way to far to the right" - Jon
 ##            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
