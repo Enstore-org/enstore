@@ -792,7 +792,7 @@ static char SunOSfind_devices[] =
     esac \n";
 
 static char SunOSfind_dev[] =
-   "#s\n\
+   "#d\n\
     IFS=\" \t\n\";\
     PATH=\"/bin:/usr/bin:/sbin:/usr/sbin\";\
     drive=%d\n\
