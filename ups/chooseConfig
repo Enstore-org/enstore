@@ -33,8 +33,10 @@ case $node in
             ;;
   rip*)
 	    ENSTORE_MAIL=enstore@fnal.gov
-	    ENSTORE_CONFIG_HOST=$rip
-	    ENSTORE_CONFIG_FILE=rip.conf
+	    ENSTORE_CONFIG_HOST=ripsgi
+	    ENSTORE_CONFIG_FILE=berman.conf
+#	    ENSTORE_CONFIG_HOST=$rip
+#	    ENSTORE_CONFIG_FILE=rip.conf
             complain=0
             ;;
   d0en*)    ENSTORE_CONFIG_HOST=$d0en
