@@ -158,10 +158,11 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log server"
 fi
 
-#   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
-
-exit
-
-#if [ "${opt_just-}" = "" ];then
+if [ "${opt_just-}" = "" ];then
     turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
 fi
+
+#   turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
+exit
+
+
