@@ -4,4 +4,4 @@
 #                 with its full path in order for it to work.
 #           See checker.py setupNamespace definition
 #
-python $ENSTORE_DIR/tools/pychecker/checker.py  -s -i -l -t -v -n -L 100000 -B 100000 -R 100000 $@
+python $ENSTORE_DIR/tools/pychecker/checker.py -q -i -k -b -l -t -L 100000 -B 100000 -R 100000 -J 15 -K 60 $@
