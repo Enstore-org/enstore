@@ -518,23 +518,26 @@ def get_user_sockets( self, ticket ):
 
 # create ticket that says we are idle
 def idle_mover_next( self ):
-    return {"work":"idle_mover","mover":self.config['name']}
+    return {'work'   :"idle_mover",
+	    'mover'  :self.config['name'],
+	    'address': (self.config['hostip'],self.config['port'])}
 
 # create ticket that says we have bound volume x
 def have_bound_volume_next( self ):
     next_req_to_lm =  { 'work'   : "have_bound_volume",
-			'state'  : "idle",
 			'mover'  : self.config['name'],
-			'address': self.config['hostip'],
+			'address': (self.config['hostip'],self.config['port']),
+			'state'  : "idle",
 			'vc'     : self.vol_info }
     return next_req_to_lm
 
 # create ticket that says we need to unbind volume x
 def unilateral_unbind_next( self, error_info ):
     next_req_to_lm = {'work'           : "unilateral_unbind",
-		      'status'         : error_info,
+		      'mover'          : self.config['name'],
+		      'address'        : (self.config['hostip'],self.config['port']),
 		      'external_label' : self.vol_info['external_label'],
-		      'mover'          : self.config['name'] }
+		      'error'         : error_info}
     return next_req_to_lm
 
 def summon_self( self, origin_addr ):
