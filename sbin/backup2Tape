@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # bin/$RCSfile$  $Revision$
 
-# script to backup databases to a standalone tape drive 
+# script to backup databases to a standalone tape drive
 
 # tapes have to be initialized with the commands:
 #  TAPE=/dev/rmt/tps0d4n;         export TAPE
@@ -15,7 +15,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # you can store the LABEL name in $VAULT/CURRENT_TAPE and this script
 #   will use that if you don't specify one on the command line
 
-LABEL=${1:-NOLABL}
+LABEL=${1:-NOLABL}; export LABEL
 
 # function to return date so it can be used in filename
 date_string() { date +"%Y-%m-%d.%H.%M" }
@@ -24,16 +24,15 @@ date_string() { date +"%Y-%m-%d.%H.%M" }
 doit() { echo "$1"
          eval "nice -n 20 $1"
          status=$?
-	 echo "Status= $status"
-	 if [ $status -ne 0 ]; then exit $status; fi
-         echo "" 
+         echo "Status= $status"
+         if [ $status -ne 0 ]; then exit $status; fi
+         echo ""
        }
 
 if [ `uname -n | grep -c d0ensrv3` -ne 0 ]; then
   TAPE=/dev/rmt/tps0d4n;         export TAPE
   TAPE_DB=/diska/BackupTapeDB;   export TAPE_DB
   VAULT=/diska/BackupToTape
-  STATS=$VAULT/tape_stats
   PNFS=/diska/pnfs-backup
   ENSTORE=/diska/enstore-backup
   ENSTORELOG=/diska/enstore-log-backup
@@ -55,68 +54,118 @@ fi
 ERRORS_TO="bakken@fnal.gov petravick@fnal.gov enstore-admin@fnal.gov"
 
 TAPE_DEVICE=$TAPE;             export TAPE_DEVICE
-STRIP=$VAULT
-FULL_BACKUP_DAYS="Mon Thu"
-FULL_BACKUP_FLAG=$VAULT/full_backup_needed
-FULL_BACKUP_LAST=$VAULT/full_backup_date
+STATS=$VAULT/tape_stats
+today=`date +"%b %d"`
+now=`date +"%s"`
 
-doit "rm -f $VAULT/*.tar $VAULT/*.tgz $VAULT/*.tbz2" # junk accumulates and takes up valuable space!
+#FULL_BACKUP_DAYS="Mon Thu"
+FULL_BACKUP_DAYS="Tue"
+
+START_BACKUP_DATE=$VAULT/start_backup_date
+rm -f $START_BACKUP_DATE
+touch $START_BACKUP_DATE  #make this now, mv'ing it later will NOT change the access time
+
+LAST_BACKUP_DATE=$VAULT/last_backup_date
+last="`date -r $LAST_BACKUP_DATE`"
+echo "Last backup on $last"
+
+rm -f $VAULT/*.tar $VAULT/*.tgz $VAULT/*.tbz2 # junk accumulates and takes up valuable space!
 
 ############################################################################
 # decided if we need to do a full backup or incremetal since last full backup
 
+FULL_BACKUP_FLAG=$VAULT/full_backup_needed
+FULL_BACKUP_LAST=$VAULT/full_backup_date
+
 if [ `echo $FULL_BACKUP_DAYS | grep -c "\`date +'%a'\`"` -ne 0 -a -r $FULL_BACKUP_FLAG ]; then
    echo "FULL BACKUP being performed"
    tar_options=""
-   touch $FULL_BACKUP_LAST
+   #find_options=""
+   find_options="-newer \"$LAST_BACKUP_DATE\""    #full backup doesn't make sense most of the time
+   TOUCHME=$FULL_BACKUP_LAST
    kind=FULL
 else
    reference="`date -r $FULL_BACKUP_LAST`"
-   echo "INCREMENTAL BACKUP since $reference"
-   tar_options="--newer=\"$reference\""
-   touch $FULL_BACKUP_FLAG # indicate that another full backup is needed when the right day rolls around
+   #echo "INCREMENTAL BACKUP since $reference"
+   echo "INCREMENTAL BACKUP since $last"
+   #tar_options="--newer=\"$reference\""
+   tar_options="--newer=\"$LAST_BACKUP_DATE\""
+   find_options="-newer \"$LAST_BACKUP_DATE\""
+   TOUCHME=$FULL_BACKUP_FLAG # indicate that another full backup is needed when the right day rolls around
    kind=INCREMENTAL
 fi
 
-############################################################################
-# create the tar files that we will be copying to tape
 
-PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tbz2
-doit "tar $tar_options -cv $PNFS | bzip2 -9 > $PNFS_TAR"
-doit "ls -l $PNFS_TAR"
+#### PNFS Database Backup ##################################################
+# bzip2/copy the files that have not been copied to tape
+#PNFS_TAR=$VAULT/pnfs.`date_string`.$kind.tbz2
+#doit "tar $tar_options -cv $PNFS | bzip2 > $PNFS_TAR"
+#ls -l $PNFS_TAR
 
-ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tbz2
-doit "tar $tar_options -cv $ENSTORE | bzip2 -9 > $ENSTORE_TAR"
-doit "ls -l $ENSTORE_TAR"
-
-ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tbz2
-doit "tar $tar_options -cv $ENSTORELOG | bzip2 -9 > $ENSTORELOG_TAR"
-doit "ls -l $ENSTORELOG_TAR"
-
-AML2_TAR=$VAULT/aml2.`date_string`.$kind.tbz2
-doit "tar $tar_options -cv $AML2 | bzip2 -9 > $AML2_TAR"
-doit "ls -l $AML2_TAR"
-
-
-############################################################################
-# copy the files to tape using an enstore compatible format
-
-doit "$ENSTORE_DIR/volume_import/enstore_tape \
-              --write --volume-label=$LABEL \
-              --pnfs-dir=/pnfs/backups --strip-path=$STRIP \
-              $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
-
-doit "rm -f $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
-
-
-############################################################################
-# clean up to keep junk from accumulating
-doit "rm -f $VAULT/*.tar $VAULT/*.tgz $VAULT/*.tbz2" # junk accumulates and takes up valuable space!
+PNFS_FILES=$VAULT/pnfs.files
+rm -f $PNFS_FILES
+find $PNFS -type f $find_options -print > $PNFS_FILES
+cat $PNFS_FILES| while read file; do
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $file"
+done
+rm -f $PNFS_FILES
 find $PNFS -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
+
+
+#### Enstore Database Backup ###############################################
+# bzip2/copy the files that have not been copied to tape
+#ENSTORE_TAR=$VAULT/enstore.`date_string`.$kind.tbz2
+#doit "tar $tar_options -cv $ENSTORE | bzip2 > $ENSTORE_TAR"
+#ls -l $ENSTORE_TAR
+
+ENSTORE_FILES=$VAULT/enstore.files
+rm -f $ENSTORE_FILES
+find $ENSTORE -type f $find_options -print > $ENSTORE_FILES
+cat $ENSTORE_FILES| while read file; do
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups  $file"
+done
+rm -f $ENSTORE_FILES
 find $ENSTORE -daystart -mtime +$TIMEONDISK -exec rm -fr {} \;
 
+
+#### Enstore Log Backup ####################################################
+# bzip2/copy the files that have not been copied, excluding today's, to tape
+
+#ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tbz2
+#ENSTORELOG_TAR=$VAULT/enstorelog.`date_string`.$kind.tbz2
+#doit "tar $tar_options -cv $ENSTORELOG | bzip2 > $ENSTORELOG_TAR"
+#ls -l $ENSTORELOG_TAR
+ENSTORELOG_FILES=$VAULT/enstorelog.files
+rm -f $ENSTORELOG_FILES
+find $ENSTORELOG -type f $find_options  -exec ls -l {} \; | grep -v "$today" | awk '{print $NF}' > $ENSTORELOG_FILES
+cat $ENSTORELOG_FILES| while read file; do
+  output=$VAULT/`basename $file`.$now.tbz2
+  doit "bzip2 < $file > $output"
+  doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $output"
+  rm -f $output
+done
+rm -f $ENSTORELOG_FILES
+
+
+#### AML/2 Shadow Backup ###################################################
+# full and incrementally in bzip2'd tar files
+AML2_TAR=$VAULT/aml2.`date_string`.$kind.tbz2
+doit "tar $tar_options -cv $AML2 | bzip2 > $AML2_TAR"
+ls -l $AML2_TAR
+doit "$ENSTORE_DIR/volume_import/enstore_tape --write --volume-label=$LABEL --pnfs-dir=/pnfs/backups $AML2_TAR"
+rm -f $AML2_TAR
+
+
+############################################################################
+
+rm -f $VAULT/*.tar $VAULT/*.tgz $VAULT/*.tbz2 # junk accumulates and takes up valuable space!
+
+#next time, get only new files since we started the backup.
+mv $START_BACKUP_DATE $LAST_BACKUP_DATE
+
+touch $TOUCHME            # indicate that the backup was successful
 if [ $kind = "FULL" ]; then
-  doit "rm -f $FULL_BACKUP_FLAG" # indicate we've done the full backup on selected day (not twice per day) 
+  rm -f $FULL_BACKUP_FLAG # indicate we've done the full backup on selected day (not twice per day)
 fi
 
 ############################################################################
@@ -124,7 +173,7 @@ fi
 
 stats="`doit "$ENSTORE_DIR/sbin/ftt_stats $TAPE"`"
 
-min_remaining_KB_before_warn=`expr 1024 \* 1024 / 4 ` 
+min_remaining_KB_before_warn=`expr 1024 \* 1024 / 4 `
 remaining_KB=`echo  "$stats" | grep FTT_REMAIN_TAPE  | cut -f3 -d' '`
 if [ $remaining_KB -le $min_remaining_KB_before_warn ]; then
    echo Running out of room on Backup tape $LABEL on `uname -n` tape drive $TAPE; echo ""
@@ -144,11 +193,11 @@ Insert a new tape into the drive and initialize it:
   setup enstore
   $ENSTORE_DIR/volume_import/enstore_tape --init --erase --volume_label=<NEW_LABEL>
 
-Edit $VAULT/CURRENT_TAPE 
+Edit $VAULT/CURRENT_TAPE
  and enter the label of the replacement tape
 
 Thanks,
-Enstore Backup 
+Enstore Backup
 
 $stats
 
@@ -156,7 +205,7 @@ EOF
 fi
 
 rm -f $STATS
-echo "" 
+echo ""
 echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n`
 echo `expr $remaining_KB / 1024` MB left on $LABEL in $TAPE on `uname -n` >> $STATS
 echo ""
@@ -172,7 +221,7 @@ Dirty tape drive $TAPE on `uname -n`
 Please clean soon or else backups will fail.
 
 Thanks,
-Enstore Backup 
+Enstore Backup
 
 $stats
 
