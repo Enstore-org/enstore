@@ -63,7 +63,7 @@ for filename in sys.argv[1:]:
         parse_errors.append("%s %s"%(exc, string.join(map(str,msg.args[:-1]))))
     if parse_errors:
         exit_status = 1
-        "Fatal errors occurred during parsing of", filename
+        print "Fatal errors occurred during parsing of", filename
         for err in parse_errors:
             print err
         print "Please resolve these and repeat check"
