@@ -30,15 +30,15 @@ MY_SERVER = "monitor_server"
 
 class MonitorServerClient:
 
-    def __init__( self, probe_servr_addr,
-                  html_servr_addr,
+    def __init__( self, probe_server_addr,
+                  html_server_addr,
                   timeout,
                   block_size,
                   block_count,
 		  summary):
         self.u = udp_client.UDPClient()
-	self.probe_servr_addr = probe_servr_addr
-	self.html_servr_addr = html_servr_addr
+	self.probe_server_addr = probe_server_addr
+	self.html_server_addr = html_server_addr
         self.timeout = timeout
         self.block_size = block_size
         self.block_count = block_count
@@ -47,13 +47,13 @@ class MonitorServerClient:
 
     # send Active Monitor probe request
     def _send_probe (self, ticket):
-        x = self.u.send( ticket, self.probe_servr_addr, self.timeout, 10 )
+        x = self.u.send( ticket, self.probe_server_addr, self.timeout, 10 )
         return x
 
     # send measurement to the html server
     def _send_measurement (self, ticket):
 	try:
-	    x = self.u.send( ticket, self.html_servr_addr, self.timeout, 10 )
+	    x = self.u.send( ticket, self.html_server_addr, self.timeout, 10 )
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    x = {'status' : (e_errors.TIMEDOUT, None)}
         return x
