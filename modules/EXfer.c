@@ -478,10 +478,10 @@ EXusrTo_(  PyObject	*self
 	    while (shm_byts < inc_size)
 	    {   read_byts = inc_size - shm_byts;
 #              ifdef NO_READ
-		if (dat_byts+inc_size <= stat_s.st_size)/* if "space" for full read */
-		    just_red_byts = inc_size;
+		if ((run_dat_byts+dat_byts+read_byts) <= stat_s.st_size)/* if "space" for full read */
+		    just_red_byts = read_byts;
 		else
-		    just_red_byts = stat_s.st_size - dat_byts; /* this will be 0 next time thru */
+		    just_red_byts = stat_s.st_size - run_dat_byts - dat_byts; /* this will be 0 next time thru */
 #              else
 		just_red_byts = (frmFunc_p[Frm])(  fd_a[Frm]
 						  , shmaddr+(inc_size*ahead_idx)+shm_byts
