@@ -56,7 +56,7 @@ def touch_file(fn, size):
     (dir,fname)=os.path.split(fn)
     fname = "%s/'.(fset)(%s)(size)(%s)'"%(dir,fname, size)
     print fname
-    os.system("echo touch %s"%(fname,))
+    os.system("touch %s"%(fname,))
 
 def get_l4(filename):
     l4_raw = readlayer(filename, 4)
