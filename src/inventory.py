@@ -1015,6 +1015,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             deleted_size = vsum['deleted_size']
             unknown_size = vsum['unknown_size']
             total = active + deleted + unknown
+            total_size = active_size+deleted_size+unknown_size
             unchanged.append(vk)
             n_unchanged = n_unchanged + 1
         else:
