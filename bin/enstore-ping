@@ -29,7 +29,7 @@ export msg
 # the configuration server
 
 msg="Configuration Server"
-alive=`eping $timeout "python $ENSTORE_DIR/src/configuration_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1"`
+alive=`eping $timeout "python $ENSTORE_DIR/src/configuration_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive"`
 esave
 
 ################################################################################################################################################
@@ -37,7 +37,7 @@ esave
 # the log server
 
 msg="Logger Server"
-alive=`eping $timeout "python $ENSTORE_DIR/src/log_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1"`
+alive=`eping $timeout "python $ENSTORE_DIR/src/log_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive"`
 esave
 
 ################################################################################################################################################
@@ -45,7 +45,7 @@ esave
 # volume clerk
 
 msg="Volume Clerk"
-alive=`eping $timeout "python $ENSTORE_DIR/src/volume_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1"`
+alive=`eping $timeout "python $ENSTORE_DIR/src/volume_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive"`
 esave
 
 ################################################################################################################################################
@@ -53,7 +53,7 @@ esave
 # file clerk
 
 msg="File Clerk"
-alive=`eping $timeout "python $ENSTORE_DIR/src/file_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1"`
+alive=`eping $timeout "python $ENSTORE_DIR/src/file_clerk_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive"`
 esave
 
 ################################################################################################################################################
@@ -61,11 +61,11 @@ esave
 # library manager
 for i in $enstore_libraries_all; do
   msg="$i Library Manager"
-  alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1 $i"`
+  alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive $i"`
   esave
   msg="$i Library Manager Queues"
   if [ "$alive" != "DEAD" ] ; then
-    alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --getwork --verbose=1 $i"`
+    alive=`eping $timeout "python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --getwork $i"`
   else
     alive=""
   fi
@@ -77,7 +77,7 @@ done
 # media changer
 for i in $enstore_media_changers_all; do
   msg="$i Media Changer"
-  alive=`eping $timeout "python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1 $i 0 0"`
+  alive=`eping $timeout "python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive $i 0 0"`
   esave
 done
 
@@ -96,7 +96,7 @@ done
 # inquisitor
 
 msg="Inquisitor"
-alive=`eping $timeout "python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive --verbose=1"`
+alive=`eping $timeout "python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT --alive"`
 esave
 
 ################################################################################################################################################

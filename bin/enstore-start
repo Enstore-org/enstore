@@ -197,7 +197,7 @@ for server in $node_servers;do
         enstore_media_changers="$enstore_media_changers $server";;
     *mover)
         enstore_movers="$enstore_movers $server";;
-    logserver)
+    log_server)
         enstore_start_log=1;;
     file_clerk)
         enstore_start_fileclerk=1;;
@@ -216,7 +216,7 @@ done
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
     if [ "${opt_ping-}" != 1 -a $enstore_start_log -eq 1 ];then
       if   [ ! "${opt_nocheck-}" ]\
-        && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep logserver |sed -e 's/.*://'` $timeout >/dev/null
+        && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep log_server |sed -e 's/.*://'` $timeout >/dev/null
         then
         echo "Log Server already started"
       else
@@ -234,7 +234,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
       fi
     fi
 
-    check_server logserver $PID_DIR/`uname -n`-log_server_pids
+    check_server log_server $PID_DIR/`uname -n`-log_server_pids
 
 fi
 

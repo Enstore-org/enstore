@@ -70,12 +70,12 @@ case $cmd in
     stat=$?
     ;;
 
-  config|econ)
+  cc|configuration_client)
     python $ENSTORE_DIR/src/configuration_client.py   --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  fcc)
+  fcc|file_clerk_client)
     python $ENSTORE_DIR/src/file_clerk_client.py      --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
@@ -88,7 +88,7 @@ case $cmd in
     stat=$?
     ;;
 
-  vcc)
+  vcc|volume_clerk_client)
     python $ENSTORE_DIR/src/volume_clerk_client.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
@@ -135,32 +135,32 @@ case $cmd in
     stat=$?
     ;;
 
-  lmc)
+  lmc|library_manager_client)
     python $ENSTORE_DIR/src/library_manager_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  mcc)
+  mcc|media_changer_client)
     python $ENSTORE_DIR/src/media_changer_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  mov)
+  mvc|mover)
     python $ENSTORE_DIR/src/mover_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  log)
+  lc|log_client)
     python $ENSTORE_DIR/src/log_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  ala)
+  ac|alarm_client)
     python $ENSTORE_DIR/src/alarm_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
 
-  inq)
+  ic|inquisitor_client)
     python $ENSTORE_DIR/src/inquisitor_client.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
     stat=$?
     ;;
@@ -208,7 +208,7 @@ case $cmd in
 $usage1
 ecmd encp `ecmd encp --usage_line`
 
-ecmd config `ecmd config --usage_line`
+ecmd cc `ecmd cc --usage_line`
 
 ecmd fcc `ecmd fcc --usage_line`
 
@@ -218,13 +218,13 @@ ecmd lmc `ecmd lmc --usage_line`
 
 ecmd mcc `ecmd mcc --usage_line`
 
-ecmd mov `ecmd mov --usage_line`
+ecmd mvc `ecmd mvc --usage_line`
 
-ecmd log `ecmd log --usage_line`
+ecmd lc `ecmd lc --usage_line`
 
-ecmd inq `ecmd inq --usage_line`
+ecmd ic `ecmd ic --usage_line`
 
-ecmd ala `ecmd ala --usage_line`
+ecmd ac `ecmd ac --usage_line`
 $usage2
 "
     echo "$usage"
