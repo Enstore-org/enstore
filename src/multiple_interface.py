@@ -96,16 +96,20 @@ def _parse_irix(tok):
 def _parse_osf(tok):
     return long(tok[4]), long(tok[6])
 
-def _parse(tok):
-    return 0, 0
+def _parse_sunos(tok):
+    return long(tok[4]), long(tok[6])
 
-try:
-    _parse = eval("_parse_"+uname())
-except:
-    print "Unrecognized platform", uname()
+def _parse_default(tok):
+    return 0, 0
 
 def stats(interfaces):
     netstat_cmd = _find_command('netstat')
+    try:
+        _parse = eval("_parse_"+uname())
+    except:
+        print "Unrecognized platform", uname()
+        _parse = _parse_default()
+        
     p = os.popen(netstat_cmd + " -i", 'r')
     data = p.readlines()
     status = p.close()
