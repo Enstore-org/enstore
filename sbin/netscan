@@ -39,6 +39,8 @@ PS="/bin/ps"
 CMP="/usr/bin/cmp"
 ECHO="/bin/echo"
 XNTPDC="/usr/sbin/xntpdc"
+NTPDATE="/usr/sbin/ntpdate"
+XNTP="/etc/rc.d/init.d/xntpd restart"
 LSOF="/usr/local/bin/lsof"
 EGREP="/bin/egrep"
 AWK="/bin/awk"
@@ -52,7 +54,6 @@ SED="/bin/sed"
 RPM="/bin/rpm"
 IFDOWN="/etc/sysconfig/network-scripts/ifdown"
 IFUP="/etc/sysconfig/network-scripts/ifup"
-XNTP="/etc/rc.d/init.d/xntpd restart"
 
 node=`$UNAME -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`/home/enstore/enstore/sbin/gang`
@@ -286,7 +287,11 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
       fi
     fi
     touch $TIME_NOT_SYNCD
-    #NOT SO AGGRESSIVE  $XNTP restart >>$LOG 2>&1
+    $XNTP stop >>$LOG 2>&1
+    # set the time, but use more than just fermilab to sync it
+    $NTPDATE -b -p 8 -u -v `cat /etc/ntp/step-tickers` ntp-1.cso.uiuc.edu ntp-1.mcs.anl.gov ntp.cmr.gov >>$LOG 2>&1  
+    # start up ntp again - this just syncs to fermilab, according to policy.
+    $XNTP start >>$LOG 2>&1
 else
   rm -f $TIME_NOT_SYNCD
   if [ $QUIET -ne 1 ]; then
