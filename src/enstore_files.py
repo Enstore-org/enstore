@@ -647,19 +647,44 @@ class EnMountDataFile(EnDataFile):
                                   minfo[MDRIVEID]])
 
 class EnEncpDataFile(EnDataFile):
+    # this method of reading in all the data and then parsing it is not
+    # scalable.  this is causing the encp plots to fail on cdf.  this will
+    # eventually be replaced by getting the information from the accounting
+    # database.  i do not want to put alot of work into it.  i will fix
+    # this case and not worry about duplicating code at the moment.
 
     # pull out the plottable data from each line
     def parse_data(self, mcs, prefix):
-        for line in self.lines:
-            encp_line = enstore_status.EncpLine(line)
-            if encp_line.valid:
-                if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
-		    # remove the directory and the log prefix to get just the
-		    # date and time
-                    etime = enstore_functions2.strip_file_dir(encp_line.time)
-                    self.data.append([string.replace(etime, prefix, ""), 
-                                      encp_line.bytes, encp_line.direction, 
-				      encp_line.mover, encp_line.drive_id])
+        encp_line = enstore_status.EncpLine(line)
+        if encp_line.valid:
+            if not mcs or enstore_status.mc_in_list(encp_line.mc, mcs):
+                # remove the directory and the log prefix to get just the
+                # date and time
+                etime = enstore_functions2.strip_file_dir(encp_line.time)
+                self.data.append([string.replace(etime, prefix, ""), 
+                                  encp_line.bytes, encp_line.direction, 
+                                  encp_line.mover, encp_line.drive_id])
+        del encp_line
+
+    def read_and_parse(start_time, stop_time, prefix, media_changer):
+        do_all = FALSE
+        if stop_time is None and start_time is None:
+            do_all = TRUE
+        # read it in.  only save the lines that match the desired time frame
+        if self.openfile:
+            try:
+                while TRUE:
+                    line = self.openfile.readline()
+                    if not line:
+                        break
+                    else:
+                        if do_all or \
+                           self.check_line(line, start_time, stop_time, prefix):
+                            self.parse_data(media_changer, prefix)
+                        del line
+            except:
+                pass
+        
 
 class EnSgDataFile(EnDataFile):
 
