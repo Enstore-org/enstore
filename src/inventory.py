@@ -764,6 +764,7 @@ def inventory(output_dir, cache_dir):
             print "vv =", `vv`
             sys.exit(1)
 
+	tt0 = time.time()
         print 'processing', vk, '...',
 
         if vol_sum.has_key(vk):
@@ -1000,7 +1001,7 @@ def inventory(output_dir, cache_dir):
                 vv['volume_family']))
 
         n_vols = n_vols + 1
-        print 'done'
+        print 'done', time.time()-tt0
 
     # dump vol_sum
     sum_f = open(volume_summary_cache_file, 'w')
