@@ -75,6 +75,8 @@ icheck = True	# instant readback check after swap
 
 errors = 0	# over all errors per migration run
 
+no_log_command = ['--migrated-from', '--migrated-to']
+
 # This is the configuration part, which might come from configuration
 # server in the production version
 
@@ -133,7 +135,9 @@ def init():
 
 	errors = 0
 
-	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
+	# check for no_log commands
+	if len(sys.argv) > 2 and not sys.argv in no_log_commands:
+		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
 	return
 
 # The following three functions query the state of a migrating file
@@ -952,7 +956,8 @@ if __name__ == '__main__':
 
 	# log command line
 	cmd = string.join(sys.argv)
-	log("COMMAND LINE:", cmd)
+	if len(sys.argv) > 2 and not sys.argv in no_log_commands:
+		log("COMMAND LINE:", cmd)
 
 	if sys.argv[1] == "--vol":
 		icheck = False
@@ -976,7 +981,7 @@ if __name__ == '__main__':
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 		for i in sys.argv[2:]:
 			from_list = migrated_from(i, db)
-			print "%s <=",
+			print "%s <="%(i),
 			for j in from_list:
 				print j,
 			print
@@ -985,7 +990,7 @@ if __name__ == '__main__':
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
 		for i in sys.argv[2:]:
 			to_list = migrated_to(i, db)
-			print "%s =>",
+			print "%s =>"%(i),
 			for j in to_list:
 				print j,
 			print
