@@ -65,7 +65,7 @@ def do_work(intf):
 	if os.stat(alarm_file)[stat.ST_SIZE] == 0L:
 	    alarms = {enstore_constants.ANYALARMS : enstore_constants.UP}
 	else:
-	    alarms = {enstore_constants.ANYALARMS : enstore_constants.DOWN}
+	    alarms = {enstore_constants.ANYALARMS : enstore_constants.WARNING}
     except OSError:
 	# there was no file, thus no alarms, everything is peachy keen
 	alarms = {enstore_constants.ANYALARMS : enstore_constants.UP}
