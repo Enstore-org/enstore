@@ -4,14 +4,17 @@
 
 
 volumes="
-hppcdisk   none      diskfile  flop1       1400000     1400000
-hppcdisk   none      diskfile  flop2       1400000     1400000
-hppcdisk   none      diskfile  flop3       1400000     1400000
-fndaprdisk none      diskfile  flop101     1400000     1400000
-fndaprdisk none      diskfile  flop102     1400000     1400000
-fndaprdisk none      diskfile  flop103     1400000     1400000
-shelf      none      cartridge cart90      1400000     1400000
-shelf      none      cassette  cass91      1400000     1400000
+hppcdisk   none      diskfile  flop1      14000000    14000000
+hppcdisk   none      diskfile  flop2      14000000    14000000
+hppcdisk   none      diskfile  flop3      14000000    14000000
+fndaprdisk none      diskfile  flop101    14000000    14000000
+fndaprdisk none      diskfile  flop102    14000000    14000000
+fndaprdisk none      diskfile  flop103    14000000    14000000
+fntt1disk  none      diskfile  flop201    14000000    14000000
+fntt1disk  none      diskfile  flop202    14000000    14000000
+fntt1disk  none      diskfile  flop203    14000000    14000000
+shelf      none      cartridge cart90     14000000    14000000
+shelf      none      cassette  cass91     14000000    14000000
 redwood50  none      redwood   000004  50000000000 50000000000
 redwood50  none      redwood   000005  50000000000 50000000000
 redwood50  none      redwood   000006  50000000000 50000000000
