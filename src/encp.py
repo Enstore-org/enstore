@@ -228,7 +228,7 @@ def generate_unique_id():
 def extract_brand(bfid):
     #Newer files have brands.
     if len(bfid) == 19:
-        if bfid[4:].isdigit() and bfid[:4].isalpha():
+        if bfid[4:].isdigit() and bfid[:4].isalnum():
             return bfid[:4]
         else:
             return None
