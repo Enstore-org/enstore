@@ -624,7 +624,7 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     config = csc.get(enstore_constants.MONITOR_SERVER)
 
-    if config['status'][0] != 'ok':
+    if not e_errors.is_ok(config['status']):   #[0] != 'ok':
 
         summary_d = {"%s" % enstore_constants.MONITOR_SERVER : \
                      " not found in config dictionary."}
@@ -637,7 +637,8 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
 
     #Get a list of hosts, and a class instance of host to avoid.
     host_list, vetos = get_host_list(csc, config_host, config_port, hostip)
-    
+
+    #Override this value if the user specified one on the command line.
     if html_gen_host:
         config['html_gen_host'] = html_gen_host
 
@@ -670,9 +671,10 @@ def do_real_work(summary, config_host, config_port, html_gen_host,
                 )
         except KeyError, detail:
             # usae this for debugging purposes
-            print config
-            raise KeyError, detail
-
+            sys.stdout.write("MONITOR_SERVER CONFIG:\n")
+            sys.stdout.write(pprint.pformat(config) + "\n")
+            sys.stdout.write("KeyError: %s\n" % str(detail))
+            sys.exit(1)
         
         #Test rate sending from the server.  The rate info for read time
         # information is stored in msc.measurement.
