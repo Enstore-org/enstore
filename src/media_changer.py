@@ -32,6 +32,7 @@ import interface
 import Trace
 import e_errors
 import timer_task
+import volume_clerk_client
 
 # media loader template class
 class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
@@ -75,15 +76,15 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         return self.DoWork( self.unload, ticket)
 
     # wrapper method for client - server communication
-    def viewvol(self, ticket):
-        ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
-	               ticket["vol_ticket"]["media_type"])
-        self.reply_to_caller(ticket)
-	
-    # wrapper method for client - server communication - to replace above tgj1
     #def viewvol(self, ticket):
-    #    ticket["function"] = "view"
-    #    return self.DoWork( self.view, ticket)
+    #    ticket["status"] = self.view(ticket["vol_ticket"]["external_label"], \
+    #              ticket["vol_ticket"]["media_type"])
+    #    self.reply_to_caller(ticket)
+	
+    # wrapper method for client - server communication - replaced viewvol above tgj1
+    def viewvol(self, ticket):
+        ticket["function"] = "getVolState"
+        return self.DoWork( self.getVolState, ticket)
 
     # wrapper method for client - server communication
     def insertvol(self, ticket):
@@ -102,6 +103,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def homeAndRestartRobot(self, ticket):
         ticket["function"] = "homeAndRestart"
         return self.DoWork( self.robotHomeAndRestart, ticket)
+
+    def doCleaningCycle(self, ticket):
+        ticket["function"] = "cleanCycle"
+        return self.DoWork( self.cleanCycle, ticket)
 
     def maxwork(self,ticket):
         self.MaxWork = ticket["maxwork"]
@@ -141,18 +146,16 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	return (e_errors.OK, 0, None)
 
     # view volume in the drive;  default overridden for other media changers
-    def view(self,
-               external_label,  # volume external label
-	       media_type):         # media type
-        if 0: print media_type #lint fix
-        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
-    # view volume in the drive;  default overridden for other media changers - to replace above tgj1
     #def view(self,
-    #         external_label,   # volume external label
-    #         drive,            # drive id
-    #         media_type) :     # media type
+    #           external_label,  # volume external label
+    #       media_type):         # media type
     #    if 0: print media_type #lint fix
     #    return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
+
+    # getVolState in the drive;  default overridden for other media changers - to replace above tgj1
+    def getVolState(self, ticket):
+        if 0: print media_type #lint fix
+        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
     # insert volume into the robot;  default overridden for other media changers
     def insert(self,ticket):
@@ -165,6 +168,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         return (e_errors.OK, 0, None) 
 
     def robotHomeAndRestart(self,ticket):
+        pass
+        return (e_errors.OK, 0, None) 
+
+    def cleanCycle(self,ticket):
         pass
         return (e_errors.OK, 0, None) 
 
@@ -193,6 +200,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 	if ticket['function'] == "mount" or ticket['function'] == "dismount":
             Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function']+ ' ' + \
 		   ticket['vol_ticket']['external_label']+ ' ' +ticket['drive_id'])
+            # if drive is doing a clean cycle, drop request
+            for i in self.work_list:
+	        if i['function'] == "cleanCycle" and i['drive_id'] == ticket['drive_id']:
+                    return
         else:
             Trace.trace(e_errors.INFO, 'REQUESTED '+ticket['function'])
         #if we have max number of working children, assume client will resend
@@ -249,6 +260,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			sts = function(ticket)
 		    elif ticket['function'] == 'homeAndRestart':
 			sts = function(ticket)
+		    elif ticket['function'] == 'cleanCycle':
+			sts = function(ticket)
+		    elif ticket['function'] == 'getVolState':
+			sts = function(ticket)
 		    else:
 		        sts = function(
 			    ticket['vol_ticket']['external_label'],
@@ -303,6 +318,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 class AML2_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=10, csc=None):
         MediaLoaderMethods.__init__(self, medch, maxwork, csc)
+
 	# robot choices are 'R1', 'R2' or 'Both'
 	if self.mc_config.has_key('RobotArm'):   # error if robot not in config
 	    self.robotArm = string.strip(self.mc_config['RobotArm'])
@@ -310,12 +326,37 @@ class AML2_MediaLoader(MediaLoaderMethods):
             Trace.log(e_errors.ERROR, "ERROR:aml2 no robot arm key in configuration")
 	    self.robotArm = string.strip(self.mc_config['RobotArm']) # force the exception          
 	    return
+
 	if self.mc_config.has_key('IOBoxMedia'):   # error if IO box media assignments not in config
-	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) 
+	    self.mediaIOassign = self.mc_config['IOBoxMedia']
 	else:
             Trace.log(e_errors.ERROR, "ERROR:aml2 no IO box media assignments in configuration")
-	    self.mediaIOassign = (self.mc_config['IOBoxMedia']) # force the exception
+	    self.mediaIOassign = self.mc_config['IOBoxMedia'] # force the exception
 	    return
+
+	if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
+	    self.driveCleanTime = self.mc_config['DriveCleanTime'][0] 
+	    self.driveCleanCycles = self.mc_config['DriveCleanTime'][1]
+	else:
+            Trace.log(e_errors.ERROR, "ERROR:aml2 no DriveCleanTime assignments in configuration")
+	    self.driveCleanTime = self.mc_config['DriveCleanTime'][0] # force the exception
+	    return
+
+	if self.mc_config.has_key('CleanTapeLibrary'):   # error if DriveCleanTime assignments not in config
+	    self.cleanTapeLibrary = self.mc_config['CleanTapeLibrary']
+	else:
+            Trace.log(e_errors.ERROR, "ERROR:aml2 no CleanTapeLibrary assignments in configuration")
+	    self.cleanTapeLibrary = self.mc_config['CleanTapeLibrary'] # force the exception
+	    return
+
+	if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
+	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily']  # expected format is "externalfamilyname.wrapper"
+	    self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1]
+	else:
+            Trace.log(e_errors.ERROR, "ERROR:aml2 no CleanTapeFileFamily assignments in configuration")
+	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily'] # force the exception
+	    return
+
 	if self.mc_config.has_key('IdleTimeHome'):
 	    temp = self.mc_config['IdleTimeHome']
             if type(temp) == types.IntType:
@@ -357,8 +398,22 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	rt = aml2.robotHomeAndRestart(ticket, classTicket)
         return rt
     
-    # view - to replace below tgj1
-    #def view(self, external_label, drive, media_type):
+    def getVolState(self, ticket):
+	"get current state of the tape"
+        import aml2
+	external_label = ticket[external_label]
+	media_type = ticket[media_type]
+	rt = aml2.view(external_label, media_type)
+        if 'O' == rt[5] :
+          state = 'O'
+        elif 'M' == rt[5] :
+          state = 'M'
+        else :
+          state = rt[5]
+        return (rt[0], rt[1], rt[2], state)
+	
+    """
+    # view - replaced with above, tgj
     def view(self, external_label, media_type): #leave view's code body alone
 	"get current state of the tape"
         import aml2
@@ -370,6 +425,30 @@ class AML2_MediaLoader(MediaLoaderMethods):
         else :
           state = rt[5]
         return (rt[0], rt[1], rt[2], state)
+    """
+
+    def doCleaningCycle(self, ticket):
+        """ do drive cleaning cycle """
+        import aml2
+        classTicket = { 'mcSelf' : self }
+
+	driveType = ticket[drive][:2]  # ... need device type, not actual device
+        ticket['cleanTime'] = self.driveCleanTime[driveType]  # clean time in seconds	
+
+        vcc = ticket[vcc]
+	min_remaining_bytes = 1
+	wrapper = self.cleanTapeFileWrapper
+	vol_veto_list = []
+	first_found = 0
+	cleaningVolume = vcc.next_write_volume(self.cleanTapeLibrary, min_remaining_bytes,
+                  self.cleanTapeFileFamily, wrapper, vol_veto_list,first_found)  # get which volume to use
+	ticket['volume'] = cleaningVolume
+	for i in range(self.driveCleanCycles):
+	    rt = aml2.cleanADrive(ticket, classTicket)
+	retTicket = vcc.get_remaining_bytes(cleaningVolume)
+	remaining_bytes = retTicket[remaining_bytes]-1
+	vcc.set_remaining_bytes(cleaningVolume,remaining_bytes,'\0',0,0,0,0,None)
+        return (e_errors.OK, 0, None)
 
     def doWaitingInserts(self):
         """ do delayed insertvols"""
@@ -403,9 +482,6 @@ class RDD_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, maxwork=1, csc=None):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc)
 
-    def view(self, external_label, media_type):
-	"get current state of the tape"
-        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
 # "Shelf" manual media server - interfaces with OCS
 class Shelf_MediaLoader(MediaLoaderMethods):
@@ -538,10 +614,6 @@ class Shelf_MediaLoader(MediaLoaderMethods):
             return fnstatus
 	return fnstatus
 	
-    def view(self, external_label, media_type):
-	"get current state of the tape"
-        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
-
     def allocateOCSdrive(self, drive):
 	"allocate an OCS managed drive"
 	fnstatus = 'OK'
