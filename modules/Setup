@@ -64,9 +64,13 @@ CFLAGS = $(OPT) -I$(INCLUDEPY) $(DEFS)
 
 EXFER_THREADED = IGNORE_ME_PLEASE
 
+POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
+
+RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
+
 # EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
-EXfer EXfer.c  -D`uname` -D$(EXFER_THREADED) adler32.a
-# EXfer EXfer.c  -D`uname` adler32.a
+# EXfer EXfer.c  -D`uname` -D$(EXFER_THREADED) adler32.a
+EXfer EXfer.c  -D`uname` adler32.a $(POSIX4) $(RT)
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
