@@ -86,7 +86,7 @@ def dash_to_underscore(s):
 
 class Interface:
     def __init__(self, host=default_host(), port=default_port()):
-        if self.__dict__.get("do_parse", 1):
+        #if self.__dict__.get("do_parse", 1):
             if host == 'localhost' :
                 self.check_host(hostaddr.gethostinfo()[0])
             else:            
@@ -366,7 +366,7 @@ class Interface:
             elif opt == "--raise" :
                 self.alarm = 1
             elif opt == "--resolve" :
-                self.resolve = float(value)
+                self.resolve = value
             elif opt == "--get_patrol_file" :
                 self.get_patrol_file = 1
             elif opt == "--root_error" :

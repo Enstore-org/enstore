@@ -386,7 +386,7 @@ class EnAlarmFile(EnFile):
                         break
                     else:
                         theAlarm = alarm.AsciiAlarm(line)
-                        enAlarms[theAlarm.timedate] = theAlarm
+                        enAlarms[theAlarm.id] = theAlarm
             except IOError:
                 pass
         return enAlarms

@@ -52,7 +52,7 @@ def go():
 	alarms = []
         for key in form.keys():
             if key[0:5] == "alarm":
-                alarms.append(float(string.strip(form[key].value)))
+                alarms.append(string.strip(form[key].value))
         else:
             if not alarms:
                 # not to decide, is to decide

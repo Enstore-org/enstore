@@ -33,7 +33,7 @@ class GenericAlarm:
 
     def __init__(self):
         self.timedate = time.time()
-        self.id = self.timedate
+        self.id = str(self.timedate)
         self.host = ""
         self.pid = DEFAULT_PID
         self.uid = DEFAULT_UID
@@ -52,7 +52,7 @@ class GenericAlarm:
 
     # return the a list of the alarm pieces we need to output
     def list_alarm(self):
-	return [self.timedate, self.host, self.pid, self.uid, self.severity, 
+	return [self.id, self.host, self.pid, self.uid, self.severity, 
 		self.source, self.root_error, self.alarm_info]
 
     # output the alarm
@@ -133,7 +133,7 @@ class AsciiAlarm(GenericAlarm):
     def __init__(self, text):
         GenericAlarm.__init__(self)
 
-        [self.timedate, self.host, self.pid, self.uid, self.severity,
+        [self.id, self.host, self.pid, self.uid, self.severity,
          self.source, self.root_error, self.alarm_info] = eval(text)
 
 class LogFileAlarm(GenericAlarm):
@@ -148,7 +148,7 @@ class LogFileAlarm(GenericAlarm):
 
 	# assemble the real timedate
 	self.timedate = time.strptime("%s %s"%(date, t), "%Y-%m-%d %H:%M:%S")
-	self.id = self.timedate
+	self.id = str(self.timedate)
 
 	# split up the dictionary into components
 	dict = eval(string.strip(text_dict))

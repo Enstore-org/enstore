@@ -127,6 +127,11 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         #      rewrite the entire enstore_alarm file (txt and html)
         #      rewrite the enstore patrol file
         #      log this fact
+	print id
+	print self.alarms
+	print self.alarms.keys()
+	print self.alarms.get(id, "zilch")
+	print "%s, %s"%(id, self.alarms.keys()[0])
         if self.alarms.has_key(id):
             del self.alarms[id]
             self.write_alarm_file()
