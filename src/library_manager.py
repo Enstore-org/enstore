@@ -644,7 +644,11 @@ class LibraryManagerMethods:
                 # check if it is the same request
                 # or request for the same volume
                 if exc_limit_rq is not rq:
-                    if rq.work == 'write_to_hsm':
+                    if (rq.ticket.has_key('reject_reason') and
+                        rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+                        rq = exc_limit_rq
+                        # !!!!!!!!! should I check here if rq has a higher priority than exc_limit_rq??????????
+                    elif rq.work == 'write_to_hsm':
                         if rq.ticket['vc']['volume_family'] == vol_family:
                             # same volume family
                             rq = exc_limit_rq
@@ -652,9 +656,9 @@ class LibraryManagerMethods:
                         # read request
                         if rq.ticket['fc']['external_label'] == external_label:
                             rq = exc_limit_rq
-                        elif (rq.ticket.has_key('reject_reason') and
-                              rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
-                            rq = exc_limit_rq                            
+                        #elif (rq.ticket.has_key('reject_reason') and
+                        #      rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+                        #    rq = exc_limit_rq                            
                 Trace.trace(14, "s3 rq %s" % (rq.ticket,))
             
             if rq.work == 'write_to_hsm':
