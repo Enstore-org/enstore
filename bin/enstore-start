@@ -427,6 +427,37 @@ fi
  
 ###################################################################################################################################
 
+# dealing with db_recover
+# just to be paranoid ... if db_recover is running, do not start
+# file_clerk nor volume clerk
+
+db_recover=0
+
+case `uname` in
+  Linux*)
+        x=`ps ax`
+        ;;
+  OSF1*)
+        x=`ps  ax`
+        ;;
+  SunOS*)
+        x=`ps -ef`
+        ;;
+  IRIX*)
+        x=`ps -ef`
+        ;;
+      *)
+        x=`ps -ef`
+        ;;
+esac
+
+if `echo $x | grep db_recover > /dev/null`
+then
+	db_recover=1
+else
+	db_recover=0
+fi
+
 # volume clerk
 if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" != "" \) -a $enstore_start_volumeclerk -eq 1 ];then
     if [ "${opt_ping-}" != 1 -a $pass = "startem" ];then
@@ -434,6 +465,8 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" != "" \) -a $ensto
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep volume_clerk|sed -e 's/.*://'` $timeout>/dev/null
         then
         echo "Volume Clerk already started"
+      elif [ $db_recover -eq 1 ]; then
+	echo "Volume Clerk does not start due to suspicious db_recover"
       else
         echo "`date` Starting Volume Clerk"
         out=$PID_DIR/volume_clerk
@@ -468,6 +501,8 @@ if [ \( "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" != "" \) -a $ensto
         && udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep file_clerk|sed -e 's/.*://'` $timeout >/dev/null
         then
         echo "File Clerk already started"
+      elif [ $db_recover -eq 1 ]; then
+	echo "File Clerk does not start due to suspicious db_recover"
       else
         echo "`date` Starting File Clerk"
         out=$PID_DIR/file_clerk
