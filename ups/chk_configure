@@ -2,7 +2,7 @@
 
 . $1/ups/Version
 
-if [ -r /usr/local/products/$PROD_NAME/$PROD_FLAVOR/$PROD_VERSION ]
+if [ -r /usr/local/products/$PROD_NAME/$PROD_VERSION ]
 then
 	:
 else
