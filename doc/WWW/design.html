@@ -1350,7 +1350,106 @@ using this information.
 <h3>1.3.8.1 Command Line Control of the Inquisitor 
 </h3>
 Inquisitor functionality may be controlled through a command line interface using
-<B>ecmd</B>.  Using this command, values
+<B>ecmd</B>.  A summary of the supported commands is given below.  In addition
+to the following commands, the Inquisitor command line interface supports the
+general commands supported by all other servers; <i>alive</i>,
+<i>config_host</i>, <i>config_port</i>, <i>help</i>, <i>server_verbose</i>,
+<i>verbose</i>.
+<P>
+<TABLE BORDER COLS= WIDTH="100%" NOSAVE >
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the time to wait for an response to an alive request</TD>
+<TD NOSAVE>ecmd inq --alive_rcv_timeout=6</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the number of retries when doing an alive request</TD>
+<TD NOSAVE>ecmd inq --alive_retries=4</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>dump some of the inquisitor internal information to its controlling terminal (useful for debugging)</TD>
+<TD NOSAVE>ecmd inq --dump</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the maximum size of the ascii status file</TD>
+<TD NOSAVE>ecmd inq --get_max_ascii_size</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the maximum number of encp status lines displayed</TD>
+<TD NOSAVE>ecmd inq --get_max_encp_lines</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the html status file auto refresh rate</TD>
+<TD NOSAVE>ecmd inq --get_refresh</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the frequency for monitoring the volume clerk</TD>
+<TD NOSAVE>ecmd inq --get_timeout volume_clerk</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>get the frequency for looking for work</TD>
+<TD NOSAVE>ecmd inq --get_timeout</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the maximum size of the ascii status file</TD>
+<TD NOSAVE>ecmd inq --max_ascii_size=40000</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the maximum number of encp status lines displayed</TD>
+<TD NOSAVE>ecmd inq --max_encp_lines=13</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots</TD>
+<TD NOSAVE>ecmd inq --plot</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots and use the log files located in the specified directory</TD>
+<TD NOSAVE>ecmd inq --plot --logfile_dir=/tmp/logs</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots and only plot information after the specified start_time</TD>
+<TD NOSAVE>ecmd inq --plot --start_time=1998-12-25</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots and only plot information before the specified stop_time</TD>
+<TD NOSAVE>ecmd inq --plot --stop_time=1998-12-31</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>recreate the Inquisitor plots and only plot information between the specified times</TD>
+<TD NOSAVE>ecmd inq --plot --start_time=1998-12-01 --stop_time=1998-12-31</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the html status file auto refresh rate</TD>
+<TD NOSAVE>ecmd inq --refresh=60</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the frequency for monitoring the admin_clerk to the value in the config file</TD>
+<TD NOSAVE>ecmd inq --reset_timeout admin_clerk</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the frequency for looking for work to the value in the config file</TD>
+<TD NOSAVE>ecmd inq --reset_timeout</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the frequency for monitoring the file_clerk</TD>
+<TD NOSAVE>ecmd inq --timeout=55 file_clerk</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>reset the frequency for looking for work</TD>
+<TD NOSAVE>ecmd inq --timeout=10</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>close the current ascii status file and open a new one</TD>
+<TD NOSAVE>ecmd inq --timestamp</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>monitor the log server now</TD>
+<TD NOSAVE>ecmd inq --update log_server</TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE>monitor all the servers now</TD>
+<TD NOSAVE>ecmd inq --update</TD>
+</TR>
+</TABLE>
 
 <h3>1.3.8.2 Inquisitor Config File Values
 </h3>
