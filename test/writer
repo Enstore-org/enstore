@@ -19,14 +19,11 @@ fi
 
 set -u  # force better programming and ability to use check for not set
 
-rm -f writer.pids
-echo $$ > writer.pids
 p=`uname -n``echo $$`
 
 while /bin/true; do
     cat $write_list | while read f; do
-        rm -f writerWC.pids
-        echo $! > writerWC.pids
+        if [ -e $ENSTORE_DIR/test/writestop ] ; then exit 0; fi
         fb=`basename $f`
         output=$base/$fb`date +"%b%d%H%M%S"`$p
         ecmd encp $f $output
