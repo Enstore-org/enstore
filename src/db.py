@@ -186,6 +186,17 @@ class Index:
 	def cursor(self, txn = None):
 		return self.db.cursor(txn)
 
+	# __getitem__(): actually, a list is returned
+	def __getitem__(self, key):
+		res = []
+		c = self.db.cursor(None)
+		k, v = c.set(key)
+		while k:
+			res.append(v)
+			k, v = c.nextDup()
+		c.close()
+		return res
+
 	# close -- close Index db
 	def close(self):
 		self.db.close()
