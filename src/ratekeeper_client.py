@@ -5,7 +5,7 @@ import sys
 import Trace
 import generic_client
 import configuration_client
-import udp_client
+#import udp_client
 import e_errors
 
 MY_NAME = "RATEKEEPER_CLIENT"

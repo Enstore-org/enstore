@@ -7,12 +7,12 @@
 import os
 import sys
 import string
-import socket
-import select
+#import socket
+#import select
 import pprint
 import time
 import errno
-import re
+#import re
 import types
 
 # enstore imports
@@ -21,10 +21,10 @@ import library_manager_client
 import volume_clerk_client
 import option
 import e_errors
-import callback
+#import callback
 import Trace
 import host_config
-import udp_server
+#import udp_server
 import hostaddr
 import encp
 import generic_client
@@ -47,12 +47,12 @@ def parse_file(filename):
         return []
     #Handle file access problems gracefully.
     try:
-        file=open(filename, "r")
+        fp = open(filename, "r")
     except OSError, msg:
         sys.stderr.write(msg + "\n")
         sys.exit(1)
         
-    data=map(string.strip, file.readlines())
+    data=map(string.strip, fp.readlines())
     tmp = []
     for item in data:
 	try:
@@ -63,7 +63,7 @@ def parse_file(filename):
 	except IndexError:
 	    continue #This happens for blank lines
 
-    file.close()
+    fp.close()
     return tmp
 
 def parse_vol_list(comma_seperated_string):
@@ -251,7 +251,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             raise sys.exc_info()
         except:
             #Output a message.
-            exc, msg = sys.exc_info()[:2]
+            msg = sys.exc_info()[1]
             sys.stderr.write(str(msg) + "\n")
 
             uncompleted_list = []
@@ -266,6 +266,9 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             submit_assert_requests(uncompleted_list)
             continue
 
+        Trace.trace(1, "Control socket %s is connected to %s for %s." %
+                    (socket.getsockname(), addr,
+                     callback_ticket.get('unique_id', "Unknown")))
         Trace.trace(10, "CONTROL SOCKET CALLBACK TICKET")
         Trace.trace(10, pprint.pformat(callback_ticket))
 
@@ -288,7 +291,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             raise sys.exc_info()
         except:
             #Output a message.
-            exc, msg = sys.exc_info()[:2]
+            msg = sys.exc_info()[1]
             sys.stderr.write("Encountered final dialog error for %s: %s\n" %
                              callback_ticket['vc']['external_label'], str(msg))
             #Do not retry from error.

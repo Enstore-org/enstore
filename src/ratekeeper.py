@@ -14,11 +14,11 @@ import dispatching_worker
 import generic_server
 import configuration_client
 import timeofday
-import udp_client
-import enstore_functions2
+#import udp_client
+#import enstore_functions2
 import enstore_constants
 import monitored_server
-import event_relay_client
+#import event_relay_client
 import event_relay_messages
 import Trace
 import e_errors
@@ -29,10 +29,10 @@ MY_NAME = "Ratekeeper"
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
-def atol(s):
-    if s[-1] == 'L':
-        s = s[:-1] #chop off any trailing "L"
-    return string.atol(s)
+#def atol(s):
+#    if s[-1] == 'L':
+#        s = s[:-1] #chop off any trailing "L"
+#    return string.atol(s)
 
 def next_minute(t=None):
     if t is None:
@@ -135,10 +135,10 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         
 
         #Get the number of bytes moved (words[2]) and total bytes ([3]).
-        num = atol(words[2])  #NB -bytes = read;  +bytes=write
+        num = long(words[2])  #NB -bytes = read;  +bytes=write
         writing = num>0
         num = abs(num)
-        denom = atol(words[3])
+        denom = long(words[3])
 
         #Get the last pair of numbers for each mover.
         prev = self.mover_msg.get(mover)

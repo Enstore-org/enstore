@@ -10,7 +10,7 @@ import os
 import socket
 import select
 import traceback
-import pprint
+#import pprint
 import time
 import fcntl
 if sys.version_info < (2, 2, 0):
@@ -25,14 +25,14 @@ import generic_server
 import Trace
 import e_errors
 import hostaddr
-import socket_ext
+#import socket_ext
 import callback
 import enstore_html
 import enstore_files
-import configuration_client
+#import configuration_client
 import timeofday
 import enstore_constants
-import udp_client
+#import udp_client
 
 """
 be an active monitor server.

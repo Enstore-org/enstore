@@ -19,14 +19,14 @@ import encp
 import pnfs
 import e_errors
 import delete_at_exit
-import callback
-import host_config
+#import callback
+#import host_config
 import Trace
-import udp_client
+#import udp_client
 import checksum
-import udp_server
-import cleanUDP
-import volume_family
+#import udp_server
+#import cleanUDP
+#import volume_family
 import option
 
 #Completion status field values.
@@ -68,10 +68,10 @@ def error_output(request):
     #Print the output.
     sys.stderr.write(msg)
 
-def quit(exit_code=1):
+def halt(exit_code=1):
     Trace.message(1, "Get exit status: %s" % (exit_code,))
     Trace.log(e_errors.INFO, "Get exit status: %s" % (exit_code,))
-    encp.quit(exit_code)
+    delete_at_exit.quit(exit_code)
 
 def untried_output(request_list):
 
@@ -1426,9 +1426,9 @@ def do_work(intf):
 
     try:
         main(intf)
-        encp.quit(0)
+        delete_at_exit.quit(0)
     except SystemExit:
-        encp.quit(1)
+        delete_at_exit.quit(1)
 
 if __name__ == '__main__':
 

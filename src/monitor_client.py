@@ -21,16 +21,16 @@ if sys.version_info < (2, 2, 0):
 import callback
 import option
 import hostaddr
-import socket_ext
+#import socket_ext
 import generic_client
-import backup_client
-import udp_client
+#import backup_client
+#import udp_client
 import Trace
 import e_errors
 import configuration_client
 import enstore_constants
 import enstore_functions2
-import log_client
+#import log_client
 
 MY_NAME = "MNTR_CLI"
 MY_SERVER = enstore_constants.MONITOR_SERVER
@@ -80,8 +80,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
         #Get the addr to tell the client to call back to and get the listening
         # socket to listen with.
-        localhost, localport, self.listen_sock = \
-                   callback.get_callback(verbose=0)
+        localhost, localport, self.listen_sock = callback.get_callback()
         #Instead of using an actual mover, this is the addr that this server
         # must tell the client it will be listening (via listen_sock) on.
         self.localaddr = (localhost, localport)
@@ -649,7 +648,7 @@ def get_host_list(csc, config_host, config_port, hostip=None):
 
     #Compile the list of servers to test.
     if config['status'] == (e_errors.OK, None):
-        logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
+        #logc=log_client.LoggerClient(csc, MY_NAME, 'log_server')
 
         ip_list = get_all_ips(config_host, config_port, csc)
 

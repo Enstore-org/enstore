@@ -4,14 +4,14 @@
 #system imports
 import sys
 import errno
-import pprint
+#import pprint
 import types
 import os
 import string
 import socket
 
 #enstore imports
-import setpath
+#import setpath
 import Trace
 import e_errors
 import option
@@ -48,8 +48,8 @@ class GenericClientInterface(option.Interface):
         try:
             if server_name[(-len(server_type) - 1):] != "." + server_type:
                 server_name = server_name + "." + server_type
-            else:
-                server_name = server_name
+            #else:
+            #    server_name = server_name
         except IndexError:
             #The string does not contain enough characters to end in
             # ".mover".  So, it must be added.
@@ -85,7 +85,7 @@ class GenericClient:
 	    else:
 		# it is None or 0 (the default value from i.e. log_client)
 		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
-			    string.atoi(os.environ['ENSTORE_CONFIG_PORT']))
+			    int(os.environ['ENSTORE_CONFIG_PORT']))
 		self.csc = configuration_client.ConfigurationClient( def_addr )
 
         if server_address:    
@@ -142,17 +142,17 @@ class GenericClient:
         else:
             return self.csc
 
-    def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
+    def get_server_address(self, my_server,  rcv_timeout=0, tries=0):
         #If the server address requested is the configuration server,
         # do something different.
-        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER or \
+        if my_server == enstore_constants.CONFIGURATION_SERVER or \
            self._is_csc():
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
             hostip = socket.gethostbyname(host)
             port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
             ticket = {'host':host, 'hostip':hostip, 'port':port,
                       'status':(e_errors.OK, None)}
-        elif MY_SERVER == enstore_constants.MONITOR_SERVER:
+        elif my_server == enstore_constants.MONITOR_SERVER:
             host = socket.gethostname()
             hostip = socket.gethostbyname(host)
             port = enstore_constants.MONITOR_PORT
@@ -160,7 +160,7 @@ class GenericClient:
                       'status':(e_errors.OK, None)}
         #For a normal server.
         else:
-            ticket = self.csc.get(MY_SERVER, rcv_timeout, tries)
+            ticket = self.csc.get(my_server, rcv_timeout, tries)
 
         #Check for errors.
         if ticket['status'][0] != e_errors.OK:
@@ -168,12 +168,13 @@ class GenericClient:
         
         try:
             server_address = (ticket['hostip'], ticket['port'])
-            return server_address
         except KeyError, detail:
             sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
-                             ( MY_SERVER, detail, 
+                             ( my_server, detail, 
                                os.environ.get('ENSTORE_CONFIG_HOST','')))
             os._exit(1)
+
+        return server_address
 
     def send(self, ticket, rcv_timeout=0, tries=0):
         try:
@@ -230,7 +231,7 @@ class GenericClient:
                              'levels':levels}, (t['hostip'], t['port']))
         except errno.errorcode[errno.ETIMEDOUT]:
             x = {'status' : (e_errors.TIMEDOUT, None)}
-        except KeyError, detail:
+        except KeyError:
             sys.stderr.write("Unknown server %s\n" % (server,))
             sys.exit(1)
         return x
