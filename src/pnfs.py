@@ -44,7 +44,7 @@ class pnfs :
         self.get_library()
         self.get_file_family()
         self.get_file_family_width()
-        self.get_lastparked
+        self.get_lastparked()
         if all :
             self.get_pnfs_info()
         if timeit != 0:
