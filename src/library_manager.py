@@ -201,7 +201,11 @@ class AtMovers:
         if self.at_movers.has_key(mover):
             if self.at_movers[mover]['external_label'] != mover_info['external_label']:
                 return
-        self.at_movers[mover] = mover_info
+            self.at_movers[mover].update(mover_info)
+        else:
+            # new entry
+            mover_info['time_started'] = time.time()
+            self.at_movers[mover] = mover_info
         self.sg_vf.put(mover, mover_info['external_label'], storage_group, vol_family)
         Trace.trace(32,"AtMovers put: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers put: sg_vf: %s" % (self.sg_vf,))
@@ -2537,6 +2541,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
+        print movers
         ticket['movers'] = []
         for mover in movers:
             ticket['movers'].append({'mover'          : mover['mover'],
@@ -2546,6 +2551,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      'volume_status'  : mover['volume_status'],
                                      'state'   : mover['state'],
                                      'updated' : mover['updated'],
+                                     'total_time': time.time()-mover['time_started'],
                                      'time_in_state' : int(mover.get('time_in_state', 0)),
                                      })
         ticket['status'] = (e_errors.OK, None)
