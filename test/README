@@ -8,6 +8,7 @@ It works with the default data in the file
 
 1) Starting from scratch: 
 
+cd .... enstore/test
 make clean
 make
 newbds
@@ -19,8 +20,9 @@ beg_loadtest
 stopall
 
 
-2) Re-use
+2) Re-use -- must have done 1) above and not done a make clean.
 
+cd .... enstore/test
 olddbs
 beg_loadtest
 
