@@ -335,11 +335,10 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    return
 
 	if self.mc_config.has_key('DriveCleanTime'):   # error if DriveCleanTime assignments not in config
-	    self.driveCleanTime = self.mc_config['DriveCleanTime'][0] 
-	    self.driveCleanCycles = self.mc_config['DriveCleanTime'][1]
+	    self.driveCleanTime = self.mc_config['DriveCleanTime']
 	else:
             Trace.log(e_errors.ERROR, "ERROR:aml2 no DriveCleanTime assignments in configuration")
-	    self.driveCleanTime = self.mc_config['DriveCleanTime'][0] # force the exception
+	    self.driveCleanTime = self.mc_config['DriveCleanTime'] # force the exception
 	    return
 
 	if self.mc_config.has_key('CleanTapeLibrary'):   # error if DriveCleanTime assignments not in config
@@ -351,7 +350,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
 	if self.mc_config.has_key('CleanTapeFileFamily'):   # error if DriveCleanTime assignments not in config
 	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily']  # expected format is "externalfamilyname.wrapper"
-	    self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1]
+	    try:
+	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1]
+            except IndexError:
+	        Trace.log(e_errors.ERROR, "ERROR:aml2 bad CleanTapeFileFamily in configuration file")
+	        self.cleanTapeFileWrapper = string.split(self.cleanTapeFileFamily,'.')[1] # force error
 	else:
             Trace.log(e_errors.ERROR, "ERROR:aml2 no CleanTapeFileFamily assignments in configuration")
 	    self.cleanTapeFileFamily = self.mc_config['CleanTapeFileFamily'] # force the exception
@@ -433,8 +436,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
         classTicket = { 'mcSelf' : self }
 
 	driveType = ticket[drive][:2]  # ... need device type, not actual device
-        ticket['cleanTime'] = self.driveCleanTime[driveType]  # clean time in seconds	
-
+        ticket['cleanTime'] = self.driveCleanTime[driveType][0]  # clean time in seconds	
+        driveCleanCycles = self.driveCleanTime[driveType][1]  # number of cleaning cycles
+	
         vcc = ticket[vcc]
 	min_remaining_bytes = 1
 	wrapper = self.cleanTapeFileWrapper
@@ -443,7 +447,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	cleaningVolume = vcc.next_write_volume(self.cleanTapeLibrary, min_remaining_bytes,
                   self.cleanTapeFileFamily, wrapper, vol_veto_list,first_found)  # get which volume to use
 	ticket['volume'] = cleaningVolume
-	for i in range(self.driveCleanCycles):
+	for i in range(driveCleanCycles):
 	    rt = aml2.cleanADrive(ticket, classTicket)
 	retTicket = vcc.get_remaining_bytes(cleaningVolume)
 	remaining_bytes = retTicket[remaining_bytes]-1
