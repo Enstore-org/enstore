@@ -2,11 +2,13 @@
 
 /* $Id$*/
 
+/* A little hack for linux so direct i/o will work. */
+#ifdef __linux__
+#define _GNU_SOURCE
+#endif
 
 #ifndef STAND_ALONE
 #include <Python.h>
-#else
-#define _GNU_SOURCE
 #endif
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -44,11 +46,8 @@
 #define TIME_ERROR (-6)
 /* return a file error */
 #define FILE_ERROR (-7)
-
-/* A little hack for linux. */
-#ifdef __linix__
-#define __USE_BSD
-#endif
+/* return a signal error */
+#define SIGNAL_ERROR (-8)
 
 /* Define DEBUG only for extra debugging output */
 /*#define DEBUG*/
@@ -73,12 +72,19 @@
 #define MADV_WILLNEED -1
 #endif
 
+/* Set the size of readback chunks to 1MB. */
 #define ECRC_READBACK_BUFFER_SIZE (1024*1024)
+
+/* This is the minimum rate that must be maintained within a single call to
+   read()/write().  Currently this is 1/2 MB/s. */
+#define MINIMUM_RATE 524288
 
 /***************************************************************************
  definitions
 **************************************************************************/
 
+/* This is the struct that holds all the information about one direction
+   of a transfer. */
 struct transfer
 {
   int fd;                 /*file descriptor*/
@@ -124,10 +130,11 @@ struct transfer
 
 };
 
+/* Two pointers for use by the monitor thread. */
 struct monitor
 {
-  struct transfer *read_info;
-  struct transfer *write_info;
+  struct transfer *read_info;  /* Pointer to the read direction struct. */
+  struct transfer *write_info; /* Pointer to the write direction struct. */
 };
 
 #ifdef PROFILE
@@ -155,30 +162,111 @@ static PyObject * raise_exception(char *msg);
 static PyObject * EXfd_xfer(PyObject *self, PyObject *args);
 static PyObject * EXfd_ecrc(PyObject *self, PyObject *args);
 #endif
+
+/* do_read_write_threaded() and do_read_write():
+   These functions take two paramaters to the read and write transfer structs.
+   The dfference is that the first one will run each half of the transfer
+   in their own thread, while the later runs everything in a single thread. */
 void do_read_write_threaded(struct transfer *reads, struct transfer *writes);
 void do_read_write(struct transfer *reads, struct transfer *writes);
+
+/* pack_return_values():
+   The first paramater is the transfer struct for the direction of the
+   transfer that is exiting.  Values in this struct will be modified with
+   the values from the other paramaters.
+
+   For the non-threaded version it is expected that the calling function
+   will call this function twice, one for each direction.  If there is
+   no error, dummy values should be specified for errno_val (0),
+   exit_status (0), msg (NULL), transfer_time (0.0), filename (NULL) and
+   line (0).  I there is an error, then crc_ui is set to zero. */
 static struct transfer* pack_return_values(struct transfer *info,
 					   unsigned int crc_ui,
 					   int errno_val, int exit_status,
 					   char* msg,
 					   double transfer_time,
 					   char *filename, int line);
+/* elapsed_time():
+   Return the difference between the two struct timeval{}s as a floating
+   point number in seconds.  The first paramater, start_time, is the older. */
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time);
+
+/* rusage_elapsed_time():
+   Do the same as elapsed_time(), except that the structs passed in are
+   struct rusage{}.  These structs do contain a struct timeval{}. */
 static double rusage_elapsed_time(struct rusage *sru, struct rusage *eru);
+
+/* get_fsync_threshold():
+   Returnthe number of bytes that need to be transfered before the next
+   syncing the file to disk (write to file only). */
 static long long get_fsync_threshold(struct transfer *info);
+
+/* get_fsync_waittime():
+   Uses the get_fsync_threshold() function for calculating the time to wait for
+   another thread to exit.  It is possible that the file is residing in the
+   buffer cache and the kernel has not started to flush the file out to disk.
+   In this senerio the longest operation the the waiting thread would need
+   to wait is the time of an entire sync of the part of the file still
+   in the file buffer cache.  If the un-stopping thread takes longer than
+   this return value in seconds to complete, there is likely a problem.
+   Most often this has turned out that the un-stopping thread was stuck in
+   the kernel (D state). */
 static time_t get_fsync_waittime(struct transfer *info);
+
+/* align_to_page() and align_to_size():
+   The align_to_size() function takes the value paramater and returns the
+   smallest size that is a multimple of the align parmamater. The
+   align_to_page() function does the same thing except that the alignment
+   amount is the systems page size. */
 static long align_to_page(long value);
 static long align_to_size(long value, long align);
-unsigned long long min(int num, ...);
-unsigned long long max(int num, ...);
+
+/* max() and min():
+   Take a num number of unsigned long long paramaters and return the maximum
+   or minimum value in the list. */
+static unsigned long long min(int num, ...);
+static unsigned long long max(int num, ...);
+
+/* setup_*io():
+   These functions take the struct of one direction of the transfer and
+   will attempt to initialize the struct for use with each type of i/o
+   optimization.  Posix i/o is the default and should be called regardless
+   if the other optimizations are used.  If Mmap i/o was specified, but
+   the underlying filesystem does not support it, it will revert to
+   direct/posix i/o.  If direct i/o is used on a filesystem that does not
+   support it, an error will be returned from EXfer.  The return value
+   is -1 on error and 0 on success. */
 static int setup_mmap_io(struct transfer *info);
 static int setup_direct_io(struct transfer *info);
 static int setup_posix_io(struct transfer *info);
+
+/* reinit_mmap_io() and finish_mmap_io():
+   The first function will unmap the current mmap segment and open the next
+   mmap segment.  The finish_mmap_io() function will close the last mmap segment.
+   The return value is -1 on error and zero on success. */
 static int reinit_mmap_io(struct transfer *info);
-static int finish_mmap(struct transfer *info);
+static int finish_mmap_io(struct transfer *info);
+
+/* finish_write():
+   Performs any extra completion operations.  Mostly this means using the
+   appropriate syncing function for posix, direct or mmapped i/o.
+   The return value is -1 on error and zero on success. */
 static int finish_write(struct transfer *info);
+
+/* do_select():
+   Wait for the FD to become ready for read or write depending on the
+   direction of the transfer the transfer struct paramater specifies.
+   This is really just a shell around select(), since only on FD is used. */
 static int do_select(struct transfer *info);
+
+/* *read() and *write():
+   These funcions are wrappers around the reading and writing functions.
+   The posix versions also perform the direct i/o versions.  The first
+   paramater is a pointer to the base of the buffer array.  The second is
+   the amount of data that this call to the function should worry about.
+   The last paramater is the struct of this half of the transfer.  The
+   return value is the amount of data read/written or -1 for error. */
 static ssize_t mmap_read(void *dst, size_t bytes_to_transfer,
 			 struct transfer *info);
 static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
@@ -187,26 +275,76 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 			  struct transfer* info);
 static ssize_t posix_write(void *src, size_t bytes_to_transfer,
 			   struct transfer* info);
-int thread_init(struct transfer *info);
-int thread_wait(int bin, struct transfer *info);
-int thread_signal(int bin, size_t bytes, struct transfer *info);
-int thread_collect(int tid, time_t wait_time);
+
+/* thread_init():
+   Initialize the global mutex locks and condition variables. */
+static int thread_init(struct transfer *info);
+
+/* thread_wait():
+   If the other read/write thread is slow, wait for the specified bin to become
+   available.  Return 1 on error and 0 on success. */
+static int thread_wait(int bin, struct transfer *info);
+
+/* thread_signal():
+   Set the bin (or bucket) with index bin to the amount specified by bytes.
+   This function will also 'raise' a condional variable signal to wake
+   up the other read/write thread.  Return 1 on error and 0 on success. */
+static int thread_signal(int bin, size_t bytes, struct transfer *info);
+
+/* thread_collect():
+   The first paramater is a thread id as returned by pthread_create().  This
+   thread will be 'canceled'.  In posix talk, canceled is to thread as
+   killed is to process.  The wait_time is the number of seconds to wait
+   for the thread to stop.  If the thread is waiting in the kernel 
+   the longest span of time would be returned from get_fsync_waittime().
+   If the thread is still 'alive' after this time it is assumed hung and
+   abandoned.  Return 1 on error and 0 on success. */
+static int thread_collect(int tid, time_t wait_time);
+
+/* thread_read() and thread_write():
+   These are the functions passed to pthread_create() for performing the
+   read/write portion of the threaded transfer.  The return value is the
+   pointer to a struct transfer{} with the completion items filled in. */
 static void* thread_read(void *info);
 static void* thread_write(void *info);
+
+/* thread_monitor():
+   This is the function that is passed to pthread_create() for the purpose
+   of starting a thread that monitors the read and write thread.  If
+   one of the threads stops/get stuck/hangs this will attempt to cancel
+   remaining threads and return an error from EXfer. */
 static void* thread_monitor(void *monitor);
-unsigned int ecrc_readback(int fd);
+
+/* ecrc_readback():
+   Performs a crc readback test on reads from enstore.  It takes a file
+   descriptor of the output file as paramater.  It then rewindes the file and
+   turns off direct i/o (Both Linux and IRIX do not give reasons for the
+   errors). The file is then read from begining to end and at the same time
+   the crc value is recalculated again. The crc value is returned.  On error,
+   the crc will returned as zero and errno will be set.   Thus, to fully
+   detect an error, set errno to zero first. */
+static unsigned int ecrc_readback(int fd);
+
+/* buffer_empty() and buffer_full():
+   If all the values in the 'stored' global are zero, buffer_empty() return
+   true; false otherwise.  If all the values in stored are zero,
+   buffer_empty() returns true; false otherwise. */
+static int buffer_empty(int array_size);
+static int buffer_full(int array_size);
+
+/* sig_alarm():
+   Used by thread_collect() to handle SIGALRM raised when a thread survies
+   a pthread_cancel(). */
+static void sig_alarm(int sig_num);
+
 #ifdef PROFILE
-void update_profile(int whereami, int sts, int sock,
+static void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count);
-void print_profile(struct profile *profile_data, int profile_count);
+static void print_profile(struct profile *profile_data, int profile_count);
 #endif /*PROFILE*/
 #ifdef DEBUG
 static void print_status(FILE *fp, int, int, struct transfer *info);
-			 /*char, long long, unsigned int, int array_size);*/
 #endif /*DEBUG*/
-static int buffer_empty(int array_size);
-static int buffer_full(int array_size);
-static void sig_alarm(int sig_num);
 
 /***************************************************************************
  globals
@@ -251,7 +389,7 @@ pthread_cond_t next_cond;   /*used to signal peer thread to continue*/
 #ifdef DEBUG
 pthread_mutex_t print_lock; /*order debugging output*/
 #endif
-static sigjmp_buf alarm_join;
+static sigjmp_buf alarm_join; /*used to handle detection of hung thread*/
 
 /***************************************************************************
  user defined functions
@@ -259,48 +397,57 @@ static sigjmp_buf alarm_join;
 
 static void sig_alarm(int sig_num)
 {
-  siglongjmp(alarm_join, 1);
+   /* Return execution to collect_thread(). */
+   siglongjmp(alarm_join, 1);
 }
 
 static int buffer_empty(int array_size)
 {
-  int i;  /*loop counting*/
+  int i;   /*loop counting*/
+  int rtn = -1; /*return*/ 
 
   for(i = 0; i < array_size; i++)
   {
-    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+    pthread_testcancel(); /* Don't continue if the thread should stop now. */
     pthread_mutex_lock(&(buffer_lock[i]));
     if(stored[i])
     {
       pthread_mutex_unlock(&(buffer_lock[i]));
-      return 0;
+      rtn = 0;
+      break;
     }
     pthread_mutex_unlock(&(buffer_lock[i]));
+    rtn = 1;
   }
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
   
-  return 1;
+  return rtn;
 }
 
 static int buffer_full(int array_size)
 {
-  int i;  /*loop counting*/
-
+  int i;   /*loop counting*/
+  int rtn = -1; /*return*/
+  
   for(i = 0; i < array_size; i++)
   {
-    pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+    pthread_testcancel(); /* Don't continue if the thread should stop now. */
     pthread_mutex_lock(&(buffer_lock[i]));
     if(!stored[i])
     {
       pthread_mutex_unlock(&(buffer_lock[i]));
-      return 0;
+      rtn = 0;
+      break;
     }
     pthread_mutex_unlock(&(buffer_lock[i]));
+    rtn = 1;
   }
-
-  return 1;
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
+  
+  return rtn;
 }
 
-/* Pack the arguments into a struct return_values. */
+/* Pack the arguments into a struct trasnfer{}. */
 static struct transfer* pack_return_values(struct transfer* retval,
 					   unsigned int crc_ui,
 					   int errno_val,
@@ -309,21 +456,21 @@ static struct transfer* pack_return_values(struct transfer* retval,
 					   double transfer_time,
 					   char* filename, int line)
 {
-  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
 
   /* Do not bother with checking return values for errors.  Should the
      pthread_* functions fail at this point, there is notthing else to
-     do but set the global flag and return. */
+     do but raise the condition variable and return. */
   pthread_mutex_lock(&done_mutex);
 
-  retval->crc_ui = crc_ui;             /* Checksum */
-  retval->errno_val = errno_val;       /* Errno value if error occured. */
-  retval->exit_status = exit_status;   /* Exit status of the thread. */
-  retval->msg = message;               /* Additional error message. */
-  retval->transfer_time = transfer_time;
-  retval->line = line;             
-  retval->filename = filename;
-  retval->done = 1;
+  retval->crc_ui = crc_ui;               /* Checksum */
+  retval->errno_val = errno_val;         /* Errno value if error occured. */
+  retval->exit_status = exit_status;     /* Exit status of the thread. */
+  retval->msg = message;                 /* Additional error message. */
+  retval->transfer_time = transfer_time; /* Duration of the transfer. */
+  retval->line = line;                   /* Line number an error occured on. */
+  retval->filename = filename;           /* Filename an error occured on. */
+  retval->done = 1;                      /* Flag saying transfer half done. */
 
   /* Putting the following here is just the lazy thing to do. */
   /* For this code to work this must be executed after setting retval->done
@@ -332,9 +479,12 @@ static struct transfer* pack_return_values(struct transfer* retval,
 
   pthread_mutex_unlock(&done_mutex);
 
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
+  
   return retval;
 }
 
+/* Return the time difference between to gettimeofday() calls. */
 static double elapsed_time(struct timeval* start_time,
 			   struct timeval* end_time)
 {
@@ -352,6 +502,7 @@ static double rusage_elapsed_time(struct rusage *sru, struct rusage *eru)
 	  (extract_time((&(sru->ru_stime)))+extract_time((&(sru->ru_utime)))));
 }
 
+/* Return how many bytes need to be sent between fsync() calls. */
 static long long get_fsync_threshold(struct transfer *info)
 {
   long long temp_value;
@@ -359,7 +510,10 @@ static long long get_fsync_threshold(struct transfer *info)
   /* Find out what one percent of the file size is. */
   temp_value = (long long)(info->bytes / (double)100.0);
 
-  /* Return the largest of these values. */
+  /* Return the largest of these values:
+     1) One percent of the filesize.
+     2) The block (aka buffer) size.
+     3) The memory mapped segment size. */
   return (long long)max(3, (unsigned long long)temp_value,
 			(unsigned long long)info->block_size,
 			(unsigned long long)info->mmap_size);
@@ -372,10 +526,10 @@ static time_t get_fsync_waittime(struct transfer *info)
   
   /* Calculate the amount of time to wait for the amount of data transfered
      between syncs will take assuming a minumum rate requirement. */
-  return (time_t)(get_fsync_threshold(info)/524288.0) + 1;
+  return (time_t)(get_fsync_threshold(info)/(float)MINIMUM_RATE) + 1;
   
   /* To cause intentional DEVICE_ERRORs use the following line instead. */
-  /*return (time_t)(info->block_size/524288.0) + 1;*/
+  /*return (time_t)(info->block_size/(float)MINIMUM_RATE) + 1;*/
 }
 
 /* A usefull function to round a value to the next full page. */
@@ -396,8 +550,8 @@ int is_empty(int bin)
 {
   int rtn = 0; /*hold return value*/
 
-  pthread_testcancel(); /* Don't grab a mutex if we should't use it. */
-
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
+  
   /* Determine if the lock for the buffer_lock bin, bin, is ready. */
   if(pthread_mutex_lock(&buffer_lock[bin]) != 0)
   {
@@ -412,12 +566,14 @@ int is_empty(int bin)
     return -1; /* If we fail here, we are likely to see it again. */
   }
 
+  pthread_testcancel(); /* Don't continue if the thread should stop now. */
+  
   return rtn;
 }
 
 /*First argument is the number of arguments to follow.
   The rest are the arguments to find the min of.*/
-unsigned long long min(int num, ...)
+static unsigned long long min(int num, ...)
 {
   va_list ap;
   int i;
@@ -440,7 +596,7 @@ unsigned long long min(int num, ...)
 
 /*First argument is the number of arguments to follow.
   The rest are the arguments to find the max of.*/
-unsigned long long max(int num, ...)
+static unsigned long long max(int num, ...)
 {
   va_list ap;
   int i;
@@ -490,7 +646,7 @@ static void print_status(FILE* fp, int bytes_transfered,
 #endif /*DEBUG*/
 
 #ifdef PROFILE
-void update_profile(int whereami, int sts, int sock,
+static void update_profile(int whereami, int sts, int sock,
 		    struct profile *profile_data, long *profile_count)
 {
   int size_var = sizeof(int);
@@ -511,7 +667,7 @@ void update_profile(int whereami, int sts, int sock,
   }
 }
 
-void print_profile(struct profile *profile_data, int profile_count)
+static void print_profile(struct profile *profile_data, int profile_count)
 {
   int i;
 
@@ -536,7 +692,7 @@ static int setup_mmap_io(struct transfer *info)
   long long bytes = info->size; /* Number of bytes to transfer. */
   off_t mmap_len =              /* Offset needs to be mulitple of pagesize */
     align_to_size(info->mmap_size, info->block_size); /* and blocksize. */
-  int advise_holder;
+  int advise_holder;            /* Contains the or-ed values for madvise. */
 
   /* Determine the length of the memory mapped segment. */
   mmap_len = (bytes<mmap_len)?bytes:mmap_len;
@@ -658,7 +814,7 @@ static int reinit_mmap_io(struct transfer *info)
     
     if(info->transfer_direction > 0) /*write*/
       advise_value |= MADV_SEQUENTIAL;
-    else if(info->transfer_direction < 0)
+    else if(info->transfer_direction < 0) /*read*/
       advise_value |= (MADV_SEQUENTIAL | MADV_WILLNEED);
     
     /* Advise the system on the memory mapped i/o usage pattern. */
@@ -683,7 +839,7 @@ static int reinit_mmap_io(struct transfer *info)
   return 0;
 }
 
-static int finish_mmap(struct transfer *info)
+static int finish_mmap_io(struct transfer *info)
 {
   if(info->mmap_ptr != MAP_FAILED)
   {
@@ -717,7 +873,9 @@ static int finish_write(struct transfer *info)
     /* If the file descriptor supports fsync force the data to be flushed to
        disk.  This can obviously fail for things like fsync-ing sockets, thus
        any errors are ignored. */
-    fsync(info->fd);
+    fdatasync(info->fd);
+    /*fsync(info->fd);*/
+    /*sync();*/
   }
 
   return 0;
@@ -867,7 +1025,8 @@ static ssize_t mmap_write(void *src, size_t bytes_to_transfer,
 {
   int sync_type = 0;            /* Type of msync() to perform. */
 
-  /* If file supports memory mapped i/o. */
+  /* If file supports memory mapped i/o perform the memory to memory copy
+     that reads/writes from/to the file. */
   errno = 0;
   memcpy((void*)((unsigned int)info->mmap_ptr +
 		 (unsigned int)info->mmap_offset),
@@ -979,23 +1138,25 @@ static ssize_t posix_write(void *src, size_t bytes_to_transfer,
        overhead. */
     if(info->fsync_threshold)
     {
-      /* If the amount of data transfered between fsync()s has passed,
-	 do the fsync and record amount completed. */
+       /* If the number of bytes of data transfered since the last sync has
+	  passed, do the fsync and record amount completed. */
       
-      if((info->last_fsync - info->bytes/* - sts*/) > info->fsync_threshold)
+      if((info->last_fsync - info->bytes) > info->fsync_threshold)
       {
 	info->last_fsync = info->bytes - sts;
 	pthread_testcancel(); /* Any sync action will take time. */
+	fdatasync(info->fd);
 	/*fsync(info->fd);*/
-	sync();
+	/*sync();*/
       }
       /* If the entire file is transfered, do the fsync(). */
       else if((info->bytes - sts) == 0)
       {
 	info->last_fsync = info->bytes - sts;
 	pthread_testcancel(); /* Any syncing action will take time. */
+	fdatasync(info->fd);
 	/*fsync(info->fd);*/
-	sync();
+	/*sync();*/
       }
     }
     pthread_testcancel(); /* Any syncing action will take time. */
@@ -1174,7 +1335,7 @@ int thread_signal(int bin, size_t bytes, struct transfer *info)
   return 0;
 }
 
-/* WARNING: Only use this function from the main thread.  Also, no other
+/* WARNING: Only use thread_collect()  from the main thread.  Also, no other
    thread is allowd to use SIGALRM, sleep, pause, usleep.  Note: nanosleep()
    by posix definition is guarenteed not to use the alarm signal. */
 
@@ -1197,9 +1358,17 @@ int thread_collect(int tid, time_t wait_time)
 	 then there is not a problem ignoring the error. */
       pthread_cancel(tid);
 
-      /* Collect the killed thread. */
+      /* Set the alarm to determine if the thread is still alive. */
       alarm(wait_time);
+
+      /* Collect the killed thread.  If this function fails to collect the
+	 canceled thread it is because that thread is stuck in the kernel
+	 waiting for i/o and cannot be killed.  On linux, a ps shows the
+	 state of the thread as being in the 'D' state. */
       rtn = pthread_join(tid, (void**)NULL);
+
+      /* Either an error occured or (more likely) the thread was joined by
+	 this point.  Either way turn off the alarm. */
       alarm(0);
       
       return rtn;
@@ -1214,7 +1383,7 @@ int thread_collect(int tid, time_t wait_time)
 /***************************************************************************/
 
 /* Take the file descriptor of a file and return the files CRC. */
-unsigned int ecrc_readback(int fd)
+static unsigned int ecrc_readback(int fd)
 {
   int buffer_size=ECRC_READBACK_BUFFER_SIZE;/*buffer size for the data blocks*/
   char buffer[ECRC_READBACK_BUFFER_SIZE];   /*the data buffer*/
@@ -1226,7 +1395,6 @@ unsigned int ecrc_readback(int fd)
   int rtn_fcntl;              /*fcntl() system call return status*/
 
   if(fstat(fd, &stat_info) < 0)   /* To get the filesize. */
-     /*return(raise_exception("fd_ecrc - file fstat failed"));*/
      return 0;
   if(!S_ISREG(stat_info.st_mode))
   {
@@ -1234,24 +1402,21 @@ unsigned int ecrc_readback(int fd)
      return 0;
   }
   if(lseek(fd, 0, SEEK_SET) != 0) /* Set to beginning of file. */
-     /*return(raise_exception("fd_ecrc - file lseek failed"));*/
      return 0;
 
 #ifdef O_DIRECT
   /* If O_DIRECT was used on the file descriptor, we need to turn it off.
    It seems that (on Linux anyway) writing a file with direct i/o then
    rewinding and rereading the file causes the reads to return the wrong
-   data. On an IRIX machine, rewinding an O_DIRECT opened file and rereading
-   results in an EINVAL error. */
+   data or return an EINVAL error. On an IRIX machine, rewinding an
+   O_DIRECT opened file and rereading results in an EINVAL error. */
   
   /*Get the current file descriptor flags.*/
   if((rtn_fcntl = fcntl(fd, F_GETFL, 0)) < 0)
-     /*return(raise_exception("fd_ecrc - file fcntl(F_GETFL) failed"));*/
      return 0;
   sts = rtn_fcntl & (~O_DIRECT);  /* turn off O_DIRECT */
   /*Set the new file descriptor flags.*/
   if(fcntl(fd, F_SETFL, sts) < 0)
-     /*return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));*/
      return 0;
 #endif
 
@@ -1263,12 +1428,10 @@ unsigned int ecrc_readback(int fd)
   for (i = 0; i < nb; i++)
   {
     if((rtn = read(fd, buffer, buffer_size)) < 0)   /* test for error */
-       /*return(raise_exception("fd_ecrc - file read failed"));*/
        return 0;
     else if(rtn != buffer_size)                     /* test for amount read */
     {
        errno = EIO;
-       /*return(raise_exception("fd_ecrc - partial buffer read"));*/
        return 0;
     }
     
@@ -1277,12 +1440,10 @@ unsigned int ecrc_readback(int fd)
   if (rest)
   {
     if((rtn = read(fd, buffer, rest)) < 0)          /* test for error */
-       /*return(raise_exception("fd_ecrc - file read failed"));*/
        return 0;
     else if(rtn != rest)                            /* test for amount read */
     {
        errno = EIO;
-       /*return(raise_exception("fd_ecrc - partial buffer read"));*/
        return 0;
     }
     
@@ -1292,7 +1453,6 @@ unsigned int ecrc_readback(int fd)
 #ifdef O_DIRECT
   /*Set the original file descriptor flags.*/
   if(fcntl(fd, F_SETFL, rtn_fcntl) < 0)
-     /*return(raise_exception("fd_ecrc - file fcntl(F_SETFL) failed"));*/
      return 0;
 #endif
 
@@ -1384,7 +1544,9 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
     return;
   }
   
-  /* get the threads going. */
+  /* Get the threads going. */
+
+  /* Start the thread that 'writes' the file. */
   if((p_rtn = pthread_create(&(writes->thread_id), NULL,
 			     &thread_write, writes)) != 0)
   {
@@ -1394,6 +1556,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 		       "write thread creation failed", 0.0, __FILE__,__LINE__);
     return;
   }
+
+  /* Start the thread that 'reads' the file. */
   if((p_rtn = pthread_create(&(reads->thread_id), NULL,
 			     &thread_read, reads)) != 0)
   {
@@ -1408,6 +1572,8 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
 		       __FILE__, __LINE__);
     return;
   }
+
+  /* Start the thread that monitors the read and write threads. */
   if((p_rtn = pthread_create(&monitor_tid, NULL, &thread_monitor,
 			     &monitor_info)) != 0)
   {
@@ -1448,7 +1614,6 @@ void do_read_write_threaded(struct transfer *reads, struct transfer *writes)
   wait_for_condition:
 
     /* wait until the condition variable is set and we have the mutex */
-    /* Waiting indefinatly could be dangerous. */
 
     if((p_rtn = pthread_cond_timedwait(&done_cond, &done_mutex,
 				       &cond_wait_ts)) != 0)
@@ -1672,6 +1837,8 @@ static void* thread_monitor(void *monitor_info)
     if(pthread_mutex_lock(&done_mutex))
       pthread_exit(NULL);
 
+    pthread_testcancel(); /* Don't continue if we should stop now. */
+    
     /* Check the old time versus the new time to make sure it has changed.
        Also, check if the other thread has something to do (which means both
        are going equally slow/fast) and if the time is cleared; this is
@@ -1687,6 +1854,7 @@ static void* thread_monitor(void *monitor_info)
 	 continue the memory locations have already been freed and will cause
 	 a segmentation violation. */
       pthread_cancel(read_info->thread_id);
+       
       /* Specify the following since we can't use pack_return_values() here. */
       read_info->crc_ui = 0;             /* Checksum */
       read_info->errno_val = EBUSY    ;  /* Errno value if error occured. */
@@ -1696,11 +1864,11 @@ static void* thread_monitor(void *monitor_info)
       read_info->transfer_time = 0.0;
       read_info->line = __LINE__;
       read_info->filename = __FILE__;
-      /* Setting this to -1 tells the main thread to ignore this thread. */
       read_info->done = 1;
 
       /* Signal the other thread there was an error. */
       pthread_cancel(write_info->thread_id);
+
       /* Specify the following since we can't use pack_return_values() here. */
       write_info->crc_ui = 0;             /* Checksum */
       write_info->errno_val = ECANCELED;  /* Errno value if error occured. */
@@ -1799,7 +1967,7 @@ static void* thread_read(void *info)
   sigaddset(&sigs_to_block, SIGALRM);
   if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
-    pack_return_values(info, 0, errno, READ_ERROR, "sigprocmask failed", 0.0,
+    pack_return_values(info, 0, errno, SIGNAL_ERROR, "sigprocmask failed", 0.0,
 		       __FILE__, __LINE__);
     return NULL;
   }
@@ -1973,7 +2141,7 @@ static void* thread_read(void *info)
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  if(finish_mmap(info))
+  if(finish_mmap_io(info))
     return NULL;
 
   /* Get total end time. */
@@ -2034,7 +2202,7 @@ static void* thread_write(void *info)
   sigaddset(&sigs_to_block, SIGALRM);
   if(sigprocmask(SIG_BLOCK, &sigs_to_block, NULL) < 0)
   {
-    pack_return_values(info, 0, errno, READ_ERROR, "sigprocmask failed", 0.0,
+    pack_return_values(info, 0, errno, SIGNAL_ERROR, "sigprocmask failed", 0.0,
 		       __FILE__, __LINE__);
     return NULL;
   }
@@ -2124,7 +2292,7 @@ static void* thread_write(void *info)
       }
       else
       {
-	/* Does double duty in that it also does the direct io read. */
+	/* Does double duty in that it also does the direct io write. */
 	sts = posix_write(
 		  (buffer + (bin * write_info->block_size) + bytes_transfered),
 		  bytes_remaining, info);
@@ -2213,7 +2381,7 @@ static void* thread_write(void *info)
   }
 
   /* If mmapped io was used, unmap the last segment. */
-  if(finish_mmap(write_info))
+  if(finish_mmap_io(write_info))
     return NULL;
 
   /* Get total end time. */
@@ -2455,12 +2623,13 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
 #endif /*DEBUG*/
     }
   }
+  
   /* Sync the data to disk and other 'completion' steps. */
   if(finish_write(write_info))
     return;
-  if(finish_mmap(read_info))
+  if(finish_mmap_io(read_info))
     return;
-  if(finish_mmap(write_info))
+  if(finish_mmap_io(write_info))
     return;
 
   /* Get the time that the thread finished to work on transfering data. */
@@ -2478,7 +2647,7 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
   free(buffer);
 #ifdef DEBUG
   free(stored);
-#endif
+#endif /*DEBUG*/
 
 #ifdef PROFILE
   print_profile(profile_data, profile_count);
@@ -2488,7 +2657,6 @@ void do_read_write(struct transfer *read_info, struct transfer *write_info)
   pack_return_values(read_info, crc_ui, 0, 0, "", time_elapsed, NULL, 0);
   return;
 }
-/*#endif */
 
 /***************************************************************************
  python defined functions
