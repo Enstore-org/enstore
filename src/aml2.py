@@ -155,6 +155,26 @@ def view(volume, media_type):
            v[1].coord, v[1].owner, v[1].attrib, v[1].type, v[1].volser, \
            v[1].vol_owner, v[1].use_count, v[1].crash_count
 	   
+def cleanADrive(ticket, classTicket):
+    """cleanADrive(ticket, classTicket)"""
+
+    status = 0
+    
+    volume = ticket[volume]
+    drive = ticket[drive]
+    media_type = ticket[media_type]
+    cleanTime = ticket[cleanTime]
+    status = mount(volume, drive, media_type)
+
+    # drive automatically starts cleaning upon tape insert.
+    time.sleep(cleanTime)  # wait cleanTime seconds
+
+    stat2 = dismount(volume, drive, media_type)
+    if status:
+        status = stat2
+    
+    return status_table[status][0], status, status_table[status][1]
+	   
 def insert(ticket, classTicket):
     """insert(ticket, classTicket)"""
 
