@@ -417,19 +417,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	# suffix tacked on the end. i.e. the file becomes for example inq.html
 	# not inq.html.new. only mover the file if we actually did something
 	self.htmlfile.close()
-	if did_some_work:
-	    try:
+	try:
+	    if did_some_work:
 	        os.system("mv "+self.htmlfile_orig+self.suffix+" "+\
 	                  self.htmlfile_orig)
-	    except:
-	        traceback.print_exc()
-	        format = timeofday.tod()+" "+\
-	                 str(sys.argv)+" "+\
-	                 str(sys.exc_info()[0])+" "+\
-	                 str(sys.exc_info()[1])+" "+\
-	                 "inquisitor serve_forever continuing"
-	        self.logc.send(log_client.ERROR, 1, format)
-	        Trace.trace(0,format)
+	    else:
+	        os.system("rm "+self.htmlfile_orig+self.suffix)
+	except:
+	    traceback.print_exc()
+	    format = timeofday.tod()+" "+\
+	             str(sys.argv)+" "+\
+	             str(sys.exc_info()[0])+" "+\
+	             str(sys.exc_info()[1])+" "+\
+	             "inquisitor serve_forever continuing"
+	    self.logc.send(log_client.ERROR, 1, format)
+	    Trace.trace(0,format)
         Trace.trace(11,"}do_update ")
 
     # loop here forever doing what inquisitors do best (overrides UDP one)
