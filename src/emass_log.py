@@ -53,7 +53,7 @@ def dump_log_file(addr, month, day, output=sys.stdout, update=0):
     prefix="/tmp/adiclog"
     if not os.path.isdir(prefix):
         os.mkdir(prefix)
-    filename = os.path.join(prefix, "%s%s%s.log"%(addr, month, day))
+    filename = os.path.join(prefix, "%s.%02d.%02d.log"%(addr, month, day))
     if update or not access.access(filename, access.R_OK):
         fetch_log_file(addr, month, day, filename)
     f = open(filename, 'r')
