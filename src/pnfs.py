@@ -37,6 +37,8 @@ UNKNOWN = "unknown"
 #DIREXISTS = "directory exists"
 ERROR = -1
 
+ATTEMPTS = 5
+
 #do_log = 0 #If this is set, PNFS errors will be logged
 
 ##############################################################################
@@ -149,47 +151,54 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     ##########################################################################
 
     # create a new file or update its times
-    def touch(self):
-        #if self.valid != VALID:
-        #    return
-        t = int(time.time())
+    def touch(self, filename=None):
+        if not filename:
+            filename = self.pnfsFilename
+            
         try:
-            os.utime(self.pnfsFilename,(t,t))
+            self.utime(filename)
         except os.error, msg:
             if msg.errno == errno.ENOENT:
-                f = open(self.pnfsFilename,'w')
+                f = open(filename,'w')
                 f.close()
             else:
-                Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ 
-                                   self.pnfsFilename)
-                raise os.error,msg
+                Trace.log(e_errors.INFO,
+                          "problem with pnfsFilename = " + filename)
+                raise os.error, msg
+
         self.pstatinfo()
-        #self.get_id()
 
     # update the access/mod time of a file
     # this function also seems to flush the nfs cache
-    def utime(self):
-        try:
-            t = int(time.time())
-            os.utime(self.pnfsFilename,(t,t))
-        except os.error, msg:
+    def utime(self, filename=None):
+        if not filename:
+            filename = self.pnfsFilename
+        
+        for i in range(ATTEMPTS):
+            try:
+                t = int(time.time())
+                os.utime(filename,(t,t))
+                break
+            except os.error, msg:
+                time.sleep(1)
+        else:
             Trace.log(e_errors.INFO, "can not utime: %s %s"%(os.error,msg))
-        self.pstatinfo()
-
-
+            raise msg
+        
     # delete a pnfs file including its metadata
-    def rm(self):
-        #if self.valid != VALID or self.exists != EXISTS:
-        #    return
-        self.writelayer(1,"")
-        self.writelayer(2,"")
-        self.writelayer(3,"")
-        self.writelayer(4,"")
+    def rm(self, filename=None):
+        if not filename:
+            filename = self.pnfsFilename
+            
+        self.writelayer(1,"", filename)
+        self.writelayer(2,"", filename)
+        self.writelayer(3,"", filename)
+        self.writelayer(4,"", filename)
+
         # It would be better to move the file to some trash space.
         # I don't know how right now.
-        os.remove(self.pnfsFilename)
-        self.exists = UNKNOWN
-        #self.utime()
+        os.remove(filename)
+
         self.pstatinfo()
 
     ##########################################################################
@@ -203,13 +212,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, file) = os.path.split(self.filepath)
             
         fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
-        f = open(fname,'w')
+
+        #If the value isn't a string, make it one.
         if type(value)!=type(''):
             value=str(value)
-        f.write(value)
-        f.close()
-        self.utime()
-        self.pstatinfo()
+
+        for i in range(ATTEMPTS):
+            try:
+                f = open(fname,'w')
+                f.write(value)
+                f.close()
+                self.utime()
+                self.pstatinfo()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
 
     # read the value stored in the requested file layer
     def readlayer(self,layer, filepath=None):
@@ -219,9 +238,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, file) = os.path.split(self.filepath)
             
         fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, file))
-        f = open(fname,'r')
-        l = f.readlines()
-        f.close()
+
+        for i in range(ATTEMPTS):
+            try:
+                f = open(fname,'r')
+                l = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+        
         return l
 
     ##########################################################################
@@ -235,10 +263,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, file) = os.path.split(self.filepath)
 
         fname = os.path.join(directory, ".(const)(%s)"%(file,))
-        f=open(fname,'r')
-        const = f.readlines()
-        f.close()
-        
+
+        for i in range(ATTEMPTS):
+            try:
+                f=open(fname,'r')
+                const = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+
         if not filepath:
             self.const = const
         return const
@@ -252,9 +288,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, file) = os.path.split(self.filepath)
             
         fname =os.path.join(directory, ".(id)(%s)" % (file,))
-        f = open(fname,'r')
-        id = f.readlines()
-        f.close()
+
+        for i in range(ATTEMPTS):
+            try:
+                f = open(fname,'r')
+                id = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+
         id = string.replace(id[0],'\n','')
 
         if not filepath:
@@ -273,9 +318,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(showid)(%s)"%(self.id,))
 
-        f = open(fname,'r')
-        showid = f.readlines()
-        f.close()
+        for i in range(ATTEMPTS):
+            try:
+                f = open(fname,'r')
+                showid = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
 
         if not id:
             self.showid = showid
@@ -293,10 +345,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(use_dir, ".(nameof)(%s)"%(id,))
         else:
             fname = os.path.join(use_dir, ".(nameof)(%s)"%(self.id,))
-            
-        f = open(fname,'r')
-        nameof = f.readlines()
-        f.close()
+
+        for i in range(ATTEMPTS):
+            try:
+                f = open(fname,'r')
+                nameof = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+        
         nameof = string.replace(nameof[0],'\n','')
 
         if not id:
@@ -314,10 +374,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(use_dir, ".(parent)(%s)"%(id,))
         else:
             fname = os.path.join(use_dir, ".(parent)(%s)"%(self.id,))
-            
-        f = open(fname,'r')
-        parent = f.readlines()
-        f.close()
+
+        for i in range(ATTEMPTS):
+            try:            
+                f = open(fname,'r')
+                parent = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+        
         parent = string.replace(parent[0],'\n','')
 
         if not id:
@@ -402,11 +470,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(directory, ".(get)(cursor)")
         else:
             fname = os.path.join(self.dir, ".(get)(cursor)")
-            
-        f = open(fname,'r')
-        cursor = f.readlines()
-        f.close()
 
+        for i in range(ATTEMPTS):
+            try:       
+                f = open(fname,'r')
+                cursor = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+        
         if not directory:
             self.cursor = cursor
         return cursor
@@ -418,10 +493,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(directory, ".(get)(counters)")
         else:
             fname = os.path.join(self.dir, ".(get)(counters)")
-            
-        f=open(fname,'r')
-        counters = f.readlines()
-        f.close()
+
+        for i in range(ATTEMPTS):
+            try:  
+                f=open(fname,'r')
+                counters = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
 
         if not directory:
             self.counters = counters
@@ -435,9 +517,16 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(postion)")
 
-        f=open(fname,'r')
-        position = f.readlines()
-        f.close()
+        for i in range(ATTEMPTS):
+            try:  
+                f=open(fname,'r')
+                position = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
 
         if not directory:
             self.position = position
@@ -451,9 +540,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = os.path.join(self.dir, ".(get)(database)")
 
-        f=open(fname,'r')
-        database = f.readlines()
-        f.close()
+        for i in range(ATTEMPTS):
+            try:  
+                f=open(fname,'r')
+                database = f.readlines()
+                f.close()
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+        
         database = string.replace(database[0], "\n", "")
 
         if not directory:
@@ -470,17 +567,24 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             file = self.filepath
 
         self.verify_existance()
-            
-        file_size = os.stat(file)[stat.ST_SIZE]
-            
-        #filesize = self.readlayer(enstore_constants.XREF_LAYER, file)
-        #filesize = long(filesize[2].strip())
-        try: #Not all files have a layer four.
+
+        #Get the file system size.
+        for i in range(ATTEMPTS):
+            try:  
+                file_size = os.stat(file)[stat.ST_SIZE]
+                break
+            except OSError, detail:
+                time.sleep(1)
+        else:
+            raise detail
+
+        #If there is no layer 4, go with the os size.
+        try:
             filesize = long(self.get_xreference()[2].strip())
         except ValueError:
             self.file_size = file_size
             return file_size
-
+        
         #Error checking.  However first ignore large file cases.
         if file_size == 1 and filesize > long(2L**31L) - 1:
             if not filepath:
@@ -506,7 +610,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # report the original file.
         self.verify_existance()
         
-        #Make sure that the layer size is accurate.
         xref = self.get_xreference()
         formated_size = str(filesize)
         if formated_size[-1] == "L":
@@ -532,16 +635,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # set a new mode for the existing file
     def chmod(self,mode):
-        #if self.valid != VALID or self.exists != EXISTS:
-        #    return
         os.chmod(self.pnfsFilename,mode)
         self.utime()
         self.pstatinfo()
 
     # change the ownership of the existing file
     def chown(self,uid,gid):
-        #if self.valid != VALID or self.exists != EXISTS:
-        #    return
         os.chown(self.pnfsFilename,uid,gid)
         self.utime()
         self.pstatinfo()
@@ -634,15 +733,22 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     # get the stat of file, or if non-existant, its directory
     def get_stat(self):
-        try:
-            # first the file itself
-            self.pstat = os.stat(self.filepath)
-        except OSError, msg:
+        for i in range(ATTEMPTS):
+            try:
+                # first the file itself
+                self.pstat = os.stat(self.filepath)
+                break
+            except OSError, msg:
+                time.sleep(1)
+        else:
             # if that fails, try the directory
             if msg.errno == errno.ENOENT:
-                try:
-                    self.pstat = os.stat(os.path.dirname(self.filepath))
-                except OSError, msg2:
+                for i in range(ATTEMPTS):
+                    try:
+                        self.pstat = os.stat(os.path.dirname(self.filepath))
+                    except OSError, msg2:
+                        time.sleep(1)
+                else:
                     raise msg2
             else:
                 self.major,self.minor = (0,0)
@@ -759,7 +865,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.verify_existance()
             self.get_bit_file_id()
-            #data = self.readlayer(enstore_constants.BFID_LAYER)
             print self.bit_file_id
             return 0
         except IndexError:
@@ -837,10 +942,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                 (intf.named_layer, file))
         os.system("ls -alsF " + filename)
         
-    #def pvolume(self, intf):
-    #    self.volmap_filepath(self.file_family, intf.volumename)
-    #    print self.volume_filepath
-    
     def pecho(self, intf):
         try:
             self.writelayer(intf.named_layer, intf.text)
