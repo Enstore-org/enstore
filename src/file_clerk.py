@@ -435,8 +435,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # copy all file information we have to user's ticket
-        ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
-        ticket["status"] = (e_errors.OK, None)
+        try:
+            ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
+            ticket["status"] = (e_errors.OK, None)
+        except KeyError:
+            ticket['status'] = (e_errors.KEYERROR, None)
 
         self.reply_to_caller(ticket)
         Trace.trace(10,"get_volmap_name %s"%(ticket["status"],))
