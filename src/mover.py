@@ -116,7 +116,8 @@ m_err = [ e_errors.OK,				# exit status of 0 (index 0) is 'ok'
           e_errors.WRITE_VOL1_MISSING,
           e_errors.READ_VOL1_WRONG,
           e_errors.WRITE_VOL1_WRONG,
-	  e_errors.MOVER_CRASH ]	# obviously can not handle this one
+	  e_errors.MOVER_CRASH,
+          e_errors.USERERROR]	# obviously can not handle this one
 
 forked_state = [ 'forked',
 		 'encp check',
@@ -394,9 +395,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     # MUST SEPARATE SYSTEM AND USER FUNCTIONS - I.E. ERROR MIGHT BE USERGONE
     # send a message to our user (last means "done with the read or write")
-    def send_user_done( self, ticket, error_info ):
+    def send_user_done( self, ticket, error_info, extra=None ):
         self.hsm_driver.user_state_set( forked_state.index('send_user_done') )
-        ticket['status'] = (error_info,None)
+        ticket['status'] = (error_info,extra)
         callback.write_tcp_obj( self.control_socket, ticket)
         self.control_socket.close()
         return
@@ -650,9 +651,10 @@ class Mover(  dispatching_worker.DispatchingWorker,
             if self.mvr_config['driver']=='NullDriver':
                 fname = ticket['wrapper'].get("pnfsFilename",'')
                 if "NULL" not in string.split(fname,'/'):
-                    self.send_user_done( ticket, e_errors.WRITE_ERROR )
+                    ticket['status']=(e_errors.USERERROR, "NULL not in destination path")
+                    self.send_user_done( ticket, e_errors.USERERROR, "NULL not in destination path" )
                     self.return_or_update_and_exit( self.lm_origin_addr,
-                                                e_errors.WRITE_ERROR )                
+                                                    e_errors.USERERROR )                
                 
             t0 = time.time()
             sts = self.bind_volume( ticket['fc']['external_label'] )
@@ -1116,11 +1118,11 @@ class Mover(  dispatching_worker.DispatchingWorker,
 
     # create ticket that says we are idle
     def idle_mover_next( self ):
-        return {'work'   : 'idle_mover',
+        ret = {'work'   : 'idle_mover',
                 'mover'  : self.mvr_config['name'],
                 'state'  : self.state,
                 'address': (self.mvr_config['hostip'],self.mvr_config['port'])}
-
+        return ret
     # create ticket that says we have bound volume x
     def have_bound_volume_next( self ):
         return { 'work'   : 'have_bound_volume',
@@ -1519,6 +1521,9 @@ class Mover(  dispatching_worker.DispatchingWorker,
                                     e_errors.READ_VOL1_MISSING,
                                     e_errors.READ_VOL1_WRONG):
             next_req_to_lm = self.freeze_tape( m_err[exit_status] )
+            pass
+        elif m_err[exit_status] == e_errors.USERERROR:
+            next_req_to_lm = self.idle_mover_next()
             pass
         else:
             # new error
