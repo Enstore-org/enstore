@@ -169,7 +169,7 @@
 	</ConditionSet>
     	</MonitoredElement>
     </For>
-    <MonitoredElement Name="xntpd" Host="localhost" Type="Daemon">
+    <MonitoredElement Name="timeSync" Host="localhost" Type="Daemon">
         <ConditionSet>
         <fn Name="plug_ins" Arg="cat /proc/[0-9]*/stat|grep \(*xntpd\)|wc -l;echo `/usr/sbin/xntpdc -p | grep '*'|awk '{print $8}'`" RetVal="int:alive,str:disp"/>
    	<Condition State="0" SevLevel="0" Description="xntpd is dead">
@@ -200,7 +200,7 @@
 </System>
 
        <System Name="Hardware" Cluster="localhost">
-      <MonitoredElement Name="processor" Host="localhost" Type="Hardware">
+      <MonitoredElement Name="NumProcessors" Host="localhost" Type="Hardware">
          <ConditionSet>
          <fn Name="plug_ins" Arg="cat /proc/cpuinfo|grep processor|wc -l" RetVal="int:numPr"/>
          <Condition State="1" SevLevel="6" Description="Missing one processor">
