@@ -1704,7 +1704,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
                                     (state_name(self.state),self.current_volume))
                         #Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
-                        Trace.log(e_errors.INFO, "write:now %s t %s max %s empty %s defer %s br %s btr %s"%(now, buffer_empty_t,self.max_time_in_state, empty, defer_write,(self.bytes_read, self.bytes_to_read)) #!!! REMOVE WHEN PROBLEM is fixed
+                        Trace.log(e_errors.INFO, "write:now %s t %s max %s empty %s defer %s br %s btr %s"%(now, buffer_empty_t,self.max_time_in_state, empty, defer_write,self.bytes_read, self.bytes_to_read)) #!!! REMOVE WHEN PROBLEM is fixed
                         self.too_long_in_state_sent = 0 # send alarm just once
                     buffer_empty_t = now
                     Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
