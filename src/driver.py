@@ -29,6 +29,8 @@ class GenericDriver:
 	self.shm.offset( 1, self.shm.id )
 	self.shm.offset( 6, 0 )		# user state location (for the record)
 	self.shm.offset( 7, 0 )		# for possible tcp port info
+	self.shm.offset( 8, 0 )		# for possible sub-sub process pid info
+	self.shm.offset( 9, 0 )		# for possible other (future) info
 
 	# volume info
         self.remaining_bytes = 0
@@ -86,15 +88,19 @@ class GenericDriver:
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
 	self.fo.flush()			# Important - sync fp and fd
-	if self.mode == 'r':		# relative to this driver = "from hsm"
-	    crc = EXfer.fd_xfer( self.fo.fileno(), fd, siz_bytes, 
-				 self.blocksize, crc_fun, crc, self.shm )
-	else:
-	    crc = EXfer.fd_xfer( fd, self.fo.fileno(), siz_bytes,
-				 self.blocksize, crc_fun, crc, self.shm )
-	    self.remaining_bytes = self.remaining_bytes - siz_bytes
+	try:
+	    if self.mode == 'r':		# relative to this driver = "from hsm"
+		crc = EXfer.fd_xfer( self.fo.fileno(), fd, siz_bytes, 
+				     self.blocksize, crc_fun, crc, self.shm )
+	    else:
+		crc = EXfer.fd_xfer( fd, self.fo.fileno(), siz_bytes,
+				     self.blocksize, crc_fun, crc, self.shm )
+		self.remaining_bytes = self.remaining_bytes - siz_bytes
+		pass
 	    pass
-	del self.sem,self.msg		# sys.exit??? forking???
+	finally:
+	    del self.sem,self.msg		# sys.exit??? forking???
+	    pass
 	return crc
 
     def rd_bytes_get( self ):
@@ -228,11 +234,14 @@ class  FTTDriver(GenericDriver) :
 	self.msg = IPC.msgget( IPC.IPC_PRIVATE, IPC.IPC_CREAT|0x1ff )
 	self.shm.offset( 2, self.sem.id )
 	self.shm.offset( 3, self.msg.id )
-	crc = FTT.fd_xfer( fd, siz_bytes, crc_fun, crc, self.shm )
-	if self.mode != 'r':
-	    self.remaining_bytes = self.remaining_bytes - siz_bytes
+	try:
+	    crc = FTT.fd_xfer( fd, siz_bytes, crc_fun, crc, self.shm )
+	    if self.mode != 'r':
+		self.remaining_bytes = self.remaining_bytes - siz_bytes
+		pass
 	    pass
-	del self.sem,self.msg		# sys.exit??? forking???
+	finally:
+	    del self.sem,self.msg		# sys.exit??? forking???
 	return crc
 
     def writefm( self ):
