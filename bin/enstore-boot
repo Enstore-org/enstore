@@ -19,8 +19,10 @@ case "$1" in
         . /usr/local/etc/setups.sh
         setup enstore 
 
-        n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\.fnal\.gov//'`
-        n2=`uname -n | sed -e 's/\.fnal\.gov//'`
+        n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
+        n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
+	exit
+
         if [ "$n1" != "$n2" ]; then
           if [ `ping -c 1 $ENSTORE_CONFIG_HOST | grep -c ", 0% packet loss"` -eq 1 ]; then
             echo "`date`: $ENSTORE_CONFIG_HOST responds to pings" 2>&1 | tee /dev/console >>$output
