@@ -35,6 +35,7 @@ NOUPDOWN = "noupdown"
 TRUE = 1
 FALSE = 0
 WAIT_THIS_AMOUNT = 120
+ALIVE_INTERVAL = 10
 
 LOW_CAPACITY = 0
 SUFFICIENT_CAPACITY = 1
@@ -56,6 +57,22 @@ def too_long(start):
     else:
 	rtn = 0
     return rtn
+
+def get_media_changer(cdict, config_d, config_d_keys, lm):
+    mcs = []
+    movers = cdict.get_movers_internal({'library' : lm})
+    for m in movers:
+	mc = config_d[m['mover']].get(enstore_constants.MEDIA_CHANGER, '')
+	if mc:
+	    break
+    return mc
+
+def get_library_managers(config_d_keys):
+    lms = []
+    for key in config_d_keys:
+	if enstore_functions.is_library_manager(key):
+	    lms.append(key)
+    return lms
 
 def get_allowed_down_index(server, allowed_down, index):
     if allowed_down.has_key(server):
@@ -104,7 +121,7 @@ class EnstoreServer:
 	    self.status = status
 
     def __init__(self, name, format_name, offline_d, override_d, seen_down_d, allowed_down_d,
-		 en_status, cs=None, mailer=None):
+		 en_status, mailer=None):
 	self.name = name
 	self.format_name = format_name
 	self.offline_d = offline_d
@@ -118,18 +135,12 @@ class EnstoreServer:
 	self.in_bad_state = 0
 	# if self.status is not UP, then enstore is the following
 	self.en_status = en_status
-	if cs:
-	    self.csc = cs.csc
-	    self.config_host = cs.config_host
-	    # we need to see if this server should be monitored by up_down.  this 
-	    # info is in the config file.
-	    config_d = self.csc.get(name, self.timeout, self.tries);
-	    if config_d.has_key(NOUPDOWN):
-		self.noupdown = TRUE
-	    else:
-		self.noupdown = FALSE
+	# we need to see if this server should be monitored by up_down.  this 
+	# info is in the config file.
+	flag = enstore_functions.get_from_config_file(name, NOUPDOWN, None)
+	if flag:
+	    self.noupdown = TRUE
 	else:
-	    self.csc = None
 	    self.noupdown = FALSE
 
     def is_really_down(self):
@@ -232,18 +243,18 @@ class EnstoreServer:
 
 class LogServer(EnstoreServer):
 
-    def __init__(self, csc, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, "log_server", enstore_constants.LOGS,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "log_server down"
 
 class AlarmServer(EnstoreServer):
 
-    def __init__(self, csc, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, "alarm_server", enstore_constants.ALARMS,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "alarm_server down"
 
 class ConfigServer(EnstoreServer):
@@ -256,33 +267,31 @@ class ConfigServer(EnstoreServer):
 	self.reason_down = "config_server down"
 	self.config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
 	self.config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
-	self.csc = configuration_client.ConfigurationClient((self.config_host, 
-							     self.config_port))
 	enprint("Checking Enstore on %s with variable timeout and tries "%((self.config_host,
 									    self.config_port),))
 
 class FileClerk(EnstoreServer):
 
-    def __init__(self, csc, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, "file_clerk", enstore_constants.FILEC,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "file_clerk down"
 
 class Inquisitor(EnstoreServer):
 
-    def __init__(self, csc, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, "inquisitor", enstore_constants.INQ,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.WARNING, csc)
+			       enstore_constants.WARNING)
 	self.reason_down = None
 
 class VolumeClerk(EnstoreServer):
 
-    def __init__(self, csc, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, "volume_clerk", enstore_constants.VOLC,
 			       offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "volume_clerk down"
 
 class LibraryManager(EnstoreServer):
@@ -291,9 +300,9 @@ class LibraryManager(EnstoreServer):
     BADSTATUS = ['ignore', 'locked', 'pause', 'unknown']
     BROKENSTATUS = [e_errors.BROKEN]
 
-    def __init__(self, csc, name, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.LIBRARY_MANAGER
 	self.server_state = ""
@@ -351,9 +360,9 @@ class LibraryManager(EnstoreServer):
 
 class MediaChanger(EnstoreServer):
 
-    def __init__(self, csc, name, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.DOWN, csc)
+			       enstore_constants.DOWN)
 	self.reason_down = "%s down"%(name,)
 	self.postfix = enstore_constants.MEDIA_CHANGER
 
@@ -364,9 +373,9 @@ class Mover(EnstoreServer):
 		 'OFFLINE' : enstore_constants.WARNING,
 		 'DRAINING' : enstore_constants.WARNING}
 
-    def __init__(self, csc, name, offline_d, override_d, seen_down_d, allowed_down_d):
+    def __init__(self, name, offline_d, override_d, seen_down_d, allowed_down_d):
 	EnstoreServer.__init__(self, name, name, offline_d, override_d, seen_down_d, allowed_down_d,
-			       enstore_constants.WARNING, csc)
+			       enstore_constants.WARNING)
 	self.reason_down = None
 	self.postfix = enstore_constants.MOVER
 	self.server_state = ""
@@ -421,15 +430,19 @@ def do_real_work():
     allowed_down_d = get_allowed_down_dict()
     override_d_keys = override_d.keys()
 
+    cdict = enstore_functions.get_config_dict()
+    config_d = cdict.configdict
+    config_d_keys = config_d.keys()
+
     # create all objects
     cs = ConfigServer(offline_d, override_d, seen_down_d, allowed_down_d)
-    server_list = [cs, LogServer(cs, offline_d, override_d, seen_down_d, allowed_down_d),
-	    AlarmServer(cs, offline_d, override_d, seen_down_d, allowed_down_d),
-	    Inquisitor(cs, offline_d, override_d, seen_down_d, allowed_down_d),
-	    FileClerk(cs, offline_d, override_d, seen_down_d, allowed_down_d),
-	    VolumeClerk(cs, offline_d, override_d, seen_down_d, allowed_down_d)]
-    lib_man_d = cs.csc.get_library_managers({})
-    library_managers = sortit(lib_man_d)
+    log = LogServer(offline_d, override_d, seen_down_d, allowed_down_d)
+    alarm = AlarmServer(offline_d, override_d, seen_down_d, allowed_down_d)
+    server_list = [cs, log, alarm,
+	    Inquisitor(offline_d, override_d, seen_down_d, allowed_down_d),
+	    FileClerk(offline_d, override_d, seen_down_d, allowed_down_d),
+	    VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d)]
+    library_managers = get_library_managers(config_d_keys)
 
     meds = {}
     total_other_servers = []
@@ -444,23 +457,22 @@ def do_real_work():
     total_lms = []
     total_movers = []
     for lm in library_managers:
-	lm_name = lib_man_d[lm]['name']
-        lmc = LibraryManager(cs, lm_name, offline_d, override_d, seen_down_d, allowed_down_d)
+        lmc = LibraryManager(lm, offline_d, override_d, seen_down_d, allowed_down_d)
 	if lmc.noupdown == FALSE:
 	    total_lms.append(lmc) 
 	    if no_override(lmc, override_d_keys):
 		total_servers_names.append(lmc.name)
 
 	# no duplicates in dict
-	meds[cs.csc.get_media_changer(lm_name, lmc.timeout, lmc.tries)] = 1 
+	meds[get_media_changer(cdict, config_d, config_d_keys, lm)] = 1 
 	movs = {}
-	mov=cs.csc.get_movers(lm_name)
+	mov=cdict.get_movers_internal({'library' : lm})
 	for m in mov:
 	    movs[(m['mover'])] = 1 # no duplicates in dictionary
 	movers = sortit(movs)
         mover_objects = []
         for mov in movers:
-            mvc = Mover(cs, mov, offline_d, override_d, seen_down_d, allowed_down_d)
+            mvc = Mover(mov, offline_d, override_d, seen_down_d, allowed_down_d)
 	    if mvc.noupdown == FALSE:
 		mover_objects.append(mvc)
 		if no_override(mvc, override_d_keys):
@@ -473,7 +485,7 @@ def do_real_work():
 
     for med in media_changers:
 	if med:
-	    mc = MediaChanger(cs, med, offline_d, override_d, seen_down_d, allowed_down_d)
+	    mc = MediaChanger(med, offline_d, override_d, seen_down_d, allowed_down_d)
 	    if mc.noupdown == FALSE:
 		total_other_servers.append(mc)
 		# do not monitor the server if it has an override value
@@ -488,6 +500,7 @@ def do_real_work():
 
     # event loop - wait for events
     start = time.time()
+    did_not_append = 1
     got_one = 0          # used to measure if the event relay is up
     while 1:
 	readable, junk, junk = select.select([erc.sock], [], [], 15)
@@ -497,6 +510,15 @@ def do_real_work():
 	    if too_long(start):
 		break
 	    else:
+		# if we have not received any messages from the eent relay, try subscribing 
+		# again.  maybe it is up now.
+		if not got_one:
+		    erc.subscribe()
+		erc.send_one_heartbeat(enstore_constants.UP_DOWN)
+		# send our heartbeat to the event relay process
+		if did_not_append:
+		    total_servers_names.append(enstore_constants.UP_DOWN)
+		    did_not_append = 0
 		continue
 
 	msg = enstore_functions.read_erc(erc)
@@ -554,6 +576,13 @@ def do_real_work():
 	    # server did not get back to us, assume it is dead
 	    server.is_dead()
 
+    # keep tabs on the event relay too, if we received anyones alive, then the event relay
+    # is alive.  otherwise mark it as dead
+    if got_one:
+	summary_d[enstore_constants.EV_RLY] = enstore_constants.UP
+    else:
+	summary_d[enstore_constants.EV_RLY] = enstore_constants.DOWN
+
     # rewrite the seen down file as we keep track of how many times something has 
     # been down
     if dfile:
@@ -577,10 +606,14 @@ def do_real_work():
     if summary_d[enstore_constants.ENSTORE] == enstore_constants.DOWN:
 	stat = "DOWN"
 	rtn = 1
-	# the following line will set the alarm function
-	alc = alarm_client.AlarmClient(cs.csc)
-	Trace.init("Enstore_Up_Down")
-	Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
+	# only raise an alarm if we got a message from the alarm server and the log_server
+	# because the alarm will be logged
+	if summary_d[log.format_name] == enstore_constants.UP and \
+	   summary_d[alarm.format_name] == enstore_constants.UP:
+	    # the following line will set the alarm function
+	    alc = alarm_client.AlarmClient(cs.csc)
+	    Trace.init("Enstore_Up_Down")
+	    Trace.alarm(e_errors.INFO, e_errors.ENSTOREBALLRED, {'Reason':repr(reason)}) 
     else:
 	stat = "UP"
 	rtn = 0
