@@ -1,5 +1,8 @@
 # @(#) $Id$
 # $Log$
+# Revision 1.3  2000/09/14 20:27:50  cgw
+# remove blank lines
+#
 # Revision 1.2  2000/06/13 16:09:13  cgw
 # import sys, use sys.exc_info
 #
@@ -144,7 +147,7 @@ class Shelf:
                 r= cPickle.loads(x)
             except:
                 print "Pickle load error", repr(x)
-		exc, msg, tb = sys.exc_info()
+		exc, msg = sys.exc_info()[:2]
                 raise exc, msg
             return r
         
