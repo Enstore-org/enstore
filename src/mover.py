@@ -560,8 +560,8 @@ def forked_write_to_hsm( self, ticket ):
 	remaining_bytes = stats['remaining_bytes']
 	wr_err = stats['wr_err']
 	rd_err = stats['rd_err']
-	wr_access = stats['wr_access']
-	rd_access = stats['rd_access']
+	wr_access = 1
+	rd_access = 0
 	ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
 						     remaining_bytes,
 						     eod_cookie,
@@ -697,7 +697,7 @@ def forked_read_from_hsm( self, ticket ):
             do.close()
             Trace.trace(11,'closed')
 	    wr_err,rd_err       = stats['wr_err'],stats['rd_err']
-	    wr_access,rd_access = stats['wr_access'],stats['rd_access']
+	    wr_access,rd_access = 0,1
         #except errno.errorcode[errno.EPIPE]: # do not know why I can not use just 'EPIPE'
 	except (FTT.error, EXfer.error), err_msg:
             logc.send( e_errors.ERROR,1,
