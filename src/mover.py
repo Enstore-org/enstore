@@ -1172,7 +1172,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
             "operation": mode_name(self.mode),
-            "error_source", error_source,
+            "error_source": error_source,
             "work": work,
             }
         return ticket
