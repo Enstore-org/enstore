@@ -82,6 +82,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
 		self.file.reconnect()
 		self.db = self.file.db
+		self.volume.db = self.db
+		self.sgdb.db = self.db
 
 	# The following are local methods
 
