@@ -1402,6 +1402,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
+        if fun == 'restrict_host_access':
+            action = None   # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
@@ -1526,6 +1528,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
+        if fun == 'restrict_host_access':
+            action = None    # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
