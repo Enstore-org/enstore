@@ -268,15 +268,16 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
+            #Log the error.
+            Trace.log(e_errors.ERROR, "Unable to connect data socket: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "Unable to connect data socket: %s" %
-                      str(work_ticket['status']))
             return work_ticket
 
         Trace.message(5, "Data socket is connected to mover %s for %s. " %
@@ -314,15 +315,17 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
+            #Log the error.
+            Trace.log(e_errors.ERROR,
+                      "Waiting for data from open data socket failed: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "Waiting for data from open data "
-                      "socket failed: %s" % str(work_ticket['status']))
             return work_ticket
 
         Trace.message(5, "Reading data from tape.")
@@ -369,15 +372,17 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         if not e_errors.is_ok(result_dict):
             #Copy this element special into work_ticket.
             work_ticket['status'] = done_ticket['status']
+
+            #Log the error.
+            Trace.log(e_errors.ERROR, "File transfer failed: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "File transfer failed: %s" %
-                      str(work_ticket['status']))
             return work_ticket
 
         #Store what there is in the 'exfer' sub-ticket, now that it is known
@@ -392,15 +397,17 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                            e_errors.READ_EOD):
             #Copy this element specially into work_ticket.
             work_ticket['status'] = mover_done_ticket['status']
+
+            #Log the error.
+            Trace.log(e_errors.INFO, "Dectected End Of Data: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(mover_done_ticket):
                 work_ticket = encp.combine_dict(mover_done_ticket, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
 
-            #Log the error and return.
-            Trace.log(e_errors.INFO, "Dectected End Of Data: %s" %
-                      str(work_ticket['status']))
             return work_ticket
         
         # Verify that everything went ok with the transfer.
@@ -411,15 +418,17 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         if not e_errors.is_ok(mover_result_dict):
             #Copy this element specially into work_ticket.
             work_ticket['status'] = mover_done_ticket['status']
+
+            #Log the error.
+            Trace.log(e_errors.ERROR, "Final dialog error: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(mover_result_dict):
                 work_ticket = encp.combine_dict(mover_result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "Final dialog error: %s" %
-                      str(work_ticket['status']))
             return work_ticket
 
         #Snce the mover_done_ticket is valid, combine these tickets.
@@ -499,6 +508,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                           None, None, e)
         
         if not e_errors.is_ok(result_dict):
+            #Log the error.
+            Trace.log(e_errors.ERROR, "Filesize comparison error: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retriable error.
             if e_errors.is_non_retriable(result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
@@ -506,9 +519,6 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "Filesize comparison error: %s" %
-                      str(work_ticket['status']))
             return work_ticket
         
         #Check the crc.
@@ -520,15 +530,16 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
+            #Log the error.
+            Trace.log(e_errors.ERROR, "CRC comparison error: %s %s" %
+                      (str(work_ticket['status']), str(result_dict['status'])))
+            
             #Don't loose the non-retirable error.
             if e_errors.is_non_retriable(mover_result_dict):
                 work_ticket = encp.combine_dict(result_dict, work_ticket)
             # Close these descriptors before they are forgotten about.
             encp.close_descriptors(out_fd, data_path_socket)
 
-            #Log the error and return.
-            Trace.log(e_errors.ERROR, "CRC comparison error: %s" %
-                      str(work_ticket['status']))
             return work_ticket
 
         tstring = '%s_overall_time' % work_ticket['unique_id']
