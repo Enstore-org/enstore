@@ -1,58 +1,68 @@
-#!/bin/sh
+#!/bin/sh -u
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
+
+usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
+	  echo "       enter `basename $0`"
+	}
+
+[ "$USER" != enstore ] && usage && exit 1
+
+node=`hostname -s`
 
 case $node in
-    stk*) icap="0,0,0"
-	  ocap="0,0,0"
-	  sun=fntt
-	  ;;
-    d0*)  icap="1,0,0"
-	  ocap="1,1,0"
-	  sun=fntt
-	  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
-	  ;;
-    cdf*) icap="0,1,0"
-	  ocap="0,0,0"
-	  sun=fntt2
-	  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
-	  ;;
-       *) echo `date` DO NOT know CAP
-	  icap="0,0,0"
-	  ocap="0,0,0"
-	  sun=fntt
+  stkensrv4)
+     icap="0,0,0"
+     ocap="0,0,0"
+     sun=fntt
+     ;;
+  d0ensrv4)
+     icap="1,0,0"
+     ocap="1,1,0"
+     sun=fntt
+     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
+     ;;
+  cdfensrv4)
+     icap="0,1,0"
+     ocap="0,0,0"
+     sun=fntt2
+     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
+     ;;
+  *) usage
+     exit 1
+     ;;
 esac
 
-output=/tmp/write_tab.output
+output=/tmp/`basename $0`.output
 
 work=/write_protect_work
 if [ ! -d $work ]; then
-   echo `date` ERROR. $work does not exist
-   exit 1
+  echo `date` ERROR. $work does not exist
+  exit 1
 fi
 
 cd $work
 
-for i in `ls -vI *.*`; do
+for i in `ls -vI \*.\*`; do
   t0=`date  +'%s'`
   . $i |tee $output 2>&1
   echo
   echo
   case $node in
     stk*)
-      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap | bin/cmd_proc -l -q 2>/dev/null"
       echo
       echo
       /bin/echo -n "Press Enter when all tapes have been loaded with tab in write-protect mode"
       read ans
       while /bin/true; do
-	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
-	capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap | bin/cmd_proc -l -q 2>/dev/null"`
+	capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
 	if [ "$capstate" = "available" ]; then break; fi
 	echo `date` waiting for cap to be unloaded.
 	sleep 5
       done
-      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
+      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
       echo
       echo
       ;;
@@ -73,7 +83,7 @@ for i in `ls -vI *.*`; do
   fi
   echo
   echo
-  left=`ls -vI *.* | wc -l`
+  left=`ls -vI \*.\* | wc -l`
   /bin/echo -n "There are $left groups left to do.  Another [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null ; then
      continue
@@ -83,7 +93,7 @@ for i in `ls -vI *.*`; do
 done
 
 case $node in
-    d0*|cdf*)
-      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
-      ;;
+  d0*|cdf*)
+    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap | bin/cmd_proc -l -q 2>/dev/null"
+    ;;
 esac
