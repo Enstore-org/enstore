@@ -1023,8 +1023,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         rticket["status"] = (e_errors.OK, None)
         rticket["at movers"] = work_at_movers
         rticket["pending_work"] = pending_work.get_queue()
-        callback.write_tcp_obj(self.data_socket,rticket,
-                                  "library_manager getwork, datasocket")
+        callback.write_tcp_obj(self.data_socket,rticket)
         self.data_socket.close()
         callback.write_tcp_obj(self.control_socket,ticket)
         self.control_socket.close()
