@@ -1,0 +1,13 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# bin/$RCSfile template.sh $  $Revision$
+
+pyfiles=/tmp/enstore/`whoami`/pyfiles
+rm -f $pyfiles
+find $ENSTORE_DIR/src -name "*.py" >$pyfiles
+cat $pyfiles | while read pfile; do
+  $ENSTORE_DIR/tools/mylint.py $pfile |egrep -v "loading|Exiting with 0"
+  $ENSTORE_DIR/tools/check_pct.py -w $pfile
+done
