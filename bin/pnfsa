@@ -1,0 +1,392 @@
+#!/bin/sh
+# bin/$RCSfile template.sh $  $Revision$
+
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+#set -u  # force better programming and ability to use check for not set
+set +u  # I don't like this, but it is needed for the eval command at bottom
+
+phelp()     { usage="
+enstore pnfs is a tool to control, manipulate and query pnfs files.
+
+Commonly used commands are:
+
+   enstore pnfs info   file         lists \"important\" info about the file
+       note:  \"eval \`pnfs info file\`\" will set shell variables for the user
+
+   enstore pnfs tags   directory    lists the tags in the directory
+
+   enstore pnfs library [value]           sets library tag to value (must have correct cwd)
+   enstore pnfs file_family [value]       sets file family tag to value (must have correct cwd)
+   enstore pnfs file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
+   enstore pnfs file_family_width [value] sets library tag to value (must have correct cwd)
+
+   enstore pnfs files volmap-tape   lists all the files on specified tape in volmap
+   enstore pnfs volume volumename   lists the volmap-tape for the specifed volumename
+
+   enstore pnfs bfid   file         lists the bit file id of the file
+   enstore pnfs parked file         lists the last parked location of the file
+   enstore pnfs debug  file         lists the debug info about the file transfer
+   enstore pnfs xref   file         lists the cross-reference info about the file
+
+   enstore pnfs ls   file [layer]   does an ls on the named layer in the file
+
+   enstore pnfs {cat|more|less}          file layer     lists the layer of the file
+   enstore pnfs {tagcat|tagmore|tagless} tag  directory lists the tag in the directory
+
+   enstore pnfs enstore_state          lists whether enstore is still accepting transfers
+   enstore pnfs pnfs_state mount-point lists whether pnfs mountpoint is up
+
+Don't use these unless you know what you are doing:
+
+   enstore pnfs echo text file layer   echos text to named layer of the file
+
+   enstore pnfs rm file layer          deletes (clears) named layer of the file
+
+   enstore pnfs cp unixfile file layer copies unix file to named layer of file
+
+   enstore pnfs size file size         sets the size of the file
+
+   enstore pnfs tagecho text tagname   echos text to the named tag
+
+   enstore pnfs tagrm tag              removes the tag (tricky, see DESY documents)
+
+   enstore pnfs io file                sets io mode (can't clear it easily)
+
+Don't use these unless you can interpret the results:
+
+   enstore pnfs id        file
+   enstore pnfs showid    id
+   enstore pnfs const     file
+   enstore pnfs nameof    id
+   enstore pnfs path      id
+   enstore pnfs parent    id
+   enstore pnfs counters  file
+   enstore pnfs counterN  dbnum (must have cwd in pnfs)
+   enstore pnfs cursor    file
+   enstore pnfs position  file
+   enstore pnfs database  file
+   enstore pnfs databaseN dbnum (must have cwd in pnfs)
+
+End of enstore pnfs help description
+
+"
+              echo "$usage"; }
+
+#internal routine only
+p_error()   { echo ERROR, Usage: pnfs $1; exit 1; }
+
+#internal routine only
+p_cmd()     { echo "\"`dirname $1`/$2(`basename $1`)\"" ; }
+
+#internal routine only
+p_use()     { if [ -z "${2-}" ] ; then c=".(use)(1)"; else c=".(use)($2)"; fi
+              p_cmd $1 $c ; }
+
+pcat()      { if [ -z "${1-}" ] ; then p_error "cat filename [level]"; fi
+              eval cat  `p_use $@` ; }
+pmore()     { if [ -z "${1-}" ] ; then p_error "more filename [level]"; fi
+              eval more `p_use $@` ; }
+pless()     { if [ -z "${1-}" ] ; then p_error "less filename [level]"; fi
+              eval less `p_use $@` ; }
+
+pbfid()     { pcat $1 1 ; }
+pparked()   { pcat $1 2 ; }
+pdebug()    { pcat $1 3 ; }
+pxref()     { pcat $1 4 ; }
+
+#internal routine only
+pinfo_helper()  { choice=$1
+                  c=0
+                  echo "$xref" | while read x; do
+                    c=`expr $c + 1`
+                    if [ $c -gt 9 ] ; then echo "parse-error"; break; fi
+                    if [ $c -eq $choice ] ; then echo $x; break; fi
+                  done ; }
+
+pinfo()     { if [ -z "${1-}" ] ; then p_error "info filename"; fi
+              bfid=`pbfid $@` # this should be deleted after everyone starts using the new code - the bfid is also in layer 4
+              xref=`pxref $@`
+              volume="`pinfo_helper 1`"
+              location_cookie="`pinfo_helper 2`"
+              size="`pinfo_helper 3`"
+              file_family="`pinfo_helper 4`"
+              orig_name="`pinfo_helper 5`"
+              map_file="`pinfo_helper 6`"
+              pnfsid_file="`pinfo_helper 7`"
+              pnfsid_map="`pinfo_helper 8`"
+              bfid2="`pinfo_helper 9`"  # change this to bfid after bit
+              filename=`ppath $pnfsid_file`
+              if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
+                   `echo $SHELL | grep -c /sh`   -ne 0 -o \
+                   `echo $SHELL | grep -c /ksh`  -ne 0 -o \
+                   `echo $SHELL | grep -c /zsh`  -ne 0  ] ; then
+              echo "bfid=\"$bfid\";
+bfid2=\"$bfid2\";
+volume=\"$volume\";
+location_cookie=\"$location_cookie\";
+size=\"$size\";
+file_family=\"$file_family\";
+filename=\"$filename\";
+orig_name=\"$orig_name\";
+map_file=\"$map_file\";
+pnfsid_file=\"$pnfsid_file\";
+pnfsid_map=\"$pnfsid_map\";"
+              else
+              echo "set bfid=\"$bfid\";
+set bfid2 \"$bfid2\";
+set volume \"$volume\";
+set location_cookie \"$cookie\";
+set size \"$size\";
+set file_family \"$file_family\";
+set filename \"$filename\";
+set orig_name \"$orig_name\";
+set map_file \"$map_file\";
+set pnfsid_file \"$pnfsid_file\";
+set pnfsid_map \"$pnfsid_map\";"
+               fi; }
+
+pls()       { if [ -z "${1-}" ] ; then p_error "ls filename [level]"; fi
+              eval ls -alsF `p_use $@` ; }
+
+pecho()     { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "echo text filename [level]"; fi
+              pt="$1"
+              shift 1
+              eval echo -n "$pt" \>\| `p_use $@` ; }
+
+prm()       { if [ -z "${1-}" ] ; then p_error "rm filename [level]"; fi
+              eval echo -n "" \>\| `p_use $@` ; }
+
+pcp()       { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "cp file pnfsfile [level]"; fi
+              pt="$1"
+              shift 1
+              eval cp "$pt" `p_use $@` ; }
+
+psize()     { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "size filename size"; fi
+              eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(size)($2)\"" ; }
+
+pid()       { if [ -z "${1-}" ] ; then p_error "id filename"; fi
+              eval cat  `p_cmd $1 ".(id)"` ; }
+
+pconst()    { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat   `p_cmd $dir ".(const)"` ; }
+
+#internal routine only
+# For routines that use an id, I either need to have my cwd in pnfs, or I
+#  I need to specify a (fake) path that begins with /pnfs.  Look at mounted
+#  file system and return 1st pnfs filesystem - this works for both cases
+#  but, I should not use the /pnfs/fs admin root mounted from localhost
+p_pnfs()    { df | grep -v localhost | grep  /pnfs/ | sed -e 's%.*/pnfs/%/pnfs/%' -e 's%$%/%' | cut -d"
+" -f1; }
+
+pshowid()   { if [ -z "${1-}" ] ; then p_error "showid id"; fi
+              eval cat  "\"`p_pnfs`.(showid)($1)\"" ; }
+
+pnameof()   { if [ -z "${1-}" ] ; then p_error "nameof id"; fi
+              eval cat  "\"`p_pnfs`.(nameof)($1)\"" ; }
+
+pparent()   { if [ -z "${1-}" ] ; then p_error "parent id"; fi
+              eval cat  "\"`p_pnfs`.(parent)($1)\"" ; }
+
+ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
+              filename=""
+              id=$1
+              while /bin/true;  do
+                #echo $filename
+                filename=`pnameof $id 2>/dev/null`/$filename
+                if [ $? -ne 0 ] ; then break; fi
+                id=`pparent $id`
+              done
+              #echo $filename
+              #filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr%pnfs%' -e 's%/$%%'`
+	      if [ `echo $filename | grep -c 'root/fs/usr'` -ne 1 ] ; then
+                echo "PNFS PROTECTION ERROR: admin should chmod go+rx /pnfs/fs/usr and subdirs"
+	      else
+ 	        filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
+              fi
+              if [ -z "$filename" ] ; then
+                filename="NO_SUCH_FILE"
+                echo $filename
+	      else
+	        mp=`echo $filename | cut -f2 -d/`
+  	        #echo $mp
+		cat /etc/mtab | grep pnfs | grep -v localhost | while read remote local rest; do
+		  rem=`echo $remote | sed -e 's%.*:/%%'`
+		  if [ $rem = $mp ] ; then 
+		    cmd="echo $filename | sed -e 's%/$mp%$local%'"
+		    #echo $cmd
+ 		    filename=`eval $cmd`
+		    echo $filename
+		    break
+ 		  fi
+                done
+              fi
+            }
+
+#pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
+#              for i in $1/*; do
+#                eval `pnfs info $i`
+#                if [ $filename != "NO_SUCH_FILE" ]; then
+#                  ls -l $filename
+#                else
+#                  a=`ls -l $map_file`
+#                  echo $a $filename
+#                fi
+#              done; }
+
+pfiles()    { if [ -z "${1-}" ] ; then p_error "files volume_path_in_volmap"; fi
+              for i in $1/*; do
+	        a=`pnfs cat $i 4`
+		pnfsid=`echo $a | awk '{print $7}'`
+		filename=`pnfs path $pnfsid`
+                if [ $filename != "NO_SUCH_FILE" ]; then
+                  ls -l $filename
+                else
+                  a=`ls -l $map_file`
+                  echo $a $filename
+                fi
+              done; }
+
+pvolume()   { if [ -z "${1-}" ] ; then p_error "volume volume_name"; fi
+              find /pnfs -name $1; }
+
+pcounters() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(counters)\"" ; }
+
+pcountersN() { if [ -z "${1-}" ] ; then p_error "countersN dbnum"; fi
+              eval cat  "\".(get)(counters)($1)\"" ; }
+
+pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(cursor)\"" ; }
+
+pdatabase() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(database)\"" ; }
+
+pdatabaseN() { if [ -z "${1-}" ] ; then p_error "databaseN dbnum"; fi
+              eval cat  "\"`p_pnfs`.(get)(database)($1)\"" ; }
+
+pposition() { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(position)\"" ; }
+
+pcursor()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              waste=/tmp/gc-$$
+              rm -f $waste
+              cat "`dirname $dir`/.(get)(cursor)" >$waste
+              if [ $? -ne 0 ] ; then problem "FAILED : Can get .(get)(cursor) " ; return ; fi
+              . $waste
+              /bin/echo  "dirID=$dirID ; dirPerm=$dirPerm ; mountID=$mountID ;"
+              mode=`/bin/echo $dirPerm | awk '{ print substr( $1 , 15, 1 ) }'`
+              level=`/bin/echo $dirPerm | awk '{ print substr( $1 , 16 , 1 ) }'`
+              /bin/echo "We are at level $level in mode $mode "
+              if [ $mode = "2" ] ; then
+                /bin/echo "The I/O mode of level 0 is DISABLED "
+              else
+                /bin/echo "The I/O mode of level 0 is ENABLED "
+              fi ; }
+
+pio()       { if [ -z "${1-}" ] ; then p_error "io filename"; fi
+              eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
+
+
+#internal routine only
+p_tag()     { if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
+              echo "\"$dir/.(tag)($1)\"" ; }
+
+ptagcat()   { if [ -z "${1-}" ] ; then p_error "tagcat tag"; fi
+              echo "$@"
+              eval cat  `p_tag $@`; echo "" ; }
+ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
+              eval more `p_tag $@` ; }
+ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
+              eval less `p_tag $@` ; }
+
+ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; 
+	      for i in `cat "$dir/.(tags)(all)"`; do ls -l $dir/$i; done ; }
+
+ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "tagecho text tagname"; fi
+              pt="$1"
+              shift 1
+              eval echo -n "$pt" \>\| `p_tag $@` ; }
+
+ptagrm()    { echo "The attempt to remove a tag results in an unpredictable behavior and may corrupt the entire directory"
+              echo "If you insist on doing this, try   eval echo -n \"\" >| `p_tag tagname`" ; }
+
+plibrary()  { if [ -z "${1-}" ] ; then
+                ptagcat library
+              else
+                ptagecho "$1" library
+              fi; }
+
+pfile_family()
+            { if [ -z "${1-}" ] ; then
+                ptagcat file_family
+              else
+                ptagecho "$1" file_family
+              fi; }
+
+pfile_family_wrapper()
+
+            { default_wrapper=cpio_odc
+	      wrappers=`eval echo "cpio_odc cpio_crc cpio_newc cpio_custom cpio_eurostore"`
+	      if [ -z "${1-}" ] ; then
+                ptagcat file_family_wrapper
+              else
+	        matched=0
+	        for i in $wrappers; do if [ $1 = $i ]; then matched=1; break; fi; done;
+		if [ $matched -ne 0 ]; then ptagecho "$1" file_family_wrapper
+		else echo only $wrappers wrappers are allowed
+		fi;
+              fi; }
+
+pfile_family_width()
+            { if [ -z "${1-}" ] ; then
+                ptagcat file_family_width
+              else
+                ptagecho "$1" file_family_width
+              fi; }
+
+
+penstore_state()  
+            { disabled="`p_pnfs`.(config)(flags)/disabled" 
+              if [ -r "$disabled" ] ; then
+	        why=`cat "$disabled"`
+		echo "Enstore disabled: $why"
+                exit 1
+              else
+	        echo "Enstore enabled"
+		exit 0
+              fi; }
+
+ppnfs_state() 
+            { if [ -z "${1-}" ] ; then p_error "pnfs_state"; fi
+              if [ -n "${2-}" ] ; then jtime=$2; else jtime=10; fi
+	      file="\"`p_pnfs`.(config)(flags)/.(id)(enstore.conf)\""
+	      state="down"; ec=1
+              /bin/sh -c '( sleep '$jtime' ; kill $$ ) >/dev/null 2>&1 &
+	      state=`eval cat  $file`'
+	      if  [ "$state" != "down" ] ; then state="up"; ec=0; fi
+              echo "Pnfs $state" 
+	      exit $ec; }
+
+        
+#debugging routine - space in arguments are being eaten by eval
+pdog()      { echo $#
+              echo $1
+              echo $2
+              echo $3; }
+
+if [ -z "${1-}" ] ; then
+  cmd="phelp"
+else
+  cmd=p$1
+#    echo "KLG: ${1-}"
+  shift
+#    echo "KLG: ${1-},"
+fi
+
+
+#eval $cmd $@ # the eval command eats spaces in the positional arguments, so this doesn't work!
+eval $cmd \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" # not happy with this, but it works
+stat=$?
+#if [ $stat -ne 0 ] ; then phelp; fi
+exit $stat
