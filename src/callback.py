@@ -42,7 +42,8 @@ def get_callback(use_multiple=0,fixed_ip=None,verbose=0):
             if status:
                 Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
     else:
-        s.bind('', 0)
+        hostname, junk, ips = hostaddr.gethostinfo()
+        s.bind(ips[0], 0)
     host, port = s.getsockname()
     return host, port, s
                 
