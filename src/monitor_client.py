@@ -32,14 +32,14 @@ MY_SERVER = "monitor"
 class MonitorServerClient(generic_client.GenericClient):
 
     def __init__( self, csc,
-                  probe_server_addr,
+                  monitor_server_addr,
                   html_server_addr,
                   timeout,
                   block_size,
                   block_count,
 		  summary):
         self.u = udp_client.UDPClient()
-	self.probe_server_addr = probe_server_addr
+	self.monitor_server_addr = monitor_server_addr
 	self.html_server_addr = html_server_addr
         self.timeout = timeout
         self.block_size = block_size
@@ -53,7 +53,7 @@ class MonitorServerClient(generic_client.GenericClient):
 
     # send Active Monitor probe request
     def _send_probe (self, ticket):
-        x = self.u.send( ticket, self.probe_server_addr, self.timeout, 10 )
+        x = self.u.send( ticket, self.monitor_server_addr, self.timeout, 10 )
         return x
 
     # send measurement to the html server
@@ -65,27 +65,34 @@ class MonitorServerClient(generic_client.GenericClient):
         return x
 
     # ping a server like ENCP would
-    def monitor_one_interface(self, remote_interface, transfer):
+    def monitor_one_interface(self, server_address, transfer):
         ticket= { 'work'             : 'simulate_encp_transfer',
                   'transfer'         : transfer,
                   'callback_addr'    : (self.c_hostip, self.c_port),
-                  'remote_interface' : remote_interface,
+                  'remote_interface' : server_address[0],
                   'block_count'      : self.block_count,
                   'block_size'       : self.block_size,
                   }
-        
-        try:
-            #The need for threading this section stems from needing to
-            # wait for a udp responce to the udp request, while at the same
-            # time participating in the request via another connection.
-            sim_thread = threading.Thread(target=self._simulate_encp_transfer,
-                args=(ticket,))
-            sim_thread.start()
 
-            #Send the message to start to the simulation.  Since, this
-            # function does not return until a response is recieved
-            reply=self._send_probe(ticket) #raises exeption on timeout
-            sim_thread.join() #wait for the read times to exist.
+        try:
+            #Send the request to the server.
+            send_id = self.u.send_deferred(ticket, server_address)
+
+            #Execute the rate test with the server.
+            read_measurment = self._simulate_encp_transfer(ticket)
+
+            #Get the rate measurement back from the server.
+            write_measurement = self.u.recv_deferred(send_id, timeout = 30)
+
+            #Since the direction data is being sent influences which rate
+            # we care about, pick the correct one.
+            if transfer == "send_to_server":
+                reply = write_measurement
+            elif transfer == "send_from_server":
+                reply = read_measurment
+            else:
+                reply['status'] = ('INVALIDACTION', "failed to simulate encp")
+
         except errno.errorcode[errno.ETIMEDOUT]:
             reply = {}
             reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
@@ -168,10 +175,10 @@ class MonitorServerClient(generic_client.GenericClient):
         try:
             #Try to acquire the host name from the host ip.
             callback_addr = socket.gethostbyaddr(self.c_hostip)[0]
-            remote_addr = socket.gethostbyaddr(self.probe_server_addr[0])[0]
+            remote_addr = socket.gethostbyaddr(self.monitor_server_addr[0])[0]
         except:
             callback_addr = self.c_hostip
-            remote_addr = self.probe_server_addr
+            remote_addr = self.monitor_server_addr
 
         #pack the info.
         ticket = {
@@ -343,13 +350,15 @@ def do_real_work(summary, config_host, config_port, html_gen_host):
 
             #Test rate sending from the server.  The rate info for read time
             # information is stored in msc.measurement.
-            msc.monitor_one_interface(ip,"send_from_server")
+            read_measurement = msc.monitor_one_interface(
+                (ip, config['port']),"send_from_server")
             read_rate = msc.calculate_rate(msc.measurement)
         
             #Test rate sending to the server.  Since, the time is recorded on
             # the other end use the value returned, and not the one stored
             # in msc.measurement (which is for read info).
-            write_measurement = msc.monitor_one_interface(ip,"send_to_server")
+            write_measurement = msc.monitor_one_interface(
+                (ip, config['port']),"send_to_server")
             write_rate = msc.calculate_rate(write_measurement)
 
             #Send the information to the html server node.
