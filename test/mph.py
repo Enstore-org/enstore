@@ -71,6 +71,7 @@ control.write("set output '"+psname+".ps'\n"+ \
               "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
               "set xdata time\n"+ \
               "set xrange [ : ]\n"+ \
+              "set yrange [0: ]\n"+ \
               "set ylabel 'Mounts/Hour'\n"+ \
               "set grid\n"+ \
               "set format x \"%m-%d:%H\"\n"+ \
