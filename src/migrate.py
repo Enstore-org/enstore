@@ -88,6 +88,10 @@ io_lock = thread.allocate_lock()
 copy_queue = Queue.Queue(1024)
 scan_queue = Queue.Queue(1024)
 
+dbhost = None
+dbport = None
+dbname = None
+
 # migration log file
 LOG_DIR = SPOOL_DIR
 LOG_FILE = "MigrationLog@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))+'#'+`os.getpid()`
@@ -109,12 +113,16 @@ def time2timestamp(t):
 
 # initialize csc, db, ... etc.
 def init():
-	global db, csc, log_f
+	global db, csc, log_f, dbhost, dbport, dbname
 	intf = option.Interface()
 	csc = configuration_client.ConfigurationClient((intf.config_host,
 		intf.config_port))
 
 	db_info = csc.get('database')
+	dbhost = db_info['db_host']
+	dbport = db_info['db_port']
+	dbname = db_info['dbname']
+
 	db = pg.DB(host=db_info['db_host'] , port=db_info['db_port'],
 		dbname=db_info['dbname'])
 	log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
@@ -124,7 +132,7 @@ def init():
 # If true, the timestamp is returned, other wise, None is returned
 
 # is_copied(bfid) -- has the file already been copied?
-def is_copied(bfid):
+def is_copied(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
 		log(q)
@@ -135,7 +143,7 @@ def is_copied(bfid):
 		return res[0]['dst_bfid']
 
 # is_swapped(bfid) -- has the file already been swapped?
-def is_swapped(bfid):
+def is_swapped(bfid, db):
 	q = "select * from migration where src_bfid = '%s';"%(bfid)
 	if debug:
 		log(q)
@@ -147,7 +155,7 @@ def is_swapped(bfid):
 
 # is_checked(bfid) -- has the file already been checked?
 #	we check the destination file
-def is_checked(bfid):
+def is_checked(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
 		log(q)
@@ -159,7 +167,7 @@ def is_checked(bfid):
 
 # is_closed(bfid) -- has the file already been closed?
 #	we check the destination file
-def is_closed(bfid):
+def is_closed(bfid, db):
 	q = "select * from migration where dst_bfid = '%s';"%(bfid)
 	if debug:
 		log(q)
@@ -212,7 +220,7 @@ def log(*args):
 	io_lock.release()
 
 # log_copied(bfid1, bfid2) -- log a successful copy
-def log_copied(bfid1, bfid2):
+def log_copied(bfid1, bfid2, db):
 	q = "insert into migration (src_bfid, dst_bfid, copied) \
 		values ('%s', '%s', '%s');" % (bfid1, bfid2,
 		time2timestamp(time.time()))
@@ -226,7 +234,7 @@ def log_copied(bfid1, bfid2):
 	return
 
 # log_swapped(bfid1, bfid2) -- log a successful swap
-def log_swapped(bfid1, bfid2):
+def log_swapped(bfid1, bfid2, db):
 	q = "update migration set swapped = '%s' where \
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
@@ -240,7 +248,7 @@ def log_swapped(bfid1, bfid2):
 	return
 
 # log_checked(bfid1, bfid2) -- log a successful readback 
-def log_checked(bfid1, bfid2):
+def log_checked(bfid1, bfid2, db):
 	q = "update migration set checked = '%s' where \
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
@@ -254,7 +262,7 @@ def log_checked(bfid1, bfid2):
 	return
 
 # log_closed(bfid1, bfid2) -- log a successful readback after closing
-def log_closed(bfid1, bfid2):
+def log_closed(bfid1, bfid2, db):
 	q = "update migration set closed = '%s' where \
 		src_bfid = '%s' and dst_bfid = '%s';"%(
 			time2timestamp(time.time()), bfid1, bfid2)
@@ -301,6 +309,9 @@ def temp_file(vol, location_cookie):
 # copy_files(files) -- copy a list of files to disk and mark the status
 # through copy_queue
 def copy_files(files):
+	# get a db connection
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
+
 	MY_TASK = "COPYING_TO_DISK"
 	# if files is not a list, make a list for it
 	if type(files) != type([]):
@@ -336,7 +347,7 @@ def copy_files(files):
 			continue
 
 		# check if it has been copied
-		ct = is_copied(bfid)
+		ct = is_copied(bfid, db)
 		if ct:
 			res = 0
 			ok_log(MY_TASK, "%s has already been copied at %s"%(bfid, ct))
@@ -460,6 +471,8 @@ def swap_metadata(bfid1, src, bfid2, dst):
 # migrating() -- second half of migration, driven by copy_queue
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
+	# get a database connection
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
 	if debug:
 		log(MY_TASK, "migrating() starts")
 	job = copy_queue.get(True)
@@ -494,7 +507,7 @@ def migrating():
 			continue
 
 		# check if it has already been copied
-		bfid2 = is_copied(bfid)
+		bfid2 = is_copied(bfid, db)
 		if not bfid2:
 			res = run_encp(['--library', DEFAULT_LIBRARY, '--storage-group', sg,
 				'--file-family', ff, tmp, dst])
@@ -512,7 +525,7 @@ def migrating():
 			else:
 				# log success of coping
 				ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
-				log_copied(bfid, bfid2)
+				log_copied(bfid, bfid2, db)
 
 			# remove tmp file
 			try:
@@ -524,11 +537,11 @@ def migrating():
 
 		# is it swapped?
 		log("SWAPPING_METADATA", "swapping %s %s %s %s"%(bfid, src, bfid2, dst))
-		if not is_swapped(bfid):
+		if not is_swapped(bfid, db):
 			res = swap_metadata(bfid, src, bfid2, dst)
 			if not res:
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
-				log_swapped(bfid, bfid2)
+				log_swapped(bfid, bfid2, db)
 				scan_queue.put((bfid, bfid2, src), True)
 			else:
 				error_log("SWAPPING_METADATA", "%s %s %s %s failed due to %s"%(bfid, src, bfid2, dst, res))
@@ -545,16 +558,18 @@ def migrating():
 def final_scan():
 	# get its own file clerk client
 	fcc = file_clerk_client.FileClient(csc)
+	#get a database connection
+	db = pg.DB(host=dbhost, port=dbport,dbname=dbname)
 	MY_TASK = "FINAL_SCAN"
 	job = scan_queue.get(True)
 	while job:
 		(bfid, bfid2, src) = job
 		log(MY_TASK, "start checking %s %s"%(bfid2, src))
-		ct = is_checked(bfid2)
+		ct = is_checked(bfid2, db)
 		if not ct:
 			res = run_encp([src, '/dev/null'])
 			if res == 0:
-				log_checked(bfid, bfid2)
+				log_checked(bfid, bfid2, db)
 				ok_log(MY_TASK, bfid2, src)
 			else: # error
 				error_log(MY_TASK, "failed on %s %s"%(bfid2, src))
@@ -605,11 +620,11 @@ def final_scan_volume(vol):
 		return 
 	for r in query_res:
 		bfid, pnfs_path, deleted, src_bfid = r
-		ct = is_closed(bfid)
+		ct = is_closed(bfid, db)
 		if not ct:
 			res = run_encp([pnfs_path, '/dev/null'])
 			if res == 0:
-				log_closed(src_bfid, bfid)
+				log_closed(src_bfid, bfid, db)
 				ok_log(MY_TASK, "closing", bfid, pnfs_path)
 			else:
 				error_log(MY_TASK, "closing", bfid, pnfs_path, "failed")
