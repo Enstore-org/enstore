@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #!/usr/products/python/v1_5_2/bin/python
 #!/fnal/ups/prd/python/v1_5_2/Linux+2/bin/python
 ######################################################################
