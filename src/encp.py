@@ -483,7 +483,7 @@ def pnfs_information(filelist,write=1):
             ## validate pnfs info
             if p.bit_file_id == pnfs.UNKNOWN:
                 return (e_errors.USERERROR, "no bit file id"), None
-            bfid.append(p.bit_file_id)  
+            bfid.append(p.bit_file_id)
             
         if write:
             ## validate additional pnfs info
@@ -567,6 +567,22 @@ def verify_write_request_consistancy(request_list):
                                            request)
             quit() #Harsh, but necessary.
 
+        #Consistancy check with respect to wrapper and driver.  If
+        # they don't match everything gets confused and breaks.
+        if request['vc']['wrapper'] != \
+           request['pnfs']['file_family_wrapper']:
+            msg = "Volume clerk and pnfs returned conflicting wrappers." \
+                  " VC_W=%s  PNFS_W=%s"%\
+                  (request['vc']['wrapper'],
+                   request['pnfs']['file_family_wrapper'])
+            request['status'] = (e_errors.USERERROR, msg)
+
+            print_data_access_layer_format(request['infile'],
+                                           request['outfile'],
+                                           request['file_size'], request)
+            quit() #Harsh, but necessary.
+
+
 
 #Args:
 # Takes in a dictionary of lists of transfer requests sorted by volume.
@@ -575,30 +591,30 @@ def verify_write_request_consistancy(request_list):
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
 def verify_read_request_consistancy(requests_per_vol):
-    
     vols = requests_per_vol.keys()
     vols.sort()
     for vol in vols:
-
-        #Retreive request list sorted by volumes.
         request_list = requests_per_vol[vol]
+
         for request in request_list:
-            
-            #Consistancy check with respect to wrapper and driver.  If
-            # they don't match everything gets confused and breaks.
-            if request['vc']['wrapper'] != \
-               request['pnfs']['file_family_wrapper']:
-                msg = "Volume clerk and pnfs returned conflicting wrappers." \
-                      " VC_W=%s  PNFS_W=%s"%\
-                      (request['vc']['wrapper'],
-                       request['pnfs']['file_family_wrapper'])
+
+            #Verify that file clerk and volume clerk returned the same
+            # external label.
+            if request['vc']['external_label'] != \
+               request['fc']['external_label']:
+                msg = "Volume and file clerks returned conflicting volumes." \
+                      " VC_V=%s  FC_V=%s"%\
+                      (request['vc']['external_label'],
+                       request['fc']['external_label'])
                 request['status'] = (e_errors.USERERROR, msg)
 
                 print_data_access_layer_format(request['infile'],
                                                request['outfile'],
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
-                
+
+        
+
 
 ############################################################################
 
@@ -1227,7 +1243,7 @@ def create_write_request(input_file, output_file,
                            'file_family_width':pnfs.file_family_width,
                            'file_family_wrapper':pnfs.file_family_wrapper,
                            'library':pnfs.library,
-                           'storge_group':pnfs.storage_group}
+                           'storage_group':pnfs.storage_group}
     work_ticket['retry'] = 0 #retry,
     work_ticket['times'] = times
     work_ticket['unique_id'] = generate_unique_id()
@@ -1277,7 +1293,7 @@ def set_pnfs_settings(ticket, client, verbose):
     # create a new pnfs object pointing to current output file
     Trace.trace(10,"write_to_hsm adding to pnfs "+ ticket['outfile'])
     p=pnfs.Pnfs(ticket['outfile'])
-    
+
     # save the bfid and set the file size
     p.set_bit_file_id(ticket["fc"]["bfid"], ticket['file_size'])
 
@@ -1410,14 +1426,13 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, chk_crc,
         tinfo[tstring] = time.time() - lap_time #--------------------------End
 
         if verbose > 1:
-            print "File %s transfered.  elapsed=%s" % \
+            print "Verifying %s transfer.  elapsed=%s" % \
                   (work_ticket['outfile'],time.time()-tinfo['encp_start_time'])
 
         # File has been sent - wait for final dialog with mover.
         
         done_ticket = recieve_final_dialog(control_socket, work_ticket,
                                            max_retry)
-
         try:
             control_socket.close()
             data_path_socket.close()
@@ -1434,7 +1449,16 @@ def write_hsm_file(listen_socket, work_ticket, client, tinfo, chk_crc,
         elif result_dict['status'] in e_errors.non_retriable_errors:
             return combine_dict(result_dict, work_ticket)
 
+        if verbose > 1:
+            print "File %s transfered.  elapsed=%s" % \
+                  (done_ticket['outfile'],time.time()-tinfo['encp_start_time'])
+        if verbose > 4:
+            print "FINAL DIALOG"
+            pprint.pprint(done_ticket)
+        
         #Combine the work_ticket and done_ticket into for simplicity.
+        #The done_ticket returned from the mover via recieve_final_dialog()
+        # contains new ['fc'] fields.
         done_ticket = combine_dict(done_ticket, work_ticket)
 
         delete_at_exit.unregister(done_ticket['outfile']) #localname
@@ -1846,11 +1870,11 @@ def create_read_requests(inputlist, outputlist, file_size,
         request['file_size'] = file_size[i]
         request['infile'] = inputlist[i]
         request['outfile'] = outputlist[i]
-        request['pnfs'] = {'file_family':pnfs.file_family,
-                           'file_family_width':pnfs.file_family_width,
-                           'file_family_wrapper':pnfs.file_family_wrapper,
-                           'library':pnfs.library,
-                           'storge_group':pnfs.storage_group}
+        #request['pnfs'] = {'file_family':pnfs.file_family,
+        #                   'file_family_width':pnfs.file_family_width,
+        #                   'file_family_wrapper':pnfs.file_family_wrapper,
+        #                   'library':pnfs.library,
+        #                   'storage_group':pnfs.storage_group}
         request['retry'] = 0
         request['times'] = times
         request['unique_id'] = generate_unique_id()
@@ -2081,7 +2105,7 @@ def read_hsm_files(listen_socket, submitted, requests,
 
         if verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
-            print "File", requests[j]['infile'], "transfered.  elapsed=", t2
+            print "Verifying", requests[j]['infile'], "transfer.  elapsed=", t2
 
         # File has been read - wait for final dialog with mover.
         Trace.trace(8,"read_hsm_files waiting for final mover dialog on %s" %
@@ -2094,6 +2118,9 @@ def read_hsm_files(listen_socket, submitted, requests,
         done_ticket = recieve_final_dialog(control_socket, requests[j],
                                            max_retry)
 
+        if verbose > 1:
+            t2 = time.time() - tinfo['encp_start_time']
+            print "File", requests[j]['infile'], "transfered.  elapsed=", t2
         if verbose > 4:
             print "DONE READING TICKET"
             pprint.pprint(done_ticket)
@@ -2114,6 +2141,13 @@ def read_hsm_files(listen_socket, submitted, requests,
         elif result_dict['status'] in e_errors.non_retriable_errors:
             files_left = result_dict['queue_size']
             continue
+
+        if verbose > 1:
+            print "File %s transfered.  elapsed=%s" % \
+                  (done_ticket['infile'],time.time()-tinfo['encp_start_time'])
+        if verbose > 4:
+            print "FINAL DIALOG"
+            pprint.pprint(done_ticket)
 
         #Combine the request and done_ticket into one ticket for simplicity.
         done_ticket = combine_dict(done_ticket, requests[j])
@@ -2194,9 +2228,10 @@ def read_from_hsm(input_files, output, client, verbose=0, chk_crc=1, pri=1,
         print "file_size=",file_size
 
     #Get the pnfs information.
+    #Both stats and info are tuples.
     status, info = pnfs_information(inputlist,write=0)
     if status[0] != e_errors.OK:
-        print_data_access_layer_format('', '', 0, status)
+        print_data_access_layer_format('', '', 0, {'status':status})
         print_error(status[0], status[1])
         quit()
     (bfid,junk,junk,junk,junk,junk,pinfo,p)= info
@@ -2446,7 +2481,7 @@ def main():
     e = encp()
     if e.test_mode:
         print "WARNING: running in test mode"
-        
+
     for x in xrange(6, e.verbose+1):
         Trace.do_print(x)
 
