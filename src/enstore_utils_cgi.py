@@ -132,6 +132,6 @@ def agrep_html(pat1, pat2, files, sensit):
 		    matched_alarms[anAlarm.id] = anAlarm
 
     # we do not want any background
-    doc = enstore_html.EnAlarmSearchPage(0, "")
+    doc = enstore_html.EnAlarmSearchPage("")
     doc.body(matched_alarms)
     print str(doc)
