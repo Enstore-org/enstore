@@ -1,0 +1,66 @@
+Magnetic tape has been the computer system backup and data trans-
+fer medium of choice for decades,  because  it  has  historically
+been  cheaper  in  cost per bit stored, and the formats have been
+designed for portability and storage.  However, tape drives  have
+generally  been  the slowest mass storage devices attached to any
+computer system.  Magnetic tape comes in a wide variety  of  for-
+mats,  from  classic  9-track,  through various Quarter Inch Car-
+tridge variants, to more modern systems using 8mm video tape, and
+Digital  Audio Tape There have also been a variety of proprietary
+tape systems, including and Regardless of the specific character-
+istics  of  the particular tape transport mechanism (tape drive),
+tape I/O has two interfaces: and I/O through the block  interface
+of  a  tape  device  is  similar to I/O through the block special
+device for a disk driver: the individual and calls can be done in
+any  amount of bytes, but all data is buffered through the system
+buffer cache, and I/O to the device is done in  1024  byte  sized
+blocks.   This  limitation  is  sufficiently restrictive that the
+block interface to tape devices is rarely  used.   The  interface
+differs  in  that  all I/O can be done in arbitrary sized blocks,
+within the limitations for the specific device and device driver,
+and all I/O is synchronous.  This is the most flexible interface,
+but since there is very little that is handled  automatically  by
+the  kernel,  user programs must implement specific magnetic tape
+handling routines, which puts the  onus  of  correctness  on  the
+application  programmer.  Each magnetic tape subsystem has a cou-
+ple of special devices associated with it.  The block  device  is
+usually  named  for  the  driver,  e.g.   for unit zero of a tape
+drive.  The raw device name is the  block  device  name  with  an
+prepended, e.g.  By default, the tape driver will rewind the tape
+drive when the device is closed.  To make it possible for  multi-
+ple  program  invocations to sequentially write multiple files on
+the same tape, a  device  is  provided,  denoted  by  the  letter
+prepended  to  the  name  of the device, e.g.  The command can be
+used to explicitly rewind, or otherwise position a tape at a par-
+ticular  point  with the no-rewind device.  Two end-of-file (EOF)
+markers mark the end of a tape (EOT), and one end-of-file  marker
+marks  the  end of a tape file.  By default, the tape driver will
+write two End Of File (EOF) marks and rewind the  tape  when  the
+device  is closed after the last write.  If the tape is not to be
+rewound it is positioned with the head in between  the  two  tape
+marks,  where  the  next write will over write the second end-of-
+file marker.  All of the magnetic tape devices may be manipulated
+with  the  command.   A number of operations are available on raw
+magnetic tape.  Please see for  their  definitions.   The  manual
+pages for specific tape device drivers should list their particu-
+lar capabilities and limitations.  The  manual  appeared  in  The
+status should be returned in a device independent format.  If and
+when is updated to deal with non-512 byte per sector  disk  media
+through  the system buffer cache, perhaps a more sane tape inter-
+face can be implemented.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
