@@ -69,6 +69,10 @@ stop_now = 0
 # common support functions
 #########################################################################
 
+def open_files(message):
+    print message,
+    os.system("ls -l /proc/`(EPS | grep \"entv\" | head -n 1 | cut -c8-15 | tr -d ' ')`/fd | wc -l")
+
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
@@ -81,13 +85,13 @@ def signal_handler(sig, frame):
             sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
                              frame.f_lineno);
             sys.stderr.flush()
-    except:
+    except (OSError, IOError):
         pass
     
     try:
         sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
         sys.stderr.flush()
-    except:
+    except IOError:
         pass
 
     #flag the threads to stop.
@@ -107,7 +111,7 @@ def setup_signal_handling():
                        signal.SIGCHLD, signal.SIGWINCH):
             try:
                 signal.signal(sig, signal_handler)
-            except:
+            except (ValueError, TypeError):
                 sys.stderr.write("Setting signal %s to %s failed.\n" %
                                  (sig, signal_handler))
 
@@ -117,7 +121,7 @@ def dict_eval(data):
     last_brace = string.rindex(data, '}')
     try:
         d = eval(data[:last_brace+1])
-    except:
+    except (ValueError, KeyError, IndexError, TypeError):
         print "Error", data,
         d = {}
     return d
@@ -458,7 +462,7 @@ def get_mover_list(intf, fullnames=None):
                     movers = movers + [mover['mover'][:-6]]
                 else:
                     movers = movers + [mover['mover']]
-        except:
+        except (ValueError, TypeError, IndexError, KeyError):
             exc, msg, tb = sys.exc_info()
             Trace.trace(1, "No movers found: %s" % str(msg))
     movers.sort()
@@ -550,10 +554,8 @@ def handle_messages(display, intf):
                 command = string.join(commands_file.readline().split()[5:])
                 if not command:
                     raise "EOF"
-            except KeyboardInterrupt:
-                exc, msg, tb = sys.exc_info()
-                raise exc, msg, tb
-            except:
+            except (OSError, IOError, TypeError, ValueError,
+                    KeyError, IndexError):
                 commands_file.seek(0, 0) #Position at beginning of file.
                 continue
             #Don't overwhelm the display thread.
@@ -751,7 +753,6 @@ def main(intf):
     while continue_working:
         display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
-        display.reinit()
 
         Trace.trace(1, "updating movers list")
         

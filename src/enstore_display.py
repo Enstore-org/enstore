@@ -241,7 +241,7 @@ def normalize_name(hostname):
     if hostname[0] in string.digits:
         try:
             hostname = socket.gethostbyaddr(hostname)[0]
-        except:
+        except (socket.error, IndexError):
             Trace.trace(1, "Can't resolve address %s." % (hostname,))
 
     ## If it ends with .fnal.gov, cut that part out
@@ -263,7 +263,7 @@ def find_image(name):
             if file_mtime > img_mtime: #need to reload
                 del _image_cache[name]
                 img = None
-        except:
+        except OSError:
             del _image_cache[name]
             img = None
     if not img: # Need to load it
@@ -272,7 +272,7 @@ def find_image(name):
             file_mtime = statinfo[stat.ST_MTIME]
             img = Tkinter.PhotoImage(file=filename)
             _image_cache[name] = file_mtime, img #keep track of image and modification time
-        except:
+        except OSError:
             img = None
     return img
     
@@ -319,11 +319,10 @@ class Mover:
         self.state         = None
 
         #Classes that are used.
-        self.connection    = None         
         self.volume        = None
 
         #Set geometry of mover.
-        self.resize(N) #Even though this is the initial size, still works.
+        self.resize() #Even though this is the initial size, still works.
         self.x, self.y  = self.position(N)
         
         #These 4 pieces make up the progress gauge display
@@ -375,8 +374,6 @@ class Mover:
         self.draw()
 
     def __del__(self):
-        if self.connection:
-            self.connection = None
         try:
             self.undraw()
         except Tkinter.TclError:
@@ -710,10 +707,6 @@ class Mover:
 
         self.draw_rate()
 
-        #Display the connection.
-        if self.connection:
-            self.connection.draw()
-
     #########################################################################
 
     def undraw_mover(self):
@@ -856,6 +849,11 @@ class Mover:
         now = time.time()
         self.timer_started = now - time_in_state
         self.update_timer(now)
+
+        if self.state in ['IDLE', 'Unknown', 'OFFLINE', 'ERROR']:
+            self.undraw_rate()
+            self.undraw_progress()
+            self.undraw_buffer()
         
     def update_timer(self, now):
         seconds = int(now - self.timer_started)
@@ -893,7 +891,7 @@ class Mover:
         self.volume = None
         self.undraw_volume()
 
-    def transfer_rate(self, num_bytes, total_bytes, mover_time=None):
+    def transfer_rate(self, num_bytes, mover_time=None):
         #keeps track of last number of bytes and time; calculates rate
         # in bytes/second
         self.b1 = num_bytes
@@ -979,7 +977,7 @@ class Mover:
             Trace.trace(1, "Unknown layout %s." % (layout,))
             sys.exit(-1)
 
-    def resize(self, N):
+    def resize(self):
 
         #Set the mover size in the display.
         self.height = ((self.display.height - 40) / 20)
@@ -1049,7 +1047,7 @@ class Mover:
         #Undraw the mover before moving it.
         self.undraw()
 
-        self.resize(N)
+        self.resize()
         self.x, self.y = self.position(N)
 
         self.draw()
@@ -1195,7 +1193,6 @@ class Connection:
         self.position()
 
     def __del__(self):
-        self.client.n_connections = self.client.n_connections - 1
         self.undraw()
         
     #########################################################################
@@ -1215,6 +1212,7 @@ class Connection:
                                                  fill=self.color)
 
     def undraw(self):
+        self.client.n_connections = self.client.n_connections - 1
         try:
             self.display.delete(self.line)
             self.line = None
@@ -1441,7 +1439,10 @@ class Display(Tkinter.Canvas):
         self.width  = int(self['width'])
         self.height = int(self['height'])
 
-        self._init() #Other none window related attributes.
+        #self._init() #Other none window related attributes.
+        self._reinit = 0
+        self.stopped = 0
+        self.clear_display() #C
 
         self.bind('<Button-1>', self.action)
         self.bind('<Button-3>', self.reinitialize)
@@ -1462,10 +1463,7 @@ class Display(Tkinter.Canvas):
         if self.animate:  #If turn on, schedule the next animation.
             self.after_animation_id = self.after(30, self.connection_animation)
 
-    def _init(self):
-        self._reinit = 0
-        self.stopped = 0
-        
+    def clear_display(self):
         self.mover_names      = [] ## List of mover names.
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
@@ -1478,8 +1476,7 @@ class Display(Tkinter.Canvas):
 
         self.command_queue    = [] #List of notify commands to process.
 
-    def reinit(self):
-        self._init()
+        self.csc              = None #Avoid cyclic references.
 
     def attempt_reinit(self):
         return self._reinit
@@ -1604,7 +1601,7 @@ class Display(Tkinter.Canvas):
     def reposition_canvas(self):
         try:
             size = self.winfo_width(), self.winfo_height()
-        except:
+        except Tkinter.TclError:
             self.stopped = 1
             return
 
@@ -1677,7 +1674,7 @@ class Display(Tkinter.Canvas):
             if now - client.last_activity_time > 5: # grace period
                 Trace.trace(1, "It's been longer than 5 seconds, %s " \
                             " client must be deleted" % (client_name,))
-                client.undraw()
+                #client.undraw()
                 del self.clients[client_name]
 
         self.after_clients_id = self.after(30, self.disconnect_clients)
@@ -1819,7 +1816,6 @@ class Display(Tkinter.Canvas):
         ###What are these for?
         mover.t0 = now
         mover.b0 = 0
-        mover.connection = connection
                 
     def disconnect_command(self, command_list):
         Trace.trace(1, "mover %s is disconnecting from %s" %
@@ -1828,15 +1824,12 @@ class Display(Tkinter.Canvas):
         mover = self.movers.get(command_list[1])
 
         #Remove all references to the connection.
-        mover.connection = None
         try:
             del self.connections[mover.name]
         except KeyError:
             pass
 
         #Remove the progress bar.
-        #mover.t0 = time.time()
-        #mover.b0 = 0
         mover.draw_progress(None, None)
         mover.draw_buffer(None)
         mover.update_rate(None)
@@ -1859,16 +1852,15 @@ class Display(Tkinter.Canvas):
         what_state = command_list[2]
         try:
             time_in_state = int(float(command_list[3]))
-        except:
+        except (ValueError, TypeError, IndexError):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
         mover.draw()
         if what_state in ['ERROR', 'IDLE', 'OFFLINE']:
             msg="Need to disconnect because mover state changed to: %s"
-            if mover.connection: #no connection with mover object
+            if self.connections.get(mover.name, None):
                 Trace.trace(1, msg % (what_state,))
                 del self.connections[mover.name]
-                mover.connection=None
                         
     def unload_command(self, command_list):
 
@@ -1891,6 +1883,8 @@ class Display(Tkinter.Canvas):
         # command_list[6] = CURRENT_TIME
         
         #print command_list
+
+        #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
 
         num_bytes = my_atof(command_list[2])
@@ -1914,21 +1908,27 @@ class Display(Tkinter.Canvas):
                 mover.max_buffer = long(buffer_size)
             buffer_percent = int(100 * (buffer_size/float(mover.max_buffer)))
             mover.draw_buffer(buffer_percent)
+        except KeyboardInterrupt:
+            exc, msg, tb = sys.exc_info()
+            raise exc, msg, tb
         except:
             pass
             #exc, msg, tb = sys.exc_info()
             #print msg
 
         #Skip media transfers from the network connection update.
-        if mover.connection and command_list[4] == "network":
+        connection = self.connections.get(mover.name, None)
+        if connection and command_list[4] == "network":
+            client = connection.client
             try:
-                rate = mover.transfer_rate(num_bytes, total_bytes,
-                                           command_list[6])
+                now = float(command_list[6])
             except IndexError:
-                rate = mover.transfer_rate(num_bytes, total_bytes)
+                now = time.time()
+
+            rate = mover.transfer_rate(num_bytes, now)
+            
             #Experience shows this is a good adjustment.
-            mover.connection.update_rate(rate / (256*1024))
-            mover.connection.client.last_activity_time = time.time()
+            connection.update_rate(rate / (256*1024))
             mover.update_rate(rate)
 
     def movers_command(self, command_list):
@@ -2041,11 +2041,7 @@ class Display(Tkinter.Canvas):
 
     #overloaded
     def destroy(self):
-        self.connections = {}
-        self.movers = {}
-        self.clients = {}
-        self.client_positions = {}
-        self.csc = None
+        self.clear_display()
         Tkinter.Canvas.destroy(self)
     
     #overloaded 
