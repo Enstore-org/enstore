@@ -7,14 +7,25 @@ import types
 import pwd
 import signal
 import stat
+import re
+import errno
 
 import enstore_constants
+
+###########################################################################
+## conversion function for permissions
+##
+## symbolic_to_bits(): converts "ug=rw" into 432.
+## numeric_to_bits(): converts "0660" into 432.
+## bits_to_numeric(): converts 432 into "0660".
+## bits_to_rwx(): converts 432 into '-rw-rw----'.
+###########################################################################
 
 RMODE = 4
 WMODE = 2
 XMODE = 1
 
-def get_mode(pmode, read_bit, write_bit, execute_bit):
+def _get_mode(pmode, read_bit, write_bit, execute_bit):
     mode = 0
     if pmode & execute_bit:
         mode = XMODE
@@ -25,18 +36,177 @@ def get_mode(pmode, read_bit, write_bit, execute_bit):
     return mode
 
 
-# format the mode from the pnfs format to the traditional 3 chars and a
-# leading zero.
-def format_mode(pmode):
+#Convert the permission bits returned from os.stat() into the numeric
+# (ie. "0777") chmod permissions.
+def bits_to_numeric(pmode):
     # other mode bits
-    omode = get_mode(pmode, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
+    omode = _get_mode(pmode, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
     # group mode bits
-    gmode = get_mode(pmode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
+    gmode = _get_mode(pmode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
     # user mode bits
-    umode = get_mode(pmode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+    umode = _get_mode(pmode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
     # now the ISUID and ISGID bits
-    smode = get_mode(pmode, stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
+    smode = _get_mode(pmode, stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
     return "%s%s%s%s"%(smode, umode, gmode, omode)
+
+#legacy name:
+format_mode = bits_to_numeric
+
+def _get_rwx(pmode, read_bit, write_bit, execute_bit):
+    ls_mode = ""
+    if pmode & read_bit: #Handle the specified read bit.
+        ls_mode = ls_mode + "r"
+    else:
+        ls_mode = ls_mode + "-"
+    if pmode & write_bit: #Handle the specified write bit.
+        ls_mode = ls_mode + "w"
+    else:
+        ls_mode = ls_mode + "-"
+    #Handle the specifed execute bit... there are some special cases.
+    if (pmode & execute_bit) and (execute_bit == stat.S_IXUSR) and \
+       (pmode & stat.S_ISUID):
+        ls_mode = ls_mode + "s"
+    elif (pmode & execute_bit) and (execute_bit == stat.S_IXGRP) and \
+         (pmode & stat.S_ISGID):
+        ls_mode = ls_mode + "s"
+    elif pmode & execute_bit:
+        ls_mode = ls_mode + "x"
+    else:
+        ls_mode = ls_mode + "-"
+
+    return ls_mode
+
+#Convert the permission bits returned from os.stat() into the human readable
+# format of the ls(1) command.
+def bits_to_rwx(pmode, first_position = "-"):
+    ls_mode = str(first_position)  #Only care about permissions here.
+
+    umode = _get_rwx(pmode, stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+    gmode = _get_rwx(pmode, stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
+    omode = _get_rwx(pmode, stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
+
+    ls_mode = ls_mode + umode + gmode + omode
+
+    return ls_mode
+
+def _get_bits(pmode, read_bit, write_bit, execute_bit):
+    mode = 0
+    bits = int(pmode)
+    if bits >= RMODE:
+        mode = mode | read_bit
+        bits = bits - RMODE
+    if bits >= WMODE:
+        mode = mode | write_bit
+        bits = bits - WMODE        
+    if bits >= XMODE:
+        mode = mode | execute_bit
+    return mode
+
+#Convert the numeric (ie. "0777") chmod permisssions into the permission bits
+# returned from os.stat().
+def numeric_to_bits(numeric_mode):
+    #Make sure that the correct type was passed in.
+    if type(numeric_mode) != type("") and type(numeric_mode) != type(1):
+        raise TypeError("Expected octal string or integer instead of %s." %
+                        (type(numeric_mode),))
+    
+    #If the mode isn't consisting of octal digits this will raise an error.
+    numeric_pattern = re.compile("^[01234567]{3,4}$")
+    try:
+        num_mod = numeric_pattern.search(str(numeric_mode)).group(0)
+    except AttributeError:
+        raise ValueError("%s: Invalid permission field" %
+                         (os.strerror(errno.EINVAL),))
+
+    #If only three values specified, insert a leading zero.
+    if len(num_mod) == 3:
+        num_mod = "0" + num_mod
+
+    #Determine the bits to turn on.
+    sbits = _get_bits(num_mod[0], stat.S_ISUID, stat.S_ISGID, stat.S_ISVTX)
+    ubits = _get_bits(num_mod[1], stat.S_IRUSR, stat.S_IWUSR, stat.S_IXUSR)
+    gbits = _get_bits(num_mod[2], stat.S_IRGRP, stat.S_IWGRP, stat.S_IXGRP)
+    obits = _get_bits(num_mod[3], stat.S_IROTH, stat.S_IWOTH, stat.S_IXOTH)
+                     
+    return sbits | ubits | gbits | obits
+           
+
+#Convert the symbolic (ie. "u+wr") chmod permissions into the permission bits
+# returned from os.stat().
+def symbolic_to_bits(symbolic_mode, st_mode=0):
+    #Make sure that the correct type was passed in.
+    if type(symbolic_mode) != type(""):
+        raise TypeError("Expected string, recieved %s instead." %
+                        (type(symbolic_mode),))
+    
+    #Split the string to support the [ugoa][+-=][rwxs] way.
+    users_pattern = re.compile("^[ugoa]+")
+    chmod_pattern = re.compile("[-+=]")
+    modes_pattern = re.compile("[rwxs]+$")
+
+    try:
+        user_mod = users_pattern.search(str(symbolic_mode)).group(0)
+        type_mod = chmod_pattern.search(str(symbolic_mode)).group(0)
+        mode_mod = modes_pattern.search(str(symbolic_mode)).group(0)
+    except AttributeError:
+        raise ValueError("%s: Invalid permission field" %
+                         (os.strerror(errno.EINVAL),))
+        #return 1
+
+    #Test to make sure that the string was legal.
+    if (user_mod + type_mod + mode_mod) != str(symbolic_mode):
+        raise ValueError("%s: Invalid permission field" %
+                         (os.strerror(errno.EINVAL),))
+        return 1
+
+    #Translate the all - "a" - possible user entry with ugo.
+    user_mod = string.replace(user_mod, "a", "ugo")
+
+    set_mode = 0
+    for user in user_mod:
+        #Translate users to names pieces.
+        if user == "o":
+            user_name = "OTH"
+        elif user == "g":
+            user_name = "GRP"
+        elif user == "u":
+            user_name = "USR"
+        else:
+            raise ValueError("%s: Error parsing mode" %
+                             (os.strerror(errno.EINVAL),))
+            #return 1
+
+        change_mode = 0
+        for mode in mode_mod:
+            #handle sticky/set-id bit differently
+            if mode == "s" and user == "u":
+                name = "S_ISUID"
+            elif mode == "s" and user == "g":
+                name = "S_ISGID"
+            elif mode == "s" and user == "o":
+                continue
+            elif mode == "t":
+                name = "S_ISVTX"
+            else:
+                name = "S_I" + string.upper(mode) + user_name
+
+            #This needs to be ored not added.
+            change_mode = change_mode | getattr(stat, name)
+        
+        #Handle combining the existing and new modes correctly.
+        if type_mod == "+":
+            set_mode = set_mode | (change_mode | st_mode)
+        elif type_mod == "-":
+            temp = ((change_mode | st_mode) ^ change_mode)
+            set_mode = set_mode | temp
+        else:
+            set_mode = set_mode | change_mode
+
+    return set_mode
+
+###########################################################################
+##
+###########################################################################
 
 # return both the user associated with the uid and the euid.
 def get_user():
