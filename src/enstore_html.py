@@ -156,8 +156,9 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def table_top(self):
 	# create the outer table and its rows
-	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(self.nav_table())), cellspacing=0,
-				  cellpadding=0)
+	table = HTMLgen.TableLite(HTMLgen.TR(HTMLgen.TD(self.nav_table())), 
+				  cellspacing=0, cellpadding=0, align="LEFT",
+				  width="800")
 	self.script_title(table)
 	td = HTMLgen.TD(HTMLgen.HR())
 	self.table_top_b(table, td)
@@ -366,12 +367,12 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		tr = HTMLgen.TR(self.spacer_data("Read%sfrom"%(NBSP,)))
 	    else:
 		tr = HTMLgen.TR(self.spacer_data("Write%sto"%(NBSP,)))
-	    tr.append(HTMLgen.TD(qelem[enstore_status.FILE], colspan=3))
-	    tr.append(HTMLgen.TD(HTMLgen.Font("Bytes", color=BRICKRED)))
-	    tr.append(HTMLgen.TD(qelem[enstore_status.BYTES]))
+	    tr.append(HTMLgen.TD(qelem[enstore_status.FILE], colspan=4))
 	    table.append(tr)
-	    tr = HTMLgen.TR(self.spacer_data("ID"))
-	    tr.append(HTMLgen.TD(qelem[enstore_status.ID], colspan=5))
+	    tr = HTMLgen.TR(self.spacer_data("Bytes"))
+	    tr.append(HTMLgen.TD(qelem[enstore_status.BYTES]))
+	    tr.append(HTMLgen.TD(HTMLgen.Font("ID", color=BRICKRED)))
+	    tr.append(HTMLgen.TD(qelem[enstore_status.ID], colspan=3))
 	    table.append(tr)
 	    if qelem.has_key(enstore_status.REJECT_REASON):
 		tr = HTMLgen.TR(self.spacer_data("Reason%sfor%sPending"%(NBSP,NBSP)))
@@ -429,7 +430,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# with the suspect volume info
 	lm_table = HTMLgen.TableLite(self.lm_state_row(lm), cellpadding=0, 
 				     cellspacing=0, align="LEFT", 
-				     bgcolor=YELLOW, width="75%")
+				     bgcolor=YELLOW, width="100%")
 	lm_table.append(self.suspect_volume_row(lm))
 	lm_table.append(self.null_row(cols))
 	self.known_mover_rows(lm_table, lm)
