@@ -113,7 +113,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             record['wrapper'] = ticket['wrapper']
         except KeyError:
-            record["wrapper"] = "cpio"
+            record["wrapper"] = "cpio_custom"
         try:
             record['blocksize'] = ticket['blocksize']
             if record['blocksize'] == -1:
@@ -217,6 +217,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             file_family = ticket[key]
             key = "first_found"
             first_found = ticket[key]
+	    key = "wrapper"
+	    wrapper_type = ticket[key]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
 				"Volume Clerk: "+key+" is missing")
@@ -237,7 +239,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	    #self.enprint(v, generic_cs.PRETTY_PRINT)
             if v["library"] != library:
                 continue
-            if v["file_family"] != file_family:
+            if v["file_family"] != file_family+"."+wrapper_type:
+                continue
+            if v["wrapper"] != wrapper_type:
                 continue
             if v["user_inhibit"] != "none":
                 continue
@@ -322,7 +326,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
             # supposed to return first blank volume found?
             if first_found:
-                v["file_family"] = file_family
+                v["file_family"] = file_family+"."+wrapper_type
+		v["wrapper"] = wrapper_type
                 self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
@@ -342,7 +347,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # return blank volume we found
         if len(vol) != 0:
             label = vol['external_label']
-            vol["file_family"] = file_family
+            vol["file_family"] = file_family+"."+wrapper_type
+	    vol["wrapper"] = wrapper_type
             self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)

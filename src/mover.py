@@ -64,8 +64,8 @@ import volume_clerk_client		# -.
 import file_clerk_client		#   >-- 3 significant clients
 import media_changer_client		# -'
 import callback				# used in send_user_done, get_user_sockets
+import wrapper_selector
 import ECRC				# for crc
-import cpio
 import Trace
 import driver
 import FTT				# needed for FTT.error
@@ -413,7 +413,10 @@ def forked_write_to_hsm( self, ticket ):
 
 	    # create the wrapper instance (could be different for different
 	    # tapes) so it can save data between pre and post
-            wrapper = cpio.Cpio()
+            wrapper=wrapper_selector.select_wrapper(ticket['wrapper']['type'])
+	    if wrapper == None:
+		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"+\
+		      repr(ticket['wrapper']['type'])
 
             logc.send(log_client.INFO,2,"WRAPPER.WRITE")
 	    t0 = time.time()
@@ -573,8 +576,10 @@ def forked_read_from_hsm( self, ticket ):
 	    ticket['times']['seek_time'] = time.time() - t0
 
 	    # create the wrapper instance (could be different for different tapes)
-            Trace.trace(11,' calling Cpio')
-	    wrapper = cpio.Cpio()
+	    tmp_vinfo = vcc.inquire_vol(ticket['fc']['external_label'])
+            wrapper=wrapper_selector.select_wrapper(tmp_vinfo['wrapper'])
+	    if wrapper == None:
+		raise errno.errorcode[errno.EINVAL], "Invalid wrapper"
 
             logc.send(log_client.INFO,2,"WRAPPER.READ")
 	    if ticket['fc']['sanity_cookie'][1] == None:# when reading...

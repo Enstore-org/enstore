@@ -57,6 +57,7 @@ class Pnfs:
         self.get_bit_file_id()
         self.get_library()
         self.get_file_family()
+        self.get_file_family_wrapper()
         self.get_file_family_width()
         self.get_xreference()
         self.get_lastparked()
@@ -526,6 +527,24 @@ class Pnfs:
                 pass
         else:
             self.file_family = UNKNOWN
+
+    ##########################################################################
+
+    # store a new file family wrapper tag
+    def set_file_family_wrapper(self,value):
+        if self.valid == VALID:
+            self.writetag("file_family_wrapper",value)
+            self.get_file_family_wrapper()
+
+    # get the file family
+    def get_file_family_wrapper(self):
+        if self.valid == VALID:
+            try:
+                self.file_family_wrapper = self.readtag("file_family_wrapper")[0]
+            except:
+                pass
+        else:
+            self.file_family_wrapper = UNKNOWN
 
     ##########################################################################
 

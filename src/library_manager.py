@@ -225,8 +225,10 @@ def next_work_any_volume(csc, verbose):
             first_found = 0
             t1 = time.time()
             v = vc.next_write_volume (w["vc"]["library"],
-                                      w["wrapper"]["size_bytes"],\
-                                      w["vc"]["file_family"], vol_veto_list,\
+                                      w["wrapper"]["size_bytes"],
+                                      w["vc"]["file_family"], 
+				      w["vc"]["wrapper"],
+				      vol_veto_list,
                                       first_found)
             t2 = time.time()-t1
             #generic_cs.enprint("  next_write_volume dt= "+repr(t2))

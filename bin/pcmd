@@ -15,7 +15,8 @@ Commonly used commands are:
    pcmd tags   directory    lists the tags in the directory
 
    pcmd library [value]           sets library tag to value (must have correct cwd)
-   pcmd file_family [value]       sets library tag to value (must have correct cwd)
+   pcmd file_family [value]       sets file family tag to value (must have correct cwd)
+   pcmd file_family_wrapper [value] sets file family wrapper tag to value (must have correct cwd)
    pcmd file_family_width [value] sets library tag to value (must have correct cwd)
 
    pcmd files volmap-tape   lists all the files on specified tape in volmap
@@ -271,14 +272,15 @@ p_tag()     { if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
               echo "\"$dir/.(tag)($1)\"" ; }
 
 ptagcat()   { if [ -z "${1-}" ] ; then p_error "tagcat tag"; fi
-              eval cat  `p_tag $@` ; }
+              eval cat  `p_tag $@`; echo "" ; }
 ptagmore()  { if [ -z "${1-}" ] ; then p_error "tagmore tag"; fi
               eval more `p_tag $@` ; }
 ptagless()  { if [ -z "${1-}" ] ; then p_error "tagless tag"; fi
               eval less `p_tag $@` ; }
 
 ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
-              for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; }
+              for i in `cat "$dir/.(tags)(all)"`; do v=`eval cat '$dir/$i'`; echo $i " = " $v; done ; 
+	      for i in `cat "$dir/.(tags)(all)"`; do ls -l $dir/$i; done ; }
 
 ptagecho()  { if [ -z "${1-}" -o  -z "${2-}" ] ; then p_error "tagecho text tagname"; fi
               pt="$1"
@@ -299,6 +301,20 @@ pfile_family()
                 ptagcat file_family
               else
                 ptagecho "$1" file_family
+              fi; }
+
+pfile_family_wrapper()
+
+            { default_wrapper=cpio_odc
+	      wrappers=`eval echo "cpio_odc cpio_crc cpio_newc cpio_custom"`
+	      if [ -z "${1-}" ] ; then
+                ptagcat file_family_wrapper
+              else
+	        matched=0
+	        for i in $wrappers; do if [ $1 = $i ]; then matched=1; break; fi; done;
+		if [ $matched -ne 0 ]; then ptagecho "$1" file_family_wrapper
+		else echo only $wrappers wrappers are allowed
+		fi;
               fi; }
 
 pfile_family_width()
@@ -351,3 +367,14 @@ eval $cmd \"$1\" \"$2\" \"$3\" \"$4\" \"$5\" \"$6\" \"$7\" \"$8\" \"$9\" # not h
 stat=$?
 #if [ $stat -ne 0 ] ; then phelp; fi
 exit $stat
+
+
+
+
+
+
+
+
+
+
+

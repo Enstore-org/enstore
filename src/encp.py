@@ -136,7 +136,7 @@ def write_to_hsm(input, output,
     # check (and generate) the output pnfs files(s) names
     # bomb out if they exist already
     outputlist = outputfile_check(ninput,inputlist,output)
-    (junk,library,file_family,width,pinfo,p)=pnfs_information(outputlist,ninput)
+    (junk,library,file_family,ff_wrapper,width,pinfo,p)=pnfs_information(outputlist,ninput)
 
     # note: Since multiple input files all go to 1 directory:
     #       all libraries are the same
@@ -146,9 +146,11 @@ def write_to_hsm(input, output,
     for i in range(1,ninput):
         if library[i]!=library[0] or \
            file_family[i]!=file_family[0] or \
-           width[i]!=width[0] :
+           width[i]!=width[0] or \
+	   ff_wrapper[i] != ff_wrapper[0]:
             print "library=",library
             print "file_family=",file_family
+	    print "wrapper type=",ff_wrapper
             print "width=",width
             jraise(errno.errorcode[errno.EPROTO],\
 		   " encp.write_to_hsm: TILT "\
@@ -161,6 +163,7 @@ def write_to_hsm(input, output,
         print "outputlist=",outputlist
         print "library=",library
         print "file_family=",file_family
+	print "wrapper type=",ff_wrapper
         print "width=",width
         print "pinfo=",pinfo
         print "p=",p
@@ -258,7 +261,7 @@ def write_to_hsm(input, output,
 	    unique_id[i] = "%s-%f-%d" \
 			   % (thishost, time.time(), pid)
             wrapper["fullname"] = outputlist[i]
-
+	    wrapper["type"] = ff_wrapper[i]
             # store the pnfs information info into the wrapper
             for key in pinfo[i].keys():
                 if not uinfo.has_key(key) : 
@@ -280,7 +283,8 @@ def write_to_hsm(input, output,
             except NameError:
                 volume_clerk = {"library"            : library[i],\
                                 "file_family"        : file_family[i],\
-                                "file_family_width"  : width[i]} # technically width does not belong here, but it associated with the volume
+                                "file_family_width"  : width[i], # technically width does not belong here, but it associated with the volume
+				"wrapper"            : ff_wrapper[i]}
 
                 wrapper["sanity_size"] = 65535
                 wrapper["size_bytes"] = file_size[i]
@@ -721,7 +725,7 @@ def read_from_hsm(input, output,
 
     #check the input unix files. if files don't exits, we bomb out to the user
     (ninput, inputlist, file_size) = inputfile_check(input)
-    (bfid,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
+    (bfid,junk,junk,junk,junk,pinfo,p)=pnfs_information(inputlist,ninput)
 
     tinfo["pnfscheck"] = time.time() - t1 #--------------------------------End
     if verbose>2:
@@ -799,7 +803,9 @@ def read_from_hsm(input, output,
                    +" can not get info on bfid"+repr(bfid[i]))
         Trace.trace(7,"read_from_hsm on volume="+\
                     repr(binfo['fc']['external_label']))
+	print "BINFO",binfo
 	if binfo['vc']['system_inhibit'] == e_errors.NOACCESS:
+	    binfo['status'] = (e_errors.NOACCESS, None)
 	    print_d0sam_format('', '', 0, binfo)
 	    continue
 
@@ -839,6 +845,7 @@ def read_from_hsm(input, output,
 	nfiles = nfiles+1
         tinfo['fc'+repr(i)] = time.time() - t2 #------------------------Lap--End
 
+    if (nfiles == 0): sys.exit(1)
     tinfo['fc'] =  time.time() - t1 #-------------------------------End
     if verbose>1:
         print "  dt:",tinfo["fc"], "   cumt=",time.time()-t0
@@ -1575,12 +1582,17 @@ def pnfs_information(filelist,nfiles):
     library = []
     file_family = []
     width = []
+    ff_wrapper = []
 
     for i in range(0,nfiles):
         p = pnfs.Pnfs(filelist[i])         # get the pnfs object
         bfid.append(p.bit_file_id)         # get the bit file id
         library.append(p.library)          # get the library
         file_family.append(p.file_family)  # get the file family
+	try:
+	    ff_wrapper.append(p.file_family_wrapper)  # get the file family wrapper
+	except:
+	    ff_wrapper.append("cpio_custom")  # default
         width.append(p.file_family_width)  # get the width
 
         # get some debugging info for the ticket
@@ -1594,8 +1606,9 @@ def pnfs_information(filelist,nfiles):
 
     Trace.trace(16,"}pnfs_information bfid="+repr(bfid)+\
                 " library="+repr(library)+" file_family="+repr(file_family)+\
-                " width="+repr(width)+" pinfo="+repr(pinfo)+" p="+repr(p))
-    return (bfid,library,file_family,width,pinfo,p)
+                " wrapper type"+repr(ff_wrapper)+" width="+repr(width)+\
+		" pinfo="+repr(pinfo)+" p="+repr(p))
+    return (bfid,library,file_family,ff_wrapper,width,pinfo,p)
 
 ##############################################################################
 

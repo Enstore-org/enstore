@@ -287,7 +287,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
 
     # which volume can we use for this library, bytes and file family and ...
     def next_write_volume (self, library, min_remaining_bytes,
-                           file_family, vol_veto_list,first_found):
+                           file_family, wrapper, vol_veto_list,first_found):
         Trace.trace(10,'{next_write_volume lib='+repr(library)+' bytes='+\
                     repr(min_remaining_bytes)+' ff='+repr(file_family)+\
                     " veto="+repr(vol_veto_list)+' first_found='+\
@@ -296,6 +296,7 @@ class VolumeClerkClient(generic_client.GenericClient,\
                    'library'             : library,
                    'min_remaining_bytes' : min_remaining_bytes,
                    'file_family'         : file_family,
+		   'wrapper'             : wrapper,
                    'vol_veto_list'       : `vol_veto_list`,
                    'first_found'         : first_found }
 
