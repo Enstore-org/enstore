@@ -72,7 +72,7 @@ Trace:	trace_1st Trace.so
 trace_1st:
 	make -f trace.mk trace.a all # add all and mv traceShow to sbin for now
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
-	@mv traceShow ../sbin
+	@mv traceShow trace_delta../sbin
 	@cd ../sbin;\
 	ln -fs traceShow traceInfo;\
 	ln -fs traceShow traceReset;\
