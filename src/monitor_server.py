@@ -112,8 +112,6 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         bytes_transfered = 0
         sendstr = "S"*block_size
         bytes_to_transfer = block_size * block_count
-        t0=time.time() #Grab the current time.
-        t1=time.time() #Reset counter to current time (aka zero).
 
         #Set args outside of the loop for performance reasons.
         if function == "send":
@@ -124,7 +122,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             args = (block_size,)
             sock_read_list = [data_sock]
             sock_write_list = []
-    
+
+        time.sleep(1)
+        t0 = time.time() #Grab the current time.
+        print "t0", t0
+        t1 = t0 #Reset counter to current time (aka zero).
+        
+        print "t1:", time.time() - t0
         while bytes_transfered < bytes_to_transfer:
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
@@ -180,7 +184,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
                 raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-                
+        print "t3:", time.time()
+        print "t4:", time.time() - t0        
         return time.time() - t0
 
 
