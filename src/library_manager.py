@@ -4,6 +4,7 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
+
 import os
 import time
 import traceback
@@ -27,6 +28,7 @@ import e_errors
 import lm_list
 import volume_family
 import priority_selector
+import mover_constants
 
 def p(*args):
     print args
@@ -1161,6 +1163,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if w:
             Trace.trace(13,"mover_error: work_at_movers %s"%(w,))
             self.work_at_movers.remove(w)
+        if mticket['status'][0] == mover_constants.OFFLINE: # mover finished request and went offline
+            return
         # update suspected volume list
 	vol = self.update_suspect_vol_list(mticket['external_label'], 
 				mticket['mover'])
