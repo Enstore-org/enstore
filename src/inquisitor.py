@@ -135,13 +135,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             Trace.trace(13,"}do_alive_check - ERROR, getting config dict timed out ")
 	    return self.timed_out
 
+	ret = self.did_it
         if t['status'] == (e_errors.OK, None):
 	    ret = self.alive_status(client, (t['host'], t['port']),\
 	                            prefix, time, key)
 	elif t['status'][0] == 'KEYERROR':
 	    # do not monitor this server any more, remove him from our dict
 	    self.remove_key(key)
-	    ret = self.did_it
         Trace.trace(13,"}do_alive_check ")
 	return ret
 
