@@ -9,6 +9,7 @@ import traceback
 import ECRC
 import sys
 import socket
+import posix
 
 #enstore imports
 import cleanUDP
@@ -266,6 +267,7 @@ class DispatchingWorker:
         Trace.trace(10,"{alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
+        ticket['pid'] = posix.getpid()
         self.reply_to_caller(ticket)
         Trace.trace(10,"}alive")
 
@@ -274,6 +276,7 @@ class DispatchingWorker:
         Trace.trace(10,"{quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
+        ticket['pid'] = posix.getpid()
         try:
             self.enprint("QUITTING... via os_exit python call")
         except:
