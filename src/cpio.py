@@ -62,6 +62,14 @@ Offet Field Name   Length in Bytes Notes
                                    the sum of all the bytes in the file
 110   filename \0
       long word padding
+
+To make cpio archives on unix:
+       echo "pnfs_enstore_airedale_o1
+             pnfs_enstore_airedale_o1.encrc" |cpio -ov -H newc > archive
+
+To list them: cpio -tv < archive
+To extract:   cpio -idmv < archive
+
 """
 class cpio :
 
@@ -70,10 +78,12 @@ class cpio :
     # write object: needs a method write_block that will write the data, it
     #               has 1 argument - the data to be written
     # crc_function: crc's the data, 2 arguments: 1=buffer, 2=initial_crc
-    def __init__(self,read_object, write_object, crc_fun) :
+    # fast_write:   1 means use EXfer, 0 means use slower python writes
+    def __init__(self,read_object, write_object, crc_fun, fast_write=1) :
         self.read_driver = read_object
         self.write_driver = write_object
         self.crc_fun = crc_fun
+	self.fast_write = fast_write
 
     # create 2 headers (1 for data file and 1 for crc file) + 1 trailer
     def headers(self,format,            # either "new" or "CRC"
@@ -211,8 +221,7 @@ class cpio :
                                                filename,0)
         size = len(header)
 
-
-	if 1:
+	if self.fast_write==1:
 	    try:
 		# it is assumed that the data size will be greater than sanity_bytes
 		# the header is passed thru ETape
@@ -222,12 +231,13 @@ class cpio :
 		# sanity_bytes.
 		if dat_bytes < sanity_bytes:
 		    san_bytes = dat_bytes
+		    san_crc = dat_crc
 		else:
 		    san_bytes = sanity_bytes
-		    size = size + dat_bytes
+		size = size + dat_bytes
 		# partial tape block will be in ETape buffer????
 	    except:
-		print "Error with EXfer - continueing";traceback.print_exc()
+		print "Error with EXfer - continuing";traceback.print_exc()
 
 	else:
 	    self.write_driver.write_block(header,)
@@ -235,7 +245,6 @@ class cpio :
 	    # now read input and write it out
 	    san_crc = 0; san_bytes = 0	# "in progress" (shorter 3-character names) crc's,
 	    dat_crc = 0; dat_bytes = 0	#          data bytes and sanity bytes read.
-	    ronDbg = 0
 	    while 1:
 		b = self.read_driver.read_block()
 		length = len(b)
@@ -245,7 +254,7 @@ class cpio :
 		dat_bytes = dat_bytes + length
 		# we need a complete crc of the data in the file
 		dat_crc = self.crc_fun(b,dat_crc)
-		
+
 		# we also need a "sanity" crc of 1st sanity_bytes of data in file
 		# so, we crc the 1st portion of the data twice (should be ok)
 		if san_bytes < sanity_bytes :
@@ -415,7 +424,8 @@ if __name__ == "__main__" :
         raise errno.errorcode[errno.EINVAL],\
               "Invalid input file: can only handle regular files"
 
-    wrapper = cpio(fin,fout,binascii.crc_hqx)
+    fast_write = 0 # needed for testing
+    wrapper = cpio(fin,fout,binascii.crc_hqx,fast_write)
 
     dev_dict = Devcodes.MajMin(fin._file_.name)
     major = dev_dict["Major"]

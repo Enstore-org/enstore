@@ -189,9 +189,9 @@ class  RawDiskDriver(GenericDriver) :
         self.remaining_bytes = (self.remaining_bytes-len(data))
         self.df.write(data)
         self.df.flush()
-        if self.first_write_block :
-            self.first_write_block = 0
-            self.eod = self.df.tell() - len(data)
+#        if self.first_write_block :
+#            self.first_write_block = 0
+#            self.eod = self.df.tell() - len(data)
 
 if __name__ == "__main__" :
     import getopt
