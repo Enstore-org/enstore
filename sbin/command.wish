@@ -5,23 +5,25 @@
 # I know this is horrible, I didn't try to make nice. I know I repeated code sections.
 #     --> I need something to make querying and stopping and starting more convenient!!!
 # This can be improved (or deleted) as we understand things better.
-#  The inquisitor will supply most of these capabilities...
+# The inquisitor should take over most of these things...
 
 wm title . Enstore
 
 ############################################################################################################################################
-# set up the command line, the Run/Stop button and the Quit button
+# set up the command line, the Run/Stop button, Query  and the Quit button
+
 frame .top -borderwidth 10 -bg darkcyan -fg yellow
 pack .top -side top -fill x
 
-label .top.l -text Command: -padx 0 -bg darkcyan -fg white
+label .top.l -text "Command:" -padx 0 -bg darkcyan -fg white
 entry .top.cmd -width 20 -relief sunken -textvariable command
 pack .top.l -side left
 pack .top.cmd -side left -fill x -expand true
 
-button .top.quit -text Quit -command exit -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
-set but [button .top.run -text "Run it" -command Run -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
-pack .top.quit .top.run -side right
+button .top.quit -text "Quit" -command exit -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+button .top.query -text "Query All" -command query -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow
+set but [button .top.run -text "Run command" -command Run -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
+pack .top.quit .top.query .top.run -side right
 
 bind .top.cmd <Return> Run
 bind .top.cmd <Control-c> Stop
@@ -38,23 +40,25 @@ pack .config.q -side left
 set butc [button .config.s -text "????" -command CSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .config.s -side left
 proc CQRun {} {
-    global command env alive done
+    global command butc env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7500 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w CQRun_done}
     trace variable done w CQRun_done
     #puts [trace vinfo done]
+    $butc config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc CQRun_done { name element op } {
-    global alive butc done
+    global alive butc done more
     trace vdelete done w CQRun_done
     if {$alive == "alive"} {
-        $butc config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butc config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butc config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butc config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { LQRun }
 }
 
 ############################################################################################################################################
@@ -68,23 +72,25 @@ pack .log.q -side left
 set butl [button .log.s -text "????" -command LSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .log.s -side left
 proc LQRun {} {
-    global command env alive done
+    global command butl env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7504 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w LQRun_done}
     trace variable done w LQRun_done
     #puts [trace vinfo done]
+    $butl config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc LQRun_done { name element op } {
-    global alive butl done
+    global alive butl done more
     trace vdelete done w LQRun_done
     if {$alive == "alive"} {
-        $butl config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butl config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butl config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butl config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { FQRun }
 }
 
 ############################################################################################################################################
@@ -98,23 +104,25 @@ pack .file.q -side left
 set butf [button .file.s -text "????" -command FSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .file.s -side left
 proc FQRun {} {
-    global command env alive done
+    global command butf env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7501 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w FQRun_done}
     trace variable done w FQRun_done
     #puts [trace vinfo done]
+    $butf config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc FQRun_done { name element op } {
-    global alive butf done
+    global alive butf done more
     trace vdelete done w FQRun_done
     if {$alive == "alive"} {
-        $butf config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butf config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butf config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butf config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { VQRun }
 }
 
 ############################################################################################################################################
@@ -128,23 +136,25 @@ pack .vol.q -side left
 set butv [button .vol.s -text "????" -command VSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .vol.s -side left
 proc VQRun {} {
-    global command env alive done
+    global command butv env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip6 7502 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w VQRun_done}
     trace variable done w VQRun_done
     #puts [trace vinfo done]
+    $butv config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc VQRun_done { name element op } {
-    global alive butv done
+    global alive butv done more
     trace vdelete done w VQRun_done
     if {$alive == "alive"} {
-        $butv config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butv config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butv config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butv config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { AQRun }
 }
 
 ############################################################################################################################################
@@ -158,23 +168,25 @@ pack .ait.q -side left
 set buta [button .ait.s -text "????" -command ASRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .ait.s -side left
 proc AQRun {} {
-    global command env alive done
+    global command buta env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w AQRun_done}
     trace variable done w AQRun_done
     #puts [trace vinfo done]
+    $buta config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc AQRun_done { name element op } {
-    global alive buta done
+    global alive buta done more
     trace vdelete done w AQRun_done
     if {$alive == "alive"} {
-        $buta config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $buta config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $buta config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $buta config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { MQRun }
 }
 
 ############################################################################################################################################
@@ -188,23 +200,25 @@ pack .mam.q -side left
 set butm [button .mam.s -text "????" -command MSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .mam.s -side left
 proc MQRun {} {
-    global command env alive done
+    global command butm env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7508 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w MQRun_done}
     trace variable done w MQRun_done
     #puts [trace vinfo done]
+    $butm config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc MQRun_done { name element op } {
-    global alive butm done
+    global alive butm done more
     trace vdelete done w MQRun_done
     if {$alive == "alive"} {
-        $butm config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butm config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butm config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butm config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { DQRun }
 }
 
 
@@ -219,24 +233,25 @@ pack .dlt.q -side left
 set butd [button .dlt.s -text "????" -command DSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .dlt.s -side left
 proc DQRun {} {
-    global command env alive done
+    global command butd env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7509 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w DQRun_done}
     trace variable done w DQRun_done
     #puts [trace vinfo done]
+    $butd config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc DQRun_done { name element op } {
-    global alive butd done
+    global alive butd done more
     trace vdelete done w DQRun_done
-    puts $alive
     if {$alive == "alive"} {
-        $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butd config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butd config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butd config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { R2QRun }
 }
 
 ############################################################################################################################################
@@ -250,23 +265,25 @@ pack .red20.q -side left
 set butr2 [button .red20.s -text "????" -command R2SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .red20.s -side left
 proc R2QRun {} {
-    global command env alive done
+    global command butr2 env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7511 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w R2QRun_done}
     trace variable done w R2QRun_done
     #puts [trace vinfo done]
+    $butr2 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc R2QRun_done { name element op } {
-    global alive butr2 done
+    global alive butr2 done more
     trace vdelete done w R2QRun_done
     if {$alive == "alive"} {
-        $butr2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butr2 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butr2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butr2 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { R5QRun }
 }
 
 ############################################################################################################################################
@@ -280,23 +297,25 @@ pack .red50.q -side left
 set butr5 [button .red50.s -text "????" -command R5SRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .red50.s -side left
 proc R5QRun {} {
-    global command env alive done
+    global command butr5 env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip5 7510 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w R5QRun_done}
     trace variable done w R5QRun_done
     #puts [trace vinfo done]
+    $butr5 config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc R5QRun_done { name element op } {
-    global alive butr5 done
+    global alive butr5 done more
     trace vdelete done w R5QRun_done
     if {$alive == "alive"} {
-        $butr5 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butr5 config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butr5 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butr5 config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { EQRun }
 }
 
 ############################################################################################################################################
@@ -310,23 +329,25 @@ pack .emass.q -side left
 set bute [button .emass.s -text "????" -command ESRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .emass.s -side left
 proc EQRun {} {
-    global command env alive done
+    global command bute env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip1 7523 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w EQRun_done}
     trace variable done w EQRun_done
     #puts [trace vinfo done]
+    $bute config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     Run
 }
 proc EQRun_done { name element op } {
-    global alive bute done
+    global alive bute done more
     trace vdelete done w EQRun_done
     if {$alive == "alive"} {
-        $bute config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $bute config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $bute config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $bute config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { STKQRun }
 }
 
 
@@ -341,23 +362,25 @@ pack .stk.q -side left
 set butstk [button .stk.s -text "????" -command STKSRun -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow ]
 pack .stk.s -side left
 proc STKQRun {} {
-    global command env alive done
+    global command butstk env alive done
     set command "$env(ENSTORE_DIR)/bin/udp_sendWaitReply-withTimeout.sh rip9 7524 10"
     set alive "dead"
     set done ""
     catch {trace vdelete done w STKQRun_done}
     trace variable done w STKQRun_done
+    $butstk config  -text "????" -bg midnightblue -fg green -activebackground midnightblue -activeforeground yellow 
     #puts [trace vinfo done]
     Run
 }
 proc STKQRun_done { name element op } {
-    global alive butstk done
+    global alive butstk done more
     trace vdelete done w STKQRun_done
     if {$alive == "alive"} {
-        $butstk config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text Stop
+        $butstk config -bg green -fg blue -activebackground midnightblue -activeforeground yellow -text "Stop"
     } else {
-        $butstk config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text Start
+        $butstk config -bg red -fg blue -activebackground midnightblue -activeforeground yellow -text "Start"
     }
+    if {$more == 1} { set more 0 }
 }
 
 ############################################################################################################################################
@@ -378,7 +401,7 @@ proc Run {} {
     } else {
         fileevent $input readable Log
         $log insert end $command\n
-        $but config -text Stop -command Stop
+        $but config -text "Stop" -command Stop
     }
 }
 
@@ -388,7 +411,7 @@ proc Log {} {
         Stop
     } else {
         gets $input line
-        if {[string first alive $line] >=0} {set alive "alive" }
+        if {[string first alive $line] !=-1} {set alive "alive" }
         $log insert end $line\n
         $log see end
     }
@@ -397,10 +420,17 @@ proc Log {} {
 proc Stop {} {
     global input but done
     catch {close $input}
-    $but config -text "Run it" -command Run
+    $but config -text "Run command" -command Run
     set done "done"
 }
 ############################################################################################################################################
 # initialization
-#CQRun
-#LQRun
+
+set more 0
+proc query {} {
+    global more
+    set more 1
+    CQRun
+}
+
+query
