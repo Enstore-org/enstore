@@ -98,6 +98,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 # detect a transition
                 ret = e_errors.VOL_SET_TO_FULL
                 v["system_inhibit"][1] = "full"
+                v["si_time"][1] = time.time()
                 left = v["remaining_bytes"]/1.
                 totb = v["capacity_bytes"]/1.
                 if totb != 0:
@@ -1231,11 +1232,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        if record["remaining_bytes"] == 0:
+        if record["remaining_bytes"] == 0 and \
+            record["system_inhibit"][1] == "none":
             record["system_inhibit"][1] = "full"
-        else:
-            record["system_inhibit"][0] = "none"
-            
+            record["si_time"][1] = time.time()
+
         record["last_access"] = time.time()
         if record["first_access"] == -1:
             record["first_access"] = record["last_access"]
@@ -1817,7 +1818,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         for i in res2:
             res.append(i[0])
         return res
-        
+
+    #### DONE        
     # return a list of all the volumes
     def get_vol_list(self,ticket):
         ticket["status"] = (e_errors.OK, None)
