@@ -16,7 +16,7 @@ import time
 import sys
 import os
 import string
-import HTMLgen
+#import HTMLgen
 import regsub
 
 import re
@@ -769,18 +769,18 @@ if __name__=="__main__":
         #check if input file exists, remove it
         if os.access(miblist[i], 0) == 1:
           	os.remove(miblist[i])
-        
+
         os.system("snmpwalk s-d0-fcc2w.fnal.gov public %s > \
                            %s"%(id,miblist[i]))
+
                   
     for j in FLOW_L:
         #check if input file exists, remove it
         if os.access(mibflow[j][0], 0) == 1:
            	os.remove(mibflow[j][0])
-    
+	
         os.system("snmpwalk s-d0-fcc2w.fnal.gov public %s > %s"\
                            %(mibflow[j][1], mibflow[j][0]))
-
    
 #### setup the lists that will be the keys to update the node dictionary
  
@@ -811,8 +811,8 @@ if __name__=="__main__":
         i2 = ind2[count]
         count = count + 1
         str = "ifMIB.ifMIBObjects.ifXTable.ifXEntry.ifName.%s"%(i1,)
+	
         i3 = getit(str, miblist[31])
-    
         str = "interfaces.ifTable.ifEntry.ifOperStatus.%s"%(i1,)
         node_d[i]['status'] = getit(str, miblist[2])
 
@@ -905,9 +905,9 @@ if __name__=="__main__":
 #### check node and send event to NCS
 
     checkTime=60                	# monitoring interval
-    maName="BigAswitchAgent"           	# name of the monitoring agent
-    sysName="BigASwitch" 		# system name
-    clusterName="D0EN" 			# cluster name
+    maName="SiscoSwitchAgent"           	# name of the monitoring agent
+    sysName="SiscoSwitch" 		# system name
+    clusterName="END0" 			# cluster name
     nodeName="d0ensrv1"     		# node name, it is hostname exactly.
                                         # To register monitoring agent with
                                         # NGOP Central Server, this name 
@@ -920,6 +920,7 @@ if __name__=="__main__":
     serverHost='ngop'   		# points  to my machine
     serverPort="19997"			# my port number
     cl=MA_API.MAClient() 		# creates MAClient object
+    cl.setDebug(6)
     cl.setMAAttrib(maName,heartbeat,serverHost,serverPort) 
 					#sets attributes
     cl.addSystem(sysName,clusterName) 	# configures the system
@@ -951,8 +952,8 @@ if __name__=="__main__":
             eventDict={'EventType':meType, 'EventName':evtName,'EventValue':val, \
                                             'State':state, 'SevLevel':sevLevel}
             eventDict['Description'] = desc
-	    status, reason = cl.sendEvent(sysName, clusterName, elmName,\
-  					  nodeName, eventDict)
+	    status, reason = cl.sendEvent(eventDict,sysName, clusterName, elmName,\
+  					  nodeName)
             oldStateList[i] = state
             oldSevLvList[i] = sevLevel
 	    checkprint(f,"%s %s %s %s"%(status, elmName, evtName, sevLevel))
