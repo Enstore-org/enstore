@@ -443,7 +443,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                  ticket["status"] = (e_errors.WRITE_EOT, \
                                      "Volume Clerk: "+key+" is missing")
              self.reply_to_caller(ticket)
-             Trace.trace(0,"}can_write_volume "+repr(ticket["status"]))
+             Trace.trace(10,"}can_write_volume "+repr(ticket["status"]))
              return
          else:
              ticket["status"] = (e_errors.NOACCESS,'None')
