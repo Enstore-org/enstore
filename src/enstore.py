@@ -208,24 +208,39 @@ class EnstoreInterface(UserOptions):
             # ".media_changer" to the end of the server, then it must be
             # concatenated.
             try:
-                if self.matched_server == "mover":
-                    append_string = ".mover"
-                elif self.matched_server == "library":
-                    append_string = ".library_manager"
-#                elif self.matched_server == "media":
-#                    append_string = ".media_changer"
-                else:
-                    append_string = ""
+                #We need to skip to the first argument after all of the
+                # options that have been listed
+                for pos in range(len(sys.argv[1:])):
+                    if sys.argv[pos + 1][0:2] != "--":
+                        pos = pos + 1 #need to add one to offset first element
+                        break
                 
-                if sys.argv[-1][-len(append_string):] != append_string:
-                    sys.argv[-1] = sys.argv[-1] + append_string
-
+                if len(sys.argv) < 3: #not enough options to deal with here
+                    pass
+                elif self.matched_server == "mover":
+                    # 6 = len(".mover")
+                    if len(sys.argv[pos]) <= 6 or \
+                       sys.argv[pos][-6:] != ".mover":
+                        sys.argv[pos] = sys.argv[pos] + ".mover"
+                elif self.matched_server == "library":
+                    # 16=len(".library_manager")
+                    if len(sys.argv[pos]) <= 16 or \
+                       sys.argv[pos][-16:] != ".library_manager":
+                        sys.argv[pos] = sys.argv[pos] + ".library_manager"
+                elif self.matched_server == "media":
+                    # 14 = len(".media_changer")
+                    if len(sys.argv[pos]) <= 14 or \
+                       sys.argv[pos][-14:] != ".media_changer":
+                        sys.argv[pos] = sys.argv[pos] + ".media_changer"
+                else:
+                    pass
+                        
             except IndexError:
-                #if this exception is thrown, the mover string is to short
-                # to end in ".mover", ".library_manager" or ."media_changer"
-                # as they apply.  So it must be added.
-                sys.argv[-1] = sys.argv[-1] + append_string
-            
+                #There was an unexpected number of elements.  Let the
+                # following function(s) handle displaying the correct error
+                # messages.
+                pass
+
             # call the servers' interface, since we pass in a list of valid
             # options, we do not have to validate them, getopts does it
             self.server_intf = server_functions[self.matched_server][0](1,
