@@ -308,42 +308,6 @@ class FileClient(generic_client.GenericClient,
         ticket['work'] = 'modify_file_record'
         return self.send(ticket)
 
-"""
-class FileClerkClientInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-        # fill in the defaults for the possible options
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.list =None 
-        self.bfid = 0
-        self.bfids = None
-        self.backup = 0
-        self.deleted = 0
-	self.restore = ""
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-        self.get_crcs=None
-        self.set_crcs=None
-	self.all = 0
-        self.ls_active = None
-        self.add = None
-        self.modify = None
-        self.dont_try_this_at_home_erase = None
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "bfid=","deleted=","list=","backup",
-                "get-crcs=","set-crcs=",
-                "restore=", "recursive", "bfids=", "ls-active=",
-                "modify=", "add=" ]
-"""
-
 class FileClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -575,6 +539,6 @@ if __name__ == "__main__" :
     Trace.trace(6,"fcc called with args %s"%(sys.argv,))
 
     # fill in interface
-    intf = FileClerkClientInterface()
+    intf = FileClerkClientInterface(user_mode=0)
 
     do_work(intf)
