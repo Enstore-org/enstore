@@ -419,6 +419,6 @@ def fullpath(filename):
     if filename[-1] == "/":
         filepath = filepath + "/"
         
-    dirname, basename = os.path.split(filename)
+    dirname, basename = os.path.split(filepath)
 
-    return machine, filename, dirname, basename
+    return machine, filepath, dirname, basename
