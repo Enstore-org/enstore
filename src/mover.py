@@ -63,6 +63,9 @@ def state_name(state):
 #modes
 READ, WRITE = range(2)
 
+#error sources
+TAPE, ROBOT, NETWORK = ['TAPE', 'ROBOT', 'NETWORK']
+
 def mode_name(mode):
     if mode is None:
         return None
@@ -465,7 +468,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 pass
     
-    def update(self, state=None, reset_timer=None):
+    def update(self, state=None, reset_timer=None, error_source=None):
         if state is None:
             state = self.state
         Trace.trace(20,"update: %s" % (state_name(state)))
@@ -476,7 +479,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
         if reset_timer:
             self.reset_interval_timer()
-        ticket = self.format_lm_ticket(state=state)
+        ticket = self.format_lm_ticket(state=state, error_source=error_source)
         for lib, addr in self.libraries:
             if state is OFFLINE and self._last_state is OFFLINE:
                 continue
@@ -612,10 +615,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_written = self.buffer.block_write(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
-                self.transfer_failed(e_errors.WRITE_ERROR, detail)
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 break
             if bytes_written != nbytes:
-                self.transfer_failed(e_errors.WRITE_ERROR, None) #XXX detail?
+                self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
+                                     (bytes_written, nbytes), error_source=TAPE)
                 break
             self.bytes_written = self.bytes_written + bytes_written
 
@@ -639,7 +643,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.update_after_writing():
                 self.transfer_completed()
             else:
-                self.transfer_failed()
+                self.transfer_failed(error_source=TAPE)
 
 
     def read_tape(self):
@@ -664,10 +668,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_read = self.buffer.block_read(nbytes, driver)
             except:
                 exc, detail, tb = sys.exc_info()
-                self.transfer_failed(e_errors.READ_ERROR, detail)
+                self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 break
             if bytes_read <= 0:
-                self.transfer_failed(e_errors.READ_ERROR, None) ##XXX detail?
+                self.transfer_failed(e_errors.READ_ERROR, "read returns %s" % (bytes_read,),
+                                     error_source=TAPE)
                 break
             if self.bytes_read==0: #Handle variable-sized cpio header
                 if len(self.buffer._buf) != 1:
@@ -675,7 +680,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                               "read_tape: error skipping over cpio header, len(buf)=%s"%(len(self.buffer._buf)))
                 b0 = self.buffer._buf[0]
                 if len(b0) >= self.wrapper.min_header_size:
-                    header_size = self.wrapper.header_size(b0)
+                    try:
+                        header_size = self.wrapper.header_size(b0)
+                    except ValueError, msg:
+                        Trace.log("Invalid header %s" %(b0[:self.wrapper.min_header_size]))
+                        self.transfer_failed(e_errors.E_PROTO, "Invalid file header", error_source=TAPE)
+                        break
                     self.buffer.header_size = header_size
                     self.bytes_to_read = self.bytes_to_read + header_size
             self.bytes_read = self.bytes_read + bytes_read
@@ -719,7 +729,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 break
             if bytes_written < 0:
                 self.state = HAVE_BOUND
-                self.transfer_failed(e_errors.ENCP_GONE, None) #XXX detail?
+                self.transfer_failed(e_errors.ENCP_GONE, "write returns %s"%(bytes_written,))
                 break
             if bytes_written != nbytes:
                 pass #this is not unexpected, since we send with MSG_DONTWAIT
@@ -903,7 +913,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.ERROR, "volume %s already labeled as %s" %
                                   (volume_label, status[1]))
                         self.transfer_failed(e_errors.WRITE_VOL1_WRONG, "%s should be %s"%
-                                             (status[1], volume_label))
+                                             (status[1], volume_label), error_source=TAPE)
                         self.error(status[1], status[0])
                         ##XXX set volume noaccess? Eject it?
                         return 0
@@ -932,7 +942,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if verify_label:
             status = self.tape_driver.verify_label(volume_label, self.mode)
             if status[0] != e_errors.OK:
-                self.transfer_failed(status[0], status[1])
+                self.transfer_failed(status[0], status[1], error_source=TAPE)
                 self.error(status[1], status[0])
                 return 0
         location = cookie_to_long(self.target_location)
@@ -942,7 +952,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         return 1
             
-    def transfer_failed(self, exc=None, msg=None):
+    def transfer_failed(self, exc=None, msg=None, error_source=None):
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
 
         ### XXX translate this to an e_errors code?
@@ -952,30 +962,32 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Mover already in ERROR state %s, state=ERROR" % (msg,))
             return
 
-        ###XXX network errors should not count toward rd_err, wr_err
-        if self.mode == WRITE:
-            self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
-        else:
-            self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
-
-        self.transfers_failed = self.transfers_failed + 1
         self.timer('transfer_time')
+        if exc != e_errors.ENCP_GONE:
+        ### network errors should not count toward rd_err, wr_err
+            if self.mode == WRITE:
+                self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
+            else:
+                self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
+
+            self.transfers_failed = self.transfers_failed + 1
+
 
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
+        self.update(state=ERROR, error_source=error_source, reset_timer=1)
 
-        if self.state == DRAINING:
-            self.dismount_volume()
+        save_state = self.state
+        self.dismount_volume()
+
+        if save_state == DRAINING:
             self.state = OFFLINE
         else:
-            self.state = HAVE_BOUND
-            if self.maybe_clean():
-                state = IDLE
-        now = time.time()
-        self.dismount_time = now + self.delay
-        self.update(state=ERROR, reset_timer=1)
-        if self.state == HAVE_BOUND:
-            self.update(reset_timer=1)        
+            self.maybe_clean()
+            self.idle()
+
+
+
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -1204,7 +1216,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     
     def dismount_volume(self, after_function=None):
         self.dismount_time = None
-        prev_state = self.state
+        save_state = self.state
         self.state = DISMOUNT_WAIT
         if self.do_eject:
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
@@ -1243,7 +1255,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             if after_function:
                 after_function()
             else:
-                self.idle()
+                if save_state not in (DRAINING, OFFLINE):
+                    self.idle()
+                    
         ###XXX aml-specific hack! Media changer should provide a layer of abstraction
         ### on top of media changer error returns, but it doesn't  :-(
         elif status[-1] == "the drive did not contain an unloaded volume":
@@ -1275,7 +1289,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.last_error = status
             Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
             self.state = DISMOUNT_WAIT
-            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,))
+            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
             self.dismount_volume(after_function=self.idle)
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
@@ -1285,7 +1299,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.seek(location, eot_ok) #XXX is eot_ok needed?
         except:
             exc, detail, tb = sys.exc_info()
-            self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,))
+            self.transfer_failed(e_errors.ERROR, 'positioning error %s' % (detail,), error_source=TAPE)
             failed=1
         self.timer('seek_time')
         self.current_location = self.tape_driver.tell()
