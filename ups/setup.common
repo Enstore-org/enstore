@@ -4,4 +4,4 @@
 
 setenv PATH $PROD_DIR/bin:$PATH
 
-$PROD_DIR/ups/chk_configure $PROD_DIR
+# $PROD_DIR/ups/chk_configure $PROD_DIR
