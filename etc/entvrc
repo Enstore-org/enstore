@@ -119,11 +119,11 @@ client_color fcdfdata039   #0000dd
 client_color fcdfdata040   #0000dd
 
 client_color fcdfdata052   #0000dd
-client_color fcdfdata053   #0000dd
+#client_color fcdfdata053   #0000dd
 client_color fcdfdata054   #0000dd
-client_color fcdfdata055   #0000dd
+#client_color fcdfdata055   #0000dd
 client_color fcdfdata056   #0000dd
-client_color fcdfdata057   #0000dd
+#client_color fcdfdata057   #0000dd
 client_color fcdfdata058   #0000dd
 client_color fcdfdata059   #0000dd
 client_color fcdfdata060   #0000dd
@@ -150,6 +150,29 @@ client_color fcdfdata080   #0000dd
 client_color fcdfdata081   #0000dd
 client_color fcdfdata082   #0000dd
 client_color fcdfdata083   #0000dd
+client_color fcdfdata084   #0000dd
+client_color fcdfdata085   #0000dd
+client_color fcdfdata086   #0000dd
+client_color fcdfdata087   #0000dd
+client_color fcdfdata088   #0000dd
+
+client_color fcdfdata093   #0000dd
+client_color fcdfdata094   #0000dd
+client_color fcdfdata095   #0000dd
+client_color fcdfdata096   #0000dd
+client_color fcdfdata097   #0000dd
+client_color fcdfdata098   #0000dd
+client_color fcdfdata099   #0000dd
+client_color fcdfdata100   #0000dd
+
+client_color fcdfdata105   #0000dd
+client_color fcdfdata106   #0000dd
+client_color fcdfdata107   #0000dd
+client_color fcdfdata108   #0000dd
+client_color fcdfdata109   #0000dd
+client_color fcdfdata110   #0000dd
+
+client_color fcdfdata112   #0000dd
 
 #farms - there are a lot of them
 client_color fncdf1        #ff00ff
