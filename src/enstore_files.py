@@ -488,9 +488,11 @@ class EnDataFile(EnFile):
         if self.openfile:
             while i < max_lines:
                 l = self.openfile.readline()
-                if l:
-                    self.lines.append(l)
-                    i = i + 1
+		if l:
+		    # this is a gross hsck
+		    if not string.find(l, "set_route(131.225."):
+			self.lines.append(l)
+			i = i + 1
                 else:
                     break
         return self.date, self.lines
