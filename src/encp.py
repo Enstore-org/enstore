@@ -482,10 +482,10 @@ def check_load_balance(mode, dest):
     choose = []
     for interface in interfaces:
         weight = interface_dict[interface].get('weight', 1)
-        send_rate, recv_rate = rate_dict[interface]
-        send_rate = send_rate/weight
+        recv_rate, send_rate = rate_dict[interface]
         recv_rate = recv_rate/weight
-        if mode==1:
+        send_rate = send_rate/weight
+        if mode==1: #writing
             choose.append((send_rate, interface))
         else:
             choose.append((recv_rate, interface))

@@ -88,19 +88,21 @@ def interfaces():
 # sent and recieved
 
 def _parse_linux(tok):
-    return  int(tok[7]), int(tok[3])
+    return  long(tok[3]), long(tok[7])
 
 def _parse_irix(tok):
-    return int(tok[4]), int(tok[6])
+    return long(tok[4]), long(tok[6])
 
 def _parse_osf(tok):
-    return int(tok[4]), int(tok[6])
+    return long(tok[4]), long(tok[6])
+
+def _parse(tok):
+    return 0, 0
 
 try:
     _parse = eval("_parse_"+uname())
 except:
     print "Unrecognized platform", uname()
-    _parse = lambda x: 0, 0
 
 def stats(interfaces):
     netstat_cmd = _find_command('netstat')
