@@ -95,6 +95,20 @@ class EncpLine:
 	# message as the encp hitory page will not be correct and there is
 	# probably something else wrong that produced the garbage in the log file
 	# in the first place.
+        # here is an example message -
+        #
+        #  11:24:15 water.fnal.gov 002492 zalokar I ENCP
+        #  MSG_TYPE=ENCP_XFER
+        #  read_from_hsm /pnfs/mist/zaa/10MB_007 -> /dev/null:
+        #  10485760 bytes copied from STORM1 at 4.94 MB/S
+        #  (5.85 MB/S network) (5.6 MB/S drive) (34.7 MB/S disk)
+        #  mover=rain.mover drive_id=Mammoth2 drive_sn=0062025279
+        #  drive_vendor=EXABYTE elapsed=49.375
+        #  {'media_changer' : 'rain.media_changer',
+        #  'mover_interface' : 'rain', 'driver' : 'FTTDriver', 
+        #  'storage_group':'zee', 'encp_ip': '131.225.84.1',
+        #  'unique_id': 'water.fnal.gov-1030465406-2492-0'}
+        #
 	if line[0:12] == "Binary file ":
 	    return
         [self.time, self.node, self.pid, self.user, self.status, self.server, 
@@ -108,6 +122,7 @@ class EncpLine:
         self.outfile = QUESTION
         self.msg_type = QUESTION
         self.xfer_rate = QUESTION
+        self.disk_rate = QUESTION
 	self.storage_group = None
         self.mc = QUESTION
 	self.interface = QUESTION
@@ -156,12 +171,20 @@ class EncpLine:
                 self.volume = tmp_list[4]
                 self.user_rate = tmp_list[6]
 		tmp_list = string.splitfields(tmp2, " ")
-		tmp_list2 = string.splitfields(tmp_list[5], "=")
+                if "disk)" in tmp_list:
+                    # this is the new format with disk rate added
+                    mover_index = 8
+                    drive_id_index = 9 
+                else:
+                    # this is the old format (i hate this)
+                    mover_index = 5
+                    drive_id_index = 6
+                tmp_list2 = string.splitfields(tmp_list[mover_index], "=")
 		self.mover = tmp_list2[1]
 		# remove .mover
 		self.mover = string.replace(self.mover, ".%s"%(enstore_constants.MOVER,),
 					    "")
-		tmp_list = string.splitfields(tmp_list[6], "=")
+		tmp_list = string.splitfields(tmp_list[drive_id_index], "=")
 		try:
 		    self.drive_id = tmp_list[1]
 		except:
