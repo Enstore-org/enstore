@@ -24,6 +24,10 @@ import db
 import Trace
 import e_errors
 
+# require 5% more space on a tape than the file size,
+#    this accounts for the wrapper overhead and "some" tape rewrites
+SAFETY_FACTOR=1.05
+
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # add: some sort of hook to keep old versions of the s/w out
@@ -260,7 +264,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 	    if v['at_mover'][0] != "unmounted":
 		continue
-            if v["remaining_bytes"] < min_remaining_bytes:
+            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                 # if it __ever__ happens that we can't write a file on a
                 # volume, then mark volume as full.  This prevents us from
                 # putting 1 byte files on old "golden" volumes and potentially
@@ -338,7 +342,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 continue
 	    if v['at_mover'][0] != "unmounted":
 		continue
-            if v["remaining_bytes"] < min_remaining_bytes:
+            if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
                 continue
             vetoed = 0
             label = v["external_label"]
@@ -445,7 +449,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	     v["user_inhibit"] == "none" and
 	     v["system_inhibit"] == "none" and
 	     v['at_mover'][0] == "mounted"):
-	     if v["remaining_bytes"] < min_remaining_bytes:
+	     if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
 		 # if it __ever__ happens that we can't write a file on a
 		 # volume, then mark volume as full.  This prevents us from
 		 # putting 1 byte files on old "golden" volumes and potentially
