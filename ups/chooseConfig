@@ -79,6 +79,10 @@ case $node in
             ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
             ;;
+  *cdf*|*b0*)
+	    ENSTORE_CONFIG_HOST=$cdfen
+	    ENSTORE_CONFIG_FILE=cdf.conf
+            ;;
   *)        ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             ;;
