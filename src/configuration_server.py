@@ -4,7 +4,6 @@
 # system imports
 import sys
 import string
-import regsub
 import copy
 import types
 import socket
@@ -56,13 +55,15 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker, \
             if line[len(line)-1] == "\\":
                 line = line[0:len(line)-1]
                 continue
-            # ok, we have a complete line - execute it
+            # ok, we have a complete line - execute it - the exec creates a dictionary
+            #   called xconfigdict (because the config file has lines like configdict =)
+            #   once we know it is ok, we will change the name from xconfigdict to configdict
             try:
 	        self.enprint(line, generic_cs.CLIENT, verbose)
                 exec ("x"+line)
             except:
                 f.close()
-                msg = (EXECERROR, "Configuration Server: "\
+                msg = (e_errors.EXECERROR, "Configuration Server: "\
                       +"can not process line: ",line \
                       ,"\ndictionary unchanged.")
                 self.enprint(msg)
