@@ -17,9 +17,6 @@ import setpath
 import callback
 import dispatching_worker
 import generic_server
-import event_relay_client
-import monitored_server
-import enstore_constants
 import db
 import Trace
 import e_errors
@@ -551,6 +548,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def is_vol_available(self, ticket):
         work = ticket["action"]
         label = ticket["external_label"]
+        if not self.dict.has_key(label):
+            msg="Volume Clerk: volume %s does not exist" % (external_label,)
+            ticket["status"] = (errno.errorcode[errno.EEXIST], msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
         record = self.dict[label]  
         ret_stat = (e_errors.OK,None)
         Trace.trace(35, "is_vol_available system_inhibit = %s user_inhibit = %s ticket = %s" %
@@ -1138,7 +1141,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         new_library = ticket["new_library"]
 
         # get the current entry for the volume
-        record = self.dict[external_label]  
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]  
+        except KeyError, detail:
+            msg="Volume Clerk: no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
         
         # update the library field with the new library
         record ["library"] = new_library
@@ -1151,7 +1162,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     def set_system_inhibit(self, ticket, flag, index=0):
         external_label = ticket["external_label"]
         # get the current entry for the volume
-        record = self.dict[external_label]  
+        # get the current entry for the volume
+        try:
+            record = self.dict[external_label]  
+        except KeyError, detail:
+            msg="Volume Clerk: no such volume %s" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
 
         # update the fields that have changed
         record["system_inhibit"][index] = flag
@@ -1325,9 +1344,7 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
         Trace.init(self.log_name)
         keys = self.csc.get(MY_NAME)
-	self.alive_interval = monitored_server.get_alive_interval(self.csc,
-								  MY_NAME,
-								  keys)
+
         dispatching_worker.DispatchingWorker.__init__(self, (keys['hostip'],
                                                              keys['port']))
 
@@ -1348,10 +1365,6 @@ class VolumeClerk(VolumeClerkMethods, generic_server.GenericServer):
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
         self.bfid_db=bfid_db.BfidDb(dbHome)
         self.sgdb = sg_db.SGDb(dbHome)
-
-	# start our heartbeat to the event relay process
-	self.erc.start_heartbeat(enstore_constants.VOLUME_CLERK, 
-				 self.alive_interval)
         
 class VolumeClerkInterface(generic_server.GenericServerInterface):
         pass
