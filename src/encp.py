@@ -731,71 +731,86 @@ def e_access(path, mode):
     except OSError:
         return 0
 
+    #Make sure a valid mode was passed in.
+    if mode & (os.F_OK | os.R_OK | os.W_OK | os.X_OK) != mode:
+        return 0
+
     # Need to check for each type of access permission.
 
     if mode == os.F_OK:
         # In order to get this far, the file must exist.
         return 1
 
-    elif mode == os.R_OK:  #Check for read permissions.
+    if mode & os.R_OK:  #Check for read permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            return 1
+            #return 1
+            pass
         #Anyone can read this file.
         elif (stat_mode & stat.S_IROTH):
-            return 1
+            #return 1
+            pass
         #This is the files owner.
         elif (stat_mode & stat.S_IRUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            return 1
+            #return 1
+            pass
         #The user has group access.
         elif (stat_mode & stat.S_IRGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            return 1
+            #return 1
+            pass
         else:
             return 0
 
-    elif mode == os.W_OK:  #Check for write permissions.
+    if mode & os.W_OK:  #Check for write permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            return 1
+            #return 1
+            pass
         #Anyone can write this file.
         elif (stat_mode & stat.S_IWOTH):
-            return 1
+            #return 1
+            pass
         #This is the files owner.
         elif (stat_mode & stat.S_IWUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            return 1
+            #return 1
+            pass
         #The user has group access.
         elif (stat_mode & stat.S_IWGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            return 1
+            #return 1
+            pass
         else:
             return 0
     
-    elif mode == os.X_OK:  #Check for execute permissions.
+    if mode & os.X_OK:  #Check for execute permissions.
         #If the user is user root.
         if os.geteuid() == 0:
-            return 1
+            #return 1
+            pass
         #Anyone can execute this file.
         elif (stat_mode & stat.S_IXOTH):
-            return 1
+            #return 1
+            pass
         #This is the files owner.
         elif (stat_mode & stat.S_IXUSR) and \
            file_stats[stat.ST_UID] == os.geteuid():
-            return 1
+            #return 1
+            pass
         #The user has group access.
         elif (stat_mode & stat.S_IXGRP) and \
            (file_stats[stat.ST_GID] == os.geteuid() or
             file_stats[stat.ST_GID] in os.getgroups()):
-            return 1
+            #return 1
+            pass
         else:
             return 0
-        
-    else:
-        return 0
+
+    return 1
 
 ############################################################################
 
