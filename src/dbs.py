@@ -12,7 +12,7 @@ import sys
 import string
 import hostaddr
 
-import interface
+import option
 import generic_client
 import e_errors
 import Trace
@@ -404,17 +404,51 @@ def do_work(intf):
 
     return rtn
 
-class Interface(interface.Interface):
+class Interface(option.Interface):
 
-	def __init__(self, flag=1, opts=[]):
-	        self.do_parse = flag
-		self.restricted_opts = opts
+	def __init__(self):
  		self.status = 0
 		self.dump = 0
 		self.all = 0
 		self.restore_all = 0
 		self.nocheck = 0
-		interface.Interface.__init__(self)
+		option.Interface.__init__(self)
+
+	def valid_dictionaries(self):
+	    return (self.config_options, self.dbs_options)
+
+	dbs_options = {
+	    option.DUMP:{option.HELP_STRING:"CHIH needs to fill this in",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+		},
+	    option.STATUS:{option.HELP_STRING:"CHIH needs to fill this in",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+		},
+	    option.ALL:{option.HELP_STRING:"CHIH needs to fill this in",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+		},
+	    option.RESTORE_ALL:{option.HELP_STRING:"CHIH needs to fill this in",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+		},
+	    option.NOCHECK:{option.HELP_STRING:"CHIH needs to fill this in",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.USER_LEVEL:option.ADMIN,
+		}
+	    }
 
 	def options(self):
 	        if self.restricted_opts:

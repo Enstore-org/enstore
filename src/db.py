@@ -11,7 +11,6 @@ import setpath
 import journal
 import Trace
 import traceback
-import interface
 import configuration_client
 import e_errors
 
@@ -624,6 +623,7 @@ class DbTable:
 
 def do_backup(name, dbHome, jouHome):
      cwd=os.getcwd()
+#     interface.py should no longer be used, please use option.py
 #     try:
 #         dbHome = configuration_client.ConfigurationClient(\
 #		(interface.default_host(),\
