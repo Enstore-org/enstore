@@ -116,7 +116,6 @@ class Relay:
 		    self.send_message(msg, tok[0], now)
 	except:
 	    Trace.handle_error()
-	    break
         
     def send_message(self, msg, msg_type, now):
         """Send the message to all clients who care about it"""
