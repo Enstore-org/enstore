@@ -1,22 +1,5 @@
-# Several additional specifications examples and variables
-# MAN_SOURCE_DIR=ups/toman
-# INFO_SOURCE_DIR=ups/toinfo
-# HTML_SOURCE_DIR=???
-# CATMAN_SOURCE_DIR=ups/toman
-# NEWS_SOURCE_DIR=???
-# Action=setup
-# - Defines the environmental that allows product to unsetup
-#     setupEnv()
-# - Defines the PRODUCT_DIR environment
-#     prodDir()
-# - Put product in your path
-#     pathPrepend(PATH, ${UPS_PROD_DIR}/bin, :)
-# - or add an alias based on it's name
-#     addAlias(${UPS_PROD_NAME},${UPS_PROD_DIR}/bin/${UPS_PROD_NAME} %s)
-# - If you need a source alias/procedure with mine and users options
-#     addAlias(doit,'${UPS_SOURCE} `${UPS_PROD_DIR}/bin/exefile myopt %s`')
-(null)
 FILE = TABLE
+PRODUCT=enstore
 
 #*************************************************
 #
