@@ -89,7 +89,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
-        Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
+        Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+msg)
         self.dict.reconnect()
 
     # change_state(type, value) -- change a state
@@ -505,12 +505,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             # deleting blank?
             if sg == 'none':
                 sgc = self.sgdb.get_sg_counter(library, 'none')
-                if sgc < self.common_blank_low['warning']:
-                    msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                    Trace.alarm(e_errors.WARNING, msg)
                 if sgc < self.common_blank_low['alarm']:
                     msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-                    Trace.alarm(e_errors.ERROR, msg)
+                    Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW',  msg)
+                elif sgc < self.common_blank_low['warning']:
+                    msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+                    Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
 
         return status
 
@@ -700,12 +700,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.sgdb.inc_sg_counter(library, storage_group)
         self.sgdb.inc_sg_counter(library, 'none', increment=-1)
         sgc = self.sgdb.get_sg_counter(library, 'none')
-        if sgc < self.common_blank_low['warning']:
-            msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-            Trace.alarm(e_errors.WARNING, msg)
         if sgc < self.common_blank_low['alarm']:
             msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-            Trace.alarm(e_errors.ERROR, msg)
+            Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW', msg)
+        elif sgc < self.common_blank_low['warning']:
+            msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+            Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
         ticket['status'] = (e_errors.OK, None)
         Trace.log(e_errors.INFO, "volume %s is assigned to storage group %s"%(vol, storage_group))
         self.reply_to_caller(ticket)
@@ -1267,7 +1267,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     msg="Volume Clerk: no new volumes available [%s, %s]"%(library,
                                                                            vol_fam)
                     ticket["status"] = (e_errors.NOVOLUME, msg)
-                    Trace.alarm(e_errors.ERROR,msg)
+                    Trace.alarm(e_errors.ERROR, 'NO VOLUME', msg)
                     self.reply_to_caller(ticket)
                 return
 
@@ -1314,7 +1314,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     if not self.check_quota(q_dict, library, sg):
                         msg="Volume Clerk: %s quota exceeded while drawing from common pool. Contact enstore admin."%(sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
-                        Trace.alarm(e_errors.ERROR,msg)
+                        Trace.alarm(e_errors.ERROR, e_errors.QUOTAEXCEEDED, msg)
                         self.reply_to_caller(ticket)
                         return
 
@@ -1337,12 +1337,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 self.sgdb.inc_sg_counter(library, osg, increment=-1)
                 if osg == 'none':
                     sgc = self.sgdb.get_sg_counter(library, osg)
-                    if sgc < self.common_blank_low['warning']:
-                        msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
-                        Trace.alarm(e_errors.WARNING, msg)
                     if sgc < self.common_blank_low['alarm']:
                         msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['alarm'])
-                        Trace.alarm(e_errors.ERROR, msg)
+                        Trace.alarm(e_errors.ERROR, 'COMMON POOL BLANK LOW', msg)
+                    elif sgc < self.common_blank_low['warning']:
+                        msg = "(%s, %s) has only %d tapes left, less than %d"%(library, 'none', sgc, self.common_blank_low['warning'])
+                        Trace.alarm(e_errors.WARNING, 'COMMON POOL BLANK LOW', msg)
             self.dict[label] = vol  
             vol["status"] = (e_errors.OK, None)
             self.reply_to_caller(vol)
@@ -1355,7 +1355,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # ignore NULL
         if volume_family.extract_wrapper(vol_fam) != 'null' and \
            library[:4] != 'null' and library[-4:] != 'null':
-            Trace.alarm(e_errors.ERROR,msg)
+            Trace.alarm(e_errors.ERROR, 'NO VOLUME', msg)
             # this is important so turn the enstore ball red
             if not library+'.'+sg in self.ignored_sg:
                 ic = inquisitor_client.Inquisitor(self.csc)
