@@ -10,82 +10,72 @@ import e_errors
 import log_client
 
 def usage():
-    print "Usage:",sys.argv[0], "drive tape [file_size in MB]"
+    print "Usage:",sys.argv[0], "device tape [file_size in MB]"
     
 
-def check_mover(drive, test_tape, f_size=250):
+def check_mover(device, test_tape, f_size=250):
     import time
-    import whrandom
+    import random
     import array
     
     print "GENERATING DATA"
-    ran_arr = array.array('B')
+    ran_arr = ''
     # block_size is 128K
     block_size = 128*1024
     for i in range(0,block_size):
-        ran_arr.append(whrandom.randint(0,255))
+        ran_arr = ran_arr + chr(random.randint(0,255))
     # mount tape
-    import FTT
+    #import FTT
+    import ftt
+    import ftt_driver
+
+    FTT = ftt_driver.FTTDriver()
     print "OPENING DEVICE"
-    FTT.open(drive, 'a+' )
-    #x = 120				# for now, after ??? ftt_rewind will
-    x = 10				# for now, after ??? ftt_rewind will
-					# raise exception
-    while x:
-        try:
-            status = FTT.status( 3 )
-            if status['ONLINE']: break
-              #print "try ",x," status ",status, " ",device
-        except FTT.error:
-            pass
-        # it appears that one needs to close the device and reopen it to get the status
-        # to change. This doesn't make any sense, but does work for ftt v2_3.
-        # if you don't close/reopen, the status never changes, but a check outside of enstore
-        # using the same python calls succeeds right away after enstore reports failure - bakken 3/3/99
-        FTT.close()
-        time.sleep( 1 )
-        FTT.open(drive, 'a+' )
-        x = x -1
-        pass
-    if x == 0:
-        print "Mount error",repr(status)
+    try:
+        FTT.open(device, 1) 
+    except ftt.FTTError, detail:
+        print detail, detail.errno
         return
-    else:
-        print "REWINDING TAPE"
-        # tape is in
-        FTT.rewind()
+    
+    print "REWINDING TAPE"
+    # tape is in
+    FTT.rewind()
 
     # check if correct tape has been mounted
     try:
         try:
             print "READING LABEL"
-            label=FTT.read(80)
+            label = 80*' '
+            nb = FTT.read(label, 0, 80)
+            print "NB", nb
+            print "LB",label
         except:
+            raise
             print "EXPT"
             label = ""
         if len(label)!=80:
             print "WRITING LABEL"
             hdr = "VOL1"+test_tape
             hdr = hdr+ (79-len(hdr))*' ' + '0'
-            FTT.set_blocksize(80)
+            #FTT.set_blocksize(80)
             FTT.rewind()
-            sts = FTT.write(hdr)
+            sts = FTT.write(hdr, 0, 80)
             FTT.writefm()
             FTT.rewind()
-            label=FTT.read(80)
-        #print "LABEL,LEN",label,len(label)
+            label = 80*' '
+            nb=FTT.read(label, 0, 80)
+        print "LABEL,LEN",label,nb
         typ=label[:4]
         val=string.split(label[4:])[0]
-        #print "TYP",label[:4],"VAL",val
+        print "TYP",label[:4],"VAL",val
         if typ != "VOL1":
             print "WRITING LABEL"
             hdr = "VOL1"+test_tape
             hdr = hdr+ (79-len(hdr))*' ' + '0'
-            FTT.set_blocksize(80)
-            sts = FTT.write(hdr)
+            sts = FTT.write(hdr, 0, 80)
             FTT.writefm()
             FTT.rewind()
-            label=FTT.read(80)
+            nb=FTT.read(label, 0, 80)
             typ=label[:4]
             val=string.split(label[4:])[0]
             print "TYP",label[:4],"VAL",val
@@ -94,7 +84,7 @@ def check_mover(drive, test_tape, f_size=250):
             FTT.rewind()
 
             # unload tape
-            FTT.unload()
+            FTT.ftt.unload()
             #ticket['work'] = 'unloadvol'
             #rt = u.send(ticket,(mcticket['hostip'], mcticket['port']),300,10)
             return
@@ -102,6 +92,7 @@ def check_mover(drive, test_tape, f_size=250):
     except:
         traceback.print_exc()
         typ,val = None,None
+        return
 
     #sys.exit(0)
         
@@ -110,15 +101,16 @@ def check_mover(drive, test_tape, f_size=250):
     bl_in_M = 1024*1024/block_size # blocks in 1 MB
     #print "FSIZE",f_size
     f_size = f_size*bl_in_M
-    bs=FTT.get_blocksize()
-    FTT.set_blocksize(block_size)
-    bs=FTT.get_blocksize()
-    ret = FTT.skip_fm(1)
+    #bs=FTT.get_blocksize()
+    #FTT.set_blocksize(block_size)
+    #bs=FTT.get_blocksize()
+    ret = FTT.ftt.skip_fm(1)
     #print "WRITE SKIP",ret
     print "WRITING DATA"
     t1 = time.time()
+    print "R_ARR",ran_arr[0]
     for i in range (0,f_size):
-        sts = FTT.write(ran_arr)
+        sts = FTT.write(ran_arr, 0, block_size)
         p = i*1.*100/f_size
         if p%10 == 0:
             print "%.3g %s done"%(p,"%")
@@ -131,22 +123,23 @@ def check_mover(drive, test_tape, f_size=250):
     #print block_size/1024./1024.*f_size,"Mbytes written in",t2-t1,"secs"
     FTT.writefm()
     FTT.rewind()
-    FTT.close()
+    #FTT.close()
 
     write_t_r = block_size*1.*f_size*1./1024./1024./(t2-t1)
         
     # read file
-    FTT.open(drive, 'r')
+    #FTT.open(drive, 'r')
     time.sleep(10)
-    FTT.set_blocksize(block_size)
-    bs=FTT.get_blocksize()
-    ret = FTT.skip_fm(1)
-    #print "READ SKIP",ret
+    #FTT.set_blocksize(block_size)
+    #bs=FTT.get_blocksize()
+    ret = FTT.ftt.skip_fm(1)
+    print "READ SKIP",ret
     print "READING DATA"
     t1 = time.time()
+    buf=block_size*' '
     for i in range (0,f_size):
         #print "READING",block_size/1024,"Kbytes"
-        FTT.read(block_size)
+        FTT.read(buf, 0, block_size)
         p = i*1.*100/f_size
         if p%10 == 0:
             print "%.3g %s done"%(p,"%")
@@ -159,6 +152,7 @@ def check_mover(drive, test_tape, f_size=250):
     read_t_r = block_size*1.*f_size*1./1024./1024./(t2-t1)
     FTT.rewind()
 
+    FTT.close()
     # unload tape
     #FTT.unload()
     #ticket['work'] = 'unloadvol'
