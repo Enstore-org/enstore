@@ -68,7 +68,8 @@ raise_exception( char *msg )
     if ((i==EINTR) && PyErr_CheckSignals()) return NULL;
 #   endif
 
-    sprintf( buf, "%s - %s", msg, strerror(i) );
+    /* note: format should be the same as in EXfer.c */
+    sprintf( buf, "(pid %d) %s - %s", getpid(), msg, strerror(i) );
     v = Py_BuildValue( "(is)", i, buf );
     if (v != NULL)
     {   PyErr_SetObject( FTTErrObject, v );
@@ -528,6 +529,20 @@ do_read(  int 		rd_fd
 
 
 static void
+g_ipc_cleanup( void )
+{
+	union semun	 semun_u;
+
+    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( g_semid, 0, IPC_RMID, semun_u );
+    (void)shmdt(  g_shmaddr_p );
+    (void)shmctl( g_shmid, IPC_RMID, 0 );
+    (void)msgctl( g_msgqid, IPC_RMID, 0 );
+
+    return;
+}
+
+static void
 fd_xfer_SigHand( int sig )
 {
     printf( "fd_xfer_SigHand (pid=%d) called (sig=%d)\n", getpid(), sig );
@@ -539,7 +554,10 @@ fd_xfer_SigHand( int sig )
 
     /*          2                 13                15  */
     if ((sig==SIGINT) || (sig==SIGPIPE) || (sig==SIGTERM))
-    {
+    {   /* only clean up when we are dead */
+	/* do not clean up on SIGTSTP (when we are suspended) */
+	g_ipc_cleanup();
+
 	if (g_pid)
 	{   int sts;
 	    PRINTF(  "(pid=%d) attempt kill -9 of forked process %d\n"
