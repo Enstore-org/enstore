@@ -93,7 +93,7 @@ case $cmd in
     ;;
 
   backup)
-    python $ENSTORE_DIR/src/backup.py    --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT $@
+    python $ENSTORE_DIR/src/backup.py  $@ 
     stat=$?
     ;;
 
