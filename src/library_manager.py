@@ -353,7 +353,7 @@ class LibraryManagerMethods:
         else: self.tmp_rq = rq
         return rq, key_to_check
 
-    def process_write_request(self, request):
+    def process_write_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
         key_to_check = self.fair_share(rq)
@@ -415,6 +415,12 @@ class LibraryManagerMethods:
                 self.continue_scan = 1
                 return rq, key_to_check
             else:
+                suspect_v,suspect_mv = self.is_mover_suspect(requestor, v['external_label'])
+                if suspect_mv:
+                    Trace.log(e_errors.INFO,"mover %s is suspect for %s cannot assign a write work"%
+                              (requestor, v["external_label"]))
+                    self.continue_scan = 1
+                    return rq, key_to_check
                 rq.ticket["status"] = v["status"]
                 external_label = v["external_label"]
         else:
@@ -469,7 +475,7 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == "write_to_hsm":
-                rq, key = self.process_write_request(rq)
+                rq, key = self.process_write_request(rq, requestor)
                 if rq:
                     Trace.trace(16,"process_write_request returned %s %s %s"%(rq.ticket, key,self.continue_scan))
                 else:
@@ -639,7 +645,7 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == 'write_to_hsm':
-                rq, key = self.process_write_request(rq) 
+                rq, key = self.process_write_request(requestor) 
                 if self.continue_scan:
                     rq, status = self.check_write_request(external_label, rq)
                     if rq and status[0] == e_errors.OK: break
