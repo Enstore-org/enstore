@@ -75,6 +75,7 @@ if __name__=="__main__":
     if os.uname()[1] in NO_IPMI_NODES:
 	    print 0
 	    print 0
+	    sys.exit(0)
 	
     if os.uname()[1] in NEW_IPMI_NODES:
 	    ipmi = "ipmi_new"
