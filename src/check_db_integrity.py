@@ -15,7 +15,6 @@ import pnfs
 import bfid_db
 import pprint
 import volume_family
-import traceback
 
 opts_permitted = ['interactive', 'fix_file_db', 'fix_bfid_db',
                   'fix_all','scan_pnfs', 'fix_pnfs','fix_volmap','vol=']

@@ -40,7 +40,6 @@ import udp_client
 import socket_ext
 import hostaddr
 import string_driver
-import socket_ext
 
 import Trace
 
