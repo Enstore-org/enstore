@@ -2030,7 +2030,7 @@ class File:
 					self.volume,\
 					self.location_cookie,\
 					self.size, self.file_family,\
-					slef.p_path, self.volmap,\
+					self.p_path, self.volmap,\
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid = finfo
 					self.drive = "missing"
