@@ -1124,6 +1124,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, state)
+        # if mover is busy do nothing
+        if state == 'busy':
+            self.reply_to_caller({'work': 'nowork'})
+            return
         # just did some work, delete it from queue
         w = get_work_at_movers (self, mticket['vc']["external_label"])
         if w:
