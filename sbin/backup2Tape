@@ -102,9 +102,9 @@ doit "ls -l $AML2_TAR"
 doit "$ENSTORE_DIR/volume_import/enstore_tape \
               --write --volume-label=$LABEL \
               --pnfs-dir=/pnfs/backups --strip-path=$STRIP \
-              $PNFS_TAR $ENSTORE_TAR $AML2_TAR"
+              $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
 
-doit "rm -f $PNFS_TAR $ENSTORE_TAR $AML2_TAR"
+doit "rm -f $PNFS_TAR $ENSTORE_TAR $ENSTORELOG_TAR $AML2_TAR"
 
 if [ $kind = "FULL" ]; then
   doit "rm -f $FULL_BACKUP_FLAG" # indicate we've done the full backup on selected day (not twice per day) 
