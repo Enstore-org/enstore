@@ -39,9 +39,11 @@ class dBTable:
                 length=len(self.db)+num_add-num_del
                 return length
         def has_key(self,key):
-                if self.jou.has_key(key) and \
-			self.jou[key]['db_flag'] !='delete':
+                if self.jou.has_key(key):
+		    if self.jou[key]['db_flag'] !='delete':
                         return self.jou.has_key(key)
+		    else :
+			return 0
                 return self.db.has_key(key)
         def __setitem__(self,key,value) :
                 if 'db_flag' in value.keys(): del value['db_flag']
