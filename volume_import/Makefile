@@ -5,7 +5,7 @@ PROGS=enstore_tape
 OBJS=ECRC.o add_to_tape.o cpio.o dbfuncs.o do_add_file.o dump_db.o \
  global_data.o init_tape.o main.o pathutil.o tape.o time.o verify.o
 
-HDRS=volume_import.h
+HDRS=volume_import.h version.h
 
 all: $(PROGS)
 
