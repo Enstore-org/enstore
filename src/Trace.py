@@ -110,7 +110,12 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
     msg = trunc(msg)
     if  log_func:
         try:
-            log_func(time.time(), os.getpid(), logname, (severity,"%s %s" % (msg_type,msg)))
+	    # build up message
+            if not msg_type == MSG_DEFAULT:
+                new_msg = "%s %s" % (msg_type, msg)
+            else:
+                new_msg = msg
+            log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except: #XXX what to do?
             pass
         
