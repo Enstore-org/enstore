@@ -301,7 +301,7 @@ class HTMLStatusFile(EnStatusFile, HTMLExtraPages, enstore_status.EnStatus):
 			self.filelist.append([pread_elem[enstore_constants.NODE], 
 					      pread_elem[enstore_constants.FILE], name, 
 					      pread_elem[enstore_constants.DEVICE]])
-		if type(pwrite_q) == types.DictionaryType:
+		if type(pend_q) == types.DictionaryType:
 		    pwrite_q = pend_q[enstore_constants.WRITE]
 		else:
 		    pwrite_q = []
