@@ -491,10 +491,10 @@ class Interface:
 	else:            
 	    self.check_host(self.config_host)
 
-        if getattr(self, "help") and self.help:
-            ret = self.print_help()
-        if getattr(self, "usage") and self.usage:
-            ret = self.print_usage()
+        if hasattr(self, "help") and self.help:
+            self.print_help()
+        if hasattr(self, "usage") and self.usage:
+            self.print_usage()
         
 ############################################################################
 
@@ -676,9 +676,9 @@ class Interface:
 
         lines_of_text = [] #list of strings less than num_of_cols in length.
         
-        list = self.options.keys()
-        list.sort()
-        for opts in list:
+        list_of_options = self.options.keys()
+        list_of_options.sort()
+        for opts in list_of_options:
 
             #Don't even print out options that the user doesn't have access to.
             if self.options[opts].get(USER_LEVEL, USER) == ADMIN \
@@ -774,9 +774,9 @@ class Interface:
         usage_string = "       " + os.path.basename(sys.argv[0])
         usage_line = ""
 
-        list = self.options.keys()
-        list.sort()
-        for key in list:
+        list_of_options = self.options.keys()
+        list_of_options.sort()
+        for key in list_of_options:
             #Ignore admin options if in user mode.
             if self.options[key].get(USER_LEVEL, USER) == ADMIN \
                and self.user_level == USER:
@@ -1065,8 +1065,8 @@ class Interface:
             #Note: the replace operation is necessary to suport _s.
             if self.is_option(argv[i].split("=", 1)[0].replace("_", "-")) and \
                self.is_switch_option(argv[i]):
-                list = string.split(argv[i], "=", 1)
-                args[i + offset:i + offset + 1] = list
+                split_option = string.split(argv[i], "=", 1)
+                args[i + offset:i + offset + 1] = split_option
                 offset = offset + 1
             else:
                 args.append(argv[i])
@@ -1324,7 +1324,7 @@ class Interface:
                 return str  #str(value)
             else:
                 return None  #value
-        except ValueError, detail:
+        except ValueError:
             msg = "option %s requires type %s" % \
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
             self.print_usage(msg)
@@ -1345,7 +1345,7 @@ class Interface:
                 return str  #str(value)
             else:
                 return None  #value
-        except ValueError, detail:
+        except ValueError:
             msg = "option %s requires type %s" % \
                   (opt_dict.get('option', ""),opt_dict.get(VALUE_TYPE, STRING))
             self.print_usage(msg)
@@ -1395,7 +1395,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg = sys.exc_info()[:2]
+                msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1428,7 +1428,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg = sys.exc_info()[:2]
+                msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1455,7 +1455,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg = sys.exc_info()[:2]
+                msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
@@ -1480,7 +1480,7 @@ class Interface:
             except SystemExit, msg:
                 raise msg
             except:
-                exc, msg = sys.exc_info()[:2]
+                msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
             setattr(self, opt_name, opt_typed_value)
