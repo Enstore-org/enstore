@@ -243,6 +243,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.name = ""
         self.get_work = 0
         self.get_work_sorted = 0
+        self.alive_retries = 0
         self.alive_rcv_timeout = 0
         self.get_susp_vols = 0
         self.get_susp_vols = 0
