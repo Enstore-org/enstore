@@ -55,10 +55,13 @@ case $node in
 
    cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
                  cdfenmvr3a: \
+                 cdfenmvr4a: \
                  cdfenmvr5a: \
                  cdfenmvr6a: \
+                 cdfenmvr7a: \
                  cdfenmvr8a: \
-                 cdfenmvr9a: "
+                 cdfenmvr9a: \
+                 cdfenmvr10a: "
           ;;
 
        *) NODES=UNKNOWN
