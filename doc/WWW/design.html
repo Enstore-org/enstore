@@ -2365,7 +2365,15 @@ Some of these commands are general to all servers and are described elsewhere. L
 queues in two lists. 
 The first is a list of pending work requests and the second is a list work at Movers.
 <li><b>getmoverlist</b> - returns a list of the Movers currently known to this Library Manager and their status.
-<li><b>get_suspect_vols</b> - returns a list of suspect volumes. 
+<li><b>get_suspect_vols</b> - returns a list of suspect volumes.
+<li><b>loadmovers</b> - re(loads) list of movers assigned to specified library
+     manager from configuration file.
+<li><b>del_work</b> - remove work from the Library Manager queue of pending
+     works
+<li><b>change_priority</b> - change work priority in the queue of pending
+     works
+<li><b>get_del_dismount</b> - get list of works in the delayed dismount list
+     
 A description and the purpose of this list has been discussed above. 
 This list contains volumes requests which have failed but are retryable.
 </ul>
@@ -2602,6 +2610,74 @@ $ ecmd lmc --getmoverlist sphinxdisk.library_manager
 <pre>
 $ ecmd lmc --get_suspect_vols sphinxdisk.library_manager
 [{'external_label': 'flop1', 'movers': ['sphinxdisk.mover']}]
+</pre>
+<b>loadmovers</b>
+<pre>
+$ ecmd lmc --loadmovers happydisk.library_manager
+{'movers': [{'address': ('131.225.84.122', 7509),movers happdisk.library_manager 
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',dmovers sphindisk.library_manager
+             'last_checked': 922226963.097,--loadmovers sphinxdisk.library_manager
+             'mover': 'happydisk1.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'},
+            {'address': ('131.225.84.122', 7511),
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',
+             'last_checked': 922226968.162,
+             'mover': 'happydisk3.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'},
+            {'address': ('131.225.84.122', 7513),
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',
+             'last_checked': 922226922.662,
+             'mover': 'happydisk5.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'},
+            {'address': ('131.225.84.122', 7510),
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',
+             'last_checked': 922226929.446,
+             'mover': 'happydisk2.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'},
+            {'address': ('131.225.84.122', 7508),
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',
+             'last_checked': 922226947.063,
+             'mover': 'happydisk.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'},
+            {'address': ('131.225.84.122', 7512),
+             'external_label': 'flop1',
+             'file_family': 'happy.cpio_custom',
+             'last_checked': 922226954.994,
+             'mover': 'happydisk4.mover',
+             'state': 'idle_mover',
+             'summon_try_cnt': 0,
+             'tr_error': 'ok'}],
+ 'status': ('ok', None),
+
+<\pre>
+<b>del_work</b>
+<pre>
+$ ecmd lmc --del_work rip6.library_manager rip8.fnal.gov-922223453.580484-30688
+ID rip8.fnal.gov-922223453.580484-30688
+{'status': ('ok', 'Work deleted')}
+</pre>
+<b>change_priority</b>
+<pre>
+no example
+</pre>
+<b>get_del_dismount</b>
+<pre>
+no example
 </pre>
 
 <hr>
