@@ -83,7 +83,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     Trace.log(e_errors.INFO, "Old style cursor is opened...")
 
                 t = self.dict.db.txn()
-                self.dict.db[(label,t)] = v
+                self.dict.db[(external_label,t)] = v
                 t.commit()
             else: ret = e_errors.NOSPACE
         return ret
