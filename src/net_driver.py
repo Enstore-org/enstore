@@ -17,7 +17,7 @@ import Trace
 class NetDriver(driver.Driver):
 
     def __init__(self):
-        self.sock = -1
+        self.sock = None
         self._bytes_transferred = 0
         self._start_time = None
         self._rate = self._last_rate = 0
@@ -48,8 +48,10 @@ class NetDriver(driver.Driver):
         return self.sock.fileno()
     
     def close(self):
-        r = self.sock.close()
-        self.sock = -1
+	r = 0
+	if self.sock is not None:
+	    r = self.sock.close()
+        self.sock = None
         return r
 
     def read(self, buf, offset, nbytes):
