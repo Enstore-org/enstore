@@ -233,6 +233,7 @@ ALLOW_SRV5="$ALLOW_BASE
 ALLOW_SRV3="$ALLOW_SRV5
        LISTEN,rpc.mount,:635,TCP,x
        LISTEN,rpc.nfsd,:2049,TCP,x
+       LISTEN,perl,mirror everything:adic2.fnal.gov,TCP,/home/enstore/CRON/aml2.mirror
        UDP,rpc.mount,:mount,UDP,x
        UDP,rpc.nfsd,:nfs,UDP,x
 "
