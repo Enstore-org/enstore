@@ -1,0 +1,30 @@
+#!/bin/sh
+
+if [ $# != 2 ]
+then
+    echo "usage: ftt_ansi_prelabel drive label"
+fi
+
+(
+cat <<EOF 
+ftt_open $1
+ftt_rewind
+ftt_write_vol_label -type FTT_ANSI_HEADER -label $2
+ftt_skip_fm -1
+ftt_undump 
+
+buffer 1 (80 bytes):
+48 44 53 31 20 20 20 20 20 20 20 20 20 20 20 20 
+20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+
+end of tape
+
+ftt_rewind
+ftt_close
+quit
+EOF
+) | ftt_test

@@ -1,0 +1,456 @@
+%!PS-Adobe-3.0
+%%Creator: A2ps version 4.2
+%%CreationDate: Fri Apr  5 14:18:15 1996
+%%Pages: (atend)
+%%DocumentFonts: Courier Courier-Bold Helvetica Helvetica-Bold
+%%EndComments
+% Copyright (c) 1992, 1993, Miguel Santana, santana@imag.fr
+
+/$a2psdict 100 dict def
+$a2psdict begin
+
+% General macros.
+/xdef {exch def} bind def
+/getfont {exch findfont exch scalefont} bind def
+
+% Create Courier backspace font
+/backspacefont {
+    /Courier findfont dup length dict begin
+	{ % forall
+	    1 index /FID eq { pop pop } { def } ifelse
+	} forall
+	currentdict /UniqueID known { % if
+	    /UniqueID UniqueID 16#800000 xor def
+	} if
+	CharStrings length 1 add dict begin
+	    CharStrings { def } forall
+	    /backspace {-600 0 0 0 0 0 setcachedevice pop} bind def
+	    currentdict
+	end
+	/CharStrings exch def
+	/Encoding Encoding 256 array copy def
+	Encoding 8 /backspace put
+	currentdict
+    end
+    definefont pop
+} bind def
+
+% FUNCTIONS
+
+% Function newfile: Initialize file printing.
+/newfile
+{ /filenm xdef
+  /filenmwidth filenm stringwidth pop def
+  /filenmfont
+       filenmwidth filenmroom gt
+       {
+	       filenmfontname
+	       filenmfontsize filenmroom mul filenmwidth div
+	     getfont
+       }
+       { stdfilenmfont }
+     ifelse
+  def
+} bind def
+
+% Function header: prints page header. no page
+% is passed as argument.
+/header
+  { upperx side get  uppery side get headersize sub 1 add  moveto
+    datefont setfont
+    gsave
+      upperx side get uppery side get moveto
+      0 headersize 2 div neg rmoveto 
+      headersize setlinewidth
+      0.95 setgray
+      pagewidth 0 rlineto stroke
+    grestore
+    gsave
+      datefontsize headermargin rmoveto
+      date show				% date/hour
+    grestore
+    gsave
+      pnum cvs				% page pop up
+        pagewidth (Page 0) stringwidth pop sub
+          1 index stringwidth pop sub
+        headermargin
+          rmoveto
+      (Page ) show show			% page number
+    grestore
+    empty pnum copy pop
+    gsave
+      filenmfont setfont
+         filenmroom filenm stringwidth pop sub 2 div datewidth add
+          bodymargin 2 mul 
+        add 
+        headermargin
+      rmoveto
+        filenm show			% file name
+      grestore
+    } bind def
+
+% Function border: prints border page
+/border 
+{ upperx side get uppery side get moveto
+  gsave				% print four sides
+    0.7 setlinewidth		% of the square
+    pagewidth 0 rlineto
+    0 pageheight neg rlineto
+    pagewidth neg 0 rlineto
+    closepath stroke
+  grestore
+} bind def
+
+% Function hborder: completes border of the header.
+/hborder 
+{ gsave
+	0.7 setlinewidth
+	0 headersize neg rmoveto
+	pagewidth 0 rlineto
+	stroke
+  grestore
+} bind def
+
+% Function sheetnumber: prints the sheet number.
+/sheetnumber
+    { sheetnumberx sheetnumbery moveto
+      datefont setfont
+      pnum cvs
+	  dup stringwidth pop (0) stringwidth pop sub neg 0 rmoveto show
+      empty pnum copy pop
+    } bind def
+
+% Function prlogin: prints the login id of the requestor.
+/prlogin
+    { loginx loginy moveto
+      datefont setfont
+      dup stringwidth pop neg 0 rmoveto show
+    } bind def
+
+% Function currentdate: prints the current date.
+/currentdate
+    { datex datey moveto
+      datefont setfont
+      (Printed: ) show
+      currdate show
+    } bind def
+
+% Function filename_footer: prints the file name at bottom of page.
+/filenamefooter
+    { filenamefooterx filenamefootery moveto
+      datefont setfont
+      filenm center show
+    } bind def
+
+% Function center: centers text.
+/center
+    { dup stringwidth pop
+      2 div neg 0 rmoveto
+    } bind def
+
+% Function s: print a source line
+/s  { show
+      /y0 y0 bodyfontsize sub def
+      x0 y0 moveto
+    } bind def
+
+% Functions b and st: change to bold or standard font
+/b  { show
+      boldfont setfont
+    } bind def
+/st { show
+      bodyfont setfont
+    } bind def
+
+% Strings used to make easy printing numbers
+/pnum 12 string def
+/empty 12 string def
+
+% Global initializations
+
+/CourierBack backspacefont
+/filenmfontname /Helvetica-Bold def
+/inch {72 mul} bind def
+
+% Initialize page description variables.
+/x0 0 def
+/y0 0 def
+/sheetheight 11 inch def
+/sheetwidth 8.5 inch def
+/margin 1.25 inch def
+/rightmargin margin 3 div def
+/leftmargin margin 2 mul 3 div def
+/twinfiles false def
+/date () def
+/currdate (Apr  5 1996 14:18) def
+/login (Printed by mengel from dcdsv0) def
+%%EndProlog
+
+/docsave save def
+/landscape true def
+/twinpages false def
+% Character size for fonts.
+/filenmfontsize 11 def
+/datefontsize filenmfontsize 0.8 mul def
+/datefont /Helvetica datefontsize getfont def
+/datewidth datefont setfont currdate stringwidth pop def
+/stdfilenmfont filenmfontname filenmfontsize getfont def
+/headermargin filenmfontsize 0.25 mul def
+/headersize 0.22 inch def
+/bodyfontsize 16 def
+/bodyfont /CourierBack bodyfontsize getfont def
+/boldfont /Courier-Bold bodyfontsize getfont def
+/bodymargin bodyfontsize 0.7 mul def
+/bodyfont /CourierBack bodyfontsize getfont def
+/lines 30 def
+/columns 72 def
+
+% Logical page attributs (a half of a sheet).
+/pagewidth
+   bodyfont setfont (0) stringwidth pop columns mul bodymargin dup add add
+   def
+/pageheight
+   bodyfontsize lines mul bodymargin dup add add headersize add
+   def
+/filenmroom
+      pagewidth
+      filenmfontsize 4 mul datewidth add (Page 999) stringwidth pop add
+    sub
+  def
+
+% Coordinates for upper corner of a logical page and for
+% sheet number. Coordinates depend on format mode used.
+/topmargin margin twinpages {3} {2} ifelse div def
+
+% Landscape format
+/uppery [ rightmargin pageheight add bodymargin add
+          dup ] def
+/sheetnumbery datefontsize datefontsize add def
+/sheetnumberx sheetheight topmargin datefontsize add sub def
+/datey sheetnumbery def
+/datex topmargin datefontsize add def
+
+% Only one logical page
+/upperx [ topmargin dup ] def
+/sheetcenterx sheetheight 2 div def
+/filenamefootery datey def
+/filenamefooterx sheetcenterx def
+/loginy filenmfontsize 2 div uppery 0 get add def
+/loginx sheetnumberx def
+/date (Jan 19 1996 16:19) def
+(tapecopy.c) newfile
+%%Page: 1 1
+/side 0 def
+sheetwidth 0 translate
+90 rotate
+1 header
+border
+hborder
+/x0 upperx 0 get bodymargin add def
+/y0 uppery 0 get bodymargin bodyfontsize add headersize add sub def
+x0 y0 moveto
+bodyfont setfont
+save
+( #include <stdio.h>) s
+( #include <ftt.h>) s
+( #include <errno.h>) s
+( #include <stdlib.h>) s
+( ) s
+( /*) s
+( ** routine to rewind both drives in parallel) s
+( */) s
+( rewind_both\(ftt_descriptor dfrom, ftt_descriptor dto\) {) s
+( ) s
+(     /* rewind "to" drive asynchronously */) s
+( ) s
+(     switch\(ftt_fork\(dto\)\) {) s
+( ) s
+(     case 0:     /* fork succeeded, rewind & report status */) s
+(         ftt_rewind\(dto\); ) s
+(         ftt_report\(dto\); ) s
+(         break;) s
+( ) s
+(     case -1:    /* fork failed, rewind in foreground anyway */) s
+(         ftt_rewind\(dto\); ) s
+(         break;) s
+(     }) s
+( ) s
+(     /* rewind from drive */) s
+(     ftt_rewind\(dfrom\);) s
+( ) s
+(     /* wait for to drive asynchronous rewind */) s
+(     ftt_wait\(dto\);) s
+( }) s
+1 sheetnumber
+filenamefooter
+login prlogin
+restore
+showpage
+/side 0 def
+sheetwidth 0 translate
+90 rotate
+2 header
+border
+hborder
+/x0 upperx 0 get bodymargin add def
+/y0 uppery 0 get bodymargin bodyfontsize add headersize add sub def
+x0 y0 moveto
+bodyfont setfont
+save
+( ) s
+( ) s
+( /*) s
+( ** tape copy subroutine) s
+( ** open both drives, set mode on output to match input, copy, and prin) s
+(+t) s
+( ** statistics.) s
+( */) s
+( int) s
+( tapecopy\(char *from , char *to\) {) s
+(     ftt_descriptor dfrom, dto;) s
+(     ftt_stat_buf *bpfrom, *bpto;) s
+(     char *errorstring;) s
+(     char *buffer;) s
+(     int max, length;) s
+(     int density, mode;) s
+( ) s
+(     dfrom = ftt_open\(from, FTT_RDONLY\);) s
+(     if\( 0 == dfrom \) {) s
+(         fprintf\(stderr, "%s\\n", ftt_get_error\(0\)\);) s
+(         return 0;) s
+(     }) s
+( ) s
+(     dto = ftt_open\(to, FTT_RDWR\);) s
+(     if\( 0 == dto \) {) s
+(         fprintf\(stderr, "%s\\n", ftt_get_error\(0\)\);) s
+(         return 0;) s
+(     }) s
+( ) s
+(     rewind_both\(dfrom, dto\);) s
+2 sheetnumber
+filenamefooter
+login prlogin
+restore
+showpage
+/side 0 def
+sheetwidth 0 translate
+90 rotate
+3 header
+border
+hborder
+/x0 upperx 0 get bodymargin add def
+/y0 uppery 0 get bodymargin bodyfontsize add headersize add sub def
+x0 y0 moveto
+bodyfont setfont
+save
+( ) s
+(     /* get initial statistics */) s
+( ) s
+(     bpfrom = ftt_init_stats\(dfrom\);) s
+(     bpto = ftt_init_stats\(dto\);) s
+( ) s
+(     /* set output drive to same density/compression as input drive */) s
+( ) s
+(     density = atoi\(ftt_extract_stats\(bpfrom[1], FTT_TRANS_DENSITY\)\);) s
+(     mode = atoi\(ftt_extract_stats\(bpfrom[1], FTT_TRANS_COMPRESS\)\);) s
+(     ftt_set_mode\(bpto,density,mode,0\);) s
+( ) s
+(     /* allocate a buffer big enough to read biggest block */) s
+( ) s
+(     max = ftt_get_max_blocksize\(dfrom\);) s
+( ) s
+(     buffer = malloc\(max\);) s
+(     if \(0 == buffer\) {) s
+(         fprintf\(stderr, "unable to allocate buffer for copy, errno %d") s
+(+, errno\);) s
+(         return 0;) s
+(     }) s
+( ) s
+(     length = ftt_read\(dfrom, buffer, max\);) s
+(     while \(length != 0 \) { /* not end of tape */) s
+(         while \(length != 0\) { /* not end of file */) s
+( ) s
+(             if \(length < 0\) {) s
+(                 fprintf\(stderr, "%s\\n", ftt_get_error\(0\)\);) s
+(                 ftt_close\(dfrom\);) s
+3 sheetnumber
+filenamefooter
+login prlogin
+restore
+showpage
+/side 0 def
+sheetwidth 0 translate
+90 rotate
+4 header
+border
+hborder
+/x0 upperx 0 get bodymargin add def
+/y0 uppery 0 get bodymargin bodyfontsize add headersize add sub def
+x0 y0 moveto
+bodyfont setfont
+save
+(                 ftt_close\(dto\);) s
+(                 return 0;) s
+(             }) s
+( ) s
+(             ftt_write\(dto, buffer,length\);) s
+(             length = ftt_read\(dfrom, buffer, max\);) s
+(         }) s
+(         /* saw an EOF, write one */) s
+(         ftt_writefm\(dto\);) s
+( ) s
+(         /* read first block from next file, or another EOF */) s
+(         length = ftt_read\(dfrom, buffer, max\);) s
+(     }) s
+(     ftt_update_stats\(dfrom,bpfrom\);) s
+(     ftt_update_stats\(dto,bpto\);) s
+( ) s
+(     fprintf\(stdout, "read drive statistics:\\n"\);) s
+(     ftt_dump_stats\(stdout,bpfrom[0]\);) s
+(     fprintf\(stdout, "write drive statistics:\\n"\);) s
+(     ftt_dump_stats\(stdout,bpto[0]\);) s
+( ) s
+(     rewind_both\(dfrom, dto\);) s
+( ) s
+(     ftt_close\(dfrom\);) s
+(     ftt_close\(dto\);) s
+(     return 1;) s
+( }) s
+( ) s
+( /*) s
+( ** mainline -- parse arguments and call tapecopy) s
+4 sheetnumber
+filenamefooter
+login prlogin
+restore
+showpage
+/side 0 def
+sheetwidth 0 translate
+90 rotate
+5 header
+border
+hborder
+/x0 upperx 0 get bodymargin add def
+/y0 uppery 0 get bodymargin bodyfontsize add headersize add sub def
+x0 y0 moveto
+bodyfont setfont
+save
+( */) s
+( int) s
+( main\(int argc, char **argv\) {) s
+( ) s
+(     if\(argc != 3\) {) s
+(         fprintf\(stderr, "usage: tapecopy from_drive to_drive"\);) s
+(     }) s
+( ) s
+(     return !tapecopy\(argv[1], argv[2]\);) s
+( }) s
+5 sheetnumber
+filenamefooter
+login prlogin
+restore
+showpage
+
+%%Trailer
+%%Pages: 5
+docsave restore end
