@@ -960,7 +960,7 @@ class LibraryManagerMethods:
         
         # try from the beginning
         Trace.trace(14,"try from the beginning")
-        rq = self.pending_work.get(external_label)
+        rq = self.pending_work.get(external_label, use_admin_queue=0)
         if rq:
             if rq.work == 'read_from_hsm':
                 rq, status = self.check_read_request(external_label, rq, requestor)
