@@ -91,7 +91,7 @@ def get_movers():
     return movers
 
 def ssh(host, cmd):
-    ssh_cmd = "enrsh -n %s '%s </dev/null'" % (host, cmd)
+    ssh_cmd = "enrsh -n %s '%s'" % (host, cmd)
     print ssh_cmd
     p = os.popen(ssh_cmd, 'r')
     r = p.read()
