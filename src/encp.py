@@ -1516,7 +1516,7 @@ def open_local_file(filename, mode):
         if filename == "/dev/null":
             flags = os.O_WRONLY
         else:
-            flags = os.O_WRONLY | os.O_CREAT
+            flags = os.O_WRONLY
     else:
         done_ticket = {'status':(e_errors.UNKNOWN,
                                  "Unable to open local file.")}
@@ -1527,7 +1527,7 @@ def open_local_file(filename, mode):
         #if filename == "/dev/null":
         #    local_fd = os.open("/dev/null", flags)
         #else:
-        local_fd = os.open(filename, flags, 0)
+        local_fd = os.open(filename, flags, 0666)
     except OSError, detail:
         #USERERROR is on the list of non-retriable errors.  Because of
         # this the return from handle_retries will remove this request
@@ -2196,10 +2196,12 @@ def set_pnfs_settings(ticket, intf_encp):
     # create a new pnfs object pointing to current output file
     Trace.trace(20,"write_to_hsm adding to pnfs "+ ticket['outfile'])
 
+    #The first piece of metadata to set is the bit file id which is placed
+    # into layer 1.
     try:
         p=pnfs.Pnfs(ticket['outfile'])
         t=pnfs.Tag(os.path.dirname(ticket['outfile']))
-        # save the bfid and set the file size
+        # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
@@ -2211,7 +2213,7 @@ def set_pnfs_settings(ticket, intf_encp):
         ticket['status'] = (str(exc), str(msg))
         return
         
-    # store cross reference data
+    #Store the cross reference data into layer 4.
     mover_ticket = ticket.get('mover', {})
     drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
                        mover_ticket.get('serial_num','Unknown'))
@@ -2240,6 +2242,7 @@ def set_pnfs_settings(ticket, intf_encp):
         ticket['status'] = (str(exc), str(msg))
         return
 
+    #Update the file database with the transfer info.
     try:
         # add the pnfs ids and filenames to the file clerk ticket and store it
         fc_ticket = {}
@@ -2275,14 +2278,26 @@ def set_pnfs_settings(ticket, intf_encp):
         #The dcache sets the file size.  If encp tries to set it again, pnfs
         # sets the size to zero.  Thus, only do this for normal transfers.
         if not intf_encp.put_cache:
-            # set the file size
-            p.set_file_size(ticket['file_size'])
+            #If the size is already set don't set it again.  Doing so
+            # would set the filesize back to zero.
+            size = long(os.stat(ticket['outfile'])[stat.ST_SIZE])
+            if size == long(ticket['file_size']) or size == 1L:
+                Trace.log(e_errors.INFO,
+                          "Filesize (%s) for file %s already set." %
+                          (ticket['file_size'], ticket['outfile']))
+            else:
+                # set the file size
+                p.set_file_size(ticket['file_size'])
     except KeyboardInterrupt:
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
     except:
         exc, msg, tb = sys.exc_info()
 	ticket['status'] = (str(exc), str(msg))
+
+    #This functions write errors/warnings to the log file and put an
+    # error status in the ticket.
+    verify_file_size(ticket) #Verify size is the same.
 
 ############################################################################
 #Functions for writes.
@@ -2960,6 +2975,11 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
 
+        #Create the zero length file entry.
+        for request in request_list:
+            #Where does this really belong???
+            create_zero_length_files(request['outfile'])
+
 #######################################################################
 
 def get_clerks_info(vcc, fcc, bfid):
@@ -3008,46 +3028,71 @@ def get_clerks_info(vcc, fcc, bfid):
 def verify_file_size(ticket):
     #Don't worry about checking when outfile is /dev/null.
     if ticket['outfile'] == '/dev/null':
-        try:
-            p = pnfs.Pnfs(ticket['infile'])
-            p.get_file_size()
-            return p.file_size
-        except (OSError, IOError), detail:
-            return 0
+        return
 
-    filename = ticket['outfile']
-    file_size = 0 #quick hack
+    #Get the stat info for each file.
+    try:
+        full_stat = os.stat(ticket['wrapper']['fullname'])
+        full_filesize = full_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
     
     try:
-        #Get the stat info to 
-        statinfo = os.stat(filename)
-	
-        file_size = statinfo[stat.ST_SIZE]
-	
-        #Until pnfs supports NFS version 3 (for large file support) make sure
-	# we are using the correct file_size for the pnfs side.
-        try:
-            p = pnfs.Pnfs(ticket['infile'])
-            p.get_file_size()
-            real_size = p.file_size
-        except (OSError, IOError), detail:
-            real_size = 0
+        pnfs_stat = os.stat(ticket['wrapper']['pnfsFilename'])
+        pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
 
-	if file_size != real_size: #ticket['file_size']:
-            msg = "Expected file size (%s) not equal to actuall file size " \
+    try:
+        in_stat = os.stat(ticket['infile'])
+        in_filesize = in_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    try:
+        out_stat = os.stat(ticket['outfile'])
+        out_filesize = out_stat[stat.ST_SIZE]
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+    
+    #Until pnfs supports NFS version 3 (for large file support) make sure
+    # we are using the correct file_size for the pnfs side.
+    try:
+        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
+        p.get_file_size()
+        pnfs_real_size = p.file_size
+    except (OSError, IOError), detail:
+        ticket['status'] = (e_errors.OSERROR, str(detail))
+        return
+
+    #Handle large files.
+    if pnfs_filesize == 1:
+        if ticket['file_size'] != out_filesize:
+            msg = "Expected file size (%s) equal to actuall file size " \
                   "(%s) for file %s." % \
-                  (ticket['file_size'], file_size, filename)
-
-            ticket['file_size'] = file_size
+                  (ticket['file_size'], out_filesize, ticket['outfile'])
             ticket['status'] = (e_errors.EPROTO, msg)
-
-    except OSError, msg:
-        Trace.log(e_errors.INFO, "Retrieving %s info. failed: %s" % \
-                  (filename, msg))
-        ticket['status'] = (e_errors.UNKNOWN, "Unable to verify file size.")
-
-    return file_size #return used in read.
-
+        elif full_filesize != pnfs_real_size:
+            msg = "Expected local file size (%s) to equal remote file " \
+                  " size (%s) for file %s." \
+                  % (full_filesize, pnfs_real_size, ticket['outfile'])
+            ticket['status'] = (e_errors.EPROTO, msg)
+    #Test if the sizes are correct.
+    elif ticket['file_size'] != out_filesize:
+        msg = "Expected file size (%s) equal to actuall file size " \
+              "(%s) for file %s." % \
+              (ticket['file_size'], out_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.EPROTO, msg)
+    elif full_filesize != pnfs_filesize:
+        msg = "Expected local file size (%s) to equal remote file " \
+              " size (%s) for file %s." \
+              % (full_filesize, pnfs_filesize, ticket['outfile'])
+        ticket['status'] = (e_errors.EPROTO, msg)
+    
 #######################################################################
 #Functions for reads.
 #######################################################################
@@ -3232,7 +3277,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
 # read hsm files in the loop after read requests have been submitted
 #Args:
 # listen_socket - The socket to listen on returned from callback.get_callback()
-# submittted - The number of elements of the list requests that were
+# submittted - The number of elements of the list requests thatwere
 #  successfully transfered.
 # requests - A list of dictionaries.  Each dictionary represents on transfer.
 # tinfo - Dictionary of timing info.
@@ -3353,8 +3398,23 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #These functions write errors/warnings to the log file and put an
         # error status in the ticket.
-        bytes = bytes + verify_file_size(done_ticket) #Verify size is the same.
+        verify_file_size(done_ticket) #Verify size is the same.
+
+        #Verfy that the file transfered in tacted.
+        result_dict = handle_retries(request_list, request_ticket,
+                                     done_ticket, listen_socket,
+                                     route_server, None, e)
+        if result_dict['status'][0] == e_errors.RETRY:
+            continue
+        elif not e_errors.is_retriable(result_dict['status'][0]):
+            files_left = result_dict['queue_size']
+            failed_requests.append(request_ticket)
+            continue
+
+        #Update the running bytes transfered count.
+        bytes = bytes + done_ticket['file_size']
         bytes = bytes - done_ticket.get('bytes_not_transfered', 0)
+        
         check_crc(done_ticket, e.chk_crc) #Check the CRC.
 
         #Verfy that the file transfered in tacted.
