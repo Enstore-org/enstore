@@ -43,6 +43,7 @@ ALARM = "alarm"
 ANYALARMS = "alarms"
 URL = "url"
 ROOT_ERROR = "root_error"
+SEVERITY = "severity"
 
 NULL_DRIVER = "NullDriver"
 
