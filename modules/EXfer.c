@@ -4,6 +4,8 @@
     contacting Fermi Lab in Batavia IL, 60510, phone: 630-840-3000.
     */
 
+#include <Python.h>		/* all the Py.... stuff */
+
 #ifdef NO_READ
 # include <sys/stat.h>		/* fstat, struct stat */
 #endif
@@ -15,7 +17,6 @@
 #include <sys/shm.h>		/* shmxxx */
 #include <sys/sem.h>		/* semxxx */
 #include <sys/msg.h>		/* msg{snd,rcv} */
-#include <Python.h>		/* all the Py.... stuff */
 #include <assert.h>             /* assert */
 #include <errno.h>
 #include <signal.h>		/* sigaction() and struct sigaction */
@@ -32,6 +33,8 @@
 		/* already been included */
 #endif
 #include "ETape.h"		/* note potential #def _FTT_H trick above */
+
+#include "IPC.h"		/* struct s_IPCshmgetObject, IPCshmget_Type */
 
 #define CKALLOC(malloc_call) if ( !(malloc_call) ) {PyErr_NoMemory(); return NULL;} 
 
@@ -649,15 +652,14 @@ EXusrTo_(  PyObject	*self
  *
  *****************************************************************************/
 
-char		*g_shmaddr_p;
-int		 g_shmsize;
-struct sigaction g_oldSigAct_s;
-union semun	 g_semun_u;
-int		 g_shmid;
-int		 g_semid;
-int		 g_msgqid;
+static char		*g_shmaddr_p;
+static int		 g_shmsize;
+static struct sigaction	 g_oldSigAct_s;
+static int		 g_shmid;
+static int		 g_semid;
+static int		 g_msgqid;
 
-void
+static void
 send_writer(  int	mtype
 	    , int	d1
 	    , char	*c1 )
@@ -668,20 +670,23 @@ send_writer(  int	mtype
     msg_s.mtype = mtype;
     msg_s.md.data = d1; /* may not be used */
     msg_s.md.c_p = c1; /* may not be used */
-    sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
+    do
+    {   sts = msgsnd( g_msgqid,(struct msgbuf *)&msg_s,sizeof(struct s_msgdat),0 );
+    } while (0 && (sts==-1) && (errno==EINTR)); /* gdb looks like cntl-C */
     if (sts == -1) perror( "reader_error" ); /* can not do much more */
     return;
 }
 
-void
+static void
 do_read(  int 		rd_fd
 	, int 		no_bytes
 	, int 		blk_size 
-	, PyObject	*crc_obj_tp )
+	, PyObject	*crc_obj_tp
+	, int		crc_i
+	, int		*read_bytes_ip )
 {
 	struct sembuf	 sops_rd_wr2rd;
 	struct s_msg	 msgbuf_s;
-	int		 crc_i=0;
 	int		 shm_off=0;
 
     msgbuf_s.mtype = WrtSiz;
@@ -699,7 +704,7 @@ do_read(  int 		rd_fd
 	/* gain access to *blk* of shared mem */
  semop_try:
 	sts = semop( g_semid, &sops_rd_wr2rd, 1 );
-	if ((sts==-1) && (errno==EINTR))
+	if (0 && (sts==-1) && (errno==EINTR))
 	{   printf( "interrupted system call; assume debugger attach???\n" );
 	    goto semop_try;
 	}
@@ -714,6 +719,8 @@ do_read(  int 		rd_fd
 		   , (no_bytes<blk_size)?no_bytes:blk_size );
 	if (sts == -1) { send_writer( Err, errno, 0 ); exit( 1 ); }
 	if (sts == 0) { send_writer( Eof, errno, 0 ); exit( 1 ); }
+
+	*read_bytes_ip += sts;
 
 	send_writer( WrtSiz, sts, g_shmaddr_p+shm_off );
 
@@ -737,11 +744,13 @@ do_read(  int 		rd_fd
     return;
 }
 
-void
+static void
 g_ipc_cleanup( void )
 {
-    g_semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
-    (void)semctl( g_semid, 0, IPC_RMID, g_semun_u );
+	union semun	 semun_u;
+
+    semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
+    (void)semctl( g_semid, 0, IPC_RMID, semun_u );
     (void)shmdt(  g_shmaddr_p );
     (void)shmctl( g_shmid, IPC_RMID, 0 );
     (void)msgctl( g_msgqid, IPC_RMID, 0 );
@@ -749,7 +758,7 @@ g_ipc_cleanup( void )
     return;
 }
 
-void
+static void
 fd_xfer_SigHand( int xx )	/* sighand used below to get back to prompt -*/
 {				/* when icc communication gets "stuck" 	     */
     printf( "fd_xfer_SigHand called\n" );
@@ -762,7 +771,8 @@ fd_xfer_SigHand( int xx )	/* sighand used below to get back to prompt -*/
     return;
 }
 
-static char EXfd_xfer_Doc[] = "fd_xfer( fr_fd,to_fd,no_bytes,blk_siz,crc_fun )";
+static char EXfd_xfer_Doc[] = "\
+fd_xfer( fr_fd, to_fd, no_bytes, blk_siz, crc_fun[, crc, shm] )";
 
 static PyObject *
 EXfd_xfer(  PyObject	*self
@@ -773,18 +783,21 @@ EXfd_xfer(  PyObject	*self
 	int		 no_bytes;
 	int		 blk_size;
 	PyObject	*crc_obj_tp;
+	int		 crc_i=0;      /* optional, ref. FTT.fd_xfer */
+	PyObject	*shm_obj_tp=0; /* optional, ref. FTT.fd_xfer */
 
 	int		 sts;
 	struct sigaction newSigAct_s;
 	int		 rd_ahead_i;
-	int		 crc_i;
 	PyObject	*rr;
 	int		 pid;
 	struct msqid_ds	 msgctl_s;
 	struct sembuf	 sops_wr_wr2rd;  /* allows read */
+	int		 dummy=0;
+	int		*read_bytes_ip=&dummy, *write_bytes_ip=&dummy;
 
-    sts = PyArg_ParseTuple(  args, "iiiiO", &fr_fd, &to_fd, &no_bytes
-			   , &blk_size, &crc_obj_tp );
+    sts = PyArg_ParseTuple(  args, "iiiiO|iO", &fr_fd, &to_fd, &no_bytes
+			   , &blk_size, &crc_obj_tp, &crc_i, &shm_obj_tp );
     if (!sts) return (NULL);
 
     /* see if we are crc-ing */
@@ -799,22 +812,46 @@ EXfd_xfer(  PyObject	*self
     sigaction( SIGINT, &newSigAct_s, &g_oldSigAct_s );
 #   endif
 
+    /* NOTE: FOR THE MOVER, A PARENT PROCESS WILL PASS A SHM OBJECT SO IT
+       CAN MONITOR TRANSFER PROGRESS VIA SPECIFIC LOACATION WITHIN THE
+       SHM. */
     assert( blk_size < 0x400000 );
-    rd_ahead_i = 0x400000 / blk_size; /* do integer arithmatic */
-    g_shmsize = blk_size * rd_ahead_i;
-    g_shmid = shmget( IPC_PRIVATE, g_shmsize, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
-    g_shmaddr_p = shmat( g_shmid, 0, 0 );	/* no addr hint, no flags */
-    if (g_shmaddr_p == (char *)-1)
-	return (raise_exception("fd_xfer shmat"));
+    if ((shm_obj_tp==0) || (shm_obj_tp==Py_None) || PyInt_Check(shm_obj_tp))
+    {   shm_obj_tp = 0;		/* flag that we were not passed a shm... */
+	rd_ahead_i = 0x400000 / blk_size; /* do integer arithmatic */
+	g_shmsize = blk_size * rd_ahead_i;
+	g_shmid = shmget(  IPC_PRIVATE, g_shmsize
+			 , IPC_CREAT|0x1ff/*or w/9bit perm*/ );
+	g_shmaddr_p = shmat( g_shmid, 0, 0 );	/* no addr hint, no flags */
+	if (g_shmaddr_p == (char *)-1)
+	    return (raise_exception("fd_xfer shmat"));
+	/* create msg Q for reader to send info to writer */
+	g_msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
+	/* create 1 semaphore for writer-to-allow-read   */
+	g_semid = semget( IPC_PRIVATE, 1, IPC_CREAT|0x1ff );
+    }
+    else /* SPECIFIC/SPECIAL SHM INITIALIZED WITH SEM AND MSG */
+    {   struct s_IPCshmgetObject *s_p = (struct s_IPCshmgetObject *)shm_obj_tp;
+	rd_ahead_i = (s_p->i_p[0]-(7*sizeof(int))) / blk_size; /* do integer arithmatic */
+	g_shmsize = blk_size * rd_ahead_i;
+	g_shmid = s_p->i_p[1];
+	g_shmaddr_p = (char *)&(s_p->i_p[7]);
+	g_msgqid = s_p->i_p[3];
+	g_semid  = s_p->i_p[2];
+	read_bytes_ip  = &(s_p->i_p[4]);
+	write_bytes_ip = &(s_p->i_p[5]);
+    }
 
-    /* create msg Q for reader to send info to writer */
-    g_msgqid = msgget( IPC_PRIVATE, IPC_CREAT|0x1ff );
     msgctl( g_msgqid, IPC_STAT, &msgctl_s );
+#   if 0 /* the default is the max size -- we can not set bigger and do not
+	    need smaller */
     msgctl_s.msg_qbytes = (rd_ahead_i+1) * sizeof(struct s_msgdat);
-    msgctl( g_msgqid, IPC_SET, &msgctl_s );
-
-    /* create 1 semaphore for writer-to-allow-read   */
-    g_semid = semget( IPC_PRIVATE, 1, IPC_CREAT|0x1ff );
+    sts = msgctl( g_msgqid, IPC_SET, &msgctl_s );
+    if (sts == -1)
+    {   if (!shm_obj_tp) g_ipc_cleanup();
+	return (raise_exception("fd_xfer msgctl"));
+    }
+#   endif
 
     /* == NOW DO THE WORK ===================================================*/
 
@@ -823,13 +860,17 @@ EXfd_xfer(  PyObject	*self
     sops_wr_wr2rd.sem_flg = 0;  /* default - block behavior */
 
     /* init wr2rd */
-    sts = sops_wr_wr2rd.sem_op;		/* save */
     sops_wr_wr2rd.sem_op  = rd_ahead_i;
-    semop( g_semid, &sops_wr_wr2rd, 1 );
-    sops_wr_wr2rd.sem_op  = sts;	/* restore to saved */
+    sts = semop( g_semid, &sops_wr_wr2rd, 1 );
+    if (sts == -1)
+    {   if (!shm_obj_tp) g_ipc_cleanup();
+	return (raise_exception("fd_xfer semop"));
+    }
+    sops_wr_wr2rd.sem_op  = 1;  /* reader dec's, writer inc's */
 
     /* fork off read (from) */
-    if ((pid=fork()) == 0) do_read(  fr_fd, no_bytes, blk_size, crc_obj_tp );
+    if ((pid=fork()) == 0)
+	do_read(  fr_fd, no_bytes, blk_size, crc_obj_tp, crc_i, read_bytes_ip );
     else
     {   int		 writing_flg=1;
 	struct s_msg	 msg_s;
@@ -848,24 +889,27 @@ EXfd_xfer(  PyObject	*self
 		{   msg_s.md.data -= sts;
 		    sts = write( to_fd, msg_s.md.c_p, msg_s.md.data );
 		    if (sts == -1)
-		    {   g_ipc_cleanup();
+		    {   if (!shm_obj_tp) g_ipc_cleanup();
 			return (raise_exception("fd_xfer - write"));
 		    }
+		    *write_bytes_ip += sts;
 		} while (sts != msg_s.md.data);
 
-		sts = semop( g_semid, &sops_wr_wr2rd, 1 );
+		do
+		{   sts = semop( g_semid, &sops_wr_wr2rd, 1 );
+		} while (0 && (sts==-1) && (errno==EINTR)); /* gdb looks like cntl-C */
 		if (sts == -1)
-		{   g_ipc_cleanup();
+		{   if (!shm_obj_tp) g_ipc_cleanup();
 		    return (raise_exception("fd_xfer - write - semop"));
 		}
 		break;
 	    case Err:
-		g_ipc_cleanup();
+		if (!shm_obj_tp) g_ipc_cleanup();
 		errno = msg_s.md.data;
 		return (raise_exception("fd_xfer - read error"));
 		break;
 	    case Eof:
-		g_ipc_cleanup();
+		if (!shm_obj_tp) g_ipc_cleanup();
 		return (raise_exception("fd_xfer - read EOF unexpected"));
 		break;
 	    default:		/* assume DatCrc */
@@ -877,11 +921,7 @@ EXfd_xfer(  PyObject	*self
     }
     /* == DONE WITH THE WORK - CLEANUP ======================================*/
 
-    g_semun_u.val = 0;/* just initialize ("arg" is not used for RMID)*/
-    (void)semctl( g_semid, 0, IPC_RMID, g_semun_u );
-    (void)shmdt(  g_shmaddr_p );
-    (void)shmctl( g_shmid, IPC_RMID, 0 );
-    (void)msgctl( g_msgqid, IPC_RMID, 0 );
+    if (!shm_obj_tp) g_ipc_cleanup();
 
 #   if DOSIGACT == 1
     sigaction( SIGINT, &g_oldSigAct_s, (void *)0 );
