@@ -305,12 +305,8 @@ class DispatchingWorker:
             return
 
         # call the user function
-        try:
-            apply(function, (ticket,))
-        except TypeError, detail:
-            Trace.log(e_errors.ERROR, "process request from %s: %s(%s) raised %s" %
-                      (client_address, function, ticket, detail))
-                      
+        apply(function, (ticket,))
+
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
         Trace.trace(6,"handle_error %s %s"%(exc,msg))
