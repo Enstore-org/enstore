@@ -394,8 +394,6 @@ class Mover:
         # go around for more
         self.have_bound_volume_next()
 
-#
-    """
     def read_block(self):
         badsock = self.data_socket.getsockopt(socket.SOL_SOCKET,
                                               socket.SO_ERROR)
@@ -423,7 +421,7 @@ class Mover:
             print "Mover write_block, post-send error:", \
                   errno.errorcode[badsock]
         return count
-    """
+
     # primary serving loop
     def move_forever(self, name):
         self.name = name
