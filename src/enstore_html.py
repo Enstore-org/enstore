@@ -152,6 +152,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 
     def table_top_b(self, table, td):
 	td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
+	td.append(HTMLgen.Font(" (Last Updated: %s)"%(enstore_status.format_time(time.time())), 
+			       html_escape='OFF', size="+1"))
 	td.append(HTMLgen.HR())
 	table.append(HTMLgen.TR(td))
 	table.append(self.empty_row())
