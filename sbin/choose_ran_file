@@ -47,6 +47,14 @@ while [ $done -gt 0 ]; do
   # choose a random volume from the list
   ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
   tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
+  echo `date` enstore vol --vol $tape 2>&1
+  tinfo=`enstore vol --vol $tape`
+  echo "$tinfo" 2>&1
+  if [ `echo $tinfo | egrep -c 'DELETED|NOTALLOWED|NOACCESS'` -ne 0 ]; then
+    echo REJECTED 2>&1
+    continue
+  fi
+  
   echo `date` wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null 1>&2
   wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
   rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "l exit $rc;else echo `date` got it 1>&2 ; fi
