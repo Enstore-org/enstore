@@ -305,22 +305,6 @@ class FileClient(generic_client.GenericClient,
 		       "external_label" : vol } )
 	return r
 
-    # rename volume and volume map
-    def restore2(self, file_name, restore_dir="no"):
-        r = self.send({"work"           : "restore_file",
-                       "file_name"      : file_name,
-		       "restore_dir"    : restore_dir } )
-	return r
-
-    # restore a deleted file
-    def restore3(self, bfid, file_family = None):
-        ticket = {"work": "restore_file2",
-                  "bfid": bfid}
-        if file_family:
-            ticket['file_family'] = file_family
-        r = self.send(ticket)
-	return r
-
     def restore(self, bfid, file_family = None):
         bit_file = self.bfid_info(bfid)
         if bit_file['status'][0] != e_errors.OK:
