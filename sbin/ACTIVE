@@ -1,0 +1,24 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+# $id$
+
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+
+case $node in
+  stken*) gang=stken
+          ;;
+   d0en*) gang=d0en
+          ;;
+       *) gang=UNKNOWN
+          ;;
+esac
+
+rgang -nn $gang "ls -ld /root/CRON/*ACTIVE         2>&1 |grep -v 'No such'
+                 ls -ld /home/enstore/CRON/*ACTIVE 2>&1 |grep -v 'No such'
+                 ls -ld /home/enstore/MISC/*ACTIVE 2>&1 |grep -v 'No such'
+                 echo
+                "
+
