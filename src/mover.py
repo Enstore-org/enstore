@@ -3391,6 +3391,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                  
         self.current_location = 0L
         vi = self.vol_info
+        Trace.trace(12, "override_ro_mount %s"%(self.override_ro_mount,))
         if self.override_ro_mount:
             vi['system_inhibit'][1] == 'none'
             vi['user_inhibit'][1] == 'none'
