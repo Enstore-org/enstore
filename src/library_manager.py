@@ -163,9 +163,11 @@ def remove_from_summon_list(self, mover, state):
 	
 # remove all pending works
 def flush_pending_jobs(self, status, external_label=None, jobtype=None):
+    Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
     w = self.pending_work.get_init()
     rm_list = []
     while w:
+        Trace.trace(12,"flush_pending_jobs:work %s"%(w,))
 	delete_this_job = 0
 	if external_label:
 	    if (w["fc"].has_key("external_label") and
@@ -187,6 +189,7 @@ def flush_pending_jobs(self, status, external_label=None, jobtype=None):
             # append work to remove list
             rm_list.append(w)
 	    w = self.pending_work.get_next()
+    Trace.trace(12,"flush_pending_jobs:remove list %s"%(repr(rm_list),))
     # now delete all works in the remove list
     for work in rm_list:
        self.pending_work.delete_job(work)
