@@ -927,10 +927,10 @@ def main(e):
         except (encp.EncpError,), detail:
             if getattr(detail, "errno", None) == errno.ETIMEDOUT:
                 #Log the error and continue.
-                msg = (detail.type,
-                       "Non-fatal routing socket error: %s" % (str(detail),))
-                sys.stderr.write("%s\n" % str(msg))
-                Trace.log(e_errors.WARNING, str(msg))
+                #msg = (detail.type,
+                #       "Non-fatal routing socket error: %s" % (str(detail),))
+                #sys.stderr.write("%s\n" % str(msg))
+                #Trace.log(e_errors.WARNING, str(msg))
                 #Handle retries needs to be called to update various values
                 # and to perfrom the resubmition itself.
                 request['status'] = (e_errors.RESUBMITTING,
@@ -1011,10 +1011,10 @@ def main(e):
         except (encp.EncpError,), detail:
             if getattr(detail, "errno", None) == errno.ETIMEDOUT:
                 #Log the error and continue.
-                msg = (detail.type,
-                       "Non-fatal control socket error: %s" % (str(detail),))
-                sys.stderr.write("%s\n" % str(msg))
-                Trace.log(e_errors.WARNING, str(msg))
+                #msg = (detail.type,
+                #       "Non-fatal control socket error: %s" % (str(detail),))
+                #sys.stderr.write("%s\n" % str(msg))
+                #Trace.log(e_errors.WARNING, str(msg))
                 #Handle retries needs to be called to update various values
                 # and to perfrom the resubmition itself.
                 request['status'] = (e_errors.RESUBMITTING,
