@@ -16,6 +16,13 @@ int ftt_translate_error_WIN();
 int	 ftt_describe_error();
 
 int
+ftt_get_readonly(ftt_descriptor d) {
+    CKNULL("ftt_descriptor", d);
+
+    return d->readonly;
+}
+
+int
 ftt_get_position(ftt_descriptor d, int *file, int *block) {
 
     CKOK(d,"ftt_get_position",0,0);

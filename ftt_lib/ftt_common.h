@@ -38,6 +38,7 @@ extern int		ftt_get_mode_dev(ftt_descriptor,char*,int*,int*,int*,int*);
 extern int		ftt_get_position(ftt_descriptor, int *, int *);
 extern char *		ftt_get_prod_id(ftt_descriptor);
 extern char *		ftt_get_scsi_devname(ftt_descriptor);
+extern int		ftt_get_readonly(ftt_descriptor);
 extern int		ftt_get_stats(ftt_descriptor, ftt_stat_buf);
 extern int		ftt_guess_label(char *,int, char**, int *);
 extern ftt_stat_buf *	ftt_init_stats(ftt_descriptor);

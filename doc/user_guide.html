@@ -78,10 +78,10 @@
               <li>
                 <a href="#head6">Doing Input and Output</a>
               </li>
+	      <li>
+		<a href="#head7">Finding out what went wrong</a>
+	      </li>
             </ol>
-          </li>
-          <li>
-            <a href="#head7">Finding out what went wrong</a>
           </li>
           <li>
             <a href="#head8">Opening/closing Device</a>
@@ -108,15 +108,37 @@
                 <a href="#head13">int <b>
                 ftt_close_dev(</b>ftt_descriptor <b>d)</b></a>
               </li>
+            </ol>
+          </li>
+          <li>
+            <a href="#head8">Reading/Writing</a>
+            <ol>
+              <li>
+                <a href="#head13.9">int <b>ftt_read
+                (</b>ftt_descriptor <b>d, char *buf, int</b>
+                length)</a>
+              </li>
               <li>
                 <a href="#head14">int <b>ftt_write
                 (</b>ftt_descriptor <b>d, char *buf, int</b>
                 length)</a>
               </li>
               <li>
+                <a href="#head14.1">int <b>ftt_writefm</b>
+                (ftt_descriptor <b>d)</b></a>
+              </li>
+              <li>
                 <a href="#head15">int <b>ftt_write2fm</b>
                 (ftt_descriptor <b>d)</b></a>
               </li>
+              <li>
+                <a href="#head15.1"><b>ftt_retry</b> (ftt_descriptor <b>d</b>, int <b>tries,</b>
+		  (*<b>op</b>) (ftt_descriptor, char *, int), char *<b>buf</b>,
+		  int <b>len</b>); </a>
+              </li>
+              <li>
+                 <a href="#head15.2"> int <b>ftt_get_readonly</b> (</b>ftt_descriptor <b>d</b> ) </a>
+	      </li>
             </ol>
           </li>
           <li>
@@ -1189,10 +1211,11 @@ status = ftt_close_dev(d);
       information can be obtained as described in the section on
       <i>Finding out what went wrong.</i>
     </p>
-    <p>
-      4.1 int <b>ftt_read (</b>ftt_descriptor <b>d, char *</b>buf,
+    <h3>
+      <a name="head13.9"></a> 
+      int <b>ftt_read (</b>ftt_descriptor <b>d, char *</b>buf,
       int length)
-    </p>
+    </h3>
     <p>
       If called with the tape positioned before a data block, the
       <b>ftt_read</b> entry reads a block of length at most <i>
@@ -1242,8 +1265,10 @@ char data[32768]
 int status;
 status = ftt_write(d,data,32768);
 </pre>
-    4.3 int <b>ftt_writefm (</b>ftt_descriptor <b>d)</b> 
-    <p>
+    <h3>
+    <a name="head14.1"></a>
+    int <b>ftt_writefm (</b>ftt_descriptor <b>d)</b> 
+    </h3>
       The ftt_writefm entry writes a single filemark to the tape.
       After the call, the tape position is after the written
       filemark.
@@ -1266,11 +1291,12 @@ status = ftt_writefm(d);
     written. After making this call, <b>ftt</b> "forgets" that it
     has been writing, since the guarantee that there is a double
     file mark at the end of tape has been established. 
-    <p>
-      4.5 ftt_retry (ftt_descriptor <b>d</b>, int <b>tries,</b>
+    <h3>
+    <a name="head15.1"></a> 
+      ftt_retry (ftt_descriptor <b>d</b>, int <b>tries,</b>
       (*<b>op</b>) (ftt_descriptor, char *, int), char *<b>buf</b>,
       int <b>len</b>);
-    </p>
+    </h3>
     <p>
       The <b>ftt_retry</b> call calls the routine passed in as <b>
       op</b>, with arguments <b>d, buf,</b> and <b>len</b>, and if
@@ -1317,6 +1343,15 @@ status = ftt_writefm(d);
     <p>
       will make up to a total of 6 read calls, interspersed with
       file and record skips.<br>
+    <h3>
+    <a name="head15.2"></a> 
+      int <b>ftt_get_readonly (</b>ftt_descriptor <b>d</b> )
+    </h3>
+    <p>
+      Returns the <b>readonly</b> flag used in <b>ftt_open</b>
+      when creating this ftt descriptor.
+      If the descriptor is invalid, returns -1.
+    </p>
        <!--NewPage-->
     </p>
     <a name="head16"></a> 

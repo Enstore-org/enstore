@@ -446,6 +446,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    case 0x3a00: /* medium not present */
 	    case 0x3a80: /* cartridge not present */
 			set_stat(b,FTT_READY,"0",0);
+			set_stat(b,FTT_TNP,"1",0);
 			break;
 	    case 0x0002: /* EOM encountered */
 			set_stat(b,FTT_EOM,"1",0);
@@ -506,7 +507,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	} else {
 	    if (stat_ops & FTT_DO_EXBRS) {
 		set_stat(b,FTT_BOT,         ftt_itoa((long)bit(0,buf[19])), 0);
-		set_stat(b,FTT_TNP,	        ftt_itoa((long)bit(1,buf[19])), 0);
+		set_stat(b,FTT_TNP,	    ftt_itoa((long)bit(1,buf[19])), 0);
 		set_stat(b,FTT_PF,          ftt_itoa((long)bit(7,buf[19])), 0);
 		set_stat(b,FTT_WRITE_PROT,  ftt_itoa((long)bit(5,buf[20])), 0);
 		set_stat(b,FTT_PEOT,        ftt_itoa((long)bit(2,buf[21])), 0);
@@ -521,6 +522,11 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
                      DEBUG2(stderr, "remain_tape 8900 case... \n");
 		     /* 8900's count 16k blocks, not 1k blocks */
 		     remain_tape *= 16.0;
+		else if (d->prod_id[5] == 't') {
+		     
+                     DEBUG2(stderr, "remain_tape Mammoth2 case... \n");
+		     /* 8900's count 16k blocks, not 1k blocks */
+		     remain_tape *= 33.0;
 		} else {
                      DEBUG2(stderr, "remain_tape non-8900 case... \n");
 		     ;
@@ -531,7 +537,10 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 		} else {
 	            set_stat(b,FTT_WRITE_ERRORS,ftt_itoa((long)error_count),0);
 		}
-	    }
+	    } else {
+		/* fake some stats we can... */
+		set_stat(b, FTT_TNP, ftt_itoa('0' == *ftt_extract_stats(b,FTT_READY)),0);
+            }
 	    if (stat_ops & FTT_DO_05RS) {
 		set_stat(b,FTT_TRACK_RETRY, ftt_itoa((long)buf[26]), 0);
 		set_stat(b,FTT_UNDERRUN,    ftt_itoa((long)buf[11]), 0);
