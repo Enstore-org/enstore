@@ -53,6 +53,7 @@ corresponding server when generating the SAAG page, and will not use
 <tr><td><a
 	   NAME="storage_group_limits">storage_group_limits</a></td><td>Minimal amount of drives that can be used by a certain storage group (fair share) when different storage groups compete for tape drives</td></tr>
 
+
 </table>
  
 <h2>Mover Keys</h2>
@@ -121,6 +122,8 @@ state. Default - do not restart</td></tr>
 		  greater than 0, then randomly check files written
 		  using this number as the mean (default value:0 - no check)</td></tr>
 
+<tr><td><a
+	   NAME="check_first_written_file">check_first_written_file</a></td><td>Reread and check CRC on a first write after a tape mount</td></tr>
 <tr><td><a
 	   NAME="max_time_in_state">max_time_in_state</a></td><td>maximal time for a mover to be in any transfer state (other than IDLE or ACTIVE) (default - 600 s)</td></tr>
 
@@ -284,7 +287,7 @@ state. Default - do not restart</td></tr>
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Wed Jun 23 10:47:41 CDT 2004
+Last modified: Mon Aug  2 16:11:57 CDT 2004
 <!-- hhmts end -->
   </body>
 </html>
