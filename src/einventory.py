@@ -756,6 +756,10 @@ def sort_inventory(data_file, volume_list, tmp_dir):
 
     return count_metadata
 
+def is_b_library(lib):
+    if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
+        return 1
+    return 0
 
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
@@ -865,7 +869,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
             mounts = vv['sum_mounts']
         else:
             mounts = -1
-        if vsum and vsum['last'] == vv['last_access']:
+        if vsum and long(vsum['last']) == long(vv['last_access']):
             # good, don't do anything
             active = vsum['active']
             deleted = vsum['deleted']
@@ -1111,13 +1115,6 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return n_vols, n_files, n_unchanged, n_changed
-
-
-def is_b_library(lib):
-    if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
-        return 1
-    return 0
-
 
 def inventory_dirs():
     csc = configuration_client.ConfigurationClient()
