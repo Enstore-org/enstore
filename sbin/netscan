@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -u  # force better programming and ability to use check for not set
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -8,6 +8,9 @@ if [ "${1:-}" = "-a" ] ; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-q" ] ; then QUIET=1; shift; else QUIET=0; fi
 if [ "${1:-}" = "-i" ] ; then IPMI=0; shift; else IPMI=1; fi
 
+# once a day, override quiet mode and log verbose information
+[ $((RANDOM % 97)) -eq 0 ] && QUIET=0
+
 set +u
 . /usr/local/etc/setups.sh
 setup enstore
@@ -15,16 +18,17 @@ set -u
 
 # Things checked:
 # . Correct configuration files
+# . Correct authorization files
 # . Correct ntp time sync (allow * and ~ on 1st line)
 # . Check for open LISTEN sockets
 ## . Check that two processors are active
 ## . Check that less than 90% full on mounted disks
 # . Check that eth1 is working (if present)
-# . Check that the farmlets match the base node farmlets.
-# . Check that crontab directories match the base node of the farmlet
+# . Check that the farmlets directory matches the base farmlet
+## . Check that /etc/cron.* directories match the base farmlet
 # . Check that root's crontab has reset of watchdog, ntpset and netscan running
 # . Check that ipmisrv is running and has NO_DOG option
-# . Check that watchdog action is to do nothing
+# . Check that watchdog timer action is to do nothing
 # . Check that there are less than N processes running on the node
 # . If file or volume clerk are running, then db_checkpoint and db_deadlock are running, too
 # . Check that web servers are running on right nodes and not elsewhere
@@ -136,6 +140,9 @@ check_mode() { if [ ! -r $1 ]; then
 		    [ -e /PRODUCTION ] && chmod $2 $1
 		    msg1="BAD CONFIGURATION: Changing $1 mode ($fmode to $2)"
 		    logit "$msg1"
+		    if [ $ALARM -eq 1 -a -e /PRODUCTION ]; then
+		       enstore alarm --raise --severity "I" --root-error "$msg1"
+		    fi
 		 elif [ $QUIET -ne 1 ]; then
 		    logit "$1 mode is $2, ok"
 		 fi
@@ -157,6 +164,9 @@ check_owner() { theUsr=${2:-enstore}
 		     [ -e /PRODUCTION ] && chown "${theUsr}.${theGrp}" $1
 		     msg1="BAD CONFIGURATION: Changing $1 owner ($fowner to ${theUsr}.${theGrp})"
 		     logit "$msg1"
+		     if [ $ALARM -eq 1 -a -e /PRODUCTION ]; then
+			enstore alarm --raise --severity "I" --root-error "$msg1"
+		     fi
 		  elif [ $QUIET -ne 1 ]; then
 		     logit "$1 owner is ${theUsr}.${theGrp}, ok"
 		  fi
@@ -276,6 +286,7 @@ ALLOW_BASE="
 	LISTEN,python,:,TCP,$ENSTORE/(bin|src)|/home/petravic/Zope|ftpcp.py\n
 	LISTEN,dccp,:,TCP,x\n
 	LISTEN,netserver,:,TCP,x\n
+	LISTEN,portmap,:sunrpc,TCP,x\n
 	LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh\n
 	LISTEN,sh,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,mv,inet,TCP,MSG_TYPE|enstore\n
@@ -294,6 +305,7 @@ ALLOW_BASE="
 	UDP,python,:,UDP,$ENSTORE/(bin/encp|src/(encp|monitor_server|volume_assert).py|ngop/cronjobAgent.py)|/local/ups/prd/ngop/v.*/ma/PlugInAgent.py\n
 	UDP,python,:7499,UDP,$ENSTORE/src/monitor_server.py\n
 	UDP,xntpd,:ntp,UDP,x\n
+	UDP,portmap,:sunrpc,UDP,x\n
 	UDP,tee,:,UDP,tee#/dev/tty\n
 "
 #	LISTEN,autorpm,:,TCP,perl#/usr/sbin/autorpm\n
@@ -310,10 +322,8 @@ ALLOW_CONS="$ALLOW_BASE
 ALLOW_SRV3="$ALLOW_CONS
 	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
 	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
-	LISTEN,portmap,:sunrpc,TCP,x\n
 	UDP,rpc.mount,:mount,UDP,x\n
 	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
 "
 
 # Extra for srv2 - web server
@@ -324,16 +334,12 @@ ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep\n
 	LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort\n
 	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py\n
-	LISTEN,portmap,:sunrpc,TCP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
 "
 #	LISTEN,sendmail,:smtp,TCP,x\n
 
 # Extra for srv1 - pnfs server
 ALLOW_SRV1="$ALLOW_BASE
 	LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]\n
-	LISTEN,portmap,:sunrpc,TCP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
 "
 
 # Extra for postgres db servers
@@ -341,12 +347,10 @@ ALLOW_PGDB="$ALLOW_BASE
 	LISTEN,postmaste,:(postgres|5432|8076|8888),TCP,x\n
 "
 
-# Extra for adic (portmap is also needed for dasadmin)
+# Extra for adic
 ALLOW_ADIC="$ALLOW_BASE
 	LISTEN,dasadmin,:663,TCP,x\n
 	LISTEN,dasadmin,:,TCP,dasadmin\n
-	LISTEN,portmap,:sunrpc,TCP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
 "
 
 # Extra for d0ensrv4 - makes stk and adic calls
@@ -493,11 +497,11 @@ right_file $ENSTORE/etc/$gang.step-tickers	/etc/ntp/step-tickers
 
 # check these files only on db server nodes
 case $node in
-  d0ensrv0|stkensrv6|cdfensrv0)
+  d0ensrv6|stkensrv6|cdfensrv6)
     right_file $ENSTORE/sbin/enstore-drivestat	/etc/rc.d/init.d/enstore-drivestat	0755
     right_file $ENSTORE/sbin/enstore-pgdb	/etc/rc.d/init.d/enstore-pgdb		0755
     ;;
-  stkensrv0)
+  d0ensrv0|stkensrv0|cdfensrv0)
     right_file $ENSTORE/sbin/enstore-db		/etc/rc.d/init.d/enstore-db		0755
     ;;
   *)
@@ -636,7 +640,7 @@ fi
 
 
 # check that we don't have too many processes running
-NPROC=`$PS aux | wc -l | $SED -e 's/ //g'`
+NPROC=`$PS --no-headers aux | wc -l`
 if [ `$ECHO $node | $EGREP -c dca` -eq 1 ]; then
     maxproc=300  # disk cache
 elif [ `$ECHO $node | $EGREP -c srv` -eq 1 ]; then
@@ -654,6 +658,34 @@ if [ $NPROC -ge $maxproc ]; then
 elif [ $QUIET -ne 1 ]; then
    logit "$NPROC processes, ok"
 fi
+
+# count the number of pnfsd processes running on srv1 nodes
+case $node in
+  d0ensrv1|stkensrv1)
+    NPROC=`$PS --no-headers -C pnfsd | wc -l`
+    if [ $NPROC -gt 0 -a $NPROC -lt 5 ]; then
+      msg="$NPROC pnfsd processes running. Should be 5"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+	enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+    elif [ $QUIET -ne 1 ]; then
+      logit "$NPROC pnfsd processes, ok"
+    fi
+    ;;
+  cdfensrv1)
+    NPROC=`$PS --no-headers -C pnfsd | wc -l`
+    if [ $NPROC -gt 0 -a $NPROC -lt 7 ]; then
+      msg="$NPROC pnfsd processes running. Should be 7"
+      logit "$msg"
+      if [ $ALARM -eq 1 ]; then
+	enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+    elif [ $QUIET -ne 1 ]; then
+      logit "$NPROC pnfsd processes, ok"
+    fi
+    ;;
+esac
 
 
 # check that db_deadlock and db_checkpoint are running if file or vol clerk running:
@@ -740,11 +772,15 @@ $SORT $netscan_n1 $netscan_n2 | $UNIQ -d | while read command pid rest; do
     fi
 done
 
+# once a day, check for core files in unusual places.
+#CORE=`slocate -r '/core\.[1-9][0-9]*$'`
 
-#++++++++++++++++ tasks that go over network. Can hang sometimes. Do this last.
+# tasks that go over network. Can hang sometimes. Do this last.
+
+# reduce load on base nodes by doing this less than once an hour.
 
 # check that farmlets match
-if [ $gang != "rip" ]; then
+if [ $((RANDOM % 5)) -eq 0 -o $QUIET -ne 1 ] && [ $gang != "rip" ]; then
   if [ $ALARM -eq 1 ]; then
     msg="`$FARMLETS -a 2>&1`"
   else
