@@ -235,7 +235,7 @@ status = ftt_t_parse (&argc, argv, argt);
 FTT_T_CHECK_PARSE (status, argt, argv[0]);	/* check parse status */
 FTT_T_CHECK_ESTATUS (estatus_str, estatus);
 
-status = ftt_format_ait(ftt_t_fd,0);                     /* the second arg should be the part size */
+status = ftt_format_ait(ftt_t_fd);
 FTT_T_CHECK_CALL (status,estatus);
 
 return 0;
