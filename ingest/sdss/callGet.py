@@ -10,7 +10,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir):
         #volumes.  File one in meta data is file two on tape
         print fileentry
         
-        f.write( fileentry[0]) + " " + fileentry[1] + "\n")
+        f.write( str(fileentry[0]) + " " + fileentry[1] + "\n")
 
     f.close()
 
