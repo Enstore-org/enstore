@@ -175,7 +175,7 @@ class Mover:
         self.state = state
         mover_color = {'ERROR': 'red', 'OFFLINE':'grey'}.get(self.state)
         if mover_color:
-            self.display.itemconfigure(self.outline, fill_mover_color)
+            self.display.itemconfigure(self.outline, fill=mover_color)
         x, y = self.x, self.y
         self.display.delete(self.state_display) # "undraw" the prev. state message
         img = find_image(state+'.gif')
