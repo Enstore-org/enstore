@@ -1540,9 +1540,10 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		lm_d[enstore_constants.STATUS][0] = \
 			 "%s%s:%s%s"%(lm_d[enstore_constants.STATUS][0], NBSP, NBSP, 
 				      lm_d[enstore_constants.LMSTATE])
-	# get the first word of the mover state, we will use this to
+	# get the first word of the lm state, we will use this to
 	# tell if this is a bad state or not
-	if lm_d.has_key(enstore_constants.LMSTATE):
+	if lm_d.has_key(enstore_constants.LMSTATE) and \
+	   type(lm_d[enstore_constants.LMSTATE]) == types.StringType:
 	    words = string.split(lm_d[enstore_constants.LMSTATE])
 	else:
 	    words = ["",]
