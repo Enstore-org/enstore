@@ -540,7 +540,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol1ok = 0
         self.lm_to_clear = ""
         self.list = None
-        self.list_active = None
+        self.ls_active = None
         self.recycle = None
         self.export = None
         self._import = None
@@ -632,7 +632,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.vol1ok = 0
         self.lm_to_clear = ""
         self.list = None
-        self.list_active = None
+        self.ls_active = None
         self.recycle = None
         self.export = None
         self._import = None
@@ -1143,9 +1143,9 @@ def do_work(intf):
                 record['bfid'], record['size'],
                 record['location_cookie'], deleted,
                 record['pnfs_name0'])
-    elif intf.list_active:
+    elif intf.ls_active:
         fcc = file_clerk_client.FileClient(vcc.csc)
-        ticket = fcc.list_active(intf.list_active)
+        ticket = fcc.list_active(intf.ls_active)
         active_list = ticket['active_list']
         for i in active_list:
             print i

@@ -328,7 +328,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.get_crcs=None
         self.set_crcs=None
 	self.all = 0
-        self.list_active = None
+        self.ls_active = None
         self.add = None
         self.modify = None
         self.dont_try_this_at_home_erase = None
@@ -363,8 +363,10 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.get_crcs=None
         self.set_crcs=None
 	self.all = 0
-        self.list_active = None
+        self.ls_active = None
         self.add = None
+        self.modify = None
+        self.dont_try_this_at_home_erase = None
         generic_client.GenericClientInterface.__init__(self)
 
 
@@ -476,8 +478,8 @@ def do_work(intf):
                     record['location_cookie'], deleted,
                     record['pnfs_name0'])
 
-    elif intf.list_active:
-        ticket = fcc.list_active(intf.list_active)
+    elif intf.ls_active:
+        ticket = fcc.list_active(intf.ls_active)
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['active_list']:
                 print i
