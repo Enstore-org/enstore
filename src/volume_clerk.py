@@ -341,7 +341,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return e_errors.ERROR, error_msg
 
         q = "select id from volume where label = '%s';"%(vol)
-        res = self.dict.db.query(q).get_result()
+        res = self.dict.db.query(q).getresult()
         if not res:
             msg = 'volume "%s" does not exist'%(vol)
             Trace.log(e_errors.ERROR, msg)
