@@ -204,6 +204,11 @@ class CJFunc(Worker):
 		    if interval > allowed_freq:
 			checkprint("The cron job %s is running too long"%(self.fName))
 			stateFlag = -2
+                        # raise an enstore alarm
+                        msg = "%s cron (%s) on %s is active too long"%(name,
+                                                                       self.fName,
+                                                                       os.uname()[1])
+                        os.system(". /usr/local/etc/setups.sh;setup enstore;enstore alarm --raise --root-error='%s'"%(msg,))
                         break
 
         checkprint("cron jobs state is %s"%(stateFlag,))
