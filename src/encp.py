@@ -1890,7 +1890,7 @@ def inputfile_check(input_files, bytecount=None):
         if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
             print_data_access_layer_format(inputlist[i],'',0,{'status':('EACCES','Not a regular file')})
 
-            jraise(errno.errorcode[EACCES]," encp.inputfile_check: "+
+            jraise(errno.errorcode[errno.EACCES]," encp.inputfile_check: "+
                    inputlist[i]+" is not a regular file")
 
 
@@ -1900,7 +1900,7 @@ def inputfile_check(input_files, bytecount=None):
         for j in range(i+1,ninput):
             if inputlist[i] == inputlist[j]:
                 print_data_access_layer_format(inputlist[j],'',0,{'status':('EPROTO','Duplicate entry')})
-                jraise(errno.errorcode[EPROTO]," encp.inputfile_check: "+
+                jraise(errno.errorcode[errno.EPROTO]," encp.inputfile_check: "+
                        inputlist[i]+" is the duplicated - not allowed")
 
     return (ninput, inputlist, file_size)
@@ -1953,7 +1953,7 @@ def outputfile_check(ninput,inputlist,output):
                                                0,
                                                {'status':
                                                 ('EEXIST', "No such directory"+odir)})
-                jraise(errno.errorcode[EEXIST]," encp.outputfile_check:"
+                jraise(errno.errorcode[errno.EEXIST]," encp.outputfile_check:"
                        " base directory doesn't exist for "+outputlist[i])
 
         # note: removed from itexist=1 try block to isolate errors
