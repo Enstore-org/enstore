@@ -74,7 +74,7 @@ class FileClient(generic_client.GenericClient,
                 control_socket.close()
         ticket = new_ticket
         if ticket["status"][0] != e_errors.OK:
-            msg = "get_bfids: failed to setup transfer: status="%(ticket['status'],)
+            msg = "get_bfids: failed to setup transfer: status=%s"%(ticket['status'],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
         # If the system has called us back with our own  unique id, call back
@@ -151,7 +151,7 @@ class FileClient(generic_client.GenericClient,
         done_ticket = callback.read_tcp_obj(control_socket)
         control_socket.close()
         if done_ticket["status"][0] != e_errors.OK:
-            msg = "tape_list: failed to transfer: status=%s"%(ticket[status],)
+            msg = "tape_list: failed to transfer: status=%s"%(ticket['status'],)
             Trace.trace(7,msg)
             raise errno.errorcode[errno.EPROTO],msg
 
