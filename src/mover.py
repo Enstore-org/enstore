@@ -850,6 +850,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.syslog_match = self.config.get("syslog_entry",None) # pattern to match in syslog for scsi error
+        self.restart_on_error = self.config.get("restart_on_error", None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -980,6 +981,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.state = HAVE_BOUND
                         Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                         self.dismount_time = time.time() + self.default_dismount_delay
+                        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+
                     else:
                         # failed to read label eject tape
                         Trace.alarm(e_errors.ERROR, "failed to read volume label on startup")
@@ -1179,9 +1182,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ## and setting them to NOACCESS
                     ## but this is better than holding
                     ## write requests from being executed
-                    Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
-                    time.sleep(5)
-                    self.restart()
+                    if self.restart_on_error:
+                        Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
+                        time.sleep(5)
+                        self.restart()
                     
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
@@ -1289,7 +1293,17 @@ class Mover(dispatching_worker.DispatchingWorker,
     def offline(self):
         self.state = OFFLINE
         Trace.log(e_errors.INFO, "mover is set OFFLINE")
-        self.update_lm()
+        thread = threading.currentThread()
+        if thread:
+            thread_name = thread.getName()
+        else:
+            thread_name = None
+        # if running in the main thread update lm
+        if thread_name is 'MainThread':
+            self.update_lm() 
+        else: # else just set the update flag
+            self.need_lm_update = (1, None, 0, None)
+
 
     def reset(self, sanity_cookie, client_crc_on):
         self.current_work_ticket = None
@@ -2296,14 +2310,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.tr_failed = 1
         broken = ""
 
-        Trace.log(e_errors.ERROR, "transfer failed %s %s volume=%s location=%s" % (
-            exc, msg, self.current_volume, self.current_location))
+        Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s" % (
+            exc, msg, error_source,self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
-        
+        if type(msg) != type(""):
+            msg = str(msg)
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
             if msg.find("FTT_EIO") != -1:
                 # possibly a scsi error, log low level diagnostics
                 self.watch_syslog()
+                broken = msg
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
@@ -2361,11 +2377,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.net_driver.close()
         if exc == e_errors.MOVER_STUCK:
             broken = exc
+
         self.need_lm_update = (1, ERROR, 1, error_source)
-        if broken:
-            self.broken(broken)
-            self.tr_failed = 0
-            return
+        #if broken:
+            #self.broken(broken)
+            #self.tr_failed = 0
+            #return
         
         save_state = self.state
         # get the current thread
@@ -2411,6 +2428,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
         if dismount_allowed:
             self.dismount_volume(after_function=after_dismount_function)
+        if not after_dismount_function and broken:
+           self.broken(broken) 
+           return
+            
 
         if save_state == DRAINING:
             self.dismount_volume()
@@ -2829,7 +2850,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             
         if type(status) != type(()) or len(status)!=2:
             Trace.log(e_errors.ERROR, "status should be 2-tuple, is %s" % (status,))
-            status = (status, None)
+            if len(status) == 1:
+                status = (status, None)
+            else:
+                status = (status[0], status[1])
 
         now = time.time()
         if self.unique_id and state in (IDLE, HAVE_BOUND):
@@ -2940,7 +2964,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.vcc.set_system_noaccess(self.current_volume)
                     except:
                         exc, msg, tb = sys.exc_info()
-                        broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
+                        broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)                
 
                 self.broken(broken)
 
@@ -3014,12 +3038,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.vcc.set_system_noaccess(self.current_volume)
                 except:
                     exc, msg, tb = sys.exc_info()
-                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
-            self.broken(broken)        
+                    broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
+            self.broken(broken)
+            time.sleep(3)
+            self.offline()
         return
     
     def mount_volume(self, volume_label, after_function=None):
-        broken = ""
         self.dismount_time = None
         if self.current_volume:
             old_volume = self.current_volume
@@ -3141,19 +3166,20 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.udpc.send_no_wait(ticket, self.lm_address)
                     self.net_driver.close()
                 if status[1] == e_errors.MC_DRVNOTEMPTY:
-                    broken = "mount %s failed: %s" % (volume_label, status)
+                    Trace.alarm(e_errors.ERROR, "mount %s failed: %s" % (volume_label, status))
+                    self.offline()
+                    return
                 else:    
                     self.state = IDLE
                 self.current_volume = None
-                
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
                 self.vcc.set_system_noaccess(volume_label)
             except:
                 exc, msg, tb = sys.exc_info()
-                broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
-            if broken: self.broken(broken)
+                broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
+            
             #self.current_volume = None
             
     def seek_to_location(self, location, eot_ok=0, after_function=None): #XXX is eot_ok needed?
@@ -3414,6 +3440,7 @@ class DiskMover(Mover):
         self.max_buffer = self.config.get('max_buffer', 64*MB)
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
+        self.restart_on_error = self.config.get("restart_on_error", None)
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
