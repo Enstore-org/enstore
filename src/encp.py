@@ -4432,6 +4432,17 @@ def main():
         file_family_width = t.get_file_family_width()
     except (OSError, IOError, KeyError, TypeError):
         file_family_width = "Unknown"
+
+    #Get the current working directory.  If the cwd isn't valid (i.e. the
+    # directory is deleted), handle it so encp doesn't crash.
+    try:
+        cwd = os.getcwd()
+    except OSError:
+        cwd = "invalid_cwd"
+    try:
+        hostname = socket.getfqdn(socket.gethostname())
+    except (OSError, socket.error):
+        hostname = "invalid_hostname"
         
     #Other strings for the log file.
     start_line = "Start time: %s" % time.ctime(encp_start_time)
@@ -4444,7 +4455,7 @@ def main():
                "FF Wrapper: %s  FF Width: %s" % \
                (library, storage_group,
                 file_family, file_family_wrapper, file_family_width)
-    cwd_line = "Current working directory: %s" % os.getcwd()
+    cwd_line = "Current working directory: %s:%s" % (hostname, cwd)
 
     #Print this information to make debugging easier.
     Trace.message(DONE_LEVEL, start_line)
