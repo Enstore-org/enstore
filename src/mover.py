@@ -286,6 +286,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.tape_driver.set_fast_rate(self.fast_rate)
             try: #see if there's a tape already loaded
                 self.tape_driver.open(self.device, 0)
+                self.tape_driver.set_mode(compression = 0, blocksize = 0)
                 self.tape_driver.rewind()
                 buf=80*' '
                 self.tape_driver.read(buf, 0, 80)
