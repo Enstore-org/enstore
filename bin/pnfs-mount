@@ -1,5 +1,5 @@
 #!/bin/sh
-#  Edit-Time-stamp: <1998-06-18 17:23:33 bakken>
+#  Edit-Time-stamp: <1998-07-08 14:14:30 bakken>
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
@@ -22,26 +22,27 @@ options="hard,intr,rw"
 
 mp="enstore"
 
-UNAME=`uname`
-
 if [ -z "${1-}" -o  "${1:-x}" = "mount" ] ; then
   for i in $mp; do
-    echo $i
-    mount -o $options $pnfsNode:/$i  /pnfs/$i
+    cmd="mount -o $options $pnfsNode:/$i  /pnfs/$i"
+    echo $cmd
+    eval $cmd
   done
 
 elif [ "$1" = "umount" ] ; then
   for i in $mp; do
-    echo $i
-    umount /pnfs/$i
+    cmd="umount /pnfs/$i"
+    echo $cmd
+    eval $cmd
   done
 
 elif [ "$1" = "mkdir" ] ; then
   now=`pwd`
   cd /
   for i in $mp; do
-    echo $i
-    mkdir -p /pnfs/$i
+    cmd="mkdir -p /pnfs/$i"
+    echo $cmd
+    eval $cmd
   done
   cd $now
 
