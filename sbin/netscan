@@ -257,6 +257,12 @@ ALLOW_SRV1="$ALLOW_BASE
        LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]
 "
 
+# Extra for srv0
+ALLOW_SRV0="$ALLOW_BASE
+       LISTEN,postmaste,:5432,TCP,x
+       LISTEN,postmaste,:8076,TCP,x
+"
+
 # Extra for stkensrv4
 ALLOW_SSRV4="$ALLOW_BASE
        LISTEN,rsh,TCP,fntt -l acsss echo,x
@@ -276,6 +282,7 @@ ALLOW_MVR="$ALLOW_BASE
 
 # make the choice
 case $node in
+       *srv0|rip1) ALLOW=$ALLOW_SRV0;  logit "Comparing to srv0";;
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
        *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
        *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
