@@ -12,8 +12,8 @@ setup enstore
 # . Correct configuration files
 # . Correct ntp time sync (allow * and ~ on 1st line)
 # . Check for open LISTEN sockets
-# . Check that two processors are active
-# . Check that less than 90% full on mounted disks.
+## . Check that two processors are active
+## . Check that less than 90% full on mounted disks.
 # . Check that eth1 is working (if present)
 # . Check that the farmlets match the base node farmlets.
 # . Check that crontab directories match the base node of the farmlet
@@ -363,43 +363,43 @@ fi
 
 
 # check that we have two processors running
-if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
-   if [ "$node" = "stkensrv5" ]; then
-      if [ $QUIET -ne 1 ]; then
-         logit  "One processor found, ok"
-      fi
-   else
-      logit "ONLY 1 PROCESSOR RUNNING"
-      if [ $ALARM -eq 1 ]; then
-         enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
-      fi
-   fi
-else
-  if [ $QUIET -ne 1 ]; then
-    logit  "Two processors found, ok"
-  fi
-fi
+#if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
+#   if [ "$node" = "stkensrv5" ]; then
+#      if [ $QUIET -ne 1 ]; then
+#         logit  "One processor found, ok"
+#      fi
+#   else
+#      logit "ONLY 1 PROCESSOR RUNNING"
+#      if [ $ALARM -eq 1 ]; then
+#         enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
+#      fi
+#   fi
+#else
+#  if [ $QUIET -ne 1 ]; then
+#    logit  "Two processors found, ok"
+#  fi
+#fi
 
 
 # check that we have sufficient disk space available.
-dflines=`$DF -P`
-$ECHO "$dflines" | while read a b c d e rest; do
-  if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
-    cap=`$ECHO $e | $SED -e 's/%//'`
-    mess="$a $b $c $d $e $rest"
-    if [ $cap -ge 90 ]; then
-      msg="DISK FULL: $mess"
-      logit "$msg"
-      if [ $ALARM -eq 1 ]; then
-        enstore alarm --raise --severity "A" --root-error "$msg"
-      fi
-    else
-      if [ $QUIET -ne 1 ]; then
-        logit  "DISK $a at $cap%, ok"
-      fi
-    fi
-  fi
-done
+#dflines=`$DF -P`
+#$ECHO "$dflines" | while read a b c d e rest; do
+#  if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
+#    cap=`$ECHO $e | $SED -e 's/%//'`
+#    mess="$a $b $c $d $e $rest"
+#    if [ $cap -ge 90 ]; then
+#      msg="DISK FULL: $mess"
+#      logit "$msg"
+#      if [ $ALARM -eq 1 ]; then
+#        enstore alarm --raise --severity "A" --root-error "$msg"
+#      fi
+#    else
+#      if [ $QUIET -ne 1 ]; then
+#        logit  "DISK $a at $cap%, ok"
+#      fi
+#    fi
+#  fi
+#done
 
 
 if [ $IPMI -eq 1 ]; then
