@@ -1085,7 +1085,7 @@ def do_work(intf):
         ticket = vcc.get_vols(print_list=0)
 	problem_vol = {}
 	for i in ticket['volumes']:
-            if i['volume'][:-8] != '.deleted':
+            if i['volume'][-8:] != '.deleted':
                 for j in [0, 1]:
                     if i['system_inhibit'][j] != 'none':
                         if problem_vol.has_key(i['system_inhibit'][j]):
