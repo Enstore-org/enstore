@@ -180,7 +180,7 @@ class MoverClient:
 	    self.hsm_driver.offline(mvr_config['device'])
 
 	# now ask the media changer to unload the volume
-	rr = mcc.unloadvol( self.vol_info['external_label'], self.config['mc_device'] )
+	rr = mcc.unloadvol( self.vol_info, self.config['mc_device'] )
 	if rr['status'][0] != "ok":
 	    raise "media loader cannot unload my volume"
 
@@ -232,7 +232,7 @@ def bind_volume( self, ticket ):
 	#if self.vol_info['status'] != "ok":
 	#    return 'NOTAPE' # generic, not read or write specific
 	self.vol_info['read_errors_this_mover'] = 0
-	rsp = mcc.loadvol( ticket['fc']['external_label'],
+	rsp = mcc.loadvol( tmp_vol_info,
 			   self.config['mc_device'] )
 	if rsp['status'][0] != "ok":
 	    # it is possible, under normal conditions, for the system to be
