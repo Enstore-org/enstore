@@ -110,7 +110,7 @@ local:
 	else \
 		ln -s GENERIC local;\
 	fi
-	cd dmalloc; ln -s ../local local
+	cd dmalloc; rm -f local; ln -s ../local local
 
 testtables:
 	rm -f ftt_error.o
