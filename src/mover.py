@@ -374,36 +374,30 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
-            self.tape_driver.open(self.device, mode=0, retry_count=2)
+            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
             self.config['serial_num'] = stats[ftt.SERIAL_NUM]
             self.config['vendor_id'] = stats[ftt.VENDOR_ID]
-            self.tape_driver.close()
-            try: #see if there's a tape already loaded
-                have_tape = self.tape_driver.open(self.device, mode=0, retry_count=2)
-                if have_tape == 1:
-                    self.tape_driver.set_mode(compression = 0, blocksize = 0)
-                    self.tape_driver.rewind()
-                    buf=80*' '
-                    try:
-                        self.tape_driver.read(buf, 0, 80)
-                    except (e_errors.READ_ERROR, ftt.FTTError), detail:
-                        Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
-
-                    buf = string.split(buf)[0]
-                    if buf[:4]=='VOL1':
-                        volname=buf[4:]
-                        self.current_volume = volname
-                        self.state = HAVE_BOUND
-                        Trace.log(e_errors.INFO,  "have vol %s at startup" % (self.current_volume,))
-
+            
+            if have_tape == 1:
+                self.tape_driver.set_mode(compression = 0, blocksize = 0)
+                self.tape_driver.rewind()
+                buf=80*' '
                 try:
-                    self.tape_driver.close()
-                except:
-                    exc, detail, tb = sys.exc_info()
-                    Trace.log(e_errors.ERROR, "while closing tape driver: %s"%(detail,))
-                    pass
+                    self.tape_driver.read(buf, 0, 80)
+                except (e_errors.READ_ERROR, ftt.FTTError), detail:
+                    Trace.log(e_errors.ERROR, "while checking for loaded tape: %s"%(detail,))
+
+                buf = string.split(buf)[0]
+                if buf[:4]=='VOL1':
+                    volname=buf[4:]
+                    self.current_volume = volname
+                    self.state = HAVE_BOUND
+                    Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
+
+            self.tape_driver.close()
+
         else:
             print "Sorry, only Null and FTT driver allowed at this time"
             sys.exit(-1)
