@@ -23,9 +23,6 @@ case $node in
                  stkenmvr9a: \
                  d0enmvr4a:  \
                  d0enmvr7a:  \
-                 d0enmvr9a:  \
-                 d0enmvr11a: \
-                 d0enmvr12a: \
 		 cdfenmvr1a: \
 		 cdfenmvr2a: \
                  stkendca3a: stkendca4a: stkendca5a: \
@@ -39,7 +36,10 @@ case $node in
                  d0enmvr5a: d0enmvr5b: \
                  d0enmvr6a: d0enmvr6b: \
                  d0enmvr8a: d0enmvr8b: \
+                 d0enmvr9a:  \
                  d0enmvr10a: \
+                 d0enmvr11a: \
+                 d0enmvr12a: \
                  d0enmvr13a: d0enmvr13b: \
                  d0enmvr15a: d0enmvr15b: \
                  d0enmvr16a: d0enmvr16b: \
@@ -53,7 +53,7 @@ case $node in
                  d0enmvr24a: "
           ;;
 
-   cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
+   cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4:  \
                  cdfenmvr3a: \
                  cdfenmvr4a: \
                  cdfenmvr5a: \
