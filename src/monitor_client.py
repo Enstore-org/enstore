@@ -11,7 +11,11 @@ import errno
 import pprint
 import socket
 import select
-import fcntl, FCNTL
+import fcntl
+if sys.version_info < (2, 2, 0):
+    import FCNTL #FCNTL is depricated in python 2.2 and later.
+    fcntl.F_GETFL = FCNTL.F_GETFL
+    fcntl.F_SETFL = FCNTL.F_SETFL
 
 # enstore imports
 import callback
@@ -186,8 +190,8 @@ class MonitorServerClient(generic_client.GenericClient):
             raise CLIENT_CONNECTION_ERROR, detail[1]
 
         #Put the socket into non-blocking mode.
-        flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
-        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|os.O_NONBLOCK)
+        flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL,flags|os.O_NONBLOCK)
 
         try:
             Trace.trace(10, "Connecting to monitor server.")
@@ -222,7 +226,7 @@ class MonitorServerClient(generic_client.GenericClient):
             raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
         
         #Restore flag values to blocking mode.
-        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
 
         return sock
 

@@ -12,7 +12,11 @@ import select
 import traceback
 import pprint
 import time
-import fcntl, FCNTL
+import fcntl
+if sys.version_info < (2, 2, 0):
+    import FCNTL #FCNTL is depricated in python 2.2 and later.
+    fcntl.F_GETFL = FCNTL.F_GETFL
+    fcntl.F_SETFL = FCNTL.F_SETFL
 import errno
 
 # enstore imports
@@ -198,8 +202,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             raise CLIENT_CONNECTION_ERROR, detail[1]
 
         #Put the socket into non-blocking mode.
-        flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
-        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|os.O_NONBLOCK)
+        flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL,flags|os.O_NONBLOCK)
 
         try:
             sock.connect(client_addr) #Start the TCP handshake.
@@ -229,7 +233,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
         
         #Restore flag values to blocking mode.
-        fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
 
         #Create the return ticket to tell the client what addr to callback to.
         return_ticket = {'mover' :{'callback_addr': mover_addr} }

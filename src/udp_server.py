@@ -11,12 +11,11 @@ import sys
 import socket
 import signal
 import string
+import fcntl
 if sys.version_info < (2, 2, 0):
-    import fcntl, FCNTL
+    import FCNTL #FCNTL is depricated in python 2.2 and later.
     fcntl.F_SETFD = FCNTL.F_SETFD
     fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
-else: #FCNTL is depricated in python 2.2 and later.
-    import fcntl
 import copy
 import types
 import rexec

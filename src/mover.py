@@ -15,7 +15,11 @@ import struct
 import select
 import exceptions
 import traceback
-import fcntl, FCNTL
+import fcntl
+if sys.version_info < (2, 2, 0):
+    import FCNTL #FCNTL is depricated in python 2.2 and later.
+    fcntl.F_GETFL = FCNTL.F_GETFL
+    fcntl.F_SETFL = FCNTL.F_SETFL
 import random
 import popen2
 
@@ -2864,8 +2868,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(control_socket.fileno(), fcntl.F_GETFL)
+            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
             # the following insertion is for antispoofing
             if ticket.has_key('route_selection') and ticket['route_selection']:
                 ticket['mover_ip'] = host
@@ -2955,7 +2959,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
 
 	    # we have a connection
-            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
+            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
                 ### cgw - abstract this to a check_valid_filename method of the driver ?

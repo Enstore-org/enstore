@@ -25,7 +25,14 @@ import signal
 import string
 import socket
 import hostaddr
-import struct, fcntl, FCNTL
+import struct
+import fcntl
+if sys.version_info < (2, 2, 0):
+    import FCNTL #FCNTL is depricated in python 2.2 and later.
+    fcntl.F_GETFL = FCNTL.F_SETLKW
+    fcntl.F_SETFL = FCNTL.F_WRLCK
+    fcntl.F_SETFL = FCNTL.F_RDLCK
+    fcntl.F_SETFL = FCNTL.F_UNLCK
 import pprint
 
 # enstore imports
@@ -43,19 +50,19 @@ import volume_clerk_client
 import timeofday
 
 def _lock(f, op):
-        dummy = fcntl.fcntl(f.fileno(), FCNTL.F_SETLKW,
+        dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
                             struct.pack('2h8l', op,
                                         0, 0, 0, 0, 0, 0, 0, 0, 0))
         Trace.trace(21,'_lock '+repr(dummy))
 
 def writelock(f):
-        _lock(f, FCNTL.F_WRLCK)
+        _lock(f, fcntl.F_WRLCK)
 
 def readlock(f):
-        _lock(f, FCNTL.F_RDLCK)
+        _lock(f, fcntl.F_RDLCK)
 
 def unlock(f):
-        _lock(f, FCNTL.F_UNLCK)
+        _lock(f, fcntl.F_UNLCK)
 
 
 
