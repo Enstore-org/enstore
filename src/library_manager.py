@@ -34,6 +34,8 @@ def priority(ticket):
 
 # insert work into our queue based on its priority
 def queue_pending_work(ticket):
+    if list: print "LM: queue_pending_work"
+    if list: pprint.pprint(ticket)
     ticket["priority"] = priority(ticket)
     i = 0
     tryp = ticket["priority"]
@@ -237,6 +239,8 @@ class LibraryManagerMethods(dispatching_worker.DispatchingWorker):
 
     # we have a volume already bound - any more work??
     def have_bound_volume(self, mticket):
+	if list: print "LM:have_bound_volume"
+	if list: pprint.pprint(mticket)
         # just did some work, delete it from queue
         w = get_work_at_movers (mticket["external_label"])
         if w:
@@ -385,9 +389,10 @@ if __name__ == "__main__":
     (config_host,ca,ci) = socket.gethostbyaddr(socket.gethostname())
     config_port = "7500"
     config_list = 0
+    list = 0
 
     # see what the user has specified. bomb out if wrong options specified
-    options = ["config_host=","config_port=","config_list","help"]
+    options = ["config_host=","config_port=","config_list","list","help"]
     optlist,args=getopt.getopt(sys.argv[1:],'',options)
     for (opt,value) in optlist:
         if opt == "--config_host":
@@ -396,6 +401,8 @@ if __name__ == "__main__":
             config_port = value
         elif opt == "--config_list":
             config_list = 1
+        elif opt == "--list":
+            list = 1
         elif opt == "--help":
             print "python ",sys.argv[0], options, "library"
             print "   do not forget the '--' in front of each option"
