@@ -1200,7 +1200,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
         # get my (localhost) configuration from the configuration server
         mvr_config = self.csc.get( name )
         if mvr_config['status'][0] != 'ok':
-            raise MoverError, 'could not start mover'+name+' up:'+ mvr_config['status']
+            raise MoverError, 'could not start mover '+name+' up:'+ `mvr_config['status']`
         # clean up the mvr_config a bit
         mvr_config['name'] = name
         mvr_config['do_fork'] = 1
