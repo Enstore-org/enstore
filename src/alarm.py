@@ -4,8 +4,10 @@ import time
 import string
 
 import rexec
+_rexec = rexec.RExec()
+
 def eval(text):
-    return rexec.RExec().r_eval(text)
+    return _rexec.r_eval(text)
 
 # enstore imports
 import enstore_functions
