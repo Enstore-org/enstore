@@ -81,11 +81,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 	self.running = 0
 	self.print_id = MY_NAME
 
-        print "Monitor Server at %s %s" %(csc[0], csc[1])
-        Trace.trace(10,
-            "Monitor Server at %s %s" %(csc[0], csc[1]))
-        dispatching_worker.DispatchingWorker.__init__(self, csc)
+        Trace.trace(1, "Monitor Server at %s %s" %(csc[0], csc[1]))
+
         generic_server.GenericServer.__init__(self, csc, MY_NAME)
+        dispatching_worker.DispatchingWorker.__init__(self,
+                                         ('', enstore_constants.MONITOR_PORT))
 
 	self.running = 1
 
@@ -238,8 +238,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
     # the same machine.
     #listen_sock: The socket to wait for the client to connect to creating the
     # data socket.
-    def _open_data_socket(self, mover_addr, listen_sock):
-        #reply_ticket = {'status'     : (None, None)}
+    def _open_data_socket(self, listen_sock):
         
         listen_sock.listen(1)
 
@@ -256,12 +255,12 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         listen_sock.close()
 
         #For machines with multiple network interfaces, pick the best one.
-        interface=hostaddr.interface_name(mover_addr[0])
-        if interface:
-            status=socket_ext.bindtodev(data_sock.fileno(),interface)
-            if status:
-                Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
-                          (interface,os.strerror(status)))
+        #interface=hostaddr.interface_name(mover_addr[0])
+        #if interface:
+        #    status=socket_ext.bindtodev(data_sock.fileno(),interface)
+        #    if status:
+        #        Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
+        #                  (interface,os.strerror(status)))
         
         return data_sock
 
@@ -290,7 +289,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         #Simulate the opening and initial handshake of the control socket.
         try:
             self._open_cntl_socket(client_addr, test_mover_addr)
-            data_sock = self._open_data_socket(test_mover_addr, listen_sock)
+            data_sock = self._open_data_socket(listen_sock)
             
             if not data_sock:
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
@@ -364,12 +363,14 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
         generic_server.GenericServerInterface.__init__(self)
 
     def valid_dictionaries(self):
-        return (self.help_options,)
+        return (self.help_options,self.trace_options)
 
 if __name__ == "__main__":
+    Trace.init(MY_NAME)
+
     intf = MonitorServerInterface()
 
-    ms = MonitorServer(('', enstore_constants.MONITOR_PORT))
+    ms = MonitorServer((intf.config_host, intf.config_port))
 
     #This is a server and therfore must handle things like --alive requests.
     ms.handle_generic_commands(intf)
