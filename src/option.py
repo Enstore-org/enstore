@@ -483,6 +483,9 @@ class Interface:
 
 
     def print_help(self):
+        #First print the usage line.
+        print self.get_usage_line() + "\n"
+
         # num_of_cols - width of the terminal
         # COMM_COLS - length of option_names (aka "       --%-20s")
         num_of_cols = 80 #Assume this until python 2.1
@@ -692,7 +695,7 @@ class Interface:
         # with dashes.  It should be noted that the use of underscores is
         # a VAX thing, and that dashes is the UNIX way of things.
         self.convert_underscores(argv)
-            
+
         #If the first thing is not an option (switch) place it with the
         # non-processeced arguments and remove it from the list of args.
         # This is done, because getopt.getopt() breaks if the first thing
@@ -895,7 +898,9 @@ class Interface:
             return opt
         
     def trim_long_option(self, opt):
-        if len(opt) >= 2 and opt[:2] == "--" and (opt[2] in string.letters or
+        #There must be at least 3 characters.  Two from "--" and one
+        # alphanumeric character.
+        if len(opt) >= 3 and opt[:2] == "--" and (opt[2] in string.letters or
                                                   opt[2] in string.digits):
             return opt[2:]
         else:
@@ -918,7 +923,13 @@ class Interface:
     def is_long_option(self, opt):
         opt_check = self.trim_long_option(opt)
         try:
-            return opt_check in self.options.keys()
+            for key in self.options.keys():
+                opt_length = len(opt_check)
+                #If the option (switch) matches in part return true.
+                # Uniqueness will be tested by getopt.getopt().
+                if len(key) >= opt_length and key[:opt_length] == opt_check:
+                    return 1
+            return 0
         except TypeError:
             return 0
     
