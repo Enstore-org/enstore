@@ -481,16 +481,16 @@ class LibraryManagerMethods:
                               "next_work_any_volume: cannot do the work for %s status:%s" % 
                               (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
                     return None, (e_errors.NOWORK, None)
-            return rq, rq.ticket['status']
-        return None, (e_errors.NOWORK, None)
+            return (rq, rq.ticket['status'])
+        return (None, (e_errors.NOWORK, None))
 
 
     # what is next on our list of work?
     def schedule(self, mover):
         while 1:
             rq, status = self.next_work_any_volume(mover)
-            if status[0] == e_errors.OK or \
-               status[0] == e_errors.NOWORK:
+            if (status[0] == e_errors.OK or 
+                status[0] == e_errors.NOWORK):
                 return rq, status
             # some sort of error, like write work and no volume available
             # so bounce. status is already bad...
@@ -530,8 +530,8 @@ class LibraryManagerMethods:
     # is there any work for this volume??  v is a volume info
     # last_work is a last work for this volume
     # corrent location is a current position of the volume
-    def next_work_this_volume(self, v, last_work, requestor, current_location):
-        Trace.trace(11, "next_work_this_volume for %s" % (v,)) 
+    def next_work_this_volume(self, external_label, vol_family, last_work, requestor, current_location):
+        Trace.trace(11, "next_work_this_volume for %s" % (external_label,)) 
         self.init_request_selection()
         #self.pending_work.wprint()
         # first see if there are any HiPri requests
@@ -542,14 +542,14 @@ class LibraryManagerMethods:
                 if self.continue_scan:
                     # before continuing check if it is a request
                     # for v['external_label']
-                    if rq.ticket['fc']['external_label'] == v['external_label']: break
+                    if rq.ticket['fc']['external_label'] == external_label: break
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
                 break
             elif rq.work == 'write_to_hsm':
                 rq, key = self.process_write_request(rq) 
                 if self.continue_scan:
-                    rq, status = self.check_write_request(self, v['external_label'], rq)
+                    rq, status = self.check_write_request(self, external_label, rq)
                     if rq and status[0] == e_errors.OK: break
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
@@ -563,7 +563,7 @@ class LibraryManagerMethods:
                 rq.ticket['status'] = (e_errors.OK, None)
                 return rq, rq.ticket['status']
             elif rq.work == 'write_to_hsm':
-                rq, status = self.check_write_request(self, v['external_label'], rq)
+                rq, status = self.check_write_request(self, external_label, rq)
                 if rq and status[0] == e_errors.OK:
                     return rq, status
                 
@@ -571,44 +571,71 @@ class LibraryManagerMethods:
         self.init_request_selection()
         # for tape positioning optimization check what was
         # a last work for this volume
-        if last_work == 'read':
+        if last_work == 'READ':
             # see if there is another work for this volume
-            # rq may be request for another volume in case
-            # if it is an administration priority request
-            # which may override all regular requests for this volume
-            rq = self.pending_work.get(v["external_label"], current_location, use_admin_queue=0)
+            # disable retrival of HiPri requests as they were
+            # already treated above
+            rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
             if not rq:
-               rq = self.pending_work.get(v['volume_family'], use_admin_queue=0) 
-        elif last_work == 'write':
+               rq = self.pending_work.get(vol_family, use_admin_queue=0) 
+        elif last_work == 'WRITE':
             # see if there is another work for this volume family
-            # rq may be request for another volume in case
-            # if it is an administration priority request
-            # which may override all regular requests for this volume
-            rq = self.pending_work.get(v['volume_family'], use_admin_queue=0)
+            # disable retrival of HiPri requests as they were
+            # already treated above
+            rq = self.pending_work.get(vol_family, use_admin_queue=0)
             if not rq:
-               rq = self.pending_work.get(v["external_label"], current_location, use_admin_queue=0) 
+               rq = self.pending_work.get(external_label, current_location, use_admin_queue=0) 
 
+        exc_limit_rq = None
         if rq:
             # fair share
-            storage_group = volume_family.extract_storage_group(v['volume_family'])
+            storage_group = volume_family.extract_storage_group(vol_family)
             active_volumes = self.volumes_at_movers.active_volumes_in_storage_group(storage_group)
             if len(active_volumes) > self.get_sg_limit(storage_group):
-                rq.ticket["reject_reason"] = ("LIMIT_REACHED",None)
+                rq.ticket['reject_reason'] = ('LIMIT_REACHED',None)
                 Trace.trace(11, "next_work_this_volume: active work limit exceeded for %s" %
                             (storage_group,))
-                return None, (e_errors.NOWORK, None)
+                # temporarily store this request
+                exc_limit_rq = rq
+            if exc_limit_rq:
+                # if storage group limit for this volume has been exceeded
+                # try to get any work
+                rq, status = self.schedule(requestor)
+                Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+                # no work means: use what we have
+                if status[0] == e_errors.NOWORK:
+                    rq = exc_limit_rq
+                elif status[0] != e_errors.OK:
+                    Trace.log(1,"next_work_this_volume: assertion error w=%s ticket=%q"%
+                              (rq, mticket))
+                    raise AssertionError
+                # check if it is the same request
+                # or request for the same volume
+                if exc_limit_rq is not rq:
+                    if rq.work == 'write_to_hsm':
+                        if rq.ticket['volume_family'] == vol_family:
+                            # same volume family
+                            rq = exc_limit_rq
+                    else:
+                        # read request
+                        if rq.ticket['fc']['external_label'] == external_label:
+                            rq = exc_limit_rq
+                        elif (rq.ticket.has_key('reject_reason') and
+                              rq.ticket['reject_reason'][0] == 'LIMIT_REACHED'):
+                            rq = exc_limit_rq                            
+                
             if rq.work == 'write_to_hsm':
                 while rq:
-                    rq, status = self.check_write_request(v['external_label'], rq)
+                    rq, status = self.check_write_request(external_label, rq)
                     if rq and status[0] == e_errors.OK:
                         return rq, status
-                    self.pending_work.get(v['volume_family'],next=1, use_admin_queue=0)
+                    self.pending_work.get(vol_family, next=1, use_admin_queue=0)
             # return read work
             rq.ticket['status'] = (e_errors.OK, None)
             return rq, rq.ticket['status'] 
         
         # try from the beginning
-        rq = self.pending_work.get(v["external_label"])
+        rq = self.pending_work.get(external_label)
         if rq:
             # return work
             rq.ticket['status'] = (e_errors.OK, None)
@@ -979,7 +1006,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w['mover'] = mticket['mover']
         Trace.trace(11, "File Family = %s" % (w['vc']['file_family']))
         self.work_at_movers.append(w)
-        work = string.split(w['work'],'_')[0]
+        #work = string.split(w['work'],'_')[0]
 
         ### XXX are these all needed?
         mticket['external_label'] = w["fc"]["external_label"]
@@ -987,6 +1014,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         mticket['volume_family'] =  w['vc']['volume_family']
         mticket['status'] =  (e_errors.OK, None)
         mticket['volume_status'] = ((None,None),(None,None))
+        #mticket['operation'] = work
 
         Trace.trace(11,"MT %s" % (mticket,))
         self.volumes_at_movers.put(mticket)
@@ -1013,20 +1041,22 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.trace(11,"LM state is %s no mover request processing" % (self.lm_lock,))
             return
         # just did some work, delete it from queue
-        w = self.get_work_at_movers(mticket['vc']['external_label'])
+        w = self.get_work_at_movers(mticket['external_label'])
         if w:
             Trace.trace(13,"removing %s  from the queue"%(w,))
             # file family may be changed by VC during the volume
             # assignment. Set file family to what VC has returned
-            if mticket['vc']['external_label']:
-                vol_info = self.vcc.inquire_vol(mticket['vc']['external_label'])
+            if mticket['external_label']:
+                vol_info = self.vcc.inquire_vol(mticket['external_label'])
                 w['vc']['volume_family'] = vol_info['volume_family']
                 w['vc']['file_family'] = volume_family.extract_file_family(vol_info['volume_family'])
                 Trace.trace(11, "FILE_FAMILY=%s" % (w['vc']['file_family'],))  # REMOVE
 	    self.work_at_movers.remove(w)
 
         # see if this volume will do for any other work pending
-        rq, status = self.next_work_this_volume(mticket["vc"], last_work, mticket['mover'], mticket['vc']['current_location'])
+        rq, status = self.next_work_this_volume(mticket['external_label'], mticket['volume_family'],
+                                                last_work, mticket['mover'],
+                                                mticket['current_location'])
         Trace.trace(11, "mover_bound_volume: next_work_this_volume returned: %s %s"%(rq,status))
         if status[0] == e_errors.OK:
             w = rq.ticket
@@ -1040,7 +1070,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO,"HAVE_BOUND:sending %s to mover"%(w,))
             self.udpc.send_no_wait(w, mticket['address']) 
             self.pending_work.delete(rq)
-	    state = 'work_at_mover'
             w['mover'] = mticket['mover']
             self.work_at_movers.append(w)
             # if new work volume is different from mounted
@@ -1049,9 +1078,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if w["vc"]["external_label"] != mticket['external_label']:
                 self.volumes_at_movers.delete(mticket)
             # create new mover_info
-            work = string.split(w['work'],'_')[0]
             mticket['external_label'] = w["vc"]["external_label"]
-            mticket['operation'] = work
             mticket['status'] = (e_errors.OK, None)
             mticket['volume_family'] = w['vc']['volume_family']
             mticket['volume_status'] = ((None,None),(None,None))
