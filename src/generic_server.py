@@ -89,7 +89,13 @@ class GenericServer(generic_client.GenericClient):
         format = "%s %s %s %s %s: serve_forever continuing" % (
             timeofday.tod(),sys.argv,exc,msg,id)
         Trace.log(e_errors.ERROR, str(format))
-
+        filename = tb.tb_frame.f_code.co_filename
+        if not filename or type(filename)!=type(""):
+            filename="???"
+        lineno = tb.tb_lineno
+        Trace.alarm(e_errors.ERROR, "Exception in file %s at line %s: %s. See system log for details." %
+                    (filename, lineno, msg))
+        
     # send back our response
     def send_reply(self, t):
         try:
