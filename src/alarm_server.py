@@ -2,6 +2,7 @@
 # system import
 import sys
 import socket
+import os
 
 # enstore imports
 import log_client
@@ -22,6 +23,11 @@ def default_alive_retries():
 
 DEFAULT_FILE_NAME = "/enstore_alarms.txt"
 DEFAULT_PATROL_FILE_NAME = "/enstore_patrol.txt"
+DEFAULT_SUSP_VOLS_THRESH = 3
+
+SERVER = "server"
+SUS_VOLS = "suspect_volumes"
+LM = "library_manager"
 
 class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
@@ -73,6 +79,48 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         self.write_patrol_file()
         Trace.trace(12,"}alarm ")
 
+    def ens_status(self, ticket):
+        # we have been sent some status.  we must examine it for an error
+        # condition and possibly save it for future reference.  following
+        # are the things that we look for -
+        #      server has crashed
+        #      server crashes more than 'n' times per 't' time
+        #      an lm's known movers fall below a threshold
+        #      an lm's suspect vols rises above a threshold
+        #      the number of drives falls below a threshold
+        if ticket.has_key(SUS_VOLS):
+            self.check_sus_vols(ticket)
+
+        # send the reply to the client
+        ret_ticket = { 'status'   : (e_errors.OK, None) }
+        self.send_reply(ret_ticket)
+
+    def check_sus_vols(self, ticket):
+        # only go through the effort if there are suspect volumes
+        if not ticket[SUS_VOLS] == []:
+            # do not record this alarm more than once
+            akey = ticket[SERVER]+SUS_VOLS
+            if not self.info_alarms.has_key(akey):
+                lm = self.csc.get(ticket[SERVER])
+                # find out what the suspect volume threshold is, it is either
+                # in the library managers config dict or use the one for the
+                # alarm server
+                if lm.has_key("sus_vol_thresh"):
+                    cthresh = lm["sus_vol_thresh"]
+                else:
+                    cthresh = self.sus_vol_thresh
+                if len(ticket[SUS_VOLS]) >= cthresh:
+                    ainfo = self.make_alarm_info()
+                    ainfo.update({SUS_VOLS : ticket[SUS_VOLS],\
+                                  LM : ticket[SERVER] })
+                    self.alarm(e_errors.WARNING, "TOOMANYSUSPVOLS", ainfo)
+                    self.info_alarms[akey] = 1
+
+    def make_alarm_info(self):
+        return {"source" : "ALRMS-INQ",
+                "uid" : self.uid,
+                "pid" : self.pid }
+    
     def write_alarm_file(self, alarm):
         self.alarm_file.open()
         self.alarm_file.write(alarm)
@@ -90,13 +138,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         else:
             # there are no alarms raised.  if the patrol file exists, we
             # need to delete it
-            try:
-                self.patrol_file.open()
-                self.patrol_file.close()
-                self.patrol_file.remove()
-            except IOError:
-                # file does not exist
-                pass
+            self.patrol_file.remove()
 
     def get_log_path(self):
         log = self.csc.get("logserver")
@@ -125,22 +167,35 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     def handle_alarms(self):
         pass
+               
+    # return the name of the patrol file
+    def get_patrol_filename(self, ticket):
+        ticket['patrol_file'] = self.patrol_file.real_file_name
+        ticket['status'] = (e_errors.OK, None)
+        self.send_reply(ticket)
 
-                    
 class AlarmServer(AlarmServerMethods, generic_server.GenericServer):
 
     def __init__(self, csc=0, verbose=0, host=interface.default_host(), \
                  port=interface.default_port()):
         Trace.trace(10, '{__init__')
         self.alarms = {}
+        self.info_alarms = {}
         self.print_id = "ALRMS"
         self.verbose = verbose
+        self.uid = os.getuid()
+        self.pid = os.getpid()
 
 	# get the config server
         configuration_client.set_csc(self, csc, host, port, verbose)
         keys = self.csc.get("alarm_server")
         self.hostip = keys['hostip']
         Trace.init(keys["logname"])
+        if keys.has_key("susp_vol_thresh"):
+            self.sus_vol_thresh = keys["susp_vol_thresh"]
+        else:
+            self.sus_vol_thresh = DEFAULT_SUSP_VOLS_THRESH
+
         try:
             self.print_id = keys['logname']
         except KeyError:
