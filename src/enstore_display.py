@@ -10,9 +10,8 @@ import string
 import sys
 import time
 import stat
-from Tkinter import *
-import tkFont
-
+# from Tkinter import *
+# import tkFont
 
 #Set up paths to find our private copy of tcl/tk 8.3
 ENSTORE_DIR=os.environ.get("ENSTORE_DIR")
