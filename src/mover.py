@@ -58,6 +58,7 @@ import accounting_client
 import drivestat_client
 import Trace
 import generic_driver
+import event_relay_messages
 
 """
 Mover:
