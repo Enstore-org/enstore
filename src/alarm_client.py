@@ -73,7 +73,7 @@ class AlarmClient(generic_client.GenericClient):
         
     def get_patrol_file(self, rcv_timeout=0, tries=0):
         ticket = {'work' : 'get_patrol_filename'}
-        return self.send(ticket, self.server_address, rcv_timeout, tries)
+        return self.u.send(ticket, self.server_address, rcv_timeout, tries)
 
 class AlarmClientInterface(generic_client.GenericClientInterface,\
                            interface.Interface):
