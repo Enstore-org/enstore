@@ -2,7 +2,7 @@
 #
 #  $Id$
 #
-all:	 Trace adler32.a Makefile.modules Modules tape_copy  
+all:	 adler32.a Makefile.modules Modules tape_copy  
 
 # The target Makefile.modules generates a file Makefile.modules
 # which builds dynamic load modules (.so files) for each of the .c files
@@ -29,17 +29,6 @@ Modules:
 	@echo "in $$PWD"
 	make -f Makefile.modules
 
-Trace:	
-	@echo "MAKING TRACE =================================="
-	make -f trace.mk trace.a all 
-	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
-	@mv traceShow trace_delta ../sbin
-	ln -fs traceShow ../sbin/traceInfo
-	ln -fs traceShow ../sbin/traceReset
-	ln -fs traceShow ../sbin/traceMode
-	ln -fs traceShow ../sbin/traceOn
-	ln -fs traceShow ../sbin/traceOff
-
 adler32.a: adler32.c
 	$(CC) -c adler32.c
 	ar cr adler32.a adler32.o
@@ -60,12 +49,5 @@ clean:
 	-rm -f *.o *.so *~ *# so_locations sedscript
 	-rm -rf mksetup
 	-rm -rf tape_copy
-	-make -f trace.mk clean
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi
-	-rm -f  ../sbin/traceShow ../sbin/trace_delta
-	-rm -f  ../sbin/traceInfo
-	-rm -f  ../sbin/traceReset
-	-rm -f  ../sbin/traceMode
-	-rm -f  ../sbin/traceOn
-	-rm -f  ../sbin/traceOff
 	cd SWIG && make clean
