@@ -255,8 +255,9 @@ def close_descriptors(*fds):
             #Obtain a list of unique ips to close the routes to.
             routes_to_close[fd.getpeername()[0]] = 1
         except (OSError, IOError, AttributeError, socket.error), msg:
-            Trace.log(e_errors.WARNING,
-                      "Unable to cleanup routing table: %s" % (str(msg),))
+            pass
+            #Trace.log(e_errors.WARNING,
+            #          "Unable to cleanup routing table: %s" % (str(msg),))
             
         if hasattr(fd, "close"):
 	    try:
