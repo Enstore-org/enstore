@@ -169,7 +169,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list, chk_crc) :
         jraise(errno.errorcode[errno.EPROTO],"encp.write_to_hsm: "\
                +"1st (pre-file-send) mover callback on socket "\
                +repr(address)+", failed to setup transfer: "\
-               +"ticket[\"status\"]="+ticket["status"])
+               +"ticket[\"status\"]="+ticket["status"],2)
     data_path_socket = callback.mover_callback_socket(ticket)
 
     # If the system has called us back with our own  unique id, call back
@@ -512,10 +512,10 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
 
 
 ##############################################################################
-def jraise(errcode,errmsg) :
+def jraise(errcode,errmsg,exit_code=1) :
     print "Fatal error:",errcode, errmsg
     #raise errcode,errmsg
-    sys.exit(1)
+    sys.exit(exit_code)
 
 ##############################################################################
 
