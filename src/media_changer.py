@@ -1,5 +1,3 @@
-#! /usr/products/IRIX/python/x1_5/bin/python
-
 #########################################################################
 #                                                                       #
 # Media Changer server.                                                 #
