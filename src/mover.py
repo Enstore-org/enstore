@@ -1950,7 +1950,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
                 self.buffer.restore_settings()
                 # position to eod"
-                self.tape_driver.seek(save_location, 0) #XXX is eot_ok
+                try:
+                    self.tape_driver.seek(save_location, 0) #XXX is eot_ok
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.alarm(e_errors.ERROR, "error positioning tape %s after selective CRC check. Position %s"%
+                                (self.current_volume,save_location))
+                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
+                    return
+
             if self.update_after_writing():
                 self.files_written_cnt = self.files_written_cnt + 1
                 self.bytes_written_last = self.bytes_written
