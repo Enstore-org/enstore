@@ -27,6 +27,10 @@ right_file /home/enstore/enstore/etc/hosts.allow /etc/hosts.allow
 right_file /home/enstore/enstore/etc/hosts.deny /etc/hosts.deny
 right_file /home/enstore/enstore/etc/hosts /etc/hosts
 
+if [ "`/usr/sbin/xntpdc -p|grep ^\*|wc|awk '{print $1}'`" != "1" ]; then 
+    echo NO TIME SYNC
+    /usr/sbin/xntpdc -p
+fi
 
 N=`/usr/local/bin/lsof -i TCP -i UDP`
 
