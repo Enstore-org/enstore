@@ -29,6 +29,7 @@ cd $base
 
 last1week=`date -d '1 week ago' +'%Y-%m-%d:00:01'`
 last6months=`date -d '6 months ago' +'%Y-%m-%d:00:01'`
+lastmonth=`date -d '1 month ago' +'%Y-%m-%d:00:01'`
 tomorrow=`date -d '1 day' +'%Y-%m-%d:00:01'`
 lastmonday=`date -d 'last monday' +'%Y-%m-%d:00:01'`
 
@@ -47,6 +48,8 @@ for i in *; do
      if [ "$f" = "log-stash" ]; 
      then 
 	lastweek=$last6months; 
+     elif [ "$f" = "backupSystem2Tape" ];
+        lastweek=$lastmonth
      else
 	lastweek=$last1week; 
      fi
@@ -64,6 +67,9 @@ set xrange ['$lastweek' :'$tomorrow']
 set yrange [-5:15]
 set key box
 set grid
+set label " DIS" at graph 0,.19 right
+set label " ACT" at graph 0,.137 right
+set label " OOB" at graph 0,.6 right
 #set format x '%m-%d'
 plot '$j' using 1:2 t '$title' with points 13, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines lt 3 lw 4
 #plot '$j' using 1:2 t '$title' with points, 0 t '' with lines 2, 10 t '' with lines 2, '$file2' using 1:2 t 'Last Monday' with lines 3
