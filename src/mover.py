@@ -1115,7 +1115,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
         else:
             if status and status[0] == e_errors.OK:
-                status = tape_driver.verify_label(volume_label, self.mode)
+                status = self.tape_driver.verify_label(volume_label, self.mode)
             
         if status and status[0] == e_errors.OK:
             if after_function:
