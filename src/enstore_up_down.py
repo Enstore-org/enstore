@@ -630,7 +630,7 @@ def do_real_work():
 										     ok_movers,
 									           server.num_movers))
 		server.real_status(enstore_constants.WARNING)
-	    elif bad_movers == 0 and ok_movers == 0:
+	    elif bad_movers == 0 and ok_movers == 0 and server.movers > 0:
 		# there are no movers, all are known down, flag a warning.
 		server.real_status(enstore_constants.WARNING)
 
