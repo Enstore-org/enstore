@@ -1444,21 +1444,26 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return td
 
     # the  alt_key is used to specify a more explicit data item than just the key
-    def get_element(self, dict, key, out_dict, offline_dict, alt_key=""):
+    def get_element(self, dict, key, out_dict, offline_dict, alt_key="", make_link=0):
 	val = dict.get(key, enstore_constants.DOWN)
 	sched = out_dict.get(key, enstore_constants.NOSCHEDOUT)
 	if not alt_key:
 	    alt_key = key
+	if make_link != 0:
+	    # make the name be a link to the server status page element
+	    h_alt_key = HTMLgen.Href("%s#%s"%(self.status_file_name, alt_key), alt_key)
+	else:
+	    h_alt_key = alt_key
 	if offline_dict.has_key(key):
 	    # this element is known to be offline
-	    td = HTMLgen.TD(HTMLgen.Strike(alt_key))
+	    td = HTMLgen.TD(HTMLgen.Strike(h_alt_key))
 	    # record the fact that this one is offline so we can add the reason later.
 	    # we do it later to allow a scheduled outage checkmark to appear next to
 	    # the server name and not after the offline reason
 	    is_offline = 1
 	else:
 	    is_offline = 0
-	    td = HTMLgen.TD(alt_key)
+	    td = HTMLgen.TD(h_alt_key)
 	if sched != enstore_constants.NOSCHEDOUT:
 	    if sched is not "":
 		td.append(" ")
@@ -1500,7 +1505,9 @@ class EnSaagPage(EnBaseHtmlDoc):
 	if len(keys) > 0:
 	    key = keys.pop(0)
 	    tr.append(self.get_color_ball(dict, key, "RIGHT"))
-	    tr.append(self.get_element(dict, key, out_dict, offline_dict))
+	    # by putting something in the last parameter, we are telling the function to
+	    # make the element it creates a link to the server status page
+	    tr.append(self.get_element(dict, key, out_dict, offline_dict, "", 2))
 	else:
 	    tr.append(empty_data(2))
 	return keys
@@ -1648,7 +1655,9 @@ class EnSaagPage(EnBaseHtmlDoc):
 	return entable
 
     def body(self, enstat_d, netstat_d, medstat_d, alarms, nodes, outage_d, offline_d, 
-	     media_tag):
+	     media_tag, status_file_name):
+	# name of file that we will create links to
+	self.status_file_name = status_file_name
 	# create the outer table and its rows
 	table = self.table_top()
 	# add the table with the general status

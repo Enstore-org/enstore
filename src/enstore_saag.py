@@ -5,6 +5,7 @@ import stat
 
 import enstore_constants
 import enstore_functions
+import enstore_files
 import generic_client
 import enstore_up_down
 import monitor_client
@@ -106,11 +107,16 @@ def do_work(intf):
 	    else:
 		nodes[host] = [server,]
 
+    # get the name of the status file that the inquisitor creates, we will link to it
+    status_file_name = "%s/%s"%(enstore_functions.get_html_dir(),
+				enstore_files.status_html_file_name())
+
     # create the saag web page
     filename = "%s/%s"%(html_dir, enstore_constants.SAAGHTMLFILE)
     saag_file = enstore_files.HtmlSaagFile(filename, system_tag)
     saag_file.open()
-    saag_file.write(enstat, netstat, medstat, alarms, nodes, outage_d, offline_d)
+    saag_file.write(enstat, netstat, medstat, alarms, nodes, outage_d, offline_d, 
+		    status_file_name)
     saag_file.close()
     saag_file.install()
 
