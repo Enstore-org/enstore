@@ -12,25 +12,26 @@ grep -h '^class.*\:' ${ENSTORE_DIR}/src/[a-z]*.py        > 1.out
 sed -e  's/class//g'             < 1.out > 2.out
 sed -e  's/://g'                 < 2.out > 3.out
 sed -e  's/pass//g'              < 3.out > 4.out
-sed -e  's/,/\->/g'              < 4.out > 5.out
-sed -e  's/(/->/g'               < 5.out > 6.out
-sed -e  's/)//g'                 < 6.out > 7.out
+sed -e  's/,/"->"/g'             < 4.out > 5.out
+sed -e  's/(/->"/g'              < 5.out > 6.out # need quotes incase . in
+sed -e  's/)/"/g'                < 6.out > 7.out # name; remove white b/c
+sed -e  's/[ 	][ 	]*//g'   < 7.out > 8.out # using ""
 
 
 echo 'digraph objs { '           >  obj.dot
-cat 7.out                        >> obj.dot
+cat 8.out                        >> obj.dot
 
 echo 'UDPServer -> TCPServer'    >> obj.dot
-echo 'size="8,11"'               >> obj.dot
+echo 'size="8,10.5"'             >> obj.dot # margin will be .25 on all sides
+echo 'margin=0'                  >> obj.dot # of 8.5x11 sheet of paper
 echo 'center=1'                  >> obj.dot
 echo 'rotate=0'                  >> obj.dot
 echo 'ordering=out'              >> obj.dot
 echo 'rankdir=LR'                >> obj.dot
-echo 'margin=0.5'                >> obj.dot
 echo 'dir=back'                  >> obj.dot
 echo '}'                         >> obj.dot
 
 dot -Tps obj.dot > obj.ps
 
-rm [1-9].out
+#rm [1-9].out
 rm obj.dot
