@@ -655,7 +655,7 @@ def migrate_volume(vol):
 	# get all bfids
 	q = "select bfid from file, volume \
 		where file.volume = volume.id and label = '%s' \
-		and deleted = 'n';"%(vol)
+		and deleted = 'n' order by location_cookie;"%(vol)
 	res = db.query(q).getresult()
 
 	bfids = []
