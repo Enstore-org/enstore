@@ -1,2 +1,0 @@
-#!/bin/sh
-exec ngop agent  /home/enstore/enstore/ngop/cronjobAgent.py "$@"
