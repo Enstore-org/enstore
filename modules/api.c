@@ -156,20 +156,20 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
   if (value)
     stats_pointer->power_hrs = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->power_hrs = -1;
 
   value = ftt_extract_stats(ftt_stat_buff,FTT_MOTION_HOURS);
   if (value)
     stats_pointer->motion_hrs = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->motion_hrs = -1;
     
   value = ftt_extract_stats(ftt_stat_buff,FTT_USER_READ);
   if (value) {
     stats_pointer->mb_user_read = (int) ( (float) atoi(value)/ 1000.0 );
   }
   else
-    ret_code = -1;
+    stats_pointer->mb_user_read = -1;
 
   /*
    * MB_USER_WRITE
@@ -180,7 +180,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
      stats_pointer->mb_user_write = (int) ( (float) atoi(value)/ 1000.0 );
   }
   else
-    ret_code = -1;
+    stats_pointer->mb_user_write = -1;
 
   /*
    * MB_DEV_READ
@@ -191,7 +191,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
       stats_pointer->mb_dev_read = (int) ( (float) atoi(value)/ 1000.0 );
   }
   else
-    ret_code = -1;
+    stats_pointer->mb_dev_read = -1;
 
   /*
    * MB_DEV_WRITE
@@ -202,7 +202,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
      stats_pointer->mb_dev_write = (int) ( (float) atoi(value)/ 1000.0 );
   }
   else
-    ret_code = -1;
+    stats_pointer->mb_dev_write = -1;
 
 
   /*
@@ -213,7 +213,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
   if (value)
      stats_pointer->read_errors = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->read_errors = -1;
 
   /*
    * WRITE Errors
@@ -223,7 +223,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
   if (value)
      stats_pointer->write_errors = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->write_errors = -1;
 
   /*
    * Track Retries
@@ -233,7 +233,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
   if (value)
       stats_pointer->track_retries = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->track_retries = -1;
 
   /*
    * Underrun
@@ -243,7 +243,7 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
   if (value)
      stats_pointer->underrun = atoi(value);
   else
-    ret_code = -1;
+    stats_pointer->underrun = -1;
 
   /*
    * Cleaning Bit is in different area
@@ -254,7 +254,6 @@ int ds_translate_ftt_stats(DS_DESCRIPTOR* const ds_desc,const ftt_stat_buf ftt_s
      ds_desc->cleaning_bit = atoi(value);
   else {
     ds_desc->cleaning_bit = -1;
-    ret_code = -1;
   }
 
   if ( ret_code == 0 ) {
