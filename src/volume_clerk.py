@@ -619,14 +619,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	cc=record ["non_del_files"]
         record ["non_del_files"] = record["non_del_files"] - count
 	# if file count is 0 declare it deleted
-	print "CC",cc
-	print "REC", record ["non_del_files"]
 	if record ["non_del_files"] == 0:
 	    record["system_inhibit"] = e_errors.DELETED
 	# if count was 0 and then went up reset system inhibit
 	elif cc == 0 and record ["non_del_files"] == 1:
 	    record["system_inhibit"] = "none"
-	    print "SYSTEM INHIBIT", record["system_inhibit"]
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)

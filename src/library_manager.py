@@ -275,7 +275,6 @@ def next_work_any_volume(self, csc):
 					    w['fc']['external_label'],
 					    file_family,
 					    w["wrapper"]["size_bytes"])
-	    print "RET", ret
 	    if ret['status'][0] != e_errors.OK:
 		Trace.trace(11,"work can not be done at this volume %s"%ret)
 		w['status'] = ret['status']
@@ -298,7 +297,6 @@ def next_work_this_volume(self, v):
 	file_family = w["vc"]["file_family"]
 	if w["work"] == "write_to_hsm":
 	    file_family = file_family+"."+w["vc"]["wrapper"]
-	print "FF", file_family
 	ret = self.vcc.is_vol_available(w['work'],  v["external_label"],
 					file_family,
 					w["wrapper"]["size_bytes"])

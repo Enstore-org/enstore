@@ -1168,7 +1168,6 @@ def do_next_req_to_lm( self, next_req_to_lm, address ):
 	method = MoverClient.__dict__[client_function]
 	next_req_to_lm = method( self.client_obj_inst, rsp_ticket )
 	# note: order of check is important to avoid KeyError exception
-	print "NEXT REQ", next_req_to_lm
 	if  len(self.summoned_while_busy) and next_req_to_lm=={}:
 	    # now check if next_req_to_lm=={} means we just started an xfer and
 	    # are waiting for completion.
