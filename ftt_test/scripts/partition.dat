@@ -1,4 +1,5 @@
 ftt_open
+ftt_debug 1 -test
 ftt_rewind
 ftt_echo "partitions before:"
 ftt_get_partitions
@@ -26,3 +27,4 @@ ftt_echo "Putting them back"
 ftt_write_partitions
 ftt_get_partitions
 ftt_dump_partitions
+quit

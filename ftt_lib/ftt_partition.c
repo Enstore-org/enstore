@@ -82,6 +82,8 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 		fflush(d->async_pf_parent);
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
+		fclose(d->async_pf_parent);
+
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-p", d->basename, 0);
 		} else {
@@ -110,23 +112,24 @@ ftt_get_partitions(ftt_descriptor d,ftt_partbuf p) {
 
 int		
 ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
+
     static unsigned char buf[BD_SIZE+136];
     static unsigned char cdb_modsen11[6] = {0x1a, DBD, 0x11, 0x00,BD_SIZE+136, 0x00};
     static unsigned char cdb_modsel[6] = {0x15, 0x10, 0x00, 0x00,BD_SIZE+136, 0x00};
+
     int res, i;
     int len;
+    int pd[2];
+    FILE *topipe;
+
 
     if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
-        int pd[2], save;
-        FILE *topipe;
 
-        pipe(pd);
-        /*
-        ** now we make a file handle out of the write end of the pipe
-	** that we will ftt_dump_partitions() onto, and fork...
-        */
-        topipe = fdopen(pd[1],"w");
+        res = pipe(pd); if (res < 0) return -1; 
 
+	DEBUG2(stderr,"pipe is (%d,%d)\n", pd[0], pd[1]);
+        fflush(stderr);
+  
 	ftt_close_dev(d);
 
 	switch(ftt_fork(d)){
@@ -134,15 +137,19 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 		return -1;
 
 	case 0:  /* child */
+		/* output -> async_pf */
 		fflush(stdout);	/* make async_pf stdout */
 		fflush(d->async_pf_parent);
 		close(1);
 		dup2(fileno(d->async_pf_parent),1);
+                fclose(d->async_pf_parent);
 
+		/* stdin <- pd[0] */
                 fclose(stdin);
 		close(pd[1]);
 		dup2(pd[0],0);
                 close(pd[0]);
+
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
 		} else {
@@ -153,9 +160,12 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	default: /* parent */
 		/* close the read end of the pipe... */
                 close(pd[0]);
+
 		/* send the child the partition data */
+		topipe = fdopen(pd[1],"w");
 		ftt_dump_partitions(p,topipe);
   		fclose(topipe);
+
 		res = ftt_wait(d);
 	}
 
@@ -188,8 +198,8 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	    buf[BD_SIZE+8 + 2*i + 1] = 0;
 	}
 	res = ftt_do_scsi_command(d,"Put Partition table", cdb_modsel, 6, buf, len, 3600, 1);
-	return res;
     }
+    return res;
 }
 
 int
@@ -288,11 +298,12 @@ ftt_dump_partitions(ftt_partbuf parttab, FILE *pf) {
     for( i = 0; i <= parttab->n_parts; i++) {
 	 fprintf(pf,parfmt, i, ftt_extract_part_size(parttab,i));
     }
+    fflush( pf );
     return;
 }
 
 ftt_undump_partitions(ftt_partbuf p, FILE *pf) {
-    char buf[80];
+    static char buf[80];
     int i,junk;
 
     buf[0] = 'x';

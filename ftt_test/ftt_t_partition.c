@@ -124,10 +124,12 @@ return 0;
 
 }
 
-static ftt_partbuf parttab;
+static ftt_partbuf parttab = 0;
+
 void
 ftt_t_dump_partitions() {
-   ftt_dump_partitions(parttab,stdout);
+if (!parttab) { printf("You must get a partition table first!\n"); return ; }
+ftt_dump_partitions(parttab,stdout);
 }
 
 
@@ -154,7 +156,7 @@ return 0;
 
 /* ============================================================================
 
-ROUTINE: ftt_t_writ_partitions
+ROUTINE: ftt_t_write_partitions
         call ftt_write_partitions using the global file descriptor and
                 static parttab partition buffer.
 ==============================================================================*/
