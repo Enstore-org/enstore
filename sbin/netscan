@@ -113,21 +113,41 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
 	}
 
 # function to parse file mode from terse output of stat(1)
-getfilemode() { if [ $# -eq 15 ]; then
-		   case "$4" in
-		   81ed) # 0x8000 => regular file
-			 # 0x01ed == 0755 (octal)
-			 $ECHO 0755
-			 ;;
-		      *) ;;
-		   esac
+getfilemode() { set `stat -t $1 2>/dev/null`
+		if [ $# -eq 15 ]; then
+		   # 0x8000 => regular file
+		   $ECHO "0x$4"
 		else
 		   # probably an older stat, w/o -t option
 		   $ECHO "$9" | $CUT -f2 -d\( | $CUT -f1 -d/
 		fi
 	      }
 
+# function to check the owner of a file or directory
+check_owner() { theUsr=${2:-enstore}
+		theGrp=${3:-$theUsr}
+		if [ ! -r $1 ]; then
+		  msg1="BAD CONFIGURATION: $1 does not exist"
+		  logit "$msg1"
+		  if [ $ALARM -eq 1 ]; then
+		     enstore alarm --raise --severity "A" --root-error "$msg1"
+		  fi
+		else
+		  fowner=`ls -ld $1 | $AWK '{print $3"."$4}'`
+		  if [ "$fowner" != "${theUsr}.${theGrp}" ]; then
+		     chown "${theUsr}.${theGrp}" $1
+		     msg1="BAD CONFIGURATION: Changing $1 owner ($fowner to ${theUsr}.${theGrp})"
+		     logit "$msg1"
+		  elif [ $QUIET -ne 1 ]; then
+		     logit "$1 owner is ${theUsr}.${theGrp}, ok"
+		  fi
+		fi
+	      }
+
 # function to compare files and complain if they are not the same
+#
+# Also check file mode against 3rd argument, if present, and
+# confirm that files under /etc or /root are owned by root.
 right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 		  msg1="BAD CONFIGURATION: $1 $2 do not both exist"
 		  logit "$msg1"
@@ -142,35 +162,42 @@ right_file() { if [ ! -r $1 -o ! -r $2 ]; then
 		  fi
 	       else
 		  if [ $QUIET -ne 1 ]; then
-		     logit "Matching version of $1, ok"
+		     logit "$2 matches $1, ok"
 		  fi
 		  if [ $# -eq 3 ]; then
-		     case "$3" in
-		      755) fstat=`stat -t $2 2> /dev/null`
-			   fmode=`getfilemode $fstat`
-			   if [ $fmode -ne $3 ]; then
-			      chmod $3 $2
-			   fi
-			   ;;
-			*) chmod $3 $2 # just force this
-			   ;;
-		     esac
+		     fmode=`getfilemode $2`
+		     if [ $((fmode & 0x7fff)) -ne $(($3)) ]; then
+			chmod $3 $2
+			msg1="BAD CONFIGURATION: Changing $2 mode ($fmode to $3)"
+			logit "$msg1"
+		     elif [ $QUIET -ne 1 ]; then
+			logit "$2 mode is $3, ok"
+		     fi
+		  fi
+		  if $ECHO $2 | $EGREP '^/(etc|root)'; then
+		     check_owner $2 root
 		  fi
 	       fi
 	     }
 
 # function to check for a string within a file
-filecheck() { thefile=${2:-/var/spool/cron/root}
-	      if [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
-		msg="$thefile is missing $1 or it is misconfigured"
-		logit "$msg"
-		if [ $ALARM -eq 1 ]; then
-		  enstore alarm --raise --severity "A" --root-error "$msg"
-		fi
-	      elif [ $QUIET -ne 1 ]; then
-		logit "$1 $thefile ok"
-	      fi
-	    }
+check_file() { thefile=${2:-/var/spool/cron/root}
+	       if [ ! -r $thefile ]; then
+		  msg1="$thefile is missing"
+		  logit "$msg1"
+		  if [ $ALARM -eq 1 ]; then
+		     enstore alarm --raise --severity "A" --root-error "$msg1"
+		  fi
+	       elif [ `$EGREP -c "$1" $thefile` -ne 1 ]; then
+		  msg1="$thefile is missing $1 or it is misconfigured"
+		  logit "$msg1"
+		  if [ $ALARM -eq 1 ]; then
+		     enstore alarm --raise --severity "A" --root-error "$msg1"
+		  fi
+	       elif [ $QUIET -ne 1 ]; then
+		  logit "$1 in $thefile, ok"
+	       fi
+	     }
 
 # function to check for allowed services and complain if not allowed
 #
@@ -182,37 +209,26 @@ filecheck() { thefile=${2:-/var/spool/cron/root}
 #   error.
 #
 allow() { tt=${1:-UNKNOWN}
-	  psline=""
+	  local psline=""
 	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {print "a=" $2 ";b=" $3 ";c=" $4 ";p=" $5}'`; do
-#	  $ECHO -e -n $ALLOW | while IFS=',' read t a b c p; do
-#	    t=`$ECHO $i | $CUT -f1 -d,`
-#	    if [ -z "${t-}" ]; then $ECHO $t,$a,$b,$c,$p; fi
-#	    if [ -z "${t-}" ]; then $ECHO $i; fi
-#	    if [ $t != $tt ]; then continue; fi
-#	    a=`$ECHO $i | $CUT -f2 -d,`
-#	    b=`$ECHO $i | $CUT -f3 -d,`
-#	    c=`$ECHO $i | $CUT -f4 -d,`
-#	    p=`$ECHO $i | $CUT -f5 -d,`
 	    eval $i
-#	    if [ $command = $a -a `$ECHO $rest | $EGREP -c $b` -ne 0 -a `$ECHO $rest | $EGREP -c $c` -ne 0 ]; then
-	      if [ $p != x ]; then
-		 if [ -z "$psline" ]; then
-		    psline=`$ECHO "$PSfirst" | $AWK -v PID=$pid '$2 ~ PID {print}'`
-		 fi
-		 if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
-		    logit "Swapped out $node $tt $command $pid $rest -> $psline"
-		    return 0
-		 elif [ `$ECHO $psline | $SED 's/  */#/g' | $EGREP -c "$p"` -eq 0 ]; then
-		    continue
-		 fi
-	      else
-		p=""
-	      fi
-	      if [ $QUIET -ne 1 ]; then
-		logit "Allowing $node $c $tt $a $b $p, ok"
-	      fi
-	      return 0
-#	    fi
+	    if [ $p != x ]; then
+	       if [ -z "$psline" ]; then
+		  psline=`$ECHO "$PSfirst" | $AWK -v PID=$pid '$2 ~ PID {print}'`
+	       fi
+	       if [ `$ECHO $psline | $EGREP -c '\[.*\]'` -ne 0 ]; then
+		  logit "Swapped out $node $tt $command $pid $rest -> $psline"
+		  return 0
+	       elif [ `$ECHO $psline | $SED 's/  */#/g' | $EGREP -c "$p"` -eq 0 ]; then
+		  continue
+	       fi
+	    else
+	      p=""
+	    fi
+	    if [ $QUIET -ne 1 ]; then
+	      logit "Allowing $node $c $tt $a $b $p, ok"
+	    fi
+	    return 0
 	  done
 	  if [ -n "$psline" ]; then
 	     type=1
@@ -221,8 +237,7 @@ allow() { tt=${1:-UNKNOWN}
 	     type=2
 	  fi
 	  msg1="UNAUTHORIZED NETWORK SERVICE, type ${type}! $node $tt $command $pid $rest"
-	  logit "$msg1"
-	  logit "$psline" "ps"
+	  logit "$msg1 $psline" "ps"
 	  if [ $ALARM -eq 1 ]; then
 	    enstore alarm --raise --severity "A" --root-error "$msg1 $psline"
 	  fi
@@ -289,7 +304,6 @@ ALLOW_SRV3="$ALLOW_SRV5
 
 # Extra for srv2
 ALLOW_SRV2="$ALLOW_BASE
-	LISTEN,sendmail,:smtp,TCP,x\n
 	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
 	LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv\n
 	LISTEN,sh,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sh\n
@@ -297,6 +311,8 @@ ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,sort,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sort\n
 	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE/src/inquisitor.py\n
 "
+
+#	LISTEN,sendmail,:smtp,TCP,x\n
 
 # Extra for srv1
 ALLOW_SRV1="$ALLOW_BASE
@@ -338,7 +354,7 @@ ALLOW_SSRV4="$ALLOW_BASE
 	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
 "
 
-##Extra#for#cdfensrv4
+# Extra for cdfensrv4
 ALLOW_CSRV4="$ALLOW_BASE
 	LISTEN,rsh,:,TCP,fntt2#-l#acsss#echo\n
 "
@@ -367,6 +383,7 @@ case $node in
    stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to stkensrv4";;
    cdfensrv4)      ALLOW=$ALLOW_CSRV4; logit "Comparing to cdfensrv4";;
     *srv[57])      ALLOW=$ALLOW_SRV5;  logit "Comparing to srv5";;
+       *srv6)      ALLOW=$ALLOW_SRV0;  logit "Comparing to srv6";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
        *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
 	   *)      ALLOW=$ALLOW_BASE;  logit "Comparing to base";;
@@ -416,8 +433,10 @@ right_file $ENSTORE/etc/$gang.enstore.k5login	/home/enstore/.k5login
 right_file $ENSTORE/etc/$gang.hosts.allow	/etc/hosts.allow
 right_file $ENSTORE/etc/hosts.deny		/etc/hosts.deny
 right_file $ENSTORE/etc/hosts			/etc/hosts
-right_file $ENSTORE/etc/sudoers			/etc/sudoers 440
-right_file $ENSTORE/bin/enstore-boot		/etc/rc.d/init.d/enstore-boot 755
+right_file $ENSTORE/etc/sudoers			/etc/sudoers				0440
+right_file $ENSTORE/etc/krb5.conf		/etc/krb5.conf				0644
+right_file $ENSTORE/etc/xserverrc		/etc/X11/xinit/xserverrc		0755
+right_file $ENSTORE/bin/enstore-boot		/etc/rc.d/init.d/enstore-boot		0755
 
 chmod 755 /etc/rc.d/rc.sysinit	# just force this
 chmod 755 /etc/rc.d/rc.local	# just force this
@@ -444,8 +463,8 @@ right_file $ENSTORE/etc/$gang.step-tickers	/etc/ntp/step-tickers
 # check these files only on srv0 nodes
 case $node in
   d0ensrv0|stkensrv0|cdfensrv0)
-    right_file $ENSTORE/sbin/enstore-drivestat	/etc/rc.d/init.d/enstore-drivestat 755
-    right_file $ENSTORE/sbin/enstore-pgdb	/etc/rc.d/init.d/enstore-pgdb 755
+    right_file $ENSTORE/sbin/enstore-drivestat	/etc/rc.d/init.d/enstore-drivestat	0755
+    right_file $ENSTORE/sbin/enstore-pgdb	/etc/rc.d/init.d/enstore-pgdb		0755
     ;;
   *)
     ;;
@@ -535,15 +554,28 @@ if [ $IPMI -eq 1 ]; then
 fi
 
 # check that special jobs are listed in root crontab, or other files
-filecheck "check_watchdog_reset.py"
-filecheck "ntpset"
-filecheck "netscan -a -q" # not so dumb, because we can run netscan manually, too
-filecheck "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror\""
-filecheck "boot_cleanup" /etc/rc.d/rc.local
+if [ -r /var/spool/cron/root ]; then
+   check_file "check_watchdog_reset.py"
+   check_file "ntpset"
+   check_file "netscan -a -q" # not so dumb, because we can run netscan manually, too
+   check_file "ekill -v -9 \"sdrread\|selread\|chip2\|Chip2\|netperf\|dog\|selbit\|selclear\|netstat\|Nodeinfo\|biterror\""
+else
+   logit "No root crontab"
+fi
+
+check_file "boot_cleanup"		/etc/rc.d/rc.local
+check_file "enstore-admin@fnal.gov"	/root/.forward
+check_file "enstore-admin@fnal.gov"	/home/enstore/.forward
+
+# verify ownership of enstore keytab file
+check_owner /local/ups/kt
+check_owner /local/ups/kt/enstorekt
+check_owner ~enstore/`hostname`.startup
+
 
 if [ $IPMI -eq 1 ]; then
    # check that ipmisrv is running without watchdog timer
-   if [ `$PS axuwww | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ];then
+   if [ `$PS auwwwx | $EGREP -v grep | $EGREP -c "ipmisrv NO_DOG"` -ne 1 ]; then
       msg="ipmisrv NO_DOG not running or misconfigured"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
@@ -554,9 +586,9 @@ if [ $IPMI -eq 1 ]; then
    fi
 
    # check that watchdog timer action is to do nothing
-   ACTION=`/home/enstore/ipmi/dogread| $EGREP Action|$AWK '{print $2}'`
-   if [ $ACTION != "00" ];then
-      msg="watchdog action is $ACTION. Should be 00"
+   ACTION=`/home/enstore/ipmi/dogread | $EGREP Action|$AWK '{print $2}'`
+   if [ "$ACTION" != "00" ]; then
+      msg="watchdog action is < $ACTION >. Should be 00"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
 	 enstore alarm --raise --severity "A" --root-error "$msg"
@@ -570,7 +602,7 @@ fi
 
 
 # check that we don't have too many processes running
-NPROC=`$PS axu|wc -l | $SED -e 's/ //g'`
+NPROC=`$PS aux | wc -l | $SED -e 's/ //g'`
 if [ `$ECHO $node | $EGREP -c dca` -eq 1 ]; then
     maxproc=300  # disk cache
 elif [ `$ECHO $node | $EGREP -c mvr` -eq 1 ]; then
@@ -610,7 +642,7 @@ fi
 # check for web servers
 case $node in
 # web servers should be running on these nodes
-  rip7|d0ensrv2|stkensrv2|cdfensrv2|d0endca3a|stkendca3a)
+  rip7|d0ensrv2|stkensrv2|cdfensrv2|stkendca3a)
     if [ `$PS axuwww|$EGREP -v 'grep'|$EGREP apache|$EGREP -c 'httpd'` -eq 0 ]; then
        msg="httpd Web server not running"
        logit "$msg"
@@ -625,7 +657,7 @@ case $node in
     done
     ;;
 # web servers may be running on these nodes, but don't need to be
-  stkendca[678]|d0enout[12]|cachen[12]a)
+  stkendca[67]|d0enout[12]a|cachen[12]a)
     ;;
 # web servers should not be running on any other nodes
   *)
@@ -641,6 +673,7 @@ case $node in
     ;;
 esac
 
+
 # check that the keytabs are "correct"
 $KEYTAB_CHECK -a
 
@@ -653,14 +686,9 @@ netscan_n1=/tmp/netscan_n1
 netscan_n2=/tmp/netscan_n2
 rm -f $netscan_n1
 rm -f $netscan_n2
-#N1=`$LSOF -i TCP -i UDP`
 $LSOF -i TCP -i UDP > $netscan_n1
 PSfirst=`$PS afxuwwww`
-#N2=`$LSOF -i TCP -i UDP`
 $LSOF -i TCP -i UDP > $netscan_n2
-#N=`$ECHO "$N1 $N2"|$SORT|$UNIQ -d`
-#N=`$SORT $netscan_n1 $netscan_n2 | $UNIQ -d`
-
 
 # scan open files and check if allowed
 $SORT $netscan_n1 $netscan_n2 | $UNIQ -d | while read command pid rest; do
