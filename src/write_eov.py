@@ -50,8 +50,17 @@ if eod is None:
         
 print "Writing eod cookie %s on volume %s using device %s" % (eod,vol,dev)
 
-part, block, file = string.split(eod,'_')
-file = int(file)
+if eod == "none":
+   os.system("mt -f %s rewind" % (dev,))
+   fd=os.open(dev,1)
+   hdr = "VOL1"+vol
+   hdr = hdr+ (79-len(hdr))*' ' + '0'
+   os.write(fd,hdr)
+   os.close(fd)
+   file=1
+else:
+    part, block, file = string.split(eod,'_')
+    file = int(file)
 os.system("mt -f %s rewind" % (dev,))
 os.system("mt -f %s fsf %d" % (dev, file))
 #os.system("mt -f %s weof 1" % (dev,))
