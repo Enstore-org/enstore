@@ -5,7 +5,6 @@ gang=`gang`
 
 farmlet=/usr/local/etc/farmlets/$gang-alla
 filebase=/tmp/sel-
-bindir=~enstore/ipmi
 
 output=${1:-/dev/tty}
 if [ `echo $output | grep -c /dev/` -eq 0 ] ; then 
@@ -24,7 +23,7 @@ EOF
 if [ -z "${2-}" ] ; then
   for i in `cat $farmlet`; do
    date > $filebase$i
-   enrsh $i "killall -9 $bindir/selread; $bindir/selread " >> $filebase$i &
+   enrsh $i ". /fnal/ups/etc/setups.sh;setup ipmi;killall -9 $IPMI_DIR/selread; $IPMI_DIR/selread " >> $filebase$i &
   done
   #wait
   sleep 30 # wait doesn't work if rsh fails ???
@@ -52,7 +51,7 @@ EOF
   elif [ "`wc  $filebase$i  | awk '{print $1}'`" = "2" ]; then
     tail -1 $filebase$i >>$output
   else
-    cat $filebase$i | $bindir/L440GX.py >>$output
+    cat $filebase$i | $IPMI_DIR/L440GX.py >>$output
   fi
 cat << EOF >>$output
 </pre>
