@@ -1,0 +1,20 @@
+# default: off
+# description: The Kerberos ftp server allows strongly authenticated
+#              file transfers.
+#
+# This is a template file for installation with the Kerberos product.
+# (presumes the automatic translation of logicals and modification
+# to preserve "tcpwrappered-ness". )
+#
+## MODIFIED by kerberos v1_6 install 2002-10-25:
+service ftp
+{
+	disable	= no
+	socket_type = stream
+	wait = no
+	user = root
+	server = /usr/krb5/sbin/ftpd
+	server_args = -aOP
+	log_on_failure += USERID
+## END of kerberos v1_6 additions 2002-10-25
+}
