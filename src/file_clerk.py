@@ -38,6 +38,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["location_cookie"] = ticket["fc"]["location_cookie"]
             record["size"] = ticket["fc"]["size"]
         except:
+            self.enprint("Old fashioned ticket: upgrade.")
             record["location_cookie"], record["size"] = eval(ticket["fc"]["bof_space_cookie"])
 
         #######################################################################END#TEMPORARY##########
@@ -53,6 +54,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["fc"]["bfid"] = bfid
         ###########################################################################TEMPORARY##########
         if not ticket["fc"].has_key("location_cookie"):
+            self.enprint("Old fashioned ticket: upgrade.")
             ticket["fc"]["location_cookie"], ticket["fc"]["size"] = eval(record["bof_space_cookie"])
         #######################################################################END#TEMPORARY##########
         ticket["status"] = (e_errors.OK, None)
@@ -104,6 +106,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record = copy.deepcopy(dict[bfid])
             ###########################################################################TEMPORARY##########
             if not record.has_key("location_cookie"):
+                self.enprint("Old fashioned ticket: upgrade.")
                 record["location_cookie"], record["size"] = eval(record["bof_space_cookie"])
             #######################################################################END#TEMPORARY##########
         except KeyError:
@@ -206,11 +209,13 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ###########################################################################TEMPORARY##########
             if not finfo.has_key("location_cookie"):
                 finfo["location_cookie"], finfo["size"] = eval(record["bof_space_cookie"])
+                self.enprint("Old fashioned ticket: upgrade.")
             import types
             if type(finfo["location_cookie"]) == types.IntType:
                 self.enprint("fixing location_cookie from int to string type:"+repr(finfo["location_cookie"]))
                 finfo["location_cookie"] = "%12.12i"%finfo["location_cookie"]
                 dict[bfid] = copy.deepcopy(finfo)
+            print "size:",type(finfo["size"])
             #######################################################################END#TEMPORARY##########
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, \
