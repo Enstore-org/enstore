@@ -243,7 +243,7 @@ class EnstoreServer:
 							   self.seen_down_d.get(self.format_name, 0)))
 
     def handle_general_exception(self):
-	exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
 	EnstoreServer.check(self, {'status': (str(exc), str(msg))})
 	raise exc, msg
 
