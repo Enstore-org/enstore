@@ -263,7 +263,6 @@ class Buffer:
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
     def block_read(self, nbytes, driver, fill_buffer=1):
-        Trace.trace(22, "block_read CRC check is %s" % (self.client_crc_on,))
         if self.client_crc_on:
             # calculate checksum when reading from
             # tape (see comment in setup_transfer)
@@ -273,9 +272,9 @@ class Buffer:
         data = None
         partial = None
         space = self._getspace()
-        Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
+        #Trace.trace(22,"block_read: bytes_to_read: %s"%(nbytes,))
         bytes_read = driver.read(space, 0, nbytes)
-        Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
+        #Trace.trace(22,"block_read: bytes_read: %s"%(bytes_read,))
         if bytes_read == nbytes: #normal case
             data = space
         elif bytes_read<=0: #error
@@ -306,21 +305,20 @@ class Buffer:
         if do_crc:
             crc_error = 0
             try:
-                Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
+                #Trace.trace(22,"block_read: data_ptr %s, bytes_for_cs %s" % (data_ptr, bytes_for_cs))
 
                 self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                        data,
                                                        data_ptr, bytes_for_cs)
-                Trace.trace(22,"block_read: complete_crc %s" % (self.complete_crc,))
                 if self.sanity_bytes < SANITY_SIZE:
                     nbytes = min(SANITY_SIZE-self.sanity_bytes, bytes_for_cs)
                     self.sanity_crc = checksum.adler32_o(self.sanity_crc,
                                                          data,
                                                          data_ptr, nbytes)
                     self.sanity_bytes = self.sanity_bytes + nbytes
-                    Trace.trace(22, "block_read: sanity cookie %s sanity_crc %s sanity_bytes %s" %
-                                (self.sanity_cookie, self.sanity_crc,
-                                 self.sanity_bytes))
+                    #Trace.trace(22, "block_read: sanity cookie %s sanity_crc %s sanity_bytes %s" %
+                    #            (self.sanity_cookie, self.sanity_crc,
+                    #             self.sanity_bytes))
                 else:
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
@@ -345,7 +343,7 @@ class Buffer:
         return bytes_read
 
     def block_write(self, nbytes, driver):
-        Trace.trace(22,"block_write: bytes %s"%(nbytes,))
+        #Trace.trace(22,"block_write: bytes %s"%(nbytes,))
         
         if self.client_crc_on:
             # calculate checksum when reading from
@@ -353,13 +351,13 @@ class Buffer:
             do_crc = 1
         else:
             do_crc = 0
-        Trace.trace(22,"block_write: header size %s"%(self.header_size,))
+        #Trace.trace(22,"block_write: header size %s"%(self.header_size,))
         data = self.pull() 
         if len(data)!=nbytes:
             raise ValueError, "asked to write %s bytes, buffer has %s" % (nbytes, len(data))
         bytes_written = driver.write(data, 0, nbytes)
         if bytes_written == nbytes: #normal case
-            Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written,))
+            #Trace.trace(22, "block_write: bytes written %s" % (self.bytes_written,))
             number_to_skip = 0L
             if do_crc:
                 data_ptr = 0  # where data for CRC starts
@@ -372,7 +370,7 @@ class Buffer:
                     if len(data) <= self.header_size:
                         raise "WRAPPER_ERROR"
                     self.first_block = 0
-                Trace.trace(22, "block_write: written in this shot %s" % (bytes_written,))
+                #Trace.trace(22, "block_write: written in this shot %s" % (bytes_written,))
                 
                 if self.bytes_written >= self.trailer_pnt:
                     number_to_skip = bytes_written
@@ -381,16 +379,15 @@ class Buffer:
 
                 bytes_for_cs = bytes_for_cs - number_to_skip
 
-                Trace.trace(22, "nbytes %s, bytes written %s, bytes for cs %s trailer size %s"%
-                            (nbytes, bytes_written, bytes_for_cs,self.trailer_size))
+                #Trace.trace(22, "nbytes %s, bytes written %s, bytes for cs %s trailer size %s"%
+                #            (nbytes, bytes_written, bytes_for_cs,self.trailer_size))
                 if bytes_for_cs:
                     try:
-                        Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
-                                    (data_ptr, bytes_for_cs))
+                        #Trace.trace(22,"block_write: data_ptr: %s, bytes_for_cs %s" %
+                        #            (data_ptr, bytes_for_cs))
                         self.complete_crc = checksum.adler32_o(self.complete_crc,
                                                                data,
                                                                data_ptr, bytes_for_cs)
-                        Trace.trace(22,"complete crc %s"%(self.complete_crc,))
 
                         #if self.first_block and self.sanity_bytes < SANITY_SIZE:
                         if self.sanity_bytes < SANITY_SIZE:
@@ -399,8 +396,8 @@ class Buffer:
                                                                  data,
                                                                  data_ptr, nbytes)
                             self.sanity_bytes = self.sanity_bytes + nbytes
-                            Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
-                                        (self.sanity_crc, self.sanity_bytes))
+                            #Trace.trace(22, "block_write: sanity_crc %s sanity_bytes %s" %
+                            #            (self.sanity_crc, self.sanity_bytes))
                     except:
                         Trace.log(e_errors.ERROR,"block_write: CRC_ERROR")
                         raise "CRC_ERROR"
@@ -432,8 +429,8 @@ class Buffer:
         bytes_to_read = min(self.blocksize - self._read_ptr, nbytes)
         bytes_read = driver.read(self._reading_block, self._read_ptr, bytes_to_read)
         if do_crc:
-            Trace.trace(22,"nbytes %s, bytes_to_read %s, bytes_read %s" %
-                        (nbytes, bytes_to_read, bytes_read))
+            #Trace.trace(22,"nbytes %s, bytes_to_read %s, bytes_read %s" %
+            #            (nbytes, bytes_to_read, bytes_read))
             self.complete_crc = checksum.adler32_o(self.complete_crc, self._reading_block,
                                                    self._read_ptr, bytes_read)
             if self.sanity_bytes < SANITY_SIZE:
@@ -484,8 +481,8 @@ class Buffer:
                                                          self._write_ptr, nbytes)
                     self.sanity_bytes = self.sanity_bytes + nbytes
 
-                    Trace.trace(22, "stream_write: sanity cookie %s sanity_crc %s sanity_bytes %s" %
-                                (self.sanity_cookie, self.sanity_crc,self.sanity_bytes))
+                    #Trace.trace(22, "stream_write: sanity cookie %s sanity_crc %s sanity_bytes %s" %
+                    #            (self.sanity_cookie, self.sanity_crc,self.sanity_bytes))
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
                         Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, sanity CRC %s" % (self.sanity_cookie[1],self.sanity_crc)) 
