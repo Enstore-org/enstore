@@ -45,8 +45,7 @@ def _open2(pathname,mode=0666):
     #Create and open the temporary file.
     try:
         fd_tmp = os.open(tmpname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
-    except OSError:
-        exc, msg, tb = sys.exc_info()
+    except OSError, msg:
         #If the newly created file exists, try opening it without the
         # exclusive create.  This is probably a symptom of the O_EXCL
         # race condition mentioned above.  Since, this is a unique filename
@@ -56,7 +55,7 @@ def _open2(pathname,mode=0666):
         if hasattr(msg, "errno") and msg.errno == errno.EEXIST:
             fd_tmp = os.open(tmpname, os.O_RDWR)
         else:
-            raise exc, msg, tb
+            raise sys.exc_info()
 
     ok = 0
     s = None #initalize

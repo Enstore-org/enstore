@@ -655,10 +655,9 @@ def get_csc(ticket_or_bfid=None):
                 csc = csc_test
                 break
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
     #If we make it this far, set this as the new last used non-default csc.
@@ -807,9 +806,9 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
             errmsg = errmsg + " " + string.replace(msg, "\n\t", "  ")
         Trace.log(msg_type, errmsg)
     except OSError:
-        exc,msg,tb=sys.exc_info()
-        sys.stderr.write("cannot log error message %s\n"%(errmsg,))
-        sys.stderr.write("internal error %s %s\n"%(exc,msg))
+        exc, msg = sys.exc_info()[:2]
+        sys.stderr.write("cannot log error message %s\n" % (errmsg,))
+        sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
 #######################################################################
 
@@ -822,8 +821,7 @@ def check_server(csc, server_name):
     try:
         stati = csc.alive(server_name, rcv_timeout, alive_retries)
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except:
         exc, msg = sys.exc_info()[:2]
         stati={}
@@ -965,10 +963,9 @@ def filesystem_check(target_filesystem, inputfile):
     try:
         size = get_file_size(inputfile)
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
         
     #os.pathconf likes its targets to exist.  If the target is not a directory,
@@ -982,12 +979,11 @@ def filesystem_check(target_filesystem, inputfile):
         bits = os.pathconf(target_filesystem,
                            os.pathconf_names['PC_FILESIZEBITS'])
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except KeyError, detail:
         return
     except (OSError, IOError):
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         msg2 = "System error obtaining maximum file size for " \
                "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
@@ -1023,10 +1019,9 @@ def wrappersize_check(target_filepath, inputfile):
         wrapper_max = wrappersizes.get(pout.file_family_wrapper,
                                        MAX_FILE_SIZE)
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     if size > wrapper_max:
@@ -1049,10 +1044,9 @@ def librarysize_check(target_filepath, inputfile):
         library = csc.get(pout.library + ".library_manager", {})
         library_max = library.get('max_file_size', MAX_FILE_SIZE)
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except (OSError, IOError):
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
 
     #Compare the max sizes allowed for these various conditions.
@@ -1127,16 +1121,15 @@ def inputfile_check(input_files):
                 pass  #There is no error.
 
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except EncpError, detail:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             size = get_file_size(inputlist[i])
             print_data_access_layer_format(inputlist[i], "", size,
                                            {'status':(msg.type, msg.strerror)})
             quit()
         except (OSError, IOError), detail:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             size = get_file_size(inputlist[i])
             error = errno.errorcode.get(getattr(msg, "errno", None),
                                         errno.errorcode[errno.ENODATA])
@@ -1266,7 +1259,7 @@ def outputfile_check(inputlist, outputlist, dcache):
                 pass  #There is no error.
 
         except EncpError:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             size = get_file_size(inputlist[i])
             print_data_access_layer_format('', outputlist[i], size,
                                            {'status':(msg.type, msg.strerror)})
@@ -1288,7 +1281,7 @@ def create_zero_length_files(filenames):
             os.close(fd)
 
         except OSError:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             error = errno.errorcode.get(getattr(msg, "errno", None),
                                         errno.errorcode[errno.ENODATA])
             print_data_access_layer_format('', f, 0,
@@ -1703,7 +1696,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                 ticket, use_listen_socket = open_routing_socket(
 		    route_server, unique_id_list, encp_intf)
         except (EncpError,), detail:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             #Return the entire ticket.  Make sure it has valid data, otherwise
             # just having the 'status' field could cause problems in
             # handle_retries().
@@ -1768,7 +1761,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, encp_intf.mover_timeout)
         except (socket.error, EncpError):
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             if getattr(msg, "errno", None) == errno.ETIMEDOUT:
                 # Setting the error to RESUBMITTING is important.  If this is
                 # not done, then it would be returned as ETIMEDOUT.
@@ -1849,7 +1842,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         try:
             mover_addr = ticket['mover']['callback_addr']
         except KeyError:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             sys.stderr.write("Sub ticket 'mover' not found.\n")
             sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
             sys.stderr.write(pprint.pformat(ticket)+"\n")
@@ -1869,7 +1862,7 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                 raise socket.error,(errno.ENOTCONN,os.strerror(errno.ENOTCONN))
 
         except (socket.error,), detail:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             ticket['status'] = (e_errors.NET_ERROR, str(msg))
             #Trace.log(e_errors.INFO, str(msg))
             close_descriptors(control_socket)
@@ -2482,8 +2475,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             del request_list[request_list.index(request_dictionary)]
             queue_size = len(request_list)
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except (KeyError, ValueError):
             queue_size = len(request_list) - 1
 
@@ -2542,10 +2534,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lm_responce = submit_one_request(req)
 
             except KeyboardInterrupt:
-                exc, msg, tb = sys.exc_info()
-                raise exc, msg, tb
+                raise sys.exc_info()
             except:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
 
             #Now it get checked.  But watch out for the recursion!!!
@@ -2978,10 +2969,9 @@ def set_pnfs_settings(ticket, intf_encp):
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except:
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO, "Trouble with pnfs: %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
@@ -3012,10 +3002,9 @@ def set_pnfs_settings(ticket, intf_encp):
                          p.bit_file_id,
                          drive)
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except:
-        exc,msg,tb=sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
@@ -3049,10 +3038,9 @@ def set_pnfs_settings(ticket, intf_encp):
 
         ticket['status'] = fc_reply['status']
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except:
-        exc,msg,tb=sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
                   % (str(exc), str(msg)))
         ticket['status'] = (str(exc), str(msg))
@@ -3078,10 +3066,9 @@ def set_pnfs_settings(ticket, intf_encp):
                 # set the file size
                 p.set_file_size(ticket['file_size'])
     except KeyboardInterrupt:
-        exc, msg, tb = sys.exc_info()
-        raise exc, msg, tb
+        raise sys.exc_info()
     except:
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
 	ticket['status'] = (str(exc), str(msg))
 
     Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
@@ -5300,7 +5287,7 @@ def main(intf):
             Trace.message(DONE_LEVEL, str(status[1]))
 
     except ValueError:
-        exc, msg, tb = sys.exc_info()
+        exc, msg = sys.exc_info()[:2]
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
         quit(1)

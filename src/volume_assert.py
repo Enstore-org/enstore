@@ -28,6 +28,7 @@ import udp_server
 import hostaddr
 import encp
 import generic_client
+import delete_at_exit
 #import enstore_functions
 
 MY_NAME = "ASSERT"
@@ -231,11 +232,10 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             socket, addr, callback_ticket = \
                     encp.open_control_socket(listen_socket, intf.mover_timeout)
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             #Output a message.
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             sys.stderr.write(str(msg) + "\n")
 
             uncompleted_list = []
@@ -269,11 +269,10 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket,
             #Obtain the results of the volume assert by the mover.
             done_ticket = encp.receive_final_dialog(socket)
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             #Output a message.
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             sys.stderr.write("Encountered final dialog error for %s: %s\n" %
                              callback_ticket['vc']['external_label'], str(msg))
             #Do not retry from error.
@@ -380,7 +379,7 @@ def main(intf):
         
 if __name__ == "__main__":
 
-    encp.setup_signal_handling()
+    delete_at_exit.setup_signal_handling()
 
     intf = VolumeAssertInterface(user_mode=0)
 

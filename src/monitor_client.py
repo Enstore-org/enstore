@@ -283,8 +283,7 @@ class MonitorServerClient(generic_client.GenericClient):
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
         except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg
+            raise sys.exc_info()
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
@@ -301,8 +300,7 @@ class MonitorServerClient(generic_client.GenericClient):
                     "recv")
 
         except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg
+            raise sys.exc_info()
 
         #If we get here, the status is ok.
         reply['status'] = ('ok', None)
@@ -350,7 +348,7 @@ class MonitorServerClient(generic_client.GenericClient):
                 reply['status'] = ('INVALIDACTION', "failed to simulate encp")
 
         except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             reply = {}
             reply['status'] = (exc, msg)
             reply['elapsed'] = self.timeout*10

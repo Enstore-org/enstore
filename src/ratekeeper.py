@@ -264,7 +264,7 @@ if __name__ == "__main__":
         except SystemExit, exit_code:
             sys.exit(exit_code)
         except:
-            exc, msg, tb = sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             format = "%s %s %s %s %s: serve_forever continuing" % \
                      (timeofday.tod(),sys.argv,exc,msg,MY_NAME)
             continue

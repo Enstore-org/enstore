@@ -299,8 +299,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
         except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            exc, msg, tb = sys.exc_info()
-            print exc, msg
+            print sys.exc_info()[:2]
             return
 
         if not data_sock:
@@ -320,8 +319,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
         except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            exc, msg, tb = sys.exc_info()
-            print exc, msg
+            print sys.exc_info()[:2]
             return
 
         if not data_sock:
@@ -387,7 +385,7 @@ if __name__ == "__main__":
 	except SystemExit, exit_code:
 	    sys.exit(exit_code)
         except:
-            exc,msg,tb=sys.exc_info()
+            exc, msg = sys.exc_info()[:2]
             format = "%s %s %s %s %s: serve_forever continuing" % (
                 timeofday.tod(),sys.argv,exc,msg,MY_NAME)
             Trace.log(e_errors.ERROR, str(format))

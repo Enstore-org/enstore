@@ -686,8 +686,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.uid = self.pstat[stat.ST_UID]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -695,8 +694,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.uname = pwd.getpwuid(self.uid)[0]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -704,8 +702,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.gid = self.pstat[stat.ST_GID]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -713,8 +710,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         try:
             self.gname = grp.getgrgid(self.gid)[0]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -727,8 +723,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.mode = (self.pstat[stat.ST_MODE] % 0777) | 0100000
             self.mode_octal = str(oct(self.mode))
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             self.mode = 0
             self.mode_octal = 0
@@ -738,8 +733,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             if os.path.exists(self.filepath):
                 self.file_size = self.pstat[stat.ST_SIZE]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -750,8 +744,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.major = code_dict["Major"]
             self.minor = code_dict["Minor"]
         except KeyboardInterrupt:
-            exc, msg, tb = sys.exc_info()
-            raise exc, msg, tb
+            raise sys.exc_info()
         except:
             pass
 
@@ -1621,14 +1614,15 @@ class Tag:
             #Make sure that the current working directory is still valid.
             try:
                 cwd = os.getcwd()
-            except OSError:
-                exc, msg, tb = sys.exc_info()
+            except OSError, msg:
+                #exc, msg = sys.exc_info()[:2]
                 if msg.errno == errno.ENOENT:
                     msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
                                           "No current working directory")
-                    raise OSError, OSError(errno.ENOENT, msg_str), tb
+                    new_error = OSError(errno.ENOENT, msg_str)
+                    raise OSError, new_error, sys.exc_info()[2]
                 else:
-                    raise exc, msg, tb
+                    raise sys.exc_info()
             fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
 
         #Make sure this is the full file path of the tag.
@@ -1660,14 +1654,14 @@ class Tag:
             #Make sure that the current working directory is still valid.
             try:
                 cwd = os.getcwd()
-            except OSError:
-                exc, msg, tb = sys.exc_info()
+            except OSError, msg:
                 if msg.errno == errno.ENOENT:
                     msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
                                           "No current working directory")
-                    raise OSError, OSError(errno.ENOENT, msg_str), tb
+                    new_error = OSError(errno.ENOENT, msg_str)
+                    raise OSError, new_error, sys.exc_info()[2]
                 else:
-                    raise exc, msg, tb
+                    raise sys.exc_info()
             fname = os.path.join(cwd, ".(tag)(%s)"%(tag,))
 
         #Make sure this is the full file path of the tag.
@@ -1706,7 +1700,7 @@ class Tag:
                 #Make sure that the current working directory is still valid.
                 cwd = os.path.abspath(os.getcwd())
             except OSError:
-                exc, msg, tb = sys.exc_info()
+                exc, msg = sys.exc_info()[:2]
                 if msg.errno == errno.ENOENT:
                     msg_str = "%s: %s" % (os.strerror(errno.ENOENT),
                                           "No current working directory")
