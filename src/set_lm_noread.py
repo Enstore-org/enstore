@@ -73,10 +73,12 @@ if config_host and config_port:
 		parse_queue(readq, ff_d_r, ff_k)
 
 		for ff in ff_k:
+		    print ff, ff_d[ff], ff_d_r[ff]
 		    if ff_d[ff] > WRITE_LIMIT and ff_d_r[ff] > READ_LIMIT:
 			if not state == NOREAD:
 			    Trace.log(e_errors.WARNING, 
-				    "Setting %s to noread, %s has %s writes and %s reads"%(lm, 
+				    "Setting %s to %s, %s has %s writes and %s reads"%(lm, 
+										       NOREAD,
 										  ff, ff_d[ff],
 										  ff_d_r[ff]))
 			    lmc.change_lm_state(NOREAD)
@@ -86,4 +88,5 @@ if config_host and config_port:
 		    # we did not change the state of the lm to noread.  
 		    # see if it is in noread, if so set it back to normal
 		    if state == NOREAD:
+			Trace.log(e_errors.WARNING, "Setting %s to %s"%(lm, UNLOCKED))
 			ticket = lmc.change_lm_state(UNLOCKED)
