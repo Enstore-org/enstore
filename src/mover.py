@@ -554,7 +554,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.state = IDLE
         self.mode = None
         self.volume_status = (['none', 'none'], ['none','none'])
-        self.last_error = (e_errors.OK, None)
         self.vol_info = {}
         self.update() 
 
@@ -598,7 +597,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             threshold = self.bytes_to_read/100
             
         while self.state in (ACTIVE, DRAINING) and self.bytes_read < self.bytes_to_read:
-            if self.bytes_read - bytes_notified > threshold:
+            if bytes_notified==0 or self.bytes_read - bytes_notified > threshold:
                 bytes_notified = self.bytes_read
                 Trace.notify("transfer %s %s %s" % (self.shortname, self.bytes_read, self.bytes_to_read))
             if self.buffer.full():
@@ -794,7 +793,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             threshold = self.bytes_to_write/100
            
         while self.state in (ACTIVE, DRAINING) and self.bytes_written < self.bytes_to_write:
-            if self.bytes_written - bytes_notified > threshold:
+            if bytes_notified==0 or self.bytes_written - bytes_notified > threshold:
                 bytes_notified = self.bytes_written
                 #negative byte-count to indicate direction
                 Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_written, self.bytes_to_write))
