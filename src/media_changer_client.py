@@ -49,7 +49,7 @@ class MediaChangerClient(generic_client.GenericClient):
             Trace.log(e_errors.ERROR, "loadvol %s" % (rt['status'],))
         return rt
 
-    def unloadvol(self, vol_ticket, mover, drive, vcc=None):
+    def unloadvol(self, vol_ticket, mover, drive):
         ticket = {'work'           : 'unloadvol',
                   'vol_ticket' : vol_ticket,
                   'drive_id'       : drive
