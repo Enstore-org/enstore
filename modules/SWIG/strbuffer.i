@@ -41,3 +41,4 @@ int buf_send(int sock, cptr buf, int offset, int nbytes);
 int buf_send_dontwait(int sock, cptr buf, int offset, int nbytes);
 int buf_recv(int sock, cptr buf, int offset, int nbytes);
 
+int errno;
