@@ -1376,7 +1376,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
     # flag that the current volume is marked as not allowed
     def set_system_notallowed(self, ticket):
         # Trace.alarm(e_errors.WARNING, e_errors.NOTALLOWED,{"label":ticket["external_label"]}) 
-        Trace.log(e_errors.INFO, "volume %s is set to NOTALLOWED"%(external_label))
+        Trace.log(e_errors.INFO, "volume %s is set to NOTALLOWED"%(ticket['external_label']))
         return self.set_system_inhibit(ticket, e_errors.NOTALLOWED)
 
     # device is broken - what to do, what to do ===================================FIXME======================================
