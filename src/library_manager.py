@@ -89,6 +89,7 @@ class SG_FF:
         self.vf = {}
 
     def delete(self, mover, volume, sg, vf):
+        rc = 0
         #if not (mover and volume and sg and vf): return
         Trace.trace(31,"SG:delete mover %s, volume %s, sg %s, vf %s" % (mover, volume, sg, vf))
         if self.sg.has_key(sg) and (mover, volume) in self.sg[sg]:
@@ -98,6 +99,7 @@ class SG_FF:
         else:
             Trace.log(e_errors.INFO,'can not remove from sg %s %s' % (mover, volume))
             Trace.log(e_errors.INFO, 'SG: %s' % (self.sg,))
+            rc = rc - 1
         if self.vf.has_key(vf) and (mover, volume) in self.vf[vf]:
             self.vf[vf].remove((mover, volume))
             if len(self.vf[vf]) == 0:
@@ -105,7 +107,46 @@ class SG_FF:
         else:
             Trace.log(e_errors.INFO,'can not remove from vf %s %s' % (mover, volume))
             Trace.log(e_errors.INFO,'VF: %s' % (self.vf,))
+            rc = rc - 1
+        return rc
 
+    def delete_mover(self, mover):
+        m,v = None, None
+        found = 0
+        # delete from sg
+        for key in self.sg.keys():
+            for tpl in self.sg[key]:
+                if tpl[0] == mover:
+                    m,v = tpl[0], tpl[1]
+                    break
+            if m and v:
+                Trace.trace(31,"delete_mover %s from %s"%(mover,self.sg[key]))
+                break
+        if m and v:
+            self.sg[key].remove((m,v))
+            if len(self.sg[key]) == 0:
+                del(self.sg[key])
+        else:
+            Trace.log(e_errors.INFO,'delete_mover can not remove from sg %s %s' % (m, v))
+            Trace.log(e_errors.INFO, 'delete_mover SG: %s' % (self.sg,))
+            
+        # now delete from vf
+        for key in self.vf.keys():
+            for tpl in self.vf[key]:
+                if tpl[0] == mover:
+                    m,v = tpl[0], tpl[1]
+                    break
+            if m and v:
+                Trace.trace(31,"delete_mover %s from %s"%(mover,self.vf[key]))
+                break
+        if m and v:
+            self.vf[key].remove((m,v))
+            if len(self.vf[key]) == 0:
+                del(self.vf[key])
+        else:
+            Trace.log(e_errors.INFO,'delete_mover can not remove from vf %s %s' % (m, v))
+            Trace.log(e_errors.INFO,'delete_mover VF: %s' % (self.vf,))
+            
     def put(self, mover, volume, sg, vf):
         self.delete(mover, volume, sg, vf) # delete entry to update content
         if not self.sg.has_key(sg):
@@ -152,6 +193,7 @@ class AtMovers:
         Trace.trace(32, "AtMovers delete. before: %s" % (self.at_movers,))
         Trace.trace(31, "AtMovers delete. before: sg_vf: %s" % (self.sg_vf,))
         mover = mover_info['mover']
+        mover_state = mover_info.get('state', None)
         if self.at_movers.has_key(mover):
             Trace.trace(31, "MOVER %s" % (self.at_movers[mover],))
             if  mover_info.has_key('volume_family') and mover_info['volume_family']:
@@ -170,7 +212,13 @@ class AtMovers:
             #vol_family = self.at_movers[mover]['volume_family']
             #self.sg_vf.delete(mover, self.at_movers[mover]['external_label'], storage_group, vol_family) 
             storage_group = volume_family.extract_storage_group(vol_family)
-            self.sg_vf.delete(mover, label, storage_group, vol_family) 
+            if (self.sg_vf.delete(mover, label, storage_group, vol_family) < 0 and
+                mover_state == 'IDLE'):
+                # the pair (mover, volume) is wrong.
+                # This usually happens when mover automatically goes to
+                # IDLE after ERROR in cases when the tape mount fails
+                self.sg_vf.delete_mover(mover)
+                
             del(self.at_movers[mover])
         Trace.trace(32,"AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
