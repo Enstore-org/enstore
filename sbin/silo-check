@@ -75,7 +75,7 @@ egrep -v "^$|^<|CLN|^Date|^label" /diska/tape-inventory/VOLUMES_DEFINED| while r
   vf=`echo $line|awk '{print $NF}'`
   sg=`echo $vf | cut -f1 -d.`
   if [ $sg = 'test' ]; then continue;fi
-  if [ $lib = '9940' -o $lib = '9940B' -o $lib = 'eagle' -o $lib = 'cdf' -o $lib = 'CMS-9940B' -o $lib = 'test' ];then continue; fi
+  if [ $lib = '9940' -o $lib = '9940B' -o $lib = 'eagle' -o $lib = 'cdf' -o $lib = 'CMS-9940B' -o $lib = 'test' -o $lib = 'CDF-Migration' ];then continue; fi
   if [ $lib = 'blank-d0-9940' -o $lib = 'blank-9940' -o $lib = 'blank-9840' ];then continue; fi
   if [ `echo $lib | egrep -ic 'null|disk|shelf'` -ne 0 ]; then continue; fi
   if [ `echo $lib | egrep -ic '9940b'` -ne 0 ]; then 
