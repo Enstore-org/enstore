@@ -368,7 +368,9 @@ class Mover:
             msg = "Volume "+repr(ticket["fc"]["external_label"])
             self.send_user_last({"status" : "Mover: Retry: drive_error "+msg})
             #since we will kill ourselves, tell the library manager now....
-            ticket = send_library_manager()
+
+            ticket = send_library_manager_server(log_client.INFO,2,"READ"+str(ticket))
+
             raise "device panic -- I want to do no harm to media"
 
         # All is well - read has finished correctly
@@ -440,7 +442,7 @@ class Mover:
 
         while 1:
             # ok, here we go. get something to do from library manager
-            ticket = self.send_library_manager()
+            ticket = self.send_library_manager_server()
 
             try:
                 function = ticket["work"]
@@ -452,7 +454,7 @@ class Mover:
 
 
     # send a message to our (current) library manager & return its answer
-    def send_library_manager(self):
+    def send_library_manager_server(self):
         return  self.u.send(self.next_libmgr_request,
                              (self.library_manager_host,
                               self.library_manager_port) )

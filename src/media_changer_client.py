@@ -18,7 +18,7 @@ import interface
 import generic_client
 import Trace
 
-class MediaLoaderClient(generic_client.GenericClient):
+class MediaChangerClient(generic_client.GenericClient):
     def __init__(self, csc=0, list=0, name="", host=interface.default_host(), \
                  port=interface.default_port()):
         self.media_changer=name

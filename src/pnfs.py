@@ -25,18 +25,18 @@ try:
 except ImportError:
     print "Devcodes unavailable"
 
-enabled = "enabled"
-disabled = "disabled"
-valid = "valid"
-invalid =  "invalid"
-unknown = "unknown"
-exists = "file exists"
-direxists = "directory exists"
-error = -1
+ENABLE = "enabled"
+DISABLE = "disabled"
+VALID = "valid"
+INVALID =  "invalid"
+UNKNOWN = "unknown"
+EXISTS = "file exists"
+DIREXISTS = "directory exists"
+ERROR = -1
 
 ##############################################################################
 
-class pnfs:
+class Pnfs:
     # initialize - we will be needing all these things soon, get them now
     def __init__(self,pnfsFilename,all=0,timeit=0):
         t1 = time.time()
@@ -47,7 +47,7 @@ class pnfs:
         self.dir = dir
         self.file = file
         self.exists = unknown
-        self.check_valid_pnfsFilename()
+        self.check_valid_pnfs_filename()
         self.pstatinfo()
         self.rmajor = 0
         self.rminor = 0
@@ -109,7 +109,7 @@ class pnfs:
             return invalid
 
     # check if file is really part of pnfs file space
-    def check_valid_pnfsFilename(self):
+    def check_valid_pnfs_filename(self):
         try:
             f = open(self.dir+'/.(const)('+self.file+')','r')
             f.close()

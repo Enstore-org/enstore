@@ -15,7 +15,7 @@ import callback
 import interface
 import Trace
 
-class FileClerkClient(generic_client.GenericClient, \
+class FileClient(generic_client.GenericClient, \
                       backup_client.BackupClient):
 
     def __init__(self, csc=0, list=0, host=interface.default_host(), \
@@ -160,7 +160,7 @@ if __name__ == "__main__" :
     intf = FileClerkClientInterface()
 
     # now get a file clerk client
-    fcc = FileClerkClient(0, intf.config_list, intf.config_host, \
+    fcc = FileClient(0, intf.config_list, intf.config_host, \
                           intf.config_port)
 
     if intf.alive:

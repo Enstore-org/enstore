@@ -27,12 +27,12 @@ def set_csc(self, csc=0, host=interface.default_host(),\
             port=interface.default_port(), list=0):
     Trace.trace(10,'{set_csc csc='+repr(csc))
     if csc == 0:
-        self.csc = configuration_client(host, port, list)
+        self.csc = ConfigurationClient(host, port, list)
     else:
         self.csc = csc
     Trace.trace(10,'}set_csc csc='+repr(self.csc))
 
-class configuration_client(generic_client.GenericClient) :
+class ConfigurationClient(generic_client.GenericClient) :
 
     def __init__(self, config_host, config_port, config_list):
         Trace.trace(10,'{__init__ cc')
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     intf = ConfigurationClientInterface()
 
     # now get a configuration client
-    csc = configuration_client(intf.config_host, intf.config_port,\
+    csc = ConfigurationClient(intf.config_host, intf.config_port,\
                                intf.config_list)
     stat = "ok"
 

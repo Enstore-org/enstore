@@ -20,20 +20,20 @@ except ImportError:
 import timeofday
 import Trace
 
-dict = {}
+request_dict = {}
 #
 # Purge entries older than 600 seconds. Dict is a dictionary
 #    The first entry, dict[0], is the key
 #    The second entry, dict[1], is the message, client number, ticket, and time
 #        which becomes list[0-2]
-def purge_stale_entries(dict):
+def purge_stale_entries(request_dict):
     Trace.trace(20,"{purge_stale_entries")
     stale_time = time.time() - 600
     count = 0
-    for entry in dict.items():
+    for entry in request_dict.items():
         list = entry[1]
         if  list[2] < stale_time:
-            del dict[entry[0]]
+            del request_dict[entry[0]]
             count = count+1
     Trace.trace(20,"}purge_stale_entries count=%d",count)
 
@@ -85,7 +85,7 @@ class DispatchingWorker:
             # UDPClient resends messages if it doesn't get a response from us
             # see it we've already handled this request earlier. We've
             # handled it if we have a record of it in our dict
-            exec ("list = " + repr(dict[idn]))
+            exec ("list = " + repr(request_dict[idn]))
             if list[0] == number:
                 Trace.trace(5,"}process_request "+repr(idn)+" already handled")
                 self.reply_with_list(list)
@@ -115,8 +115,8 @@ class DispatchingWorker:
             self.reply_to_caller(ticket)
             return
 
-        if len(dict) > 200:
-            purge_stale_entries(dict)
+        if len(request_dict) > 200:
+            purge_stale_entries(request_dict)
 
         # call the user function
         Trace.trace(6,"process_request function="+repr(function))
@@ -138,7 +138,7 @@ class DispatchingWorker:
     def done_cleanup(self,ticket):
         try:
             Trace.trace(20,"{done_cleanup id="+repr(self.current_id))
-            del dict[self.current_id]
+            del request_dict[self.current_id]
         except KeyError:
             pass
         Trace.trace(20,"}done_cleanup")
@@ -158,7 +158,7 @@ class DispatchingWorker:
     def reply_with_list(self, list):
         Trace.trace(19,"{reply_with_list number="+repr(self.client_number)+\
                     " id ="+repr(self.current_id))
-        dict[self.current_id] = list
+        request_dict[self.current_id] = list
         badsock = self.socket.getsockopt(socket.SOL_SOCKET,socket.SO_ERROR)
         if badsock != 0:
             Trace.trace(0,"reply_with_list pre-send error "+\

@@ -18,19 +18,19 @@ JOURNAL_LIMIT=1000
 backup_flag=1
 cursor_open=0
 
-class myIndex(table.Index):
+class MyIndex(table.Index):
   def __init__(self,db,name):
 	table.Index.__init__(self,db,name)
-  def valToStr(self,val):
+  def val_to_str(self,val):
 	if val==None:
 		return None
 	return val
-  def strToVal(self,str):
+  def str_to_val(self,str):
 	if str==None:
 		return None
 	return str
 
-class dBTable:
+class DbTable:
   def __init__(self,dbname,logc,indlst=[]):
     try:
 	dbHome=os.environ['ENSTORE_DB']
@@ -42,7 +42,7 @@ class dBTable:
     self.dbindex=libtpshelve.open(dbEnv,"index",type='btree')
     self.inx={}
     for name in indlst:
-    	self.inx[name]=myIndex(self.dbindex,name)
+    	self.inx[name]=MyIndex(self.dbindex,name)
     self.jou=journal.JournalDict({},dbname+".jou")
     self.count=0
     self.name=dbname
@@ -241,6 +241,6 @@ if __name__=="__main__":
   Trace.init("dbclerk")
   Trace.trace(1,"dbc called with args "+repr(sys.argv))
 
-  dict= dBTable(sys.argv[1],0)
+  dict= DbTable(sys.argv[1],0)
   dict.dump()
   Trace.trace(1,"dbc exit ok")

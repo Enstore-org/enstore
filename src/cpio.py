@@ -78,7 +78,7 @@ To list them: cpio -tv < archive
 To extract:   cpio -idmv < archive
 
 """
-class cpio :
+class Cpio :
 
     # read  object: needs a method read_block that will read the data, it
     #               has no arguments
@@ -376,13 +376,13 @@ class cpio :
         return (dat_bytes, dat_crc)
 
 # shamelessly stolen from python's posixfile.py
-class diskdriver:
+class DiskDriver:
     states = ['open', 'closed']
 
     # Internal routine
     def __repr__(self):
         file = self._file_
-        return "<%s diskdriver '%s', mode '%s' at %s>" % \
+        return "<%s DiskDriver '%s', mode '%s' at %s>" % \
                (self.states[file.closed], file.name, file.mode,
                 hex(id(self))[2:])
 
@@ -398,7 +398,7 @@ class diskdriver:
     # Initialization routines
     def fileopen(self, file):
         if repr(type(file)) != "<type 'file'>":
-            raise TypeError, 'diskdriver.fileopen() arg must be file object'
+            raise TypeError, 'DiskDriver.fileopen() arg must be file object'
         self._file_  = file
         # Copy basic file methods
         for method in file.__methods__:
@@ -420,14 +420,14 @@ class diskdriver:
 
 # Public routine to obtain a diskdriver object
 def diskdriver_open(name, mode='r', bufsize=-1):
-    return diskdriver().open(name, mode, bufsize)
+    return DiskDriver().open(name, mode, bufsize)
 
 
 
 if __name__ == "__main__" :
     import sys
     import Devcodes
-    Trace.init("cpio")
+    Trace.init("Cpio")
 
     fin  = diskdriver_open(sys.argv[1],"r")
     fout = diskdriver_open(sys.argv[2],"w")
@@ -438,7 +438,7 @@ if __name__ == "__main__" :
               "Invalid input file: can only handle regular files"
 
     fast_write = 0 # needed for testing
-    wrapper = cpio(fin,fout,binascii.crc_hqx,fast_write)
+    wrapper = Cpio(fin,fout,binascii.crc_hqx,fast_write)
 
     dev_dict = Devcodes.MajMin(fin._file_.name)
     major = dev_dict["Major"]
@@ -455,7 +455,7 @@ if __name__ == "__main__" :
                                              statb[stat.ST_SIZE],
                                              major, minor, rmajor, rminor,
                                              fin._file_.name, sanity_bytes)
-    print "cpio.write returned: size:",size,"crc:",crc,\
+    print "Cpio.write returned: size:",size,"crc:",crc,\
           "sanity_cookie:",sanity_cookie
 
     fin.close()
@@ -471,7 +471,7 @@ if __name__ == "__main__" :
     fin  = diskdriver_open(sys.argv[2],"r")
     fout = diskdriver_open(sys.argv[1]+".copy","w")
 
-    wrapper = cpio(fin,fout,binascii.crc_hqx)
+    wrapper = Cpio(fin,fout,binascii.crc_hqx)
     (read_size, read_crc) = wrapper.read(sanity_cookie)
     print "cpio.read  returned: size:",read_size,"crc:",read_crc
 

@@ -8,25 +8,25 @@ import regex
 # enstore imports
 import Trace
 
-class numOper:
+class NumOper:
 
   def __init__(self,str=""):
-    Trace.trace(10,'{__init__ numOper str='+repr(str))
+    Trace.trace(10,'{__init__ NumOper str='+repr(str))
     if len(str)==0:
         return
     self.val=[]
-    self.parseOper(str)
-    Trace.trace(10,'}__init__ numOper')
+    self.parse_oper(str)
+    Trace.trace(10,'}__init__ NumOper')
 
-  def parseOper(self,str):
-    Trace.trace(16,'{parseOper str='+repr(str))
+  def parse_oper(self,str):
+    Trace.trace(16,'{parse_oper str='+repr(str))
     index1=regex.search("[<>=!]",str)
     if index1!=0:
         self.val.append(str[:index1])
     index2=regex.search("[^<>=!]",str[index1:])
     self.operator=str[index1:index2+index1]
     self.val.append(str[index2+index1:])
-    Trace.trace(16,'}parseOper')
+    Trace.trace(16,'}parse_oper')
 
   def numcmp(self,value):
      Trace.trace(16,'{numcmp value='+repr(value))
@@ -63,13 +63,13 @@ class numOper:
      return 1
 
 
-class timeOper(numOper):
+class TimeOper(NumOper):
 
   def __init__(self,str=""):
-    Trace.trace(10,'{__init__ timeOper str='+repr(str))
-    numOper.__init__(self,str)
+    Trace.trace(10,'{__init__ TimeOper str='+repr(str))
+    NumOper.__init__(self,str)
     self.secs()
-    Trace.trace(10,'}__init__ timeOper')
+    Trace.trace(10,'}__init__ TimeOper')
 
   def secs(self):
     Trace.trace(16,'{secs')

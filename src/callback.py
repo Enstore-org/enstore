@@ -83,47 +83,47 @@ def mover_callback_socket(ticket) :
     return sock
 
 # return a library manager tcp socket
-def library_manager_callback_socket(ticket) :
-    Trace.trace(16,'{library_manager_callback_socket host='+\
+def library_manager_server_callback_socket(ticket) :
+    Trace.trace(16,'{library_manager_server_callback_socket host='+\
                 repr(ticket['library_manager_callback_host'])+" port="+\
                 repr(ticket['library_manager_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['library_manager_callback_host'], \
                  ticket['library_manager_callback_port'])
-    Trace.trace(16,"}library_manager_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}library_manager_server_callback_socket sock="+repr(sock))
     return sock
 
 # return a library manager tcp socket
-def volume_clerk_callback_socket(ticket) :
-    Trace.trace(16,'{volume_clerk_callback_socket host='+\
+def volume_server_callback_socket(ticket) :
+    Trace.trace(16,'{volume_server_callback_socket host='+\
                 repr(ticket['volume_clerk_callback_host'])+" port="+\
                 repr(ticket['volume_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['volume_clerk_callback_host'], \
                  ticket['volume_clerk_callback_port'])
-    Trace.trace(16,"}volume_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}volume_server_callback_socket sock="+repr(sock))
     return sock
 
 # return a file clerk tcp socket
-def file_clerk_callback_socket(ticket) :
-    Trace.trace(16,'{file_clerk_callback_socket host='+\
+def file_server_callback_socket(ticket) :
+    Trace.trace(16,'{file_server_callback_socket host='+\
                 repr(ticket['file_clerk_callback_host'])+" port="+\
                 repr(ticket['file_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['file_clerk_callback_host'], \
                  ticket['file_clerk_callback_port'])
-    Trace.trace(16,"}file_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}file_server_callback_socket sock="+repr(sock))
     return sock
 
 # return and admin clerk tcp socket
-def admin_clerk_callback_socket(ticket) :
-    Trace.trace(16,'{admin_clerk_callback_socket host='+\
+def admin_server_callback_socket(ticket) :
+    Trace.trace(16,'{admin_server_callback_socket host='+\
                 repr(ticket['admin_clerk_callback_host'])+" port="+\
                 repr(ticket['admin_clerk_callback_port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(ticket['admin_clerk_callback_host'], \
                  ticket['admin_clerk_callback_port'])
-    Trace.trace(16,"}admin_clerk_callback_socket sock="+repr(sock))
+    Trace.trace(16,"}admin_sever_callback_socket sock="+repr(sock))
     return sock
 
 # send ticket/message on user tcp socket and return user tcp socket

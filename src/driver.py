@@ -1,4 +1,4 @@
-###############################################################################
+##############################################################################
 # src/$RCSfile$   $Revision$
 #
 # system imports
@@ -120,7 +120,7 @@ class  FTTDriver(GenericDriver) :
        ETape.ET_WriteBlock(self.ETdesc, data)
 
     # ftt updates remaining_byte count, so this routine not needed for FTT driver
-    def Xferred_bytes(self,size) :
+    def xferred_bytes(self,size) :
         pass
 
 class  RawDiskDriver(GenericDriver) :
@@ -221,8 +221,8 @@ class  RawDiskDriver(GenericDriver) :
 #            self.first_write_block = 0
 #            self.eod = self.df.tell() - len(data)
 
-    # Xferred_bytes not counted - so subtract them from remaining byte count
-    def Xferred_bytes(self,size) :
+    # xferred_bytes not counted - so subtract them from remaining byte count
+    def xferred_bytes(self,size) :
         self.remaining_bytes = self.remaining_bytes - size
 
 class  DelayDriver(RawDiskDriver) :
