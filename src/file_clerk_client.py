@@ -292,7 +292,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
             return self.client_options()+[
                 "bfid=","deleted=","list=","backup",
                 "get-crcs=","set-crcs=",
-                "restore=", "recursive", "bfids=", "list-active="]
+                "restore=", "recursive", "bfids=", "ls-active="]
             
 def do_work(intf):
     # now get a file clerk client
