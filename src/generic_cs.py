@@ -26,9 +26,13 @@ ALL_SERVER   = SERVER | ALIVE | CONNECTING | SOCKET_ERROR
 ALL_CLIENT   = CLIENT | ALIVE | CONNECTING | SOCKET_ERROR
 PRETTY_PRINT = 020000000000
 ALL          = 037777777777
+
 global_print_id = ""
+global_logger = ENNONE
+global_severity = ENNONE
 
 def add_id(id, msg):
+    Trace.trace(5,"{add_id "+repr(id))
     global global_print_id
 
     # add id on to the front if we have one
@@ -40,10 +44,37 @@ def add_id(id, msg):
 	    nmsg = global_print_id+": "+repr(msg)
     else:
 	nmsg = id+": "+repr(msg)
+    Trace.trace(5,"}add_id ")
     return nmsg
+
+# keep a logger
+def add_logger(self, logger, log_severity=ENNONE):
+    global global_logger
+    global global_severity
+
+    global_logger = logger
+    global_severity = log_severity
+
+# send the message to the logger
+def send_to_logger(logger, log_severity, msg):
+    Trace.trace(5,"{send_to_logger "+repr(logger))
+    if logger != ENNONE:
+        l_logger = logger
+    else:
+        l_logger = global_logger
+
+    if log_severity != ENNONE:
+        l_log_severity = log_severity
+    else:
+        l_log_severity = global_severity
+
+    if l_logger != ENNONE:
+        l_logger.send(l_log_severity, 1, msg)
+    Trace.trace(5,"}send_to_logger "+repr(l_logger))
 
 def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
 	    log_severity=ENNONE, id=""):
+    Trace.trace(4,"{enprint "+repr(msg))
     global global_print_id
 
     # send the message to STDOUT.
@@ -62,9 +93,9 @@ def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
 	            print nmsg
 	        except:
 	            pass
+
 	    # also send to the logger
-	    if logger != ENNONE:
-	        logger.send(log_severity, 1, nmsg)
+	    send_to_logger(logger, log_severity, nmsg)
     else:
 	# no verbosity was entered, try to print the message
 	nmsg = add_id(id, msg)
@@ -79,22 +110,34 @@ def enprint(msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
 	    except:
 	        pass
 	# also send to the logger
-	if logger != ENNONE:
-	    logger.send(log_severity, 1, nmsg)
+	send_to_logger(logger, log_severity, nmsg)
 
     # reset the following so if the next time we are called generically,
     # we do not retain the old value.
     global_print_id = ""
+    Trace.trace(4,"}enprint ")
 
 class GenericCS:
 
     def enprint(self, msg, msg_bit=ENNONE, verbosity=ENNONE_V, logger=ENNONE, \
  	        log_severity=ENNONE):
+	Trace.trace(3,"{self.enprint ")
 	global global_print_id
+
+	# use an object data member as a prefix to the message if available
 	try:
 	    global_print_id = self.print_id
 	except:
 	    global_print_id = ""
 
-	enprint(msg, msg_bit, verbosity, logger, log_severity)
+	# if no logger entered see if the object has one
+	if logger == ENNONE:
+	    try:
+	        l_logger = self.logc
+	    except:
+	        l_logger = logger
+	else:
+	    l_logger = logger
 
+	enprint(msg, msg_bit, verbosity, l_logger, log_severity)
+	Trace.trace(3,"}self.enprint ")
