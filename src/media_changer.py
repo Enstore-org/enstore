@@ -115,13 +115,71 @@ class FTT_MediaLoaderMethods(MediaLoaderMethods) :
         os.system("mt -t " + drive + " rewind")
         self.reply_to_caller({'status' : (e_errors.OK, None)})
 
+# EMASS tape robot
+class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
+
+    # load volume is in drive
+    def load(self, external_label, drive) :
+      command = "dasadmin mount" + external_label + " " + tape_drive
+      out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
+      count=2
+      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
+        count = count - 1
+        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+command)
+        #    try the mount
+        result = os.system(command)
+        #    analyze the results
+	for line in result.readlines():
+           if string.find(line, "completed successfully") ! -1 :
+                out_ticket = {"status" : (e_errors.OK, None)}
+                self.logc.send(log_client.INFO, 4, "Mnt returned ok")
+                for line in result:
+                    self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
+                break
+        
+        # log the error
+        self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
+        for line in result:
+                self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
+      # send reply to caller
+      self.reply_to_caller(out_ticket)
+
+    # unload volume from the drive;   ron said the tape will be ejected.
+    def unload(self, external_label, tape_drive) :
+      # form dismount command to be executed
+      command = "dasadmin unload " + tape_drive
+
+      # retry dismount once if it fails
+      count=2
+      out_ticket = {"status" : (e_errors.DISMOUNTFAILED, "dismount_failed")}
+      while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
+        count = count - 1
+        # call dismount command
+        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+command)
+        result = os.popen(command, "r").readlines()
+
+        # analyze the return message
+        for line in result:
+            if string.find(line, "dismount") != -1 :
+                out_ticket = {"status" : (e_errors.OK, None)}
+                self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
+                for line in result:
+                    {self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
+                break
+        # log the error
+        self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
+        for line in result:
+            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
+
+      self.reply_to_caller(out_ticket)
+
 # STK robot class
 class STK_MediaLoaderMethods(MediaLoaderMethods) :
 
     # load volume into the drive
     def load(self, external_label, tape_drive) :
       # form mount command to be executed
-      stk_mount_command = "rsh " + self.mc_config['acls_host'] + " -l " + \
+      command = "rsh " + self.mc_config['acls_host'] + " -l " + \
                             self.mc_config['acls_uname'] + " 'echo mount " + \
                             external_label + " " + tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
@@ -130,40 +188,37 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
                             self.mc_config['acls_uname'] + " 'echo query drive " + \
                             tape_drive + \
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
-      count=2
       out_ticket = {"status" : (e_errors.MOUNTFAILED, "dismount_failed")}
+      count=2
       while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
         count = count - 1
         # call mount command
-        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+stk_mount_command)
-        returned_message = os.popen(stk_mount_command, "r").readlines()
-        out_ticket = {"status" : (e_errors.MOUNTFAILED, "mount_failed")}
+        self.logc.send(log_client.INFO, 2, "Mnt cmd:"+command)
+        result = os.popen(command, "r").readlines()
 
         # analyze the return message
-        for line in returned_message:
+        for line in result:
             if string.find(line, "mounted") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
+                self.logc.send(log_client.INFO, 4, "Mnt returned ok")
+                for line in result:
+                    self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
                 break
 
-        # log the work
-        if out_ticket["status"][0] != e_errors.OK:
-            self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+stk_mount_command)
-            for line in returned_message:
-                self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
-            returned_message  = os.popen(stk_query_command, "r").readlines()
-            for line in returned_message:
-                self.logc.send(log_client.INFO, 1, "Mnt qry:"+line)
-        else :
-            self.logc.send(log_client.INFO, 4, "Mnt returned ok")
-            for line in returned_message:
-                self.logc.send(log_client.INFO, 8, "Mnt ok:"+line)
-        # send reply to caller
+        # log the error
+        self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+command)
+        for line in result:
+            self.logc.send(log_client.ERROR, 1, "Mnt Failed:"+line)
+        result  = os.popen(stk_query_command, "r").readlines()
+        for line in result:
+            self.logc.send(log_client.INFO, 1, "Mnt qry:"+line)
+      # send reply to caller
       self.reply_to_caller(out_ticket)
 
-    # unload volume from the drive
+    # unload volume from the drive - a force does an eject
     def unload(self, external_label, tape_drive) :
       # form dismount command to be executed
-      stk_umnt_command = "rsh " + self.mc_config['acls_host'] + " -l " +\
+      command = "rsh " + self.mc_config['acls_host'] + " -l " +\
                             self.mc_config['acls_uname'] + " 'echo dismount " +\
                             external_label + " " + tape_drive + " force" +\
                             " | /export/home/ACSSS/bin/cmd_proc 2>>/tmp/garb'"
@@ -179,31 +234,33 @@ class STK_MediaLoaderMethods(MediaLoaderMethods) :
       while count > 0 and out_ticket != {"status" : (e_errors.OK, None)}:
         count = count - 1
         # call dismount command
-        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+stk_umnt_command)
-        returned_message = os.popen(stk_umnt_command, "r").readlines()
+        self.logc.send(log_client.INFO, 2, "UMnt cmd:"+command)
+        result = os.popen(command, "r").readlines()
 
         # analyze the return message
-        for line in returned_message:
+        for line in result:
             if string.find(line, "dismount") != -1 :
                 out_ticket = {"status" : (e_errors.OK, None)}
+                self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
+                for line in result:
+                    self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
                 break
-        # log the work
-        if out_ticket["status"][0] != e_errors.OK:
-            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+stk_mount_command)
-            for line in returned_message:
-                self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
-            returned_message  = os.popen(stk_query_command, "r").readlines()
-            for line in returned_message:
-                self.logc.send(log_client.INFO, 1, "Umnt qry:"+line)
-        else:
-            self.logc.send(log_client.INFO, 4, "UMnt returned ok:")
-            for line in returned_message:
-                self.logc.send(log_client.INFO, 8, "UMnt ok:"+line)
+        # log the error
+        self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+command)
+        for line in result:
+            self.logc.send(log_client.ERROR, 1, "UMnt Failed:"+line)
+        result  = os.popen(stk_query_command, "r").readlines()
+        for line in result:
+            self.logc.send(log_client.INFO, 1, "Umnt qry:"+line)
         
       self.reply_to_caller(out_ticket)
 
 # STK media loader server
 class STK_MediaLoader(STK_MediaLoaderMethods) :
+    pass
+
+# EMASS robot loader server
+class EMASS_MediaLoader(EMASS_MediaLoaderMethods) :
     pass
 
 # Raw Disk media loaded server
@@ -265,6 +322,9 @@ if __name__ == "__main__" :
     # THIS NEEDS TO BE FIXED -- WE CAN'T BE CHECKING FOR EACH KIND!!!
     if intf.name == 'STK.media_changer' :
         mc =  STK_MediaLoader(intf.name, 0, intf.verbose, \
+	                      intf.config_host, intf.config_port)
+    elif intf.name == 'EMASS.media_changer' :
+        mc =  EMASS_MediaLoader(intf.name, 0, intf.verbose, \
 	                      intf.config_host, intf.config_port)
     elif intf.name == 'FTT.media_changer' :
         mc =  FTT_MediaLoader(intf.name, 0, intf.verbose, \
