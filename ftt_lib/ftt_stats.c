@@ -184,6 +184,7 @@ int ftt_numeric_tab[FTT_MAX_STAT] = {
     /*  FTT_CMP_WRITE		52 */ 1,
     /*  FTT_CMP_READ		53 */ 1,
     /*  FTT_ERROR_CODE		54 */ 0,
+    /*  FTT_CUR_PART		54 */ 0,
 };
 
 void
@@ -732,6 +733,7 @@ ftt_get_stats(ftt_descriptor d, ftt_stat_buf b) {
 	    set_stat(b,FTT_BOT,     ftt_itoa(bit(7,buf[0])), 0);
 	    set_stat(b,FTT_PEOT,    ftt_itoa(bit(6,buf[0])), 0);
 	    set_stat(b,FTT_BLOC_LOC,ftt_itoa(pack(buf[4],buf[5],buf[6],buf[7])),0);
+	    set_stat(b,FTT_CUR_PART,ftt_itoa(buf[1]),0);
 	}
     }
     if (failures > 0) {

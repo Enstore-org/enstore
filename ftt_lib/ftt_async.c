@@ -37,10 +37,19 @@ ftt_fork(ftt_descriptor d) {
 
 	case 0:    /* child, fork again so no SIGCLD, zombies, etc. */
 
+#if 0
+	  /*
+          ** with this in here we can't keep a pipe open to
+          ** write paritition info to kids...
+          */
+
 	  /* close all files except fds[1] */
 	  for( i=3; i<NOFILE; i++ ) {
 	    if ( i != fds[1] ) close(i);
 	  }
+#else
+          close(fds[0]);
+#endif
 	  
 	    if(fork() == 0){
 		   /* grandchild, send our pid up the pipe */

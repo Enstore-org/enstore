@@ -120,16 +120,7 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
         int pd[2], save;
         FILE *topipe;
 
-        /*
-        ** Redirection here is kind of hairy, to avoid re-doing ftt_fork().
-        ** we redirect stdin *before* forking to be the read end of a new
-	** pipe, saving the original stdin in "save"...
-        */
         pipe(pd);
-        save = dup(0);
-	close(0);
-	dup2(pd[0],0);
-
         /*
         ** now we make a file handle out of the write end of the pipe
 	** that we will ftt_dump_partitions() onto, and fork...
@@ -143,9 +134,11 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 	case 0:  /* child */
 		/*
 		** since stdin is already redirected, we need do nothing...
-                ** ... except flush it...
                 */
-                fseek(stdin,0L,SEEK_CUR);
+                fseek(stdin,0L,SEEK_SET);
+		close(pd[1]);
+                close(0);
+		dup2(pd[0],0);
 		if (ftt_debug) {
 		    execlp("ftt_suid", "ftt_suid", "-x",  "-u", d->basename, 0);
 		} else {
@@ -157,15 +150,12 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 		/*
                 ** Here in the parent, we need to put stdin back...
                 */
-	        close(0);
-                dup2(save,0);
-                close(save);
 		/* close the read end of the pipe... */
                 close(pd[0]);
 		/* send the child the partition data */
 		ftt_dump_partitions(p,topipe);
-  		fclose(topipe);
 		res = ftt_wait(d);
+  		fclose(topipe);
 	}
 
     } else {
@@ -203,57 +193,29 @@ ftt_write_partitions(ftt_descriptor d,ftt_partbuf p) {
 
 int
 ftt_cur_part(ftt_descriptor d) {
-    int res;
-    static unsigned char buf[20];
-    static unsigned char cdb_read_position[]= {0x34, 0x00, 0x00, 0x00, 0x00,
-					    0x00, 0x00, 0x00, 0x00, 0x00};
-
-    res = ftt_do_scsi_command(d,"Read Position", cdb_read_position, 10, 
-				  buf, 20, 10, 0);
-	
-    if (res < 0) {
-        return -1;
-    } else {
-        return buf[1];
+    static ftt_stat_buf b;
+    
+    if (0 == b) {
+	b = ftt_alloc_stat();
     }
+    ftt_get_stats(d,b);
+    return atoi(ftt_extract_stats(b,FTT_CUR_PART));
 }
 
 int		
 ftt_skip_part(ftt_descriptor d,int nparts) {
     int cur;
-    int res = 0;
-    static unsigned char 
-        locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-
-    d->data_direction = FTT_DIR_READING;
-    d->current_block = 0;
-    d->current_file = 0;
-    d->current_valid = 1;
-    d->last_pos = -1;   /* we skipped backwards, so this can't be valid */
 
     cur = ftt_cur_part(d);
     cur += nparts;
-    locate_cmd[1] = 0x02;
-    locate_cmd[8] = cur;
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
-    res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
-
-    return res;
+    return ftt_locate_part(d, 0, cur);
 }
 
 int		
 ftt_locate_part(ftt_descriptor d, int blockno, int part) {
     int cur;
     int res = 0;
-    static unsigned char 
-        locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 
-    locate_cmd[1] = 0x02;
-    locate_cmd[3] = (blockno >> 24) & 0xff;
-    locate_cmd[4] = (blockno >> 16) & 0xff;
-    locate_cmd[5] = (blockno >> 8)  & 0xff; 
-    locate_cmd[6] = blockno & 0xff;
-    locate_cmd[8] = part;
     if ( blockno == 0 ) {
 	d->current_block = 0;
 	d->current_file = 0;
@@ -264,9 +226,49 @@ ftt_locate_part(ftt_descriptor d, int blockno, int part) {
     d->data_direction = FTT_DIR_READING;
     d->last_pos = -1;   /* we skipped backwards, so this can't be valid */
 
-    res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
-    res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+    if ((d->flags & FTT_FLAG_SUID_SCSI) && 0 != geteuid()) {
+        static char buf1[10],buf2[10];
 
+        sprintf(buf1,"%d",blockno);
+        sprintf(buf2,"%d",part);
+
+	ftt_close_dev(d);
+	switch(ftt_fork(d)){
+	case -1:
+		return -1;
+
+	case 0:  /* child */
+		fflush(stdout);	/* make async_pf stdout */
+		fflush(d->async_pf_parent);
+		close(1);
+		dup2(fileno(d->async_pf_parent),1);
+		if (ftt_debug) {
+		    execlp("ftt_suid", "ftt_suid", "-x",  "-L", buf1, buf2, d->basename, 0);
+		} else {
+		     execlp("ftt_suid", "ftt_suid", "-L", buf1, buf2, d->basename, 0);
+		}
+		break;
+
+	default: /* parent */
+		res = ftt_wait(d);
+	}
+
+    } else {
+
+	static unsigned char 
+	    locate_cmd[10] = {0x2b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+	locate_cmd[1] = 0x02;
+	locate_cmd[3] = (blockno >> 24) & 0xff;
+	locate_cmd[4] = (blockno >> 16) & 0xff;
+	locate_cmd[5] = (blockno >> 8)  & 0xff; 
+	locate_cmd[6] = blockno & 0xff;
+	locate_cmd[8] = part;
+
+	res = ftt_do_scsi_command(d,"Locate",locate_cmd,10,NULL,0,300,0);
+	res = ftt_describe_error(d,0,"a SCSI pass-through call", res,"Locate", 0);
+
+    }
     return res;
 }
 

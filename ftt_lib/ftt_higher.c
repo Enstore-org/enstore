@@ -321,7 +321,8 @@ char *ftt_stat_names[] = {
  /* FTT_CMP_WRITE	52 */ "FTT_CMP_WRITE",
  /* FTT_CMP_READ	53 */ "FTT_CMP_READ",
  /* FTT_ERROR_CODE	54 */ "FTT_ERROR_CODE",
- /* FTT_MAX_STAT	55 */ "FTT_MAX_STAT",
+ /* FTT_CUR_PART	55 */ "FTT_CUR_PART",
+ /* FTT_MAX_STAT	56 */ "FTT_MAX_STAT",
  0
 };
 

@@ -17,6 +17,8 @@ usage(void) {
    fprintf(stderr, "       ftt_suid -d arg basename      # set density\n");
    fprintf(stderr, "       ftt_suid -p basename          # get/dump parts\n");
    fprintf(stderr, "       ftt_suid -u basename          # undump/write parts\n");
+   fprintf(stderr, "       ftt_suid -l blck basename  	 # locate to blk");
+   fprintf(stderr, "       ftt_suid -L blck prt basename # locate w/partition");
    exit(-1);
 }
 
@@ -29,7 +31,7 @@ main(int argc, char **argv) {
 	char *pc;
 	char *basename;
 	char command;
-	int  arg;
+	int  arg, arg2;
 	int direction = FTT_DIR_READING;
 
 	if (argc <= 2 || argv[1][0] != '-') {
@@ -64,12 +66,22 @@ main(int argc, char **argv) {
 		case 'C':
 		case 'b': 
 		case 'd': 
+		case 'l': 
 			if (argc != 4) {
 				usage();
 			}
 			command = argv[1][1];
 			arg = atoi(argv[2]);
 			basename = argv[3];
+			break;
+		case 'L': 
+			if (argc != 5) {
+				usage();
+			}
+			command = argv[1][1];
+			arg = atoi(argv[2]);
+			arg2 = atoi(argv[3]);
+			basename = argv[4];
 			break;
 		default:
 			usage();
@@ -139,6 +151,12 @@ main(int argc, char **argv) {
 		ftt_undump_partitions(pb,stdin);
 		res = ftt_write_partitions(d,pb);
 		ftt_free_parts(pb);
+		break;
+        case 'l':
+		res = ftt_scsi_locate(d, arg);
+		break;
+        case 'L':
+		res = ftt_locate_part(d, arg, arg2);
 		break;
 	}
 	ftt_report(d);
