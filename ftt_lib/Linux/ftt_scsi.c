@@ -107,7 +107,7 @@ ftt_scsi_command(
 
           /* sg_header is the first SCSI_OFF bytes of buffer */
 #	define SCSI_OFF		sizeof(struct sg_header)
-	static char buffer[2048];
+	static char buffer[8192];
 	struct sg_header *sg_hd = (struct sg_header*) &buffer;
 	
 /* 	

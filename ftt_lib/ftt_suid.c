@@ -15,6 +15,8 @@ usage(void) {
    fprintf(stderr, "       ftt_suid -b arg basename      # set blocksize\n");
    fprintf(stderr, "       ftt_suid -C arg basename      # set compression\n");
    fprintf(stderr, "       ftt_suid -d arg basename      # set density\n");
+   fprintf(stderr, "       ftt_suid -p basename          # get/dump parts\n");
+   fprintf(stderr, "       ftt_suid -u basename          # undump/write parts\n");
    exit(-1);
 }
 
@@ -22,6 +24,7 @@ int
 main(int argc, char **argv) {
 	ftt_descriptor d;
 	ftt_stat_buf b;
+	ftt_partbuf pb;
 	int n, res;
 	char *pc;
 	char *basename;
@@ -50,6 +53,8 @@ main(int argc, char **argv) {
 		case 's': 
 		case 'i':
 		case 'v':
+	        case 'p':
+	        case 'u':
 			if (argc != 3) {
 				usage();
 			}
@@ -122,6 +127,18 @@ main(int argc, char **argv) {
 		break;
 	case 'v':
 		res = ftt_verify_blank(d);
+		break;
+        case 'p':
+		break;
+		pb = ftt_alloc_parts();
+		res = ftt_get_partitions(d,pb);
+		ftt_dump_partitions(pb,stdout);
+		ftt_free_parts(pb);
+        case 'u':
+		pb = ftt_alloc_parts();
+		ftt_undump_partitions(pb,stdin);
+		res = ftt_write_partitions(d,pb);
+		ftt_free_parts(pb);
 		break;
 	}
 	ftt_report(d);

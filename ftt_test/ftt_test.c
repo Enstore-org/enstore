@@ -70,7 +70,7 @@ int ftt_t_inquire(int, char **);  	int ftt_t_logsense(int, char**);
 int ftt_t_modesense(int, char **);  	int ftt_t_format_ait(int, char**);
 int ftt_t_set_part_size(int, char **); 	int ftt_t_get_partitions(int, char**);
 int ftt_t_set_nparts(int, char **); 
-int ftt_t_print_partitions(int, char **); int ftt_t_write_partitions(int, char**);
+int ftt_t_dump_partitions(int, char **); int ftt_t_write_partitions(int, char**);
 int ftt_t_cur_part(int, char**); 	int ftt_t_skip_part(int, char**);
 
 
@@ -150,7 +150,7 @@ ftt_t_cmd_table_t ftt_t_my_cmds[] = {
 	"ftt_set_part_size",	ftt_t_set_part_size,
 	"ftt_set_nparts",	ftt_t_set_nparts,
 	"ftt_get_partitions",	ftt_t_get_partitions,
-	"ftt_print_partitions",	ftt_t_print_partitions,
+	"ftt_dump_partitions",	ftt_t_dump_partitions,
 	"ftt_write_partitions", ftt_t_write_partitions,
 	"ftt_cur_part", 	ftt_t_cur_part,
 	"ftt_skip_part", 	ftt_t_skip_part,

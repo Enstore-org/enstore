@@ -88,16 +88,8 @@ return 0;
 
 static ftt_partbuf parttab;
 void
-ftt_t_print_partitions() {
-int i;
-printf("Partition table:\n");
-printf("================\n");
-printf("Cur: %d\n", ftt_extract_nparts(parttab));
-printf("Max: %d\n", ftt_extract_maxparts(parttab));
-for( i = 0; i <= parttab->n_parts; i++) {
-     printf("P%d: %d MB\n", i, ftt_extract_part_size(parttab,i));
-}
-return;
+ftt_t_dump_partitions() {
+   ftt_dump_partitions(parttab,stdout);
 }
 
 
