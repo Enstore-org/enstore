@@ -319,7 +319,7 @@ if __name__ == "__main__" :
     # get a logger
     logc = log_client.LoggerClient(csc, keys["logname"], 'logserver', 0)
     fc.set_logc(logc)
-    indlst=['external_lablel']
+    indlst=['external_label']
     dict = dBTable("file",logc,indlst)
     while 1:
         try:
