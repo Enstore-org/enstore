@@ -81,6 +81,32 @@ def status_html_file_name():
 def default_status_html_file():
     return "%s%s"%(default_dir, status_html_file_name())
 
+def read_schedule_file(html_dir=None):
+    if html_dir is None:
+        html_dir = enstore_functions.get_html_dir()
+    # check if the html_dir is accessible
+    sfile = None
+    if os.path.exists(html_dir):
+        sfile = ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
+        outage_d, offline_d, override_d = sfile.read()
+    else:
+        outage_d = {}
+        offline_d = {}
+	override_d = {}
+    return sfile, outage_d, offline_d, override_d
+
+def read_seen_down_file(html_dir=None):
+    if html_dir is None:
+        html_dir = enstore_functions.get_html_dir()
+    # check if the html_dir is accessible
+    sfile = None
+    if os.path.exists(html_dir):
+        sfile = SeenDownFile(html_dir, enstore_constants.SEENDOWNFILE)
+        seen_down_d = sfile.read()
+    else:
+        seen_down_d = {}
+    return sfile, seen_down_d
+
 class EnFile:
 
     def set_filename(self, file):

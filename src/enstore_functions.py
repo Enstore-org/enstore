@@ -11,7 +11,6 @@ import socket
 import configuration_server
 import configuration_client
 import enstore_constants
-import enstore_files
 import enstore_functions2
 import Trace
 import e_errors
@@ -72,32 +71,6 @@ def get_config_server_info():
 def get_www_host():
     default = get_config_server_info()['host']
     return get_from_config_file("inquisitor", "www_host", default)
-
-def read_schedule_file(html_dir=None):
-    if html_dir is None:
-        html_dir = get_html_dir()
-    # check if the html_dir is accessible
-    sfile = None
-    if os.path.exists(html_dir):
-        sfile = enstore_files.ScheduleFile(html_dir, enstore_constants.OUTAGEFILE)
-        outage_d, offline_d, override_d = sfile.read()
-    else:
-        outage_d = {}
-        offline_d = {}
-	override_d = {}
-    return sfile, outage_d, offline_d, override_d
-
-def read_seen_down_file(html_dir=None):
-    if html_dir is None:
-        html_dir = get_html_dir()
-    # check if the html_dir is accessible
-    sfile = None
-    if os.path.exists(html_dir):
-        sfile = enstore_files.SeenDownFile(html_dir, enstore_constants.SEENDOWNFILE)
-        seen_down_d = sfile.read()
-    else:
-        seen_down_d = {}
-    return sfile, seen_down_d
 
 # check if the status in the dictionary signals a time out
 def is_timedout(dict):

@@ -15,6 +15,7 @@ import generic_client
 import enstore_constants
 import enstore_functions
 import enstore_functions2
+import enstore_files
 import enstore_erc_functions
 import event_relay_client
 import event_relay_messages
@@ -483,8 +484,8 @@ def no_override(server, okeys):
 	return 1
 
 def do_real_work():
-    sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file()
-    dfile, seen_down_d = enstore_functions.read_seen_down_file()
+    sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file()
+    dfile, seen_down_d = enstore_files.read_seen_down_file()
 
     summary_d = {enstore_constants.TIME: enstore_functions2.format_time(time.time())}
 

@@ -250,7 +250,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def is_server_known_down(self, server):
         # check to see if the server is known to be down by enstore.
-        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
         if offline_d.has_key(server.name):
             # server is known to be down
             return 1
@@ -1230,7 +1230,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	if interval is None:
 	    interval = DEFAULT_OVERRIDE_INTERVAL
 	now = time.time()
-	sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
+	sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
 	elements = override_d.keys()
 	for element in elements:
 	    elist = override_d[element]
@@ -1374,7 +1374,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
 	bad_servers = []
 	server_l = string.split(ticket["servers"], ',')
-        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
 	if (sfile.opened != 0) or (sfile.exists() == 0):
 	    for key in server_l:
 		# map the entered name to the name in the outage dictionary
@@ -1464,8 +1464,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def show(self, ticket):
 	ticket["status"] = (e_errors.OK, None)
-        sfile, outage_d, offline_d, override_d = enstore_functions.read_schedule_file(self.html_dir)
-	dfile, seen_down_d = enstore_functions.read_seen_down_file(self.html_dir)
+        sfile, outage_d, offline_d, override_d = enstore_files.read_schedule_file(self.html_dir)
+	dfile, seen_down_d = enstore_files.read_seen_down_file(self.html_dir)
 	if sfile and ((sfile.opened != 0) or (sfile.exists() == 0)):
 	    ticket["outage"] = outage_d
 	    ticket["offline"] = offline_d
