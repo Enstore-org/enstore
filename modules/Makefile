@@ -70,7 +70,7 @@ Trace:	trace_1st Trace.so
 	@echo done with Trace # do not use default rule
 
 trace_1st:
-	make -f trace.mk trace.a
+	make -f trace.mk trace.a all # add all for now
 
 Trace.so: trace.a Trace.c
 	rm -f Trace.so	# must force relink as $(LIBPL)/Makefile does not
