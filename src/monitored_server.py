@@ -2,6 +2,7 @@ import time
 
 import enstore_constants
 import enstore_functions
+import Trace
 
 DEFAULT_ALIVE_INTERVAL = 30
 NO_HEARTBEAT = -1
@@ -85,7 +86,7 @@ class MonitoredServer:
 		Trace.trace(enstore_constants.INQSERVERTIMESDBG,
 		    "%s Past Interval: %s, Hung Interval: %s, ER Alive: %s"%(self.name, 
 									     past_interval,
-									     hung_interval,
+									     self.hung_interval,
 									     event_relay.is_alive()))
 		if event_relay.is_alive() and (past_interval > event_relay.heartbeat + self.alive_interval + \
 					       self.hung_interval):
