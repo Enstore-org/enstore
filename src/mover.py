@@ -1496,7 +1496,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                      (bytes_written, len(self.header_labels)), error_source=TAPE)
                 return
-            self.tape_driver.writefm()
+            try:
+                self.tape_driver.writefm()
+            except:
+                exc, detail, tb = sys.exc_info()
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                return
             self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
 
         #Initialize thresholded transfer notify messages.
@@ -3328,7 +3333,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Do another query volume, just to make sure its status has not changed
         self.vol_info.update(self.vcc.inquire_vol(volume_label))
 
-        
         if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
             self.asc.log_finish_mount(self.current_volume)
@@ -3346,16 +3350,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "mount: calling after function")
                 after_function()
         else: #Mount failure, do not attempt to recover
+            Trace.log(e_errors.ERROR, "mount %s: %s" % (volume_label, status))
             self.last_error = status
             self.asc.log_finish_mount_err(volume_label)
-            Trace.log(e_errors.ERROR, "mount %s: %s" % (volume_label, status))
 ##            "I know I'm swinging way to far to the right" - Jon
 ##            Trace.log(e_errors.ERROR, "mount %s: %s, dismounting" % (volume_label, status))
 ##            self.state = DISMOUNT_WAIT
 ##            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
 ##            self.dismount_volume(after_function=self.idle)
             broken = None
-                
+               
             if ((status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
                               e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
                               e_errors.MC_DRVNOTEMPTY)) or
