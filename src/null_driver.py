@@ -105,6 +105,9 @@ class NullDriver(driver.Driver):
         if self.verbose: print "writefm"
         self.loc = self.loc + 1
 
+    def eject(self):
+        return
+    
     def set_mode(self, density=None, compression=None, blocksize=None):
         pass
 
