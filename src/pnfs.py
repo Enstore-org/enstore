@@ -2063,7 +2063,7 @@ class File:
 			return
 		size = str(self.size)
 		if size[-1] == 'L':
-			size = size[:-2]
+			size = size[:-1]
 		fname = self.size_file()+'('+size+')'
 		f = open(fname, "w")
 		f.close()
