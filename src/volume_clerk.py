@@ -1673,17 +1673,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
     def __get_vol_list(self):
-        if self.dict.cached:
-            return self.dict.keys()
-        else:
-            vols = []
-            c = self.dict.newCursor()
-            k, v = c.first()
-            while k:
-                vols.append(k)
-                k, v = c.next()
-            c.close()
-            return vols
+        return self.dict.keys()
 
     # return a list of all the volumes
     def get_vol_list(self,ticket):
@@ -1915,7 +1905,7 @@ class VolumeClerk(VolumeClerkMethods):
             jouHome = dbHome
 
         Trace.log(e_errors.INFO,"opening volume database using DbTable")
-        self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'], auto_cache = 1)
+        self.dict = db.DbTable("volume", dbHome, jouHome, ['library', 'volume_family'])
         Trace.log(e_errors.INFO,"hurrah, volume database is open")
 
         self.sgdb = sg_db.SGDb(dbHome)
