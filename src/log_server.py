@@ -29,9 +29,7 @@
 # system imports
 import sys
 import os
-import string
 import time
-import traceback
 
 #enstore imports
 import configuration_client
@@ -39,7 +37,6 @@ import dispatching_worker
 import generic_server
 import generic_cs
 import interface
-import timeofday
 import e_errors
 import socket
 import Trace
@@ -199,7 +196,6 @@ class LoggerInterface(generic_server.GenericServerInterface):
 
 
 if __name__ == "__main__" :
-    import getopt
     import socket
     Trace.init("log server")
     Trace.trace(1,"log server called with args "+repr(sys.argv))
@@ -216,6 +212,6 @@ if __name__ == "__main__" :
             logserver.serve_forever()
         except:
 	    logserver.serve_forever_error("log server")
-            Trace.trace(0,format)
+            Trace.trace(0,"log_server main loop exception")
             continue
     Trace.trace(1,"Log Server finished (impossible)")
