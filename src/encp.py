@@ -314,6 +314,11 @@ def is_bfid(bfid):
             return 1
         elif len(bfid) >= 14 and bfid.isdigit():
             return 1
+        elif len(bfid) >= 14 and bfid[:-1].isdigit() and bfid[-1] == "L":
+            #Some older files (year 2000) have a long() "L" appended to
+            # the bfid.  This seems to be consistant between the file
+            # database and layers one & four.  So, return true in these cases.
+            return 1
             
     return 0
 
@@ -1104,7 +1109,7 @@ def __get_fcc(parameter = None):
         
     else:
         raise EncpError(None,
-                        "Invalid bfid (%s) specified." % bfid,
+                        "Invalid bfid (%s) specified." % parameter,
                         e_errors.WRONGPARAMETER, {})
 
         #Set default value.
@@ -1239,7 +1244,7 @@ def __get_vcc(parameter = None):
 
     else:
         raise EncpError(None,
-                        "Invalid volume (%s) specified." % volume,
+                        "Invalid volume (%s) specified." % parameter,
                         e_errors.WRONGPARAMETER, {})
      
         #Set default value.
