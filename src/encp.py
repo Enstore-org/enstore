@@ -1267,7 +1267,7 @@ def open_data_socket(mover_addr, interface_ip):
     data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     flags = fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_GETFL)
     fcntl.fcntl(data_path_socket.fileno(), FCNTL.F_SETFL,
-                flags | FCNTL.O_NONBLOCK)
+                flags | os.O_NONBLOCK)
 
     try:
         data_path_socket.bind((interface_ip, 0))
@@ -1482,8 +1482,16 @@ def submit_one_request(ticket):
     ##start of resubmit block
     Trace.trace(17,"submiting: %s"%(ticket,))
 
-    if ticket['retry']:
+    #On a retry or resubmit, print the number of the retry.
+    if ticket.get('retry', None):
         Trace.message(TO_GO_LEVEL, "RETRY COUNT:" + str(ticket['retry']))
+    if ticket.get('resubmits', None):
+        Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(ticket['resubmits']))
+
+    #Put in the log file a message connecting filenames to unique_ids.
+    msg = "Sending request to LM: uninque_id: %s inputfile: %s outputfile: %s"\
+          % (ticket['unique_id'], ticket['infile'], ticket['outfile'])
+    Trace.log(e_errors.INFO, msg)
 
     csc = get_csc(ticket)
     Trace.message(CONFIG_LEVEL, format_class_for_print(csc, "csc"))
@@ -1500,7 +1508,7 @@ def submit_one_request(ticket):
     if responce_ticket['status'][0] != e_errors.OK :
         Trace.message(ERROR_LEVEL, "Submition to LM failed: " + \
                       str(responce_ticket['status']))
-        Trace.log(e_errors.NET_ERROR,
+        Trace.log(e_errors.ERROR,
                   "submit_one_request: Ticket submit failed for %s"
                   " - retrying" % ticket['infile'])
 
