@@ -1,5 +1,5 @@
 source /usr/local/etc/setups.sh
-setup -t enstore
+setup  enstore
 dasadmin listd2 | grep rip
 dasadmin list rip1
 
