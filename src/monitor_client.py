@@ -114,10 +114,8 @@ class MonitorServerClient(generic_client.GenericClient):
             sock_write_list = []
 
         t0 = time.time() #Grab the current time.
-        print "c t0", t0
         t1 = t0 #Reset counter to current time (aka zero).
 
-        print "c t1:", time.time() - t0
         while bytes_transfered < bytes_to_transfer:
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
@@ -174,8 +172,7 @@ class MonitorServerClient(generic_client.GenericClient):
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
                 raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-        print "c t3:", time.time()
-        print "c t4:", time.time() - t0
+
         return time.time() - t0
 
 
@@ -208,7 +205,6 @@ class MonitorServerClient(generic_client.GenericClient):
             #Get the socket error condition...
             rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         else:
-            print "no r or w"
             raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
 
         #...if it is zero then success, otherwise it failed.
@@ -267,7 +263,7 @@ class MonitorServerClient(generic_client.GenericClient):
         try:
             mon_serv_callback_addr = self._open_cntl_socket(mon_serv_ip)
             data_sock = self._open_data_socket(mon_serv_callback_addr)
-            print "c ta:", time.time()
+
             if not data_sock:
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
@@ -278,7 +274,6 @@ class MonitorServerClient(generic_client.GenericClient):
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
         try:
-            print "c tb:", time.time()
             if ticket['transfer'] == SEND_TO_SERVER:
                 self._test_encp_transfer(data_sock, ticket['block_size'],
                                          ticket['block_count'], "send")

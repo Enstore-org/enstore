@@ -123,12 +123,9 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             sock_read_list = [data_sock]
             sock_write_list = []
 
-        time.sleep(1)
         t0 = time.time() #Grab the current time.
-        print "t0", t0
         t1 = t0 #Reset counter to current time (aka zero).
         
-        print "t1:", time.time() - t0
         while bytes_transfered < bytes_to_transfer:
             #Determine how much time is needed to pass before timming out.
             # This amount to time spent inside select should be the value
@@ -184,8 +181,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
                 raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
-        print "t3:", time.time()
-        print "t4:", time.time() - t0        
+
         return time.time() - t0
 
 
@@ -195,38 +191,43 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
     # same node that the library manager runs on.  For this test, they are
     # the same machine.
     def _open_cntl_socket(self, client_addr, mover_addr):
-        #Create the return ticket to tell the client what addr to 
-        return_ticket = {'mover' :{'callback_addr': mover_addr} }
-        
-        #Create the TCP socket, remeber the current settings (to reset them
-        # back later) and set the new file control flags.
+        #Create the socket and put it into non-blocking mode.
         sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         flags = fcntl.fcntl(sock.fileno(), FCNTL.F_GETFL)
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL,flags|FCNTL.O_NONBLOCK)
 
-        for retry in xrange(self.timeout):
-            try:
-                sock.connect(client_addr)
-                break #Success, so get out of the loop.
-            except socket.error, detail:
-                #We have seen that on IRIX, when the connection succeds, we
-                # get an ISCONN error.
-                if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
-                    break
-                elif detail[0] == errno.EINPROGRESS:
-                    pass #Keep trying.
-                #A real or fatal error has occured.  Handle accordingly.
-                else:
-                    raise CLIENT_CONNECTION_ERROR, detail[1]
+        try:
+            sock.connect(client_addr) #Start the TCP handshake.
+        except socket.error, detail:
+            #We have seen that on IRIX, when the connection succeds, we
+            # get an ISCONN error.
+            if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
+                pass
+            #The TCP handshake is in progress.
+            elif detail[0] == errno.EINPROGRESS:
+                pass
+            #A real or fatal error has occured.  Handle accordingly.
+            else:
+                raise CLIENT_CONNECTION_ERROR, detail[1]
 
-                time.sleep(1) #Wait a sec, so each pass is a second of timeout.
-                
-        else: #If we did not break out of the for loop, flag the error.
-            raise SERVER_CONNECTION_ERROR, os.srterror(errno.ETIMEDOUT)
+        #Check if the socket is open for reading and/or writing.
+        r, w, ex = select.select([sock], [sock], [], self.timeout)
 
-        #Success on the connection!  Restore flag values.
+        if r or w:
+            #Get the socket error condition...
+            rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        else:
+            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+
+        #...if it is zero then success, otherwise it failed.
+        if rtn != 0:
+            raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+        
+        #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
 
+        #Create the return ticket to tell the client what addr to callback to.
+        return_ticket = {'mover' :{'callback_addr': mover_addr} }
         callback.write_tcp_obj(sock, return_ticket)
         sock.close()
 
@@ -289,16 +290,15 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         try:
             self._open_cntl_socket(client_addr, test_mover_addr)
             data_sock = self._open_data_socket(test_mover_addr, listen_sock)
-
+            
             if not data_sock:
                 raise CLIENT_CONNECTION_ERROR, "no connection established"
             
-        except CLIENT_CONNECTION_ERROR, detail:
-            print CLIENT_CONNECTION_ERROR, detail
+        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+            exc, msg, tb = sys.exc_info()
+            print exc, msg
             return
-        except SERVER_CONNECTION_ERROR, detail:
-            print SERVER_CONNECTION_ERROR, detail
-            return
+
         if not data_sock:
             return
 
@@ -315,12 +315,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
                 reply['elapsed'] = self._test_encp_transfer(
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
-        except CLIENT_CONNECTION_ERROR, detail:
-            print CLIENT_CONNECTION_ERROR, detail
+        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+            exc, msg, tb = sys.exc_info()
+            print exc, msg
             return
-        except SERVER_CONNECTION_ERROR, detail:
-            print SERVER_CONNECTION_ERROR, detail
-            return
+
         if not data_sock:
             return
             
