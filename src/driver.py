@@ -337,9 +337,17 @@ class  FTTDriver(GenericDriver) :
             if len(label)!=80:
                 typ,val="INVALID","INVALID"
             else:
-                typ=label[:4]
-                val=string.split(label[4:])[0]
-        except:
+                typ, val=label[:4],label[4:]
+                if ' ' in val:
+                    val=string.split(val)[0]
+############                if typ=="NEW1": #XXXXX  for testing only!!!
+############                    typ,val=None,None
+
+        except: #XXX should be the specific I/O error
+            ###This is very dangerous, but I don't know what to do
+            ##Catching an I/O error here means that the tape is
+            ## new, so we should label it.  But it also could be due to a
+            ## drive error!  I don't know how to distinguish these cases.
             typ,val = None,None
         if debug_paranoia:  print "check_header: return",typ,val
         FTT.set_blocksize(blocksize)
