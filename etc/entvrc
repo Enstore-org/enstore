@@ -1,0 +1,322 @@
+#server_name              geometry(WxH+X+Y)    background
+
+#Halloween colors.
+#cdfensrv2.fnal.gov        400x800+745+0        #ffcc66    animate
+#d0ensrv2.fnal.gov         445x800+300+0        #ffffff    animate
+#stkensrv2.fnal.gov        300x800+0+0          #ffcc66    animate
+
+#Summer fun colors (Beach).
+#cdfensrv2.fnal.gov        400x800+745+0        #ffffdd    animate
+#d0ensrv2.fnal.gov         445x800+300+0        #ddddff    animate
+#stkensrv2.fnal.gov        300x800+0+0          #bbbbff    animate
+
+#Independance Day colors.
+#cdfensrv2.fnal.gov        400x800+745+0        #ffdddd    animate
+#d0ensrv2.fnal.gov         445x800+300+0        #ffffff    animate
+#stkensrv2.fnal.gov        300x800+0+0          #ddddff    animate
+
+#Spring colors.
+#cdfensrv2.fnal.gov        400x800+745+0        #ffdddd    animate
+#d0ensrv2.fnal.gov         445x800+300+0        #ffffdd    animate
+#stkensrv2.fnal.gov        300x800+0+0          #ddddff    animate
+
+#St. Patrick's day colors.
+#cdfensrv2.fnal.gov        366x800+780+0        #ddfddd    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ddffdd    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ddffdd    animate
+
+#Winter colors.
+#cdfensrv2.fnal.gov        354x800+792+0        #fdfdfd    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ffffff    animate
+#stkensrv2.fnal.gov        371x800+0+0          #fefefe    animate
+
+#Holiday colors.
+#cdfensrv2.fnal.gov        354x800+792+0        #99ff99    animate
+#d0ensrv2.fnal.gov         413x800+375+0        #ffffff    animate
+#stkensrv2.fnal.gov        371x800+0+0          #ff9999    animate
+
+#Fall colors.
+cdfensrv2.fnal.gov        354x800+792+0        #ffff00    animate
+d0ensrv2.fnal.gov         413x800+375+0        #ff9900    animate
+stkensrv2.fnal.gov        371x800+0+0          #dd0000    animate
+
+# Red, Green Blue display.
+#cdfensrv2.fnal.gov        354x800+792+0        #00dd00
+#d0ensrv2.fnal.gov         413x800+375+-1       #dd0000
+#stkensrv2.fnal.gov        371x800+0+0          #0000dd
+
+water.fnal.gov            652x641+0+0          #dd00dd
+
+#STK drives
+
+#9940 drives
+library_color 9940       #ffff00
+library_color cdf        #ffff00
+library_color mezsilo    #ffff00
+#9940B drives
+library_color CDF-9940B  #ffffff
+library_color CMS-9940B  #ffffff
+library_color D0-9940B   #ffffff
+#9840 drives
+library_color eagle      #00dd00
+
+#lto drives
+library_color samlto     #ffffff
+library_color testlto2   #dd0000
+
+#mamoth drives
+library_color samam      #0000dd
+library_color samm2      #0000dd
+
+#null
+library_color null       #000000
+library_color null1      #000000
+library_color samnull    #000000
+
+#choose_ran_file and backups
+client_color stkensrv3     #444444
+client_color cdfensrv3     #444444
+client_color d0ensrv3      #444444
+
+#cdf 9940A to 9940B migration
+client_color stkendm1a     #ff9900
+client_color stkendm2a     #ff9900
+client_color stkendm3a     #ff9900
+client_color stkendm4a     #ff9900
+
+#miniboone online data taking
+client_color hal9004       #dd0000
+
+#cdf online data taking
+client_color fcdfsgi1-eg1  #dd0000
+client_color fcdfsgi1-eg2  #dd0000
+client_color fcdfsgi1-eg3  #dd0000
+client_color fcdfsgi1-eg4  #dd0000
+
+#where N is 08-12, 17-24, 35-40, more later
+client_color fcdfdata008   #0000dd
+client_color fcdfdata009   #0000dd
+client_color fcdfdata010   #0000dd
+client_color fcdfdata011   #0000dd
+#client_color fcdfdata012   #0000dd
+
+client_color fcdfdata017   #0000dd
+client_color fcdfdata018   #0000dd
+client_color fcdfdata019   #0000dd
+client_color fcdfdata020   #0000dd
+client_color fcdfdata021   #0000dd
+client_color fcdfdata022   #0000dd
+client_color fcdfdata023   #0000dd
+client_color fcdfdata024   #0000dd
+
+client_color fcdfdata035   #0000dd
+client_color fcdfdata036   #0000dd
+client_color fcdfdata037   #0000dd
+client_color fcdfdata038   #0000dd
+client_color fcdfdata039   #0000dd
+client_color fcdfdata040   #0000dd
+
+client_color fcdfdata052   #0000dd
+client_color fcdfdata053   #0000dd
+client_color fcdfdata054   #0000dd
+client_color fcdfdata055   #0000dd
+client_color fcdfdata056   #0000dd
+client_color fcdfdata057   #0000dd
+client_color fcdfdata058   #0000dd
+client_color fcdfdata059   #0000dd
+client_color fcdfdata060   #0000dd
+client_color fcdfdata061   #0000dd
+client_color fcdfdata062   #0000dd
+client_color fcdfdata063   #0000dd
+client_color fcdfdata064   #0000dd
+client_color fcdfdata065   #0000dd
+client_color fcdfdata066   #0000dd
+client_color fcdfdata067   #0000dd
+client_color fcdfdata068   #0000dd
+client_color fcdfdata069   #0000dd
+client_color fcdfdata070   #0000dd
+client_color fcdfdata071   #0000dd
+client_color fcdfdata072   #0000dd
+client_color fcdfdata073   #0000dd
+client_color fcdfdata074   #0000dd
+client_color fcdfdata075   #0000dd
+client_color fcdfdata076   #0000dd
+client_color fcdfdata077   #0000dd
+client_color fcdfdata078   #0000dd
+client_color fcdfdata079   #0000dd
+client_color fcdfdata080   #0000dd
+client_color fcdfdata081   #0000dd
+client_color fcdfdata082   #0000dd
+client_color fcdfdata083   #0000dd
+
+#farms - there are a lot of them
+client_color fncdf1        #ff00ff
+client_color fncdf2        #ff00ff
+client_color fncdf3        #ff00ff
+client_color fncdf4        #ff00ff
+client_color fncdf5        #ff00ff
+client_color fncdf6        #ff00ff
+client_color fncdf7        #ff00ff
+client_color fncdf8        #ff00ff
+client_color fncdf9        #ff00ff
+client_color fncdf10       #ff00ff
+client_color fncdf11       #ff00ff
+client_color fncdf12       #ff00ff
+client_color fncdf13       #ff00ff
+client_color fncdf14       #ff00ff
+client_color fncdf15       #ff00ff
+client_color fncdf16       #ff00ff
+client_color fncdf17       #ff00ff
+client_color fncdf18       #ff00ff
+client_color fncdf19       #ff00ff
+client_color fncdf20       #ff00ff
+client_color fncdf21       #ff00ff
+client_color fncdf22       #ff00ff
+client_color fncdf23       #ff00ff
+client_color fncdf24       #ff00ff
+client_color fncdf25       #ff00ff
+client_color fncdf26       #ff00ff
+client_color fncdf27       #ff00ff
+client_color fncdf28       #ff00ff
+client_color fncdf29       #ff00ff
+client_color fncdf30       #ff00ff
+client_color fncdf31       #ff00ff
+client_color fncdf32       #ff00ff
+client_color fncdf33       #ff00ff
+client_color fncdf34       #ff00ff
+client_color fncdf35       #ff00ff
+client_color fncdf36       #ff00ff
+client_color fncdf37       #ff00ff
+client_color fncdf38       #ff00ff
+client_color fncdf39       #ff00ff
+client_color fncdf40       #ff00ff
+client_color fncdf41       #ff00ff
+client_color fncdf42       #ff00ff
+client_color fncdf43       #ff00ff
+client_color fncdf44       #ff00ff
+client_color fncdf45       #ff00ff
+client_color fncdf46       #ff00ff
+client_color fncdf47       #ff00ff
+client_color fncdf48       #ff00ff
+client_color fncdf50       #ff00ff
+client_color fncdf51       #ff00ff
+client_color fncdf52       #ff00ff
+client_color fncdf53       #ff00ff
+client_color fncdf54       #ff00ff
+client_color fncdf55       #ff00ff
+client_color fncdf56       #ff00ff
+client_color fncdf57       #ff00ff
+client_color fncdf58       #ff00ff
+client_color fncdf59       #ff00ff
+client_color fncdf60       #ff00ff
+client_color fncdf61       #ff00ff
+client_color fncdf62       #ff00ff
+client_color fncdf63       #ff00ff
+client_color fncdf64       #ff00ff
+client_color fncdf65       #ff00ff
+client_color fncdf66       #ff00ff
+client_color fncdf67       #ff00ff
+client_color fncdf68       #ff00ff
+client_color fncdf69       #ff00ff
+client_color fncdf70       #ff00ff
+client_color fncdf71       #ff00ff
+client_color fncdf72       #ff00ff
+client_color fncdf73       #ff00ff
+client_color fncdf74       #ff00ff
+client_color fncdf75       #ff00ff
+client_color fncdf76       #ff00ff
+client_color fncdf77       #ff00ff
+client_color fncdf78       #ff00ff
+client_color fncdf79       #ff00ff
+client_color fncdf80       #ff00ff
+client_color fncdf81       #ff00ff
+client_color fncdf82       #ff00ff
+client_color fncdf83       #ff00ff
+client_color fncdf84       #ff00ff
+client_color fncdf85       #ff00ff
+client_color fncdf86       #ff00ff
+client_color fncdf87       #ff00ff
+client_color fncdf88       #ff00ff
+client_color fncdf89       #ff00ff
+client_color fncdf90       #ff00ff
+client_color fncdf91       #ff00ff
+client_color fncdf92       #ff00ff
+client_color fncdf93       #ff00ff
+client_color fncdf94       #ff00ff
+client_color fncdf95       #ff00ff
+client_color fncdf96       #ff00ff
+client_color fncdf97       #ff00ff
+client_color fncdf98       #ff00ff
+client_color fncdf99       #ff00ff
+client_color fncdf100      #ff00ff
+
+client_color fncdf101       #ff00ff
+client_color fncdf102       #ff00ff
+client_color fncdf103       #ff00ff
+client_color fncdf104       #ff00ff
+client_color fncdf105       #ff00ff
+client_color fncdf106       #ff00ff
+client_color fncdf107       #ff00ff
+client_color fncdf108       #ff00ff
+client_color fncdf109       #ff00ff
+client_color fncdf110       #ff00ff
+client_color fncdf111       #ff00ff
+client_color fncdf112       #ff00ff
+client_color fncdf113       #ff00ff
+client_color fncdf114       #ff00ff
+client_color fncdf115       #ff00ff
+client_color fncdf116       #ff00ff
+client_color fncdf117       #ff00ff
+client_color fncdf118       #ff00ff
+client_color fncdf119       #ff00ff
+client_color fncdf120       #ff00ff
+client_color fncdf121       #ff00ff
+client_color fncdf122       #ff00ff
+client_color fncdf123       #ff00ff
+client_color fncdf124       #ff00ff
+client_color fncdf125       #ff00ff
+client_color fncdf126       #ff00ff
+client_color fncdf127       #ff00ff
+client_color fncdf128       #ff00ff
+client_color fncdf129       #ff00ff
+client_color fncdf130       #ff00ff
+client_color fncdf131       #ff00ff
+client_color fncdf132       #ff00ff
+client_color fncdf133       #ff00ff
+client_color fncdf134       #ff00ff
+client_color fncdf135       #ff00ff
+client_color fncdf136       #ff00ff
+client_color fncdf137       #ff00ff
+client_color fncdf138       #ff00ff
+client_color fncdf139       #ff00ff
+client_color fncdf140       #ff00ff
+client_color fncdf141       #ff00ff
+client_color fncdf142       #ff00ff
+client_color fncdf143       #ff00ff
+client_color fncdf144       #ff00ff
+client_color fncdf145       #ff00ff
+client_color fncdf146       #ff00ff
+client_color fncdf147       #ff00ff
+client_color fncdf148       #ff00ff
+client_color fncdf150       #ff00ff
+client_color fncdf151       #ff00ff
+client_color fncdf152       #ff00ff
+client_color fncdf153       #ff00ff
+client_color fncdf154       #ff00ff
+client_color fncdf155       #ff00ff
+client_color fncdf156       #ff00ff
+client_color fncdf157       #ff00ff
+client_color fncdf158       #ff00ff
+client_color fncdf159       #ff00ff
+client_color fncdf160       #ff00ff
+client_color fncdf161       #ff00ff
+client_color fncdf162       #ff00ff
+client_color fncdf163       #ff00ff
+client_color fncdf164       #ff00ff
+client_color fncdf165       #ff00ff
+client_color fncdf166       #ff00ff
+client_color fncdf167       #ff00ff
+client_color fncdf168       #ff00ff
+client_color fncdf169       #ff00ff
+client_color fncdf170       #ff00ff
+client_color fncdf171       #ff00ff
