@@ -11,7 +11,7 @@ george@FNAL.GOV
 huangch@FNAL.GOV
 ivm@FNAL.GOV
 jonest@FNAL.GOV
-ifelse(HOSTNAME, cdfensrv1, `kennedy@FNAL.GOV', `dnl')
+kennedy@FNAL.GOV
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
@@ -161,3 +161,4 @@ host/cdfenmvr20a.fnal.gov@FNAL.GOV
 host/cdfenmvr21a.fnal.gov@FNAL.GOV
 host/cdfenmvr22a.fnal.gov@FNAL.GOV
 host/cdfenmvr23a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, cmspnfs1, `enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV', `dnl')
