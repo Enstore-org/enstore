@@ -84,7 +84,7 @@ right_file() { if ! $CMP $1 $2 2>/dev/null; then
                   fi
                else
                   if [ $QUIET -ne 1 ]; then
-                    logit  "Matching version of $1"
+                    logit  "Matching version of $1, ok"
                   fi
                fi
              }
@@ -111,6 +111,11 @@ if [ "`$XNTPDC -p|$EGREP '^\*|^~'|$WC|$AWK '{print $1}'`" != "1" ]; then
     if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "NO TIME SYNC $x"
     fi
+else
+  if [ $QUIET -ne 1 ]; then
+    logit  "TIME SYNCD, ok"
+  fi
+
 fi
 
 if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
@@ -118,17 +123,26 @@ if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
     if [ $ALARM -eq 1 ]; then
       enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
     fi
+else
+  if [ $QUIET -ne 1 ]; then
+    logit  "TWO PROCESSORS FOUND, ok"
+  fi
 fi
 
 dflines=`$DF -P`
 $ECHO "$dflines" | while read a b c d e rest; do
   if [ `$ECHO $e| $EGREP -c %` -eq 1 ]; then
     cap=`$ECHO $e | $SED -e 's/%//'`
+    mess="$a $b $c $d $e $rest"
     if [ $cap -ge 90 ]; then
-      msg="DISK FULL: $a $b $c $d $e $rest"
+      msg="DISK FULL: $mess"
       logit "$msg"
       if [ $ALARM -eq 1 ]; then
         enstore alarm --raise --severity "A" --root-error "$msg"
+      fi
+    else
+      if [ $QUIET -ne 1 ]; then
+        logit  "DISK $a at $cap%, ok"
       fi
     fi
   fi
