@@ -6,7 +6,7 @@ tickets=/home/enstore/FARenstore-opens-forISAgroup
 
 if [ ! -r $tickets ]; then exit 0;fi
 
-python $ENSTORE_DIR/bin/helpDeskTicket.py
+python $ENSTORE_DIR/bin/helpDeskTicket.py $tickets
 rc=$?
 if [ $rc != 0 ]; then echo "trouble $rc"; exit $rc
 rm -f $tickets
