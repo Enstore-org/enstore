@@ -530,6 +530,22 @@ def do_work(intf):
            intf.should_stop(library_manager):
             check_server(csc, library_manager)
 
+    # db_checkpoint and db_deadlock should be stopped if and only if
+    # both file_clerk and volume_clerk are gone.
+    # However, the complication is: the clerks are terminated by
+    # themselves, after receiving a quit request from clients. That is,
+    # there is a delay between sending the quit request and the server
+    # actually finishes itself. Therefore, simply looking at the pid
+    # would not tell the whole story.
+    #
+    # The heuristic used here is as follows:
+    # [1] if intf.should_stop(server) is true, the server is considered
+    #     gone.
+    # [2] if intf.should_stop(server) is false, look for pid to
+    #     determine if it is there.
+    # [3] if both file_clerk and volume_clerk are gone, stop those two
+    #     database deamons
+
     #Stop the servers.
     for server in [ enstore_constants.LOG_SERVER,
                     enstore_constants.ACCOUNTING_SERVER,
@@ -543,9 +559,13 @@ def do_work(intf):
             check_server(csc, server)
 
     #Stop the Berkley DB dameons.
-    if intf.should_stop("db_checkpoint"):
+    if (intf.should_stop(enstore_constants.FILE_CLERK) and \
+        intf.should_stop(enstore_constants.VOLUME_CLERK)) or \
+       (intf.should_stop(enstore_constants.FILE_CLERK) and \
+        not is_there(enstore_constants.VOLUME_CLERK)) or \
+       (intf.should_stop(enstore_constants.VOLUME_CLERK) and \
+        not is_there(enstore_constants.FILE_CLERK)):
         check_db(csc, "db_checkpoint")
-    if intf.should_stop("db_deadlock"):
         check_db(csc, "db_deadlock")
 
     #Stop the event relay.
@@ -554,6 +574,14 @@ def do_work(intf):
     #Stop the configuration server.
     if intf.should_stop(enstore_constants.CONFIGURATION_SERVER):
         check_server(csc, enstore_constants.CONFIGURATION_SERVER)
+
+def is_there(name):
+    rtn = os.popen("ps -elf | grep %s | grep -v grep" % (name,)).readlines()
+    if rtn:
+        return 1
+    else:
+        return 0
+
 
 if __name__ == '__main__':
 
