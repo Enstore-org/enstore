@@ -1432,10 +1432,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
-                Trace.alarm(e_errors.ERROR, "read_tape CRC error")
                 Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
                           (self.buffer.complete_crc, self.file_info['complete_crc']))
-                self.transfer_failed(e_errors.CRC_ERROR, None)
+                # this is to fix file db
+                if self.file_info['complete_crc'] == None:
+                    sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
+                    Trace.log(e_errors.WARNING, "found complete CRC set to None in file DB for %s. Changing cookie to %s and CRC to %s" %
+                              (self.file_info['bfid'],sanity_cookie, self.buffer.complete_crc))
+                    self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
+                else:
+                    Trace.alarm(e_errors.ERROR, "read_tape CRC error")
+                    self.transfer_failed(e_errors.CRC_ERROR, None)
                 return
 
         Trace.notify("transfer %s %s %s media" %
