@@ -289,7 +289,20 @@ class XY:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+def split_geometry(geometry):
+    if not geometry:
+        return (None, None, None, None)
     
+    window_width = int(re.search("^[0-9]+", geometry).group(0))
+    window_height = re.search("[x][0-9]+", geometry).group(0)
+    window_height = int(window_height.replace("x", " "))
+    x_position = re.search("[+][-]{0,1}[0-9]+[+]", geometry).group(0)
+    x_position = int(x_position.replace("+", ""))
+    y_position = re.search("[+][-]{0,1}[0-9]+$", geometry).group(0)
+    y_position = int(y_position.replace("+", ""))
+
+    return window_width, window_height, x_position, y_position
     
 #########################################################################
 # Most of the functions will be handled by the mover.
@@ -929,7 +942,7 @@ class Mover:
         denominator = float(self.t1 - self.t0)
         try:
             #rate    = (self.b1-self.b0)/(self.t1-self.t0)
-            rate = float(numerator) / float(denominator)
+            rate = float(numerator) / denominator
         except ZeroDivisionError:
             rate = 0.0
             
@@ -959,7 +972,9 @@ class Mover:
         #total number of columns 
         num_cols = (N / 20) + 1
         #total number of rows in the largest column
-        num_rows = int(round(float(N) / float(num_cols)))
+        num_cols_f = float(num_cols)
+        rows_per_column_f = float(N) / num_cols_f
+        num_rows = int(round(rows_per_column_f))
         #this movers column and row
         column = (k / num_rows)
         row = (k % num_rows)
@@ -1519,7 +1534,6 @@ class Display(Tkinter.Canvas):
         self.bind('<Button-2>', self.print_canvas)
 
         #Clear the window for drawing to the screen.
-        #self.winfo_toplevel().deiconify()
         master.deiconify()
         self.update()
 
@@ -1664,6 +1678,29 @@ class Display(Tkinter.Canvas):
     def visibility (self, event):
         #The current framed geometry.
         geometry = self.winfo_toplevel().geometry()
+
+        #Split the original geometry (unframed) and the current geometry.
+        orig_x, orig_y = split_geometry(self.unframed_geometry)[2:]
+        window_width, window_height, x_position, y_position = \
+                      split_geometry(geometry)
+
+        #Calculate the difference in upper left location.
+        x_diff = x_position - orig_x
+        y_diff = y_position - orig_y
+
+        #If the size is greater than the screen, shink the size by the
+        # two boarders' width.
+        if orig_x + x_diff * 2 + window_width > self.winfo_screenwidth():
+            window_width = self.winfo_screenwidth() - x_diff * 2
+        if orig_y + y_diff * 2 + x_diff * 2 + window_height > \
+           self.winfo_screenheight():
+            window_height = self.winfo_screenheight() - y_diff * 2 - x_diff * 2
+
+        #Reformulate the size and location of the window.
+        geometry = "%sx%s+%s+%s" % (window_width, window_height,
+                                    x_position, y_position)
+        #Set the new geometry.
+        self.winfo_toplevel().geometry(geometry)
 
         ###The following records the initial framed geometry of the window.
         if not hasattr(self, "framed_geometry"):

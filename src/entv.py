@@ -224,7 +224,7 @@ def get_entvrc(intf):
                 try:
                     geometry = words[1]
                 except IndexError:
-                    geometry = "700x1600+0+0"
+                    geometry = "1200x1600+0+0"
                 try:
                     background = words[2]
                 except IndexError:
@@ -244,7 +244,7 @@ def get_entvrc(intf):
             else:
                 raise IndexError("Unknown")
     except (IOError, IndexError):
-        geometry = "700x1600+0+0"
+        geometry = "1200x1600+0+0"
         background = DEFAULT_BG_COLOR
         animate = 1
 
@@ -348,11 +348,11 @@ def set_entvrc(display, intf):
                     background = DEFAULT_BG_COLOR
                 try:
                     if display.animate:
-                        animate = "animate"
+                        animate = str("animate")
                     else:
-                        animate = "still"
+                        animate = str("still")
                 except AttributeError:
-                    animate = "animate"
+                    animate = str("animate")
                 #Write the new geometry to the .entvrc file.
                 tmp_file.write("%-25s %-20s %-10s %-7s\n" %
                                (csc_server_name, display.geometry, background,
@@ -373,6 +373,7 @@ def set_entvrc(display, intf):
         os.unlink(get_entvrc_filename())
         os.link(tmp_filename, get_entvrc_filename())
         os.unlink(tmp_filename)
+        entv_file.close()
                   
     except (IOError, IndexError, OSError), msg:
         Trace.trace(1, str(msg))
@@ -439,7 +440,7 @@ def get_mover_list(intf, fullnames=None):
                 if mover_name not in movers:
                     movers = movers + [mover_name,]
         except (ValueError, TypeError, IndexError, KeyError):
-            exc, msg = sys.exc_info()[:2]
+            msg = sys.exc_info()[1]
             Trace.trace(1, "No movers found: %s" % str(msg))
 
     movers.sort()
@@ -478,7 +479,7 @@ def request_mover_status(display, intf):
         return
 
     csc = intf.csc
-    config = get_config(intf)
+    #config = get_config(intf)
     movers = get_mover_list(intf, 1)
 
     for mover in movers:
@@ -529,7 +530,7 @@ def handle_messages(display, intf):
             try:
                 command = string.join(commands_file.readline().split()[5:])
                 if not command:
-                    raise "EOF"
+                    break  #Is this correct to break here?
             except (OSError, IOError, TypeError, ValueError,
                     KeyError, IndexError):
                 commands_file.seek(0, 0) #Position at beginning of file.
@@ -542,9 +543,8 @@ def handle_messages(display, intf):
             #test whether there is a command ready to read, timeout in
             # 1 second.
             try:
-                readable, junk, junk = select.select([erc.sock], [], [], 1)
-            except select.error:
-                exc, msg = sys.exc_info()[:2]
+                readable, unused, unused = select.select([erc.sock], [], [], 1)
+            except select.error, msg:
                 if msg.args[0] == errno.EINTR:
                     erc.unsubscribe()
                     erc.sock.close()
@@ -565,7 +565,7 @@ def handle_messages(display, intf):
             msg = enstore_erc_functions.read_erc(erc)
             #Take the message from (either from file or event relay).
             if msg and not getattr(msg, "status", None):
-                command="%s %s" % (msg.type, msg.extra_info)
+                command = "%s %s" % (msg.type, msg.extra_info)
             ##If read_erc is valid it is a EventRelayMessage instance. If
             # it gets here it is a dictionary with a status field error.
             elif getattr(msg, "status", None):
@@ -600,7 +600,7 @@ def handle_messages(display, intf):
 def set_geometry(tk, entvrc_info):
 
     #Don't draw the window until all geometry issues have been worked out.
-    tk.withdraw()
+    #tk.withdraw()
 
     geometry = entvrc_info.get('geometry', None)
     window_width = entvrc_info.get('window_width', None)
@@ -636,14 +636,14 @@ def set_geometry(tk, entvrc_info):
         x_position = 0
         y_position = 0
 
-    #Recompile the geometry string.
+    #Formulate the size and location of the window.
     geometry = "%sx%s+%s+%s" % (window_width, window_height,
                                 x_position, y_position)
-
+    #Set the geometry.
     tk.geometry(geometry)
-    tk.update()
-    tk.deiconify()
-    tk.update()
+
+    #tk.update()
+
 
 #########################################################################
 #  Interface class
@@ -716,7 +716,7 @@ def main(intf):
     entvrc_dict['title'] = system_name #For simplicity put this here.
     
     #Get the main window and set it size.
-    master = Tkinter.Tk()
+    master = Tkinter.Tk(screenName=":0.0")
     set_geometry(master, entvrc_dict)
     
     continue_working = 1
