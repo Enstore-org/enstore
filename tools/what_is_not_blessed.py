@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import pprint
 import string
 
@@ -8,7 +9,7 @@ import string
 def search_directory(directory):
 	print "DIRECTORY", directory
 	os.chdir(directory)
-
+	
 	dirs_list = []
 	
 	for file in os.listdir("."):  #directory):
@@ -116,7 +117,10 @@ def search_directory(directory):
 
 
 if __name__ == '__main__':
-	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "src"))
-	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "modules"))
-	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "etc"))
-	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "ups"))
+	if len(sys.argv) > 1:
+	    search_directory(sys.argv[1])
+	else:
+	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "src"))
+	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "modules"))
+	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "etc"))
+	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "ups"))
