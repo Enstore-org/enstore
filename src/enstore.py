@@ -44,6 +44,9 @@ CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDb)
 #CMD1 = "%s%s%s"%(dbs.CMDa, "startup", dbs.CMDc)
 
 DEFAULT_AML2_NODE = "rip10"
+ERROR = "ERROR"
+HELP = "HELP"
+HELP_OPTS = ["--help", "-h", "--hel", "--he"]
 
 server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 alarm_client.do_work, option.ADMIN],
@@ -97,36 +100,48 @@ def get_argv3(default=" "):
     else:
         return default
 
-local_scripts = {"enstore-start":[("enstore-start", sys.argv[2:])],
-                 "start":[("enstore-start", sys.argv[2:])],
-                 "enstore-stop":[("enstore-stop", sys.argv[2:])],
-                 "stop":[("enstore-stop", sys.argv[2:])],
-                 "restart":[("enstore-stop", sys.argv[2:]),
+START_HELP = "start   [--just server --ping --asynch --nocheck]"
+STOP_HELP = "stop    [--just server --xterm server]"
+
+local_scripts = {"enstore-start":[START_HELP, ("enstore-start", sys.argv[2:])],
+                 "start":[START_HELP, ("enstore-start", sys.argv[2:])],
+                 "enstore-stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
+                 "stop":[STOP_HELP, ("enstore-stop", sys.argv[2:])],
+                 "restart":["restart [--just server --xterm server]",
+			    ("enstore-stop", sys.argv[2:]),
                             ("enstore-start --nocheck", sys.argv[2:])],
-                 "ping":[("enstore-ping", sys.argv[2:])],
-                 "qping":[("quick-ping", sys.argv[2:])],
-                 "backup":[("python $ENSTORE_DIR/src/backup.py",sys.argv[2:])],
-                 "aml2":[('enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"',
+                 "ping":["ping    [timeout-seconds]",
+			 ("enstore-ping", sys.argv[2:])],
+                 "qping":["qping   [timeout-seconds]",
+			  ("quick-ping", sys.argv[2:])],
+                 "backup":["backup         (backup file and volume databases)", ("python $ENSTORE_DIR/src/backup.py",sys.argv[2:])],
+                 "aml2":["aml2               (lists current mount state & queue list on aml2 robot)",
+			 ('enrsh %s "sh -c \'. /usr/local/etc/setups.sh;setup enstore;dasadmin listd2 | grep rip;dasadmin list rip1\'"',
                           [],
                           "self.node"),
                          ],
-                 "ps":[("EPS", sys.argv[2:])],
+                 "ps":["ps                 (list enstore related processes)",
+		       ("EPS", sys.argv[2:])],
                  }
 
 # the sys.argv contains the whole thing
 VERIFY = "verify"
 PROMPT = "prompt"
-remote_scripts = {"Estart":[("enstore", 
+remote_scripts = {"Estart":["Estart  [farmlet]  (Enstore start on all/specified farmlet nodes)",
+			    ("enstore", 
 			     ("%s enstore-start " % (CMD1,), 
 			      get_argv3("enstore"), dbs.CMD2), VERIFY)],
-                  "Estop":[("enstore-down",
+                  "Estop":["Estop   [farmlet]  (Enstore stop on all/specified farmlet nodes)",
+			   ("enstore-down",
                             ("%s enstore-stop " % (CMD1,), 
 			     get_argv3("enstore-down"), dbs.CMD2),
                             PROMPT, VERIFY), ],
-                  "EPS":[("enstore",
+                  "EPS":["EPS  [farmlet]   (Enstore-associated ps on all/specified farmlet nodes)",
+			 ("enstore",
                           ("source /usr/local/etc/setups.sh;setup enstore;",
 			  "EPS"))],
-                  "ls":[("enstore",
+                  "ls":["ls  [farmlet]   (ls of cwd on all/specified farmlet nodes)",
+			("enstore",
                          ("ls %s" % (os.getcwd(),),))],
                   }
 
@@ -210,10 +225,10 @@ class EnstoreInterface:
 	    scripts = []
 	return self.get_valid_servers() + scripts
 
-    def print_valid_servers(self):
+    def print_valid_servers(self, txt=ERROR):
 	self.error = 1
         servers = self.get_all_servers()
-        print "\nERROR: Allowed servers/commands are : "
+        print "\n%s: Allowed servers/commands are : "%(txt,)
         for server in servers:
             print "\t%s"%(server,)
 
@@ -230,10 +245,21 @@ class EnstoreInterface:
             # we did not match anything or matched too many things
 	    self.print_valid_servers()
 
+    def got_help(self):
+	if sys.argv[1] in HELP_OPTS:
+	    self.print_valid_servers(HELP)
+	    return 1
+	else:
+	    return None
+
     def __init__(self, user_mode):
         self.user_mode = user_mode
 	self.error = None
-        self.match_server()
+	if not self.got_help():
+	    self.match_server()
+	else:
+	    # not really an error but we only got a help.
+	    self.error = 2
 
     # return a list of the allowed options given the command key (server)
     def get_options(self, skey):
@@ -283,7 +309,6 @@ class EnstoreInterface:
         else:
             return intf.get_usage_line()
             
-            
     def print_help(self):
         cmd = "enstore"
         if not self.user_mode:
@@ -312,6 +337,7 @@ class EnstoreInterface:
                 print self.get_usage_line(server, intf),
             print " "
 
+            
 class Enstore:
 
     timeout = 2
@@ -423,6 +449,15 @@ class Enstore:
         return answer
            
 
+    def got_help(self, help):
+	for arg in sys.argv:
+	    if arg in HELP_OPTS:
+		# the user asked for help, give it to him and do nothing else
+		print "\nenstore %s \n"%(help,)
+		return 1
+	else:
+	    return None
+
     # this is where all the work gets done
     def do_work(self):
         arg1 = self.matched_server
@@ -439,17 +474,20 @@ class Enstore:
         if not self.get_config_from_server() and \
            not self.get_config_from_file():
             self.node = DEFAULT_AML2_NODE
-
+	    
+	rtn = 0
         if arg1 in local_scripts.keys():
-            l_script = local_scripts[arg1]
-            #l_script contains a list of tuples.
-            for command in l_script:
-                #each tuple in l_script is two items long.
-                try:
-                    executable = command[0] % command[2:]
-                except IndexError, TypeError:
-                    executable = command[0]
-                rtn = call_function(executable, command[1])
+	    l_script = local_scripts[arg1]
+	    if not self.got_help(l_script[0]):
+		#l_script contains a list of tuples.  the first element is the help,
+		# skip it.
+		for command in l_script[1:]:
+		    #each tuple in l_script is two items long.
+		    try:
+			executable = command[0] % command[2:]
+		    except IndexError, TypeError:
+			executable = command[0]
+		    rtn = call_function(executable, command[1])
 
         #handles new interface style
         elif arg1 in server_functions.keys():
@@ -458,24 +496,22 @@ class Enstore:
             rtn = server_functions[arg1][1](intf)
 
         #execute remote scripts
-        elif arg1 in remote_scripts.keys():
-            r_script = remote_scripts[arg1]
-            #r_script contains a list of tuples.
-            for command in r_script:
-                if self.verify_node(get_farmlet(command[0]), command):
-                    #if command contains the string "prompt" then it
-                    # prompts the user for confirmation under some cases.
-                    # If no prompt is necessary returns "y".
-                    answer = self.prompt(command, arg1)
-                    if answer[0] == "y" or answer[0] == "Y":
-			executable = ""
-			for subcmd in command[1]:
-			    executable = "%s%s"%(executable, subcmd)
-                        rtn = do_rgang_command(command[0], executable)
-                    else:
-                        rtn = 0
-                else:
-                    rtn = 0
+        elif arg1 in remote_scripts.keys():	
+	    r_script = remote_scripts[arg1]
+	    if not self.got_help(r_script[0]):
+		#r_script contains a list of tuples.  the first element is the help,
+		# skip it.
+		for command in r_script[1:]:
+		    if self.verify_node(get_farmlet(command[0]), command):
+			#if command contains the string "prompt" then it
+			# prompts the user for confirmation under some cases.
+			# If no prompt is necessary returns "y".
+			answer = self.prompt(command, arg1)
+			if answer[0] == "y" or answer[0] == "Y":
+			    executable = ""
+			    for subcmd in command[1]:
+				executable = "%s%s"%(executable, subcmd)
+			    rtn = do_rgang_command(command[0], executable)
 
         # arg1 == "help" or arg1 == "--help" or arg1 == '':
         else:
