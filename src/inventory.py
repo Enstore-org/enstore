@@ -408,7 +408,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
+    vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
           ("Library", "Storage Group", "Req. Alloc.",
            "Auth. Alloc.", "Quota", "Allocated",
            "Blank Vols", "Written Vols", "Deleted Vols", "Space Used",
@@ -448,13 +448,18 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     for quotas in (top, middle, bottom):
         quotas.sort()
         for keys in quotas:
-            formated_tuple = volume_quotas[keys][0:2] + \
+            if volume_quotas[keys][1] == "none":
+                formated_storage_group = "none: emergency"
+            else:
+                formated_storage_group = volume_quotas[keys][1]
+            formated_tuple = (volume_quotas[keys][0],) + \
+                             (formated_storage_group,) + \
                              authorized_tapes.get(volume_quotas[keys][:2],
                                                   ("N/A", "N/A")) + \
                              volume_quotas[keys][2:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
-            vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+            vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                           % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
@@ -503,7 +508,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
         formated_tuple = library_dict[key][0:9] + \
                          format_storage_size(library_dict[key][9]) + \
                          library_dict[key][10:]
-        vq_file.write("%-10s %-13s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
+        vq_file.write("%-10s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %7.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
     vq_file.write("\n") #insert newline between sections
 
