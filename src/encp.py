@@ -7338,6 +7338,10 @@ class EncpInterface(option.Interface):
                 else:
                     print_error(e_errors.USERERROR, msg % "unix")
                 delete_at_exit.quit()
+            elif self.args[i] in self.input:
+                msg = "Duplicate filenames is not allowed: %s"
+                print_error(e_errors.USERERROR, msg % self.args[i])
+                delete_at_exit.quit()
             else:
                 self.input.append(self.args[i]) #Do this way for a copy.
 
@@ -7352,7 +7356,8 @@ class EncpInterface(option.Interface):
             self.outtype = "unixfile"
 
 ##############################################################################
-
+##############################################################################
+            
 def log_encp_start(tinfo, intf):        
 
     #If verbosity is turned on get the user name(s).
