@@ -1010,9 +1010,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     eod = self.vol_info['eod_cookie']
                     if remaining <= 0.1 * capacity:
                         Trace.log(e_errors.INFO,
-                                  "write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
+                                  "heuristic: write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
                                   (self.current_volume, remaining, capacity))
                         self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    Trace.log(e_errors.ERROR, "%s %s" % (exc, msg))
             else:
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
@@ -1031,6 +1034,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             self.maybe_clean()
             self.idle()
+
+        # XXX hack - force another update in 2 seconds.  reset_timer should provide a way to do this!
+        self.last_interval = self.last_interval - (self.update_interval-2)
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -1048,6 +1054,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
         self.update(reset_timer=1)
+
         if self.state == DRAINING:
             self.dismount_volume()
             self.state = OFFLINE
@@ -1057,6 +1064,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = IDLE
         if self.state == HAVE_BOUND:
             self.update(reset_timer=1)
+
+        # XXX hack - force another update in 2 seconds.  reset_timer should provide a way to do this!
+        self.last_interval = self.last_interval - (self.update_interval-2)
             
     def maybe_clean(self):
         needs_cleaning = self.tape_driver.get_cleaning_bit()
@@ -1235,7 +1245,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "volume_status": self.volume_status,
             "operation": mode_name(self.mode),
             "error_source": error_source,
-            "unique_id", self.unique_id,
+            "unique_id": self.unique_id,
             "work": work,
             }
         return ticket
