@@ -4,10 +4,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <malloc.h>
 #include <alloca.h>
 #include <sys/time.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #ifdef THREADED
 #include <pthread.h>
 #endif
@@ -15,6 +18,11 @@
 /***************************************************************************
  constants
 **************************************************************************/
+
+/* xfs extention */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 /* return/break - read error */
 #define READ_ERROR (-1)
@@ -240,6 +248,12 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
   struct return_values *write_val = NULL; /*... error set to NULL.*/
   struct return_values *rtn_val = malloc(sizeof(struct return_values));
 
+  struct stat file_info;        /* Information about the file to write to. */
+
+#ifdef F_DIOINFO
+  struct dioattr memalign_val;  /* Information about xfs memory alignment. */
+#endif
+
   pthread_t read_tid, write_tid;
   /*int exit_status;*/
   int i;
@@ -267,14 +281,70 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
      between multi-file transfers. */
   read_done = write_done = 0;
 
+  /* Determine if the file descriptor is a real file. */
+  if(fstat(wr_fd, &file_info))
+  {
+    fprintf(stderr, "fstat: %s\n", strerror(errno));
+  }
+  else
+  {
+    if(S_ISREG(file_info.st_mode))
+    {
+#ifdef O_DIRECT
+      /* If xfs extension supported use direct i/o to avoid kernel
+	 buffering. */
+      fcntl(wr_fd, F_SETFL, O_SYNC | O_DIRECT);
+#elif
+      fcntl(wr_fd, F_SETFL, O_SYNC);
+#endif
+#ifdef F_DIOINFO
+      /* If xfs extension supported. */
+      fcntl(wr_fd, F_DIOINFO, &memalign_val);
+#endif
+    }
+  }
+
+  /* Determine if the file descriptor is a real file. */
+  if(fstat(rd_fd, &file_info))
+  {
+    fprintf(stderr, "fstat: %s\n", strerror(errno));
+  }
+  else
+  {
+    if(S_ISREG(file_info.st_mode))
+    {
+#ifdef O_DIRECT
+      /* If xfs extension supported use direct i/o to avoid kernel
+	 buffering. */
+      fcntl(rd_fd, F_SETFL, O_SYNC | O_DIRECT);
+#elif
+      fcntl(rd_fd, F_SETFL, O_SYNC);
+#endif
+#ifdef F_DIOINFO
+      fcntl(rd_fd, F_DIOINFO, &memalign_val);
+#endif
+    }
+  }
+
+#if defined( O_DIRECT ) && defined( F_DIOINFO )
+  /* If xfs direct i/o is available make sure the memory is aligned. */
+  buffer = memalign(memalign_val.d_mem, ARRAY_SIZE * blk_size);
+  memset(buffer, 0, ARRAY_SIZE * blk_size);
+#elif defined( O_DIRECT )
+  /* If xfs direct i/o is available make sure the memory is aligned.  If
+   this code is compiled use best guess alignment size. */
+  buffer = memalign(4096, ARRAY_SIZE * blk_size);
+  memset(buffer, 0, ARRAY_SIZE * blk_size);
+#else
   /*allocate (and initalize) memory for the global pointers*/
   buffer = calloc(ARRAY_SIZE, blk_size);
+#endif
   stored = calloc(ARRAY_SIZE, sizeof(int));
   buffer_lock = calloc(ARRAY_SIZE, sizeof(pthread_mutex_t));
 
   /* initalize the conditional variable signaled when a thread has finished. */
   pthread_cond_init(&done_cond, NULL);
-  /* initalize the conditional variable to signal peer thread to continue. */
+  /* initalize the conditional vaasdfriable to signal peer thread to continue. */
   pthread_cond_init(&next_cond, NULL);
   /* initalize the mutex for signaling when a thread has finished. */
   pthread_mutex_init(&done_mutex, NULL);
@@ -1025,7 +1095,6 @@ do_read_write(int rd_fd, int wr_fd, long long bytes, int blk_size,
     if(do_threshold && 
        (((last_fsync - bytes) > fsync_threshold) || (bytes == 0)))
     {
-      printf("adsf %lld\n", (last_fsync - bytes));
       last_fsync = bytes;
       
       if(fsync(wr_fd))
