@@ -110,6 +110,7 @@ class EnstoreServer:
 	self.tries = TRIES
 	self.status = enstore_constants.UP
         self.mail_file = None
+	self.in_bad_state = 0
 	# if self.status is not UP, then enstore is the following
 	self.en_status = en_status
 	if cs:
