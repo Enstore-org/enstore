@@ -10,7 +10,7 @@ Enstore Data Storage System
 <li><a href="#pserver">1.1.1 <em>Pnfs</em> Tests</a>
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
-<li><a href="#pcmd">1.1.4 Enstore related <em>pnfs</em> commands</a>
+<li><a href="#pcmd">1.1.4 pcmd: Enstore related <em>pnfs</em> commands</a>
 <li><a href="#volmaps">1.1.5 <em>Pnfs</em> Volume Maps</a>
 <li><a href="#encp">1.2 ENCP</a>
 <li><a href="#encp_throttle">1.2.1 Throttling in <em>encp</em></a>
@@ -78,8 +78,8 @@ Enstore has four major kinds of software components:
         <li>Multiple, distributed Movers
         <li>Media Changer
         <li>Log Server
-	<li>Inquisitor
-	<li>Alarm Server
+        <li>Inquisitor
+        <li>Alarm Server
         </ul>
 <li><em>administration tools</em>
 </ul>
@@ -119,13 +119,13 @@ information about <em>pnfs</em> can be found on the DESY
 <a href=http://mufasa.desy.de/pnfs/Welcome.html>http://mufasa.desy.de/pnfs/Welcome.html</a>
 and
 <a href=http://watphrakeo.desy.de/pnfs/>http://watphrakeo.desy.de/pnfs/</a>
-web pages. The <em>pnfs</em> serves can not be installed without the permission of DESY.
+web pages. The <em>pnfs</em> servers can not be installed without the permission of DESY.
 <p>
 The DESY <em>pnfs</em> package  implements an <em>nfs-v2</em> daemon and mount daemon.
 These daemons do not actually serve a file system, but, instead make a
 collection of database entries looks like a file system, and provide
 control information for the system. Each file that is created in <em>pnfs</em> has 8
-layers that Enstore uses to store metadata information about the file transfers. 
+layers that Enstore uses to store metadata information about the file transfers.
 Normal UNIX permissions and administered export points
 are used to prevent unauthorized access to the name space.
 <p>
@@ -183,9 +183,9 @@ Enstore uses <em>pnfs</em> for three different kinds of access and information:
 1.1.2 <em>Pnfs</em> Tests
 </h3>
 <em>Pnfs</em> was tested in the prototype with very good results. The code was run
-on a 200 MHz Pentium Pro Linux machine with SCSI disks.  The <em>pnfs</em> code had 
-not been run extensively on Linux machines before and there a few minor 
-glitches were found during initial running. Support from DESY was outstanding 
+on a 200 MHz Pentium Pro Linux machine with SCSI disks.  The <em>pnfs</em> code had
+not been run extensively on Linux machines before and there a few minor
+glitches were found during initial running. Support from DESY was outstanding
 and all problems were solved quickly.
 
 As a test of <em>pnfs'</em> capabilities, the February 1998 set of 250K HPSS filenames
@@ -196,7 +196,9 @@ forth.] Name lookup was done on each database simultaneously from 3
 machines (IRIX, Linux, and AIT) for several days.  <em>Pnfs</em> performed
 flawlessly and was able to provide names at a rate of 3-15 names/S. The
 database can be further optimized, but this performance is already adequate
-for Enstore.  These tests will have to be repeated under the final hardware configuration,
+for Enstore.
+<p>
+*** These tests will have to be repeated *** under the final hardware configuration,
 but there is not indication of any problems.
 
 <h3><a name="pserver">
@@ -217,7 +219,7 @@ to distribute a binary + necessary scripts version of <em>pnfs</em>
 distribution mechanism. For example, the current (Jan 99) version in UPD is
 <pre>$ upd list pnfs
 
-DATABASE=/ftp/upsdb 
+DATABASE=/ftp/upsdb
         Product=pnfs    Version=v3_1_3a-f4      Flavor=Linux+2
                 Qualifiers=""   Chain=current
 
@@ -262,7 +264,7 @@ rip6:/rip6disk1         /pnfs/rip6              nfs     noauto,user,intr,bg,hard
 </pre>
 <p>
 As you can see, rip6 is nfs mounting 3 disks from rip8 and mounting the
-pnfs disks it is exporting as well as the local disks.  
+pnfs disks it is exporting as well as the local disks.
 There are also numerous Enstore processes running on rip6, for example:
 <pre>
 USER       PID %CPU %MEM  SIZE   RSS TTY STAT START   TIME COMMAND
@@ -276,107 +278,212 @@ bakken    3515  0.0  0.3  1140   492  ?  S    00:18   0:00 db_checkpoint -h
 bakken    3520  0.0  0.3  1612   420  ?  S    00:18   0:00 db_deadlock -h
 bakken    3523  0.0  5.3 30508  6808  ?  S    00:18   0:01 python /home/bakken/enstore/src/admin_clerk.py
 bakken    3673  0.0  8.1 36760 10432  ?  S    00:20   0:34 python /home/bakken/enstore/src/inquisitor.py
-bakken   12178  0.0  0.8  1552  1048  p2 S    19:38   0:00 /bin/login -h willow fnal.gov -p bakken 
+bakken   12178  0.0  0.8  1552  1048  p2 S    19:38   0:00 /bin/login -h willow fnal.gov -p bakken
 </pre>
 <p>
 The main point, often confused, is that the <em>pnfs</em> server node
 remains a general purpose and usable machine.
 <p>
-Permission to mount the <em>pnfs</em> namespace is granted using a mechanism similar to
-the normal Unix nfs permission scheme.  There are DESY commands that make this entire process
-very simple.
+Permission to mount the <em>pnfs</em> namespace is granted using a
+mechanism similar to the normal Unix nfs export permission scheme.  There
+are DESY commands (the pmount command) that make this entire process very
+simple.
 <p>
 <em>Pnfs</em> can be started automatically on a boot-up. This allows other nodes to
 easily mount the namespaces after reboots.
-
+<p>
 Finally, it should be noted that a Run II <em>pnfs</em> server will need is
 a SCSI raid level5 disk system for its databases.
-
-***Live Backups of database*** - to be discussed during March trip to
+<p>
+*** Live Backups of database and recovery procedures *** - to be discussed during March trip to
 DESY. This has not been a priority yet.
-
 
 <h3><a name="pclient">
 1.1.3 <em>Pnfs</em> Client Installation
 </h3>
 
-***ADD SOME TEXT HERE ABOUT MOUNTS and AUTOMOUNTS***
+No <em>pnfs</em> client software is needed -- the <em>pnfs</em> file system
+(really namespace) just has to be mounted!  Enstore has been written such
+that it recognizes all <em>pnfs</em> namespace if it has a local mounting
+point beginning with /pnfs/... . Enstore uses /pnfs as convenient key.
+
+Typical steps for mounting a new <em>pnfs</em> namespace (in this example
+the <em>pnfs</em> namespace is called "grau-ait" and it is served from the
+rip6 node) are:
+
+<ol>
+  <li> As root, mkdir -p /pnfs/grau/ait
+  <li> As root, append to /etc/fstab:
+       <pre>rip6:/grau-ait /pnfs/grau/ait nfs user,intr,bg,hard,rw,noac 0 0</pre>
+       The "intr,bg,hard,rw,noac" mount options should not be changed as they are needed for proper operation.
+  <li> mount /pnfs/grau/ait This can be done as a normal user if the "user" mount option
+       is specified in the /etc/fstab file.
+</ol>
+Of course, the actual steps depend on the <em>pnfs</em> installation.
+<p>
+*** Automounting will be investigated in early Feb 99 *** It is expected to work without
+problems. This is deemed especially important since it will streamline the production
+farm nodes disk mount administration.
+<p>
+
+Finally, it should be noted that mounting <em>the </em>pnfs namespace does
+not restrict the node in any other way - it can import and mount any other
+file systems and run any tasks as it normally would.
 
 <h3><a name="pcmd">
-1.1.4 Enstore related <em>pnfs</em> commands
+1.1.4 pcmd: Enstore related <em>pnfs</em> commands
 </h3>
 
-***MODIFY AND ADD EXAMPLES:
-<pre>
-pcmd is a tool to control, manipulate and query pnfs files.
-
+All non-I/O unix commands that operate on normal filesystems can also
+(typically) be used on the <em>pnfs</em> namespace. DESY has provided
+several examples on their web pages and tools in their <em>pnfs</em>
+package that allow users to view and control the special features of
+<em>pnfs</em>.  Enstore has tailored these tools into a single script,
+called pcmd, that allows users to control, manipulate and query pnfs files
+that enstore creates. The pcmd tool is distributed along with the encp
+client. It is almost entirely written in shell, and therefore, it is
+standalone and doesn't require any other products, including python.
+<p>
 Commonly used commands are:
+<ul>
+   <li>pcmd help        <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the online help
 
-   pcmd info   file         lists "important" info about the file
-       note:  "eval `pcmd info file`" will set shell variables for the user
+   <li>pcmd info file   <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists "important" info about the file *** Needs work to be fully functional ***
+                        <br> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;note: "eval `pcmd info file`" will set shell variables for the user
+	<pre>
+	$ pcmd info M1
+	bfid="91184924000000L";
+	volume="flop309";
+	location_cookie="68608";
+	size="1252";
+	file_family="jon4";
+	filename="/pnfs/enstore/airedale/jon4/M1";
+	orig_name="/pnfs/enstore/airedale/jon4/M1";
+	map_file="/pnfs/enstore/volmap/jon4/flop309/000000068608";
+	pnfsid_file="00020000000000000050AE88";
+	pnfsid_map="00020000000000000050AEA0";
+	</pre>
 
-   pcmd tags   directory    lists the tags in the directory
+   <li>pcmd tags directory      <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the tags in the directory
+        <pre>
+        $ pcmd tags .
+        .(tag)(library)  =  ait
+        .(tag)(file_family)  =  jon-ait-3
+        .(tag)(file_family_width)  =  2
+        </pre>
+   <li>pcmd library [value]           <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
+	<pre>
+	$ pcmd library
+	ait
+	$ pcmd library xxx
+	$ pcmd library
+	xxx
+	</pre>
+   <li>pcmd file_family [value]       <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
+	<pre>
+	$ pcmd file_family
+	jon-ait-3
+	$ pcmd file_family xxx
+	$ pcmd file_family
+	xxx
+	</pre>
+   <li>pcmd file_family_width [value] <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets/lists library tag to value (must have correct cwd)
+	<pre>
+	$ pcmd file_family_width    
+	2
+	$ pcmd file_family_width 10
+	$ pcmd file_family_width
+	10
+	</pre>
+   <li>pcmd files volmap-tape   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists all the files on specified tape in volmap *** Needs work to be fully functional ***
+   <li>pcmd volume volumename   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the volmap-tape for the specifed volumename *** Needs work to be fully functional ***
 
-   pcmd library [value]           sets library tag to value (must have correct cwd)
-   pcmd file_family [value]       sets library tag to value (must have correct cwd)
-   pcmd file_family_width [value] sets library tag to value (must have correct cwd)
+   <li>pcmd bfid   file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the bit file id of the file
+	<pre>
+	$ pcmd bfid testfile
+	91551931700000L
+	</pre>
+   <li>pcmd parked file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the last parked location of the file
+	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;parked feature is not implemented
+   <li>pcmd debug  file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the debug info about the file transfer
+   <li>pcmd xref   file         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the cross-reference info about the file
+	<pre>
+	$ pcmd xref testfile
+	CA2902 (tape label)
+	'0000_000000000_0000132' (positioning info)
+	104857600 (file size)
+	jon-ait-1 (file family)
+	/pnfs/grau/ait/jon1/100MB.trand__Jan05005204rip8.fnal.gov16199 (original name)
+	/pnfs/grau/ait/volmap/jon-ait-1/CA2902/0000_000000000_0000132 (volume map name)
+	0001000000000000000928D0 (pnfs id of file)
+	0001000000000000000928E0 (pnfs id of volume map file)
+	</pre>
+   <li>pcmd ls   file [layer]   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;does an ls on the named layer in the file
+	<pre>
+	$ pcmd ls testfile 3
+	4 -rw-rw-r--   1 bakken   g023         3692 Jan  5 00:55 ./.(use)(3)(testfile)
+	</pre>
 
-   pcmd files volmap-tape   lists all the files on specified tape in volmap
-   pcmd volume volumename   lists the volmap-tape for the specifed volumename
+   <li>pcmd {cat|more|less} file layer     <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the layer of the file
+    	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;it is easier to use pcmd bfid|parked|debug|xref commands
 
-   pcmd bfid   file         lists the bit file id of the file
-   pcmd parked file         lists the last parked location of the file
-   pcmd debug  file         lists the debug info about the file transfer
-   pcmd xref   file         lists the cross-reference info about the file
+   <li>pcmd {tagcat|tagmore|tagless} tag  directory <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists the tag in the directory
+    	                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;it is easier to use pcmd library|file_family|file_family_width  commands
 
-   pcmd ls   file [layer]   does an ls on the named layer in the file
-
-   pcmd {cat|more|less}          file layer     lists the layer of the file
-   pcmd {tagcat|tagmore|tagless} tag  directory lists the tag in the directory
-
-   pcmd enstore_state          lists whether enstore is still accepting transfers
-   pcmd pnfs_state mount-point lists whether pnfs mountpoint is up
+   <li>pcmd enstore_state          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether enstore is still accepting transfers
+	<pre>
+	$ pcmd enstore_state
+	Enstore enabled
+	</pre>
+	
+   <li>pcmd pnfs_state mount-point <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lists whether pnfs mountpoint is up *** Not fully functional yet ***
+	<pre>
+	$ pcmd pnfs_state /pnfs/grau/ait
+	Pnfs up
+	</pre>
+</ul>
 
 Don't use these unless you know what you are doing:
+<ul>
+   <li>pcmd echo text file layer   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echos text to named layer of the file
 
-   pcmd echo text file layer   echos text to named layer of the file
+   <li>pcmd rm file layer          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;deletes (clears) named layer of the file
 
-   pcmd rm file layer          deletes (clears) named layer of the file
+   <li>pcmd cp unixfile file layer <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copies unix file to named layer of file
 
-   pcmd cp unixfile file layer copies unix file to named layer of file
+   <li>pcmd size file size         <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets the size of the file
 
-   pcmd size file size         sets the size of the file
+   <li> pcmd tagecho text tagname   <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;echos text to the named tag
 
-   pcmd tagecho text tagname   echos text to the named tag
+   <li>pcmd tagrm tag              <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;removes the tag (tricky, see DESY documents)
 
-   pcmd tagrm tag              removes the tag
-
-   pcmd io file                sets io mode (can't clear it easily)
+   <li>pcmd io file                <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sets io mode (can't clear it easily)
+</ul>
 
 Don't use these unless you can interpret the results:
-
-   pcmd id        file
-   pcmd showid    id
-   pcmd const     file
-   pcmd nameof    id
-   pcmd path      id
-   pcmd parent    id
-   pcmd counters  file
-   pcmd counterN  dbnum (must have cwd in pnfs)
-   pcmd cursor    file
-   pcmd position  file
-   pcmd database  file
-   pcmd databaseN dbnum (must have cwd in pnfs)
-</pre>
-***END MODIFY***
+<ul>
+   <li>pcmd id        file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the pnfs id
+   <li>pcmd showid    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the showid information
+   <li>pcmd const     file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the onst information
+   <li>pcmd nameof    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the filename
+   <li>pcmd path      id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the complete file path
+   <li>pcmd parent    id          <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the parent
+   <li>pcmd counters  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the counters
+   <li>pcmd counterN  dbnum (must have cwd in pnfs)  <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows of the counters
+   <li>pcmd cursor    file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the cursor
+   <li>pcmd position  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the directory position
+   <li>pcmd database  file        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the database information
+   <li>pcmd databaseN dbnum (must have cwd in pnfs)  <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;shows the database information
+</ul>
 
 <h3><a name="volmaps">
 1.1.5 <em>Pnfs</em> Volume Maps
 </h3>
 
 In order to do request files from a tape in an optimal transversal, it is
-necessary for the user to know the order of the files on a tape.  To aid in
-this process, <em>encp</em> creates a duplicate entry in <em>pnfs</em> (in addition to storing
+necessary for the user to know the order of the files on a tape.  It is expected that an
+experiment's catalog will keep this information.  As an additional aid for the user,
+<em>encp</em> creates a duplicate file entry in <em>pnfs</em> (in addition to storing
 the filename and its metadata).  This duplicate entry is organized by file
 families and volumes instead of by the user's directory structure.  The naming
 convention for the duplicate entries is such that the file order on the tape
@@ -387,8 +494,6 @@ just look in the duplicate tree to get the files - then he would read the
 necessary information about the linked file from one of the <em>pnfs</em> layers (such
 as the bfid, original file name...) to make his transfer request to the mass
 storage.
-
-Here is an example:
 
 Let's say a user transferred a file to mass storage and called it
 /pnfs/enstore/airedale/one.  The file was stored on disk floppy named
@@ -411,25 +516,7 @@ $ ls -alsFt pnfs/enstore/volmap/jon/flop301/000000000000
 
 The original file and the duplicate file contain cross reference information
 to allow the user to get to the other one and enough information to setup a
-transfer.
-
-<pre>
-Linux-airedale[448] 09:20:35 jon$ pcmd info /pnfs/enstore/airedale/one
-bfid="90104096300000L";
-volume="flop301";
-cookie="(0, 512)";
-file_family="jon";
-orig_name="/pnfs/enstore/airedale/one";
-map_file="/pnfs/enstore/volmap/jon/flop301/000000000000";
-
-$ pcmd info  /pnfs/enstore/volmap/jon/flop301/000000000000
-bfid="90104096300000L";
-volume="flop301";
-cookie="(0, 512)";
-file_family="jon";
-orig_name="/pnfs/enstore/airedale/one";
-map_file="/pnfs/enstore/volmap/jon/flop301/000000000000";
-</pre>
+transfer. An example of this was shown in the previous section in "pcmd info file"
 
 Consider a few cases.
 <ul>
@@ -487,7 +574,7 @@ specifying an input list.  There is 1 caveat when specifying multiple files
 using a single <em>encp</em> command: there is at most 1 mover processing your
 request list at a time. If you want more than mover active, you should use
 multiple <em>encp</em> commands when you are reading lists of files from more than
-one volume.  The reason <em>encp</em> uses just one mover is to keep the system 
+one volume.  The reason <em>encp</em> uses just one mover is to keep the system
 simple (if you want to use multiple movers, then use many <em>encp</em>
 commands).
 <p>
