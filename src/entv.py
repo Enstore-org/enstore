@@ -8,18 +8,25 @@ import socket
 import select
 import string
 import time
-import popen2
+
+import setpath
+import udp_client
 
 debug=1
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
+_config_cache = None
+
 def get_config():
+    global _config_cache
+    if _config_cache:
+        return _config_cache
     p=os.popen("enstore config --show", 'r')
-    dict=dict_eval(p.read())
+    _config_cache=dict_eval(p.read())
     p.close()
-    return dict
+    return _config_cache
 
 def dict_eval(data):
     ##This is like "eval" but it assumes the input is a
@@ -43,6 +50,7 @@ def get_movers(config=None):
         movers.sort()
     return movers
 
+
 s = None
 dst = None
 
@@ -53,60 +61,29 @@ def send(msg):
         print "sending",   msg
     s.sendto(msg, dst)
 
-def get_mover_status(mover):
-    status_dict = {}
-    try:
-        file="enstore mover --status %s.mover" % mover
-        p = os.popen(file,'r')
-        status_dict = dict_eval(p.read())
-        p.close()
-    except:
-        pass
-    return status_dict
-
-
-# This function requests status for all the movers at once
-#   and returns a dictionary {mover_name: status }
-# If movers take longer than "timeout" to reply, they are ignored
-
-def get_mover_status_parallel(movers, timeout=15):
-    ret = {}
-    start_time = time.time()
-    end_time = start_time + timeout
-    pipe_dict = {} #Key is a file descriptor, value is a Popen object
-    waiting = [] #These are the movers we're still waiting for
-
-    for mover in movers:
-        cmd = "enstore mover --status %s.mover " % mover
-        try:
-            p = popen2.Popen3(cmd)
-            p.mover = mover
-            pipe_dict[p.fromchild] = p
-            waiting.append(mover)
-        except:
-            pass
-
-    while waiting:
-        time_remaining = end_time - time.time()
-        if time_remaining<0:
-            break
-
-        r, w, x = select.select(pipe_dict.keys(), [], [], time_remaining)
-        for p in r:
-            try:
-                pipe = pipe_dict[p]
-                mover = pipe.mover
-                del pipe_dict[p]
-                data = p.read()
-                p.close()
-                ret[mover] = dict_eval(data)
-                waiting.remove(mover)
-            except:
-                pass
-    
-    for p in pipe_dict.values():
-        os.kill(p.pid, 9)
-    return ret
+def handle_status(mover, status):
+    state = status.get('state','Unknown')
+    time_in_state = status.get('time_in_state', '0')
+    send("state %s %s %s" % (mover, state, time_in_state))
+    volume = status.get('current_volume', None)
+    if not volume:
+        return
+    if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
+        send("loaded %s %s" % (mover, volume))
+    if state in ['MOUNT_WAIT']:
+        send("loading %s %s" %(mover, volume))
+    if state in ['ACTIVE', 'SEEK']: #we are connected to a client
+        client = ''
+        files = status['files']
+        if files[0] and files[0][0]=='/':
+            client = files[1]
+        else:
+            client = files[0]
+        colon = string.find(client, ':')
+        if colon>=0:
+            client = client[:colon]
+        if client:
+            send("connect %s %s" % (mover, client))
             
 def main():
     global s, dst
@@ -145,34 +122,20 @@ def main():
     #give it a little time to draw the movers
     time.sleep(3)
 
-    
-    #Get the state of each mover before continuing
+    config = get_config()
 
-    mover_status = get_mover_status_parallel(movers, timeout=15)
-    for mover, status in mover_status.items():
-        state = status.get('state','Unknown')
-        time_in_state = status.get('time_in_state', '0')
-        send("state %s %s %s" % (mover, state, time_in_state))
-        volume = status.get('current_volume', None)
-        if not volume:
-            continue
-        if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
-            send("loaded %s %s" % (mover, volume))
-        if state in ['MOUNT_WAIT']:
-            send("loading %s %s" %(mover, volume))
-        if state in ['ACTIVE', 'SEEK']: #we are connected to a client
-            client = ''
-            files = status['files']
-            if files[0] and files[0][0]=='/':
-                client = files[1]
-            else:
-                client = files[0]
-            colon = string.find(client, ':')
-            if colon>=0:
-                client = client[:colon]
-            if client:
-                send("connect %s %s" % (mover, client))
-
+    u = udp_client.UDPClient()
+    tsd = u.get_tsd()
+    sock =  tsd.socket.socket
+    reqs = {}
+    ticket = {"work" : "status"}
+        
+    for mover in movers:
+        mover_config = config[mover+'.mover']
+        mover_addr = (mover_config['hostip'], mover_config['port'])
+        u.send_no_wait(ticket, mover_addr)
+        reqs[tsd.txn_counter] = mover
+        
     
     # Subscribe to the event notifier
     if debug:
@@ -187,12 +150,23 @@ def main():
     # every 10 minutes
     last_sub = 0
     while 1:
-        r, w, x = select.select([pipe], [], [], 600)
-        if r:
+        r, w, x = select.select([pipe, sock], [], [], 600)
+        
+        if sock in r: #getting responses to our mover status queries
+            msg = sock.recv(16384)
+            try:
+                msg_id, status, timestamp = eval(msg)
+                mover = reqs[msg_id]
+                handle_status(mover, status)
+            except:
+                print "Error", msg
+            
+        if pipe in r: #getting messages from the child (enstore display)
             l = pipe.readline()
             if not l:
                 break
             print l,
+            
         now = time.time()
         if now - last_sub >= 600:
             try:
