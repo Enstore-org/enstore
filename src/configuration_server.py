@@ -8,7 +8,6 @@ import string
 import types
 import os
 import traceback
-import pprint
 import socket
 
 # enstore imports
@@ -142,8 +141,7 @@ class ConfigurationDict:
 
     # return a dump of the dictionary back to the user
     def dump(self, ticket):
-        pprint.pprint(ticket)
-        Trace.trace(15, 'DUMP')
+        Trace.trace(15, 'DUMP', ticket)
         ticket['status']=(e_errors.OK, None)
         reply=ticket.copy()
         reply["dump"] = self.configdict
