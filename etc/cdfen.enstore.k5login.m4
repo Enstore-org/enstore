@@ -48,7 +48,6 @@ podstvkv@FNAL.GOV
 ron@FNAL.GOV
 timur@FNAL.GOV
 tlevshin@FNAL.GOV
-tvrdik@FNAL.GOV
 vsergeev@FNAL.GOV
 wellner@FNAL.GOV
 zalokar@FNAL.GOV
