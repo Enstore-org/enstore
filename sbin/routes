@@ -43,10 +43,12 @@ case $node in
                  d0enmvr13a: d0enmvr13b: \
                  d0enmvr15a: d0enmvr15b: \
                  d0enmvr16a: d0enmvr16b: \
+                 d0enmvr19a: \
+                 d0enmvr20a: \
                  d0enmvr21a: d0enmvr21b: \
                  d0enmvr22a: d0enmvr22b: \
-                 d0enmvr23a: d0enmvr23b: \
-                 d0enmvr24a: d0enmvr24b:"
+                 d0enmvr23a:  \
+                 d0enmvr24a: "
           ;;
 
    cdfen*) NODES="cdfensrv0: cdfensrv1: cdfensrv2: cdfensrv3: cdfensrv4: cdfensrv5: \
