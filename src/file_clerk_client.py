@@ -492,7 +492,6 @@ def do_work(intf):
 	if ticket['status'][0] ==  e_errors.OK:
 	    #print ticket['fc'] #old encp-file clerk format
 	    #print ticket['vc']
-            del ticket['work']
             status = ticket['status']
             del ticket['status']
 	    pprint.pprint(ticket)
