@@ -58,7 +58,14 @@ DATE="/bin/date"
 CAT="/bin/cat"
 SORT="/bin/sort"
 UNIQ="/usr/bin/uniq"
-CUT="/usr/bin/cut"
+if [ -r /usr/bin/cut ]; then 
+  CUT="/usr/bin/cut"
+elif [ -r /bin/cut ]; then
+  CUT="/bin/cut"
+else
+  echo "Can not find cut"
+  exit 1
+fi
 DF="/bin/df"
 SED="/bin/sed"
 RPM="/bin/rpm"

@@ -17,7 +17,14 @@ HWCLOCK="/sbin/hwclock"
 EGREP="/bin/egrep"
 HEAD="/usr/bin/head"
 TAIL="/usr/bin/tail"
-CUT="/usr/bin/cut"
+if [ -r /usr/bin/cut ]; then 
+  CUT="/usr/bin/cut"
+elif [ -r /bin/cut ]; then
+  CUT="/bin/cut"
+else
+  echo "Can not find cut"
+  exit 1
+fi
 AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"

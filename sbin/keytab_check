@@ -16,7 +16,14 @@ EGREP="/bin/egrep"
 AWK="/bin/awk"
 WC="/usr/bin/wc"
 DATE="/bin/date"
-CUT="/usr/bin/cut"
+if [ -r /usr/bin/cut ]; then 
+  CUT="/usr/bin/cut"
+elif [ -r /bin/cut ]; then
+  CUT="/bin/cut"
+else
+  echo "Can not find cut"
+  exit 1
+fi
 SED="/bin/sed"
 KEYTAB_CHECK="/home/enstore/enstore/sbin/keytab_check"
 KTUTIL="/usr/krb5/sbin/ktutil"
