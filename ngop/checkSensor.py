@@ -2,6 +2,20 @@ import os
 import string
 import sys
 import re
+import time
+import stat
+def isTime(nm,dur):
+        try:
+                crtTime=os.stat(nm)[stat.ST_CTIME]
+                if time.time()-crtTime>=dur:
+                        return 0 #not sync for dur hours
+                else:
+                        return -1 #not sync less than dur
+        except:
+                f=open(nm,"w")
+                f.close()
+                return -1 #not sync less than dur
+
 def checkFirmware():
    p=os.popen('/home/enstore/ipmi/sdrread','r')
    retList=p.readlines()
@@ -20,7 +34,15 @@ def checkFirmware():
                         senDict[str]=1
    for str,val in senDict.items():
         if not val:
-                return 2,"Missing information at least about %s" % (str,)   
+		if not isTime("/var/ngop/include/.sensor",600):
+                	return 2,"Missing information at least about %s" % (str,)   
+		else:
+			return 0,"Missing information at least about %s for less then 10 min" % (str,
+)
+   try:
+	os.unlink("/var/ngop/include/.sensor")
+   except:
+	pass
    return 0,"Ok"
 
 def check(cmd):

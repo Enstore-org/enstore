@@ -191,8 +191,8 @@
     </For>
     <MonitoredElement Name="timeSync" Host="localhost" Type="Daemon">
         <ConditionSet>
-        <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkTime.py 4 3.0" RetVal="int:isSync"/>
-    	<Condition State="1" SevLevel="6" Description="Time is not syncronized (> 3 seconds off) for more than 4 hours">
+        <fn Name="plug_ins" Arg="python /var/ngop/include/checkTime.py 4 3.0" RetVal="int:isSync"/>
+    	<Condition State="1" SevLevel="6" Description="Time is not syncronized (more then 3 seconds off) for more than 4 hours">
         <apply>
        	<eq/>
          <ci>isSync</ci>
@@ -251,7 +251,7 @@
        </MonitoredElement>
        <MonitoredElement Name="baseTemp" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py temp" RetVal="int:mask1,int:mask2"/>
+         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py temp" RetVal="int:mask1,int:mask2"/>
          <Condition State="1" SevLevel="6" Description="Temperature is above non-critical threshold">
             <apply>
             <or/>
@@ -318,7 +318,7 @@
        </MonitoredElement>
        <MonitoredElement Name="fanSpeed" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py fan" RetVal="float:speed1,float:speed2"/>
+         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py fan" RetVal="float:speed1,float:speed2"/>
          <Condition State="0" SevLevel="0" Description="Fan Speed is below 3000">
             <apply>
             <or/>
@@ -374,7 +374,7 @@
        </MonitoredElement>
        <MonitoredElement Name="firmware" Host="localhost" Type="Hardware">
          <ConditionSet>
-         <fn Name="plug_ins" Arg="python /var/ngopsrv/include/checkSensor.py firmware" RetVal="int:down,str:reason"/>
+         <fn Name="plug_ins" Arg="python /var/ngop/include/checkSensor.py firmware" RetVal="int:down,str:reason"/>
          <Condition State="0" SevLevel="0" Description="Firmware has to be reloaded">
             <apply>
                 <eq/>
