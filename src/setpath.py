@@ -13,11 +13,9 @@ def addpath(p):
     if p not in sys.path:
         sys.path.insert(0,p)
 
-edir = os.environ.get('ENSTORE_DIR')
 
-if edir:
-    addpath(os.path.join(edir, 'src'))
-    addpath(os.path.join(edir, 'modules'))
+addpath(os.path.join(edir, '$ENSTORE_DIR/src'))
+addpath(os.path.join(edir, '$ENSTORE_DIR/modules'))
 
 cdir = os.getcwd()
 addpath(os.path.join(cdir, '../modules'))
