@@ -32,12 +32,13 @@ class MediaChangerClient(generic_client.GenericClient):
                                                          MY_NAME))
         generic_client.GenericClient.__init__(self, csc, self.log_name)
         self.u = udp_client.UDPClient()
+        self.server_address = self.get_server_address(name)
 
     # default timeout is set to 0 which means that receive will try forever
     # for lengthy operations rcv_timeout will be set to 300 and tries=10
     def send (self, ticket, rcv_timeout=0, tries=0) :
-        vticket = self.csc.get(self.media_changer)
-        return  self.u.send(ticket, (vticket['hostip'], vticket['port']), rcv_timeout, tries)
+        Trace.trace(16, "send to media changer %s" % ticket)
+        return  self.u.send(ticket, self.server_address, rcv_timeout, tries)
 
     def loadvol(self, vol_ticket, mover, drive):
 	ticket = {'work'           : 'loadvol',
@@ -130,7 +131,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
 	self.viewattrib = 0
         self.drive = 0
         generic_client.GenericClientInterface.__init__(self)
-
+        
     # define the command line options that are valid
     def options(self):
         if self.restricted_opts:
@@ -194,14 +195,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                 sys.exit(1)
             else:
                 self.media_changer = self.args[0]
-        if (self.alive == 0) and (self.max_work==-1) and \
-           (self.get_work==0) and (self.update == 0) and \
-           (self._import==0) and (self._export == 0) and \
-	   (self.viewattrib == 0) and \
-           (self.mount == 0) and (self.dismount == 0):
-            # bomb out if number of arguments is wrong
-            self.print_help()
-	    sys.exit(1)
 
     # print out our extended help
     def print_help(self):
@@ -216,9 +209,11 @@ def do_work(intf):
     # get a media changer client
     mcc = MediaChangerClient((intf.config_host, intf.config_port),
                              intf.media_changer)
+
     Trace.init(mcc.get_name(mcc.log_name))
 
     ticket = mcc.handle_generic_commands(intf.media_changer, intf)
+    
     if ticket:
         pass
 
