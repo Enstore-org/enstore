@@ -51,7 +51,7 @@ class GenericDriver:
 	self.vol_label = ''		# used by RawDisk.open -- *could* also
 	# -- use to check for success binds of same vol - could be -
         # used for validate location info???
-	pass
+	return None
 
     #-----------------
     def sw_mount( self, device, blocksize, remaining_bytes, vol_label ):
