@@ -234,10 +234,13 @@ class MoverClient:
 	self.print_id = 'MOVER'
 	self.config = config
 	self.state = 'idle'
+	# needs to be initialized for status
 	self.mode = ''			# will be either 'r' or 'w'
-	self.bytes_to_xfer = 0		# for status - needs to be initialized
+	self.bytes_to_xfer = 0
 	self.tape = '' # like vol_info['external_label'], just for "status"
 	self.files = ('','')
+	self.work_ticket = {}
+
 	self.pid = 0
 
 	self.vol_info = {'external_label':''}
@@ -267,8 +270,9 @@ class MoverClient:
 	    config['device'] = dev_env + dev_rest
 	    pass
 
-        try:
-            self.hsm_driver = getattr(driver, config['driver']) ()
+	# next line of code is equivalent to:
+	# eval( "driver.%s()"%config['driver'] )  (we do not like to use eval)
+        try: self.hsm_driver = getattr(driver, config['driver']) ()
         except AttributeError:
             self.enprint("No such driver: "+config['driver'])
             self.hsm_driver = None
@@ -417,7 +421,10 @@ def do_fork( self, ticket, mode ):
     # save some stuff for "status"
     self.mode = mode			# client mode, not driver mode
     self.tape = ticket['fc']['external_label']
-    self.files = (ticket['wrapper']['fullname'],ticket['wrapper']['pnfsFilename'])
+    self.files = ("%s:%s"%(ticket['wrapper']['machine'][1],
+			   ticket['wrapper']['fullname']),
+		  ticket['wrapper']['pnfsFilename'])
+    self.work_ticket = ticket		# just save the whole thing for "status"
 
     self.pid = os.fork()
     if self.pid == 0:
@@ -904,15 +911,18 @@ class MoverServer(  dispatching_worker.DispatchingWorker
     def status( self, ticket ):
 	tick = { 'status'       : (e_errors.OK,None),
 		 'state'        : self.client_obj_inst.state,
-		 'mode'         : self.client_obj_inst.mode,
+		 'crc_func'     : str(self.client_obj_inst.crc_func),
 		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
 		 'rd_bytes'     : self.client_obj_inst.hsm_driver.rd_bytes_get(),
 		 'wr_bytes'     : self.client_obj_inst.hsm_driver.wr_bytes_get(),
 		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
+		 # from "work ticket"
+		 'mode'         : self.client_obj_inst.mode,
 		 'bytes_to_xfer': self.client_obj_inst.bytes_to_xfer,
-		 'crc_func'     : str(self.client_obj_inst.crc_func),
 		 'tape'         : self.client_obj_inst.tape,
-		 'files'        : self.client_obj_inst.files }
+		 'files'        : self.client_obj_inst.files,
+		 # just include total "work ticket"
+		 'work_ticket'  : self.client_obj_inst.work_ticket }
 	self.reply_to_caller( tick )
 	return
 
