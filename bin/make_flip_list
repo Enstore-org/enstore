@@ -5,8 +5,8 @@ setup enstore
 
 sun=fntt
 
-cmd1="/usr/bin/rsh $sun -l acsss 'echo eject 0,0,0 \""
-cmd2="\" |/export/home/ACSSS/bin/cmd_proc'"
+cmd1="/usr/bin/rsh $sun -l acsss 'echo eject 0,0,0 "
+cmd2=" |/export/home/ACSSS/bin/cmd_proc'"
 
 flip_list=/tmp/flip.list
 tmp_list=/tmp/vol.list
