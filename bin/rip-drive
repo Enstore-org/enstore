@@ -146,7 +146,7 @@ de14device=/dev/rmt/tps3d3n #not connected right now
 
 dc15device=/dev/rmt/tps0d4n
 dc16device=/dev/rmt/tps1d6n
-dc17device=/dev/rmt/tps2d5n
+dc17device=/dev/rmt/tps0d5n
 
 dc20device=/dev/rmt/tps0d1n
 dc21device=/dev/rmt/tps1d1n
