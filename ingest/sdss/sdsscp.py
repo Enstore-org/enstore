@@ -57,8 +57,21 @@ def main():
     #Read in the metadata catalog file just copied over.
     files = parseTapeLog.parseFile(localMetaFilePath)  #, tapeLabel)
 
+    #Shrink the list to remove files already copied.  If the output is
+    # /dev/null, this step is unecessary.
+    if outputDir == "/dev/null":
+        uncopied_files = files
+    else:
+        uncopied_files = []
+        for item in files:
+            if not os.path.exits(os.path.join(outputDir, item[1])):
+                uncopied_files.append(item)
+            else:
+                print "File", item, "already copied.  Skipping."
+    
     #Fork off "get" process to retrieve the data.
-    exit_status = callGet.callGet(tapeLabel, files, pnfsDir, outputDir, verbose)
+    exit_status = callGet.callGet(tapeLabel, uncopied_files, pnfsDir,
+                                  outputDir, verbose)
 
     #The copied catalog file is removed at this point.
     os.remove(localMetaFilePath)
