@@ -479,6 +479,11 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket)
 
+    def erase_volume(self, vol):
+        ticket = {'work': 'erase_volume',
+                  'external_label': vol}
+        return self.send(ticket)
+
     def restore_volume(self, vol):
         ticket = {'work': 'restore_volume',
                   'external_label': vol}
@@ -555,7 +560,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                 "clear=", "backup", "vols","vol=","check=","add=",
                 "delete=","new-library=","read-only=",
                 "no-access=", "decr-file-count=",
-                "restore=", "all","destroy=", "modify=","VOL1OK",
+                "restore=", "all", "modify=","VOL1OK",
                 "reset-lib=", "list=", "ls-active=", "recycle=",
                 "export=", "import=", "ignore-storage-group=",
                 "clear-ignored-storage-group=",
@@ -709,11 +714,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
                       option.USER_LEVEL:option.ADMIN},
-        option.DESTROY:{option.HELP_STRING:"wipe out a volume",
-                        option.VALUE_TYPE:option.STRING,
-                        option.VALUE_USAGE:option.REQUIRED,
-                        option.VALUE_LABEL:"volume_name",
-                        option.USER_LEVEL:option.ADMIN},
+        option.ERASE:{option.HELP_STRING:"erase a volume",
+                      option.VALUE_TYPE:option.STRING,
+                      option.VALUE_USAGE:option.REQUIRED,
+                      option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
         option.EXPORT:{option.HELP_STRING:
                        "export a volume",
                        option.DEFAULT_TYPE:option.STRING,
@@ -1082,6 +1087,8 @@ def do_work(intf):
     elif intf.delete:
         # ticket = vcc.delete(intf.delete,intf.force)   # name of this volume
         ticket = vcc.delete_volume(intf.delete)   # name of this volume
+    elif intf.erase:
+        ticket = vcc.erase_volume(intf.erase)
     elif intf.restore:
         # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
         ticket = vcc.restore_volume(intf.restore)  # name of volume
