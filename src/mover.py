@@ -1099,10 +1099,14 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         # check time in state
         if (thread_name is 'MainThread'):
-            time_in_state = now - self.state_change_time
-            if ((self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING)) and
-                (time_in_state > self.max_time_in_state)):
-                Trace.alarm(e_errors.WARNING, "Too long in state %s" % (state_name(self.state),))
+            time_in_state = int(now - self.state_change_time)
+            if not hasattr(self,'time_in_state'):
+                self.time_in_state = 0
+            if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
+                (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING))):
+                Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
+                            (state_name(self.state),self.current_volume))
+                self.time_in_state = time_in_state
             
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
         for lib, addr in self.libraries:
