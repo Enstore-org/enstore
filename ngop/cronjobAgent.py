@@ -2,9 +2,9 @@ import os
 import string
 import time
 import stat
-##from Worker import Worker
-##import MA_API   
-##import ngop_global
+from Worker import Worker
+import MA_API   
+import ngop_global
 
 flag = 0
 CRON_DIR = "/var/spool/cron"
@@ -138,65 +138,64 @@ def calcuFreq(line):
        return 60*24*31*(calcuTime(my,12)-1)+60*24*(days-1)+60*(hrs-1)+mins
 
 
-##class CJFunc(Worker):
-class CJFunc:
+class CJFunc(Worker):
     def __init__(self):
-	##Worker.__init__(self)
+	Worker.__init__(self)
 	self.runAway={}
 
+    def get_frequency(self, line):
+        freq = calcuFreq(line)   # frequency in minutes
+        # if the frequency is > 1 day, then use 1/2 day
+        # 1440 is the number of minutes/day
+        if freq >= 1440:
+            allowed_freq = 720
+        else:
+            allowed_freq = 3*freq
+        checkprint("file = %s, frequency = %s, allowed interval = %s"%(self.fName, freq, allowed_freq))
+        return allowed_freq
+                    
     # this method returns the following -
     #           0 : cronjob hasn't been running too long
     #          -1 : cronjob state is unknown
     #          -2 : cronjob has been running too long
-    def checkcron(self, ngop_name):
-        try:                       # test file in my dir
-            dirNames = os.popen("ls %s"%(CRON_DIR,),'r').readlines()
-            checkprint(dirNames)
-	except:
-	    return -1
-
-        if not len(dirNames):
+    def checkcron(self, name):
+        dirName = os.popen("ls %s/%s 2> /dev/null"%(CRON_DIR, name),
+                           'r').readlines()
+        if not dirName:
+            # no crontab for this name
             return -1 
         
         stateFlag = 0
-        disc = ""
-        names = ['enstore', 'root']
-        for it in dirNames:
-          if it in names:
-            name = names[names.index(it)]
-            filePat1 = "/home/%s/CRON/*ACTIVE"%(name,)
-            try:
-              	actFiles = os.popen("ls %s"%(filePat1,), 'r').readlines()
-            except:
-                return -1
+        filePat1 = "~%s/CRON/*ACTIVE"%(name,)
+        # need the -d because the *ACTIVE files are directories
+        actFiles = os.popen("ls -d %s 2> /dev/null"%(filePat1,),
+                            'r').readlines()
+        filePat2 = "%s/%s"%(CRON_DIR, name)
+        checkprint(filePat2)
+        lines = os.popen("cat %s 2> /dev/null"%(filePat2,), 'r').readlines()
 
-            filePat2 = "%s/%s"%(CRON_DIR, name) #test file in my dir
-            checkprint(filePat2)
-            try:
-                lines = os.popen("less %s"%(filePat2,), 'r').readlines()
-            except:
-                return -1
-    
-            for fl in actFiles:  # need more checks in this loop 
-                checkprint(fl)
-                for line in lines:
-                   if string.find(string.splitfields(line)[0],'#') == 0:
-                      continue
-                   fName = string.splitfields(line)[7]
-                   if string.find(fl, fName) >=0 :
-                     freq = calcuFreq(line)                      
-                     checkprint("file, frequency are %s, %s"%(fName,
-                                                                    freq))
-                     file_mtime = os.stat(fl)[stat.ST_MTIME]
-                     now = time.time()
-                     interval = now - file_mtime
-                     checkprint("interval is %s"%(interval,))
-                     if interval > 3*freq:
-                        disc = disc + "The cron job %s is running too long\n"%(fName)
+        for fl in actFiles:  # need more checks in this loop
+            fl = string.replace(fl, "\n", "")
+            checkprint(fl)
+            for line in lines:
+                if string.find(string.splitfields(line)[0],'#') == 0:
+                    continue
+                if len(line) < 8:
+                    # this is not an ecron line
+                    continue
+                self.fName = string.splitfields(line)[7]
+                if string.find(fl, self.fName) >=0 :
+                    allowed_freq = self.get_frequency(line)
+                    file_mtime = os.stat(fl)[stat.ST_MTIME]
+                    now = time.time()
+                    interval = (now - file_mtime)/60   # in minutes
+                    checkprint("interval = %s"%(interval,))
+                    if interval > allowed_freq:
+                        checkprint("The cron job %s is running too long"%(self.fName))
                         stateFlag = -2
+                    break
 
         checkprint("cron jobs state is %s"%(stateFlag,))
-        checkprint(disc)
         return stateFlag
 
 
@@ -209,9 +208,11 @@ def usage():
 
 
 if __name__ == '__main__':
+       """
        flag = 1
        cl=CJFunc()
-       cl.checkcron("test")
+       cl.checkcron("root")
+       cl.checkcron("enstore")
 
        """
        import sys
@@ -258,4 +259,3 @@ if __name__ == '__main__':
        if ngop_global.G_Debug:
 	   cl.display()
        cl.run()
-       """
