@@ -159,27 +159,27 @@ case `uname -n` in
     cmd="python /fnal/ups/prd/enstore/x0_4/src/log_server.py &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/alarm_server.py &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py samdisk.library_manager &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py samnull.library_manager &"; doit
+   #cmd="python /fnal/ups/prd/enstore/x0_4/src/library_manager.py samnull.library_manager &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/media_changer.py samdisk.media_changer &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk1.mover &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk2.mover &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk3.mover &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk4.mover &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samdisk5.mover &"; doit
-    cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samnull1.mover &"; doit
+   #cmd="python /fnal/ups/prd/enstore/x0_4/src/mover.py samnull1.mover &"; doit
     cmd="python /fnal/ups/prd/enstore/x0_4/src/inquisitor.py &"; doit
     (sleep 2;ecmd cc  --alive;                         if [ $? -ne 0 ]; then echo CONFIG DEAD;                  else echo config alive;                  fi) &
     (sleep 2;ecmd lc  --alive;                         if [ $? -ne 0 ]; then echo LOG DEAD;                     else echo log alive;                     fi) &
     (sleep 2;ecmd ac  --alive;                         if [ $? -ne 0 ]; then echo ALARM DEAD;                   else echo alarm alive;                   fi) &
     (sleep 2;ecmd lmc --alive samdisk.library_manager; if [ $? -ne 0 ]; then echo SAMDISK.LIBRARY_MANAGER DEAD; else echo samdisk.library_manager alive; fi) &
-    (sleep 2;ecmd lmc --alive samnull.library_manager; if [ $? -ne 0 ]; then echo SAMNULL.LIBRARY_MANAGER DEAD; else echo samnull.library_manager alive; fi) &
+   #(sleep 2;ecmd lmc --alive samnull.library_manager; if [ $? -ne 0 ]; then echo SAMNULL.LIBRARY_MANAGER DEAD; else echo samnull.library_manager alive; fi) &
     (sleep 2;ecmd mcc --alive samdisk.media_changer;   if [ $? -ne 0 ]; then echo SAMDISK.MEDIA_CHANGER DEAD;   else echo samdisk.media_changer alive;   fi) &
     (sleep 2;ecmd mvc --alive samdisk1.mover;          if [ $? -ne 0 ]; then echo SAMDISK1.MOVER DEAD;          else echo samdisk1.mover alive;          fi) &
     (sleep 2;ecmd mvc --alive samdisk2.mover;          if [ $? -ne 0 ]; then echo SAMDISK2.MOVER DEAD;          else echo samdisk2.mover alive;          fi) &
     (sleep 2;ecmd mvc --alive samdisk3.mover;          if [ $? -ne 0 ]; then echo SAMDISK3.MOVER DEAD;          else echo samdisk3.mover alive;          fi) &
     (sleep 2;ecmd mvc --alive samdisk4.mover;          if [ $? -ne 0 ]; then echo SAMDISK4.MOVER DEAD;          else echo samdisk4.mover alive;          fi) &
     (sleep 2;ecmd mvc --alive samdisk5.mover;          if [ $? -ne 0 ]; then echo SAMDISK5.MOVER DEAD;          else echo samdisk5.mover alive;          fi) &
-    (sleep 2;ecmd mvc --alive samnull1.mover;          if [ $? -ne 0 ]; then echo SAMNULL1.MOVER DEAD;          else echo samnull1.mover alive;          fi) &
+   #(sleep 2;ecmd mvc --alive samnull1.mover;          if [ $? -ne 0 ]; then echo SAMNULL1.MOVER DEAD;          else echo samnull1.mover alive;          fi) &
     (sleep 2;ecmd ic  --alive;                         if [ $? -ne 0 ]; then echo INQUISITOR DEAD;              else echo inquisitor alive;              fi) &
     ;;
 
