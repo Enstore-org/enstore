@@ -25,6 +25,7 @@ done
 
 # this works for the case where opt_just is null
 opt_just_ere=`echo ${opt_just-} | sed -e 's/ /|/g' -e 's/,/|/g'`
+if [ "$opt_just_ere" = "" ];then opt_just_ere=".*";fi
 
 local_host=`hostname`
 if expr "$local_host" : '.*\.' >/dev/null; then 
