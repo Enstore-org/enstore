@@ -40,7 +40,7 @@ mtsh = {}
 
 def hist_key(n):
 	if n >= high_water_mark:
-		return '>='+str(high_water_mark)
+		return 'Over '+str(high_water_mark)
 	elif n >= low_water_mark:
 		return str(low_water_mark)+'-'+str(high_water_mark-1)
 	else:
@@ -131,12 +131,15 @@ if __name__ == '__main__':
 	# The histogram
 
 	count = 0
+	set_label = ""
 	set_xtics = "set xtics rotate ("
 	outf = open(tmp_data, "w")
 	for i in hist_keys:
 		count = count + 1
 		outf.write("%d %d\n"%(count, mtsh[i]))
 		set_xtics = set_xtics + '"%s" %d,'%(i, count)
+		set_label = set_label+'set label %d "%d" at %d,%d\n"%(
+			count, mtsh[i], count, mtsh[i])
 	outf.close()
 	set_xtics = set_xtics[:-1]+')'
 	set_xtics = set_xtics+'\n'
