@@ -141,9 +141,8 @@ class GenericServer(generic_client.GenericClient):
             self.reply_to_caller(t)
         except:
             # even if there is an error - respond to caller so he can process it
-            exc, msg = sys.exc_info()[:2]
+            exc,msg,tb=sys.exc_info()
             t["status"] = (str(exc),str(msg))
             self.reply_to_caller(t)
-            Trace.trace(enstore_constants.DISPWORKDBG,
-                        "exception in send_reply %s" % (t,))
+            Trace.trace(enstore_constants.DISPWORKDBG,"exception in send_reply %s"%(t,))
             return

@@ -111,7 +111,6 @@ class GenericClient:
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
 
-        
 	# get the alarm client
 	if alarmc:
 	    # we were given one, use it
@@ -124,41 +123,11 @@ class GenericClient:
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)
 
-    def __del__(self):
-        try:
-            del self.u
-        except AttributeError:
-            pass
-        try:
-            del self.logc
-        except AttributeError:
-            pass
-        try:
-            del self.alarmc
-        except AttributeError:
-            pass
-
-    def _is_csc(self):
-        #If the server requested is the configuration server,
-        # do something different.
-        if self.__dict__.get('is_config', 0):
-            return 1
-        else:
-            return 0
-
-    def _get_csc(self):
-        #If the server address requested is the configuration server,
-        # do something different.
-        if self._is_csc():
-            return self
-        else:
-            return self.csc
-
     def get_server_address(self, MY_SERVER,  rcv_timeout=0, tries=0):
         #If the server address requested is the configuration server,
         # do something different.
-        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER or \
-           self._is_csc():
+        #if self.__dict__.get('is_config', 0):
+        if MY_SERVER == enstore_constants.CONFIGURATION_SERVER:
             host = os.environ.get("ENSTORE_CONFIG_HOST",'localhost')
             hostip = socket.gethostbyname(host)
             port = int(os.environ.get("ENSTORE_CONFIG_PORT",'localhost'))
@@ -205,11 +174,7 @@ class GenericClient:
     # check on alive status
     def alive(self, server, rcv_timeout=0, tries=0):
         #Get the address information from config server.
-        csc = self._get_csc()
-        try:
-            t = csc.get(server, timeout=rcv_timeout, retry=tries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            return {'status' : (e_errors.TIMEDOUT, None)}
+        t = self.csc.get(server, rcv_timeout, tries)
         
         #Check for errors.
         if t['status'] == (e_errors.TIMEDOUT, None):
@@ -232,9 +197,8 @@ class GenericClient:
 
 
     def trace_levels(self, server, work, levels):
-        csc = self._get_csc()
         try:
-            t = csc.get(server)
+            t = self.csc.get(server)
         except errno.errorcode[errno.ETIMEDOUT]:
             return {'status' : (e_errors.TIMEDOUT, None)}
         try:
