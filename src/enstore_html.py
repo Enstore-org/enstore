@@ -314,6 +314,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 		shortcut_lm.append(server)
 	    elif not got_media_changers and enstore_functions.is_media_changer(server):
 		got_media_changers = 1
+		first_mc = server
 	    elif not got_generic_servers and enstore_functions.is_generic_server(server):
 		got_generic_servers = 1
 	    elif not got_movers and enstore_functions.is_mover(server):
@@ -339,8 +340,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# now finish up with the media changers, movers
 	if got_media_changers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
-						  '#%s'%(enstore_constants.MEDIA_CHANGER,),
-						  MEDIA_CHANGERS)
+						  '#%s'%(first_mc,), MEDIA_CHANGERS)
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
 						  '#%s'%(first_mover,), MOVERS)
@@ -770,18 +770,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 
     # output all of the media changer rows 
     def media_changer_rows(self, table, skeys):
-	first_time = 1
 	for server in skeys:
 	    if enstore_functions.is_media_changer(server):
 		# this is a media changer. output its alive info
-		if first_time:
-		    table.append(self.alive_row(HTMLgen.Name(enstore_constants.MEDIA_CHANGER,
-                                                             server), 
-				self.data_dict[server][enstore_constants.STATUS]))
-                    first_time = 0
-		else:
-		    table.append(self.alive_row(server, 
-				self.data_dict[server][enstore_constants.STATUS]))
+		table.append(self.alive_row(HTMLgen.Name(server, server),
+					self.data_dict[server][enstore_constants.STATUS]))
 
     # output all of the mover rows 
     def mover_rows(self, table, skeys):
