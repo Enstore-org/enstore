@@ -19,7 +19,6 @@ import types
 import threading
 import re
 import gc
-#import host_config
 
 import Trace
 import mover_client
@@ -99,7 +98,7 @@ import tkFont
 
 #A lock to allow only one thread at a time access the display class instance.
 display_lock = threading.Lock()
-queue_lock   = threading.Lock()
+#queue_lock   = threading.Lock()
 startup_lock = threading.Lock()
 thread_lock  = threading.Lock()
 
@@ -121,6 +120,60 @@ JOIN_TIME = 10000      #in milliseconds (10 seconds)
 
 status_request_threads = []
 
+class Queue:
+    def __init__(self):
+        self.queue = []
+        self.lock = threading.Lock()
+
+    def len_queue(self):
+        self.lock.acquire()
+        
+        number = len(self.queue)
+
+        self.lock.release()
+
+        return number
+
+    def clear_queue(self):
+        self.lock.acquire()
+        
+        #while len(self.queue):
+        #    del self.queue[0]
+
+        del self.queue[:]
+
+        self.lock.release()
+        
+    def put_queue(self, queue_item, tid=None):
+        self.lock.acquire()
+
+        self.queue.append({'item' : queue_item, 'tid' : tid})
+
+        self.lock.release()
+
+    def get_queue(self, tid=None):
+        self.lock.acquire()
+
+        for i in range(len(self.queue)):
+            try:
+                temp = self.queue[i]
+            except IndexError:
+                temp = None
+
+            if tid == None or (temp != None and temp['tid'] == tid):
+                del self.queue[i]
+                break
+        else:
+            temp = {'item': None}
+            
+        self.lock.release()
+
+        return temp['item']
+
+#These are the queue classes.
+message_queue = Queue()
+request_queue = Queue()
+    
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
     a window of size w, h"""
@@ -308,7 +361,7 @@ class XY:
 def split_geometry(geometry):
     if not geometry:
         return (None, None, None, None)
-    
+
     window_width = int(re.search("^[0-9]+", geometry).group(0))
     window_height = re.search("[x][0-9]+", geometry).group(0)
     window_height = int(window_height.replace("x", " "))
@@ -411,26 +464,6 @@ class Mover:
         #Draw the mover.
         self.draw()
 
-        """
-        #Need to keep the thread list consistant.
-        thread_lock.acquire()
-
-        #Query the mover about its current state.
-        #We don't want the main thread waiting.
-        status_request_threads.append(
-            threading.Thread(group=None,
-                             target=self.get_status,
-                             name='',
-                             args=(),
-                             kwargs={}))
-        status_request_threads[-1].start()
-
-        #Always release this lock.
-        thread_lock.release()
-
-        #self.get_status()
-        """
-        
     #########################################################################
 
     def animate_timer(self):
@@ -791,8 +824,9 @@ class Mover:
             pass
 
     def undraw_timer(self):
-        self.display.after_cancel(self.timer_id)
-        self.timer_id = None
+        if self.timer_id:
+            self.display.after_cancel(self.timer_id)
+            self.timer_id = None
         
         try:
             self.display.delete(self.timer_display)
@@ -973,8 +1007,11 @@ class Mover:
             self.display.itemconfigure(self.timer_display,
                                        fill = self.timer_color)
 
-        self.display.itemconfigure(self.timer_display,
-                                   text = self.timer_string)
+        if self.timer_string:
+            self.display.itemconfigure(self.timer_display,
+                                       text = self.timer_string)
+        else:
+            print "Traceback avoided.  timer_string = %s" % self.timer_string
 
     def update_rate(self, rate):
 
@@ -1280,6 +1317,7 @@ class Mover:
                 # before __init__ is finished (and the object is added to
                 # the list of movers).
                 self.display.queue_command(command)
+                #message_queue.put_message(command, mov.name.split("@")[-1])
 
 #########################################################################
 ##
@@ -1820,9 +1858,8 @@ class Display(Tkinter.Canvas):
             reinited = 0
         else:
             reinited = 1
-        #geometry = entvrc_info.get('geometry', "1200x1600+0+0")
+
         title = entvrc_info.get('title', "Enstore")
-        #self.animate = int(entvrc_info.get('animate', 1))
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
 
@@ -1877,9 +1914,6 @@ class Display(Tkinter.Canvas):
         self.width  = int(self['width'])
         self.height = int(self['height'])
 
-        #self._init() #Other none window related attributes.
-        #self._reinit = 0
-        #self.stopped = 0
         self.reinit_display()
         self.clear_display() #C
 
@@ -1891,20 +1925,14 @@ class Display(Tkinter.Canvas):
         self.bind('<Button-2>', self.print_canvas)
 
         #Clear the window for drawing to the screen.
+        self.pack(expand = 1, fill = Tkinter.BOTH)
         self.update()
 
     def reinit_display(self):
         self._reinit = 0
         self.stopped = 0
         
-    #def toggle_animation(self):
-    #    if self.animate:
-    #        self.animate = STILL
-    #    else:
-    #        self.animate = ANIMATE
-
     def clear_display(self):
-        self.mover_names      = [] ## List of mover names.
         self.movers           = {} ## This is a dictionary keyed by mover name,
                                    ##value is an instance of class Mover
         self.mover_positions  = {} ##key is position index (0,1,-1,2,-2) and
@@ -1914,9 +1942,6 @@ class Display(Tkinter.Canvas):
         self.client_positions = {} ##key is position index (0,1,-1,2,-2) and
                                    ##value is Client
         self.connections      = {} ##dict. of connections.
-
-        self.command_queue    = [] #List of notify commands to process.
-        self.request_queue    = [] #List of request commands to process.
 
     def attempt_reinit(self):
         return self._reinit
@@ -1998,15 +2023,16 @@ class Display(Tkinter.Canvas):
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
 
-        self.master_geometry = self.master.geometry()
-        
-        self.after_cancel(self.after_smooth_animation_id)
-        self.after_cancel(self.after_clients_id)
-        self.after_cancel(self.after_reinitialize_id)
-        self.after_cancel(self.after_process_messages_id)
-        self.after_cancel(self.after_join_id)
         self._reinit = 1
+        self.stopped = 1
+
         self.quit()
+
+        #Forces cleanup of objects that would not happen otherwise.  As part
+        # of the destroy call Tkinter does generate a Destroy event that
+        # results in window_killed() being called.  Skipping a destroy()
+        # function call would result in a huge memory leak.
+        self.destroy()
 
     def print_canvas(self, event):
         #This is a callback function that must take as arguments self and
@@ -2020,6 +2046,8 @@ class Display(Tkinter.Canvas):
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
 
+        self.stopped = 1
+
         #Since the window has been closed, it makes no sense to continue
         # to update this information.  It is a major performace killer
         # to leave these running.
@@ -2028,10 +2056,13 @@ class Display(Tkinter.Canvas):
         self.after_cancel(self.after_reinitialize_id)
         self.after_cancel(self.after_process_messages_id)
         self.after_cancel(self.after_join_id)
-        
-        self.stopped = 1
 
+        for mov in self.movers.values():
+            self.after_cancel(mov.timer_id)
+        
         self.master_geometry = self.master.geometry()
+
+        self.cleanup_display()
 
     def visibility (self, event):
         #This is a callback function that must take as arguments self and
@@ -2046,7 +2077,7 @@ class Display(Tkinter.Canvas):
         try:
             size = self.winfo_width(), self.winfo_height()
         except Tkinter.TclError:
-            self.stopped = 1
+            #self.stopped = 1
             return
         if size != (self.width, self.height) or force:
             # size has changed
@@ -2114,47 +2145,16 @@ class Display(Tkinter.Canvas):
             
         return 1  #Up to date.
 
-    """
-    #Called from process_messages().
-    def get_up_to_date(self, command):
-
-        try:
-            words = command.split()
-            mover = self.movers[words[1]]
-        except (KeyError, IndexError):
-            mover = None
-
-        result = startup_lock.acquire(False)
-        if result and mover:
-
-            #Need to keep the thread list consistant.
-            thread_lock.acquire()
-            
-            #We don't want the main thread waiting.
-            status_request_threads.append(
-                threading.Thread(group=None,
-                                 target=mover.get_status,
-                                 name='',
-                                 args=(),
-                                 kwargs={}))
-            status_request_threads[-1].start()
-
-            #Always release this lock.
-            thread_lock.release()
-            #Only release the lock if we got it.
-            startup_lock.release()
-    """
-    
     #Called from self.after().
     def process_messages(self):
         if self.stopped: #If we should stop, then stop.
-            self.quit()
             return
 
         #Only process the messages in the queue at this time.
-        queue_lock.acquire()
-        number = min(len(self.command_queue), MIPC)
-        queue_lock.release()
+        number = min(message_queue.len_queue(), MIPC)
+        #queue_lock.acquire()
+        #number = min(len(self.command_queue), MIPC)
+        #queue_lock.release()
 
         while number > 0:
 
@@ -2167,7 +2167,9 @@ class Display(Tkinter.Canvas):
                 result = startup_lock.acquire(0)
                 if result:
                     words = command.split()
-                    self.put_request(words[1], words[1].split("@")[-1])
+                    request_queue.put_queue(words[1],
+                                            tid = words[1].split("@")[-1])
+                    #self.put_request(words[1], words[1].split("@")[-1])
                     startup_lock.release()
             
             #Process the next item in the queue.
@@ -2175,10 +2177,16 @@ class Display(Tkinter.Canvas):
             
             number = number - 1
 
-        #Schedule the next animation.
-        self.after_process_messages_id = self.after(MESSAGES_TIME,
-                                                    self.process_messages)
+            if self.stopped:
+                return
 
+        #Schedule the next animation.
+        if not self.stopped:
+            self.after_process_messages_id = self.after(MESSAGES_TIME,
+                                                        self.process_messages)
+
+        return
+        
     #Called from self.after().
     def smooth_animation(self):
         #If necessary, process the animation of the connections lines.
@@ -2214,7 +2222,7 @@ class Display(Tkinter.Canvas):
                                            self.disconnect_clients)
 
     #Called from join_thread().
-    def _join_thread(self):
+    def _join_thread(self, waitall = None):
         global status_request_threads
         
         thread_lock.acquire()
@@ -2222,7 +2230,10 @@ class Display(Tkinter.Canvas):
         #del_list = []
         alive_list = []
         for i in range(len(status_request_threads)):
-            status_request_threads[i].join()
+            if waitall:
+                status_request_threads[i].join()
+            else:
+                status_request_threads[i].join(0.0)
             if status_request_threads[i].isAlive():
                 alive_list.append(status_request_threads[i])
             #else:
@@ -2240,53 +2251,6 @@ class Display(Tkinter.Canvas):
         self._join_thread()
         
         self.after_join_id = self.after(JOIN_TIME, self.join_thread)
-
-    #Called from self.after().
-    def init_status(self):
-        __pychecker__ = "unusednames=i"
-
-        display_lock.acquire()
-
-        still_left = 0 #Only schedule again if necessary.
-        for mov in self.movers.values():
-            if mov.state == "Unknown":
-                print mov.state, mov.name
-                still_left = 1 
-
-                thread_lock.acquire()
-                list_len = len(status_request_threads)
-                thread_lock.release()
-                if list_len >= 5:
-                    self._join_thread()
-
-                thread_lock.acquire()
-                list_len = len(status_request_threads)
-
-                #We don't want to be too greedy.
-                if list_len < 5:
-                    
-                    #Query the mover about its current state.
-                    #We don't want the main thread waiting.
-                    status_request_threads.append(
-                        threading.Thread(group=None,
-                                         target=mov.get_status,
-                                         name='',
-                                         args=(),
-                                         kwargs={}))
-                    status_request_threads[-1].start()
-
-                #Always release this lock.
-                thread_lock.release()
-                    
-                
-                break #Don't hog this init_status() call.
-
-        display_lock.release()
-
-        if still_left:
-            #Only schedule again if necessary.
-            self.after_init_status_id = self.after(ANIMATE_TIME,
-                                                   self.init_status)
 
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
@@ -2542,6 +2506,7 @@ class Display(Tkinter.Canvas):
         __pychecker__ = "no-argsused"
         
         self.stopped = 1
+        self.quit()
 
     def title_command(self, command_list):
         title = string.join(command_list[1:])
@@ -2728,14 +2693,12 @@ class Display(Tkinter.Canvas):
         
         #Get local handles for the objects that we will be using.
         mover = self.movers.get(command_list[1])
-
-        num_bytes = float(command_list[2])
-        #total_bytes = float(command_list[3])
-
         try:
-            percent_done = abs(int(100 * (num_bytes / float(command_list[3]))))
+            raw_fraction = float(command_list[2]) / float(command_list[3])
         except ZeroDivisionError:
-            percent_done = 100
+            raw_fraction = 1.0
+        percent_done = abs(int(100 * raw_fraction))
+
         if command_list[4] == "network":
             mover.update_progress(percent_done, mover.alt_percent_done)
         elif command_list[4] == "media":
@@ -2750,8 +2713,6 @@ class Display(Tkinter.Canvas):
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()
         except:
-            #exc, msg  = sys.exc_info()[:2]
-            #print exc, msg
             pass
 
         #Skip media transfers from the network connection update.
@@ -2759,9 +2720,9 @@ class Display(Tkinter.Canvas):
         if connection and command_list[4] == "network":
             #Calculate the new instantanious rate.
             try:
-                rate = mover.transfer_rate(num_bytes, command_list[6])
+                rate = mover.transfer_rate(command_list[2], command_list[6])
             except IndexError:
-                rate = mover.transfer_rate(num_bytes)
+                rate = mover.transfer_rate(command_list[2])
 
             #Now that the rate is known, update the display.
             mover.update_rate(rate)
@@ -2777,9 +2738,8 @@ class Display(Tkinter.Canvas):
             connection.client.last_activity_time = time.time()
 
     def movers_command(self, command_list):
-        self.mover_names = command_list[1:]
         self.number_of_movers = len(command_list[1:])
-        self.create_movers(self.mover_names)
+        self.create_movers(command_list[1:])
 
     def newconfig_command(self, command_list):
         __pychecker__ = "no-argsused"  #Supress pychecker warning.
@@ -2792,13 +2752,9 @@ class Display(Tkinter.Canvas):
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
 
-        queue_lock.acquire()
-
         if words[0] in self.comm_dict.keys():
             #Under normal situations.
-            self.command_queue.append(command)
-
-        queue_lock.release()
+            message_queue.put_queue(command)
 
     #      connect MOVER_NAME CLIENT_NAME
     #      disconnect MOVER_NAME CLIENT_NAME
@@ -2834,14 +2790,9 @@ class Display(Tkinter.Canvas):
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
     def get_valid_command(self):  #, command):
-
-        queue_lock.acquire()
-        try:
-            command = self.command_queue[0]
-            del self.command_queue[0]
-        except IndexError:
-            command = ""
-        queue_lock.release()
+        command = message_queue.get_queue()
+        if not command:
+            return ""
 
         command = string.strip(command) #get rid of extra blanks and newlines
         words = string.split(command)
@@ -2854,7 +2805,7 @@ class Display(Tkinter.Canvas):
 
         #Don't bother processing transfer messages if we are not keeping up.
         if words[0] in ["transfer"] and \
-               len(self.command_queue) > max(20, (len(self.movers))):
+           message_queue.len_queue() > max(20, (len(self.movers))):
             return ""  #[]
 
         if len(words) < self.comm_dict[words[0]]['length']:
@@ -2864,7 +2815,8 @@ class Display(Tkinter.Canvas):
         if self.comm_dict[words[0]].get('mover_check', None) and \
            not self.movers.get(words[1]):
             #This is an error, a message from a mover we never heard of
-            Trace.trace(1, "Don't recognize mover, continuing ....")
+            Trace.trace(1, "Don't recognize mover %s, continuing ...."
+                        % words[1])
             return ""  #[]
 
         return command
@@ -2904,98 +2856,100 @@ class Display(Tkinter.Canvas):
             apply(self.comm_dict[words[0]]['function'], (self, words,))
             display_lock.release()
 
-    #Get the next mover to ask for information.
-    def get_request(self, system_name):
-        queue_lock.acquire()
-        try:
-            request = self.request_queue[0]
-        except IndexError:
-            request = {}
-        queue_lock.release()
-
-        #Make sure this is a valid request dictionary and that it
-        # belongs to the current thread.
-        mover_name = request.get('name', None)
-        sys_name = request.get('system_name', None)
-        if mover_name and sys_name == system_name:
-            del self.request_queue[0]
-            
-            mover_name = mover_name.split(".")[0].split("@")[0]
-
-            return mover_name + ".mover"
-
-        return None
-
-    #Tell the other thread what movers have old status.
-    def put_request(self, request, system_name):
-        queue_lock.acquire()
-        try:
-            self.request_queue.append({'name' : request,
-                                       'system_name' : system_name})
-        except IndexError:
-            pass
-        queue_lock.release()
-
     #########################################################################
-    """        
-    def display_idle(self):
-        display_lock.acquire()
 
-        #while len(self.command_queue) > 0:
-        print len(self.command_queue)
-        
-        if self.stopped: #If we should stop, then stop.
-            self.quit()
-        elif self.command_queue: #If the queue is not empty:
-            self.handle_command(self.command_queue[0])
-            del self.command_queue[0]
-                
-        display_lock.release()
-        self.after_idle_id = self.after_idle(self.display_idle)
-    """
-    """
     #overloaded
-    def destroy(self):
+    #def destroy(self):
+    #    Tkinter.Canvas.destroy(self)
+    
+    def cleanup_display(self):
+        global _font_cache
+        global _image_cache
+        global message_queue, request_queue
 
-        for mov in self.movers.values():
-            mc = mov.get_mover_client()
-            try:
-                #If we added a route to the mover, we should remove it.
-                # Most clients would prefer to leave such routes in place,
-                # but entv is not your normal client.  It talks to many
-                # movers that makes the routing table huge.
-                if mc.server_address:
-                    host_config.unset_route(mc.server_address[0])
-            except (socket.error, OSError):
-                pass
-            except TypeError:
-                # mov.server_address is equal to None
-                pass
-        
-        self.clear_display()
-        
+        self._join_thread(waitall = True)
+
+        #Undraw the diplay before deleting the objects (in the lists).
         try:
-            #When a reinitialization occurs, there is a resource leak.
-            for key in self.csc_dict.keys():
-                del self.csc_dict[key]
-        except (AttributeError, KeyError):
+            if self.winfo_exists():
+                self.undraw()
+                self.update()
+        except Tkinter.TclError:
             pass
+
+        #Clobber these lists.
+        for key in self.movers.keys():
+            try:
+                self.movers[key].display = None
+                del self.movers[key]
+            except KeyError:
+                Trace.trace(1, "Unable to remove mover %s" % key)
+        for key in self.clients.keys():
+            try:
+                self.clients[key].display = None
+                del self.clients[key]
+            except KeyError:
+                Trace.trace(1, "Unable to remove client %s" % key)
+        for key in self.connections.keys():
+            try:
+                self.connections[key].mover = None
+                self.connections[key].client = None
+                self.connections[key].display = None
+                del self.connections[key]
+            except KeyError:
+                Trace.trace(1, "Unable to remove connection %s" % key)
+
+        self.movers = {}
+        self.clients = {}
+        self.connections = {}
         
-        Tkinter.Canvas.destroy(self)
-    """
+        #When a reinitialization occurs, there is a resource leak.
+        for key in self.csc_dict.keys():
+            try:
+                del self.csc_dict[key]
+            except (AttributeError, KeyError):
+                pass
+
+        self.csc_dict = {}
+
+        #Perform the following two deletes explicitly to avoid obnoxious
+        # tkinter warning messages printed to the terminal when using
+        # python 2.2.
+        for key in _font_cache.keys():
+            try:
+                del _font_cache[key]
+            except:
+                exc, msg = sys.exc_info()[:2]
+                Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+
+        for key in _image_cache.keys():
+            try:
+                del _image_cache[key]
+            except:
+                exc, msg = sys.exc_info()[:2]
+                Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
+
+        _font_cache = {}
+        _image_cache = {}
+
     #overloaded 
     def update(self):
         try:
             if self.winfo_exists():
                 self.master.update()
-        except ValueError:
-            Trace.trace(1, "Unexpected Tkinter error...ignore")
+        except ValueError, msg:
+            Trace.trace(1, "Unexpected Tkinter error...ignore[update]: %s" %
+                        str(msg))
         except Tkinter.TclError:
-            Trace.trace(1, "TclError...ignore")
-
+            exc, msg, tb = sys.exc_info()
+            Trace.trace(1, "TclError...ignore[update]: %s: %s" %
+                        (str(exc), str(msg)))
+            pass  #If the window is already destroyed (i.e. user closed it)
+                  # then this error will occur.
 
     def mainloop(self, threshold = None):
         #self.reposition_canvas(force = True)
+        #self.pack(expand = 1, fill = Tkinter.BOTH)
         #If the window does not yet exist, draw it.  This should only
         # be true the first time mainloop() gets called; for
         # reinitializations this should not happen.
@@ -3004,7 +2958,7 @@ class Display(Tkinter.Canvas):
             #This tells the window to let the Canvas fill the entire window.
             # When this is here, it is one factor to having the first drawing
             # look correct (among other factors).
-            self.pack(expand = 1, fill = Tkinter.BOTH)
+            
             self.master.deiconify()
             self.master.lift()
             self.master.update()
@@ -3019,8 +2973,6 @@ class Display(Tkinter.Canvas):
                                                     self.process_messages)
         self.after_join_id = self.after(JOIN_TIME,
                                         self.join_thread)
-        #self.after_init_status_id = self.after(ANIMATE_TIME,
-        #                                       self.init_status)
 
         #Since, the startup_lock is still held, we have nothing yet to do.
         # This would be a good time to cleanup before things get hairy.
@@ -3041,10 +2993,6 @@ class Display(Tkinter.Canvas):
             #Threshold is the number of "MainWindows" allowed.  Should be
             # an integer.
             self.master.mainloop(threshold)
-        self.undraw()
-        self.clear_display()
-        self.update()
-        self.stopped = 1
 
 #########################################################################
 

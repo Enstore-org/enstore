@@ -13,12 +13,15 @@ import socket
 import select
 import string
 import time
+#import thread
 import threading
-import re
+#import re
 import rexec
 import errno
-import gc
+import gc, inspect
 import types
+import pprint
+
 
 #enstore imports
 import enstore_display
@@ -61,11 +64,15 @@ DEFAULT_SYSTEM_NAME = "Enstore"
 DEFAULT_GEOMETRY = "1200x1600+0+0"
 DEFAULT_ANIMATE = 1
 
-status_thread = None
-messages_thread = None
+#status_threads = None
+messages_threads = []
 
 #Should we need to stop (ie. cntl-C) this is the global flag.
 stop_now = 0
+
+#For cleanup_objects() to report problems.
+old_list = []
+old_len  = 0
 
 #########################################################################
 # common support functions
@@ -97,6 +104,57 @@ def dict_eval(data):
         print "Error", data,
         d = {}
     return d
+
+
+def print_object(item):
+    if type(item) in [types.FrameType]:
+        print type(item), str(item)[:60], item.f_code
+    else:
+        print type(item), str(item)[:60]
+
+    i = 1
+    for lsk in gc.get_referrers(item):
+        if lsk == inspect.currentframe():
+            continue
+
+        if type(lsk) in [types.FrameType]:
+            print "  %d: %s %s" % (i,
+                                 str(pprint.pformat(lsk))[:100],
+                                 lsk.f_code)
+        else:
+            print "  %d: %s" % (i, str(pprint.pformat(lsk))[:100])
+        i = i + 1
+    print
+
+def cleanup_objects():
+    global old_list
+    global old_len
+
+    #Get current information on the number of objects currently consuming
+    # resources.
+    new_list = gc.get_objects()
+    new_len = len(new_list)
+    del new_list[:]
+    
+    #Force garbage collection while the display is off while awaiting
+    # initialization.
+    gc.collect()
+    del gc.garbage[:]
+    gc.collect()
+    uncollectable_count = len(gc.garbage)
+    del gc.garbage[:]
+
+    #First report what the garbage collection algorithm says...
+    if uncollectable_count > 0:
+        Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
+
+    #Then (starting with the second pass) report the object count difference.
+    if old_len == 0:
+        old_len = new_len #Only set this on the first pass.
+    else:
+        if new_len - old_len > 2:
+            Trace.trace(0, "NEW COUNT DIFFERENCE: %s - %s = %s"
+                        % (new_len, old_len, new_len - old_len))
 
 """
 def get_system(intf=None): #, system_name=None):
@@ -164,7 +222,7 @@ def get_all_systems(csc, intf=None): #, system_name=None):
     #If intf is not given and the cached version is already known not to
     # exist throw an error an abort.
     if not intf:
-        sys.stderr.write("Unknown error.  Aborting\n")
+        sys.stderr.write("Unknown error.  Aborting.\n")
         sys.exit(1)
 
     #If running on 'canned' version, don't bother with configuration server.
@@ -183,6 +241,9 @@ def get_all_systems(csc, intf=None): #, system_name=None):
             if system_name not in intf.args:
                 del config_servers[system_name]
 
+        if len(config_servers) == 0:
+            sys.stderr.write("Unknown enstore systems.  Aborting.\n")
+            sys.exit(1)
     else:
         config_host = enstore_functions2.default_host()
 
@@ -716,6 +777,30 @@ def request_mover_status(display, csc, intf):
     enstore_display.startup_lock.release()
 """
 
+def start_messages_thread(csc_addr, intf):
+    global messages_threads
+
+    messages_threads.append(threading.Thread(
+        target = handle_messages,
+        args = (csc_addr, intf),
+        ))
+    messages_threads[-1].start()
+
+    return
+
+def stop_messages_threads():
+    global messages_threads
+
+    __pychecker__ = "unusednames=i"
+
+    for i in range(len(messages_threads)):
+        messages_threads[0].join()
+        del messages_threads[0]
+
+    messages_threads = []
+
+    return
+
 def send_mover_request(csc, send_request_dict, mover_name, u):
     #Get the message, mover name and mover network address
     # for sending the status request.
@@ -736,14 +821,15 @@ def send_mover_request(csc, send_request_dict, mover_name, u):
 #display: is an instance of the enstore_display.Display class.
 #event_relay_addr is a 2-tuple of ip/hostname and port number.
 #intf is an instance of the EntvInterface class.
-def handle_messages(display, csc, intf):
+#def handle_messages(display, csc, intf):
+def handle_messages(csc_addr, intf):
     global stop_now
 
     #Prevent the main thread from queuing status requests.
     enstore_display.startup_lock.acquire()
 
     #This is a time hack to get a clean output file.
-    timeout_time = time.time() + intf.capture_timeout
+    #timeout_time = time.time() + intf.capture_timeout
 
     send_request_dict = {}
     
@@ -753,6 +839,13 @@ def handle_messages(display, csc, intf):
         
         enstore_system = DEFAULT_SYSTEM_NAME
     else:
+        if not csc_addr:
+            return
+        if type(csc_addr) != types.TupleType or len(csc_addr) != 2:
+            return
+        
+        csc = configuration_client.ConfigurationClient(csc_addr)
+
         enstore_system = None
         while enstore_system == None:
             enstore_system = csc.get_enstore_system(3, 3)
@@ -761,7 +854,7 @@ def handle_messages(display, csc, intf):
             # the movers to be contacted.  If there is a known problem then
             # this could possibly take a while to time out with each of the
             # movers.
-            if stop_now or display.stopped:
+            if stop_now: # or display.stopped:
                 return
 
         er_dict = None
@@ -777,7 +870,7 @@ def handle_messages(display, csc, intf):
             # the movers to be contacted.  If there is a known problem then
             # this could possibly take a while to time out with each of the
             # movers.
-            if stop_now or display.stopped:
+            if stop_now: # or display.stopped:
                 return
 
             if er_dict == None or e_errors.is_timedout(er_dict):
@@ -785,7 +878,8 @@ def handle_messages(display, csc, intf):
 
             if not e_errors.is_ok(er_dict):
                 time.sleep(60)
-                display.queue_command("reinit")
+                #display.queue_command("reinit")
+                enstore_display.message_queue.put_queue("reinit")
                 return
 
             er_addr = (er_dict.get('hostip', None), er_dict.get('port', None))
@@ -805,7 +899,7 @@ def handle_messages(display, csc, intf):
         #If the client fails to initialize then wait a minute and start over.
         # The largest known error to occur is that socket.socket() fails
         # to return a file descriptor because to many files are open.
-        if stop_now or display.stopped:
+        if stop_now: # or display.stopped:
             return
 
     start = time.time()
@@ -814,10 +908,11 @@ def handle_messages(display, csc, intf):
     #Allow the main thread to queue status requests.
     enstore_display.startup_lock.release()
 
-    while not display.stopped and not stop_now:
+    while not stop_now: # and not display.stopped:
 
         #Send any requests to the mover.
-        mover_name = display.get_request(enstore_system)
+        mover_name = enstore_display.request_queue.get_queue(enstore_system)
+        #mover_name = display.get_request(enstore_system)
         if mover_name:
             send_mover_request(csc, send_request_dict, mover_name, u)
             
@@ -840,7 +935,8 @@ def handle_messages(display, csc, intf):
 
             #Don't overwhelm the display thread.
             time.sleep(0.03)
-            while len(display.command_queue) > 50:
+            #while len(display.command_queue) > 50:
+            while enstore_display.message_queue.len_queue() > 20:
                 time.sleep(0.01)
         else:
             #test whether there is a command ready to read, timeout in
@@ -918,54 +1014,10 @@ def handle_messages(display, csc, intf):
                                                words[1] + "@" + enstore_system,
                                                string.join(words[2:], " "))
 
-
-        ############# HACK ###############################################
-        #When writing the messages file, special attention needs to be
-        # given to make the "ending" clean.
-        if intf.generate_messages_file:
-            for command in commands:
-                words = command.split(" ")
-                if words[0] in ("connect", "disconnect", "loaded", "loading",
-                                "state", "unload", "transfer"):
-                    try:
-                        if time.time() > timeout_time \
-                               and display.movers[words[1]].state == \
-                               "HAVE_BOUND":
-                            words2 = ["state", words[1], "DISMOUNT_WAIT"]
-                            display.queue_command(string.join(words2, " "))
-                            #Use a dummny name for the volume.  Obtaining the
-                            # real name can cause a race condition leading to
-                            # a traceback.  enstore_display.unload_command()
-                            # does not even look at the volume name anyway.
-                            words2 = ["unload", words[1], "dummy"]
-                            display.queue_command(string.join(words2, " "))
-                            words2 = ["state", words[1], "IDLE"]
-                            display.queue_command(string.join(words2, " "))
-                        elif words[0] == "state" \
-                           and words[2] in \
-                           ("MOUNT_WAIT", "DISMOUNT_WAIT", "HAVE_BOUND",
-                            "FINISH_WRITE") \
-                           and display.movers[words[1]].state == "IDLE":
-                            pass
-                        elif words[0] in ("loaded", "loading", "transfer") \
-                             and display.movers[words[1]].state == "IDLE":
-                            pass
-                        elif time.time() < timeout_time:
-                            display.queue_command(command)
-                        elif display.movers[words[1]].state != "IDLE":
-                            display.queue_command(command)
-                    except KeyError:
-                        #A KeyError can occur if the main window has been
-                        # closed and the main thread has already cleared the
-                        # display.movers list.
-                        pass
-                else:
-                    display.queue_command(command)
-        ##################################################################
-        else:
-            for command in commands:
-                #For normal use put everything into the queue.
-                display.queue_command(command)
+        put_func = enstore_display.message_queue.put_queue #Shortcut.
+        for command in commands:
+            #For normal use put everything into the queue.
+            put_func(command)  #, enstore_system)
             
         #If necessary, handle resubscribing.
         if not intf.messages_file:
@@ -996,6 +1048,8 @@ def handle_messages(display, csc, intf):
                 # mov.server_address is equal to None
                 pass
 
+    return
+
 #########################################################################
 # The following function sets the window geometry.
 #########################################################################
@@ -1017,13 +1071,8 @@ def set_geometry(tk, entvrc_info):
 
     #Use the geometry argument first.
     if geometry != None:
-        window_width = int(re.search("^[0-9]+", geometry).group(0))
-        window_height = re.search("[x][0-9]+", geometry).group(0)
-        window_height = int(window_height.replace("x", " "))
-        x_position = re.search("[+][-]{0,1}[0-9]+[+]", geometry).group(0)
-        x_position = int(x_position.replace("+", ""))
-        y_position = re.search("[+][-]{0,1}[0-9]+$", geometry).group(0)
-        y_position = int(y_position.replace("+", ""))
+        window_width, window_height, x_position, y_position = \
+                      enstore_display.split_geometry(geometry)
 
     #If the initial size is larger than the screen size, use the
     #  screen size.
@@ -1175,8 +1224,6 @@ class EntvClientInterface(generic_client.GenericClientInterface):
 #########################################################################
 
 def main(intf):
-
-    global status_thread, messages_thread
     global stop_now
 
     if intf.movers_file or intf.messages_file:
@@ -1184,7 +1231,9 @@ def main(intf):
 
         system_name = DEFAULT_SYSTEM_NAME
 
+        cscs_info = {}
         cscs = [None]
+        mover_list = []
     else:
         # get a configuration server
         default_config_host = enstore_functions2.default_host()
@@ -1200,10 +1249,11 @@ def main(intf):
         if not cscs_info:
             sys.stderr.write("Unable to find configuration server.\n")
             sys.exit(1)
-
+        
         #Get the short name for the enstore system specified.
         system_name = get_system_name(intf, cscs_info)
 
+        
         cscs = []
         for address in cscs_info.values():
             cscs.append(configuration_client.ConfigurationClient(address))
@@ -1215,6 +1265,7 @@ def main(intf):
                 cscs[-1].new_config_obj.enable_caching()
             except:
                 pass
+        
 
     #Get the main window.
     master = Tkinter.Tk()
@@ -1225,6 +1276,10 @@ def main(intf):
     display = None
 
     while continue_working:
+
+        #Set this to not stop.
+        stop_now = 0
+        
         #Get the entvrc file information
         if intf.movers_file:
             entvrc_dict = {}
@@ -1236,34 +1291,36 @@ def main(intf):
         #Set the size of the window.
         set_geometry(master, entvrc_dict)
 
-        if display == None:
-            display = enstore_display.Display(entvrc_dict, master = master,
-                              background = entvrc_dict.get('background', None))
-        else:
-            display.reinit_display()
+        #if display == None:
+        display = enstore_display.Display(entvrc_dict, master = master,
+                             background = entvrc_dict.get('background', None))
 
-        mover_list = []
-        for i in range(len(cscs)):
-            if cscs[i].server_address:
-                try:
-                    #Inform the display the config server to use.  Don't do
-                    # this if running 'canned' entv.  Make sure this is run
-                    # before the movers_command is.
-                    display.handle_command(
-                        "csc %s %s" % (cscs[i].server_address[0],
-                                       cscs[i].server_address[1]))
-                except:
-                    pass
+        if not intf.messages_file:
+            for csc_addr in cscs_info.values():
 
-            #Inform the display the config server to use.  Make sure this
-            # is run before the movers_command is.
-            #This function can be called for 'canned' entv too.  This is
-            # because a None value is inserted into the cscs list.
-            mover_list = mover_list + get_mover_list(intf, cscs[i], 0, 1)
+                if csc_addr:
+                    try:
+                        #Inform the display the config server to use.  Don't do
+                        # this if running 'canned' entv.  Make sure this is run
+                        # before the movers_command is.
+                        display.handle_command("csc %s %s" % csc_addr)
+                            #"csc %s %s" % (cscs[i].server_address[0],
+                            #               cscs[i].server_address[1]))
+                    except:
+                        pass
 
-        #Inform the display the names of all the movers.
-        movers_command = "movers" + " " + string.join(mover_list, " ")
-        display.handle_command(movers_command)
+            mover_list = []
+            for i in range(len(cscs)):
+                if cscs[i].server_address:
+                    #Inform the display the config server to use.  Make sure this
+                    # is run before the movers_command is.
+                    #This function can be called for 'canned' entv too.  This is
+                    # because a None value is inserted into the cscs list.
+                    mover_list = mover_list + get_mover_list(intf, cscs[i], 0, 1)
+
+            #Inform the display the names of all the movers.
+            movers_command = "movers" + " " + string.join(mover_list, " ")
+            display.handle_command(movers_command)
 
         #If we want a clean commands file, we need to set the inital movers
         # state to idle.
@@ -1284,70 +1341,45 @@ def main(intf):
         # enstore_display.mainloop().
         enstore_display.startup_lock.acquire()
         
-        #Start a thread for each event relay we should contact.
-        messages_threads = []
-        
-        for i in range(len(cscs)):
-            messages_threads.append(threading.Thread(group=None,
-                                                     target=handle_messages,
-                                                     name='',
-                                                     args=(display,
-                                                           cscs[i], intf),
-                                                     kwargs={}))
-            messages_threads[-1].start()
+        if intf.messages_file:
+            #Read from file the event relay messages to process.
+            start_messages_thread(None, intf)
+        else:
+            #Start a thread for each event relay we should contact.
+            for i in range(len(cscs)):
+                start_messages_thread((cscs[i].server_address[0],
+                                       cscs[i].server_address[1]), intf)
 
         #Loop until user says don't.
         display.mainloop()
 
-        #Set the geometry of the file (if necessary).
+        #Tell other thread(s) to stop.
+        stop_now = 1
+
+        #Set the geometry of the .entvrc file (if necessary).
         set_entvrc(display, csc, intf)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
-        for i in range(len(messages_threads)):
-            messages_threads[0].join()
-            del messages_threads[0]
+        stop_messages_threads()
         Trace.trace(1, "message thread finished")
 
         #Determin if this is a reinitialization (True) or not (False).
-        continue_working = ( not display.stopped or display.attempt_reinit() )\
-                           and not stop_now
+        continue_working = display.attempt_reinit()
 
-        #try:
-        #    display.destroy()
-        #except Tkinter.TclError:
-        #    pass #If the window is already destroyed (i.e. user closed it)
-        #         # then this error will occur.
-        #del display
+        #Reclaim all of display's resources now.
+        del display
+        del entvrc_dict
+        del mover_list[:]
+        #Don't move the following into threads in enstore_display functions.
+        # There are wierd references that prevent them from being reclaimed
+        # by the garbage collector.
+        enstore_display.message_queue.clear_queue()
+        enstore_display.request_queue.clear_queue()
 
-        #Force garbage collection while the display is off while awaiting
-        # initialization.
-        gc.collect()
-        del gc.garbage[:]
-        gc.collect()
-        uncollectable_count = len(gc.garbage)
-        del gc.garbage[:]
-        if uncollectable_count > 0:
-            Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
-
-        #The following code is useful for debugging resource leaks.
-        """
-        if old_list:
-            new_list = gc.get_objects()
-            for item in new_list:
-                if item not in old_list and item != old_list:
-
-                    if type(item) ==  types.InstanceType or \
-                       type(item) ==  types.ClassType or \
-                       type(item) ==  types.TracebackType or \
-                       type(item) ==  types.FrameType :
-                        print item
-
-            print
-            print
-        else:
-            old_list = gc.get_objects()
-        """
+        #Force reclaimation of memory (and other resources) and also
+        # report if leaks are occuring.
+        cleanup_objects()
 
         if continue_working:
             #As long as we are reinitializing, make sure we pick up any
@@ -1357,19 +1389,6 @@ def main(intf):
             if csc:
                 csc.dump_and_save()
 
-    #Perform the following two deletes explicitly to avoid obnoxious
-    # tkinter warning messages printed to the terminal when using
-    # python 2.2.
-    try:
-        del enstore_display._font_cache
-    except:
-        exc, msg = sys.exc_info()[:2]
-        Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
-    try:
-        del enstore_display._image_cache
-    except:
-        exc, msg = sys.exc_info()[:2]
-        Trace.trace(1, "ERROR: %s: %s" % (str(exc), str(msg)))
 
         
 if __name__ == "__main__":
