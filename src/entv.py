@@ -20,7 +20,6 @@ import errno
 import gc
 import types
 
-
 #enstore imports
 import enstore_display
 import configuration_client
@@ -1237,12 +1236,11 @@ def main(intf):
         #Set the size of the window.
         set_geometry(master, entvrc_dict)
 
-        if display:
-            display.__init__(entvrc_dict, master = master,
-                              background = entvrc_dict.get('background', None))
-        else:
+        if display == None:
             display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
+        else:
+            display.reinit_display()
 
         mover_list = []
         for i in range(len(cscs)):
@@ -1300,7 +1298,7 @@ def main(intf):
 
         #Loop until user says don't.
         display.mainloop()
-        
+
         #Set the geometry of the file (if necessary).
         set_entvrc(display, csc, intf)
 
@@ -1315,11 +1313,11 @@ def main(intf):
         continue_working = ( not display.stopped or display.attempt_reinit() )\
                            and not stop_now
 
-        try:
-            display.destroy()
-        except Tkinter.TclError:
-            pass #If the window is already destroyed (i.e. user closed it)
-                 # then this error will occur.
+        #try:
+        #    display.destroy()
+        #except Tkinter.TclError:
+        #    pass #If the window is already destroyed (i.e. user closed it)
+        #         # then this error will occur.
         #del display
 
         #Force garbage collection while the display is off while awaiting
@@ -1350,7 +1348,7 @@ def main(intf):
         else:
             old_list = gc.get_objects()
         """
-        
+
         if continue_working:
             #As long as we are reinitializing, make sure we pick up any
             # new configuration changes.  It is possible that the

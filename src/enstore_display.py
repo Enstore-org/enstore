@@ -19,7 +19,7 @@ import types
 import threading
 import re
 import gc
-import host_config
+#import host_config
 
 import Trace
 import mover_client
@@ -392,6 +392,7 @@ class Mover:
         self.timer_seconds      = 0
         self.timer_started      = now
         self.timer_string       = '00:00:00'
+        self.timer_id           = None
 
         #Find out information about the mover.
         try:
@@ -435,8 +436,10 @@ class Mover:
     def animate_timer(self):
 
         self.update_timer(time.time())
-        
-        self.display.after(UPDATE_TIME, self.animate_timer)
+
+        #Carefull.  As long as draw_timer() gets called after animate_timer
+        # in __init__() we are okay.
+        self.timer_id = self.display.after(UPDATE_TIME, self.animate_timer)
 
     #########################################################################
 
@@ -526,6 +529,8 @@ class Mover:
                     fill=self.state_color, anchor=Tkinter.CENTER)
 
     def draw_timer(self):
+        if self.timer_id == None:
+            self.timer_id = self.display.after(UPDATE_TIME, self.animate_timer)
 
         if self.timer_display:
             self.display.itemconfigure(self.timer_display,
@@ -786,6 +791,9 @@ class Mover:
             pass
 
     def undraw_timer(self):
+        self.display.after_cancel(self.timer_id)
+        self.timer_id = None
+        
         try:
             self.display.delete(self.timer_display)
             self.timer_display = None
@@ -1163,7 +1171,7 @@ class Mover:
         # seperating space.
         self.height = ((self.display.height - 40) / 20)
         self.width = (self.display.width / (total_columns + 1))
-        
+
         #Font geometry. (state, label, timer)
         self.font = get_font(self.height/3.5, #'arial',
                              width_wanted=self.max_font_width(),
@@ -1807,7 +1815,11 @@ class Display(Tkinter.Canvas):
     #entvrc_info is a dictionary of various parameters.
     def __init__(self, entvrc_info, master = None, **attributes):
 
-        self.master = master
+        if not hasattr(self, "master"):
+            self.master = master
+            reinited = 0
+        else:
+            reinited = 1
         #geometry = entvrc_info.get('geometry', "1200x1600+0+0")
         title = entvrc_info.get('title', "Enstore")
         #self.animate = int(entvrc_info.get('animate', 1))
@@ -1816,12 +1828,14 @@ class Display(Tkinter.Canvas):
 
         self.csc_dict = {}
 
-        if master:
-            self.master_geometry = self.master.geometry()
-            Tkinter.Canvas.__init__(self, master = master)
-            self.master.title(title)
-        else:
-            Tkinter.Canvas.__init__(self)
+        #Only call Tkinter.Canvas.__init__() on the first time through.
+        if not reinited:
+            if master:
+                self.master_geometry = self.master.geometry()
+                Tkinter.Canvas.__init__(self, master = master)
+                self.master.title(title)
+            else:
+                Tkinter.Canvas.__init__(self)
 
 ###XXXXXXXXXXXXXXXXXX  --get rid of scrollbars--
 ##        if canvas_width is None:
@@ -1854,7 +1868,7 @@ class Display(Tkinter.Canvas):
         #Various toplevel window attributes.
         self.configure(attributes)
 
-        if master:
+        if self.master:
             #If animation is turned on, set animation on (by default it
             # is set off until here).
             if entvrc_info.get('animate', 1) == ANIMATE:
@@ -1864,8 +1878,9 @@ class Display(Tkinter.Canvas):
         self.height = int(self['height'])
 
         #self._init() #Other none window related attributes.
-        self._reinit = 0
-        self.stopped = 0
+        #self._reinit = 0
+        #self.stopped = 0
+        self.reinit_display()
         self.clear_display() #C
 
         self.bind('<Button-1>', self.action)
@@ -1878,6 +1893,10 @@ class Display(Tkinter.Canvas):
         #Clear the window for drawing to the screen.
         self.update()
 
+    def reinit_display(self):
+        self._reinit = 0
+        self.stopped = 0
+        
     #def toggle_animation(self):
     #    if self.animate:
     #        self.animate = STILL
@@ -1985,6 +2004,7 @@ class Display(Tkinter.Canvas):
         self.after_cancel(self.after_clients_id)
         self.after_cancel(self.after_reinitialize_id)
         self.after_cancel(self.after_process_messages_id)
+        self.after_cancel(self.after_join_id)
         self._reinit = 1
         self.quit()
 
@@ -2007,6 +2027,7 @@ class Display(Tkinter.Canvas):
         self.after_cancel(self.after_clients_id)
         self.after_cancel(self.after_reinitialize_id)
         self.after_cancel(self.after_process_messages_id)
+        self.after_cancel(self.after_join_id)
         
         self.stopped = 1
 
@@ -2932,6 +2953,7 @@ class Display(Tkinter.Canvas):
         display_lock.release()
         self.after_idle_id = self.after_idle(self.display_idle)
     """
+    """
     #overloaded
     def destroy(self):
 
@@ -2960,7 +2982,7 @@ class Display(Tkinter.Canvas):
             pass
         
         Tkinter.Canvas.destroy(self)
-    
+    """
     #overloaded 
     def update(self):
         try:
@@ -2973,6 +2995,7 @@ class Display(Tkinter.Canvas):
 
 
     def mainloop(self, threshold = None):
+        #self.reposition_canvas(force = True)
         #If the window does not yet exist, draw it.  This should only
         # be true the first time mainloop() gets called; for
         # reinitializations this should not happen.
@@ -3010,7 +3033,7 @@ class Display(Tkinter.Canvas):
         except:
             #Will get here if run from enstore_display.py not entv.py.
             pass
-        
+
         self.after_reposition_id = None
         if threshold == None:
             self.master.mainloop()
@@ -3020,6 +3043,7 @@ class Display(Tkinter.Canvas):
             self.master.mainloop(threshold)
         self.undraw()
         self.clear_display()
+        self.update()
         self.stopped = 1
 
 #########################################################################
