@@ -6,34 +6,56 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ -n "${1-}" ]; then
   opt="$1"
+  shift
 else
   opt=""
 fi
 
+if [ -n "${1-}" ]; then
+  robot="$1"
+  shift
+else
+  robot="R1R2"
+fi
 
-emass $opt DE01-CA2501 < /dev/null > de01.mount 2>&1 &
-emass $opt DE02-CA2502 < /dev/null > de02.mount 2>&1 &
+case $robot in
+  *R1*)
 
-emass $opt DC03-CA2270 < /dev/null > dc03.mount 2>&1 &
-emass $opt DC04-CA2271 < /dev/null > dc04.mount 2>&1 &
-emass $opt DC05-CA2272 < /dev/null > dc05.mount 2>&1 &
-emass $opt DC06-CA2273 < /dev/null > dc06.mount 2>&1 &
+    emass $opt DE01-CA2501 < /dev/null > de01.mount 2>&1 &
+    emass $opt DE02-CA2502 < /dev/null > de02.mount 2>&1 &
 
-#emass $opt DM07-CA2921 < /dev/null > dm07.mount 2>&1 &
-#emass $opt DM08-CA2922 < /dev/null > dm08.mount 2>&1 &
-#emass $opt DM09-CA2923 < /dev/null > dm09.mount 2>&1 &
-#emass $opt DM10-CA2924 < /dev/null > dm10.mount 2>&1 &
-#emass $opt DM11-CA2925 < /dev/null > dm11.mount 2>&1 &
-#emass $opt DM12-CA2926 < /dev/null > dm12.mount 2>&1 &
+    emass $opt DC03-CA2270 < /dev/null > dc03.mount 2>&1 &
+    emass $opt DC04-CA2271 < /dev/null > dc04.mount 2>&1 &
+    emass $opt DC05-CA2272 < /dev/null > dc05.mount 2>&1 &
+    emass $opt DC06-CA2273 < /dev/null > dc06.mount 2>&1 &
 
+   #emass $opt DM07-CA2921 < /dev/null > dm07.mount 2>&1 &
+   #emass $opt DM08-CA2922 < /dev/null > dm08.mount 2>&1 &
+   #emass $opt DM09-CA2923 < /dev/null > dm09.mount 2>&1 &
+   #emass $opt DM10-CA2924 < /dev/null > dm10.mount 2>&1 &
+   #emass $opt DM11-CA2925 < /dev/null > dm11.mount 2>&1 &
+   #emass $opt DM12-CA2926 < /dev/null > dm12.mount 2>&1 &
 
-#emass $opt DE13-CA2503 < /dev/null > de13.mount 2>&1 &
-emass $opt DE14-CA2504 < /dev/null > de14.mount 2>&1 &
+    echo "Robot arm 1 jobs started"
+    ;;
 
-emass $opt DC15-CA2274 < /dev/null > dc15.mount 2>&1 &
-emass $opt DC16-CA2275 < /dev/null > dc16.mount 2>&1 &
-#emass $opt DC17-CA2276 < /dev/null > dc17.mount 2>&1 &
+  *R2*)
 
-emass $opt DM18-CA2927 < /dev/null > dm18.mount 2>&1 &
-emass $opt DM19-CA2928 < /dev/null > dm19.mount 2>&1 &
+   #emass $opt DE13-CA2503 < /dev/null > de13.mount 2>&1 &
+    emass $opt DE14-CA2504 < /dev/null > de14.mount 2>&1 &
 
+    emass $opt DC15-CA2274 < /dev/null > dc15.mount 2>&1 &
+    emass $opt DC16-CA2275 < /dev/null > dc16.mount 2>&1 &
+   #emass $opt DC17-CA2276 < /dev/null > dc17.mount 2>&1 &
+
+    emass $opt DM18-CA2927 < /dev/null > dm18.mount 2>&1 &
+    emass $opt DM19-CA2928 < /dev/null > dm19.mount 2>&1 &
+
+    echo "Robot arm 2 jobs started"
+    ;;
+
+  *)
+    echo "Do not know about robot $robot"
+    ;;
+
+esac
