@@ -69,18 +69,21 @@ if __name__ == '__main__':
 	outf.write("set terminal postscript color solid\n")
 	outf.write("set output '"+postscript_output+"'\n")
 	outf.write("set title 'Tape Mounts per Volume (plotted at %s)'\n"%(time.ctime(time.time())))
-	outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-500, count-toh, high_water_mark))
-	outf.write("set arrow 2 from %d,%d to %d,%d head\n"%(count-tol-500, low_water_mark+500, count-tol, low_water_mark))
-	outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-500))
-	outf.write("set label 2 '%d' at %d,%d right\n"%(tol, count-tol-500, low_water_mark+500))
-	outf.write("set label 3 '%d' at -50,%d right\n"%(high_water_mark, high_water_mark))
-	outf.write("set label 4 '%d' at -50,%d right\n"%(low_water_mark, low_water_mark))
+	if toh > 0:
+		outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-500, count-toh, high_water_mark))
+		outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-500))
+	if tol > 0:
+		outf.write("set arrow 2 from %d,%d to %d,%d head\n"%(count-tol-500, low_water_mark+500, count-tol, low_water_mark))
+		outf.write("set label 2 '%d' at %d,%d right\n"%(tol, count-tol-500, low_water_mark+500))
+	outf.write("set label 3 '%d' at 500,%d left\n"%(high_water_mark, high_water_mark))
+	outf.write("set label 4 '%d' at 500,%d left\n"%(low_water_mark, low_water_mark))
 	outf.write("plot '%s' notitle with impulses, %d notitle, %d notitle\n"%(tmp_data, low_water_mark, high_water_mark))
 
 	outf.write("set logscale y\n")
 	outf.write("set output '"+postscript_output_logy+"'\n")
-	outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-2000, count-toh, high_water_mark))
-	outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-2000))
+	if toh > 0:
+		outf.write("set arrow 1 from %d,%d to %d,%d head\n"%(count-toh-500, high_water_mark-2000, count-toh, high_water_mark))
+		outf.write("set label 1 '%d' at %d,%d right\n"%(toh, count-toh-500, high_water_mark-2000))
 	outf.write("plot '%s' notitle with impulses, %d notitle, %d notitle\n"%(tmp_data, low_water_mark, high_water_mark))
 	outf.close()
 
