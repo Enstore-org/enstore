@@ -4,6 +4,70 @@
 
 %{
     #include <ftt.h>
+
+/*This is a hack*/
+/*copied from ftt_types.h*/
+#define FTT_EPRINT_BUF_SIZE 512
+extern char ftt_eprint_buf[];
+#define MAX_TRANS_ERRNO 50	/* maximum error number we translate */
+#define MAX_TRANS_DENSITY 10	/* maximum density number we translate */
+/* device information structure */
+#define MAXDEVSLOTS 80
+typedef struct {		
+	char *device_name;	/* pathname for device 		*/
+	short int density;	/* density code  		*/
+	short int mode;		/* compression, etc.		*/
+	short int hwdens;	/* hardware density code for (density,mode) */
+	short int passthru;	/* scsi passthru device	        */
+	short int fixed;	/* fixed blocksize */
+	short int rewind;	/* rewind on close, ret on open */
+	short int first;	/* first time this name appears in table */
+	int  max_blocksize;	/* maximum blocksize allowed in this mode */
+} ftt_devinfo;
+typedef struct {
+	ftt_devinfo 	devinfo[MAXDEVSLOTS];	/* table of above */
+	char 		*basename;		/* basename of device */
+	char            *prod_id;		/* SCSI ID prefix */
+	int 		**errortrans;		/* errno translation table */
+	char		**densitytrans;		/* density names */
+	char 		readonly;		/* we were opened readonly */
+	char 		unrecovered_error;	/* waiting for rewind... */
+	int 		file_descriptor;	/* fd or scsi handle */
+	char 		current_valid;		/* see below */
+	long 		current_block;		/* postion on tape */
+	long 		current_file;
+	FILE * 		async_pf_parent;	/* pipe fd for async ops */
+	FILE * 		async_pf_child;		/* pipe fd for async ops */
+	int 		async_pid;		/* proc id for async ops */
+	int 		last_operation;		/* operation num last done */
+	long		scsi_ops;		/* operation nums to passthru*/
+	long 		flags;			/* other flags */
+	long		readkb, readlo;		/* kb and remainder read */
+	long		writekb, writelo;	/* kb and remainder written */
+	char *		controller;		/* controller type */
+	int 		which_is_open;		/* devinfo index open now */
+	int 		which_is_default;	/* devinfo index for open_dev*/
+	int		default_blocksize;	/* blocksize for open_dev */
+	int		current_blocksize;	/* blocksize for open_dev */
+	int		density_is_set;		/* we already set density */
+	int		data_direction;		/* are we reading/writing */
+	int		nreads, nwrites;	/* operation counts */
+	int /*scsi_handle*/     scsi_descriptor;	/* descriptor feild */
+	int 		last_pos;		/* have we moved data */
+	char *		os;			/* operating system */
+	int		nretries, nfailretries;	/* retried reads/writes */
+	int		nresets;		/* unexpected BOT's */
+	int		nharderrors;		/* unrecovered r/w errors */
+} ftt_descriptor_buf;
+int ftt_set_last_operation(ftt_descriptor d, int op){
+	int prev;
+	ftt_descriptor_buf* fbd;
+	fbd = (ftt_descriptor_buf *)d;
+	prev = fbd->last_operation;
+	fbd->last_operation = op;
+	return prev;
+}
+/* End HACK*/
 %}
 
 %include pointer.i
@@ -311,7 +375,28 @@ int		ftt_skip_part(ftt_descriptor,int);
 
 extern char *ftt_ascii_error[]; /* maps error numbers to their names */
 
+/* This is a Hack*/
+int ftt_set_last_operation(ftt_descriptor, int);
 
-
-
-
+/* copied from ftt_types.h */
+/* operation flags for last_operation, scsi_ops */
+#define FTT_OPN_READ		 1
+#define FTT_OPN_WRITE		 2
+#define FTT_OPN_WRITEFM		 3
+#define FTT_OPN_SKIPREC		 4
+#define FTT_OPN_SKIPFM		 5
+#define FTT_OPN_REWIND		 6
+#define FTT_OPN_UNLOAD		 7
+#define FTT_OPN_RETENSION	 8
+#define FTT_OPN_ERASE		 9
+#define FTT_OPN_STATUS		10
+#define FTT_OPN_GET_STATUS	11
+#define FTT_OPN_ASYNC 		12 
+#define FTT_OPN_PASSTHRU        13
+#define FTT_OPN_CHALL           14
+#define FTT_OPN_OPEN            15
+#define FTT_OPN_RSKIPREC	16
+#define FTT_OPN_RSKIPFM		17
+#define FTT_OPN_SETDENSITY	18
+#define FTT_OPN_SETCOMPRESSION	19
+/* end HACK*/
