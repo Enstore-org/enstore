@@ -9,5 +9,5 @@ cat $drives | while read drive tape media size; do
  echo $drive $tape $media $size
  ${ENSTORE_DIR}/sbin/check_drive_sa.py $drive $tape $media $size > $tape.chk &
 done
-wait
+wait $!
 exit 0
