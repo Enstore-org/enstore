@@ -20,48 +20,49 @@ LOGFILE_DIR = "logfile_dir"
 class InquisitorPlots:
 
     # create the html file with the inquisitor plot information
-    def	make_plot_html_page(self):
-	self.plotfile.open()
-	# get the list of stamps and jpg files
-	(jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
-	self.plotfile.write(jpgs, stamps, pss)
-	self.plotfile.close()
-	self.plotfile.install()
+    def make_plot_html_page(self):
+        self.plotfile.open()
+        # get the list of stamps and jpg files
+        (jpgs, stamps, pss) = enstore_plots.find_jpg_files(self.html_dir)
+        self.plotfile.write(jpgs, stamps, pss)
+        self.plotfile.close()
+        self.plotfile.install()
 
     # plot thread
     def plot_function(self, ticket, lfd, keep, pts_dir, out_dir):
-	Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq transfer plots")
-	self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
-	Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq mount plots")
-	self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
-	# update the inquisitor plots web page
-	Trace.trace(enstore_constants.INQPLOTDBG, "Creating the inq plot web page")
-	self.make_plot_html_page()
-	ret_ticket = { 'status'   : (e_errors.OK, None), 'work' : 'plot' }
-	Trace.trace(enstore_constants.INQPLOTDBG, "Sending the reply to the user")
-	self.send_reply(ret_ticket)
+        ret_ticket = { 'status'   : (e_errors.OK, None), 'work' : 'plot' }
+        Trace.trace(enstore_constants.INQPLOTDBG, "Sending the reply to the user")
+        self.send_reply(ret_ticket)
+        Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq transfer plots")
+        self.encp_plot(ticket, lfd, keep, pts_dir, out_dir)
+        Trace.trace(enstore_constants.INQPLOTDBG, "Creating inq mount plots")
+        self.mount_plot(ticket, lfd, keep, pts_dir, out_dir)
+        # update the inquisitor plots web page
+        Trace.trace(enstore_constants.INQPLOTDBG, "Creating the inq plot web page")
+        self.make_plot_html_page()
+
 
     # make the mount plots (mounts per hour and mount latency
     def mount_plot(self, ticket, lfd, keep, pts_dir, out_dir):
-	ofn = out_dir+"/mount_lines.txt"
+        ofn = out_dir+"/mount_lines.txt"
 
-	# parse the log files to get the media changer mount/dismount
-	# information, put this info in a separate file
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
-	# the file at the beginning of the line.
-	mountfile = enstore_files.EnMountDataFile(enstore_constants.LOG_PREFIX+\
-						  "* /dev/null", ofn, 
-	                                "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
+        # parse the log files to get the media changer mount/dismount
+        # information, put this info in a separate file
+        # always add /dev/null to the end of the list of files to search thru 
+        # so that grep always has > 1 file and will always print the name of 
+        # the file at the beginning of the line.
+        mountfile = enstore_files.EnMountDataFile(enstore_constants.LOG_PREFIX+\
+                                                  "* /dev/null", ofn, 
+                                        "-e %s -e %s"%(Trace.MSG_MC_LOAD_REQ,
                                                        Trace.MSG_MC_LOAD_DONE),
                                                    lfd)
 
-	# only extract the information from the newly created file that is
-	# within the requested timeframe.
-	mountfile.open('r')
-	mountfile.timed_read(ticket)
-	# now pull out the info we are going to plot from the lines
-	mountfile.parse_data(ticket.get("mcs", []))
+        # only extract the information from the newly created file that is
+        # within the requested timeframe.
+        mountfile.open('r')
+        mountfile.timed_read(ticket)
+        # now pull out the info we are going to plot from the lines
+        mountfile.parse_data(ticket.get("mcs", []))
         mountfile.close()
         mountfile.cleanup(keep, pts_dir)
 
@@ -82,43 +83,43 @@ class InquisitorPlots:
             mlatfile.install(self.html_dir)
             mlatfile.cleanup(keep, pts_dir)
 
-	    # now save any new mount count data for the continuing total count. and create the
-	    # overall total mount plot
-	    mpdfile = enstore_plots.MpdDataFile(out_dir)
+            # now save any new mount count data for the continuing total count. and create the
+            # overall total mount plot
+            mpdfile = enstore_plots.MpdDataFile(out_dir)
             mpdfile.open()
             mpdfile.plot(mphfile.total_mounts)
             mpdfile.close()
-	    mpdfile.install(self.html_dir)
+            mpdfile.install(self.html_dir)
 
     # make the total transfers per unit of time and the bytes moved per day
     # plot
     def encp_plot(self, ticket, lfd, keep, pts_dir, out_dir):
-	ofn = out_dir+"/bytes_moved.txt"
+        ofn = out_dir+"/bytes_moved.txt"
 
-	# always add /dev/null to the end of the list of files to search thru 
-	# so that grep always has > 1 file and will always print the name of 
-	# the file at the beginning of the line.
-	encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
-						"* /dev/null",
-						ofn,
-						"-e %s"%(Trace.MSG_ENCP_XFER,),
-						lfd)
-	# only extract the information from the newly created file that is
-	# within the requested timeframe.
-	encpfile.open('r')
-	encpfile.timed_read(ticket)
-	# now pull out the info we are going to plot from the lines
-	encpfile.parse_data(ticket.get("mcs", []))
+        # always add /dev/null to the end of the list of files to search thru 
+        # so that grep always has > 1 file and will always print the name of 
+        # the file at the beginning of the line.
+        encpfile = enstore_files.EnEncpDataFile(enstore_constants.LOG_PREFIX+\
+                                                "* /dev/null",
+                                                ofn,
+                                                "-e %s"%(Trace.MSG_ENCP_XFER,),
+                                                lfd)
+        # only extract the information from the newly created file that is
+        # within the requested timeframe.
+        encpfile.open('r')
+        encpfile.timed_read(ticket)
+        # now pull out the info we are going to plot from the lines
+        encpfile.parse_data(ticket.get("mcs", []))
         encpfile.close()
         encpfile.cleanup(keep, pts_dir)
 
         # only do the plotting if we have some data
         if encpfile.data:
-	    bpdfile = enstore_plots.BpdDataFile(out_dir)
-	    bpdfile.open()
-	    bpdfile.plot(encpfile.data)
-	    bpdfile.close()
-	    bpdfile.install(self.html_dir)
+            bpdfile = enstore_plots.BpdDataFile(out_dir)
+            bpdfile.open()
+            bpdfile.plot(encpfile.data)
+            bpdfile.close()
+            bpdfile.install(self.html_dir)
 
             xferfile = enstore_plots.XferDataFile(out_dir, bpdfile.ptsfile)
             xferfile.open()
@@ -133,30 +134,30 @@ class InquisitorPlots:
 
     #  make all the plots
     def plot(self, ticket):
-	# make sure we do not have a thread doing this already
-	if self.plot_thread and self.plot_thread.isAlive():
-	    self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
-	else:
-	    # find out where the log files are located
-	    if ticket.has_key(LOGFILE_DIR):
-		lfd = ticket[LOGFILE_DIR]
-	    else:
-		t = self.csc.get("log_server")
-		if enstore_functions.is_timedout(t):
-		    return
-		lfd = t["log_file_path"]
+        # make sure we do not have a thread doing this already
+        if self.plot_thread and self.plot_thread.isAlive():
+            self.send_reply({ 'status'   : (e_errors.INPROGRESS, None) })
+        else:
+            # find out where the log files are located
+            if ticket.has_key(LOGFILE_DIR):
+                lfd = ticket[LOGFILE_DIR]
+            else:
+                t = self.csc.get("log_server")
+                if enstore_functions.is_timedout(t):
+                    return
+                lfd = t["log_file_path"]
 
-	    out_dir = ticket.get("out_dir", lfd)
+            out_dir = ticket.get("out_dir", lfd)
 
-	    keep = ticket.get("keep", 0)
-	    pts_dir = ticket.get("keep_dir", "")
+            keep = ticket.get("keep", 0)
+            pts_dir = ticket.get("keep_dir", "")
 
-	    # create a thread to deal with this.
-	    plot_args = (ticket, lfd, keep, pts_dir, out_dir)
-	    Trace.log(e_errors.INFO, "Creating plots in thread")
-	    self.plot_thread = threading.Thread(group=None, 
-						target=self.plot_function,
-						name=PLOTTHRNAME, args=plot_args)
-	    self.plot_thread.setDaemon(1)	    
-	    Trace.trace(enstore_constants.INQPLOTDBG, "Starting the inq plot thread")
-	    self.plot_thread.start()
+            # create a thread to deal with this.
+            plot_args = (ticket, lfd, keep, pts_dir, out_dir)
+            Trace.log(e_errors.INFO, "Creating plots in thread")
+            self.plot_thread = threading.Thread(group=None, 
+                                                target=self.plot_function,
+                                                name=PLOTTHRNAME, args=plot_args)
+            self.plot_thread.setDaemon(1)           
+            Trace.trace(enstore_constants.INQPLOTDBG, "Starting the inq plot thread")
+            self.plot_thread.start()
