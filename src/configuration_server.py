@@ -155,7 +155,7 @@ class ConfigurationDict:
 
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
-        out_ticket["status"] == (e_errors.OK, None)
+        out_ticket = {"status":(e_errors.OK, None)}
 	try:
             configfile = ticket["configfile"]
             out_ticket = {"status" : self.load_config(configfile)}
