@@ -26,10 +26,12 @@ class MyIndex(table.Index):
   def __init__(self,db,name):
 	table.Index.__init__(self,db,name)
   def val_to_str(self,val):
+        if 0: print self # quiet lint
 	if val==None:
 		return None
 	return val
   def str_to_val(self,str):
+        if 0: print self # quiet lint
 	if str==None:
 		return None
 	return str
@@ -96,6 +98,7 @@ class DbTable:
              key,val=c.next()
              len=len+1
              c.set(pos)
+          if 0: print val # quiet lint
           return len
     if action=="has_key":
        if cursor_open:
@@ -142,6 +145,7 @@ class DbTable:
 	len=len+1
     c.close()
     t.commit()
+    if 0: print val # quiet lint
     return len
 
   def has_key(self,key):
@@ -223,8 +227,7 @@ class DbTable:
      self.db.close()
 
   def checkpoint(self):
-     import regex,string
-     import time
+     #import regex,string
      if self.auto_journal:
         del self.jou
      if self.logc:
@@ -250,11 +253,12 @@ class DbTable:
      if self.logc:
         self.logc.send(log_client.INFO, 1, "End backup for "+self.name)
 def do_backup(name):
-     import time
-     try:
-    	   import SOCKS; socket = SOCKS
-     except ImportError:
-    	   import socket
+     #import time
+     #try:
+     #  import SOCKS
+     #  socket = SOCKS
+     #except ImportError:
+     #  import socket
 
      cwd=os.getcwd()
      try:
