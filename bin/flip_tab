@@ -66,10 +66,10 @@ for i in `ls -vI *.*`; do
   /bin/echo -n "Were all of these steps successful [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null ; then
      echo "... success acknowledged"
-     mv $i ${1}.done
+     mv $i ${i}.done
   else
      echo "... failure acknowledged"
-     mv $i ${1}.fail
+     mv $i ${i}.fail
   fi
   echo
   echo
