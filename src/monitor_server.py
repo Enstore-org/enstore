@@ -143,7 +143,7 @@ if __name__ == "__main__":
     html_directory = config['html_file'] # this item seems to really be a dir
     ms = MonitorServer(('', config['server_port']),
                        html_directory,
-                       config['html_refresh_time']
+                       config['refresh']
                        )
 
     while 1:
