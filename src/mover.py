@@ -75,6 +75,7 @@ class Mover:
         self.chkremote = 2.*60./self.sleeptime
         self.local = self.chkremote-1
         self.logc = log_client.LoggerClient(self.csc, 'MOVER', 'logserver', 0)
+        self.external_label = ''
 
     #########################################################################
     #
@@ -110,6 +111,8 @@ class Mover:
 
     # the library manager has told us to bind a volume so we can do some work
     def bind_volume(self, ticket):
+	print "MV: bind_volume"
+	pprint.pprint(ticket)
 
         # become a volume clerk client first
         vcc = volume_clerk_client.VolumeClerkClient(self.csc)
@@ -117,6 +120,8 @@ class Mover:
         # find out what volume clerk knows about this volume
         self.external_label = ticket["external_label"]
         vticket = vcc.inquire_vol(self.external_label)
+	print "MV:bind_volume inquire_vol"
+	pprint.pprint(vticket)
         if vticket["status"] != "ok":
 	    self.unilateral_unbind_next(ticket)
 	    return
@@ -172,6 +177,8 @@ class Mover:
         if ticket["status"] != "ok":
             raise "media loader cannot unload my volume"
 
+	self.external_label = ''
+
         # need to call the driver destructor....
 
         # create ticket that says we need more work
@@ -180,9 +187,26 @@ class Mover:
 
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
+        print "MV: write_to_hsm"
+        pprint.pprint(ticket)
         self.logc.send(log_client.INFO,2,"WRITE_TO_HSM"+str(ticket))
+
+        # 1st call the user (to see if they are still there)
+        # and announce that your her mover
+        self.logc.send(log_client.INFO,2,"GETTING USER SOCKETS")
+        sts = self.get_user_sockets(ticket)
+	# check the status and go to idle if bad
+        if sts == "ERROR":
+	    if self.external_label == '':
+		self.idle_mover_next()
+	    else:
+	        self.have_bound_volume_next()
+            return
+
         # double check that we are talking about the same volume
-        if ticket["fc"]["external_label"] != self.external_label :
+	if self.external_label == '':
+	    self.bind_volume({'external_label':ticket["fc"]["external_label"]})
+        elif ticket["fc"]["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and tell him we are going to append to volume
@@ -204,10 +228,6 @@ class Mover:
         complete_crc = 0
         pnfs = ticket["pinfo"]
         inode = 0
-
-        # call the user and announce that your her mover
-        self.logc.send(log_client.INFO,2,"GETTING USER SOCKETS")
-        self.get_user_sockets(ticket)
 
         self.logc.send(log_client.INFO,2,"OPEN_FILE_WRITE")
         # open the hsm file for writing
@@ -304,8 +324,21 @@ class Mover:
     # the library manager has asked us to read a file to the hsm
     def read_from_hsm(self, ticket):
 
+        # 1st call the user (to see if they are still there)
+	# and announce that your her mover
+        sts = self.get_user_sockets(ticket)
+	# check the status and go to idle if bad
+        if sts == "ERROR":
+	    if self.external_label == '':
+		self.idle_mover_next()
+	    else:
+	        self.have_bound_volume_next()
+            return
+
         # double check that we are talking about the same volume
-        if ticket["fc"]["external_label"] != self.external_label :
+	if self.external_label == '':
+	    self.bind_volume({'external_label':ticket["fc"]["external_label"]})
+        elif ticket["fc"]["external_label"] != self.external_label:
             raise "volume manager and I disagree on volume"
 
         # call the volume clerk and check on volume
@@ -325,9 +358,6 @@ class Mover:
         bytes_sent = 0
         sanity_cookie = ticket["fc"]["sanity_cookie"]
         complete_crc = 0
-
-        # call the user and announce that your her mover
-        self.get_user_sockets(ticket)
 
         # create the wrapper instance
         self.wrapper = cpio.Cpio(self.driver,self,binascii.crc_hqx)
@@ -468,24 +498,28 @@ class Mover:
 
     # data transfer takes place on tcp sockets, so get ports & call user
     def get_user_sockets(self, ticket):
-        host, port, listen_socket = callback.get_callback()
-	self.callback_addr = (host,port)
-        listen_socket.listen(4)
-	mover_ticket = {"callback_addr" : self.callback_addr}
-        ticket["mover"] = mover_ticket
+	try:
+	    host, port, listen_socket = callback.get_callback()
+	    self.callback_addr = (host,port)
+	    listen_socket.listen(4)
+	    mover_ticket = {"callback_addr" : self.callback_addr}
+	    ticket["mover"] = mover_ticket
 
-        # call the user and tell him I'm your mover and here's your ticket
-        self.control_socket = callback.user_callback_socket(ticket)
+	    # call the user and tell him I'm your mover and here's your ticket
+	    self.control_socket = callback.user_callback_socket(ticket)
 
-        # we expect a prompt call-back here, and should protect against users
-        # not getting back to us. The best protection would be to kick off if
-        # the user dropped the control_socket, but I am at home and am not able
-        # to find documentation on select...
+	    # we expect a prompt call-back here, and should protect against
+	    # users not getting back to us. The best protection would be to
+	    # kick off if the user dropped the control_socket, but I am at
+	    # home and am not able to find documentation on select...
 
-        data_socket, address = listen_socket.accept()
-        self.data_socket = data_socket
-        listen_socket.close()
-
+	    data_socket, address = listen_socket.accept()
+	    self.data_socket = data_socket
+	    listen_socket.close()
+            return "OK"
+	except:
+	    return "ERROR"
+	
     # create ticket that says we are idle
     def idle_mover_next(self):
         self.next_libmgr_request = {"work"  : "idle_mover",
