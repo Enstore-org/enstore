@@ -135,6 +135,8 @@ class GenericClient:
         if t['status'] == (e_errors.TIMEDOUT, None):
             Trace.trace(14,"alive - ERROR, config server get timed out")
             return {'status' : (e_errors.TIMEDOUT, None)}
+        elif t['status'] != (e_errors.OK, None):
+            return {'status':t['status']}
         try:
             x = self.u.send({'work':'alive'}, (t['hostip'], t['port']),
                             rcv_timeout, tries)
