@@ -43,7 +43,7 @@ create table file (
 	deleted		char(1) default 'n',
 	drive		varchar(47),
 	volume	 	int references volume (id),
-	location_cookie	varchar(24),
+	location_cookie	varchar(64),
 	pnfs_path	varchar(255),
 	pnfs_id		varchar(24),
 	sanity_cookie_0 bigint default 0,
