@@ -284,8 +284,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         f = open(fname,'w')
         f.write(value)
         f.close()
-        self.utime()
-        self.pstatinfo()
+        #self.utime()
+        #self.pstatinfo()
 
     # read the value stored in the requested file layer
     def readlayer(self, layer, filepath=None):
@@ -780,32 +780,32 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Get the user id of the file's owner.
         try:
             self.uid = self.pstat[stat.ST_UID]
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
         #Get the user name of the file's owner.
         try:
             self.uname = pwd.getpwuid(self.uid)[0]
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
         #Get the group id of the file's owner.
         try:
             self.gid = self.pstat[stat.ST_GID]
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
         #Get the group name of the file's owner.
         try:
             self.gname = grp.getgrgid(self.gid)[0]
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
@@ -817,8 +817,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # real mode is available in self.stat for people who need it
             self.mode = (self.pstat[stat.ST_MODE] % 0777) | 0100000
             self.mode_octal = str(oct(self.mode))
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             self.mode = 0
             self.mode_octal = 0
@@ -840,8 +840,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     del self.file_size
                 except AttributeError:
                     pass  #Was not present.
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
@@ -854,8 +854,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     del self.inode
                 except AttributeError:
                     pass #Was not present.
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
@@ -874,8 +874,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             # This is largly due to pnfs responce delays.
             self.major = int(((self.pstat[stat.ST_DEV]) >> 8) & 0xff)
             self.minor = int((self.pstat[stat.ST_DEV]) & 0xff)
-        except KeyboardInterrupt:
-            raise sys.exc_info()
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             pass
 
