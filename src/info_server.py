@@ -183,6 +183,81 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			Trace.handle_error(exc,msg)
 		return 1
 
+	# __history(vol) -- show state change history of vol
+	def __history(self, vol):
+		q = "select time, label, state_type.name as type, state.value \
+			 from state, state_type, volume \
+			 where \
+				label = '%s' and \
+				state.volume = volume.id and \
+				state.type = state_type.id \
+			 order by time desc;"%(vol)
+		try:
+			res = self.db.query(q).dictresult()
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			msg = '__history(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+			Trace.log(e_errors.ERROR, msg)
+			res = []
+		return res
+
+	# history(ticket) -- server version of __history()
+	def history(self, ticket):
+		try:
+			vol = ticket['external_label']
+			ticket["status"] = (e_errors.OK, None)
+			self.reply_to_caller(ticket)
+		except KeyError, detail:
+			msg =  "Info Server: key %s is missing"  % (detail)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+		res = self.__history(vol)
+		callback.write_tcp_obj_new(self.data_socket, res)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close() 
+		return
+
+	# write_protect_status(self, ticket):
+	def write_protect_status(self, ticket):
+		try:
+			vol = ticket['external_label']
+		except KeyError, detail:
+			msg =  "Info Server: key %s is missing"  % (detail)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select time, value from state, state_type, volume \
+			 where \
+				 state.type = state_type.id and \
+				 state_type.name = 'write_protect' and \
+				 state.volume = volume.id and \
+				 volume.label = '%s' \
+			 order by time desc limit 1;"%(vol)
+
+		try:
+			res = self.db.query(q).dictresult()
+			if not res:
+				status = "UNKNOWN"
+			else:
+				status = res[0]['value']
+			ticket['status'] = (e_errors.OK, status)
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			msg = 'write_protect_status(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
+			Trace.log(e_errors.ERROR, msg)
+			ticket["status"] = (e_errors.ERROR, msg)
+		self.reply_to_caller(ticket)
+		return
 
 	# return all the volumes in our dictionary.  Not so useful!
 	def get_vols(self,ticket):
@@ -481,6 +556,29 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.control_socket.close()
 		return
 
+	def show_bad(self, ticket):
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+
+		# get a user callback
+		if not self.get_user_sockets(ticket):
+			return
+		callback.write_tcp_obj(self.data_socket,ticket)
+
+		q = "select label, bad_file.bfid, size, path \
+			 from bad_file, file, volume \
+			 where \
+				 bad_file.bfid = file.bfid and \
+				 file.volume = volume.id;"
+		res = self.db.query(q).dictresult()
+
+		# finishing up
+
+		callback.write_tcp_obj_new(self.data_socket, res)
+		self.data_socket.close()
+		callback.write_tcp_obj(self.control_socket,ticket)
+		self.control_socket.close()
+		return
 
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))

@@ -409,6 +409,98 @@ class infoClient(generic_client.GenericClient):
 
 		return ticket
 
+	# show_history
+	def show_history(self, vol):
+		host, port, listen_socket = callback.get_callback()
+		listen_socket.listen(4)
+		ticket = {"work"		   : "history",
+				  "external_label" : vol,
+				  "callback_addr"  : (host, port)}
+
+		# send the work ticket to volume clerk
+		ticket = self.send(ticket, 10, 1)
+		if ticket['status'][0] != e_errors.OK:
+			return ticket
+
+		r, w, x = select.select([listen_socket], [], [], 15)
+		if not r:
+			listen_socket.close()
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
+
+		control_socket, address = listen_socket.accept()
+		if not hostaddr.allow(address):
+			listen_socket.close()
+			control_socket.close()
+			raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+		ticket = callback.read_tcp_obj(control_socket)
+		listen_socket.close()
+		if ticket["status"][0] != e_errors.OK:
+			return ticket
+
+		data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		data_path_socket.connect(ticket['info_clerk_callback_addr'])
+		ticket= callback.read_tcp_obj(data_path_socket)
+		res = callback.read_tcp_obj_new(data_path_socket)
+		ticket['history'] = res
+
+		data_path_socket.close()
+
+		# Work has been read - wait for final dialog with volume clerk
+		done_ticket = callback.read_tcp_obj(control_socket)
+		control_socket.close()
+		if done_ticket["status"][0] != e_errors.OK:
+			return done_ticket
+
+		return ticket
+
+	def write_protect_status(self, vol):
+		ticket = {"work"			: "write_protect_status",
+				  "external_label"  : vol}
+		return self.send(ticket)
+
+	def show_bad(self):
+		host, port, listen_socket = callback.get_callback()
+		listen_socket.listen(4)
+		ticket = {"work"		  : "show_bad",
+				  "callback_addr" : (host, port)}
+		# send the work ticket to the file clerk
+		ticket = self.send(ticket)
+		if ticket['status'][0] != e_errors.OK:
+			return ticket
+
+		r, w, x = select.select([listen_socket], [], [], 15)
+		if not r:
+			listen_socket.close()
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for file clerk callback"
+		control_socket, address = listen_socket.accept()
+		if not hostaddr.allow(address):
+			listen_socket.close()
+			control_socket.close()
+			raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+		ticket = callback.read_tcp_obj(control_socket)
+		listen_socket.close()
+		
+		if ticket["status"][0] != e_errors.OK:
+			return ticket
+		
+		data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		data_path_socket.connect(ticket['info_clerk_callback_addr'])
+  
+		ticket= callback.read_tcp_obj(data_path_socket)
+		bad_files = callback.read_tcp_obj_new(data_path_socket)
+		ticket['bad_files'] = bad_files
+		data_path_socket.close()
+
+		# Work has been read - wait for final dialog with file clerk
+		done_ticket = callback.read_tcp_obj(control_socket)
+		control_socket.close()
+		if done_ticket["status"][0] != e_errors.OK:
+			return done_ticket
+		return ticket
+
+
 class InfoClientInterface(generic_client.GenericClientInterface):
 
 	def __init__(self, args=sys.argv, user_mode=1):
@@ -428,6 +520,9 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.ls_sg_count = 0
 		self.just = None
 		self.labels = None
+		self.history = None
+		self.write_protect_status = None
+		self.show_bad = 0
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
@@ -461,6 +556,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
 				option.VALUE_LABEL:"volume_name",
+				option.USER_LEVEL:option.USER},
+		option.SHOW_BAD:{option.HELP_STRING:"list all bad files",
+				option.DEFAULT_VALUE:option.DEFAULT,
+				option.DEFAULT_TYPE:option.INTEGER,
+				option.VALUE_USAGE:option.IGNORED,
 				option.USER_LEVEL:option.USER},
 		option.GET_SG_COUNT:{
 				option.HELP_STRING: 'check allocated count for lib,sg',
@@ -499,6 +599,16 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.DEFAULT_TYPE:option.INTEGER,
 				option.VALUE_USAGE:option.IGNORED,
 				option.USER_LEVEL:option.USER},
+		option.HISTORY:{option.HELP_STRING:"show state change history of volume",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"volume_name",
+				option.USER_LEVEL:option.ADMIN},
+		option.WRITE_PROTECT_STATUS:{option.HELP_STRING:"show write protect status",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"volume_name",
+				option.USER_LEVEL:option.ADMIN},
 		option.LIST_SG_COUNT:{
 				option.HELP_STRING:"list all sg counts",
 				option.DEFAULT_VALUE:option.DEFAULT,
@@ -565,6 +675,24 @@ def do_work(intf):
 				capacity_str(ticket['remaining_bytes']),
 				ticket['system_inhibit'],
 				ticket['user_inhibit'])
+	elif intf.history:
+		ticket = ifc.show_history(intf.history)
+		if ticket['status'][0] == e_errors.OK and len(ticket['history']):
+			for state in ticket['history']:
+				type = state['type']
+				if state['type'] == 'system_inhibit_0':
+					type = 'system_inhibit[0]'
+				elif state['type'] == 'system_inhibit_1':
+					type = 'system_inhibit[1]'
+				elif state['type'] == 'user_inhibit_0':
+					type = 'user_inhibit[0]'
+				elif state['type'] == 'user_inhibit_1':
+					type = 'user_inhibit[1]'
+				print "%-28s %-20s %s"%(state['time'], type, state['value'])
+	elif intf.write_protect_status:
+		ticket = ifc.write_protect_status(intf.write_protect_status)
+		if ticket['status'][0] == e_errors.OK:
+			print intf.write_protect_status, "write-protect", ticket['status'][1]
 	elif intf.vols:
 		# optional argument
 		nargs = len(intf.args)
@@ -633,6 +761,11 @@ def do_work(intf):
 		if ticket['status'][0] == e_errors.OK:
 			for i in ticket['volumes']:
 				print i
+	elif intf.show_bad:
+		ticket = ifc.show_bad()
+		if ticket['status'][0] == e_errors.OK:
+			for f in ticket['bad_files']:
+				print f['label'], f['bfid'], f['size'], f['path']
 	elif intf.ls_sg_count:
 		ticket = ifc.list_sg_count()
 		sgcnt = ticket['sgcnt']
