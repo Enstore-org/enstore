@@ -75,10 +75,16 @@ class StatusBar(Tkinter.Frame):
 
 # for event loop
 quit_now = 0
+single_step = 0
+piped = 0
 
 # set_quit() -- callback for Exit
 def set_quit():
-	global quit_now
+	global quit_now, piped
+	if piped:
+		if not tkMessageBox.askokcancel("Quit at your risk",
+			"The input is piped.\nQuiting now will kill the process in the upstream.\nDo you still want to quit?"):
+			return
 	quit_now = 1
 	sys.exit(0)
 
@@ -88,6 +94,11 @@ def show_help():
 	tkMessageBox.showinfo(
 		"God helps those who help themselves",
 		"Call Chih-Hao at x8076")
+
+# set_single_step() -- active single step
+def set_single_step():
+	global single_step
+	single_step = 1
 
 # StateButton
 
@@ -108,7 +119,7 @@ class StatusButton(Tkinter.Button):
 
 # migration_watch() -- for "migrate.py --vol ..."
 def migration_watch(l1):
-
+	global single_step, quit_now, piped
 	# root window
 	root = Tkinter.Tk()
 	root.title("Migration Watch")
@@ -130,9 +141,11 @@ def migration_watch(l1):
 	quick_button.pack(side=Tkinter.LEFT)
 	action_button = StatusButton(tool_frame, ["Resume", "Pause"], width=10)
 	action_button.pack(side = Tkinter.LEFT)
+	single_step_button = Tkinter.Button(tool_frame, width=10, text='Step', command=set_single_step, state=Tkinter.DISABLED)
+	single_step_button.pack(side=Tkinter.LEFT)
 	help_button = Tkinter.Button(tool_frame, width=10, text='Help', command = show_help)
-	help_button.pack(side=Tkinter.LEFT)
-	tool_frame.pack()
+	help_button.pack(side=Tkinter.RIGHT)
+	tool_frame.pack(fill=Tkinter.X)
 
 	# pack command_line and volume_status in the same frame
 	frame1 = Tkinter.Frame(root)
@@ -167,12 +180,18 @@ def migration_watch(l1):
 			sys.exit(0)
 		# if paused:
 		if action_button.get_state() == "Pause":
-			# sleep so that it won't consume too much cpu
-			# while being paused
-			time.sleep(0.1)
-			# still needs to process the events
-			root.update()
-			continue
+			single_step_button.config(state=Tkinter.NORMAL)
+			if single_step:
+				single_step = 0
+			else:
+				# sleep so that it won't consume too
+				# much CPU cycle while being paused
+				time.sleep(0.1)
+				# still needs to process the events
+				root.update()
+				continue
+		else:
+			single_step_button.config(state=Tkinter.DISABLED)
 		if input_queue.empty():
 			time.sleep(0.1)
 			root.update()
@@ -238,6 +257,7 @@ def migration_watch(l1):
 
 # scan_watch() -- for "migrate.py --scan-vol ..."
 def scan_watch(l1):
+	global single_step, quit_now, piped
 
 	# root window
 	root = Tkinter.Tk()
@@ -260,9 +280,11 @@ def scan_watch(l1):
 	quick_button.pack(side=Tkinter.LEFT)
 	action_button = StatusButton(tool_frame, ["Resume", "Pause"], width=10)
 	action_button.pack(side = Tkinter.LEFT)
+	single_step_button = Tkinter.Button(tool_frame, width=10, text='Step', command=set_single_step, state=Tkinter.DISABLED)
+	single_step_button.pack(side=Tkinter.LEFT)
 	help_button = Tkinter.Button(tool_frame, width=10, text='Help', command = show_help)
-	help_button.pack(side=Tkinter.LEFT)
-	tool_frame.pack()
+	help_button.pack(side=Tkinter.RIGHT)
+	tool_frame.pack(fill=Tkinter.X)
 
 	# pack command_line and volume_status in the same frame
 	frame1 = Tkinter.Frame(root)
@@ -284,9 +306,18 @@ def scan_watch(l1):
 		if quit_now:
 			sys.exit(0)
 		if action_button.get_state() == "Pause":
-			time.sleep(0.1)
-			root.update()
-			continue
+			single_step_button.config(state=Tkinter.NORMAL)
+			if single_step:
+				single_step = 0
+			else:
+				# sleep so that it won't consume too
+				# much CPU cycle while being paused
+				time.sleep(0.1)
+				# still needs to process the events
+				root.update()
+				continue
+		else:
+			single_step_button.config(state=Tkinter.DISABLED)
 		if input_queue.empty():
 			time.sleep(0.1)
 			root.update()
@@ -318,8 +349,10 @@ def scan_watch(l1):
 if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		f = open(sys.argv[1])
+		piped = 0
 	else:
 		f = sys.stdin
+		piped = 1
 
 	l = f.readline()
 	part = string.split(l)
