@@ -152,7 +152,9 @@ class MoverClientInterface(generic_client.GenericClientInterface):
 
         if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
             pass
-        elif len(self.args) < 1:
+        elif len(self.argv) <= 1: #if only "enstore mover" is specified.
+            self.print_help()
+        elif len(self.args) < 1: #if a valid switch doesn't have the mover.
             self.print_usage("expected mover parameter")
         else:
             try:

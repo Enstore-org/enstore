@@ -330,7 +330,9 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
 
         if (getattr(self, "help", 0) or getattr(self, "usage", 0)):
                 pass
-        elif len(self.args) < 1:
+        elif len(self.argv) <= 1: #if only "enstore library" is specified.
+            self.print_help()
+        elif len(self.args) < 1: #if a valid switch doesn't have the LM.
             self.print_usage("expected library parameter")
         else:
             try:
