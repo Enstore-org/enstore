@@ -744,8 +744,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			    
 	
     def write_to_hsm(self, ticket):
-        if self.lm_lock == 'locked':
-            ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+        if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+            if self.lm_lock == 'locked':
+                ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+            else:
+                ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
             return
 	#call handle_timeout to avoid the situation when due to
@@ -812,8 +815,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	    summon_mover(self, mv, ticket)
 
     def read_from_hsm(self, ticket):
-        if self.lm_lock == 'locked':
-            ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+        if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+            if self.lm_lock == 'locked':
+                ticket["status"] = (e_errors.NOMOVERS, "Library manager is locked for external access")
+            else:
+                ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
             return
 	# check if this volume is OK
@@ -1620,6 +1626,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def change_lm_state(self, ticket):
         if ticket.has_key('state'):
             if (ticket['state'] == 'locked' or
+                ticket['state'] == 'ignore' or
                 ticket['state'] == 'unlocked'):
                 self.lm_lock = ticket['state']
                 self.set_lock(ticket['state'])

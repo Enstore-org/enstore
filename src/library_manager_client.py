@@ -193,7 +193,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                    ["get_work", "get_mover_list", "get_suspect_vols",
                     "get_delayed_dismount","delete_work=","priority=",
                     "load_movers", "summon=", "poll", "get_queue","host=",
-                    "start_draining", "stop_draining", "status"]
+                    "start_draining=", "stop_draining", "status"]
 
     # tell help that we need a library manager specified on the command line
     def parameters(self):
@@ -276,7 +276,12 @@ def do_work(intf):
 	ticket = lmc.get_queue(host, lm)
 	print repr(ticket)
     elif (intf.start_draining or intf.stop_draining):
-        if intf.start_draining: lock = 'locked'
+        if intf.start_draining:
+            if intf.start_draining == 'lock': lock = 'locked'
+            elif intf.start_draining != 'ignore':
+                print "only 'lock' and 'ignore' are valid for start_draining option"
+                sys.exit(0)
+            else: lock = intf.start_draining
         else: lock = 'unlocked'
         ticket = lmc.change_lm_state(lock)
     elif (intf.status):

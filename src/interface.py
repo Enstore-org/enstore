@@ -397,7 +397,7 @@ class Interface:
                     sys.exit(-1)
                 self.bytes = int(value)
             elif opt == "--start_draining":
-                self.start_draining = 1
+                self.start_draining = value
             elif opt == "--stop_draining":
                 self.stop_draining = 1
 	    elif opt == "--prefix":
