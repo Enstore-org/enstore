@@ -7,11 +7,6 @@ import tempfile
 
 import configuration_client
 
-config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
-config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
-config=(config_host,config_port)
-timeout=15
-tries=3
 
 #Conversion from "bytes per 15 seconds" to "terabytes per day"
 BP15S_TO_TBPD = 5.7e-09
@@ -37,8 +32,8 @@ class file_filter:
 #Function to recover the directory that the rate log files are in.
 def get_rate_info():
     #Get the configuration from the configuration server.
-    csc = configuration_client.ConfigurationClient(config)
-    ratekeep = csc.get('ratekeeper', timeout, tries)
+    csc = configuration_client.ConfigurationClient()
+    ratekeep = csc.get('ratekeeper', timeout=15, tries=3)
     
     dir  = ratekeep.get('dir', 'MISSING')
     tmp_dir  = ratekeep.get('tmp', 'MISSING')

@@ -11,12 +11,6 @@ import time
 
 import configuration_client
 
-config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
-config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
-config=(config_host,config_port)
-timeout=15
-tries=3
-
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
 
@@ -166,8 +160,8 @@ class Ratekeeper:
 
 if __name__ == "__main__":
     #Get the configuration from the configuration server.
-    csc = configuration_client.ConfigurationClient(config)
-    ratekeep = csc.get('ratekeeper', timeout, tries)
+    csc = configuration_client.ConfigurationClient()
+    ratekeep = csc.get('ratekeeper', timeout=15, tries=3)
     
     ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING')

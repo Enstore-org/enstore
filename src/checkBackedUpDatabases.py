@@ -15,14 +15,6 @@ import hostaddr
 import configuration_client
 import verify_db
 
-config_port = string.atoi(os.environ.get('ENSTORE_CONFIG_PORT', 7500))
-config_host = os.environ.get('ENSTORE_CONFIG_HOST', "localhost")
-config=(config_host,config_port)
-
-timeout=15
-tries=3
-
-
 def check_ticket(server, ticket,exit_if_bad=1):
     if not 'status' in ticket.keys():
         print timeofday.tod(),server,' NOT RESPONDING'
@@ -77,8 +69,8 @@ def remove_files(files,dir):
 
 
 def configure(configuration = None):
-    csc = configuration_client.ConfigurationClient(config)
-    backup = csc.get('backup',timeout,tries)
+    csc = configuration_client.ConfigurationClient()
+    backup = csc.get('backup',timeout=15,tries=3)
     check_ticket('Configuration Server',backup)
     
     backup_node = backup.get('hostip','MISSING')
