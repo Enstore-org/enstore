@@ -77,7 +77,9 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         #simulate mover connecting on callback and a read_from_HSM transfer
         localhost, localport, well_known_sock = callback.get_callback(
             use_multiple=0,
-            fixed_ip=ticket['remote_interface'],verbose=0)
+            fixed_ip=ticket['remote_interface'],
+            verbose=0)
+        well_known_sock.listen(4)
         ticket['mover']={'callback_addr': (localhost,localport)}
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(ticket['callback_addr'])
