@@ -795,7 +795,8 @@ class LibraryManagerMethods:
                     Trace.trace(11,"work can not be done at this volume %s"%(ret,))
                     #w['status'] = ret['status']
                     if not (ret['status'][0] == e_errors.VOL_SET_TO_FULL or
-                            ret['status'][0] == 'full'):
+                            ret['status'][0] == 'full' or
+                            ret['status'][0] == e_errors.MEDIA_IN_ANOTHER_DEVICE):
                         w['status'] = ret['status']
                         self.pending_work.delete(rq)
                         self.send_regret(w)
