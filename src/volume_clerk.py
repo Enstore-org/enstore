@@ -77,9 +77,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.sgdb = None
         self.paused_lms = {}
         self.ignored_sg_file = None
+        self.set_error_handler(vol_error_handler)
         return
 
-    def custom_error_handler(self, exc, msg, tb):
+    def vol_error_handler(self, exc, msg, tb):
         if exc == edb.pg.error or msg == "no connection to the server":
             self.reconnect(msg)
 
