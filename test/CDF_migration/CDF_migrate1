@@ -72,7 +72,9 @@ while [ $try -le $max_try ]; do
   rc=$?
   if [ $rc -eq  0 ]; then
      echo `date` $tape rechecked - ready for migrating
-     continue
+     touch $copy
+     touch $gotit
+     break
   else
      echo `date` $tape NOT ready, but copy2b file found. doing rm $copy
      rm $copy
