@@ -3,11 +3,9 @@ import time
 import  socket
 import string
 
-dog = {'cat' : 1} 
 
 import sys
 Quit = "Quit"
-nl = "\n"
 
 class Tdb(threading.Thread) :
     inFile = sys.stdin
@@ -71,6 +69,7 @@ class Tdb(threading.Thread) :
         self.writeln("help, list filename line, who, eval expresion quit")
     
     def quit(self):
+        if 0: print self # quiet lint 
         raise Quit
         
 class TdbListener(threading.Thread):
@@ -87,6 +86,7 @@ class TdbListener(threading.Thread):
         s.listen(2)
         while  1 :
             ns, who = s.accept()
+            if 0: print who # quiet lint
             tdb = Tdb()
             tdb.inFile = ns.makefile('r')
             tdb.outFile  = ns.makefile('w')
@@ -94,8 +94,9 @@ class TdbListener(threading.Thread):
             ns.close()
         
 if __name__ == "__main__" :
+    dog = {'cat' : 1} 
     TdbListener().start()
     while 1:
-        print "visit me at localhost 9999         "
+        print "visit me at localhost 9999 and see my dog=",dog
         time.sleep(10)
 
