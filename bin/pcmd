@@ -3,8 +3,60 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
+phelp()     { usage="
+pcmd is a tool to control, manipulate and query pnfs files.
+
+Commonly used commands are:
+
+   pcmd info   file         lists \"important\" info about the file
+       note:  \"eval \`pcmd info file\`\" will set shell variables for the user
+
+   pcmd tags   directory    lists the tags in the directory
+
+   pcmd bfid   file         lists the bit file id of the file
+   pcmd parked file         lists the last parked location of the file
+   pcmd debug  file         lists the debug info about the file transfer
+   pcmd xref   file         lists the cross-reference info about the file
+
+   pcmd ls   file [layer]   does an ls on the named layer in the file
+
+   pcmd {cat|more|less}          file layer     lists the layer of the file
+   pcmd {tagcat|tagmore|tagless} tag  directory lists the tag in the directory
+
+
+Don't use these unless you know what you are doing:
+
+   pcmd echo text file layer   echos text to named layer of the file
+
+   pcmd rm file layer          deletes (clears) named layer of the file
+
+   pcmd cp unixfile file layer copies unix file to named layer of file
+
+   pcmd size file size         sets the size of the file
+
+   pcd tagecho text tagname    echos text to the named tag
+
+   pcmd tagrm tag              removes the tag
+
+   pcmd io file                sets io mode (can't clear it easily)
+
+Don't use these unless you can interpret the results:
+
+   pcmd id       file
+   pcmd showid   id
+   pcmd const    file
+   pcmd nameof   id
+   pcmd parent   id
+   pcmd counters file
+   pcmd cursor   file
+
+"
+              echo "$usage"; }
+
+#internal routine only
 p_cmd()     { echo "\"`dirname $1`/$2(`basename $1`)\"" ; }
 
+#internal routine only
 p_use()     { uj="Usage:  p_use filename [container number]"
               if [ -z "${1-}" ] ; then echo $uj; return; fi
               if [ -z "${2-}" ] ; then c=".(use)(1)"; else c=".(use)($2)"; fi
@@ -12,16 +64,33 @@ p_use()     { uj="Usage:  p_use filename [container number]"
 
 pcat()      { eval cat  `p_use $@` ; }
 pmore()     { eval more `p_use $@` ; }
+pless()     { eval less `p_use $@` ; }
 
-pbfid()     { pcat $@ 1 ; }
-pxref()     { pcat $@ 4 ; }
+pbfid()     { pcat $1 1 ; }
+pparked()   { pcat $1 2 ; }
+pdebug()    { pcat $1 3 ; }
+pxref()     { pcat $1 4 ; }
+
+#internal routine only
+pinfo_helper()  { choice=$1
+                  c=0
+                  export x="parse-error"
+                  echo "$xref" | while read x; do
+                    c=`expr $c + 1`
+                    if   [ $c -eq $choice ] ; then break
+                    elif [ $c -eq $choice ] ; then break
+                    elif [ $c -eq $choice ] ; then break
+                    elif [ $c -eq $choice ] ; then break
+                    fi
+                  done
+                  echo "$x"; }
 
 pinfo()     { bfid=`pbfid $@`
               xref=`pxref $@`
-              volume=`echo $xref | cut -d: -f1`
-              cookie=`echo $xref | cut -d: -f2`
-              file_family=`echo $xref | cut -d: -f3`
-              orig_name=`echo $xref | cut -d: -f4`
+              volume="`pinfo_helper 1`"
+              cookie="`pinfo_helper 2`"
+              file_family="`pinfo_helper 3`"
+              orig_name="`pinfo_helper 4`"
               if [ `echo $SHELL | grep -c /bash` -ne 0 -o \
                    `echo $SHELL | grep -c /sh`   -ne 0 -o \
                    `echo $SHELL | grep -c /ksh`  -ne 0 -o \
@@ -42,6 +111,7 @@ set orig_name=$orig_name;"
 pls()       { eval ls -alsF `p_use $@` ; }
 
 pecho()     { uj="Usage:  pecho text file [container number]"
+              echo "currently broken if space in text message"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
               pt="$1"
               shift 1
@@ -80,20 +150,23 @@ pparent()   { u_p="Usage: pnameof id"
               eval cat  "\".(parent)($1)\"" ; }
 
 pcounters() { u_p="Usage: pcounters"
-            eval cat  "\".(get)(counters)\"" ; }
+              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(counters)\"" ; }
 
-pcursor()   { u_p="Usage: pcursor"
-              eval cat  "\".(get)(cursor)\"" ; }
+p_cursor()   { u_p="Usage: pcursor"
+              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              eval cat  "\"`dirname $dir`/.(get)(cursor)\"" ; }
 
-pCursor()   { waste=/tmp/gc-$$
+pcursor()   { waste=/tmp/gc-$$
               rm -f $waste
-              cat ".(get)(cursor)" >$waste
+              if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              cat "`dirname $dir`/.(get)(cursor)" >$waste
               if [ $? -ne 0 ] ; then problem "FAILED : Can get .(get)(cursor) " ; return ; fi
               . $waste
-              /bin/echo  " dirID : $dirID ; dirPerm : $dirPerm ; mountID : $mountID "
+              /bin/echo  "dirID=$dirID ; dirPerm=$dirPerm ; mountID=$mountID ;"
               mode=`/bin/echo $dirPerm | awk '{ print substr( $1 , 15, 1 ) }'`
               level=`/bin/echo $dirPerm | awk '{ print substr( $1 , 16 , 1 ) }'`
-              /bin/echo " We at level $level in mode $mode "
+              /bin/echo "We are at level $level in mode $mode "
               if [ $mode = "2" ] ; then
                 /bin/echo "The I/O mode of level 0 is DISABLED "
               else
@@ -105,18 +178,25 @@ pio()       { u_j="Usage:  pio filename";
               eval touch  "\"`dirname $1`/.(fset)(`basename $1`)(io)\"" ; }
 
 
-p_tag()     { uj="Usage: p_tag tagname"
+#internal routine only
+p_tag()     { uj="Usage: p_tag tagname directory"
               if [ -z "${1-}" ] ; then echo $uj; return; fi
-              echo "\".(tag)($1)\"" ; }
+              if [ -z "${2-}" ] ; then dir=`pwd`; else dir=$2; fi
+              echo "\"$dir/.(tag)($1)\"" ; }
 
 ptagcat()   { eval cat  `p_tag $@` ; }
 ptagmore()  { eval more `p_tag $@` ; }
+ptagless()  { eval less `p_tag $@` ; }
 
-ptagdir()   { cat ".(tags)(all)" ; }
+#internal routine
+ptagdir()   { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              cat "$dir/.(tags)(all)" ; }
 
-ptags()     { for i in `ptagdir`; do v=`eval cat '$i'`; echo $i " = " $v; done ; }
+ptags()     { if [ -z "${1-}" ] ; then dir=`pwd`; else dir=$1; fi
+              for i in `ptagdir $dir`; do v=`eval cat '$i'`; echo $i " = " $v; done ; }
 
 ptagecho()  { uj="Usage:  ptagecho text tagname"
+              echo "currently broken if space in text message"
               if [ -z "${1-}" -o  -z "${2-}" ] ; then echo $uj; return; fi
               pt="$1"
               shift 1
@@ -126,8 +206,13 @@ ptagrm()    { echo "The attempt to remove a tag results in an unpredictable beha
               echo "If you insist on doing this, try   eval echo -n \"\" >| `p_tag tagname`" ; }
 
 
-cmd=p$1
-shift
+if [ -z "${1-}" ] ; then
+  cmd="phelp"
+else
+  cmd=p$1
+  shift
+fi
+
 eval $cmd $@
 stat=$?
 exit $stat

@@ -371,8 +371,9 @@ class pnfs :
     def set_xreference(self,volume,cookie) :
         #value=repr(volume)+':'+repr(cookie)+':'+ \
         #     repr(self.file_family)+':'+repr(self.pnfsFilename)
-        value=volume+':'+cookie+':'+ \
-             self.file_family+':'+self.pnfsFilename
+
+        value=volume+'\012'+cookie+'\012'+ \
+             self.file_family+'\012'+self.pnfsFilename+'\012'
         self.writelayer(4,value)
         self.get_xreference()
 
@@ -411,12 +412,10 @@ class pnfs :
         if self.valid == valid and self.exists == exists :
             try:
                 xinfo = self.readlayer(4)
-                self.volume,\
-                self.cookie,\
-                self.origff,\
-                self.origname = string.split(xinfo[0],':')
-
-
+                self.volume   = regsub.sub("\012","",xinfo[0])
+                self.cookie   = regsub.sub("\012","",xinfo[1])
+                self.origff   = regsub.sub("\012","",xinfo[2])
+                self.origname = regsub.sub("\012","",xinfo[3])
             except :
                 self.volume = unknown
                 self.cookie = unknown

@@ -1,5 +1,5 @@
 #!/bin/sh
-#  Edit-Time-stamp: <1998-07-08 14:14:30 bakken>
+#  Edit-Time-stamp: <1998-07-15 13:04:58 bakken>
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 set -u  # force better programming and ability to use check for not set
 
@@ -35,6 +35,10 @@ elif [ "$1" = "umount" ] ; then
     echo $cmd
     eval $cmd
   done
+
+elif [ "$1" = "cycle" ] ; then
+  $0 umount
+  $0 mount
 
 elif [ "$1" = "mkdir" ] ; then
   now=`pwd`
