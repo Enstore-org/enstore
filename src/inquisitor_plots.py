@@ -189,16 +189,22 @@ class InquisitorPlots:
 	pts_file = "%s/%s"%(self.pts_dir, pts_file_only)
 	for node in nodes_l:
 	    node = enstore_functions.strip_node(node)
-	    new_file = "/tmp/%s.%s"%(pts_file_only, node)
-	    if node == this_node:
-		rtn = os.system("cp %s %s"%(pts_file, new_file))
+	    # make sure node is up before rcping
+	    if enstore_functions.ping(node) == enstore_constants.ALIVE:
+		new_file = "/tmp/%s.%s"%(pts_file_only, node)
+		if node == this_node:
+		    rtn = os.system("cp %s %s"%(pts_file, new_file))
+		else:
+		    rtn = enstore_functions.get_remote_file(node, pts_file, new_file)
+		if rtn == 0:
+		    # the copy was a success
+		    files_l.append((new_file, node))
+		else:
+		    # record the error
+		    Trace.log(e_errors.WARNING,
+			      "could not copy %s from %s for total bytes plot"%(pts_file,
+										node))
 	    else:
-		rtn = enstore_functions.get_remote_file(node, pts_file, new_file)
-	    if rtn == 0:
-		# the copy was a success
-		files_l.append((new_file, node))
-	    else:
-		# record the error
 		Trace.log(e_errors.WARNING,
 			  "could not copy %s from %s for total bytes plot"%(pts_file,
 									    node))
