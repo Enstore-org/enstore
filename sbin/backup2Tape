@@ -62,6 +62,11 @@ if [ $node = d0ensrv3 ]; then
   QUIT=$VAULT/QUIT
   TIMEONDISK=1  #days
 
+  if /bin/true; then
+    pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+    ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+  fi
+
 elif [ $node = stkensrv3 ]; then
   verbose="--verbose=1"
   pnfspath="/pnfs/eagle/backups/`date_string_d`"; export pnfspath
