@@ -140,7 +140,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
         self.current_volume = None #external label of current mounted volume
         self.next_volume = None # external label of pending (MC) volume
         self.volume_family = None 
-        self.volume_status = ([None, None], [None, None])
+        self.volume_status = (['none', 'none'], ['none', 'none'])
         self.files = ('','')
         self.hsm_drive_sn = ''
         self.no_transfers = 0
@@ -545,7 +545,7 @@ class Mover(  dispatching_worker.DispatchingWorker,
                            vol_info.get('user_inhibit',['Unknown', 'Unknown']))
 
     def clear_volume_status(self):
-        self.volume_status = ([None, None], [None, None])
+        self.volume_status = (['none', 'none'], ['none','none')
         self.vol_info = None
         
     def prepare_volume(self, volume_label, iomode, location=None):
