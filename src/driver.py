@@ -52,7 +52,6 @@ class GenericDriver:
 	self.blocksize = 0		# for the volume - from vc
 
 	# driver info
-	self.no_xfers = 0		# number of xfers (opens)
 	self.mode = 'r'			# aids in remaining_bytes calculations
 	self.cur_loc_cookie = None	# different for each driver
 
@@ -147,7 +146,6 @@ class GenericDriver:
 	# clear per read/write stats
 	# if write, calling program is expected to save eod_cookie.
 	# Note: I can not add a method to a file object???
-	self.no_xfers = self.no_xfers + 1
 	self.shm.offset( 4, 0 )		# clear read bytes
 	self.shm.offset( 5, 0 )		# clear write bytes
 	self.file_marks = 0
@@ -318,7 +316,6 @@ class  FTTDriver(GenericDriver) :
 	return None
 
     def open( self, device, mode ):
-	self.no_xfers = self.no_xfers + 1
 	self.shm.offset( 4, 0 )		# clear read bytes
 	self.shm.offset( 5, 0 )		# clear write bytes
 	self.file_marks = 0

@@ -226,6 +226,7 @@ class MoverClient:
 	self.files = ('','')
 	self.work_ticket = {}
 	self.hsm_drive_sn = ''
+	self.no_xfers = 0
 
 	self.pid = 0
 
@@ -513,6 +514,7 @@ def forked_write_to_hsm( self, ticket ):
 	    # WE COULD SEND EOD STATUS BACK, then we could test/check our
 	    # info against the vol_clerks
             do = self.hsm_driver.open( mvr_config['device'], 'a+' )
+	    self.no_xfers = self.no_xfers + 1
 	    t0 = time.time()
 	    do.seek( self.vol_info['eod_cookie'] )
 	    ticket['times']['seek_time'] = time.time() - t0
@@ -684,6 +686,7 @@ def forked_read_from_hsm( self, ticket ):
         try:
             Trace.trace(11, 'driver_open '+mvr_config['device'])
             do = self.hsm_driver.open( mvr_config['device'], 'r' )
+	    self.no_xfers = self.no_xfers + 1
 
 	    t0 = time.time()
 	    do.seek( ticket['fc']['location_cookie'] )
@@ -816,11 +819,11 @@ def return_or_update_and_exit( self, origin_addr, status ):
 			    'pid'        :os.getpid(),
 			    'exit_status':m_err.index(status),
 			    'vol_info'   :self.vol_info,
+			    'no_xfers'   :self.no_xfers,
 			    'hsm_driver' :{'blocksize'      :self.hsm_driver.blocksize,
 					   'remaining_bytes':self.hsm_driver.remaining_bytes,
 					   'vol_label'      :self.hsm_driver.vol_label,
-					   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie,
-					   'no_xfers'       :self.hsm_driver.no_xfers}},
+					   'cur_loc_cookie' :self.hsm_driver.cur_loc_cookie}},
 			   (self.config['hostip'],self.config['port']) )
 	sys.exit( m_err.index(status) )
 	pass
@@ -1002,7 +1005,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		 'crc_flag'     : str(self.client_obj_inst.crc_flag),
 		 'forked_state' : self.client_obj_inst.hsm_driver.user_state_get(),
 		 'state'        : self.client_obj_inst.state,
-		 'no_xfers'     : self.client_obj_inst.hsm_driver.no_xfers,
+		 'no_xfers'     : self.client_obj_inst.no_xfers,
 		 'local_mover'  : self.client_obj_inst.local_mover_enable,
 		 'rd_bytes'     : rb,
 		 'wr_bytes'     : wb,
@@ -1074,6 +1077,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 	
     def update_client_info( self, ticket ):
 	self.client_obj_inst.vol_info = ticket['vol_info']
+	self.client_obj_inst.no_xfers = ticket['no_xfers']
 	self.client_obj_inst.hsm_driver.blocksize = \
 					ticket['hsm_driver']['blocksize']
 	self.client_obj_inst.hsm_driver.remaining_bytes = \
@@ -1082,8 +1086,6 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 					ticket['hsm_driver']['vol_label']
 	self.client_obj_inst.hsm_driver.cur_loc_cookie = \
 					ticket['hsm_driver']['cur_loc_cookie']
-	self.client_obj_inst.hsm_driver.no_xfers = \
-					ticket['hsm_driver']['no_xfers']
 	Trace.log( e_errors.INFO,
 		   "update_client_info - pid:"+str(self.client_obj_inst.pid)+
 		   "ticket['pid']:"+str(ticket['pid']) )
