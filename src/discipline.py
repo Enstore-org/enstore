@@ -19,8 +19,7 @@ import pprint
 
 class Restrictor:
 
-    def read_config(self, reread_dict = 0):
-        if not reread_dict: return (e_errors.OK, None)
+    def read_config(self):
         self.exists = 0
         disc_dict=self.csc.get('discipline',{})
         if disc_dict['status'][0] == e_errors.OK:
@@ -35,7 +34,6 @@ class Restrictor:
     def __init__(self, csc, library_manager):
         self.csc = csc
         self.library_manager = library_manager
-        self.read_config(reread_dict = 1)
 
 
     def ticket_match(self, dict, ticket, pri_key, conf_key):
@@ -50,7 +48,7 @@ class Restrictor:
         
 
     def match_found(self, ticket):
-        self.read_config(reread_dict = 0)
+        self.read_config()
         if not self.exists:  # no discipline configuration info
             return 0, None, None, None
         # make a "flat" copy of ticket
