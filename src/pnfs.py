@@ -423,7 +423,7 @@ class Pnfs:
         Trace.trace(11,'making volume_file='+repr(self.volume_file))
         self.make_volmap_file()
         value=volume+'\012' + \
-               repr(location_cookie)+'\012'+ \
+               location_cookie+'\012'+ \
                repr(size)+'\012' + \
                self.file_family+'\012' + \
                self.pnfsFilename+'\012' + \
