@@ -177,7 +177,7 @@ def check(mover):
     if time_in_state:
         print '\t%10s' % hms(time_in_state)
 ##      if state in ['SEEK', 'MOUNT_WAIT', 'DISMOUNT_WAIT'] and int(time_in_state)>1200:
-        if state in ['SEEK'] and int(time_in_state)>1200:
+        if state in ['SEEK', 'ACTIVE'] and int(time_in_state)>1200:
             return -1, "Mover in state %s for %s" % (state, hms(time_in_state))
     else:
         print
