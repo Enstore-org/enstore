@@ -36,6 +36,14 @@ import priority_selector
 import mover_constants
 import charset
 
+def convert_version(version):
+    dig=0
+    for ch in version:
+        if ch.isdigit():
+            dig=dig*10+(ord(ch)-ord('0'))
+    return dig
+    
+    
 ## Trace.trace for additional debugging info uses bits >= 11
 
 ##############################################################
@@ -882,7 +890,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         sg_limits = None
         if self.keys.has_key('storage_group_limits'):
             sg_limits = self.keys['storage_group_limits']
-        self.legal_encp_version = self.keys.get('legal_encp_version','')
+        v = self.keys.get('legal_encp_version','')
+        self.legal_encp_version = (v, convert_version(v))
         LibraryManagerMethods.__init__(self, csc, sg_limits)
         self.set_udp_client()
 
@@ -938,12 +947,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def write_to_hsm(self, ticket):
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
-            if self.legal_encp_version:
-                if self.legal_encp_version > version:
-                    ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                        "encp version too old. Must be later than %s"%(self.legal_encp_version,))
-                    self.reply_to_caller(ticket)
-                    return
+        else:
+            version = ''
+        if self.legal_encp_version[0]:
+            if self.legal_encp_version[1] > convert_version(version):
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
+                self.reply_to_caller(ticket)
+                return
             
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
@@ -1022,12 +1033,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     def read_from_hsm(self, ticket):
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
-            if self.legal_encp_version:
-                if self.legal_encp_version > version:
-                    ticket['status'] = (e_errors.VERSION_MISMATCH,
-                                        "encp version too old. Must be later than %s"%(self.legal_encp_version,))
-                    self.reply_to_caller(ticket)
-                    return
+        else:
+            version = ''
+        if self.legal_encp_version[0]:
+            if self.legal_encp_version[1] > convert_version(version):
+                ticket['status'] = (e_errors.VERSION_MISMATCH,
+                                    "encp version too old: %s. Must be later than %s"%(version, self.legal_encp_version[0],))
+                self.reply_to_caller(ticket)
+                return
         if ticket.has_key('mover'):
             Trace.log(e_errors.WARNING,'input ticket has key mover in it %s'%(ticket,))
             del(ticket['mover'])
