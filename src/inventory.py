@@ -944,9 +944,10 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     vs_file = open(volume_size_file, "w")
     vd_file = open(volumes_defind_file, "w")
 
-    vs_file.write("%10s %9s %9s %11s %9s %9s %9s\n" % ("Label",
+    vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
-        "Expected"))
+        "Expected", "active", "deleted", "unknown",
+        "Volume-Family"))
 
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
@@ -1128,15 +1129,17 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
 
         key = vv['external_label']
         format_tuple = (key,) + \
-                       format_storage_size(volume_sums[key][0]) + \
-                       format_storage_size(volume_sums[key][1]) + \
-                       format_storage_size(volume_sums[key][2]) + \
-                       format_storage_size(vv['capacity_bytes']) + \
-                       format_storage_size(vv['remaining_bytes']) + \
-                       format_storage_size(vv['capacity_bytes'] -
-                                           vv['remaining_bytes'])
+                format_storage_size(volume_sums[key][0]) + \
+                format_storage_size(volume_sums[key][1]) + \
+                format_storage_size(volume_sums[key][2]) + \
+                format_storage_size(vv['capacity_bytes']) + \
+                format_storage_size(vv['remaining_bytes']) + \
+                format_storage_size(vv['capacity_bytes'] -
+                                    vv['remaining_bytes']) + \
+                (active, deleted, unknown, vv['volume_family'])
+                
         format_string = \
-           "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s\n"
+           "%10s %7.2f%-2s %7.2f%-2s %9.2f%-2s %7.2f%-2s %7.2f%-2s %7.2f%-2s %8d %8d %8d %-s\n"
         
         vs_file.write(format_string % format_tuple)
         
