@@ -95,6 +95,4 @@ _ftt _ftt_wrap_thread.c  -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
 runon runon_wrap.c runon.c
 enroute enroute_wrap.c enroute.c
 
-libtpmodule libtpcursor.c libtplock.c libtpmodule.c libtptxn.c \
-	-I$(LIBTP_INCLUDE) -L$(LIBTP_LIB) -ldb
 
