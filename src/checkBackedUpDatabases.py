@@ -133,11 +133,12 @@ def check_backup(backup_dir, backup_node):
     current_backup_dir = bdirs[-1:][0]
 
     container = backup_dir+'/'+current_backup_dir+'/dbase.tar.gz'
+    file_journal = os.path.join(backup_dir, current_backup_dir, 'file.tar.gz')
     print "container:", container
     con_stat=check_existance(container,1)
     mod_time=con_stat[stat.ST_MTIME]
-    if mod_time+60*5 > time.time():
-        print timeofday.tod(),"ERROR: Too new - still being modified?",
+    if not os.access(file_journal, os.F_OK):
+        print timeofday.tod(),"ERROR: Too new - still being modified? (or corrupted?)",
         print "Backup container",container,'last modified on',
         print time.ctime(mod_time)
         sys.exit(1)
