@@ -1576,7 +1576,8 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
                 #Attempt to match this ticket with the real ticket in the list.
                 # If this step wasn't done, then the code fails on the retry.
                 for i in range(0, len(work_tickets)):
-                    if work_tickets[i]['unique_id'] == ticket['unique_id']:
+                    if ticket.get("unique_id", None) and \
+                       work_tickets[i]['unique_id'] == ticket['unique_id']:
                         #Make ticket and work_ticket[i] reference the same
                         # info.  Otherwise error handling will be inconsistant.
                         work_tickets[i] = combine_dict(ticket, work_tickets[i])
