@@ -350,7 +350,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         self.read_error = [0,0]         # error this vol ([0]) and last vol ([1])
-        self.crc_flag = 1
+
         self.config['device'] = os.path.expandvars( self.config['device'] )
 
         import net_driver
@@ -395,7 +395,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.current_volume = volname
                     self.state = HAVE_BOUND
                     Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
-
+                    self.dismount_time = time.time() + self.default_dismount_delay()
+                    
             self.tape_driver.close()
 
         else:
@@ -1102,13 +1103,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     
     def status( self, ticket ):
-
+        now = time.time()
 	tick = { 'status'       : (e_errors.OK,None),
 		 'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
                  'drive_id'     : self.config['product_id'],
 		 #
-		 'crc_flag'     : str(self.crc_flag),
 		 'state'        : state_name(self.state),
 		 'transfers_completed'     : self.transfers_completed,
                  'transfers_failed': self.transfers_failed,
@@ -1123,9 +1123,11 @@ class Mover(dispatching_worker.DispatchingWorker,
 		 'current_location': self.current_location,
 		 'last_volume' : self.last_volume,
 		 'last_location': self.last_location,
-		 'time_stamp'   : time.time(),
+		 'time_stamp'   : now,
                  }
-
+        if self.dismount_timer and self.dismount_timer>now:
+            tick['dismount time'] = now-self.dismount_timer()
+            
 	self.reply_to_caller( tick )
 	return
 
