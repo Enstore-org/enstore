@@ -116,7 +116,7 @@ if __name__ == "__main__":
         log_server_info = tst.csc.get("log_server")
         if not date:
             date=time.strftime("%Y-%m-%d",time.localtime(time.time()))
-        log_file=log_server_info['log_file_path']+"LOG-"+date
+        log_file=log_server_info['log_file_path']+"/LOG-"+date
 
     if args:
         min_fsize = string.atoi(args[0])
@@ -150,8 +150,8 @@ if __name__ == "__main__":
                             'drive_sn':string.split(words[23],'=')[1],
                             'vendor':string.split(words[24],'=')[1],
                             }
-                    print "STAT",stat
-                    print "SIZE",stat['size']/1024./1024.
+                    #print "STAT",stat
+                    #print "SIZE",stat['size']/1024./1024.
                     if stat['size']/1024./1024. >= MIN_FSIZE:
                         # add to mover list entry
                         if not movers.has_key(stat['mover']):
