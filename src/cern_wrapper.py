@@ -9,6 +9,8 @@ BFID = 'bfid'
 BLOCKLEN = 'blocksize'
 CHECKSUM = 'checksum'
 COMPRESSION = 'compression'
+DECLARATION_DATE = 'declared'
+DEVICE = 'device'
 DRIVEMFG = 'vendor_id'
 DRIVEMODEL = 'product_id'
 DRIVESERIALNUMBER = 'serial_num'
@@ -21,11 +23,14 @@ PNFSFILENAME = 'pnfsFilename'
 SIZEBYTES = 'size_bytes'
 UID = 'uid'
 USERNAME = 'uname'
+VOLUME = 'external_label'
+VOLUME_FAMILY = 'volume_family'
 
 SPACE = " "
 MINUS1 = -1
 ZERO = "0"
 ONE = "1"
+TIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 RECORDFORMAT = ['F', 'D', 'S']
 FIXED = 0       # index in to RECORDFORMAT
 VARIABLE = 1    # index in to RECORDFORMAT
@@ -52,8 +57,11 @@ FILE_SIZE_L = 20
 GID_L = 10
 HOSTNAME_L = 10
 RECORD_LENGTH_L = 5
+SANITY_COOKIE_L = 10
+SANITY_COOKIE_SIZE_L = 10
 UID_L = 10
 USERNAME_L = 14
+VOLUME_FAMILY_L = 57
 COMPRESSION_USED = "P"
 CVSREVISION = "CVS $Revision: "
 efile = None 
@@ -61,6 +69,11 @@ efile = None
 # exceptions that this module can raise
 UNKNOWNRECFORMAT = "UNKNOWN_RECORD_FORMAT"
 INVALIDLENGTH = "INVALID_LENGTH"
+
+def format_date(date=-1):
+    if date == -1:
+        date = time.time()
+    return time.strftime(TIME_FORMAT, time.gmtime(date))
 
 def get_cent_digit(date_l):
     if date_l[0] < 2000:
@@ -271,8 +284,7 @@ class UserLabel4(Label):
 	self.segment_size = segment_size
 	self.checksum_algorithm = checksum_algorithm
 	self.segment_checksum = segment_checksum
-	self.timestamp = time.strftime("%Y/%m/%d %H:%M:%S",
-				       time.gmtime(time.time()))
+	self.timestamp = format_date()
 	self.num_of_blocks = num_of_blocks
 	self.padding = 5*SPACE
 
@@ -341,6 +353,24 @@ class UVL1(Label):
 	# format ourselves to be a string of length 80
 	self.text =  "%s%s%s"%(self.label, self.side_number,
 			       self.padding)
+	self.text_len()
+	return self.text
+
+
+class UVL2(Label):
+
+    def __init__(self, declaration_date, volume_family):
+	Label.__init__(self)
+	self.label = "UVL2"
+        self.declaration_date = format_date(declaration_date) # 19 bytes
+        self.volume_family = volume_family[:VOLUME_FAMILY_L]
+        self.volume_family = add_r_padding(self.volume_family,
+                                           VOLUME_FAMILY_L)
+
+    def __repr__(self):
+	# format ourselves to be a string of length 80
+	self.text =  "%s%s%s"%(self.label, self.declaration_date,
+			       self.volume_family)
 	self.text_len()
 	return self.text
 
@@ -683,12 +713,18 @@ def hdr_labels(ticket):
     return efile.hdr_labels()
 
 # construct the eof_labels
-def eof_labels(file_checksum):
+def eof_labels(file_checksum, sanity_cookie=0, sanity_cookie_size=0):
     global efile
     if efile:
 	efile.file_checksum = "%s"%(file_checksum,)
 	efile.file_checksum = add_l_padding(efile.file_checksum[:FILE_CHECKSUM_L],
 					    FILE_CHECKSUM_L, ZERO)
+        efile.sanity_cookie = "%s"%(sanity_cookie,)
+	efile.sanity_cookie = add_l_padding(efile.sanity_cookie[:SANITY_COOKIE_L],
+					    SANITY_COOKIE_L, ZERO)
+        efile.sanity_cookie_size = "%s"%(sanity_cookie_size,)
+	efile.sanity_cookie = add_l_padding(efile.sanity_cookie_size[:SANITY_COOKIE_SIZE_L],
+					    SANITY_COOKIE_SIZE_L, ZERO)
 	return efile.eof_labels()
     else:
 	return ""
@@ -717,15 +753,16 @@ def create_wrapper_dict(ticket):
 
     # we need these as strings
     wrapper_d = {}
+    ticket_vc = ticket['vc']
     wrapper_d[UID] = "%s"%(ticket['wrapper'][UID],)
     wrapper_d[GID] = "%s"%(ticket['wrapper'][GID],)
     wrapper_d[MODE] = ticket['wrapper'][MODE]
     wrapper_d[SIZEBYTES] = "%s"%(ticket['wrapper'][SIZEBYTES],)
-    wrapper_d[BLOCKLEN] = "%s"%(ticket['vc'].get('blocksize', ""),)
+    wrapper_d[BLOCKLEN] = "%s"%(ticket_vc.get('blocksize', ""),)
     wrapper_d[BFID] = "%s"%(ticket['fc'].get(BFID, ""),)
     wrapper_d[PNFSFILENAME] = "%s"%(ticket['wrapper'][PNFSFILENAME],)
     wrapper_d[USERNAME] = "%s"%(ticket['wrapper'][USERNAME],)
-    wrapper_d[EXPERIMENT] = "%s"%(ticket['vc']['storage_group'],)
+    wrapper_d[EXPERIMENT] = "%s"%(ticket_vc['storage_group'],)
     wrapper_d[ENCPVERSION] = ticket[ENCPVERSION]
 
     ticket_mover = ticket[MOVER]
@@ -734,13 +771,19 @@ def create_wrapper_dict(ticket):
     wrapper_d[DRIVEMFG] = ticket_mover[DRIVEMFG]
     wrapper_d[DRIVEMODEL] = ticket_mover[DRIVEMODEL]
     wrapper_d[DRIVESERIALNUMBER] = ticket_mover[DRIVESERIALNUMBER]
+
+    # we need these for the user volume label
+    wrapper_d[VOLUME] = ticket_vc[VOLUME]
+    wrapper_d[DECLARATION_DATE] = ticket_vc[DECLARATION_DATE]
+    wrapper_d[VOLUME_FAMILY] = ticket_vc[VOLUME_FAMILY]
     
     return wrapper_d
 
-def vol_labels(vol_id, own_id=OWNER):
-    vol1 = VOL1(volume_id=vol_id, owner_id=own_id)
+def vol_labels(ticket, own_id=OWNER):
+    vol1 = VOL1(volume_id=ticket[VOLUME], owner_id=own_id)
     uvl1 = UVL1()
-    return "%s%s"%(vol1, uvl1)
+    uvl2 = UVL2(ticket[DECLARATION_DATE], ticket[VOLUME_FAMILY])
+    return "%s%s%s"%(vol1, uvl1, uvl2)
 
 
 if __name__ == '__main__':            
@@ -807,8 +850,8 @@ if __name__ == '__main__':
                      'status': ('ok', None)},
               'status': ('ok', None)}
 
-    vol_l = vol_labels("PRL333")
     wrapper_d = create_wrapper_dict(ticket)
+    vol_l = vol_labels(wrapper_d)
     hdr_l = hdr_labels(wrapper_d)
     eof_l = eof_labels(123456789L)
     print "%s%s%s"%(vol_l, hdr_l, eof_l)
