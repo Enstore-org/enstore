@@ -74,9 +74,9 @@ users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
    users="$users --exclude=\'/home/$user/*\'" ; fi; done
 cmd=""
-cmd="nice -n 20 tar -l 
---exclude='/lost+found/*' --exclude=/proc/ --exclude='/tmp/*' --exclude='/var/log/*' 
---exclude='/*\.jon*' --exclude='/*\.fnal\.gov\.startup' --exclude='/*\.fnal\.gov\.monitor_server.output'  
+cmd="nice -n 20 tar -l
+--exclude='/lost+found/*' --exclude=/proc/ --exclude='/tmp/*' --exclude='/var/log/*'
+--exclude='/*\.jon*' --exclude='/*\.fnal\.gov\.startup' --exclude='/*\.fnal\.gov\.monitor_server.output'
 --exclude=BITERROR --exclude=SEL --exclude='/var/tmp/*' --exclude='/var/spool/mqueue/*' --exclude=.netscape
 $cmd $users  -czf $M/files.tgz  / 2>$M/files.err"
 echo "`date`: starting tar"
@@ -100,6 +100,7 @@ tar -czf \$F \\
   /var/adm/krb5/* \\
   /etc/hosts.* \\
   /etc/HOSTNAME \\
+  /etc/ntp.conf \\
   /fnal/ups/kt/*  \\
   /etc/krb5.keytab \\
   /etc/krb5.conf \\
