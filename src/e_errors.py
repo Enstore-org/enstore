@@ -22,13 +22,16 @@ CONFLICT = 'CONFLICT'
 TOOMANYSUSPVOLS = 'TOOMANYSUSPVOLS'
 UNKNOWN = 'UNKNOWN'
 NOALARM = 'NOALARM'
+SERVERDIED = 'SERVERDIED'
+CANTRESTART = 'CANTRESTART'
 DELETED = 'DELETED'
-                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
 if 0: print KEYERROR,OK,DOESNOTEXIST,WRONGPARAMETER,NOWORK,\
             NOMOVERS,MOUNTFAILED,DISMOUNTFAILED,\
             MEDIA_IN_ANOTHER_DEVICE,MEDIAERROR,USERERROR,\
             DRIVEERROR,UNKNOWNMEDIA,NOVOLUME,NOACCESS,CONFLICT,\
-            TIMEDOUT,TOOMANYSUSPVOLS,UNKNOW,NOALARMN # lint fix
+            TIMEDOUT,TOOMANYSUSPVOLS,UNKNOW,NOALARMN, SERVERDIED,\
+            CANTRESTART # lint fix
 
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHNAGING
