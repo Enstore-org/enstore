@@ -133,7 +133,7 @@ class Pnfs:
                 else:
                     Trace.log(e_errors.INFO, "problem with pnfsFilename = "+ 
                                        self.pnfsFilename)
-                    raise exc,msg
+                    raise os.error,msg
             self.pstatinfo()
             self.get_id()
 
