@@ -224,7 +224,8 @@ class Mover(  dispatching_worker.DispatchingWorker,
             ss = driver_object.get_stats()
         except FTT.error, detail:
             print "device=",self.mvr_config['device']
-            raise
+            exc,msg,tb=sys.exc_info()
+            raise exc,msg
         
         
         if ss['serial_num'] != None: self.hsm_drive_sn = ss['serial_num']
