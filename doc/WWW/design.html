@@ -167,7 +167,7 @@ The syntax is:
 <pre>
 % encp [options] src_file dst_file
 </pre>
-Currently there is no wildcarding allwoed, but this is a straight forward
+Currently there is no wildcarding allowed, but this is a straight forward
 extension to encp.
 
 <h3><a name="encp_throttle">
@@ -178,7 +178,7 @@ It is important not to swamp any system.
 In <em>Enstore</em>, a first level of throttling is implemented in
 <em>encp</em>.
 Control communications in <em>Enstore</em> uses a simple reliable
-request-response protocol using <em>UDP</em>, but data transfers
+request-response protocol implemented in <em>UDP</em>, whereas data transfers
 are implemented using two TCP ports.
 A fixed number, currently 30, of pre-allocated TCP ports are
 arbitrated among all instances of <em>encp</em> on a given machine.
@@ -228,14 +228,14 @@ which is known to the media changer.
 <dd>A quota family is a set of pairs of media names and maximum number of volumes.
 All files are created with respect to a quota family.
 Creation of a file is not allowed if the maximum number of volumes
-in that family would be exceeded.
+in that family would be exceeded. [Quotas were not implemented in the prototype.]
 <p>
 <dt><em>File family</em>:
 <dd>A file family is specified by a name and an integer "width".
 A file family is associated with every file creation.
-Within a given library, the <em>Enstore</em> system keeps no more
-than <em>"width"</em> volumes, loaded on no more than <em>"width"</em>
-number of drives for writing at any given moment.
+Within a given library, <em>Enstore</em> keeps no more
+than <em>"width"</em> volumes open for writing, and loads volumes on no more than <em>"width"</em>
+number of drives at any given moment.
 This is not striping, but rather, the number of different volumes,
 and hence different files, which can be active at one time.
 Once a volume is associated with a file family, only files in that
