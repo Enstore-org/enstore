@@ -3174,6 +3174,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         broken = ""
         self.dismount_time = None
+        Trace.log(e_errors.INFO, "Updating stats")
         self.update_stat()
 
         if not self.do_eject:
@@ -3187,6 +3188,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         self.state = DISMOUNT_WAIT
+        Trace.log(e_errors.INFO, "Ejecting tape")
+
         ejected = self.tape_driver.eject()
         if ejected == -1:
             # see what threads are running
@@ -3217,6 +3220,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.broken(broken)
 
                 return
+        Trace.log(e_errors.INFO, "Tape is ejected")
+
         self.tape_driver.close()
         self.last_volume = self.current_volume
         self.last_volume_family = self.volume_family
