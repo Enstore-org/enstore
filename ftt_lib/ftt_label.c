@@ -5,6 +5,8 @@ static char rcsid[] = "@(#)$Id$";
 
 #define pack(a,b,c,d) (((a)<<24)|((b)<<16)|((c)<<8)|(d))
 
+int ftt_format_label_version( char *, int, char *, int, int, char );
+
 char *ftt_label_type_names[] = {
     /* FTT_ANSI_HEADER         0 */ "FTT_ANSI_HEADER",
     /* FTT_FMB_HEADER          1 */ "FTT_FMB_HEADER",
