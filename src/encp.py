@@ -21,9 +21,13 @@ except ImportError:
 ##############################################################################
 
 def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
+    t0 = time.time()
+    tinfo = {}
+    tinfo["abs_start"] = t0
 
     # first check the unix file the user specified
     # Note that the unix file remains open
+    t1 = time.time()
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
     major = 0
@@ -34,8 +38,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     if not stat.S_ISREG(statinfo[stat.ST_MODE]) :
         raise errorcode[EPERM],"encp.write_to_hsm: "\
               +unixfile+" is not a regular file"
+    tinfo["filecheck"] = time.time() - t1
 
     # check the output pnfs file next
+    t1 = time.time()
     p = pnfs.pnfs(pnfsfile)
     if p.valid != pnfs.valid :
         raise errorcode[EINVAL],"encp.write_to_hsm: "\
@@ -47,6 +53,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     if p.writable != pnfs.enabled :
         raise errorcode[EACCES],"encp.write_to_hsm: "\
               +pnfsfile+", NO write access to directory"
+    tinfo["pnfscheck"] = time.time() - t1
 
     # make the pnfs dictionary that will be part of the ticket
     pinfo = {}
@@ -67,8 +74,10 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
 
     # get a port to talk on and listen for connections
+    t1 = time.time()
     host, port, listen_socket = get_callback()
     listen_socket.listen(4)
+    tinfo["get_callback"] = time.time() - t1
 
     # generate the work ticket
     ticket = {"work"               : "write_to_hsm",
@@ -87,10 +96,15 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
               }
 
     # ask configuration server what port the right library manager is using
+    t1 = time.time()
     vticket = csc.get(p.library+".library_manager")
+    tinfo["get_libman"] = time.time() - t1
 
     # send the work ticket to the library manager
+    t1 = time.time()
+    tinfo["tot_to_send_ticket"] = t1 -t0
     ticket = u.send(ticket, (vticket['host'], vticket['port']))
+    tinfo["send_ticket"] = time.time() - t1
     if ticket['status'] != "ok" :
         raise errorcode[EPROTO],"encp.write_to_hsm: from u.send to "\
               +p.library+" at "\
@@ -123,12 +137,19 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
 
     # If the system has called us back with our own  unique id, call back
     # the mover on the mover's port and send the file on that port.
+    t1 = time.time()
+    tinfo["tot_to_mover_callback"] = t1 - t0
     data_path_socket = mover_callback_socket(ticket)
+    t1 = time.time()
     while 1:
         buf = in_file.read(min(fsize, 65536*4))
         l = len(buf)
         if len(buf) == 0 : break
         data_path_socket.send(buf)
+    t2 = time.time()
+    tinfo["sent_bytes"] = t2-t1
+    tinfo["tot_to_sent_bytes"] = t2-t0
+
     data_path_socket.close()
     in_file.close()
 
@@ -137,15 +158,30 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, list) :
     # namespace with information about transfer.
     done_ticket = a_to_dict(control_socket.recv(TRANSFER_MAX))
     control_socket.close()
-    done_formatted  = pprint.pformat(done_ticket)
+    tinfo["total"] = time.time()-t0
+    done_ticket["tinfo"] = tinfo
+    tf = time.time()
+    if tf!=t0:
+        done_ticket["MB_per_S"] = 1.*fsize/1024./1024./(tf-t0)
+    else:
+        done_ticket["MB_per_S"] = 0.0
     if done_ticket["status"] == "ok" :
-        p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"]\
-                          ,done_formatted)
+        t1 = time.time()
+        p.set_bit_file_id(done_ticket["bfid"],done_ticket["size_bytes"])
+        done_formatted  = pprint.pformat(done_ticket)
+        p.writelayer(3,done_formatted)
+        tinfo["pnfsupdate"] = time.time() - t1
+
         if list :
+            done_ticket["tinfo"] = tinfo # update info
+            done_formatted  = pprint.pformat(done_ticket)
             fticket=done_ticket["file_clerk"]
             print p.pnfsFilename, p.bit_file_id, p.file_size,\
-                  done_ticket["external_label"], fticket["bof_space_cookie"]\
-                  ,done_formatted
+                  done_ticket["external_label"], fticket["bof_space_cookie"],\
+                  "MB/S =",done_ticket["MB_per_S"],"\n",done_formatted,"\n"
+        else:
+            print p.pnfsFilename,"transferred at",done_ticket["MB_per_S"],\
+                  "MB/S"
 
     else :
         raise errorcode[EPROTO],"encp.write_to_hsm: "\

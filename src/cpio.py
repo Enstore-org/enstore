@@ -1,4 +1,5 @@
 import os
+import sys
 import stat
 from errno import *
 import binascii
@@ -95,8 +96,8 @@ class cpio :
         for h in [(filename,filesize), (filename+".encrc",8)] :
             fname = h[0]
             fsize = h[1]
-	    # set this dang mode to something that works on all machines!
-	    jonmode = 0x81a4
+            # set this dang mode to something that works on all machines!
+            jonmode = 0x81a4
             # make all filenames relative - strip off leading slash
             if fname[0] == "/" :
                 fname = fname[1:]
@@ -216,6 +217,7 @@ class cpio :
             data_size = data_size + length
             # we need a complete crc of the data in the file
             data_crc = apply(self.crc_fun,(b,data_crc))
+
             # we also need a "sanity" crc of 1st sanity_bytes of data in file
             # so, we crc the 1st portion of the data twice (should be ok)
             if sanity_size < sanity_bytes :
@@ -232,34 +234,55 @@ class cpio :
         # write out the trailers
         apply(self.write_driver.write_block,
               (self.trailers(size,head_crc,data_crc,trailer),))
-        return (data_size, data_crc, sanity_crc)
+        sanity_cookie = (sanity_bytes,sanity_crc)
+        return (data_size, data_crc, repr(sanity_cookie))
 
 
     # read an enstore archive: devices must be ready and open
-    def read(self, sanity_blocks=0, sanity_crc=0) :
+    def read(self, sanity_cookie="(0,0)") :
 
         # setup counters/flags
-        s_crc = 0
+        sanity_bytes,sanity_crc=eval(sanity_cookie)
+        san_crc = 0
         data_crc = 0
-        data_size = 1
+        data_size = 0
+        sanity_size = 0
+        first = 1
         size = 0
         parse_header = 1
 
         # now read input file and write it out
-        while size < data_size:
+        while size < data_size or first:
+            first = 0
             offset = 0
             buffer = apply(self.read_driver.read_block,())
             length = len(buffer)
             if length == 0 :
-                raise "busted"
+                raise errorcode[EINVAL],"Invalid format of cpio format "+\
+                      "Expecting "+ repr(data_size)+" bytes, but only read"+\
+                      repr(size)+" bytes"
+
             # decode the cpio header block
             if parse_header :
-                data_offset, data_size, data_name = self.decode(buffer)
+                try:
+                    data_offset, data_size, data_name = self.decode(buffer)
+                except errorcode[EINVAL]:
+                    # for now, just send the data back to the user, as read
+                    bad = sys.exc_info()[1]
+                    print bad
+                    while 1:
+                        apply(self.write_driver.write_block,(buffer,))
+                        buffer = apply(self.read_driver.read_block,())
+                        length = len(buffer)
+                        if length == 0 :
+                            return (-1,-1,-1,bad)
                 parse_header = 0
                 offset = data_offset
+
+            # we need to crc the data
             if size + length - offset <= data_size :
-                size = size + length - offset
                 data_end = length
+                size = size + length - offset
             else :
                 data_end = data_size - size + offset
                 size = data_size
@@ -267,6 +290,29 @@ class cpio :
                 padd =  (4-(next%4)) %4
                 trailer = buffer[data_end+padd:]
             data_crc = apply(self.crc_fun,(buffer[offset:data_end],data_crc))
+
+            # look at first part of file to make sure it is right file
+            if sanity_size < sanity_bytes and size!=data_size:
+                if sanity_size + length - offset <= sanity_bytes :
+                    sanity_end = length
+                    sanity_size = sanity_size+length-offset
+                else :
+                    sanity_end = sanity_bytes - sanity_size + offset
+                    sanity_size = sanity_bytes
+                    san_crc = apply(self.crc_fun,(buffer[offset:sanity_end]\
+                                                     ,san_crc))
+                if sanity_size == sanity_bytes :
+                    if sanity_crc != sanity_crc:
+                        raise IOError, "Sanity Mismatch, read"+repr(san_crc)+\
+                              " but was expecting"+repr(sanity_crc)
+                elif sanity_size > sanity_bytes :
+                    # need sanity_size, or less,  bytes in sanity_crc
+                    print sanity_size,sanity_bytes
+                    print size,data_size
+                    print length,offset
+                    raise "TILT - coding error!"
+
+            # write the data
             apply(self.write_driver.write_block,(buffer[offset:data_end],))
 
         # now read the crc file - just read to end of data and then decode
@@ -279,11 +325,10 @@ class cpio :
 
         recorded_crc = self.encrc(trailer)
         if recorded_crc != data_crc :
-            crc_match = "ERROR: CRC's MISMATCH"
-        else :
-            crc_match = "ok"
+            raise IOError, "CRC Mismatch, read"+repr(san_crc)+\
+                  " but was expecting"+repr(sanity_crc)
 
-        return (data_size, data_crc, recorded_crc, crc_match)
+        return (data_size, data_crc)
 
 # shamelessly stolen from python's posixfile.py
 class diskdriver:
@@ -354,23 +399,24 @@ if __name__ == "__main__" :
     minor = dev_dict["Minor"]
     rmajor = 0
     rminor = 0
-    sanity_bytes = 1000
+    sanity_bytes = 0
 
-    (size,crc,sanity_crc) = wrapper.write(statb[stat.ST_INO],
-                                          statb[stat.ST_MODE],
-                                          statb[stat.ST_UID],
-                                          statb[stat.ST_GID],
-                                          statb[stat.ST_MTIME],
-                                          statb[stat.ST_SIZE],
-                                          major, minor, rmajor, rminor,
-                                          fin._file_.name, sanity_bytes)
-    print "cpio.write returned: size:",size,"crc:",crc,"sanity_crc:",sanity_crc
+    (size,crc,sanity_cookie) = wrapper.write(statb[stat.ST_INO],
+                                             statb[stat.ST_MODE],
+                                             statb[stat.ST_UID],
+                                             statb[stat.ST_GID],
+                                             statb[stat.ST_MTIME],
+                                             statb[stat.ST_SIZE],
+                                             major, minor, rmajor, rminor,
+                                             fin._file_.name, sanity_bytes)
+    print "cpio.write returned: size:",size,"crc:",crc,\
+          "sanity_cookie:",sanity_cookie
 
     fin.close()
     fout.close()
 
     if size != statb[stat.ST_SIZE] :
-        raise "Size ERROR: Wrote "+repr(size)+" bytes, file was "\
+        raise IOError,"Size ERROR: Wrote "+repr(size)+" bytes, file was "\
               +repr(statb[stat.ST_SIZE])+" bytes long"
 
 
@@ -380,16 +426,12 @@ if __name__ == "__main__" :
     fout = diskdriver_open(sys.argv[1]+".copy","w")
 
     wrapper = cpio(fin,fout,binascii.crc_hqx)
-    (read_size, read_crc, recorded_crc, match) = wrapper.read()
-    print "cpio.read  returned: size:",read_size,"crc:",read_crc,\
-          "recorded_crc:",recorded_crc,"crc_match:",match
+    (read_size, read_crc) = wrapper.read(sanity_cookie)
+    print "cpio.read  returned: size:",read_size,"crc:",read_crc
 
     fin.close()
     fout.close()
 
     if read_size != size :
-        raise "Size ERROR: Read "+repr(read_size)+" bytes, wrote "\
+        raise IOError,"Size ERROR: Read "+repr(read_size)+" bytes, wrote "\
               +repr(size)+" bytes"
-
-    if match != "ok" :
-        raise "CRC ERROR: Read "+repr(read_crc)+", wrote "+repr(recorded_crc)

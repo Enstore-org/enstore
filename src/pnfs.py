@@ -52,7 +52,7 @@ class pnfs :
     # simple test configuration
     def jon1(self) :
         if self.valid == valid :
-            self.set_bit_file_id("1234567890987654321",123,"no information")
+            self.set_bit_file_id("1234567890987654321",123)
             self.statinfo()
         else:
             raise errorcode[EINVAL],"pnfs.jon1: "\
@@ -61,7 +61,7 @@ class pnfs :
     # simple test configuration
     def jon2(self) :
         if self.valid == valid :
-            self.set_bit_file_id("1234567890987654321",45678,"no informatioN")
+            self.set_bit_file_id("1234567890987654321",45678)
             self.set_library("activelibrary")
             self.set_file_family("raw")
             self.set_file_family_width(2)
@@ -410,14 +410,12 @@ class pnfs :
     ##########################################################################
 
     # store a new bit file id
-    def set_bit_file_id(self,value,size=0,info="") :
+    def set_bit_file_id(self,value,size=0) :
         if self.valid == valid :
             if self.exists == direxists :
                 self.touch()
                 self.statinfo()
             self.writelayer(1,value)
-            if info != "" :
-                self.writelayer(2,info)
             self.get_bit_file_id()
             if size != 0 :
                 self.set_file_size(size)
@@ -436,7 +434,7 @@ class pnfs :
     def get_info(self) :
         if self.valid == valid and self.exists == exists :
             try :
-                self.info = self.readlayer(2)
+                self.info = self.readlayer(3)
             except :
                 self.info = unknown
         else :

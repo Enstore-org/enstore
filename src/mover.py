@@ -190,12 +190,13 @@ class Mover :
         # setup values before transfer
         nb = ticket["size_bytes"]
         wr_size = 0
+        sanity_size = ticket["sanity_size"]
         media_error = 0
         media_full  = 0
         drive_error = 0
         user_send_error = 0
         bof_space_cookie = 0
-        sanity_cookie = 0
+        sanity_crc = 0
         complete_crc = 0
         self.driver.wr_mnt = self.driver.wr_mnt+1
         pnfs = ticket["pnfsfile_info"]
@@ -207,24 +208,21 @@ class Mover :
         # open the hsm file for writing
         self.driver.open_file_write()
 
+        # create the wrapper instance
         self.wrapper = cpio.cpio(self, self.driver, binascii.crc_hqx)
 
-        (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
-            inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
-            ticket["size_bytes"], pnfs["major"], pnfs["minor"], pnfs["rmajor"],
-            pnfs["rminor"], pnfs["pnfsFilename"],ticket["sanity_size"])
-        #print "cpio.write size:",wr_size,"crc:",complete_crc, \
-        #      "sanity_crc:",sanity_cookie
-
-        if 0 :
-            # read the file from the user and write it out
-            while 1:
-                buff = self.data_socket.recv(self.driver.get_blocksize())
-                l = len(buff)
-                if l == 0 :
-                    break
-                wr_size = wr_size + l
-                self.driver.write_block(buff)
+        # now write the file
+        try:
+            (wr_size, complete_crc, sanity_cookie) = self.wrapper.write(
+                inode, pnfs["mode"], pnfs["uid"], pnfs["gid"], ticket["mtime"],
+                ticket["size_bytes"], pnfs["major"], pnfs["minor"],
+                pnfs["rmajor"], pnfs["rminor"], pnfs["pnfsFilename"],
+                sanity_size)
+            #print "cpio.write size:",wr_size,"crc:",complete_crc, \
+            #     "sanity_cookie:",sanity_cookie
+        except:
+            print sys.exc_info()[0],sys.exc_info()[1]
+            media_error = 1 # I don't know what else to do right now
 
         # we've read the file from user, shut down data transfer socket
         self.data_socket.close()
@@ -297,7 +295,6 @@ class Mover :
                                                eod_cookie,
                                                wr_err,rd_err,wr_mnt,rd_mnt)
 
-
         # connect to file clerk and get new bit file id
         fc = FileClerkClient(self.csc)
         self.fticket = fc.new_bit_file(file_cookie,ticket["external_label"],
@@ -321,8 +318,6 @@ class Mover :
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
 
         ticket["driver"] = dinfo
-        ticket["complete_crc"] = complete_crc
-        ticket["sanity_cookie"] = sanity_cookie
 
         # finish up and tell user about the transfer
         self.send_user_last(ticket)
@@ -354,37 +349,26 @@ class Mover :
         user_recieve_error = 0
         bytes_sent = 0
         self.driver.rd_mnt = self.driver.rd_mnt+1
-        sanity_cookie = 0
+        sanity_cookie = ticket["sanity_cookie"]
         complete_crc = 0
 
         # call the user and announce that your her mover
         self.get_user_sockets(ticket)
 
-        # open the hsm file for writing
-        self.driver.open_file_read(ticket["bof_space_cookie"])
-
+        # create the wrapper instance
         self.wrapper = cpio.cpio(self.driver,self,binascii.crc_hqx)
 
-        (bytes_sent, complete_crc, recorded_crc, match) = self.wrapper.read()
-        #print "cpio.read  size:",wr_size,"crc:",complete_crc,\
-        #      "recorded_crc:",recorded_crc,"crc_match:",match
-
-        if 0:
-            # read the file from hsm and send to user
-            while 1:
-                buff = self.driver.read_block()
-                l = len(buff)
-                if l == 0 : break
-                self.data_socket.send(buff)
-                bytes_sent = bytes_sent + l
+        # open the hsm file for reading and read it
+        try:
+            self.driver.open_file_read(ticket["bof_space_cookie"])
+            (bytes_sent, complete_crc) = self.wrapper.read(sanity_cookie)
+             #print "cpio.read  size:",wr_size,"crc:",complete_crc
+        except:
+            print sys.exc_info()[0],sys.exc_info()[1]
+            media_error = 1 # I don't know what else to do right now
 
         # we've sent the hsm file to the user, shut down data transfer socket
         self.data_socket.close()
-
-        if match != "ok" :
-            print "CRC ERROR: Read "+repr(complete_crc)+", wrote "\
-                  +repr(recorded_crc)
-
 
         # get the error/mount counts and update database
         wr_err,rd_err,wr_mnt,rd_mnt = self.driver.get_errors()
@@ -427,10 +411,6 @@ class Mover :
                       'wr_err', 'wr_mnt'] :
                 exec("dinfo["+repr(k)+"] = self.driver."+k)
         ticket["driver"] = dinfo
-        ticket["complete_crc"] = complete_crc
-        ticket["recorded_crc"] = recorded_crc
-        ticket["crc_match"] = match
-        ticket["sanity_cookie"] = sanity_cookie
 
         # tell user
         self.send_user_last(ticket)
