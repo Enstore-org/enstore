@@ -27,7 +27,7 @@ import callback
 
 MY_NAME = "CONFIG_SERVER"
 
-class ConfigurationDict(dispatching_worker.DispatchingWorker):
+class ConfigurationDict:
 
     def __init__(self):
         self.print_id="CONFIG_DICT"
