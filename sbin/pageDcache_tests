@@ -120,6 +120,9 @@ kerb_test() {
 }
 
 cert_test() {
+    export X509_USER_PROXY=/home/enstore/.globus/k5-ca-proxy.pem
+    grid-proxy-init
+
     if [ -n "${GSSPY_KRB_DIR:-}" ]; then
 	unsetup gsspy_krb
     fi
@@ -334,6 +337,9 @@ ftp.quit()
 #######################################################################
 
 gridftp_test() {
+    export X509_USER_PROXY=/home/enstore/.globus/k5-ca-proxy.pem
+    grid-proxy-init
+
     read_back=/tmp/dcache_page_read_back_gridftp_$$
     rm -f $read_back
 
