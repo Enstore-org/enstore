@@ -69,7 +69,8 @@ class InquisitorPlots:
         time_q = "%s '%s'"%(time_q, self.start_time)
 
         if self.stop_time:
-            time_q = "%s %s %s '%s'"%(accounting_query.AND, column, accounting_query.LESS, self.stop_time)
+            time_q = "%s %s %s %s '%s'"%(time_q, accounting_query.AND, column, accounting_query.LESS,
+                                         self.stop_time)
         return time_q
 
     # make the mount plots (mounts per hour and mount latency)
