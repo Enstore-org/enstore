@@ -11,7 +11,6 @@ import select
 import socket
 import errno
 import copy
-import string
 import types
 import stat
 
@@ -19,14 +18,9 @@ import encp
 import pnfs
 import e_errors
 import delete_at_exit
-#import callback
 import host_config
 import Trace
-#import udp_client
 import checksum
-#import udp_server
-#import cleanUDP
-#import volume_family
 import option
 
 #Completion status field values.
@@ -378,9 +372,10 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
         done_ticket = encp.open_local_file(work_ticket, e)
         
         if not e_errors.is_ok(done_ticket):
-            sys.stderr.write("Unable to open local file %s: %s\n" %
-                             (work_ticket['outfile'], done_ticket['status'],))
-            halt(1)
+            return done_ticket
+            #eys.stderr.write("Unable to open local file %s: %s\n" %
+            #                 (work_ticket['outfile'], done_ticket['status'],))
+            #halt(1)
         else:
             out_fd = done_ticket['fd']
 
@@ -882,26 +877,10 @@ def get_next_request(request_list, e): #, filenumber = None):
             request_list.append(request)
             return request, (len(request_list) - 1)
         
-def main(e):
 
-    t0 = time.time()
-    tinfo = {'t0' : t0, 'encp_start_time' : t0}
 
-    #Some globals are expected to exists for normal operation (i.e. a logger
-    # client).  Create them.
-    encp.clients()
-
-    #Initialize the Trace module.
-    Trace.init("GET")
-    for x in xrange(6, e.verbose+1):
-        Trace.do_print(x)
-    for x in xrange(1, e.verbose+1):
-        Trace.do_message(x)
-
-    command_line = "Command line: %s" % (string.join(sys.argv),)
-    Trace.log(e_errors.INFO, command_line)
-
-    #exit_status = 0 #For rembering failures.
+def readtape_from_hsm(e, tinfo):
+    #This needs to be defined somewhere.
     files_transfered = 0
 
     #Get a port to talk on and listen for connections
@@ -912,11 +891,15 @@ def main(e):
 
     #If the sockets do not exist, do not continue.
     if listen_socket == None:
-        sys.stderr.write("Failed to obtain control socket.\n")
-        halt(2)
+        done_ticket = {'exit_status' : 2, 
+                       'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain control socket.")}
+        return done_ticket
     if udp_socket.server_socket == None:
-        sys.stderr.write("Failed to obtain udp socket.\n")
-        halt(2)
+        done_ticket = {'exit_status' : 2,
+                       'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain udp socket.")}
+        return done_ticket
 
     #Create all of the request dictionaries.
     Trace.message(4, "Creating read requests.")
@@ -924,24 +907,22 @@ def main(e):
         requests_per_vol = encp.create_read_requests(callback_addr,
                                                      udp_callback_addr,
                                                      tinfo, e)
-    except KeyboardInterrupt:
-        raise sys.exc_info()
-    except (OSError, IOError), msg:
-        error = errno.errorcode.get(getattr(msg, "errno", None),
-                                    errno.errorcode[errno.ENODATA])
-        sys.stderr.write("[ Errno %s ]: %s\n" % (error, str(msg)))
-        halt(2)
-    except encp.EncpError, msg:
-        #print_data_access_layer_format(
-        #    "", "", 0, {'status':(error, str(msg))})
-        sys.stderr.write("%s: %s\n" % (msg.type, str(msg)))
-        if msg.type == None:
-            halt(2)
-        elif e_errors.is_non_retriable(msg.type):
-            halt(2)
+    except (OSError, IOError, encp.EncpError), msg:
+        if isinstance(msg, encp.EncpError):
+            e_ticket = msg.ticket
+            if e_ticket.get('status', None) == None:
+                e_ticket['status'] = (msg.type, str(msg))
+        elif isinstance(msg, OSError):
+            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         else:
-            halt(2) #Is this a mistake?
-            
+            e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
+
+        #Print the error and exit.
+        #print_data_access_layer_format("", "", 0, e_ticket)
+        #delete_at_exit.quit()
+        e_ticket['exit_status'] = 2
+        return e_ticket
+
     #Sort the requests in increasing order.
     requests_per_vol[e.volume].sort(
         lambda x, y: cmp(x['fc']['location_cookie'],
@@ -949,12 +930,21 @@ def main(e):
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
-        halt(2)
+        done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer."),
+                       'exit_status' : 2}
+        return done_ticket
 
     #Set the max attempts that can be made on a transfer.
-    check_lib = requests_per_vol.keys()
-    encp.max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
+    #check_lib = requests_per_vol.keys()
+    check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
+                ".library_manager"
+    encp.max_attempts(check_lib, e)
 
+    #If we are only going to check if we can succed, then the last
+    # thing to do is see if the LM is up and accepting requests.
+    if e.check:
+        return encp.check_library(check_lib, e)
+    
     #Make sure that we are not clobbering files.
     Trace.message(4, "Checking status of files.")
     Trace.log(e_errors.INFO, "Checking status of files.")
@@ -962,54 +952,47 @@ def main(e):
         #This might be a problem when zero information is available...
         try:
             encp.outputfile_check(request['infile'], request['outfile'], e)
-        except KeyboardInterrupt:
-            raise sys.exc_info()
-        except (OSError, IOError), msg:
-            error = errno.errorcode.get(getattr(msg, "errno", None),
-                                        errno.errorcode[errno.ENODATA])
-            request['status'] = (error, str(msg))
-            #sys.stderr.write("[ Errno %s ]: %s\n" % (error, str(msg)))
-            #Tell the calling process, this file failed.
-            error_output(request)
-            #Tell the calling process, of those files not attempted.
-            untried_output(requests_per_vol[e.volume])
-            halt(2)
-        except encp.EncpError, msg:
-            if getattr(msg, "type", None) != None:
+        except (OSError, IOError, encp.EncpError), msg:
+            if isinstance(msg, encp.EncpError):
+                request = msg.ticket
+            if request.get('status', None) == None:
                 request['status'] = (msg.type, str(msg))
+            elif isinstance(msg, OSError):
+                request = {'status' : (e_errors.OSERROR, str(msg))}
             else:
-                request['status'] = (e_errors.UNKNOWN, str(msg))
-            #print_data_access_layer_format(
-            #    "", "", 0, {'status':(error, str(msg))})
-            #sys.stderr.write("[ Errno %s ]: %s\n" % (msg.type, str(msg)))
+                request = {'status' : (e_errors.IOERROR, str(msg))}
+
             #Tell the calling process, this file failed.
             error_output(request)
             #Tell the calling process, of those files not attempted.
             untried_output(requests_per_vol[e.volume])
-            if msg.type == None:
-                halt(2)
-            elif e_errors.is_non_retriable(msg.type):
-                halt(2)
-            else:
-                halt(1)
+            
+            request['exit_status'] = 2
+            return request
 
     #Create the zero length file entries.
     Trace.message(4, "Creating zero length output files.")
     Trace.log(e_errors.INFO, "Creating zero length output files.")
     for request in requests_per_vol[e.volume]:
         try:
-           #encp.create_zero_length_files(request)  #['outfile'])
-           encp.create_zero_length_local_files(request)
-        except OSError, msg:
-            request['status'] = (e_errors.OSERROR, msg.strerror)
-            #print_data_access_layer_format("", request['outfile'],
-            #                               0, request)
-            #sys.stderr.write("%s\n" % (request['status'],))
+            encp.create_zero_length_local_files(request)
+        except (OSError, IOError, encp.EncpError), msg:
+            if isinstance(msg, encp.EncpError):
+                request = msg.ticket
+            if request.get('status', None) == None:
+                request['status'] = (msg.type, str(msg))
+            elif isinstance(msg, OSError):
+                request = {'status' : (e_errors.OSERROR, str(msg))}
+            else:
+                request = {'status' : (e_errors.IOERROR, str(msg))}
+                
             #Tell the calling process, this file failed.
             error_output(request)
             #Tell the calling process, of those files not attempted.
             untried_output(requests_per_vol[e.volume])
-            halt(2)
+
+            request['exit_status'] = 2
+            return request
 
     #Only the first submission goes to the LM for volume reads.  On errors,
     # encp.handle_retries() will send the request to the LM.  Thus this
@@ -1036,42 +1019,31 @@ def main(e):
     Trace.message(4, "Read tape submission sent to LM.")
     
     if not e_errors.is_ok(reply_ticket):
-        msg = "Unable to read volume %s: %s" % \
-              (e.volume, reply_ticket['status'])
-        sys.stderr.write("%s\n" % str(msg))
-        Trace.log(e_errors.ERROR, str(msg))
         #Tell the calling process, this file failed.
         error_output(reply_ticket)
         #Tell the calling process, of those files not attempted.
         untried_output(requests_per_vol[e.volume])
-        halt(2)
-    if submitted != 1:
-        msg = "Unknown failure submitting request for file %s on volume %s." %\
-              (request['infile'], e.volume)
-        sys.stderr.write("%s\n" % str(msg))
-        Trace.log(e_errors.ERROR, str(msg))
-        #Tell the calling process, this file failed.
-        error_output(reply_ticket)
-        #Tell the calling process, of those files not attempted.
-        untried_output(requests_per_vol[e.volume])
-        halt(2)
 
-    #If this is a volume where the file information is not known and
-    # the user did not specify the filenames...
-    #if len(requests_per_vol[e.volume]) == 1 and \
-    #   requests_per_vol[e.volume][0].get('bfid', None) == None:
-    #if request.get('bfid', None) == None and \
-    #   len(requests_per_vol[e.volume]) == 1:
-    #if not e.list:
-        #Initalize this.
-        #file_number = 1
-        #for i in range(len(requests_per_vol[e.volume])):
-        #    requests_per_vol[e.volume][index]['completion_status'] = EOD
-    #else:
-        #file_number = None
+        reply_ticket['exit_status'] = 2
+        return reply_ticket
+    if submitted != 1:
+        request['status'] = (e_errors.UNKNOWN,
+                                    "Unknown failure submitting request for " \
+                                    "file %s on volume %s." % \
+                                    (request['infile'], e.volume))
+        
+        #Tell the calling process, this file failed.
+        error_output(reply_ticket)
+        #Tell the calling process, of those files not attempted.
+        untried_output(requests_per_vol[e.volume])
+
+        request['exit_status'] = 2
+        return request
+    
 
     while requests_outstanding(requests_per_vol[e.volume]):
 
+        # Establish data socket connection with the mover.
 	control_socket, ticket = mover_handshake(listen_socket, udp_socket,
 						 request, e)
 
@@ -1085,12 +1057,13 @@ def main(e):
                                           None, None, e)
 
         if not e_errors.is_ok(result_dict):
-            #Don't loose the non-retirable error.
-            if e_errors.is_non_retriable(result_dict):
-                request = encp.combine_dict(result_dict, request)
             # Close these descriptors before they are forgotten about.
 	    if control_socket != None:
 		encp.close_descriptors(control_socket)
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                request = encp.combine_dict(result_dict, request)
+                return request
 
             continue
 
@@ -1129,17 +1102,7 @@ def main(e):
             elif type(mover_ready.get('work', None)) == types.StringType:
                 continue  #Something happened, keep trying.                
             else:
-                #We are done with this mover.
-                end_session(udp_socket, control_socket)
-                #Set completion status to failure.
-                request['completion_status'] = FAILURE
-
-                #Tell the calling process, this file failed.
-                error_output(mover_ready)
-                #Tell the calling process of files not attempted.
-                untried_output(requests_per_vol[e.volume])
-                #Perform any necessary file cleanup.
-                halt(0)
+                break
 	else:
 	    #We timed out.  Handle the error.
 	    error_ticket = {'status' : (e_errors.RESUBMITTING, None)}
@@ -1150,7 +1113,22 @@ def main(e):
 
         Trace.message(5, "Received mover ready message.")
         Trace.log(e_errors.INFO, "Received mover ready message.")
-                
+
+        result_dict = encp.handle_retries([request], request,
+                                          mover_ready, None,
+                                          None, None, e)
+
+        if not e_errors.is_ok(result_dict):
+            # Close these descriptors before they are forgotten about.
+	    if control_socket != None:
+		encp.close_descriptors(control_socket)
+            #Don't loose the non-retirable error.
+            if e_errors.is_non_retriable(result_dict):
+                request = encp.combine_dict(result_dict, request)
+                return request
+
+	    continue
+            
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
 
@@ -1287,9 +1265,9 @@ def main(e):
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
-                #Trace.message(1, "Get exit status: %s" % (0,))
-                #Trace.log(e_errors.INFO, "Get exit status: %s" % (0,))
-                halt(0)
+                return request
+                #halt(0)
+                
                 
             #Give up on this file.  If a persistant media problem occurs
             # skip this and go to the next file.
@@ -1332,15 +1310,15 @@ def main(e):
                 #Set completion status to failure.
                 request['completion_status'] = FAILURE
                 request['status'] = done_ticket['status']
+                request['exit_status'] = 2
 
                 #Tell the calling process, this file failed.
                 error_output(request)
                 #Tell the calling process, of those files not attempted.
                 untried_output(requests_per_vol[e.volume])
                 #Perform any necessary file cleanup.
-                #Trace.message(1, "Get exit status: %s" % (2,))
-                #Trace.log(e_errors.INFO, "Get exit status: %s" % (2,))
-                halt(2)
+                return request
+                #halt(2)
                 
             #Keep trying.
             elif e_errors.is_retriable(done_ticket['status'][0]):
@@ -1361,9 +1339,45 @@ def main(e):
         end_session(udp_socket, control_socket)
 
     #Perform any necessary file cleanup.
-    #Trace.message(1, "Get exit status: %s" % (0,))
-    #Trace.log(e_errors.INFO, "Get exit status: %s" % (0,))
-    halt(0)
+    return {'status' : (e_errors.OK, None)}
+    #halt(0)
+
+##############################################################################
+##############################################################################
+
+def main(intf):
+    #Snag the start time.  t0 is needed by the mover, but its name conveys
+    # less meaning.
+    t0 = time.time()
+    tinfo = {'t0' : t0, 'encp_start_time' : t0}
+
+    #Initialize the Trace module.
+    Trace.init("GET")
+    for x in xrange(6, intf.verbose + 1):
+        Trace.do_print(x)
+    for x in xrange(1, intf.verbose + 1):
+        Trace.do_message(x)
+
+    #Some globals are expected to exists for normal operation (i.e. a logger
+    # client).  Create them.
+    status_ticket = encp.clients(intf)
+    if not e_errors.is_ok(status_ticket):
+        encp.final_say(intf, status_ticket)
+
+    #Log/print the starting encp information.  This depends on the log
+    # from the clients() call, thus it should always be after clients().
+    # This function should never give a fatal error.
+    encp.log_encp_start(tinfo, intf)
+
+    if intf.data_access_layer:
+        #global data_access_layer_requested
+        encp.data_access_layer_requested = intf.data_access_layer
+        #data_access_layer_requested.set()
+
+    done_ticket = readtape_from_hsm(intf, tinfo)
+
+    encp.final_say(intf, done_ticket)
+    
 
 def do_work(intf):
     delete_at_exit.setup_signal_handling()
@@ -1378,11 +1392,11 @@ if __name__ == '__main__':
 
     #First handle an incorrect command line.
     if len(sys.argv) < 4:
-        intf = encp.EncpInterface(sys.argv, 1) #one = user
-        intf.print_usage()
+        intf_of_encp = encp.EncpInterface(sys.argv, 1) #one = user
+        intf_of_encp.print_usage()
 
-    intf = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0) #zero = admin
-    intf.volume = sys.argv[-3] #Hackish
+    intf_of_encp = encp.EncpInterface(sys.argv[:-3] + sys.argv[-2:], 0)
+    intf_of_encp.volume = sys.argv[-3] #Hackish
 
     if not encp.is_volume(sys.argv[-3]):
         sys.stderr.write("First argument is not a volume name.\n")
@@ -1401,5 +1415,5 @@ if __name__ == '__main__':
 
     #print encp.format_class_for_print(intf, "intf")
     
-    do_work(intf)
+    do_work(intf_of_encp)
 

@@ -181,10 +181,14 @@ def extract_volume(v):    # v is a string
 class VolumeClerkClient(generic_client.GenericClient,
                         backup_client.BackupClient):
 
-    def __init__( self, csc, server_address=None, rcv_timeout = RCV_TIMEOUT,
-		rcv_tries = RCV_TRIES):
+    def __init__( self, csc, server_address=None, flags=0, logc=None,
+                  alarmc=None, rcv_timeout = RCV_TIMEOUT,
+                  rcv_tries = RCV_TRIES):
         generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
-                                  rcv_timeout=rcv_timeout, rcv_tries=rcv_tries)
+                                              flags=flags, logc=logc,
+                                              alarmc=alarmc,
+                                              rcv_timeout=rcv_timeout,
+                                              rcv_tries=rcv_tries)
         if self.server_address == None:
             self.server_address = self.get_server_address(
                 MY_SERVER, rcv_timeout=rcv_timeout, tries=rcv_tries)
@@ -1212,7 +1216,7 @@ def do_work(intf):
                 print i
     elif intf.next:
         ticket = vcc.next_write_volume(intf.args[0], #library
-                                       string.atol(intf.args[1]), #min_remaining_byte
+                                       long(intf.args[1]), #min_remaining_byte
                                        intf.args[2], #volume_family
                                             [], #vol_veto_list
                                              1) #first_found
@@ -1542,7 +1546,7 @@ def do_work(intf):
     elif intf.clear:
         nargs = len(intf.args)
         try:
-            ipos = string.atoi(intf.args[1])-1
+            ipos = int(intf.args[1])-1
         except:
             ipos = -1
         if nargs == 0:
@@ -1556,7 +1560,7 @@ def do_work(intf):
             ticket = {'status':(e_errors.OK, None)}
     elif intf.decr_file_count:
         print `type(intf.decr_file_count)`
-        ticket = vcc.decr_file_count(intf.args[0],string.atoi(intf.decr_file_count))
+        ticket = vcc.decr_file_count(intf.args[0],int(intf.decr_file_count))
         Trace.trace(12, repr(ticket))
     elif intf.read_only:
         ticket = vcc.set_system_readonly(intf.read_only)  # name of this volume
@@ -1576,9 +1580,9 @@ def do_work(intf):
             deleted = 'unknown'
             if record.has_key('deleted'):
                 if record['deleted'] == 'yes':
-                    deleted = 'deleted'
+                    deleted = str('deleted')
                 elif record['deleted'] == 'no':
-                    deleted = 'active'
+                    deleted = str('active')
             print "%10s %s %10i %22s %7s %s" % (intf.list,
                 record['bfid'], record['size'],
                 record['location_cookie'], deleted,

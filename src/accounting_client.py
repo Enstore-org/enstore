@@ -3,15 +3,14 @@
 # system import
 import os
 import sys
-import string
 import pprint
 import pwd
 import socket
+import time
 
 # enstore import
 import generic_client
 import option
-import time
 
 MY_NAME = "accounting_client"
 MY_SERVER = "accounting_server"
@@ -24,12 +23,16 @@ def unique_tag():
 		os.getpid(), time.time())
 
 class accClient(generic_client.GenericClient):
-	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
-		rcv_tries = RCV_TRIES):
+	def __init__(self, csc, logname='UNKNOWN',
+		     flags=0, logc=None, alarmc=None,
+		     rcv_timeout = RCV_TIMEOUT, rcv_tries = RCV_TRIES):
 		self.logname = logname
 		self.node = os.uname()[1]
 		self.pid = os.getpid()
-		generic_client.GenericClient.__init__(self, csc, MY_NAME)
+		generic_client.GenericClient.__init__(self, csc, MY_NAME,
+						      flags = flags,
+						      logc = logc,
+						      alarmc = alarmc)
 		try:
 			self.uid = pwd.getpwuid(os.getuid())[0]
 		except:

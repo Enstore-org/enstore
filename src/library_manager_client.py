@@ -14,19 +14,21 @@ import callback
 import hostaddr
 import option
 import generic_client
-import udp_client
 import Trace
 import e_errors
 
 MY_NAME = ".LM"
 
 class LibraryManagerClient(generic_client.GenericClient) :
-    def __init__(self, csc, name="", rcv_timeout = 20, rcv_tries = 3):
+    def __init__(self, csc, name="", flags=0, logc=None, alarmc=None,
+                 rcv_timeout = 20, rcv_tries = 3):
         self.name=name
         self.log_name = "C_"+string.upper(string.replace(name,
                                                          ".library_manager",
                                                          MY_NAME))
-        generic_client.GenericClient.__init__(self, csc, self.log_name)
+        generic_client.GenericClient.__init__(self, csc, self.log_name,
+                                              flags = flags, logc = logc,
+                                              alarmc = alarmc)
         self.send_to = rcv_timeout
         self.send_tries = rcv_tries
         self.server_address = self.get_server_address(self.name, self.send_to, self.send_tries)
@@ -71,7 +73,7 @@ class LibraryManagerClient(generic_client.GenericClient) :
 
         #Active volume asserts get printed here.
         lst = self.getwork()
-        pw_list = lst["pending_work"]
+        #pw_list = lst["pending_work"]
         at_list = lst["at movers"]
         active_assert_cnt = 0
         #If at_list has items, print heading

@@ -39,46 +39,39 @@ import socket
 import string
 #import traceback
 import select
-#import signal
-#import random
 import fcntl
 if sys.version_info < (2, 2, 0):
     import FCNTL #FCNTL is depricated in python 2.2 and later.
     fcntl.F_GETFL = FCNTL.F_GETFL
     fcntl.F_SETFL = FCNTL.F_SETFL
-#import math
 import exceptions
 import re
 import statvfs
 import types
 
 # enstore modules
-#import setpath
 import Trace
+import e_errors
+import option
 import pnfs
 import callback
-import log_client
-#import alarm_client
-import configuration_client
 import udp_server
+import configuration_client
+import log_client
+import alarm_client
+import volume_clerk_client
+import file_clerk_client
+import accounting_client
+import library_manager_client
 import EXfer
-#import interface
-import option
-import e_errors
 import hostaddr
 import host_config
 import atomic
-import library_manager_client
 import delete_at_exit
-#import runon
-#import enroute
 import charset
 import volume_family
-import volume_clerk_client
-import file_clerk_client
 import enstore_constants
 import enstore_functions2
-import accounting_client
 
 
 #Add these if missing.
@@ -92,10 +85,12 @@ if not hasattr(socket, "IPTOS_MINCOST"):
     socket.IPTOS_IPTOS_MINCOST = 0x02            #2
 
 # Forward declaration.  It is assigned in get_clerks().
-acc = None
+__acc = None
 __csc = None
 __fcc = None
 __vcc = None
+__logc = None
+__alarmc = None
 
 #Constants for the max file size.  Currently this assumes the max for the
 # cpio_odc wrapper format.  The -1s are necessary since that is the size
@@ -266,6 +261,14 @@ def convert_0_adler32_to_1_adler32(crc, filesize):
     s2 = (size + s2) % BASE
     #Return the 1 seeded adler32 crc.
     return (s2 << 16) + s1
+
+#Used to turn off logging when the --check option is enabled.
+def check_log_func(dummy_self, time, pid, name, args):
+    pass
+#Used to turn off alarming when the --check option is enabled.
+def check_alarm_func(dummy_self, time, pid, name, root_error, 
+                     severity, condition, remedy_type, args):
+    pass
 
 ############################################################################
 
@@ -763,7 +766,8 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     #Check the default vcc for performance reasons.
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(
-            __csc, rcv_timeout = 5, rcv_tries = 20)
+            __csc, logc = __logc, alarmc = __alarmc,
+            rcv_timeout = 5, rcv_tries = 20)
         if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
                       "Locating cached volume clerk failed.\n")
@@ -781,7 +785,8 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
+    vcc = volume_clerk_client.VolumeClerkClient(csc, logc = __logc,
+                                                alarmc = __alarmc)
     if vcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
     #Before checking other systems, check the current system.
@@ -803,8 +808,9 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
                 config_servers[server])
 
             #Get the next volume clerk client and volume inquiry.
-            vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
-                                                    rcv_timeout=5, rcv_tries=2)
+            vcc_test = volume_clerk_client.VolumeClerkClient(
+                csc_test, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
 
             if vcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
@@ -848,8 +854,9 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
 
     #Check the default fcc for performance reasons.
     if __csc != None:
-        test_fcc = file_clerk_client.FileClient(__csc, rcv_timeout = 5,
-                                                rcv_tries = 20)
+        test_fcc = file_clerk_client.FileClient(
+            __csc, logc = __logc, alarmc = __alarmc,
+            rcv_timeout = 5, rcv_tries = 20)
         if test_fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
@@ -867,7 +874,8 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    fcc = file_clerk_client.FileClient(csc, rcv_timeout = 5, rcv_tries = 20)
+    fcc = file_clerk_client.FileClient(
+        csc, logc = __logc, alarmc = __alarmc, rcv_timeout = 5, rcv_tries = 20)
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
@@ -896,8 +904,9 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                 config_servers[server])
 
             #Get the next file clerk client and its brand.
-            fcc_test = file_clerk_client.FileClient(csc_test,
-                                                    rcv_timeout=5, rcv_tries=2)
+            fcc_test = file_clerk_client.FileClient(
+                csc_test, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
 
@@ -1035,8 +1044,9 @@ def get_fcc(parameter = None):
                 csc = __csc
 
             #Now that we have the csc, we can get the fcc.
-            __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5,
-                                                 rcv_tries=2)
+            __fcc = file_clerk_client.FileClient(
+                csc, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
             return __fcc
     
 
@@ -1051,7 +1061,9 @@ def get_fcc(parameter = None):
 
     #Next check the fcc associated with the cached csc.
     if __csc != None:
-        fcc = file_clerk_client.FileClient(__csc, rcv_timeout=5, rcv_tries=2)
+        fcc = file_clerk_client.FileClient(
+            __csc, logc = __logc, alarmc = __alarmc,
+            rcv_timeout=5, rcv_tries=2)
         if fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
@@ -1067,7 +1079,8 @@ def get_fcc(parameter = None):
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
-    fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+    fcc = file_clerk_client.FileClient(
+        csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
@@ -1085,7 +1098,8 @@ def get_fcc(parameter = None):
     if e_errors.is_ok(config_servers['status']):
         del config_servers['status']
     else:
-        __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+        __fcc = file_clerk_client.FileClient(
+            csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
         return __fcc
 
     #Loop through systems for the brand that matches the one we're looking for.
@@ -1096,8 +1110,9 @@ def get_fcc(parameter = None):
                 config_servers[server])
 
             #Get the next file clerk client and its brand.
-            fcc_test = file_clerk_client.FileClient(csc_test,
-                                                    rcv_timeout=5, rcv_tries=2)
+            fcc_test = file_clerk_client.FileClient(
+                csc_test, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
 
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
@@ -1125,7 +1140,8 @@ def get_fcc(parameter = None):
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
-    __fcc = file_clerk_client.FileClient(csc, rcv_timeout=5, rcv_tries=2)
+    __fcc = file_clerk_client.FileClient(
+        csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
     return __fcc
     
 def get_vcc(parameter = None):
@@ -1160,8 +1176,9 @@ def get_vcc(parameter = None):
                 csc = __csc
 
             #Now that we have the csc, we can get the vcc.
-            __vcc = volume_clerk_client.VolumeClerkClient(csc, rcv_timeout=5,
-                                                          rcv_tries=2)
+            __vcc = volume_clerk_client.VolumeClerkClient(
+                csc, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
             return __vcc
     
     #First check that the cached version knows about the volume.
@@ -1177,7 +1194,8 @@ def get_vcc(parameter = None):
     #Next check the vcc associated with the cached csc.
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(
-            __csc, rcv_timeout = 5, rcv_tries = 20)
+            __csc, logc = __logc, alarmc = __alarmc,
+            rcv_timeout = 5, rcv_tries = 20)
         if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
                       "Locating cached volume clerk failed.\n")
@@ -1196,7 +1214,8 @@ def get_vcc(parameter = None):
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
-    vcc = volume_clerk_client.VolumeClerkClient(csc)
+    vcc = volume_clerk_client.VolumeClerkClient(csc, logc = __logc,
+                                                alarmc = __alarmc)
     if vcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
     #Before checking other systems, check the current system.
@@ -1219,8 +1238,9 @@ def get_vcc(parameter = None):
                 config_servers[server])
 
             #Get the next volume clerk client and volume inquiry.
-            vcc_test = volume_clerk_client.VolumeClerkClient(csc_test,
-                                                    rcv_timeout=5, rcv_tries=2)
+            vcc_test = volume_clerk_client.VolumeClerkClient(
+                csc_test, logc = __logc, alarmc = __alarmc,
+                rcv_timeout=5, rcv_tries=2)
 
             if vcc_test.server_address == None:
                 #If we failed to find this volume clerk, move on to the
@@ -1251,7 +1271,9 @@ def max_attempts(library, encp_intf):
     #Determine how many times a transfer can be retried from failures.
     #Also, determine how many times encp resends the request to the lm
     # and the mover fails to call back.
-    if library[-17:] == ".library_manager":
+
+    #If the shortname was supplied, make it the longname.
+    if library[-16:] == ".library_manager":
         lib = library
     else:
         lib = library + ".library_manager"
@@ -1261,7 +1283,6 @@ def max_attempts(library, encp_intf):
     lm = csc.get(lib, 5, 5)
 
     #Due to the possibility of branding, check other systems.
-
     if lm['status'][0] == e_errors.KEYERROR:
         #If we get here, then check the other enstore config servers.
         # be prepared to find the correct system if necessary.
@@ -1273,6 +1294,9 @@ def max_attempts(library, encp_intf):
             lm = _csc.get(lib, 5, 5)
             if e_errors.is_ok(lm):
                 break
+        else:
+            #If we didn't find a match just return.
+            return
 
     #If the library does not have the following entries (or the library name
     # was not found in config file(s)... very unlikely) then go with
@@ -1284,6 +1308,58 @@ def max_attempts(library, encp_intf):
     if encp_intf.max_resubmit == None:
         encp_intf.max_resubmit = lm.get('max_encp_resubmits',
                                 enstore_constants.DEFAULT_ENCP_RESUBMISSIONS)
+
+def check_library(library, e):
+    #Check if the library is accepting requests.
+
+    #If the shortname was supplied, make it the longname.
+    if library[-16:] == ".library_manager":
+        lib = library
+    else:
+        lib = library + ".library_manager"
+
+    # get a configuration server
+    csc = get_csc()
+
+    try:
+        lmc = library_manager_client.LibraryManagerClient(
+            csc, lib, logc = __logc, alarmc = __alarmc,
+            rcv_timeout = 5, rcv_tries = 20)
+
+        #status_ticket = lmc.alive(lmc.name, rcv_timeout=5, tries=5)
+        status_ticket = lmc.get_lm_state()
+
+        if e_errors.is_ok(status_ticket):
+            state = status_ticket.get("state", e_errors.UNKNOWN)
+
+            if state == "locked":
+                status_ticket['status'] = (e_errors.LOCKED,
+                                           "%s is locked." % lib)
+            #if state == "ignore":
+            #    status_ticket['status'] = (e_errors.IGNORE,
+            #                               "%s is ignoring requests." % lib)
+            #if state == "pause":
+            #    status_ticket['status'] = (e_errors.PAUSE,
+            #                               "%s is paused." % lib)
+            if state == "noread" and is_read(e):
+                status_ticket['status'] = (e_errors.NOREAD,
+                                        "%s is ignoring read requests." % lib)
+            if state == "nowrite" and is_write(e):
+                status_ticket['status'] = (e_errors.NOREAD,
+                                        "%s is ignoring write requests." % lib)
+
+            if state == e_errors.UNKNOWN:
+                status_ticket['status'] = (e_errors.UNKNOWN,
+                                        "Unable to determine %s state." % lib)
+    except SystemExit:
+        #On error the library manager client calls sys.exit().  This
+        # should catch that so we can handle it.
+        status_ticket = {'status' : (e_errors.TIMEDOUT,
+                            "Unable to locate %s." % lib)}
+
+    Trace.message(1, "LM status: %s" % status_ticket)
+
+    return status_ticket
 
 ############################################################################
 
@@ -1422,7 +1498,9 @@ def check_server(csc, server_name):
 # get the configuration client and udp client and logger client
 # return some information about who we are so it can be used in the ticket
 
-def clients():
+def clients(intf):
+    global __logc
+    global __alarmc
 
     # get a configuration server client
     csc = get_csc()
@@ -1430,9 +1508,31 @@ def clients():
     #Report on the success of getting the csc and logc.
     #Trace.message(CONFIG_LEVEL, format_class_for_print(client['csc'],'csc'))
     #Trace.message(CONFIG_LEVEL, format_class_for_print(client['logc'],'logc'))
+
+    #If we are only performing a check if a transfer will succeed (at least
+    # start) we should turn off logging and alarming.
+    if intf.check:
+        log_client.LoggerClient.log_func = check_log_func
+        alarm_client.AlarmClient.alarm_func = check_alarm_func
+    
+    #Get a logger client, this will set the global log client Trace module
+    # variable.  If this is not done here, it would get done while
+    # creating the client classes for the csc, vc, fc, etc.  This however
+    # is to late for the first message to be logged (the one with the
+    # command line).  The same applies for the alarm client.
+    try:
+        __logc = log_client.LoggerClient(
+            csc, 'ENCP', flags = enstore_constants.NO_ALARM)
+    except SystemExit:
+        pass
+    try:
+        __alarmc = alarm_client.AlarmClient(
+            csc, 'ENCP', flags = enstore_constants.NO_LOG)
+    except SystemExit:
+        pass
     
     #This group of servers must be running to allow the transfer to
-    # succed.  The library manager is not checked (now anyway) because we
+    # succeed.  The library manager is not checked (now anyway) because we
     # don't know which one it is.
     for server in [configuration_client.MY_SERVER,
                    volume_clerk_client.MY_SERVER,
@@ -1444,21 +1544,12 @@ def clients():
         #Handle the fatal error.
         if not e_errors.is_ok(ticket['status']):
             Trace.alarm(e_errors.ERROR, ticket['status'][0], ticket)
-            print_data_access_layer_format("", "", 0, ticket)
-            delete_at_exit.quit()
+            return ticket
+            #print_data_access_layer_format("", "", 0, ticket)
+            #delete_at_exit.quit()
 
         Trace.message(CONFIG_LEVEL, "Server %s found at %s." %
                       (server, ticket.get('address', "Unknown")))
-    
-    #Get a logger client, this will set the global log client Trace module
-    # variable.  If this is not done here, it would get done while
-    # creating the client classes for the csc, vc, fc, etc.  This however
-    # is to late for the first message to be logged (the one with the
-    # command line).
-    #
-    #Note: There will be a similar situation for the alarm client should it
-    # be needed earier than it currently is.
-    log_client.LoggerClient(csc, 'ENCP', 'log_server')
 
     #global client #should not do this
     #client = {}
@@ -1466,6 +1557,7 @@ def clients():
     #client['logc']=logc
     
     #return client
+    return {'status' : (e_errors.OK, None)}
 
 ##############################################################################
 
@@ -2148,7 +2240,7 @@ def create_zero_length_local_files(filenames):
 #Only one of bfid and volume should be specified at one time.
 def get_clerks(bfid_or_volume=None):
 
-    global acc
+    global __acc
 
     #Snag the configuration server client for the system that contains the
     # file clerk where the file was stored.  This is determined based on
@@ -2203,7 +2295,8 @@ def get_clerks(bfid_or_volume=None):
                         e_errors.NET_ERROR, e_ticket)
 
     # we only have the correct crc now (reads)
-    acc = accounting_client.accClient(csc, logname = 'ENCP')
+    __acc = accounting_client.accClient(csc, logname = 'ENCP',
+                                        logc = __logc, alarmc = __alarmc)
 
     return vcc, fcc
 
@@ -2845,6 +2938,7 @@ def submit_one_request(ticket):
     try:
         lmc = library_manager_client.LibraryManagerClient(
             csc, ticket['vc']['library'] + ".library_manager",
+            logc = __logc, alarmc = __alarmc,
             rcv_timeout = 5, rcv_tries = 20)
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
@@ -3953,32 +4047,32 @@ def calculate_rate(done_ticket, tinfo):
         else:
             acc_transfer_rate = int(done_ticket['file_size'] / transfer_time)
         
-	acc.log_encp_xfer(None,
-                          done_ticket['infile'],
-                          done_ticket['outfile'],
-                          done_ticket['file_size'],
-                          done_ticket["fc"]["external_label"],
-                          #The accounting db expects the rates in bytes
-                          # per second; not MB per second.
-                          acc_network_rate,
-                          acc_drive_rate,
-                          acc_disk_rate,
-                          acc_overall_rate,
-                          acc_transfer_rate,
-                          done_ticket["mover"]["name"],
-                          done_ticket["mover"]["product_id"],
-                          done_ticket["mover"]["serial_num"],
-                          time.time() - tinfo["encp_start_time"],
-                          done_ticket["mover"].get("media_changer",
-                                                   e_errors.UNKNOWN),
-                          done_ticket["mover"].get('data_ip',
-                                               done_ticket["mover"]['host']),
-                          done_ticket["mover"]["driver"],
-                          sg,
-                          done_ticket["encp_ip"],
-                          done_ticket['unique_id'],
-                          rw,
-                          encp_client_version(),)
+	__acc.log_encp_xfer(None,
+                            done_ticket['infile'],
+                            done_ticket['outfile'],
+                            done_ticket['file_size'],
+                            done_ticket["fc"]["external_label"],
+                            #The accounting db expects the rates in bytes
+                            # per second; not MB per second.
+                            acc_network_rate,
+                            acc_drive_rate,
+                            acc_disk_rate,
+                            acc_overall_rate,
+                            acc_transfer_rate,
+                            done_ticket["mover"]["name"],
+                            done_ticket["mover"]["product_id"],
+                            done_ticket["mover"]["serial_num"],
+                            time.time() - tinfo["encp_start_time"],
+                            done_ticket["mover"].get("media_changer",
+                                                     e_errors.UNKNOWN),
+                            done_ticket["mover"].get('data_ip',
+                                                done_ticket["mover"]['host']),
+                            done_ticket["mover"]["driver"],
+                            sg,
+                            done_ticket["encp_ip"],
+                            done_ticket['unique_id'],
+                            rw,
+                            encp_client_version(),)
 			
 
 ############################################################################
@@ -4614,7 +4708,9 @@ def write_hsm_file(listen_socket, route_server, work_ticket, tinfo, e):
                       "Waiting for mover to call back.   elapsed=%s" % \
                       (time.time() - tinfo['encp_start_time'],))
 
-        #Open the control and mover sockets.
+        #Wait for the mover to establish the control socket.  See if the
+        # id matches one the the tickets we submitted.  Establish data socket
+        # connection with the mover.
         control_socket, data_path_socket, ticket = mover_handshake(
             listen_socket, [work_ticket], e)
 
@@ -4868,10 +4964,14 @@ def write_to_hsm(e, tinfo):
     udp_callback_addr, udp_server = get_udp_callback_addr(e)
 
     #If the sockets do not exist, do not continue.
-    if listen_socket == None or udp_server.server_socket == None:
-        print_data_access_layer_format(
-            "", "", 0, {'status':(e_errors.NET_ERROR, None)})
-        delete_at_exit.quit()
+    if listen_socket == None:
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain control socket.")}
+        return done_ticket
+    if udp_server.server_socket == None:
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain udp socket.")}
+        return done_ticket
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
@@ -4889,37 +4989,50 @@ def write_to_hsm(e, tinfo):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
 
         #Print the error and exit.
-        print_data_access_layer_format("", "", 0, e_ticket)
-        delete_at_exit.quit()
+        #print_data_access_layer_format("", "", 0, e_ticket)
+        #delete_at_exit.quit()
+        #e_ticket['exit_status'] = 1
+        return e_ticket
 
     #If this is the case, don't worry about anything.
     if len(request_list) == 0:
-        delete_at_exit.quit()
+        done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
+        return done_ticket
 
     #This will halt the program if everything isn't consistant.
     try:
         #verify_write_file_consistancy(request_list, e)
         verify_write_request_consistancy(request_list)
     except EncpError, msg:
-        msg.ticket['status'] = (msg.type, msg.strerror)
-        print_data_access_layer_format("", "", 0, msg.ticket)
-        delete_at_exit.quit()
+        #msg.ticket['status'] = (msg.type, msg.strerror)
+        #print_data_access_layer_format("", "", 0, msg.ticket)
+        #delete_at_exit.quit()
+        #msg.ticket['exit_status'] = 1
+        if not msg.ticket.get('status', None):
+            msg.ticket['status'] = (msg.type, msg.strerror)
+        return msg.ticket
 
-    #Where does this really belong???
+    #Set the max attempts that can be made on a transfer.
+    check_lib = request_list[0]['vc']['library'] + ".library_manager"
+    max_attempts(check_lib, e)
+
+    #If we are only going to check if we can succeed, then the last
+    # thing to do is see if the LM is up and accepting requests.
+    if e.check:
+        return check_library(check_lib, e)
+
+    #Create the zero length file entry.
     if not e.put_cache: #Skip this for dcache transfers.
         for request in request_list:
             try:
-                #create_zero_length_files(request['outfile'])
                 create_zero_length_pnfs_files(request)
             except OSError, msg:
                 request['status'] = (e_errors.OSERROR, msg.strerror)
-                print_data_access_layer_format(request['infile'], "",
-                                               0, request)
-                delete_at_exit.quit()
+                return request
+                #print_data_access_layer_format(request['infile'], "",
+                #                               0, request)
+                #delete_at_exit.quit()
                 
-    #Set the max attempts that can be made on a transfer.
-    max_attempts(request_list[0]['vc']['library'], e)
-
     # loop on all input files sequentially
     for i in range(0,len(request_list)):
 
@@ -6135,12 +6248,19 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         try:
             label = fc_reply['external_label'] #short cut for readablility
         except (KeyError, ValueError, TypeError, AttributeError, IndexError):
-            print_data_access_layer_format(
-                    ifullname, ofullname, file_size,
-                    {'status':(e_errors.KEYERROR,
-                               "File clerk resonce did not contain an " \
-                               "external label.")})
-            quit()
+            raise EncpError(None,
+                            "File clerk resonce did not contain an " \
+                            "external label.",
+                            e_errors.KEYERROR,
+                            {'fc' : fc_reply, 'vc' : vc_reply,
+                             'infile' : ifullname, 'outfile' : ofullname,
+                             'file_size' : file_size})
+            #print_data_access_layer_format(
+            #        ifullname, ofullname, file_size,
+            #        {'status':(e_errors.KEYERROR,
+            #                   "File clerk resonce did not contain an " \
+            #                   "external label.")})
+            #quit()
 
         try:
             # comment this out not to confuse the users
@@ -6272,7 +6392,7 @@ def submit_read_requests(requests, tinfo, encp_intf):
 # e - class instance of the interface.
 #Rerturns:
 # (requests, bytes) - requests returned only contains those requests that
-#   did not succed.  bytes is the total running sum of bytes transfered
+#   did not succeed.  bytes is the total running sum of bytes transfered
 #   for this encp.
 
 def read_hsm_files(listen_socket, route_server, submitted,
@@ -6284,7 +6404,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
     files_left = submitted
     bytes = 0L
     failed_requests = []
-    succeded_requests = []
+    succeeded_requests = []
 
     #for waiting in range(submitted):
     while files_left:
@@ -6293,8 +6413,9 @@ def read_hsm_files(listen_socket, route_server, submitted,
                       "Waiting for mover to call back.  elapsed=%s" %
                       (time.time() - tinfo['encp_start_time'],))
             
-        # listen for a mover - see if id corresponds to one of the tickets
-        #   we submitted for the volume
+        #Wait for the mover to establish the control socket.  See if the
+        # id matches one the the tickets we submitted.  Establish data socket
+        # connection with the mover.
         control_socket, data_path_socket, request_ticket = mover_handshake(
             listen_socket, request_list, e)
 
@@ -6511,7 +6632,7 @@ def read_hsm_files(listen_socket, route_server, submitted,
 
         #With the transfer a success, we can now add the ticket to the list
         # of succeses.
-        succeded_requests.append(done_ticket)
+        succeeded_requests.append(done_ticket)
 
     Trace.message(TICKET_LEVEL, "DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
@@ -6524,11 +6645,11 @@ def read_hsm_files(listen_socket, route_server, submitted,
             unknown_failed_transfers.append(transfer)
 
     #Extract the unique ids for the two lists.
-    succeded_ids = []
+    succeeded_ids = []
     failed_ids = []
-    for req in succeded_requests:
+    for req in succeeded_requests:
         try:
-            succeded_ids.append(req['unique_id'])
+            succeeded_ids.append(req['unique_id'])
         except KeyError:
             sys.stderr.write("Error obtaining unique id list of successes.\n")
             sys.stderr.write(pprint.pformat(req) + "\n")
@@ -6539,10 +6660,10 @@ def read_hsm_files(listen_socket, route_server, submitted,
             sys.stderr.write("Error obtaining unique id list of failures.\n")
             sys.stderr.write(pprint.pformat(req) + "\n")
 
-    #For each transfer that failed without even succeding to open a control
+    #For each transfer that failed without even succeeding to open a control
     # socket, print out their data access layer.
     for transfer in request_list:
-        if transfer['unique_id'] not in succeded_ids and \
+        if transfer['unique_id'] not in succeeded_ids and \
            transfer['unique_id'] not in failed_ids:
             try:
                 transfer = combine_dict(unknown_failed_transfers[0], transfer)
@@ -6578,13 +6699,13 @@ def read_from_hsm(e, tinfo):
 
     #If the sockets do not exist, do not continue.
     if listen_socket == None:
-        print_data_access_layer_format("", "", 0,
-           {'status':(e_errors.NET_ERROR, "Unable to obtain control socket.")})
-        delete_at_exit.quit()
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain control socket.")}
+        return done_ticket
     if udp_server.server_socket == None:
-        print_data_access_layer_format("", "", 0,
-           {'status':(e_errors.NET_ERROR, "Unable to obtain udp socket.")})
-        delete_at_exit.quit()
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain udp socket.")}
+        return done_ticket
     
     #Create all of the request dictionaries.
     try:
@@ -6601,12 +6722,15 @@ def read_from_hsm(e, tinfo):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
 
         #Print the error and exit.
-        print_data_access_layer_format("", "", 0, e_ticket)
-        delete_at_exit.quit()
+        #print_data_access_layer_format("", "", 0, e_ticket)
+        #delete_at_exit.quit()
+        #e_ticket['exit_status'] = 1
+        return e_ticket
 
     #If this is the case, don't worry about anything.
     if (len(requests_per_vol) == 0):
-        delete_at_exit.quit()
+        done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
+        return done_ticket
 
     #This will halt the program if everything isn't consistant.
     try:
@@ -6614,27 +6738,37 @@ def read_from_hsm(e, tinfo):
         if not e.volume: #Skip these tests for volume transfers.
             verify_read_request_consistancy(requests_per_vol)
     except EncpError, msg:
-        msg.ticket['status'] = (msg.type, msg.strerror)
-        print_data_access_layer_format("", "", 0, msg.ticket)
-        delete_at_exit.quit()
+        #msg.ticket['status'] = (msg.type, msg.strerror)
+        #print_data_access_layer_format("", "", 0, msg.ticket)
+        #delete_at_exit.quit()
+        #msg.ticket['exit_status'] = 1
+        if not msg.ticket.get('status', None):
+            msg.ticket['status'] = (msg.type, msg.strerror)
+        return msg.ticket
+
+    #Set the max attempts that can be made on a transfer.
+    check_lib = requests_per_vol.values()[0][0]['vc']['library'] + \
+                ".library_manager"
+    max_attempts(check_lib, e)
+
+    #If we are only going to check if we can succeed, then the last
+    # thing to do is see if the LM is up and accepting requests.
+    if e.check:
+        return check_library(check_lib, e)
 
     #Create the zero length file entry.
     for vol in requests_per_vol.keys():
-        #Where does this really belong???
         for request in requests_per_vol[vol]:
             try:
-               #create_zero_length_files(request['outfile'])
                create_zero_length_local_files(request)
             except OSError, msg:
                 request['status'] = (e_errors.OSERROR, msg.strerror)
-                print_data_access_layer_format("", request['outfile'],
-                                               0, request)
-                delete_at_exit.quit()
+                #request['exit_status'] = 1
+                return request
+                #print_data_access_layer_format("", request['outfile'],
+                #                               0, request)
+                #delete_at_exit.quit()
     
-    #Set the max attempts that can be made on a transfer.
-    check_lib = requests_per_vol.keys()    
-    max_attempts(requests_per_vol[check_lib[0]][0]['vc']['library'], e)
-
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
     # for different volumes.
@@ -6649,15 +6783,15 @@ def read_from_hsm(e, tinfo):
         # This value may be different from len(request_list).  The value
         # of request_list is not changed by this function.
         submitted, reply_ticket = submit_read_requests(request_list, tinfo, e)
-
-        Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
-        Trace.message(TICKET_LEVEL, pprint.pformat(request_list))
-
-        Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
-                      (time.time() - tinfo['encp_start_time']))
-
-        #If at least one submission succeded, follow through with it.
+        
+        #If at least one submission succeeded, follow through with it.
         if submitted != 0:
+            Trace.message(TO_GO_LEVEL, "SUBMITED: %s" % submitted)
+            Trace.message(TICKET_LEVEL, pprint.pformat(request_list))
+            
+            Trace.message(TRANSFER_LEVEL, "Files queued.   elapsed=%s" %
+                          (time.time() - tinfo['encp_start_time']))
+
             #Since request_list contains all of the entires, submitted must
             # also be passed so read_hsm_files knows how many elements of
             # request_list are valid.
@@ -6722,6 +6856,7 @@ class EncpInterface(option.Interface):
         self.admpri = -1           # quick fix to check HiPri functionality
         self.age_time = 0          # priority doesn't age
         self.delayed_dismount = None # minutes to wait before dismounting
+        self.check = 0             # check if transfer attempt will occur
         
         #messages for user options
         self.data_access_layer = 0 # no special listings
@@ -6818,6 +6953,11 @@ class EncpInterface(option.Interface):
                             option.VALUE_USAGE:option.IGNORED,
                             option.VALUE_TYPE:option.INTEGER,
                             option.USER_LEVEL:option.USER,},
+        option.CHECK:{option.HELP_STRING:"Only check if the transfer would "
+                      "succeed, but do not actully perform the transfer.",
+                      option.VALUE_USAGE:option.IGNORED,
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.USER_LEVEL:option.USER,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -7203,40 +7343,17 @@ class EncpInterface(option.Interface):
 
         #Assign the collection of types to these variables.
         if p1 == 1:
-            self.intype="hsmfile"
+            self.intype = "hsmfile"
         else:
-            self.intype="unixfile"
+            self.intype = "unixfile"
         if p2 == 1:
-            self.outtype="hsmfile"
+            self.outtype = "hsmfile"
         else:
-            self.outtype="unixfile"
+            self.outtype = "unixfile"
 
 ##############################################################################
 
-def main(intf):
-    #Snag the start time.  t0 is needed by the mover, but its name conveys
-    # less meaning.
-    encp_start_time = time.time()
-    tinfo = {'encp_start_time':encp_start_time,
-             't0':int(encp_start_time)}
-    
-    Trace.init("ENCP")
-
-    #for opt in encp.deprecated_options:
-    #    if opt in sys.argv:
-    #        print "WARNING: option %s is deprecated, ignoring" % (opt,)
-    #        sys.argv.remove(opt)
-    
-    # use class to get standard way of parsing options
-    #e = encp()
-    #e = EncpInterface(sys.argv, 0) # zero means admin
-    #if e.test_mode:
-    #    print "WARNING: running in test mode"
-
-    for x in xrange(6, intf.verbose+1):
-        Trace.do_print(x)
-    for x in xrange(1, intf.verbose+1):
-        Trace.do_message(x)
+def log_encp_start(tinfo, intf):        
 
     #If verbosity is turned on get the user name(s).
     try:
@@ -7306,7 +7423,7 @@ def main(intf):
         hostname = "invalid_hostname"
         
     #Other strings for the log file.
-    start_line = "Start time: %s" % time.ctime(encp_start_time)
+    start_line = "Start time: %s" % time.ctime(tinfo['encp_start_time'])
     command_line = "Command line: %s" % (string.join(sys.argv),)
     version_line = "Version: %s" % (encp_client_version().strip(),)
     id_line = "User: %s(%d)  Group: %s(%d)  Euser: %s(%d)  Egroup: %s(%d)" %\
@@ -7330,12 +7447,7 @@ def main(intf):
     #Print out the information from the command line.
     Trace.message(CONFIG_LEVEL, format_class_for_print(intf, "intf"))
 
-    #Some globals are expected to exists for normal operation (i.e. a logger
-    # client).  Create them.
-    clients()
-    #client = clients()
-
-    # convenient, but maybe not correct place, to hack in log message
+    #Convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
     if intf.outtype == "hsmfile":  #write
         Trace.log(e_errors.INFO, "%s  %s  %s  %s  %s" %
@@ -7344,74 +7456,58 @@ def main(intf):
         Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
                   (version_line, id_line, cwd_line, command_line))
 
-    if intf.data_access_layer:
-        global data_access_layer_requested
-        data_access_layer_requested = intf.data_access_layer
-        #data_access_layer_requested.set()
-
-    #Special handling for use with dcache - not yet enabled
-    if intf.get_cache:
-        #pnfs_id = sys.argv[-2]
-        #local_file = sys.argv[-1]
-        #print "pnfsid", pnfs_id
-        #print "local file", local_file
-        done_ticket = read_from_hsm(intf, tinfo)
-
-    #Special handling for use with dcache - not yet enabled
-    elif intf.put_cache:
-        #pnfs_id = sys.argv[-2]
-        #local_file = sys.argv[-1]
-        done_ticket = write_to_hsm(intf, tinfo)
-        
-    ## have we been called "encp unixfile hsmfile" ?
-    elif intf.intype=="unixfile" and intf.outtype=="hsmfile" :
-        done_ticket = write_to_hsm(intf, tinfo)
-        
-
-    ## have we been called "encp hsmfile unixfile" ?
-    elif intf.intype=="hsmfile" and intf.outtype=="unixfile" :
-        done_ticket = read_from_hsm(intf, tinfo)
 
 
-    ## have we been called "encp unixfile unixfile" ?
-    elif intf.intype=="unixfile" and intf.outtype=="unixfile" :
-        emsg="encp copies to/from tape. It is not involved in copying %s to %s" % (intf.intype, intf.outtype)
-        print_error('USERERROR', emsg)
-        if intf.data_access_layer:
-            print_data_access_layer_format(intf.input, intf.output, 0,
-                                           {'status':("USERERROR",emsg)})
-        delete_at_exit.quit()
-
-    ## have we been called "encp hsmfile hsmfile?
-    elif intf.intype=="hsmfile" and intf.outtype=="hsmfile" :
-        emsg=  "encp tape to tape is not implemented. Copy file to local disk and them back to tape"
-        print_error('USERERROR', emsg)
-        if intf.data_access_layer:
-            print_data_access_layer_format(intf.input, intf.output, 0,
-                                           {'status':("USERERROR",emsg)})
-        delete_at_exit.quit()
-
-    else:
-        emsg = "ERROR: Can not process arguments %s"%(intf.args,)
-        Trace.trace(16,emsg)
-        print_data_access_layer_format("","",0,{'status':("USERERROR",emsg)})
-        delete_at_exit.quit()
-
-    exit_status = done_ticket.get('exit_status', 1)
+def final_say(intf, done_ticket):
     try:
         #Log the message that tells us that we are done.
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
-        Trace.log(e_errors.INFO, string.replace(status[1], "\n\t", "  "))
+        exit_status = done_ticket.get('exit_status',
+                                      not e_errors.is_ok(status))
 
-        if intf.data_access_layer and not exit_status:
-            #If there was no error and they want the data access layer anyway,
-            # print it out.
-            print_data_access_layer_format(intf.input, intf.output,
+        #Perform any necessary string formating.
+        if status[1] == None:
+            msg_str = None
+        elif type(status[1]) == types.StringType:
+            #Log messages should not have newlines in them.
+            msg_str = string.replace(status[1], "\n\t", "  ")
+        else:
+            msg_str = str(status[1])
+            
+        Trace.log(e_errors.INFO, msg_str)
+
+        ifilename = done_ticket.get("infile", None)
+        ofilename = done_ticket.get("outfile", None)
+        if not ifilename and not ofilename:
+            ifilename = intf.input
+            ofilename = intf.output
+
+
+        if intf.data_access_layer or not e_errors.is_ok(status):
+            #We only want to print the data access layer if there was an error
+            # or the user explicitly requested it.  In the cases where it will
+            # be printed here, encp never got to the point of submitting
+            # requests to the library manager.
+            print_data_access_layer_format(ifilename, ofilename,
                                            done_ticket.get('file_size', 0),
                                            done_ticket)
         else:
-            #If There was an error print the message.
-            Trace.message(DONE_LEVEL, str(status[1]))
+            #Explaination for the case where the status at this point
+            # is OK and the exit_status is non-zero:
+            #   The code got far enough to call calculate_final_statistics()
+            #   which Okays the status (but still puts the final message in
+            #   status[1]) and sets the exit_status to error in this
+            #   final ticket.  In this case, the data_access_layer is
+            #   printed out in handle_retries(), write_hsm_file() or
+            #   read_hsm_files().
+
+            #If the second part of the status is not empty, print it.
+            # There will be non-None status[1] values paired with OK
+            # status[0] values.  This is to pack the final message regardless
+            # of errors (or no errors) occuring.
+            if status[1] != None:
+                #If There was an error print the message.
+                Trace.message(DONE_LEVEL, str(status[1]))
 
     except ValueError:
         exc, msg = sys.exc_info()[:2]
@@ -7422,6 +7518,78 @@ def main(intf):
     Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
     #Quit safely by Removing any zero length file for transfers that failed.
     delete_at_exit.quit(exit_status)
+
+
+
+def main(intf):
+    #Snag the start time.  t0 is needed by the mover, but its name conveys
+    # less meaning.
+    encp_start_time = time.time()
+    tinfo = {'encp_start_time':encp_start_time,
+             't0':int(encp_start_time)}
+
+    #Initialize the Trace module.
+    Trace.init("ENCP")
+    for x in xrange(6, intf.verbose + 1):
+        Trace.do_print(x)
+    for x in xrange(1, intf.verbose + 1):
+        Trace.do_message(x)
+
+    #Some globals are expected to exists for normal operation (i.e. a logger
+    # client).  Create them.
+    status_ticket = clients(intf)
+    if not e_errors.is_ok(status_ticket):
+        final_say(intf, status_ticket)
+
+    #Log/print the starting encp information.  This depends on the log
+    # from the clients() call, thus it should always be after clients().
+    # This function should never give a fatal error.
+    log_encp_start(tinfo, intf)
+
+    if intf.data_access_layer:
+        global data_access_layer_requested
+        data_access_layer_requested = intf.data_access_layer
+        #data_access_layer_requested.set()
+
+
+    #Special handling for use with dcache.
+    if intf.get_cache:
+        done_ticket = read_from_hsm(intf, tinfo)
+
+    #Special handling for use with dcache.
+    elif intf.put_cache:
+        done_ticket = write_to_hsm(intf, tinfo)
+        
+    ## have we been called "encp unixfile hsmfile" ?
+    elif intf.intype == "unixfile" and \
+             intf.outtype == "hsmfile" :
+        done_ticket = write_to_hsm(intf, tinfo)
+        
+    ## have we been called "encp hsmfile unixfile" ?
+    elif intf.intype == "hsmfile" and \
+             intf.outtype == "unixfile" :
+        done_ticket = read_from_hsm(intf, tinfo)
+
+    ## have we been called "encp unixfile unixfile" ?
+    elif intf.intype == "unixfile" and \
+             intf.outtype == "unixfile" :
+        emsg = "encp copies to/from tape.  It is not involved in copying " \
+               "%s to %s." % (intf.intype, intf.outtype)
+        done_ticket = {'status':("USERERROR", emsg)}
+
+    ## have we been called "encp hsmfile hsmfile?
+    elif intf.intype == "hsmfile" and \
+             intf.outtype == "hsmfile" :
+        emsg = "encp tape to tape is not implemented. Copy file to local " \
+               "disk and then back to tape."
+        done_ticket = {'status':("USERERROR", emsg)}
+
+    else:
+        emsg = "ERROR: Can not process arguments %s" % (intf.args,)
+        done_ticket = {'status':("USERERROR", emsg)}
+
+    final_say(intf, done_ticket)
+
 
 
 def do_work(intf):
@@ -7441,6 +7609,6 @@ def do_work(intf):
 if __name__ == '__main__':
     delete_at_exit.setup_signal_handling()
 
-    intf = EncpInterface(sys.argv, 0) # zero means admin
+    intf_of_encp = EncpInterface(sys.argv, 0) # zero means admin
 
-    do_work(intf)
+    do_work(intf_of_encp)

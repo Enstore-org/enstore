@@ -44,7 +44,6 @@ MOVER_STUCK = 'MOVER_STUCK'
 MOVER_BUSY = 'MOVER_BUSY'
 CONFIGDEAD = 'CONFIGDEAD'               #Config server was not found.
 DOESNOTEXISTSTILLDONE = 'DOESNOTEXIST MARKED ANYWAY'
-#EEXIST = 'EEXIST'
 RECYCLE='RECYCLE_VOLUME'
 QUOTAEXCEEDED='STORAGE_QUOTA_EXCEEDED'
 CRC_ERROR='CRC MISMATCH'                #CRC error if caught by mover.
@@ -62,18 +61,18 @@ IOERROR = "IO ERROR"                    #Used for many things...
 ENSTOREBALLRED = "ENSTORE BALL IS RED"
 MALFORMED = "MALFORMED REQUEST"
 VERSION_MISMATCH="VERSION MISMATCH"     #Tells user to update encp.
-#WRONG_PNFS_FILE_SIZE="CANNOT SET PNFS FILE SIZE"
 LOCKED="locked"
 NOREAD="noread"
 NOWRITE="nowrite"
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
-ENCP_STUCK = "ENCP STUCK"               #Mover dected no transfers on encp side
+ENCP_STUCK = "ENCP STUCK"               #Mover detected no encp progress.
 POSITIONING_ERROR='POSITIONING_ERROR'
 
 #V3 additions:
 DEVICE_ERROR = "DEVICE ERROR"           #read()/write() call stuck in kernel.
-FILE_MODIFIED = "FILE WAS MODIFIED" #Encp knows local file changed.
+FILE_MODIFIED = "FILE WAS MODIFIED"     #Encp knows local file changed.
+NO_FILES = "NO_FILES"                   #Internal encp error.
 
 
 # Severity codes
@@ -185,6 +184,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NOSPACE, # Local disk full on read.
                          CRC_ERROR,  #Set by mover
                          FILE_MODIFIED, #When writing the file changed.
+                         NO_FILES, #encp has no files to transfer???
                          )
 
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.

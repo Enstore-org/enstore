@@ -23,7 +23,6 @@ import copy_reg			# to make freeze happy
 #enstore imports
 import generic_client
 import enstore_constants
-import udp_client
 import Trace
 import e_errors
 import option
@@ -299,7 +298,7 @@ class LoggerClient(generic_client.GenericClient):
 
     def __init__(self,
                  csc = 0,                    # get our own configuration client
-                 i_am_a = MY_NAME,           # Abbreviated client instance name
+                 name = MY_NAME,             # Abbreviated client instance name
                                              # try to make it capital letters
                                              # not more than 8 characters long
                  servername = MY_SERVER,     # log server name
@@ -309,10 +308,10 @@ class LoggerClient(generic_client.GenericClient):
         # need the following definition so the generic client init does not
         # get another logger client
 	flags = flags | enstore_constants.NO_LOG
-        generic_client.GenericClient.__init__(self, csc, i_am_a, flags=flags,
+        generic_client.GenericClient.__init__(self, csc, name, flags=flags,
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries)
-        self.log_name = i_am_a
+        self.log_name = name
         try:
             self.uname = pwd.getpwuid(os.getuid())[0]
         except:
@@ -385,7 +384,7 @@ def logthis(sev_level=e_errors.INFO, message="HELLO", logname="LOGIT"):
     port = os.environ.get('ENSTORE_CONFIG_PORT', 0)
     host = os.environ.get('ENSTORE_CONFIG_HOST', '')
     # convert port to integer
-    if port: port = string.atoi(port)
+    if port: port = int(port)
     if port and host:
         # if port and host defined create config client
         csc = configuration_client.ConfigurationClient((host,port))

@@ -13,10 +13,10 @@ import traceback
 import os				
 import pwd				
 import time
-import socket
+#import socket
 import types
 
-import enstore_constants
+#import enstore_constants
 import event_relay_messages
 import event_relay_client
 import e_errors
@@ -212,14 +212,16 @@ def set_log_func(func):
 
 def default_alarm_func(time, pid, name, root_error, severity,
                        condition, remedy_type, args):
+    __pychecker__ = "unusednames=time,pid,name,root_error,severity," \
+                    "condition,remedy_type,args"
     print "default alarm_func", args
     #lvl = args[0]
     #msg = args[1]
     return None
+
 set_alarm_func(default_alarm_func)
 
-
-pid = os.getpid()
+#pid = os.getpid()
 try:
     usr = pwd.getpwuid(os.getuid())[0]
 except:

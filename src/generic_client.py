@@ -108,7 +108,7 @@ class GenericClient:
 		import log_client
 		self.logc = log_client.LoggerClient(self._get_csc(),
                                                     self.log_name,
-                                                    'log_server', 
+                                                    #'log_server', 
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                     rcv_timeout=rcv_timeout,
                                                     rcv_tries=rcv_tries)
@@ -121,7 +121,8 @@ class GenericClient:
 	else:
 	    if not flags & enstore_constants.NO_ALARM:
 		import alarm_client
-		self.alarmc = alarm_client.AlarmClient(self._get_csc(), 
+		self.alarmc = alarm_client.AlarmClient(self._get_csc(),
+                                                       self.log_name,
 		   flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,
                                                        rcv_timeout=rcv_timeout,
                                                        rcv_tries=rcv_tries)

@@ -12,7 +12,6 @@ import types
 
 # enstore imports
 import generic_client
-import udp_client
 import option
 import enstore_constants
 import alarm
@@ -38,13 +37,19 @@ class Lock:
 
 class AlarmClient(generic_client.GenericClient):
 
-    def __init__(self, csc, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
-		 flags=0, name=MY_NAME):
+    def __init__(self, csc,
+                 name = MY_NAME,           # Abbreviated client instance name
+                                           # try to make it capital letters
+                                           # not more than 8 characters long
+                 servername = MY_SERVER,   # log server name
+		 flags=0,                 
+                 rcv_timeout=RCV_TIMEOUT,
+                 rcv_tries=RCV_TRIES):
         # need the following definition so the generic client init does not
         # get another alarm client
 	flags = flags | enstore_constants.NO_ALARM
 
-        generic_client.GenericClient.__init__(self, csc, MY_NAME, flags=flags,
+        generic_client.GenericClient.__init__(self, csc, name, flags=flags,
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries)
 
@@ -52,7 +57,7 @@ class AlarmClient(generic_client.GenericClient):
             self.uid = pwd.getpwuid(os.getuid())[0]
         except:
             self.uid = "unknown"
-        self.server_address = self.get_server_address(MY_SERVER, rcv_timeout,
+        self.server_address = self.get_server_address(servername, rcv_timeout,
                                                       rcv_tries)
 
         self.rcv_timeout = rcv_timeout
@@ -205,7 +210,8 @@ def do_work(intf):
     Trace.init(name)
     # now get an alarm client
     alc = AlarmClient((intf.config_host, intf.config_port),
-                      intf.alive_rcv_timeout, intf.alive_retries, name=name)
+                      rcv_timeout = intf.alive_rcv_timeout,
+                      rcv_tries = intf.alive_retries, name=name)
     ticket = alc.handle_generic_commands(MY_SERVER, intf)
     if ticket:
         pass

@@ -2,7 +2,6 @@
 # src/$RCSfile$   $Revision$
 #
 # system imports
-import time
 import string
 import errno
 import sys
@@ -17,11 +16,9 @@ def eval(stuff):
     return _rexec.r_eval(stuff)
 
 # enstore imports
-import setpath
 import generic_client
 import option
 import backup_client
-import udp_client
 import callback
 import hostaddr
 import Trace
@@ -40,8 +37,8 @@ RCV_TRIES = 5
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
-    def __init__( self, csc, bfid=0, server_address=None,
-                  rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
+    def __init__( self, csc, bfid=0, server_address=None, flags=0, logc=None,
+                  alarmc=None, rcv_timeout=RCV_TIMEOUT, rcv_tries=RCV_TRIES,
                   #Timeout and tries are for backward compatibility.
                   timeout=None, tries=None):
         ###For backward compatibility.
@@ -52,6 +49,8 @@ class FileClient(generic_client.GenericClient,
         ###
             
         generic_client.GenericClient.__init__(self,csc,MY_NAME,server_address,
+                                              flags=flags, logc=logc,
+                                              alarmc=alarmc,
                                               rcv_timeout=rcv_timeout,
                                               rcv_tries=rcv_tries)
 	self.bfid = bfid
@@ -684,9 +683,9 @@ def do_work(intf):
                 deleted = 'unknown'
                 if record.has_key('deleted'):
                     if record['deleted'] == 'yes':
-                        deleted = 'deleted'
+                        deleted = str('deleted')
                     elif record['deleted'] == 'no':
-                        deleted = 'active'
+                        deleted = str('active')
 
                 print "%10s %s %10i %22s %7s %s" % (intf.list,
                     record['bfid'], record['size'],
