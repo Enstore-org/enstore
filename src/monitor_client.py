@@ -337,7 +337,7 @@ class MonitorServerClient(generic_client.GenericClient):
             reply['status'] = (exc, msg)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
-        except errno.ETIMEDOUT, detail:
+        except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT]), detail:
             reply = {}
             reply['status'] = (SERVER_CONNECTION_ERROR, detail)
             reply['elapsed'] = self.timeout*10
