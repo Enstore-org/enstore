@@ -72,11 +72,18 @@ def convert_status(int_status):
     return status_table[status][0], status, status_table[status][1]    
 
 
-def mount(volume, drive, media_type):
+def mount(volume, drive, media_type,view_first=0):
     status = 0
     
+    if view_first:
+        v = view(volume,media_type)
+        if v[0] != 'ok':
+            status = v[1]
+            return status_table[status][0], status, status_table[status][1]
+        elif v[5] != 'O':
+            return 'BAD',99,'Tape is not in home position in tower: %s'%(v,)
+        
     media_code = aci.__dict__.get("ACI_"+media_type)
-
     if media_code is None:
         status = derrno.ENOVOLUME
     elif aci.aci_mount(volume,media_code,drive):  #note order of args!
@@ -87,8 +94,17 @@ def mount(volume, drive, media_type):
     return status_table[status][0], status, status_table[status][1]    
     
 
-def dismount(volume, drive, media_type):
+def dismount(volume, drive, media_type,view_first=0):
     status = 0
+
+    if view_first:
+        v = view(volume,media_type)
+        if v[0] != 'ok':
+            status = v[1]
+            return status_table[status][0], status, status_table[status][1]
+        elif v[5] != 'M':
+            return 'BAD',99,'Tape is not in mounted in drive: %s'%(v,)
+
     if aci.aci_force(drive):
         status=aci.cvar.d_errno
         if status > len(status_table):
@@ -145,6 +161,7 @@ def view(volume, media_type):
 
     if media_code is None:
         status = derrno.ENOVOLUME
+        return ('TAPE', 3, 'volume not found of this type', '', '\000', '\000', media_type, volume, '\000', 0, 0)
     else:
         v = aci.aci_view(volume,media_code)
         if v[0]:
