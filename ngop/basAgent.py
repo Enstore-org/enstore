@@ -134,7 +134,7 @@ nodes = node_d.keys()
 nodeValue = node_d.values()
 
 miblist = {}   
-
+mibflow = {}
 system_d = {} 
 tcp_d = {}
 udp_d = {}
@@ -728,13 +728,13 @@ def setNodeTab(tabName, head, htmlName, list):
 
 if __name__=="__main__":
 
-    global miblist
-    global system_d 
-    global tcp_d 
-    global udp_d 
-    global ip_d 
-    global icmp_d
-    global snmp_d  
+#    global miblist
+#    global system_d 
+#    global tcp_d 
+#    global udp_d 
+#    global ip_d 
+#    global icmp_d
+#    global snmp_d  
 
     mib = ".1.3.6.1.2.1"   #.iso.org.dod.internet.mgmt.mib-2
     
