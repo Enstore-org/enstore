@@ -316,7 +316,8 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
         self.verbose = 0
         self.volume = ""
         self.mover_timeout = 60*60
-        option.Interface.__init__(self, args=args, user_mode=user_mode)
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
 
     def valid_dictionaries(self):
         return (self.help_options, self.volume_assert_options)
