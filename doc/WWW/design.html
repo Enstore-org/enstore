@@ -1497,7 +1497,7 @@ A physical library can be thought of as consisting of
 <p>
 <em>Virtual Library</em> -- A virtual library contains one and only one
 kind of media.
-For example, Enstore divides an STK powderhorn
+For example, Enstore divides an STK Powderhorn
 library holding 50, 20 and 10 GB redwood media into at least three
 virtual libraries.  In common usage, the term "library" in Enstore
 refers to a virtual library. Writes are directed to a specific (virtual)
@@ -1983,7 +1983,7 @@ allows to the dynamic configuration of Movers.
 </h3>
 <dl>
 <dt>Writes into the system
-<dd>Based on the user's mss destination filename, a <em>pnfs</em> tag
+<dd>Based on the user's encp destination filename, a <em>pnfs</em> tag
 associated with the destination directory, identifies
     the library for a write request allowing the <em>encp</em> program to compose
     a write request and contact the appropriate Library Manager
@@ -2418,8 +2418,9 @@ Suppose half the tapes belong to Group A  and the half to Group B. We want to gu
 Group A have one third of the tape drives, Group B have one third, and the last third
 be shared.  The Movers can be configured to do this easily.  And with some slight
 changes, this is how we can guarantee resources to data acquisition.
-
+<<<<<<< design.html
 <p>
+
 There has been a request to duplicate (write to two tapes) critical
 data. This feature had been discussed but not implemented as a specific
 method of implementation has not been decided upon. The following are
@@ -2436,6 +2437,8 @@ among the possible implementations:
        the master mover.
 </ul>
 
+DUPLICATE DATA SECTION NEEDED.
+<p>
 <!-- ----------------------------------------------------->
 When the Mover starts up, the 'idle_mover' request/command is sent to each
 Library Manager configured and the responses from the Library Managers are
@@ -2633,7 +2636,7 @@ media changer.</TD>
 <h3><a name="config_server">
 1.3.5 Configuration Server
 </h3>
-The Configuration Server maintains the crucial information about
+The Configuration Server maintains and disbutes all information about
 system configuration, such as the location and parameters of each server.
 Upon startup, each server asks the Configuration Server for the information 
 pertaining to itself (e.g. the location of any other server with which to 
@@ -2837,15 +2840,15 @@ can be set to 0 when it is necessary to perform work on a robot.
 The media changer returns three status values:
 <ul>
 <li>The status returned by the underlying agent
-<li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GNEREAL_ERR
+<li>A translation of the underlying status with the values, SUCCESS, DRIVE_ERR, MEDIA_ERR, GENERAL_ERR
 <li>A text description returned by the underlying agent
 </ul>
 <p>
 The media changer supports the following requests:
 <ul>
-<li>LOAD &ltvolume id&gt &ltdrive id&gt &ltmedia type&gt
-<li>UNLOAD &ltvolume id&gt &ltdrive id&gt &ltmedia type&gt
-<li>MAXWORK &ltmmax simultaneous operation&gt 
+<li>LOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
+<li>UNLOAD &lt volume id&gt &lt drive id&gt &lt media type&gt
+<li>MAXWORK &lt max simultaneous operation&gt 
 </ul>
 <p>
 The media changer mounting agents:
@@ -3890,8 +3893,8 @@ Enstore system
 <li>List all files/volumes that belong to user/group
 <li>Mark the volume as readonly if all of the files on the media are older
 than a specified date
-<li> Delete specified files in the <em>pnfs</em> trashbin.
-<li>Find and recycle volumes where all files have been deleted.
+<li> Delete specified files in the <em>pnfs</em> trash bin.
+<li>Find and recycle volumes from which all files have been deleted.
 <li>Check for files known to the File Clerk but unknown to <em>pnfs</em>
 </ul>
 
