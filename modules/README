@@ -37,3 +37,13 @@ import ETape
 ETape.CopyToTape()
                               process stops in dbx
 
+
+
+To use gdb with modules (basically the same, except):
+Note: need at least v4.17 of gdb
+
+window 1                       window 2
+------------                   ---------------
+
+			       gdb python_path/python pid
+                               
