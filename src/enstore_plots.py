@@ -252,7 +252,7 @@ class XferGnuFile(enstore_status.EnFile):
 	                   "set yrange [0: ]\n"+ \
 	                   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
 	                   "'"+ptsfile2+\
-	                   "' using 1:5 t 'mean file size' w points\n")
+	                   "' using 1:5 t 'mean file size' w points 3 5\n")
 
 class BpdDataFile(EnPlot):
 
