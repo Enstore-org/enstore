@@ -47,7 +47,17 @@ PIC_FILES = \
 	mover_write.ps mover_write.gif \
 	pnfs.ps pnfs.gif \
 	superficial_overviewobj.ps superficial_overviewobj.gif \
-	test-stand.ps test-stand.gif
+	test-stand.ps test-stand.gif \
+	$(WWW)/desy.ps $(WWW)/desy.gif \
+	$(WWW)/enstore.ps $(WWW)/enstore.gif \
+	$(WWW)/enstoreRead.ps $(WWW)/enstoreRead.gif \
+	$(WWW)/enstoreSimple.ps $(WWW)/enstoreSimple.gif \
+	$(WWW)/enstore_at_fnal.ps $(WWW)/enstore_at_fnal.gif \
+	$(WWW)/enstore_at_fnal2.ps $(WWW)/enstore_at_fnal2.gif \
+	$(WWW)/read.ps $(WWW)/read.gif \
+	$(WWW)/test_nodes.ps $(WWW)/test_nodes.gif \
+	$(WWW)/test-stand.ps $(WWW)/test-stand.gif \
+	$(WWW)/write.ps $(WWW)/write.gif
 
 WWW_NEW_FILES = $(HTML_FILES) $(PS_FILES) $(GIF_FILES) $(LOG_FILES) \
 	$(HOME_FILE)
