@@ -271,7 +271,9 @@ class FTTDriver(driver.Driver):
 
     def eject(self):
         try:
+            Trace.trace(15, "eject: call ftt_close")
             self.ftt.close()
+            Trace.trace(15, "eject: ftt_close returns")
         except:
             Trace.log(e_errors.ERROR, "eject: ftt_close failed")
         ok = 0
@@ -279,7 +281,9 @@ class FTTDriver(driver.Driver):
             if retry:
                 Trace.log(e_errors.ERROR, "eject: retry %s" % (retry,))
                 time.sleep(5)
+            Trace.trace(15, "eject: call mt offline")
             p=os.popen("mt -f %s offline 2>&1" % (self.device),'r')
+            Trace.trace(15, "eject: mt offline returns")
             r=p.read()
             s=p.close()
             if not s:
@@ -288,15 +292,20 @@ class FTTDriver(driver.Driver):
             else:
                 Trace.log(e_errors.ERROR, "eject: mt offline failed: %s" % (r,))
                 if string.find(r, "Input/output error") >= 0:
+                    Trace.trace
+                    Trace.trace(15, "eject: call mt rewind")
                     p=os.popen("mt -f %s rewind 2>&1" % (self.device),'r')
+                    Trace.trace(15, "eject: mt rewind returns")
                     r=p.read()
                     s=p.close()
                     if s:
                         Trace.log(e_errors.ERROR, "eject: mt rewind failed: %s" % (r,))
         if not ok:
             Trace.log(e_errors.ERROR, "eject: failed after 3 tries")
+            Trace.trace(15, "eject: returning -1")
             return -1
         else:
+            Trace.trace(15, "eject: returning 0")
             return 0
         
     def set_mode(self, density=None, compression=None, blocksize=None):
