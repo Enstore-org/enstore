@@ -188,7 +188,8 @@ def is_volume_busy(self, external_label):
 		# for work at movers volume cannot be in unmounted state
 		check_vol_state = 1
 		at_mov = 1
-                Trace.log(e_errors.ERROR, "volume %s is in work_at_movers"%external_label)
+            Trace.log(e_errors.ERROR, "volume %s is in work_at_movers. Mover=%s,requestor=%s"%\
+                      (external_label,vol_info['at_mover'][1],self.requestor))
             rc = 1
             break
     else: # for
@@ -213,7 +214,29 @@ def is_volume_busy(self, external_label):
 	    vol_info = self.vcc.inquire_vol(external_label)
 	    if vol_info['at_mover'][0] == 'unmounting':
 		# volume is in unmounting state: can't give it out
+                Trace.log(e_errors.ERROR, "volume %s is in unmounting state. Mover=%s"%\
+                          (external_label,vol_info['at_mover'][1]))
 		rc = 1
+            # check if volume is in the intemediate 'mounting state'
+            elif vol_info['at_mover'][0] == 'mounting':
+                # volume is in the mounting state
+                # if it is for current mover check it's "real" state
+                if vol_info['at_mover'][1] == self.requestor:
+                    # restore volume state
+                    mcstate =  self.vcc.update_mc_state(external_label)
+                    format = "vol:%s state recovered to %s"
+                    Trace.log(e_errors.INFO,format%(external_label,
+                                                    mcstate["at_mover"][0]))
+                    
+                else:
+                    # if it is not this mover, summon it
+                    Trace.trace(11,"volume %s mounting, trying to summon %s"%\
+                            (external_label,vol_info['at_mover'][1])) 
+                    mv = find_mover_by_name(vol_info['at_mover'][1], movers)
+                    if mv:
+                        summon_mover(self, mv, {})
+
+                rc = 1
     Trace.trace(7,"is_volume_busy:vol=%s,return code=%s"%(external_label,repr(rc)))
     if check_vol_state:
 	# restore volume state
@@ -405,7 +428,7 @@ def summon_mover(self, mover, ticket):
     summon_rq = {'work': 'summon',
 		 'address': self.server_address }
     
-    Trace.trace(15,"summon_rq %s" % summon_rq)
+    Trace.trace(15,"summon_rq %s will be sent to %s" % (summon_rq, mover['mover']))
     # send summon request
     mover['tr_error'] = self.udpc.send_no_wait(summon_rq, mover['address'])
     Trace.trace(15,"summon_queue %s" % self.summon_queue)
@@ -845,7 +868,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"IDLE RQ %s"%repr(mticket))
 	# remove the mover from the list of movers being summoned
 	mv = remove_from_summon_list(self, mticket, mticket['work'])
-        cur_mv = mticket['mover']
+        self.requestor = mticket['mover']
+        # mover can be idle in the draining state
+        # if state of the mover sending idle RQ is not idle,
+        #do not process this request 
+	if mticket['state'] != 'idle':
+            Trace.trace(14,"idle_mover state:%s"%mticket['state'])
+            if mticket['state'] == "draining":
+                movers.remove(mv)
+                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % mv)
+            self.reply_to_caller({"work" : "nowork"})
+            return
 	# check if there is a work for this mover in work_at_movers list
 	# it should not happen in a normal operations but it may when for 
 	# instance mover detects that encp is gone and returns idle or
@@ -923,27 +956,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     summon_mover(self, mv, w)
                 return
 
-            elif vol_info['at_mover'][0] == 'mounting':
-                # volume is in the mounting state
-                # if it is for current mover check it's "real" state
-                if vol_info['at_mover'][1] == cur_mv:
-                    # restore volume state
-                    mcstate =  self.vcc.update_mc_state(w['fc']['external_label'])
-                    format = "vol:%s state recovered to %s"
-                    Trace.log(e_errors.INFO,format%(w['fc']['external_label'],
-                                                    mcstate["at_mover"][0]))
-                else:
-                    # if it is not this mover, summon it
-                    Trace.trace(11,"volume %s mounting, trying to summon %s"%\
-                            (w['fc']['external_label'],vol_info['at_mover'][1])) 
-                    mv = find_mover_by_name(vol_info['at_mover'][1], movers)
-                    if mv:
-                        summon_mover(self, mv, w)
-
-                # no work for this mover
-                self.reply_to_caller({"work" : "nowork"})
-                return
-
 	    else:
                 Trace.log(e_errors.INFO,
                           "Cannot satisfy request. Vol %s is %s"%\
@@ -1005,6 +1017,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 	# check if mover can accept another request
 	if state != 'idle_mover':
             Trace.trace(14,"have_bound_volume state:%s"%state)
+            if state == "draining":
+                movers.remove(mv)
+                Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % mv)
 	    self.reply_to_caller({'work': 'nowork'})
 	    return
         # otherwise, see if this volume will do for any other work pending
@@ -1144,7 +1159,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 			       ticket["mover"]))
 		    self.reply_to_caller({"work" : "unbind_volume"})
 	    else:
-		Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
+                if ticket['state'] == "draining":
+                    movers.remove(mv)
+                    Trace.log(e_errors.ERROR,"mover %s is in drainig state and removed" % mv)
+                Trace.log(e_errors.INFO,"unilateral_unbind: sending nowork")
 		self.reply_to_caller({"work" : "nowork"})
 
 	# determine if all the movers are in suspect volume list and if
