@@ -4,6 +4,7 @@ import sys
 import string
 import os
 import tempfile
+import time
 
 import configuration_client
 import enstore_functions
@@ -11,11 +12,14 @@ import enstore_functions
 
 #Conversion from "bytes per 15 seconds" to "terabytes per day"
 BP15S_TO_TBPD = 5.7e-09
+#Seconds in a day
+SEC_IN_DAY = 60 * 60 *24
 
 def print_usage():
     print "Usage:", sys.argv[0],
-    print "[-t <num>] [-n <name>] [--help]"
-    print "   -t     number of 15 second intervals smoothed.  (default=40)"
+    print "[-s <num>] [-t <num>] [-n <name>] [--help]"
+    print "   -t     number of days to plot (default=2)"
+    print "   -s     number of 15 second intervals smoothed.  (default=40)"
     print "   -n     name of the system to plot." \
           "  (default=$ENSTORE_CONFIG_HOST)"
     print "  --help  print this message"
@@ -34,7 +38,13 @@ class file_filter:
     def __init__(self, thresh):
         self.compare_value = thresh
 
-
+#This is the "magic" class to use when filtering out elements that have the
+# same external label in a list.
+class file_timestamp_filter:
+    def __call__(self, list_element):
+        return list_element > self.compare_value
+    def __init__(self, thresh):
+        self.compare_value = thresh
 ############################################################################
 ############################################################################
 
@@ -82,7 +92,7 @@ def get_rate_info():
 #Use the file_filter class to filter out the files with rate data that we
 # are looking for.  sys_name is the name to look for inside the filenames,
 # and log_dir is the directory to look in.
-def filter_out_files(sys_name, log_dir):
+def filter_out_files(sys_name, log_dir, time_in_days):
     all_log_files = os.listdir(log_dir)
 
     #criteria is a callable class that is used inside of filter for pulling
@@ -93,7 +103,15 @@ def filter_out_files(sys_name, log_dir):
     criteria.compare_value = sys_name
     sys_name_rate_log_files = filter(criteria, rate_log_files)
 
-    return sys_name_rate_log_files
+    #determine the first day of plots to plot
+    startday = time.localtime(time.time() - (SEC_IN_DAY * time_in_days))[:3]
+    startday_string = "%s.RATES.%02d%02d%02d" % (sys_name, startday[0],
+                                              startday[1],
+                                              startday[2])
+    timestamp_criteria = file_timestamp_filter(startday_string)
+    recent_rate_log_files = filter(timestamp_criteria, sys_name_rate_log_files)
+
+    return recent_rate_log_files
 
 ##########################################################################
 ##########################################################################
@@ -134,7 +152,8 @@ def write_smooth_file(smooth_file, scaled_file, smooth_num = 40):
         tw = tw + float(w)
         c = (c+1)%n
         if not c:
-            smooth_file.write("%s %s %s %s\n" % (date, time, tr/n, tw/n))
+            smooth_file.write("%s %s %s %s %s\n" %
+                              (date, time, tr/n, tw/n, (tr + tw) / n))
             tr, tw = 0.0, 0.0
 
 
@@ -145,7 +164,8 @@ def write_smooth_file(smooth_file, scaled_file, smooth_num = 40):
 # plot_file = the file that will be read in by gnuplot.
 def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
 
-    plot_file.write("set title \"%s\"\n" % (sys_name))
+    plot_file.write("set title \"Data Rates on %s (Plotted: %s)\"\n" %
+                    (sys_name,time.ctime(time.time())))
     plot_file.write("set ylabel \"Terabytes/day\"\n")
     plot_file.write("set xdata time\n")
     plot_file.write("set timefmt \"%s\"\n" % ("%m-%d-%Y %H:%M:%S"))
@@ -155,8 +175,9 @@ def write_plot_file(sys_name, smooth_filename, plot_file, graphic_filename):
     plot_file.write("set size 1.4,1.2\n")
     plot_file.write("set output \"%s\"\n" % graphic_filename)
     plot_file.write("plot \"%s\" using 1:3 title \"read\" with lines," \
-                    "\"%s\" using 1:4 title \"write\" with lines\n" %
-                    (smooth_filename, smooth_filename))
+                    "\"%s\" using 1:4 title \"write\" with lines," \
+                    "\"%s\" using 1:5 title \"both\" with lines\n" %
+                    (smooth_filename, smooth_filename, smooth_filename))
 
 ##########################################################################
 ##########################################################################
@@ -171,10 +192,14 @@ if __name__ == "__main__":
     #Check the command line arguments.
     #-t stands for Time smoothing, which is the number of points that get
     # averaged together.
-    if "-t" in sys.argv:
+    if "-s" in sys.argv:
         smooth_num = int(sys.argv[sys.argv.index("-t") + 1])
     else:
         smooth_num = 40
+    if "-t" in sys.argv:
+        time_in_days = int(sys.argv[sys.argv.index("-t") + 1])
+    else:
+        time_in_days = 2
     #-n stands for Name, which is the name of the system to plot.
     if "-n" in sys.argv:
         sys_name = sys.argv[sys.argv.index("-n") + 1]
@@ -188,7 +213,7 @@ if __name__ == "__main__":
     #If they put an * in the filename, replace it with the system name.
     gif_filename = string.replace(gif_filename, '*', sys_name)
 
-    rate_log_files = filter_out_files(sys_name, log_dir)
+    rate_log_files = filter_out_files(sys_name, log_dir, time_in_days)
 
     if not rate_log_files:
         print "No %s rate files found." % (sys_name)
