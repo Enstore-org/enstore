@@ -316,6 +316,7 @@ trace_init_trc( const char *key_file_spec )
 		buf_fd = open( key_file, O_CREAT|O_RDWR, 0x1b6 );
 		if (buf_fd == -1)
 		{   perror( "can't create key file" );
+		    unlink( lck_file );	/* clean up */
 		    exit( 1 );
 		}
 	    }
@@ -327,6 +328,11 @@ trace_init_trc( const char *key_file_spec )
 
 		shm_id = shmget(  IPC_PRIVATE, TRC_BUF_SZ
 				, IPC_CREAT|0x1ff/*or w/9bit perm*/ );
+		if (shm_id == -1)
+		{   perror( "shmget" );
+		    unlink( lck_file ); /* clean up */
+		    exit( 1 );
+		}
 		trc_cntl_sp = shmat( shm_id, 0,0 );/* no adr hint, no flgs */
 
 		trc_cntl_sp->mode = 1;

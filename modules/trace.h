@@ -67,7 +67,11 @@ USE MACRO W/ VARARGS - can at least do checks inline
 #define TRC_DFLT_FIL	"/trace"
 #define TRC_LCK_EXTN	".lck"
 #define TRC_KEY_EXTN	".key"
-#define TRC_BUF_SZ	0x800000 /* mmap -> shm_open(2)? -> shmget(2) -> SHMMAX */
+#ifdef OSF1
+# define TRC_BUF_SZ	0x400000 /* mmap -> shm_open(2)? -> shmget(2) -> SHMMAX */
+#else
+# define TRC_BUF_SZ	0x800000 /* mmap -> shm_open(2)? -> shmget(2) -> SHMMAX */
+#endif
 #define TRC_MAX_MSG	100
 #define TRC_MAX_PIDS	200
 #define TRC_MAX_PROCS	200
