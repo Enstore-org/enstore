@@ -17,7 +17,6 @@ import generic_client
 import udp_client
 import Trace
 import e_errors
-import enstore_functions
 
 MY_NAME = ".LM"
 
@@ -437,25 +436,25 @@ def do_work(intf):
         pass
     elif  intf.get_work:
         ticket = lmc.getwork()
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket['pending_work']
             print ticket['at movers']
     elif intf.get_asserts:
         ticket = lmc.get_asserts()
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket
     elif  intf.get_work_sorted:
         ticket = lmc.getworks_sorted()
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket['pending_works']
             print ticket['at movers']
     elif  intf.get_susp_vols:
         ticket = lmc.get_suspect_volumes()
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket['suspect_volumes']
     elif intf.delete_work:
         ticket = lmc.remove_work(intf.work_to_delete)
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket
     elif intf.rm_suspect_vol:
         ticket = lmc.remove_suspect_volume(intf.rm_suspect_vol)
@@ -463,7 +462,7 @@ def do_work(intf):
         ticket = lmc.remove_active_volume(intf.rm_active_vol)
     elif not intf.priority == -1:
         ticket = lmc.priority(intf.args[1], intf.priority)
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket
     elif intf.vols:
         ticket = lmc.get_active_volumes()
@@ -487,7 +486,7 @@ def do_work(intf):
 
     elif intf.get_queue != None:
         ticket = lmc.get_queue(intf.get_queue, intf.name)
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print ticket
         
     elif (intf.start_draining or intf.stop_draining):
@@ -501,7 +500,7 @@ def do_work(intf):
         ticket = lmc.change_lm_state(lock)
     elif (intf.status):
         ticket = lmc.get_lm_state()
-        if enstore_functions.is_ok(ticket):
+        if e_errors.is_ok(ticket):
             print "LM state:%s"%(ticket['state'],)
     else:
         intf.print_help()
