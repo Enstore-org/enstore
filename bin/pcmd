@@ -196,7 +196,7 @@ ppath()     { if [ -z "${1-}" ] ; then p_error "path id"; fi
 	      else
  	        filename=`echo $filename | sed -e 's/ //g' -e 's%root/fs/usr/%%' -e 's%/$%%'`
               fi
-              if [ -z $filename ] ; then
+              if [ -z "$filename" ] ; then
                 filename="NO_SUCH_FILE"
                 echo $filename
 	      else
