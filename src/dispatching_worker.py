@@ -40,7 +40,8 @@ def collect_children() :
     try :
 	pid, status = os.waitpid(0, os.WNOHANG)
 	if (pid!=0) :
-	    print "Child reaped: pid=",pid," status=",status
+	    #print "Child reaped: pid=",pid," status=",status
+	    pass
     except os.error:
 	if sys.exc_info()[1][0] != errno.ECHILD :
 	    raise sys.exc_info()[0],sys.exc_info()[1]
