@@ -1226,7 +1226,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.log(e_errors.INFO,
                                   "heuristic: write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
                                   (self.current_volume, remaining, capacity))
-                        ret = self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
+                        ret = self.vcc.set_remaining_bytes(self.current_volume, 0, eod, None)
                         if ret['status'][0] != e_errors.OK:
                             Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
                             broken = broken +  "set_remaining_bytes failed"
