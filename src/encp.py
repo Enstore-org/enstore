@@ -838,6 +838,12 @@ def inputfile_check(input_files):
             if not stat.S_ISREG(statinfo[stat.ST_MODE]):
                 raise EncpError(errno.EISDIR, inputlist[i], e_errors.USERERROR)
 
+            #For Reads make sure the filesystem size and the pnfs size match.
+            if inputlist[i][:6] == "/pnfs/":
+                p = pnfs.Pnfs(inputlist[i])
+                #If sizes are different, raises OSError exception.
+                p.get_file_size()
+
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
             try:
