@@ -42,23 +42,13 @@ def send(msg):
 DEFAULTPORT = 60126 #same as enstore_display.py
 
 
-def get_mover_state():
-    movers=get_movers()
-    for m in movers:
-        file="enstore mover --status ",m+".mover"
-        file=string.join(file)
-        status_dict=eval(os.popen(file,'r').read())
-        mover_status=[]
-        last_volume=[]
-        mover_status =status_dict.values()
-        last_state=mover_status[8]
-        last_volume=mover_status[9]
-        send("state " + m + " " + (last_state))
-        if last_volume ==None:
-            pass
-        else:
-            send("loaded " + m + " " + (last_volume))
-    
+def get_mover_status(mover):
+    file="enstore mover --status %s.mover" % mover
+    p = os.popen(file,'r')
+    status_dict = eval(p.read())
+    p.close()
+    return status_dict
+            
 def main():
     global s, dst
     if len(sys.argv) == 1:
@@ -78,13 +68,34 @@ def main():
     movers = get_movers()
     send("movers "+string.join(movers))
 
-    #Get the state of each mover before continueing
-    state = get_mover_state()
-
     
     #give it a little time to draw the movers
     time.sleep(3)
 
+
+    #Get the state of each mover before continuing
+    for mover in movers:
+        status = get_mover_status(mover)
+        state = status['state']
+        send("state %s %s" % (mover, state))
+        volume = status['current_volume']
+        if not volume:
+            continue
+        if state in ['ACTIVE', 'SEEK', 'HAVE_BOUND']:
+            send("loaded %s %s" % (mover, volume))
+        if state in ['MOUNT_WAIT']:
+            send("loading %s %s" %(mover, volume))
+        if state in ['ACTIVE', 'SEEK']: #we are connected to a client
+            files = status['files']
+            if files[0][0]=='/':
+                client = files[1]
+            else:
+                client = files[0]
+            colon = string.find(client, ':')
+            if colon>=0:
+                client = client[:colon]
+            send("connect %s %s" % (mover, client))
+        
     #Tell the event_relay that we want to hear about Enstore
     #events.
     #This gets us 15 minutes worth of update messages
