@@ -2126,7 +2126,9 @@ if __name__  ==  "__main__" :
     if e.test_mode:
         print "WARNING: running in test mode"
 
-    #traceback.print_exc()
+    if e.verbose>5 and Trace is Trace_lite:
+        def trace(*args): print args[1:]
+        Trace.trace = trace
     ## have we been called "encp unixfile hsmfile" ?
     if e.intype=="unixfile" and e.outtype=="hsmfile" :
         write_to_hsm(e.input,  e.output, e.output_file_family,
