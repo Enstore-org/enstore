@@ -538,25 +538,31 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         label, v = vc.set(pool)
         c = db.join(self.dict, [lc, vc])
         while 1:
+            Trace.trace(30, "label,v = %s, %s" % (label, v))
             label,v = c.next()
             if not label:
                 break
             if v["user_inhibit"] != ["none",  "none"]:
+                Trace.trace(30, "user inhibit = %s" % (v['user_inhibit'],))
                 continue
             if v["system_inhibit"] != ["none", "none"]:
+                Trace.trace(30, "system inhibit = %s" % (v['system_inhibit'],))
                 continue
 
             # equal treatment for blank volume
             if exact_match:
                 if self.is_volume_full(v,min_remaining_bytes):
+                    Trace.trace(30, "full")
                     continue
             else:
                 if v["remaining_bytes"] < long(min_remaining_bytes*SAFETY_FACTOR):
+                    Trace.trace(30, "almost full")
                     continue
                 
             vetoed = 0
             for veto in vol_veto_list:
                 if label == veto:
+                    Trace.trace(30, "vetoed")
                     vetoed = 1
                     break
             if vetoed:
