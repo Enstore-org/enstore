@@ -44,7 +44,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
      ticket["fc"]["bfid"] = bfid
      ticket["status"] = (e_errors.OK, None)
      self.reply_to_caller(ticket)
-     Trace.trace(10,'new_bit_file bfid='+repr(bfid))
+     Trace.trace(10,'new_bit_file bfid=%s'%bfid)
      return
 
     # update the database entry for this file - add the pnfs file id
@@ -56,9 +56,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_pnfsid "+repr(ticket["status"]))
+            Trace.trace(10,"set_pnfsid %s"%ticket["status"])
             return
 
         # also need new pnfsid - make sure we have this
@@ -74,20 +74,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 pass
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_pnfsid "+repr(ticket["status"]))
+            Trace.trace(10,"set_pnfsid %s"%ticket["status"])
             return
 
         # look up in our dictionary the request bit field id
         try:
             record = dict[bfid] ## was deepcopy
         except KeyError:
-            ticket["status"] = (e_errors.KEYERROR, 
-                                "File Clerk: bfid "+repr(bfid)+" not found")
-            Trace.log(e_errors.INFO, repr(ticket))
+            ticket["status"] = (e_errors.KEYERROR,"File Clerk: bfid %s not found"%bfid)
+            Trace.log(e_errors.INFO, "%s"%(ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # add the pnfsid
@@ -105,7 +104,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         dict[bfid] = record ## was deepcopy
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'set_pnfsid '+repr(ticket))
+        Trace.trace(12,'set_pnfsid %s'%ticket)
         return
 
     # change the delete state element in the dictionary
@@ -117,9 +116,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record = dict[bfid] ## was deepcopy
         except KeyError:
             status = (e_errors.KEYERROR, 
-		      "File Clerk: bfid "+repr(bfid)+" not found")
-            Trace.log(e_errors.INFO, repr(status))
-            Trace.trace(10,"set_deleted "+repr(status))
+		      "File Clerk: bfid %s not found"%bfid)
+            Trace.log(e_errors.INFO, "%s"%status)
+            Trace.trace(10,"set_deleted %s"%status)
             return status, None, None
         
 
@@ -139,7 +138,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             status = (e_errors.OK, None)
             Trace.log(e_errors.USER_ERROR, 
             "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
-            Trace.trace(12,'set_deleted_priv '+repr(status))
+            Trace.trace(12,'set_deleted_priv %s'%status)
             return status, None, None
             
 	if deleted == "no":
@@ -149,9 +148,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    status = map.restore_from_volmap(restore_dir)
 	    del map
 	    if status[0] != e_errors.OK:
-		Trace.log(e_errors.ERROR, 
-			  "restore_from_volmap failed. Status: "+\
-			  repr(status))
+		Trace.log(e_errors.ERROR, "restore_from_volmap failed. Status: %s"%status)
 		return status, None, None 
 
         # mod the delete state
@@ -162,8 +159,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         vticket = vcc.decr_file_count(record['external_label'],decr_count)
 	status = vticket["status"]
 	if status[0] != e_errors.OK: 
-	    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: "+\
-		      repr(status))
+	    Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%status)
 	    return status, None, None 
 
         # record our changes
@@ -177,7 +173,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         status = (e_errors.OK, None)
         fc = record
         vc = vticket
-        Trace.trace(12,'set_deleted_priv '+repr(status))
+        Trace.trace(12,'set_deleted_priv status %s'%status)
         return status, fc, vc
 
      # if there is an error - log and return it
@@ -198,9 +194,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
+            Trace.trace(10,"set_deleted %s"%ticket["status"])
             return
 
         # also need new value of the delete element- make sure we have this
@@ -209,9 +205,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             deleted = ticket[key2]
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, "File Clerk: "+key2+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"set_deleted "+repr(ticket["status"]))
+            Trace.trace(10,"set_deleted status %s"%(ticket["status"])
             return
 
 	status, fc, vc = self.set_deleted_priv(bfid, deleted, restore_dir)
@@ -220,7 +216,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	if vc: ticket["vc"] = fc
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
-        Trace.trace(12,'set_deleted '+repr(ticket))
+        Trace.trace(12,'set_deleted %s'%ticket)
         return
 
     # restore specified file
@@ -234,9 +230,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+            Trace.trace(10,"restore_file %s"%ticket["status"])
             return
 	# find the file in db
 	bfid = None
@@ -251,16 +247,16 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	# file not found
 	if not bfid:
 	    ticket["status"] = "ENOENT", "File %s not found"%fname
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+            Trace.trace(10,"restore_file %s"%ticket["status"])
             return
 
 	if string.find(value["external_label"],'deleted') !=-1:
 	    ticket["status"] = "EACCES", "volume %s is deleted"%value["external_label"]
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"restore_file "+repr(ticket["status"]))
+            Trace.trace(10,"restore_file %s"%ticket["status"])
 
 	status, fc, vc = self.set_deleted_priv(bfid, "no", restore_dir)
 	ticket["status"] = status
@@ -268,7 +264,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	if vc: ticket["vc"] = fc
 
         self.reply_to_caller(ticket)
-        Trace.trace(12,'restore_file '+repr(ticket))
+        Trace.trace(12,'restore_file %s'%ticket)
         return
 
     def get_user_sockets(self, ticket):
@@ -281,20 +277,21 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         data_socket, address = listen_socket.accept()
         self.data_socket = data_socket
         listen_socket.close()
-        Trace.trace(16,"get_user_sockets host="+repr(file_clerk_host)+
-                    " file_clerk_port="+repr(file_clerk_port))
+        Trace.trace(16,"get_user_sockets host=%s, file_clerk_port=%s"%
+                    (file_clerk_host,file_clerk_port))
 
     # return all the bfids in our dictionary.  Not so useful!
     def get_bfids(self,ticket):
         ticket["status"] = (e_errors.OK, None)
         try:
-           self.reply_to_caller(ticket)
+            self.reply_to_caller(ticket)
         # even if there is an error - respond to caller so he can process it
         except:
-           ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-           self.reply_to_caller(ticket)
-           Trace.trace(10,"get_bfids "+repr(ticket["status"]))
-           return
+            exc,msg,tb=sys.exc_info()
+            ticket["status"] = str(exc),str(msg)
+            self.reply_to_caller(ticket)
+            Trace.trace(10,"get_bfids %s"%ticket["status"])
+            return
         self.get_user_sockets(ticket)
         ticket["status"] = (e_errors.OK, None)
         callback.write_tcp_obj(self.data_socket,ticket)
@@ -322,9 +319,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # look up in our dictionary the request bit field id
@@ -332,10 +329,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             finfo = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
-                                "File Clerk: bfid "+repr(bfid)+" not found")
-            Trace.log(e_errors.INFO, repr(ticket))
+                                "File Clerk: bfid %s not found"%bfid)
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # copy all file information we have to user's ticket
@@ -353,30 +350,29 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # ask the volume clerk server which library has "external_label" in it
-        Trace.trace(11,"bfid_info inquiring about volume="+
-                    repr(external_label))
+        Trace.trace(11,"bfid_info inquiring about volume=%s"%external_label)
         vticket = vcc.inquire_vol(external_label)
         if vticket["status"][0] != e_errors.OK:
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(vticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
         library = vticket["library"]
-        Trace.trace(11,"bfid_info volume="+repr(external_label)+" in "+
-                    "library="+repr(library))
+        Trace.trace(11,"bfid_info volume=%s in library %s"%
+                    (external_label,library))
 
         # copy all volume information we have to user's ticket
         ticket["vc"] = vticket
 
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(10,"bfid_info bfid="+repr(bfid))
+        Trace.trace(10,"bfid_info bfid=%s"%bfid)
         return
 
     # return volume map name for given bfid
@@ -388,9 +384,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # look up in our dictionary the request bit field id
@@ -398,10 +394,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             finfo = dict[bfid] ## was deepcopy
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
-                                "File Clerk: bfid "+repr(bfid)+" not found")
-            Trace.log(e_errors.INFO, repr(ticket))
+                                "File Clerk: bfid %s not found"%bfid)
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"bfid_info "+repr(ticket["status"]))
+            Trace.trace(10,"bfid_info %s"%ticket["status"])
             return
 
         # copy all file information we have to user's ticket
@@ -409,7 +405,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	ticket["status"] = (e_errors.OK, None)
 
 	self.reply_to_caller(ticket)
-	Trace.trace(10,"get_volmap_name "+repr(ticket["status"]))
+	Trace.trace(10,"get_volmap_name %s"%ticket["status"])
 	return
 
     # change the delete state element in the dictionary
@@ -421,19 +417,19 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"del_bfid "+repr(ticket["status"]))
+            Trace.trace(10,"del_bfid: status %s"%ticket["status"])
             return
 
         # now just delete the bfid
         del dict[bfid]
-        Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%repr(bfid))
+        Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%bfid)
 
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.trace(12,'del_bfid '+repr(ticket))
+        Trace.trace(12,'del_bfid %s'%ticket)
         return
 
     # rename volume and volume map
@@ -454,9 +450,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except KeyError:
             ticket["status"] = (e_errors.KEYERROR, 
                                 "File Clerk: "+key+" key is missing")
-            Trace.log(e_errors.INFO, repr(ticket))
+            Trace.log(e_errors.INFO, "%s"%ticket)
             self.reply_to_caller(ticket)
-            Trace.trace(10,"rename_volume "+repr(ticket["status"]))
+            Trace.trace(10,"rename_volume %s"%ticket["status"])
             return
 
 	record = dict[bfid] ## was deepcopy
@@ -476,25 +472,26 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    if status[0] != e_errors.OK:
 		ticket["status"] = status
 		self.reply_to_caller(ticket)
-		Trace.log(e_errors.ERROR,'rename_volume failed '+repr(ticket))
+		Trace.log(e_errors.ERROR,'rename_volume failed %s'%ticket)
 		return
 	dict[bfid] = record ## was deepcopy
  
         # and return to the caller
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,'volume renamed for '+repr(ticket))
+        Trace.log(e_errors.INFO,'volume renamed for %s'%ticket)
         return
 
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
+    ## XXX except this recipe gets us a number longer than 64 bits.  Does anybody care?  - cgw
     def unique_bit_file_id(self):
         bfid = time.time()
         bfid = long(bfid)*100000
-        while dict.has_key(repr(bfid)):
+        while dict.has_key(str(bfid)):
             bfid = bfid + 1
-        return repr(bfid)
+        return str(bfid)
 
     def tape_list(self,ticket):
      # everything is based on external_label - make sure we have this
@@ -505,9 +502,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
          self.reply_to_caller(ticket)
      except KeyError:
          ticket["status"] = (e_errors.KEYERROR,"File Clerk: "+key+" key is missing")
-         Trace.log(e_errors.INFO, repr(ticket))
+         Trace.log(e_errors.INFO, "%s"%ticket)
          self.reply_to_caller(ticket)
-         Trace.trace(10,"tape_list "+repr(ticket["status"]))
+         Trace.trace(10,"tape_list %s"%ticket["status"])
          return
 
      if self.fork() != 0:
@@ -561,8 +558,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "start_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"start_backup "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"start_backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "start_backup" : 'no' })
 
@@ -575,8 +573,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "stop_backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"stop_backup "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"stop_backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "stop_backup"  : 'no' })
 
@@ -588,8 +587,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                                   "backup"  : 'yes' })
         # catch any error and keep going. server needs to be robust
         except:
-            status = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-            Trace.log(e_errors.ERROR,"backup "+repr(status))
+            exc, msg, tb = sys.exc_info()
+            status = str(exc), str(msg)
+            Trace.log(e_errors.ERROR,"backup %s"%status)
             self.reply_to_caller({"status"       : status,
                                   "backup"  : 'no' })
 
