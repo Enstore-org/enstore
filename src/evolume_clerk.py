@@ -1730,7 +1730,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         else:
             msg['header'] = 'FULL'
 
-        q = q + ';'
+        q = q + ' order by label;'
 
         res = self.dict.db.query(q).dictresult()
         msg['volumes'] = []
@@ -1824,7 +1824,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     #### DONE
     def __get_vol_list(self):
-        q = "select label from volume;"
+        q = "select label from volume order by label;"
         res2 = self.dict.db.query(q).getresult()
         res = []
         for i in res2:
