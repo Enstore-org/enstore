@@ -6,6 +6,7 @@ import time
 import sys, os
 import string
 import random
+import select
 
 # enstore imports
 import lockfile
@@ -162,10 +163,18 @@ def write_tcp_raw(sock,msg):
 # send a message which is a Python object
 def write_tcp_obj(sock,obj):
     return write_tcp_raw(sock,repr(obj))
+
+#recv with a timeout
+def timeout_recv(sock,nbytes,timeout=15*60):
+    fds,junk,junk = select.select([sock],[],[],timeout)
+    if sock not in fds:
+        return ""
+    return sock.recv(nbytes)
     
+
 # read a complete message
 def read_tcp_raw(sock):
-    tmp = sock.recv(8) 
+    tmp = timeout_recv(sock,8) 
     try:
         bytecount = string.atoi(tmp)
     except:
@@ -173,21 +182,21 @@ def read_tcp_raw(sock):
     if len(tmp)!=8 or bytecount is None:
         Trace.trace(6,"read_tcp_raw: bad bytecount %s"%(tmp,))
         return ""
-    tmp = sock.recv(8) # the 'signature'
+    tmp = timeout_recv(sock,8) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
         Trace.trace(6,"read_tcp_raw: invalid signature %s"%(tmp,))
         return ""
     salt=string.atoi(tmp[6:])
     msg = ""
     while len(msg) < bytecount:
-        tmp = sock.recv(bytecount - len(msg))
+        tmp = timeout_recv(sock,bytecount - len(msg))
         if not tmp:
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
         Trace.trace(6,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
         return ""
-    tmp = sock.recv(8)
+    tmp = timeout_recv(sock,8)
     crc = string.atol(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
