@@ -38,7 +38,7 @@ D=`date "+%Y-%m-%d-%H:%M:%S"`
 MR=`$loc/rpcinfo -u $pnfson 100005 1 2>&1`
 NR=`$loc/rpcinfo -u $pnfson 100003 2 2>&1`
 
-msg1="$D   MOUNTD: $MR    NFSD: $NR"
+msg1="$D $pnfson  MOUNTD: $MR    NFSD: $NR"
 
 if [ "$correct_MR" != "$MR" -o "$correct_NR" != "$NR" ]; then
         msg2="PROBLEM WITH PNFS ON $pnfson"
