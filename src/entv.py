@@ -965,17 +965,18 @@ def main(intf):
     #Get the short name for the enstore system specified.
     system_name = get_system_name(intf, cscs_info)
 
-    #geometry, background, animate = get_entvrc(intf)
-    entvrc_dict = get_entvrc(csc, intf)
-    entvrc_dict['title'] = system_name #For simplicity put this here.
-
-    #Get the main window and set it size.
+    #Get the main window.
     master = Tkinter.Tk()
-    set_geometry(master, entvrc_dict)
     
     continue_working = 1
 
     while continue_working:
+        #Get the entvrc file information
+        entvrc_dict = get_entvrc(csc, intf)
+        entvrc_dict['title'] = system_name #For simplicity put this here.
+        #Set the size of the window.
+        set_geometry(master, entvrc_dict)
+        
         display = enstore_display.Display(entvrc_dict, master = master,
                               background = entvrc_dict.get('background', None))
 
