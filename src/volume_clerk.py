@@ -268,7 +268,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         inc_counter = 1
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
-                        ticket["status"] = (e_errors.NOVOLUME, msg)
+                        ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
@@ -453,7 +453,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             # see what is the current counter
             library = record['library']
             sg = volume_family.extract_storage_group(record['volume_family'])
-            if sg != 'none':
+            if sg != 'none' and self.quota_enabled(library, sg):
                 vol_count = self.sgdb.get_sg_counter(library, sg) - 1
                 Trace.trace(21, "delvol: volume_counter %s" % (vol_count,))
                 if vol_count >= 0: self.sgdb.inc_sg_counter(library, sg, increment=-1)
@@ -786,7 +786,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                         inc_counter = 1
                     else:
                         msg="Volume Clerk: Quota exceeded, contact enstore admin."
-                        ticket["status"] = (e_errors.NOVOLUME, msg)
+                        ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.log(e_errors.ERROR,msg)
                         self.reply_to_caller(ticket)
                         return
