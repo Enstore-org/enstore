@@ -18,7 +18,7 @@ SRCWWW = $(WWW)
 ENSTORE_HOME = /usr/hppc_home/www/enstore
 
 HTML_FILES = $(WWW)/design.html $(WWW)/assumptions.html \
-	$(WWW)/detail_req.html $(WWW)/implementation.html \
+	$(WWW)/detail_req.html $(WWW)/implementation.html $(WWW)/wbs2.html \
 	$(WWW)/overview.html $(WWW)/prim_req.html $(WWW)/scope.html \
 	$(WWW)/system_architecture.html $(WWW)/testing.html
 
