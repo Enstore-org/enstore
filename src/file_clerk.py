@@ -29,6 +29,7 @@ import configuration_client
 import hostaddr
 import pnfs
 import volume_clerk_client
+import volume_family
 
 MY_NAME = "file_clerk"
 
@@ -372,25 +373,35 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 Trace.log(e_errors.ERROR, msg)
                 return "ENOTDELETED", msg
 
-        if record.has_key('pnfs_mapname'):
-            map = pnfs.Pnfs(record['pnfs_mapname'])
-            status = map.restore_from_volmap('no')
-            if status[0] == e_errors.OK:
-                # clear the deleted status
-                record['deleted'] = 'no'
-                self.dict[bfid] = record
-                Trace.log(e_errors.INFO, "file %s has been restored"%(bfid))
-                # do not maintain non_del_files any more
-                # # Take care of non_del_file count
-                # vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-                # vticket = vcc.decr_file_count(record['external_label'], -1)
-                # status = vticket["status"]
-                # if status[0] != e_errors.OK: 
-                #     Trace.log(e_errors.ERROR, "decr_file_count failed. Status: %s"%(status,))
-        else:
-            status = (e_errors.ERROR, "file %d does not have volmap entry"%(bfid))
+        # get file_family
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        vol = vcc.inquire_vol(record['external_label'])
+        if vol['status'][0] != e_errors.OK:
+            msg = "File %s does not belong to a valid volume"%(bfid)
+            Trace.log(vol['status'][0], msg)
+            return vol['status']
 
-        return status
+        file_family = volume_family.extract_file_family(vol['volume_family'])
+        record['file_family'] = file_family
+        pf = pnfs.File(record)
+
+        # Has it already existed?
+        if pf.exists():
+            msg = "%s exists"%(pf.path)
+            Trace.log(e_errors.ERROR, msg)
+            return "EFEXIST", msg
+
+        # The file can't be existing, just create one
+        pf.create()
+
+        # check pnfs id
+        pnfs_id = pf.get_pnfs_id()
+        if pnfs_id != pf.pnfs_id:
+            del record['file_family']
+            record['pnfsid'] = pnfs_id
+            self.dict[bfid] = record
+
+        return e_errors.OK, None
 
     # restore specified file
     #
