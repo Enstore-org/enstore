@@ -128,7 +128,7 @@ class EMASS_MediaLoaderMethods(MediaLoaderMethods) :
     # load volume is in drive
     def load(self, external_label, tape_drive, media_type) :
       
-      command = "dasadmin dismount -t " + media_type + " -d " + tape_drive + " 2>&1"
+      command = "dasadmin dismount  -d " + tape_drive + " 2>&1"
       result = os.popen(command, "r").readlines()
 
       command = "dasadmin mount -t " + media_type + " " + external_label + " " + tape_drive \
