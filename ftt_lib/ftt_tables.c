@@ -858,7 +858,7 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn",    5,  0, 0x1A, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Other Densities */
        { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
@@ -880,7 +880,7 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn",    4,  0, 0x80, 0,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,       0,   1, LINUX_MAX_BLKSIZE},
     /* Other Densities */
        { "rmt/tps%dd%dn",    4,  1, 0x81, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn",    5,  0, 0x82, 0,  0,       0,   0, LINUX_MAX_BLKSIZE},
@@ -901,12 +901,8 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn",     0,  0,  0,  0,  0,      0,    1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,      0,    1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,      0,    1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
-       { "rmt/tps%dd%dn", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%dn", 	  0,  1, 0x8c,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
-       { "rmt/tps%dd%dn", 	  0,  0, 0x14,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
     }},
@@ -917,7 +913,7 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/tps%dd%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,    1,  0,  0,      1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/tps%dd%dn", 	  1,  1, 0x90,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
        { "rmt/tps%dd%dn", 	  1,  0, 0x15,  0,  0,      0,  0, LINUX_MAX_BLKSIZE},
@@ -933,7 +929,7 @@ ftt_dev_entry devtable[] = {
     /* Default */
        { "rmt/tps%dd%dn",     0,  0,  0,  0,  0,  0,        1, LINUX_MAX_BLKSIZE},
     /* Default, passthru  */
-       { "sc/tps%dd%d",     -1,  0, -1,  1,  0,  0,        1, LINUX_MAX_BLKSIZE},
+       { "sc/sc%dd%d",     -1,  0, -1,  1,  0,  0,        1, LINUX_MAX_BLKSIZE},
     /* Descriptive */
        { "rmt/tps%dd%d",      0,  0,  0,  0,  0, FTT_RWOC,  1, LINUX_MAX_BLKSIZE},
        { 0 },
