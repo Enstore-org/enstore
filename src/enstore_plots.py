@@ -758,7 +758,7 @@ class BpdDataFile(EnPlot):
 						  WRITES : fields[3],
 						  SMALLEST : fields[4],
 						  LARGEST : fields[5],
-						  CTR : long(float(fields[1])/feloat(fields[6])) }
+						  CTR : long(float(fields[1])/float(fields[6])) }
 		    else:
 			self.ndata[fields[0]] = {TOTAL : 0,
 						 READS : 0,
