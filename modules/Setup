@@ -61,3 +61,5 @@ EXfer EXfer.c -L$(FTT_DIR)/lib -lftt
 Devcodes Devcodes.c
 
 Trace Trace.c trace.a
+
+ECRC ECRC.c
