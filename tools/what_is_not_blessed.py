@@ -12,37 +12,37 @@ def search_directory(directory):
 	
 	dirs_list = []
 	
-	for file in os.listdir("."):  #directory):
-		if file[-1] == "~":
+	for filename in os.listdir("."):  #directory):
+		if filename[-1] == "~":
 			continue
-		elif file[-4:] == ".pyc":
+		elif filename[-4:] == ".pyc":
 			continue
-		elif file[:2] == ".#":
+		elif filename[:2] == ".#":
 			continue
-		elif file[:4] == "core":
+		elif filename[:4] == "core":
 			continue
-		elif file[-2:] == ".a":
+		elif filename[-2:] == ".a":
 			continue
-		elif file[-2:] == ".o":
+		elif filename[-2:] == ".o":
 			continue
-		elif file[-3:] == ".so":
+		elif filename[-3:] == ".so":
 			continue
-		elif file == "CVS":
+		elif filename == "CVS":
 			continue
-		elif string.find(file, "_wrap") >= 0: #from modules dir.
+		elif string.find(filename, "_wrap") >= 0: #from modules dir.
 			continue
-		elif os.popen("file %s" % (file,)).readline().find("ELF") >= 0:
+		elif os.popen("file %s" % (filename,)).readline().find("ELF") >= 0:
 			continue
-		elif os.path.isdir(file):
+		elif os.path.isdir(filename):
 			#Remember the directories for later.
-			dirs_list.append(os.path.join(directory, file))
+			dirs_list.append(os.path.join(directory, filename))
 			continue
-		elif not os.path.isfile(file):
+		elif not os.path.isfile(filename):
 			continue
 
 	        #Get the versions.
 		# -h supresses the full text descriptions.
-		p = os.popen('cvs log -h %s 2> /dev/null | grep -E "(production:|head:)" | grep -v pre_k' % file)
+		p = os.popen('cvs log -h %s 2> /dev/null | grep -E "(production:|head:)" | grep -v pre_k' % filename)
 		data = p.readlines()
 		p.close()
 
@@ -57,19 +57,24 @@ def search_directory(directory):
 		except:
 			#On error, proceed so that the file name is listed.
 			production_version = ""
-			
-		#Skip the listing of up-to-date files.
+
+		#If the production version points to the original vendor
+		# tag; ignore the file.
+		if production_version == "1.1.1.1":
+			continue
+		#Skip the listing of up-to-date files.  This also has the
+		# side effect of ignoring files not commited into CVS.
 		if head_version == production_version:
 			continue
 
 		#Get the date and user.
 		# -N            surpresses the list of symbolic names
 		# -r<version>   specifies a specific version
-		p = os.popen('cvs log -N -r%s %s 2> /dev/null | grep -E "(date:)" | grep -v pre_k' % (head_version, file))
+		p = os.popen('cvs log -N -r%s %s 2> /dev/null | grep -E "(date:)" | grep -v pre_k' % (head_version, filename))
 		head_data = p.readlines()
 		p.close()
 		#Get the date and user.
-		p = os.popen('cvs log -N -r%s %s 2> /dev/null | grep -E "(date:)" | grep -v pre_k' % (production_version, file))
+		p = os.popen('cvs log -N -r%s %s 2> /dev/null | grep -E "(date:)" | grep -v pre_k' % (production_version, filename))
 		production_data = p.readlines()
 		p.close()
 			     
@@ -104,23 +109,26 @@ def search_directory(directory):
 			production_date = ""
 
 	        #Print the data
-		print file,
+		print filename,
 		print "head:", head_version, head_date, head_user,
 		print "production:", production_version, production_date, \
 		      production_user
-		
-	#for each_dir in dirs_list:
-	#	search_directory(each_dir)
+
+	#Do the recursion into sub directories.
+	for each_dir in dirs_list:
+		search_directory(each_dir)
 
 	#When done, return to previous working directory.
 	os.chdir("..")
 
 
 if __name__ == '__main__':
-	if len(sys.argv) > 1:
-	    search_directory(sys.argv[1])
-	else:
-	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "src"))
-	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "modules"))
-	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "etc"))
-	    search_directory(os.path.join(os.environ['ENSTORE_DIR'], "ups"))
+    if len(sys.argv) > 1 and sys.argv[1] == "all":
+        search_directory(os.environ['ENSTORE_DIR'])
+    elif len(sys.argv) > 1:
+        search_directory(os.path.abspath(sys.argv[1]))
+    else:
+        search_directory(os.path.join(os.environ['ENSTORE_DIR'], "src"))
+	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "modules"))
+	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "etc"))
+	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "ups"))
