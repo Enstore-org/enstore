@@ -210,7 +210,6 @@ def check_dir(d, f_stats):
             if not os.path.ismount(d):
                 msg.append("unable to obtain directory's parent id")
 
-    
     #Get the id of the parent directory.
     try:
         dname = id_file(os.path.dirname(d))
@@ -226,13 +225,14 @@ def check_dir(d, f_stats):
     if msg or warn:
         return msg, warn
 
+    #Actually perform the check.
     if parent_id == None or parent_dir_id == None:
         pass
     elif parent_id != parent_dir_id:
-        print "parent_dir_id:", parent_dir_id, "parent_id:", parent_id
-        msg.append("parent id does not match parent directory's id")
+        msg.append("parent id (%s) does not match parent directory's id (%s)"
+                   % (parent_id, parent_dir_id))
         return msg, warn
-    
+
     # skip volmap and .bad and .removed directory
     lc = os.path.split(d)[1]
     if lc == 'volmap' or lc[:3] == '.B_' or lc[:3] == '.A_' \
