@@ -111,6 +111,30 @@ class ConfigurationClient(generic_client.GenericClient) :
                     raise sys.exc_info()[0],sys.exc_info()[1]
         Trace.trace(16,'}list')
 
+    # get all keys in the configuration dictionary
+    def get_keys(self):
+        Trace.trace(16,'{get_keys')
+        request = {'work' : 'get_keys' }
+        while 1:
+            try:
+                keys = self.u.send(request, self.config_address )
+                Trace.trace(16,'}get_keys ' + repr(keys))
+                return keys
+            except socket.error:
+                if sys.exc_info()[1][0] == errno.CONNREFUSED:
+                    delay = 3
+                    Trace.trace(0,"}get_keys retrying "+\
+                                str(sys.exc_info()[0])+str(sys.exc_info()[1]))
+                    print sys.exc_info()[1][0], "socket error. configuration "\
+                          +"sending to",self.config_address\
+                          ,"server down?  retrying in ",delay," seconds"
+                    time.sleep(delay)
+                else:
+                    Trace.trace(0,"}get_keys "+str(sys.exc_info()[0])+\
+                                str(sys.exc_info()[1]))
+                    raise sys.exc_info()[0],sys.exc_info()[1]
+        Trace.trace(16,'}get_keys')
+
     # reload a new  configuration dictionary
     def load(self, configfile):
         Trace.trace(10,'{load configfile='+repr(configfile))
@@ -149,7 +173,7 @@ class ConfigurationClient(generic_client.GenericClient) :
         while 1:
             try:
                 x = self.u.send(request, self.config_address)
-                Trace.trace(16,'}load '+repr(x))
+                Trace.trace(16,'}get_movers '+repr(x))
                 return x
             except socket.error:
                 if sys.exc_info()[1][0] == errno.CONNREFUSED:
@@ -175,6 +199,7 @@ class ConfigurationClientInterface(interface.Interface):
         self.dict = 0
         self.load = 0
         self.alive = 0
+	self.get_keys = 0
         interface.Interface.__init__(self)
 
         # parse the options
@@ -183,7 +208,7 @@ class ConfigurationClientInterface(interface.Interface):
     # define the command line options that are valid
     def options(self):
         return self.config_options() + self.list_options()+\
-	       ["config_file=","config_list","dict","load","alive"] + \
+	       ["config_file=","config_list","get_keys","dict","load","alive"] + \
 	       self.help_options()
 
 if __name__ == "__main__":
@@ -213,6 +238,12 @@ if __name__ == "__main__":
 
     elif intf.load:
         stati= csc.load(intf.config_file)
+        if intf.list:
+            pprint.pprint(stati)
+        stat=stati['status']
+
+    elif intf.get_keys:
+        stati= csc.get_keys()
         if intf.list:
             pprint.pprint(stati)
         stat=stati['status']

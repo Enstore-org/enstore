@@ -151,6 +151,28 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
          return
 
     # return a dump of the dictionary back to the user
+    def get_keys(self, ticket):
+     Trace.trace(6,"{get_keys")
+     try:
+        self.config_exists()
+        skeys = self.configdict.keys()
+	skeys.sort()
+        out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
+        self.reply_to_caller(out_ticket)
+        Trace.trace(6,"}get_keys")
+        return
+
+     # even if there is an error - respond to caller so he can process it
+     except:
+         ticket["status"] = str(sys.exc_info()[0])+str(sys.exc_info()[1])
+         pprint.pprint(ticket)
+         self.reply_to_caller(ticket)
+         Trace.trace(0,"}get_keys "+str(sys.exc_info()[0])+\
+                     str(sys.exc_info()[1]))
+         return
+
+
+    # return a dump of the dictionary back to the user
     def list(self, ticket):
      Trace.trace(6,"{list")
      try:
