@@ -428,7 +428,7 @@ class Request_Queue:
             # backward compatibility
             if not ticket['vc'].has_key('storage_group'):
                 # special treatment for D0 requests
-                if string.find(ticket['wrapper']['pnfsFilename'], "/pnfs/sam") != -1:
+                if string.find(ticket['wrapper']['pnfsFilename'], "/pnfs/sam") == 0:
                     ticket['vc']['storage_group'] = 'D0'
                 else:
                     ticket['vc']['storage_group'] = 'unknown' 
