@@ -1536,7 +1536,16 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         ejected = self.tape_driver.eject()
         if ejected == -1:
-            self.broken("Cannot eject tape")
+            broken = "Cannot eject tape"
+
+            if self.current_volume:
+                try:
+                    self.vcc.set_system_noaccess(self.current_volume)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)                
+
+            self.broken(broken)
 ##            self.error("Cannot eject tape")
 
             return
@@ -1581,7 +1590,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.idle()
         else:
 ##            self.error(status[-1], status[0])
-            self.broken("dismount failed: %s %s" %(status[-1], status[0]))
+            
+            broken = "dismount failed: %s %s" %(status[-1], status[0])
+            if self.current_volume:
+                try:
+                    self.vcc.set_system_noaccess(self.current_volume)
+                except:
+                    exc, msg, tb = sys.exc_info()
+                    broken = broken + "set_system_noaccess failed: %s %s" %(exc, msg)
+            self.broken(broken)        
         
     def mount_volume(self, volume_label, after_function=None):
         broken = ""
