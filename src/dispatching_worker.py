@@ -9,7 +9,7 @@ import traceback
 import ECRC
 import sys
 import socket
-import posix
+import os
 
 #enstore imports
 import cleanUDP
@@ -79,6 +79,9 @@ class DispatchingWorker:
 	"""
         Trace.trace(10,"{__init__ add="+repr(server_address))
         self.server_address = server_address
+        ## flag for whether we are in a child process
+        ## Server loops should be conditional on "self.is_child" rather than 'while 1'
+        self.is_child = 0
 	self.socket = cleanUDP.cleanUDP (self.address_family,
                                     self.socket_type)
 
@@ -101,6 +104,19 @@ class DispatchingWorker:
                                             
         Trace.trace(10,"}__init__")
 
+
+    def fork(self):
+        """Fork off a child process"""
+        pid = os.fork()
+        if pid != 0:  #We're in the parent process
+            self.is_child = 0
+            return pid
+        else:
+            self.is_child = 1
+            ##Should we close the control socket here?
+            return 0
+        
+        
     def server_bind(self):
         """Called by constructor to bind the socket.
 
@@ -112,12 +128,17 @@ class DispatchingWorker:
         Trace.trace(16,"}server_bind")
 
     def serve_forever(self):
-        """Handle one request at a time until doomsday."""
+        """Handle one request at a time until doomsday, unless we are in a child process"""
+        
         Trace.trace(4,"{serve_forever")
-        while 1:
-                self.handle_request()
-		collect_children()
-	Trace.trace(2,"}server_forever")
+        while not self.is_child:
+            self.handle_request()
+            collect_children()
+        if self.is_child:
+            Trace.trace(2,"}server_forever, child process exiting")
+            os._exit(0) ## in case the child process doesn't explicitly exit
+        else:
+            Trace.trace(2,"}server_forever, shouldn't get here")
 
     def handle_request(self):
         """Handle one request, possibly blocking."""
@@ -283,7 +304,7 @@ class DispatchingWorker:
         Trace.trace(10,"{alive address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
-        ticket['pid'] = posix.getpid()
+        ticket['pid'] = os.getpid()
         self.reply_to_caller(ticket)
         Trace.trace(10,"}alive")
 
@@ -292,7 +313,7 @@ class DispatchingWorker:
         Trace.trace(10,"{quit address="+repr(self.server_address))
         ticket['address'] = self.server_address
         ticket['status'] = (e_errors.OK, None)
-        ticket['pid'] = posix.getpid()
+        ticket['pid'] = os.getpid()
         try:
             self.enprint("QUITTING... via os_exit python call")
         except:
