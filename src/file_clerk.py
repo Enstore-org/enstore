@@ -470,10 +470,10 @@ if __name__ == "__main__":
 
     # get the interface
     intf = FileClerkInterface()
-    Trace.log(e_errors.INFO, '%s' % sys.argv)
 
     # get a file clerk
     fc = FileClerk((intf.config_host, intf.config_port))
+    Trace.log(e_errors.INFO, '%s' % sys.argv)
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
     dict = db.DbTable("file", [])
