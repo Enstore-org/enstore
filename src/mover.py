@@ -2418,7 +2418,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, "write_client waits for tape thread to exit")
             for i in range(10):
                 time.sleep(1)
-            self.transfer_completed()
+        self.transfer_completed()
         Trace.log(e_errors.INFO, "write_client exits")
 
         
