@@ -20,6 +20,7 @@ import rexec
 #import signal
 import errno
 import gc
+import types
 
 
 #enstore imports
@@ -534,17 +535,46 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
         #If necessary, cache the entire mover_list.
         config = csc.dump_and_save()
         enstore_system = csc.get_enstore_system(3, 3)
-        mover_list = []
-        #Get the list of movers.
+
+        #Get the list of library managers.
+        lm_list = []
         for key in config.keys():
-            if enstore_functions2.is_mover(key):
-                if fullnames:
-                    m_name = key
-                else:
-                    m_name = key.split(".")[0]  #Get the short name.
-                if with_system:
-                    m_name = m_name + "@" + enstore_system
-                mover_list.append(m_name)
+            if not enstore_functions2.is_library_manager(key):
+                continue
+
+            lm_name = key.split(".")[0]
+            if lm_name not in string.split(intf.dont_show, ","):
+                #Store the full library manager name.
+                # i.e. 'name.library_manager' not just 'name'
+                lm_list.append(key)
+
+        #Get the list of movers.
+        mover_list = []
+        for key in config.keys():
+            if not enstore_functions2.is_mover(key):
+                continue
+
+            #Create the type of name the user is looking for.
+            if fullnames:
+                m_name = key
+            else:
+                m_name = key.split(".")[0]  #Get the short name.
+            if with_system:
+                m_name = m_name + "@" + enstore_system
+
+            #First obtain the library manager name the mover is
+            # associated with.
+            if type(config[key]['library']) == types.ListType:
+                lm_name = config[key]['library'][0]
+            else:
+                lm_name = config[key]['library']
+            #If the mover's library manager is on the don't show list,
+            # do not include this in the list of things to do.
+            if lm_name not in lm_list:
+                continue
+
+            #Append the request (type of) mover name to the list.
+            mover_list.append(m_name)
 
         mover_list.sort()
         return mover_list
