@@ -1030,7 +1030,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    else:
 	        # now we must make the gnuplot file with instructions to
 	        # process this file in particular
-	        gfile.write("set title 'Mounts Per Hour For "+day+" (Total = "+repr(total)+")'\nplot '"+fn+"' using 1:2 t '' with boxes\n")
+	        gfile.write("set title 'Mount Count For "+day+" (Total = "+repr(total)+")'\nplot '"+fn+"' using 1:2 t '' with boxes\n")
 	        pfile.close()
 	else:
 	    gfile.close()
