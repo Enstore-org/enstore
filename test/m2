@@ -1,4 +1,2 @@
-#./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/scratch.in 21
-#./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/rip8a.in   22
-./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/rip8b.in   23
-./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/fnal.in    24
+./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/raid.in  22 0
+./roll -noread /pnfs/grau/mammoth/jon2 /home/bakken/enstore/test/fnal.in  23 0
