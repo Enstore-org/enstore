@@ -5,6 +5,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # stop enstore processes on the current node
 
+PID_DIR=/tmp/enstore/$(whoami)
+
 # NOTE: some options (w/ or w/o args) are currently provided just for restart
 # (compatible with start)
 opts_w_args='xterm|just'
@@ -32,34 +34,34 @@ turnoff_s() { for pid in $1; do
             done; }
 
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
-    turnoff_s "$ENSTORE_DB/`uname -n`-db_*_pids"            "databases"
-    turnoff "$ENSTORE_DB/`uname -n`-admin*pids"           "admin"
+    turnoff_s "$PID_DIR/`uname -n`-db_*_pids"            "databases"
+    turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-inquisitor*pids"      "inquisitor"
+    turnoff "$PID_DIR/`uname -n`-inquisitor*pids"      "inquisitor"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-file_clerk*pids"      "file_clerk"
+    turnoff "$PID_DIR/`uname -n`-file_clerk*pids"      "file_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-volume_clerk*pids"    "volume_clerk"
+    turnoff "$PID_DIR/`uname -n`-volume_clerk*pids"    "volume_clerk"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-mover*pids"           "movers"
+    turnoff "$PID_DIR/`uname -n`-mover*pids"           "movers"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-media_changer*pids"   "media_changers"
+    turnoff "$PID_DIR/`uname -n`-media_changer*pids"   "media_changers"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-library_manager*pids" "library manager"
+    turnoff "$PID_DIR/`uname -n`-library_manager*pids" "library manager"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-configuration*pids"   "configuration server"
+    turnoff "$PID_DIR/`uname -n`-configuration*pids"   "configuration server"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
-    turnoff "$ENSTORE_DB/`uname -n`-log_server*pids"      "log server"
+    turnoff "$PID_DIR/`uname -n`-log_server*pids"      "log server"
 fi
 
-#    turnoff "$ENSTORE_DB/`uname -n`-*pids"                "what else"
+#    turnoff "$PID_DIR/`uname -n`-*pids"                "what else"
 
 exit

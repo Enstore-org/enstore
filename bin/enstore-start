@@ -5,6 +5,10 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$   $Revision$
 # start enstore processes on the current node
 
+PID_DIR=/tmp/enstore/$(whoami)
+if [ ! -d $PID_DIR ]; then
+    mkdir -p $PID_DIR
+fi
 
 opts_wo_args='ping|nocheck'
 opts_w_args='xterm|just'
@@ -63,7 +67,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep conf`" ];then
         else
             eval "$cmd &"
         fi
-        echo $! >> $ENSTORE_DB/`uname -n`-configuration_pids
+        echo $! >> $PID_DIR/`uname -n`-configuration_pids
       fi
     fi
 
@@ -148,7 +152,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep log`" ];then
         else
             eval "$cmd &"
         fi
-        echo $! >> $ENSTORE_DB/`uname -n`-log_server_pids
+        echo $! >> $PID_DIR/`uname -n`-log_server_pids
       fi
     fi
 
@@ -179,7 +183,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep vol`" ];then
         else
             eval "$cmd &"
         fi
-        echo $! >> $ENSTORE_DB/`uname -n`-volume_clerk_pids
+        echo $! >> $PID_DIR/`uname -n`-volume_clerk_pids
       fi
     fi
 
@@ -210,7 +214,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep fil`" ];then
         else
             eval "$cmd &"
         fi
-        echo $! >> $ENSTORE_DB/`uname -n`-file_clerk_pids
+        echo $! >> $PID_DIR/`uname -n`-file_clerk_pids
       fi
     fi
 
@@ -243,7 +247,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep lib`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $ENSTORE_DB/`uname -n`-library_manager_pids
+                echo $! >> $PID_DIR/`uname -n`-library_manager_pids
             fi
         fi
         echo "Checking $i Library Manager"
@@ -276,7 +280,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep med`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $ENSTORE_DB/`uname -n`-media_changer_pids
+                echo $! >> $PID_DIR/`uname -n`-media_changer_pids
             fi
         fi
         echo "Checking $i Media Changer"
@@ -308,7 +312,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep mov`" ];then
                 else
                     eval "$cmd &"
                 fi
-                echo $! >> $ENSTORE_DB/`uname -n`-mover_pids
+                echo $! >> $PID_DIR/`uname -n`-mover_pids
             fi
         else
             echo "   ...No ping test for $i Mover...(yet)"
@@ -334,7 +338,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
         else
             eval "$cmd &"
         fi
-        echo $! >> $ENSTORE_DB/`uname -n`-inquisitor_pids
+        echo $! >> $PID_DIR/`uname -n`-inquisitor_pids
       fi
     fi
 
@@ -359,15 +363,15 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
             else
                 echo "Starting database checkpoint daemon  on `hostname`"
                 db_checkpoint -h $ENSTORE_DB  -p 5 &
-                echo $! >> $ENSTORE_DB/`uname -n`-db_check_pids
+                echo $! >> $PID_DIR/`uname -n`-db_check_pids
 
                 echo "Starting database deadlock daemon  on `hostname`"
                 db_deadlock -h $ENSTORE_DB  -t 1 &
-                echo $! >> $ENSTORE_DB/`uname -n`-db_dlck_pids
+                echo $! >> $PID_DIR/`uname -n`-db_dlck_pids
 
                 echo "Starting DB Admin Server"
                 python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT &
-                echo $! >> $ENSTORE_DB/`uname -n`-admin_pids
+                echo $! >> $PID_DIR/`uname -n`-admin_pids
             fi
         else
             echo "ERROR: file and volume database are not present - can't start db tools"
