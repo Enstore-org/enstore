@@ -13,10 +13,12 @@ print_error() {
    echo " "
 }
 
-if [ "$#" != "1" ];
+DEFAULT_OUTPUT_DIR=/fnal/ups/prd/www_pages/enstore
+
+if [ $# != 1 ] && [ $# != 2 ];
 then
    # we need the name of the file listing the files to include
-   print_error "USAGE: $0 [-x] <filename>"
+   print_error "USAGE: $0 [-x] <filename> [output_dir (D:${DEFAULT_OUTPUT_DIR})]"
    exit 1
 fi
 
@@ -37,11 +39,20 @@ then
     set -u
 fi
 
-real_output="$ENSTORE_DIR/etc/enstore_system.html"
-tmp_output=${real_output}.tmp
-
 if [ -f $1 ];
 then
+  # $2 is the directory that we will use to create the new file.
+  # default is /fnal/ups/prd/www_pages/enstore
+  if [ "$#" = "2" ];
+  then
+    output_dir=$2
+  else
+    output_dir=$DEFAULT_OUTPUT_DIR
+  fi
+
+  real_output=${output_dir}/enstore_system.html
+  tmp_output=${real_output}.tmp
+
   # get rid of any old enstore_system.html's in this directory
   rm -f $tmp_output
   # start out with an empty file
