@@ -18,7 +18,10 @@ csc = configuration_client.ConfigurationClient((config_host, config_port))
 inventory = csc.get('inventory')
 backup = csc.get('backup')
 
-wd = inventory['inventory_dir']
+if os.path.exists("/diskc/tmp"):
+	wd = "/diskc/tmp"
+else:
+	wd = inventory['inventory_dir']
 db_path = backup['extract_dir']
 
 dest_path = inventory['inventory_rcp_dir']
@@ -213,3 +216,4 @@ if __name__ == '__main__':
 	os.system(cmd)
 	f.close()
 	vcc.close()
+	os.remove(out_file)
