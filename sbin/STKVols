@@ -80,4 +80,34 @@ else
   rm /tmp/$f
   enrcp $copy_node:$f /tmp/$f
   cat /tmp/$f >>$output
+  enrcp $copy_node:/tmp/STK_USED_SLOTS* $ENSTORE_DIR/
+  now=`date +"%Y-%m-%d:%H:%M:%S"`
+  Quarter_ago=`date --date "90 days ago" +"%Y-%m-%d:%H:%M:%S"`
+  for i in $ENSTORE_DIR/STK_USED_SLOTS*; do 
+    silo=`basename $i | cut -f2 -d.`
+    rm -f /tmp/stk.us.gnu /tmp/used
+    echo $i $silo
+    cat $i | while read x mon day time tz year silo n; do
+      echo `date --date "$mon $day $time $tz $year" +"%Y-%m-%d:%H:%M:%S"` $n >> /tmp/used
+    done
+    #cat /tmp/used
+    echo "set output \"/tmp/silo.$silo.ps\"
+set terminal postscript color solid
+set title \"Used Slots $silo $now\"
+set xlabel \"Date\"
+set timefmt \"%Y-%m-%d:%H:%M:%S\"
+set xdata time
+set xrange [\"$Quarter_ago\" : ]
+set ylabel \"Number Used\"
+set grid
+set yrange [0: ]
+set format x \"%m-%d\"
+set nokey
+plot \"/tmp/used\" using 1:2 t \"Used Slots\" w impulses" > /tmp/stk.us.gnu 
+     #cat /tmp/stk.us.gnu 
+     gnuplot /tmp/stk.us.gnu 
+     convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
+     convert -geometry 120x120 -modulate 80 /tmp/silo.$silo.jpg /tmp/silo.${silo}_stamp.jpg
+  done       
+  cp /tmp/silo*ps /tmp/silo*jpg /fnal/ups/prd/www_pages/enstore/
 fi
