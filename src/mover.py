@@ -1172,8 +1172,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = 0
             if (((time_in_state - self.time_in_state) > self.max_time_in_state) and  
                 (self.state in (SETUP, SEEK, DISMOUNT_WAIT, DRAINING, ERROR))):
-                Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
-                            (state_name(self.state),self.current_volume))
+                if not hasattr(self,'too_long_in_state_sent'):
+                    Trace.alarm(e_errors.WARNING, "Too long in state %s for %s" %
+                                (state_name(self.state),self.current_volume))
+                    self.too_long_in_state_sent = 0 # send alarm just once
                 if self.state == ERROR:
                     ## restart the mover
                     ## this will clean LM active mover list and let
@@ -1190,7 +1192,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = time_in_state
                 self.in_state_to_cnt = self.in_state_to_cnt+1
                     
-                if self.in_state_to_cnt >= self.max_in_state_cnt:
+                if ((self.in_state_to_cnt >= self.max_in_state_cnt) and
+                    (self.state != ERROR)):
                     # mover is stuck. There is nothing to do as to
                     # offline it
                     msg = "mover is stuck in %s" % (self.return_state(),)
@@ -1269,7 +1272,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
         else:
             self.unlock_state()
-            
+
+    # send a single error message to LM - requestor
+    # can be done from any thread
+    def send_error_msg(self,error_info=(None,None),error_source=None,returned_work=None):
+        if self.lm_address: # send error message only to LM that called us
+            ticket = self.format_lm_ticket(state=ERROR,
+                                           error_info = error_info,
+                                           error_source=error_source,
+                                           returned_work=returned_work)
+            self.udpc.send_no_wait(ticket, self.lm_address)
+                    
     def idle(self):
         if self.state == ERROR:
             return
@@ -1279,6 +1292,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.mode = None
         self.vol_info = {}
         self.file_info = {}
+        self.current_volume = None
+
         thread = threading.currentThread()
         if thread:
             thread_name = thread.getName()
@@ -2137,11 +2152,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         
     def error(self, msg, err=e_errors.ERROR):
         self.last_error = (str(err), str(msg))
-        Trace.log(e_errors.ERROR, str(msg)+ " state=ERROR")
+        Trace.log(e_errors.ERROR, "error: %s message: %s state=ERROR"%(err, msg))
         self.state = ERROR
 
     def broken(self, msg, err=e_errors.ERROR):
         #self.set_sched_down()
+        print "ERRRRRRRRRR",err
         Trace.alarm(err, str(msg))
         self.error(msg, err)
         
@@ -2291,7 +2307,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         return 1
             
-    def transfer_failed(self, exc=None, msg=None, error_source=None):
+    def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
         self.timer('transfer_time')
         after_dismount_function = None
         ticket = self.current_work_ticket
@@ -2309,6 +2325,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return          ## this function has been alredy called in the other thread
         self.tr_failed = 1
         broken = ""
+        ftt_eio =0 
 
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s" % (
             exc, msg, error_source,self.current_volume, self.current_location))
@@ -2318,8 +2335,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
             if msg.find("FTT_EIO") != -1:
                 # possibly a scsi error, log low level diagnostics
+                # report error but go idle
                 self.watch_syslog()
-                broken = msg
+                ftt_eio = 1
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
@@ -2372,13 +2390,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
             self.transfers_failed = self.transfers_failed + 1
-
         self.send_client_done(self.current_work_ticket, str(exc), str(msg))
         self.net_driver.close()
         if exc == e_errors.MOVER_STUCK:
             broken = exc
 
-        self.need_lm_update = (1, ERROR, 1, error_source)
+        #self.need_lm_update = (1, ERROR, 1, error_source)
         #if broken:
             #self.broken(broken)
             #self.tr_failed = 0
@@ -2392,14 +2409,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             cur_thread_name = None
 
-        dismount_allowed = 0
+        dism_allowed = 0
         encp_gone = 0
         if exc == e_errors.ENCP_GONE: encp_gone = 1
         Trace.trace(26,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
+        Trace.log(e_errors.INFO,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
         if cur_thread_name:
             if cur_thread_name == 'tape_thread':
                 # if encp is gone there is no need to dismount a tape
-                dismount_allowed = not encp_gone
+                dism_allowed = not encp_gone
 
             elif cur_thread_name == 'net_thread':
                 # check if tape_thread is active before allowing dismount
@@ -2409,14 +2427,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if thread and thread.isAlive():
                         Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                         time.sleep(1)
-                        dismount_allowed = not encp_gone
+                        dism_allowed = not encp_gone
                         break
                 else:
-                    dismount_allowed = not encp_gone
+                    dism_allowed = not encp_gone
             else:
                 # Main thread ?
-                dismount_allowed = not encp_gone
-        Trace.trace(26,"dismount_allowed %s"%(dismount_allowed,))
+                dism_allowed = not encp_gone
+        dism_allowed = dism_allowed & dismount_allowed
+        Trace.trace(26,"dismount_allowed %s"%(dism_allowed,))
         if encp_gone:
             self.net_driver.close()
             self.current_location = self.tape_driver.tell()
@@ -2426,12 +2445,22 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = IDLE
                 self.log_state()
                 
-        if dismount_allowed:
+        if dism_allowed:
             self.dismount_volume(after_function=after_dismount_function)
-        if not after_dismount_function and broken:
-           self.broken(broken) 
-           return
+        if not ftt_eio:
+            Trace.log(e_errors.INFO,"NEED LM UPDATE") #remove
+            self.send_error_msg(error_info = (exc, msg),error_source=error_source)
+            self.need_lm_update = (1, ERROR, 1, error_source)
             
+        if not after_dismount_function and broken:
+            self.broken(broken) 
+            return
+            
+
+        if ftt_eio:
+            # if there was an a ftt_eio error send error message
+            # to LM and go idle
+            self.send_error_msg(error_info = (exc, msg),error_source=error_source)
 
         if save_state == DRAINING:
             self.dismount_volume()
@@ -3010,7 +3039,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
             Trace.log(e_errors.INFO, "dismounted %s %s %s"%(self.current_volume,self.config['product_id'], time_msg))
-            self.current_volume = None
+            #self.current_volume = None
             if self.setup_mode == ASSERT:
                 self.send_client_done(self.current_work_ticket, e_errors.OK, None)
 
@@ -3124,7 +3153,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.vol_info.update(self.vcc.inquire_vol(volume_label))
 
         
-        if status and status[0] == e_errors.OK:
+        if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
             Trace.notify("loaded %s %s" % (self.shortname, volume_label))        
             self.init_stat(self.device, self.logname)
@@ -3148,23 +3177,31 @@ class Mover(dispatching_worker.DispatchingWorker,
 ##            self.transfer_failed(e_errors.MOUNTFAILED, 'mount failure %s' % (status,), error_source=ROBOT)
 ##            self.dismount_volume(after_function=self.idle)
             broken = None
-            if status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
-                             e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
-                             e_errors.MC_DRVNOTEMPTY):
+                
+            if ((status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
+                              e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
+                              e_errors.MC_DRVNOTEMPTY)) or
+                (status[0] == e_errors.TIMEDOUT)):          
                 # mover is all right
                 # error is only tape or MC related
                 # send error to LM and go into the IDLE state
-                if status[1] in (e_errors.MC_NONE, e_errors.MC_FAILCHKVOL, e_errors.MC_DRVNOTEMPTY):
+                if ((status[1] in (e_errors.MC_NONE,
+                                   e_errors.MC_FAILCHKVOL,
+                                   e_errors.MC_DRVNOTEMPTY)) or
+                    (status[0] == e_errors.TIMEDOUT)):
                     err_source = ROBOT
                 else:
                     err_source = TAPE
-                if self.lm_address: # send error message only to LM that called us
-                    ticket = self.format_lm_ticket(state=ERROR,
-                                                   error_info = (status[1], status[2]),
-                                                   error_source=err_source,
-                                                   returned_work=self.current_work_ticket)
-                    self.udpc.send_no_wait(ticket, self.lm_address)
-                    self.net_driver.close()
+                if status[0] == e_errors.TIMEDOUT:
+                    s_status = status
+                else:
+                    s_status = (status[1], status[2])
+                # send error message only to LM that called us
+                self.send_error_msg(error_info = s_status,
+                                    error_source=err_source,
+                                    returned_work=None)
+                self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
+                self.net_driver.close()
                 if status[1] == e_errors.MC_DRVNOTEMPTY:
                     Trace.alarm(e_errors.ERROR, "mount %s failed: %s" % (volume_label, status))
                     self.offline()
@@ -3172,6 +3209,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:    
                     self.state = IDLE
                 self.current_volume = None
+                return
             else:    
                 broken = "mount %s failed: %s" % (volume_label, status)
             try:
@@ -3179,6 +3217,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, msg, tb = sys.exc_info()
                 broken = broken + " set_system_noaccess failed: %s %s" %(exc, msg)
+            if broken:
+                # error out and do not allow dismount as nothing has
+                # been mounted yet
+                self.transfer_failed(e_errors.MOUNTFAILED, broken,error_source=ROBOT, dismount_allowed=0)
             
             #self.current_volume = None
             
