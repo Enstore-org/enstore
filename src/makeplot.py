@@ -40,7 +40,7 @@ class file_filter:
 # same external label in a list.
 class file_timestamp_filter:
     def __call__(self, list_element):
-        return list_element > self.compare_value
+        return list_element[list_element.rfind(".")+1:] > self.compare_value[self.compare_value.rfind(".")+1:]
     def __init__(self, thresh):
         self.compare_value = thresh
 ############################################################################
