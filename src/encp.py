@@ -283,6 +283,17 @@ def get_queue_size(request_list):
     print queue_size
     return queue_size
 
+def update_times(input_path, output_path):
+    try:
+        os.utime(input_path, (time.time(), os.stat(input_path)[stat.ST_ATIME]))
+    except OSError:
+        pass
+
+    try:
+        os.utime(output_path, (os.stat(input_path)[stat.ST_MTIME],time.time()))
+    except OSError:
+        pass #This one will fail if the output file is /dev/null.
+
 ############################################################################
 
 #The os.access() and the access(2) C library routine use the real id when
@@ -298,7 +309,7 @@ def e_access(path, mode):
     elif mode == os.W_OK:
         t_mode = stat.S_IWUSR
     elif mode == os.X_OK:
-        t_mode == stat.S_IXUSR
+        t_mode = stat.S_IXUSR
     else:
         return 0
 
@@ -2256,6 +2267,9 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
+
+        #Update the last access and modification times respecively.
+        update_times(done_ticket['infile'], done_ticket['outfile'])
             
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
@@ -2950,6 +2964,9 @@ def read_hsm_files(listen_socket, submitted, request_list, tinfo, e):
                                            done_ticket['outfile'],
                                            done_ticket['file_size'],
                                            done_ticket)
+
+        #Update the last access and modification times respecively.
+        update_times(done_ticket['infile'], done_ticket['outfile'])
 
         #Remove the new file from the list of those to be deleted should
         # encp stop suddenly.  (ie. crash or control-C).
