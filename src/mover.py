@@ -460,7 +460,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         except KeyError, msg:
             self.malformed_ticket(ticket, "[lm][address]")
             return
-        ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY, None),
+        ticket = self.format_lm_ticket(state=ERROR, error_info=(e_errors.MOVER_BUSY,
+                                                                state_name(self.state)),
                                        returned_work=ticket)
         self.udpc.send_no_wait(ticket, lm_address)
 
@@ -971,7 +972,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "connect_client:  %s %s %s"%(exc, msg, traceback.format_tb(tb)))
             return None, None 
     
-    def format_lm_ticket(self, state=None, error_info=(e_errors.OK, None), returned_work=None):
+    def format_lm_ticket(self, state=None, error_info=None, returned_work=None):
         status = e_errors.OK, None
         work = None
         if state is None:
