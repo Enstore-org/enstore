@@ -8,9 +8,9 @@ export IFS
 # set up the local environment to we can find enstore
 . /usr/local/etc/setups.sh
 
-setup myen
+setup enstore
 
 # get the location of the enstore patrol file
-pafile="`enstore alarm --patrol_file`";
+pafile="`enstore alarm --get_patrol_file`";
 
 echo $pafile;
