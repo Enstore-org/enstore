@@ -806,7 +806,10 @@ def do_work(intf):
     elif intf.vol:
         ticket = vcc.inquire_vol(intf.vol)
         if ticket['status'][0] == e_errors.OK:
+            status = ticket['status']
+            del ticket['status']
             pprint.pprint(ticket)
+            ticket['status'] = status
     elif intf.check:
         ticket = vcc.inquire_vol(intf.check)
         ##pprint.pprint(ticket)
