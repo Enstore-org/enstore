@@ -81,7 +81,7 @@ def mount(volume, drive, media_type,view_first=1):
             status = v[1]
             return status_table[status][0], status, status_table[status][1]
         elif v[5] != 'O':
-            return 'BAD',99,'Tape is not in home position in tower: %s'%(v,)
+            return 'BAD',("BAD",99),'Tape is not in home position in tower: %s'%(v,)
         
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
@@ -98,12 +98,17 @@ def dismount(volume, drive, media_type,view_first=1):
     status = 0
 
     if view_first:
-        v = view(volume,media_type)
-        if v[0] != 'ok':
-            status = v[1]
-            return status_table[status][0], status, status_table[status][1]
-        elif v[5] != 'M':
-            return 'BAD',99,'Tape is not in mounted in drive: %s'%(v,)
+        stat,drvstate = drive_state(drive,"")
+        if stat:
+            status = ("BAD",stat)
+            return 'BAD', status, status_table[stat]
+        if drvstate == None:
+            status = ("BAD",4) # drive not found
+            return 'BAD', status, status_table[stat]
+
+        if drvstate.volser == "": # look for any tape mounted in this drive
+            return 'BAD',("BAD",99),'Drive %s is empty.'%(drive,)
+
 
     if aci.aci_force(drive):
         status=aci.cvar.d_errno
@@ -111,6 +116,22 @@ def dismount(volume, drive, media_type,view_first=1):
             status = derrno.EDASINT
 
     return status_table[status][0], status, status_table[status][1]    
+
+
+def drive_state(drive,client=""):
+    stat,drives = aci.aci_drivestatus2(client)
+    if stat:
+        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
+        return stat,None
+    for d in range(0,len(drives)):
+        #print drive, drives[d].drive_name
+        if drives[d].drive_name == "":
+            break
+        if drives[d].drive_name == drive:
+            return stat,drives[d]
+    Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
+    return stat,None
+
 
 # home robot arm
 def robotHome(arm):
