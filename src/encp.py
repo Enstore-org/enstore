@@ -1845,6 +1845,8 @@ def calculate_rate(done_ticket, tinfo):
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     # Calculate an overall rate: all bytes, all time
 
+    statistics = {}
+    
     #Calculate total running time from the begining.
     now = time.time()
     tinfo['total'] = now - tinfo['encp_start_time']
@@ -1854,9 +1856,9 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     MB_transfered = float(bytes) / float(bytes_per_MB)
 
     if tinfo['total']: #protect against division by zero.
-        tinfo['MB_per_S_total'] = MB_transfered / tinfo['total']
+        statistics['MB_per_S_total'] = MB_transfered / tinfo['total']
     else:
-        tinfo['MB_per_S_total'] = 0.0
+        statistics['MB_per_S_total'] = 0.0
 
     #get all the drive rates from the dictionary.
     drive_rate  = 0L
@@ -1866,9 +1868,9 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
             count = count + 1
             drive_rate  = drive_rate  + tinfo[value]
     if count:
-        tinfo['MB_per_S_drive'] = drive_rate / count
+        statistics['MB_per_S_drive'] = drive_rate / count
     else:
-        tinfo['MB_per_S_drive'] = 0.0
+        statistics['MB_per_S_drive'] = 0.0
 
     #get all the drive rates from the dictionary.
     network_rate  = 0L
@@ -1878,9 +1880,9 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
             count = count + 1
             network_rate  = network_rate  + tinfo[value]
     if count:
-        tinfo['MB_per_S_network'] = network_rate / count
+        statistics['MB_per_S_network'] = network_rate / count
     else:
-        tinfo['MB_per_S_network'] = 0.0
+        statistics['MB_per_S_network'] = 0.0
     
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
           "\tOverall rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
@@ -1888,17 +1890,19 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     
     if exit_status:
         msg = msg % ("Error after", bytes, number_of_files,
-                     tinfo['total'], tinfo["MB_per_S_total"],
-                     tinfo['MB_per_S_drive'], tinfo['MB_per_S_network'],
+                     tinfo['total'], statistics["MB_per_S_total"],
+                     statistics['MB_per_S_drive'],
+                     statistics['MB_per_S_network'],
                      exit_status)
     else:
         msg = msg % ("Completed", bytes, number_of_files,
-                     tinfo['total'], tinfo["MB_per_S_total"],
-                     tinfo['MB_per_S_drive'], tinfo['MB_per_S_network'],
+                     tinfo['total'], statistics["MB_per_S_total"],
+                     statistics['MB_per_S_drive'],
+                     statistics['MB_per_S_network'],
                      exit_status)
 
     done_ticket = {}
-    done_ticket['times'] = tinfo
+    done_ticket['statistics'] = statistics
     #set the final status values
     done_ticket['exit_status'] = exit_status
     done_ticket['status'] = (e_errors.OK, msg)
@@ -2169,7 +2173,7 @@ def create_write_requests(callback_addr, e, tinfo):
         work_ticket['infile'] = ifullname
         work_ticket['outfile'] = ofullname
         work_ticket['retry'] = 0 #retry,
-        work_ticket['times'] = tinfo
+        work_ticket['times'] = tinfo.copy() #Only info now in tinfo needed.
         work_ticket['unique_id'] = generate_unique_id()
         work_ticket['vc'] = volume_clerk
         work_ticket['version'] = encp_client_version()
@@ -2450,7 +2454,7 @@ def write_to_hsm(e, tinfo):
         Trace.message(TRANSFER_LEVEL,
                       "Sending ticket to library manager,  elapsed=%s" %
                       (time.time() - tinfo['encp_start_time'],))
-
+        
         #Send the request to write the file to the library manager.
         done_ticket = submit_write_request(work_ticket, tinfo, e)
 
@@ -2508,10 +2512,10 @@ def write_to_hsm(e, tinfo):
         ff = string.split(done_ticket["vc"]["file_family"], ".")
         Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
 
+    done_ticket = combine_dict(calc_ticket, done_ticket)
+
     Trace.message(TICKET_LEVEL, "DONE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-
-    done_ticket = combine_dict(calc_ticket, done_ticket)
 
     return done_ticket
 
@@ -2538,7 +2542,29 @@ def same_cookie(c1, c2):
         #The location cookie is a disk cookie.
         return c1 == c2
 
-
+#Returns -1, 0 or 1 if request 1s cookie is less than, equal to or greater
+# than request 2s cookie.
+def sort_cookie(r1, r2):
+    c1 = r1.get('fc', {}).get('location_cookie', "")
+    c2 = r2.get('fc', {}).get('location_cookie', "")
+    lc_re = re.compile("[0-9]{4}_[0-9]{9,9}_[0-9]{7,7}")
+    match1=lc_re.search(c1)
+    match2=lc_re.search(c2)
+    if match1 and match2:
+        #The location cookie resembles that of null and tape cookies.
+        #  Only the last section of the cookie is important.
+        try:
+            #print cmp(int(string.split(c1, '_')[-1]),
+            #           int(string.split(c2, '_')[-1])),
+            #print int(string.split(c1, '_')[-1]), int(string.split(c2, '_')[-1])
+            return cmp(int(string.split(c1, '_')[-1]),
+                       int(string.split(c2, '_')[-1]))
+        except (ValueError, AttributeError, TypeError, IndexError):
+            return 0
+    else:
+        #The location cookie is a disk cookie.
+        return 0
+    
 #Args:
 # Takes in a dictionary of lists of transfer requests sorted by volume.
 #Rerturns:
@@ -2655,7 +2681,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
             # If so, then the system will function.  If this was not true,
             # then a lot of file clerk key errors could occur.
             if request['fc']['bfid'][:4] != bfid_brand[:4]:
-                print request['fc']['bfid'], bfid_brand
                 msg = "All bfids must have the same brand."
                 request['status'] = (e_errors.USERERROR, msg)
                 print_data_access_layer_format(request['infile'],
@@ -2869,7 +2894,7 @@ def create_read_requests(callback_addr, tinfo, e):
         request['infile'] = ifullname
         request['outfile'] = ofullname
         request['retry'] = 0
-        request['times'] = tinfo
+        request['times'] = tinfo.copy() #Only info now in tinfo needed.
         request['unique_id'] = generate_unique_id()
         request['vc'] = vc_reply
         request['version'] = encp_client_version()
@@ -2887,16 +2912,17 @@ def create_read_requests(callback_addr, tinfo, e):
 # submit read_from_hsm requests
 def submit_read_requests(requests, tinfo, encp_intf):
 
+    #Sort the requests by location cookie.
+    requests.sort(sort_cookie)
+
     submitted = 0
-    requests_to_submit = requests[:]
+    requests_to_submit = requests[:] #Don't change the original copy.
 
-    # submit requests
-    while requests_to_submit:
-        for req in requests_to_submit:
-
+    for req in requests_to_submit:
+        while req.get("submitted", None) == None:
             Trace.message(TRANSFER_LEVEL, 
-                  "Submitting %s read request.  elapsed=%s" % \
-                  (req['outfile'], time.time() - tinfo['encp_start_time']))
+                     "Submitting %s read request.  elapsed=%s" % \
+                     (req['outfile'], time.time() - tinfo['encp_start_time']))
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
 
@@ -2904,14 +2930,20 @@ def submit_read_requests(requests, tinfo, encp_intf):
 
             Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-                         
+
             result_dict = handle_retries(requests_to_submit, req, ticket,
                                          None, encp_intf)
-            if result_dict['status'][0] == e_errors.RETRY or \
-               not e_errors.is_retriable(result_dict['status'][0]):
+            if result_dict['status'][0] == e_errors.RETRY:
                 continue
-            
-            del requests_to_submit[requests_to_submit.index(req)]
+            elif not e_errors.is_retriable(result_dict['status'][0]):
+                print_data_access_layer_format(req['infile'], req['outfile'],
+                                               req['file_size'], req)
+                #del requests_to_submit[requests_to_submit.index(req)]
+                req['submitted'] = 0
+                break
+
+            #del requests_to_submit[requests_to_submit.index(req)]
+            req['submitted'] = 1
             submitted = submitted+1
 
     return submitted
@@ -3505,7 +3537,7 @@ def main():
         sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
         sys.stderr.write("Exit status: %s\n", exit_status)
 
-    Trace.trace(20,"encp finished at %s"%(time.time(),))
+    Trace.trace(20,"encp finished at %s"%(time.ctime(time.time()),))
     #Quit safely by Removing any zero length file for transfers that failed.
     quit(exit_status)
 
