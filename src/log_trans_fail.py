@@ -19,9 +19,23 @@ def cmd(command):
     return lines
 
 
-def get_failures(log,grepv='DC|GONE|MISMATCH',grep=""):
+def get_failures(log,grepv='GONE',grep=""):
+    thisnode = os.uname()[1]
+    if len(thisnode) > 2:
+        gang = thisnode[0:3]
+    else:
+        gang = ' '
+    if gang == 'd0e':
+        grepv_ = "DC|"+grepv
+    elif gang == 'stk':
+        grepv_ = "JDE|"+grepv
+    else:
+        grepv_ = grepv
+    #FIXME bug in enstore - skip crc mismatch for a few weeks 3/30/01
+    grepv_ = "MISMATCH|"+grepv_
+    
     # just force the directory.
-    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null| egrep -v "%s" | egrep "%s"' %(log,grepv,grep))
+    failed = cmd('cd /diska/enstore-log; grep "transfer failed" %s /dev/null| egrep -v "%s" | egrep "%s"' %(log,grepv_,grep))
     return failed
 
 def parse_failures(failed):
