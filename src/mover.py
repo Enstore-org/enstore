@@ -316,7 +316,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #catch state changes
         if attr == 'state':
             if val != getattr(self, 'state', None):
-                Trace.notify("state %s %s" % (self.shortname, state))
+                Trace.notify("state %s %s" % (self.shortname, val))
         self.__dict__[attr] = val
 
     def start(self):
@@ -680,7 +680,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.bytes_read - bytes_notified > threshold:
                 bytes_notified = self.bytes_read
                 #negative byte-count to indicate direction
-                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read)
+                Trace.notify("transfer %s %s %s" % (self.shortname, -self.bytes_read, self.bytes_to_read))
             if self.buffer.full():
                 Trace.trace(9, "read_tape: buffer full %s/%s, read %s/%s" %
                             (self.buffer.nbytes(), self.buffer.max_bytes,
