@@ -108,12 +108,7 @@ forked_state = [ 'forked',
 	   
 
 def sigterm( sig, stack ):
-    if mvr_srvr.client_obj_inst.pid:
-	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
-	time.sleep(3)
-	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
-	pass
-    # kill just shm to avoid "AttributeError: hsm_driver" which causes
+    # must just try: b/c may get "AttributeError: hsm_driver" which causes
     # forked process to become server via dispatching working exception handling
     try: del mvr_srvr.client_obj_inst.hsm_driver.shm
     except: pass			# wacky things can happen with forking
@@ -121,6 +116,15 @@ def sigterm( sig, stack ):
     except: pass			# wacky things can happen with forking
     try: del mvr_srvr.client_obj_inst.hsm_driver.msg
     except: pass			# wacky things can happen with forking
+    if mvr_srvr.client_obj_inst.pid:
+	print 'attempt kill of mover subprocess', mvr_srvr.client_obj_inst.pid
+	# SIGTERM does not seem to get through if encp is ctl-Z'ed
+	# SIGKILL works, but leaves sub-sub process.
+	#posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGKILL )# kill -9
+	posix.kill( mvr_srvr.client_obj_inst.pid, signal.SIGTERM )
+	time.sleep(3)
+	posix.waitpid( mvr_srvr.client_obj_inst.pid, posix.WNOHANG )
+	pass
     sys.exit( 0x80 | sig )
     return None
 
@@ -872,7 +876,9 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		p_rr = self.client_obj_inst.prev_r_bytes
 		p_ww = self.client_obj_inst.prev_w_bytes
 		if rr == p_rr and ww == p_ww:
-		    if time.time()-self.client_obj_inst.stall_time > 20.0:# aritrary number
+		    if time.time()-self.client_obj_inst.stall_time > 10.0:# aritrary number
+			try:    os.system( '/usr/local/bin/traceMode 0' )
+			except: pass
 			logc.send( log_client.ERROR,1,'stalled mover - should abort' )
 			self.client_obj_inst.stall_time = time.time()
 			pass
