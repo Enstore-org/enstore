@@ -778,53 +778,6 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
         ticket["status"] = (e_errors.OK, None)
 	self.send_reply(ticket)
 
-    # thread to watch a given server
-    def watch_server_function(self, server, inq_func, log_name):
-	still_watch = 1;
-	# watch the server until either the server is no longer valid or the main thread 
-	# finishes
-	while still_watch:
-	    # make sure the server is still a valid server
-	    server_d = self.server_keys.get(server, {})
-	    if not server_d.get(PING, NO_PING) == NO_PING:
-		try:
-		    exec("self.%s(key, ctime)"%(inq_func,time.time()))
-		except SystemExit, exit_code:
-		    raise SystemExit, exit_code
-		except:
-		    # there was a problem getting info from the server
-		    # change the color of the displayed info. do not delete
-		    # the server from the list as the next time things may 
-		    # be ok. report the error too.
-		    e_errors.handle_error()
-		    self.serve_forever_error(log_name)
-		    self.htmlfile.set_alive_error_status(server)
-	    # sleep for awhile before we try this again.  we sleep for one second
-	    # intervals adding up to the time in INTERVAL.  we do this so we can
-	    # catch any requests for updating the server that are out of synch
-	    # with the timed update.
-	    secs = server_d.get(INTERVAL, DEFAULT_INTERVAL)
-	    time_sleeping = 1
-	    while secs > 0:
-		time.sleep(time_sleeping);
-		secs = secs - time_sleeping;
-		pass
-	    
-
-
-
-    # given a server, start a thread to monitor that server
-    def watch_server(self, server_name):
-	# some keys are of the form name.real_key, so we have to get the real 
-	# key to find the function to call
-	rkeyl = string.split(key, '.')
-	inq_func = "update_"+rkeyl[len(rkeyl)-1]
-	if not InquisitorMethods.__dict__.has_key(inq_func) or \
-	   not (type(InquisitorMethods.__dict__[inq_func]) == types.FunctionType):
-	    inq_func = "update_nofunc"
-	pass
-
-
     def do_dump(self):
         Trace.trace(11, "last_update - %s"%(self.last_update,))
 	Trace.trace(11, "last_alive - %s"%(self.last_alive,))
