@@ -342,15 +342,6 @@ class LoggerClient(generic_client.GenericClient):
             msg = '%s %s' % (severity, msg)
             severity = e_errors.MISC
             
-
-        if string.find(msg, Trace.MSG_TYPE) < 0:
-	    try:
-		msg_type = genMsgType(msg, ln, e_errors.sevdict[severity])
-	    except NameError:
-		msg_type = "%sNAME_ERROR"%(Trace.MSG_TYPE,)
-            if msg_type[:7] !='MISCERR':
-                msg = "%s %s" % (msg, msg_type)
-
 	msg = '%.6d %.8s %s %s  %s' % (pid, self.uname,
 				       e_errors.sevdict[severity],name,msg)
 	ticket = {'work':'log_message', 'message':msg}
