@@ -115,6 +115,9 @@ FORCE_SET_DEFAULT = "force set default"
 USER_LEVEL = "user level"
 EXTRA_VALUES = "extra values"
 
+#internal use
+EXTRA_OPTION = "extra_option"
+
 ############################################################################
 
 #Note: This list is in alphabetical order, please keep it that way.
@@ -763,7 +766,7 @@ class Interface:
             if value != None:
                 self.set_value(long_opt, value)
             else:
-                self.print_usage()
+                self.print_usage("Option %s requires value." % (long_opt,))
                 
         elif self.options[long_opt].get(VALUE_USAGE, None) == OPTIONAL:
             next = self.next_argument(long_opt) #Used for optional.
@@ -802,7 +805,7 @@ class Interface:
             if value:
                 self.set_value(long_opt, value)
             else:
-                self.print_usage()
+                self.print_usage("Option %s requires value." % (short_opt,))
 
         elif self.options[long_opt].get(VALUE_USAGE, None) == OPTIONAL:
             #First, determine if the option, which may or may not have a 
@@ -1012,7 +1015,11 @@ class Interface:
     def get_default_name(self, opt_dict, long_opt):
         # Determine what the default's name is.  Use the command string
         # as the default if a "default_name" field is not specified.
-        opt_name = opt_dict.get(DEFAULT_NAME, long_opt)
+        if opt_dict.get(EXTRA_OPTION, None):
+            opt_name = opt_dict.get(VALUE_NAME, long_opt)
+        else:
+            opt_name = opt_dict.get(DEFAULT_NAME, long_opt)
+        
         
         #Convert command dashes to variable name underscores.
         opt_name = string.replace(opt_name, "-", "_") 
@@ -1047,8 +1054,10 @@ class Interface:
             return float(value)
         elif opt_dict.get(VALUE_TYPE, STRING) == RANGE:
             return self.parse_range(value)
-        else: #STRING
+        elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
             return str(value)
+        else:
+            return value
 
     def get_default_type(self, opt_dict, value):
         if opt_dict.get(DEFAULT_TYPE, STRING) == INTEGER:
@@ -1057,8 +1066,10 @@ class Interface:
             return float(value)
         elif opt_dict.get(DEFAULT_TYPE, STRING) == RANGE:
             return self.parse_range(value)
-        else: #STRING
+        elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
             return str(value)
+        else:
+            return value
 
 ############################################################################
     #Thse options set the values in the interface class.  set_value() is
@@ -1137,7 +1148,7 @@ class Interface:
             else:
                 next = self.next_argument(opt)
 
-            extra_option["extra_option"] = 1 #This is sometimes important...
+            extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
 
             self.set_from_dictionary(extra_option, long_opt, next)
             try:
