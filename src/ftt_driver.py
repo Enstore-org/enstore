@@ -23,7 +23,7 @@ class FTTDriver(driver.Driver):
     def __init__(self):
         self.fd = -1
         self.ftt = None
-        self._bytes_transferred = 0
+        self._bytes_transferred = 0L
         self._start_time = 0
         self._active_time = 0
         self._rate = self._burst_rate = 0
@@ -59,7 +59,7 @@ class FTTDriver(driver.Driver):
         self._burst_rate = 0
         self._active_time = 0 #time actually spent in read or write call
         self._rate = 0
-        self._bytes_transferred = 0
+        self._bytes_transferred = 0L
         Trace.trace(25, "ftt_open returns %s" % (self.ftt,))
 
         self._open_dev(retry_count)
@@ -86,7 +86,7 @@ class FTTDriver(driver.Driver):
         else:
             return 0 #this is BADSWMOUNT
         
-        self._rate = self._burst_rate = self._bytes_transferred = 0
+        self._rate = self._burst_rate = self._bytes_transferred = 0L
 
         return 1
     
