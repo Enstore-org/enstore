@@ -6,6 +6,7 @@ import regsub
 import string
 import os
 import stat
+import errno
 
 # enstore imports
 import Trace
@@ -389,8 +390,12 @@ class EnFile:
 
     def open(self, mode='w'):
 	Trace.trace(10,"{enfile open "+self.file_name)
-	self.filedes = open(self.file_name, mode)
-	Trace.trace(10,"}enfile open ")
+	try:
+            self.filedes = open(self.file_name, mode)
+            Trace.trace(10,"}enfile open ")
+        except IOError:
+            self.filedes = 0
+            Trace.trace(10,"}enfile not open")
 
     def close(self):
 	Trace.trace(10,"{enfile close "+self.file_name)
@@ -415,10 +420,13 @@ class EnStatusFile(EnFile):
 	                    verbose)
         # try to open status file for append
         try:
-            self.file = open(self.file_name, 'a')
+            self.filedes = open(self.file_name, 'a')
             generic_cs.enprint("opened for append", generic_cs.SERVER, verbose)
+        except IOError:
+            self.filedes = 0
+	    Trace.trace(12, "}enStatusFile not open")
         except:
-            self.file = open(self.file_name, 'w')
+            self.filedes = open(self.file_name, 'w')
             generic_cs.enprint("opened for write", generic_cs.SERVER, verbose)
         Trace.trace(12,"}open")
 
@@ -427,13 +435,14 @@ class EnStatusFile(EnFile):
         Trace.trace(10,'{flush')
 	# well, nothing has really been written to the file, it is all stored
 	# in a hash.  so we must write it all now
-	self.file.write("\nENSTORE SYSTEM STATUS\n")
-	keys = self.text.keys()
-	keys.sort()
-	for key in keys:
-	    self.file.write(self.text[key])
+        if not self.filedes == 0:
+            self.filedes.write("\nENSTORE SYSTEM STATUS\n")
+            keys = self.text.keys()
+            keys.sort()
+            for key in keys:
+                self.filedes.write(self.text[key])
 
-	self.file.flush()
+            self.filedes.flush()
         Trace.trace(10,'}flush')
 
     # remove something from the text hash that will be written to the files
@@ -457,8 +466,9 @@ class EnHTMLFile:
     # close the file
     def close(self):
         Trace.trace(12,"{close "+self.file_name)
-	self.file.write(self.trailer)
-	self.file.close()
+        if not self.filedes == 0:
+            self.filedes.write(self.trailer)
+            self.filedes.close()
         Trace.trace(12,"}close")
 
     # reset the header, the refresh has changed
@@ -511,8 +521,9 @@ class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
     def open(self, verbose=0):
         Trace.trace(12,"{open "+self.header)
 	EnStatusFile.open(self, verbose)
-	self.file.write(self.header)
-	self.file.write(self.header2)
+        if not self.filedes == 0:
+            self.filedes.write(self.header)
+            self.filedes.write(self.header2)
         Trace.trace(12,"}write_header ")
 
 class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
@@ -558,7 +569,7 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 	s = os.stat(self.file_name)
 	if (self.max_ascii_size > 0) or (really == FORCE):
 	    if (s[stat.ST_SIZE] >= self.max_ascii_size) or (really == 1):
-	        self.file.close()
+	        self.close()
 	        os.system("mv "+self.file_name+" "+self.file_name+"."+\
 	                  get_ts())
 	        self.open()
@@ -589,7 +600,8 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
     def open(self, verbose=0):
         Trace.trace(12,"{open "+self.header)
 	EnStatusFile.open(self, verbose)
-	self.file.write(self.header)
+        if not self.filedes == 0:
+            self.filedes.write(self.header)
         Trace.trace(12,"}write_header ")
 
     # format the line saying there have been no encp requests
@@ -663,13 +675,14 @@ class EnDataFile(EnFile):
     def read(self, max_lines):
 	Trace.trace(10,"{read "+repr(max_lines))
 	i = 0
-	while i < max_lines:
-	    l = self.filedes.readline()
-	    if l:
-	        self.lines.append(l)
-	        i = i + 1
-	    else:
-	        break
+	if not self.filedes == 0:
+            while i < max_lines:
+                l = self.filedes.readline()
+                if l:
+                    self.lines.append(l)
+                    i = i + 1
+                else:
+                    break
 	Trace.trace(10,"}read ")
 	return self.lines
 
@@ -688,18 +701,19 @@ class EnDataFile(EnFile):
 	    stop_time = ""
 	    if start_time == "":
 	        do_all = TRUE
-	# open the file and read it in.  only save the lines that match the
-	# desired time frame
-	try:
-	    while TRUE:
-	        line = self.filedes.readline()
-	        if not line:
-	            break
-	        else:
-	            if do_all or self.check_line(line, start_time, stop_time):
-	                self.lines.append(line)
-	except:
-	    pass
+	# read it in.  only save the lines that match the desired time frame
+        if not self.filedes == 0:
+            try:
+                while TRUE:
+                    line = self.filedes.readline()
+                    if not line:
+                        break
+                    else:
+                        if do_all or \
+                           self.check_line(line, start_time, stop_time):
+                            self.lines.append(line)
+            except:
+                pass
 	Trace.trace(10,"}timed_read ")
 	return self.lines
 
