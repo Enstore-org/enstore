@@ -6,9 +6,9 @@ enstore_config_host=localhost
 enstore_config_port=7500
 enstore_config_file="/pnfs/enstore/.(config)(flags)/enstore.conf"
 
-enstore_libraries_all="airedaledisk.library_manager igordisk.library_manager pcfarm5disk.library_manager fndaprdisk.library_manager hppcdisk.library_manager fntt1disk.library_manager 8500.library_manager redwood50.library_manager"
-enstore_media_changers_all="airedaledisk.media_changer igordisk.media_changer pcfarm5disk.media_changer fndaprdisk.media_changer hppcdisk.media_changer fntt1disk.media_changer FTT.media_changer STK.media_changer"
-enstore_movers_all="airedaledisk.mover igordisk.mover pcfarm5disk.mover fndaprdisk.mover hppcdisk.mover fntt1disk.mover 8500.mover stk0.mover"
+enstore_libraries_all="airedaledisk.library_manager igordisk.library_manager pcfarm5disk.library_manager fndaprdisk.library_manager hppcdisk.library_manager fntt1disk.library_manager fntt2null.library_manager 8500.library_manager redwood50.library_manager"
+enstore_media_changers_all="airedaledisk.media_changer igordisk.media_changer pcfarm5disk.media_changer fndaprdisk.media_changer hppcdisk.media_changer fntt1disk.media_changer fntt2null.media_changerFTT.media_changer STK.media_changer"
+enstore_movers_all="airedaledisk.mover igordisk.mover pcfarm5disk.mover fndaprdisk.mover hppcdisk.mover fntt1disk.mover fntt2null.mover 8500.mover stk0.mover"
 
 enstore_db=$ENSTORE_DIR/etc
 enstore_libraries=""
@@ -34,9 +34,9 @@ elif [ `uname -n | grep -c fntt1` -eq 1 ] ; then
   enstore_movers="8500.mover fntt1disk.mover"
 
 elif [ `uname -n | grep -c fntt2` -eq 1 ] ; then
-  enstore_libraries="redwood50.library_manager"
-  enstore_media_changers="STK.media_changer"
-  enstore_movers="stk0.mover"
+  enstore_libraries="redwood50.library_manager fntt2null.library_manager"
+  enstore_media_changers="STK.media_changer fntt2null.media_manager"
+  enstore_movers="stk0.mover fntt2null.mover"
 
 elif [ `uname -n | grep -c fndapr` -eq 1 ] ; then
   enstore_libraries="fndaprdisk.library_manager"
