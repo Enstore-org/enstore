@@ -429,8 +429,10 @@ class EnStatusFile(EnFile):
 
     # remove something from the text hash that will be written to the files
     def remove_key(self, key):
+	Trace.trace(10,"{remove_key "+repr(key))
 	if self.text.has_key(key):
 	    del self.text[key]
+	Trace.trace(10,"}remove_key ")
 
 class EnHTMLFile:
 
@@ -452,15 +454,20 @@ class EnHTMLFile:
 
     # reset the header, the refresh has changed
     def set_header(self):
+	Trace.trace(10,"{set_header ")
 	self.header = html_header1+repr(self.refresh)+html_header2
+	Trace.trace(10,"}set_header ")
 
     # reset the refresh
     def set_refresh(self, value):
+	Trace.trace(10,"{set_refresh ")
 	self.refresh = value
 	self.set_header()
+	Trace.trace(10,"}set_refresh ")
 
     # return the current refresh value
     def get_refresh(self):
+	Trace.trace(10,"{}get_refresh ")
 	return self.refresh
 
 class EncpFile:
@@ -477,6 +484,7 @@ class EncpFile:
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
+	Trace.trace(10,"{}format_no_encp ")
 	return "\nencp            : NONE\n"
 
 class HTMLStatusFile(EnHTMLFile, EnStatusFile, EnStatus):
@@ -545,13 +553,17 @@ class AsciiStatusFile(EncpFile, EnStatusFile, EnStatus):
 	        self.open()
         Trace.trace(11,"}timestamp ")
 
-    # set a new timestamp value
+    # set a new max_ascii_size value
     def set_max_ascii_size(self, value):
+	Trace.trace(10,"{set_max_ascii_size "+repr(value))
 	self.max_ascii_size = value
+	Trace.trace(10,"}set_max_ascii_size ")
 
-    # get the timestamp value
+    # get the max_ascii_size value
     def get_max_ascii_size(self):
+	Trace.trace(10,"{get_max_ascii_size ")
 	return self.max_ascii_size
+	Trace.trace(10,"}get_max_ascii_size ")
 
 class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
@@ -571,6 +583,7 @@ class EncpStatusFile(EncpFile, EnHTMLFile, EnStatusFile):
 
     # format the line saying there have been no encp requests
     def format_no_encp(self):
+	Trace.trace(10,"{}format_no_encp ")
 	return "<br><pre>\n\n"+EncpFile.format_no_encp(self)+"</pre>"
 
     # format the encp info taken from the log file
@@ -637,11 +650,14 @@ class EnDataFile(EnFile):
 
     # strip off anything before the '/'
     def strip_file_dir(self, str):
+	Trace.trace(10,"{strip_file_dir "+str)
         ind = string.rfind(str, "/")
 	if not ind == -1:
 	    str = str[(ind+1):]
+	Trace.trace(10,"}strip_file_dir ")
 
     def read(self, max_lines):
+	Trace.trace(10,"{read "+repr(max_lines))
 	i = 0
 	while i < max_lines:
 	    l = self.filedes.readline()
@@ -650,11 +666,13 @@ class EnDataFile(EnFile):
 	        i = i + 1
 	    else:
 	        break
+	Trace.trace(10,"}read ")
 	return self.lines
 
     # read in the given file and return a list of lines that are between a
     # given start and end time
     def timed_read(self, ticket):
+	Trace.trace(10,"{timed_read "+repr(ticket))
 	do_all = FALSE
 	if ticket.has_key(START_TIME):
 	    start_time = ticket[START_TIME]
@@ -678,11 +696,13 @@ class EnDataFile(EnFile):
 	                self.lines.append(line)
 	except:
 	    pass
+	Trace.trace(10,"}timed_read ")
 	return self.lines
 
     # check the line to see if the date and timestamp on the beginning of it
     # is between the given start and end values
     def check_line(self, line, start_time, stop_time):
+	Trace.trace(10,"{check_line ")
 	# split the line into the date/time and all the rest
 	[datetime, rest] = string.split(line, None, 1)
 	# remove the beginning LOG_PREFIX
@@ -695,6 +715,7 @@ class EnDataFile(EnFile):
 	if time_ok and (not stop_time == ""):
 	    if l > stop_time:
 	        time_ok = FALSE
+	Trace.trace(10,"}check_line ")
 	return time_ok
 
 class EnMountDataFile(EnDataFile):
@@ -719,31 +740,38 @@ class EnMountDataFile(EnDataFile):
 
     # pull out the plottable data from each line
     def parse_data(self):
+	Trace.trace(10,"{parse_data ")
 	for line in self.lines:
 	    minfo = self.parse_line(line)
 	    self.data.append([minfo[MDEV], string.replace(minfo[ETIME], \
 	                LOG_PREFIX, ""), minfo[MSTART]])
+	Trace.trace(10,"}parse_data ")
 
 class EnEncpDataFile(EnDataFile):
 
     # parse the encp line
     def parse_line(self, line):
+	Trace.trace(12,"{parse_line "+repr(line))
 	einfo = parse_encp_line(line)
 	if einfo[ESTATUS] == log_client.sevdict[log_client.INFO]:
 	    # the time info may contain the file directory which we must
 	    # strip off
 	    self.strip_file_dir(einfo[ETIME])
+	    Trace.trace(12,"}parse_line  - info status")
 	    return [einfo[ESTATUS], einfo[ETIME], einfo[EBYTES]]
 	else:
+	    Trace.trace(12,"}parse_line - error status")
 	    return [einfo[ESTATUS]]
 
     # pull out the plottable data from each line
     def parse_data(self):
+	Trace.trace(10,"{parse_data ")
 	for line in self.lines:
 	    einfo = self.parse_line(line)
 	    if einfo[0] == log_client.sevdict[log_client.INFO]:
 	        self.data.append([string.replace(einfo[1], LOG_PREFIX, ""), \
 	                         einfo[2]])
+	Trace.trace(10,"}parse_data ")
 
 
 
