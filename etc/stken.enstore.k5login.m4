@@ -1,4 +1,3 @@
-ifelse(HOSTNAME, stkensrv2, `oleynik/cron/stkenmvr20a.fnal.gov@FNAL.GOV', `dnl')
 enstore/cd/hppc.fnal.gov@FNAL.GOV
 enstore/cd/cmspnfs1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv0.fnal.gov@FNAL.GOV
@@ -28,6 +27,7 @@ enstore/cd/stkenmvr16a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr18a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr19a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, stkensrv2, `oleynik/cron/stkenmvr20a.fnal.gov@FNAL.GOV', `dnl')
 enstore/cd/stkenmvr23a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr24a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr25a.fnal.gov@FNAL.GOV
@@ -48,6 +48,7 @@ george@FNAL.GOV
 huangch@FNAL.GOV
 ivm@FNAL.GOV
 jonest@FNAL.GOV
+kennedy@FNAL.GOV
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
