@@ -66,7 +66,7 @@ TIMEOUT=1
 ENCP_UPDATE_INTERVAL = 60
 LOG_UPDATE_INTERVAL = 300
 
-MOVER_ERROR_STATES = ['OFFLINE', 'ERROR']
+MOVER_ERROR_STATES = ['OFFLINE', 'ERROR', DEAD]
 VOLUME_STATES = ['full', 'readonly']
 
 DIVIDER = "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -197,6 +197,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # received from the event_relay for this server after server.hung_interval time
     def mark_dead(self, server):
         self.mark_server(DEAD, server)
+	server.server_status = DEAD
 
     # called by the signal handling routines
     def s_update_exit(self, the_signal, frame):
@@ -657,6 +658,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	#           coming from the specified nodes
 	#
 	node_write_check = self.inquisitor.node_write_check
+	if not node_write_check:
+	    # no nodes listed to check
+	    return
 	node_d = make_node_d(node_write_check)
 	node_d_keys = node_d.keys()
 	# first check the state of the lib man.  if it is in a bad state, just
