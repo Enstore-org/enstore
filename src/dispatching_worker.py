@@ -84,7 +84,8 @@ class DispatchingWorker:
                                     self.socket_type)
         
         # set this socket to be closed in case of an exec
-        fcntl.fcntl(self.socket.fileno(), FCNTL.FD_CLOEXEC)
+        fcntl.fcntl(self.socket.fileno(), FCNTL.F_SETFD, FCNTL.FD_CLOEXEC)
+
         self.server_bind()
 
         # start up some threads for monitoring - experimental
