@@ -879,7 +879,7 @@ class MoverServer(  dispatching_worker.DispatchingWorker
 		p_rr = self.client_obj_inst.prev_r_bytes
 		p_ww = self.client_obj_inst.prev_w_bytes
 		if rr == p_rr and ww == p_ww:
-		    if time.time()-self.client_obj_inst.stall_time > 10.0:# aritrary number
+		    if time.time()-self.client_obj_inst.stall_time > 3.0:# aritrary number
 			try:    os.system( '/usr/local/bin/traceMode 0' )
 			except: pass
 			logc.send( log_client.ERROR,1,'stalled mover - should abort' )
