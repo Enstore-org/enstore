@@ -24,6 +24,7 @@ try:
     import Devcodes # this is a compiled enstore module
 except ImportError:
     print "Devcodes unavailable"
+import interface
 
 ENABLED = "enabled"
 DISABLED = "disabled"
@@ -749,66 +750,60 @@ def findfiles(mainpnfsdir,                  # directory above volmap directory
         bfids.append(v.bit_file_id)
     return (filenames,bfids)
 
+class PnfsInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{pnfsi.__init__')
+        # fill in the defaults for the possible options
+        self.test = 0
+        self.status = 0
+        self.info = 0
+        self.file = ""
+        self.verbose = 0
+        self.restore = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}pnfs.__init')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16,"{}options")
+        return ["verbose=","test","status","file=","restore="] +\
+               self.help_options()
+
 ##############################################################################
 if __name__ == "__main__":
 
-    import getopt
+    intf = Pnfs.interface()
 
-    # defaults
-    test = 0
-    status = 0
-    info = 0
-    file = ""
-    verbose = 0
-    restore = 0
-
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["test","status","file=","restore=","verbose=","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist:
-        if opt == "--test":
-            test = 1
-        elif opt == "--status":
-            status = 1
-        elif opt == "--file":
-            info = 1
-            file = value
-        elif opt == "--restore":
-            restore = 1
-            file = value
-        elif opt == "--verbose=":
-            verbose = 1
-        elif opt == "--help":
-            print "python",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-    if info:
-        p=Pnfs(file,1,1)
-        if verbose:
+    if intf.info:
+        p=Pnfs(intf.file,1,1)
+        if intf.verbose:
             p.dump()
 
-    elif status:
+    elif intf.status:
         print "not yet"
 
-    elif restore:
-        p=Pnfs(file)
+    elif intf.restore:
+        p=Pnfs(intf.file)
         p.restore_from_volmap()
 
-    elif test:
+    elif intf.test:
 
         base = "/pnfs/enstore/test2"
         count = 0
         for pf in base+"/"+repr(time.time()), "/impossible/path/test":
             count = count+1;
-            if verbose: print ""
-            if verbose:
+            if intf.verbose: print ""
+            if intf.verbose:
                 print "Self test from ",__name__," using file ",count,": ",pf
 
             p = Pnfs(pf)
 
             e = p.check_pnfs_enabled()
-            if verbose: print "enabled: ", e
+            if intf.verbose: print "enabled: ", e
 
             if p.valid == VALID:
                 if count==2:
@@ -817,7 +812,7 @@ if __name__ == "__main__":
                     continue
                 p.jon1()
                 p.get_pnfs_info()
-                if verbose: p.dump()
+                if intf.verbose: p.dump()
                 l = p.library
                 f = p.file_family
                 w = p.file_family_width
@@ -826,85 +821,85 @@ if __name__ == "__main__":
 
                 nv = "crunch"
                 nvn = 222222
-                if verbose: print ""
-                if verbose: print "Changing to new values"
+                if intf.verbose: print ""
+                if intf.verbose: print "Changing to new values"
 
                 p.set_library(nv)
                 if p.library == nv:
-                    if verbose: print " library changed"
+                    if intf.verbose: print " library changed"
                 else:
                     print " ERROR: didn't change library tag: still is "\
                           ,p.library
 
                 p.set_file_family(nv)
                 if p.file_family == nv:
-                    if verbose: print " file_family changed"
+                    if intf.verbose: print " file_family changed"
                 else:
                     print " ERROR: didn't change file_family tag: still is "\
                           ,p.file_family
 
                 p.set_file_family_width(nvn)
                 if p.file_family_width == nvn:
-                    if verbose: print " file_family_width changed"
+                    if intf.verbose: print " file_family_width changed"
                 else:
                     print " ERROR: didn't change file_family_width tag: "\
                           +"still is ",p.file_family_width
 
                 p.set_bit_file_id(nv,nvn)
                 if p.bit_file_id == nv:
-                    if verbose: print " bit_file_id changed"
+                    if intf.verbose: print " bit_file_id changed"
                 else:
                     print " ERROR: didn't change bit_file_id layer: still is "\
                           ,p.bit_file_id
 
                 if p.file_size == nvn:
-                    if verbose: print " file_size changed"
+                    if intf.verbose: print " file_size changed"
                 else:
                     print " ERROR: didn't change file_size: still is "\
                           ,p.file_size
 
-                if verbose: p.dump()
-                if verbose: print ""
-                if verbose: print "Restoring original values"
+                if intf.verbose: p.dump()
+                if intf.verbose: print ""
+                if intf.verbose: print "Restoring original values"
 
                 p.set_library(l)
                 if p.library == l:
-                    if verbose: print " library restored"
+                    if intf.verbose: print " library restored"
                 else:
                     print " ERROR: didn't restore library tag: still is "\
                           ,p.library
 
                 p.set_file_family(f)
                 if p.file_family == f:
-                    if verbose: print " file_family restored"
+                    if intf.verbose: print " file_family restored"
                 else:
                     print " ERROR: didn't restore file_family tag: still is "\
                           ,p.file_family
 
                 p.set_file_family_width(w)
                 if p.file_family_width == w:
-                    if verbose: print " file_family_width restored"
+                    if intf.verbose: print " file_family_width restored"
                 else:
                     print " ERROR: didn't restore file_family_width tag: "\
                           +"still is ",p.file_family_width
 
                 p.set_bit_file_id(i,s)
                 if p.bit_file_id == i:
-                    if verbose: print " bit_file_id restored"
+                    if intf.verbose: print " bit_file_id restored"
                 else:
                     print " ERROR: didn't restore bit_file_id layer: "\
                           +"still is ",p.bit_file_id
 
                 if p.file_size == s:
-                    if verbose: print " file size restored"
+                    if intf.verbose: print " file size restored"
                 else:
                     print " ERROR: didn't restore file_size: still is "\
                           ,p.file_size
 
-                if verbose: p.dump()
+                if intf.verbose: p.dump()
                 p.rm()
                 if p.exists != EXISTS:
-                    if verbose: print p.pnfsFilename," deleted"
+                    if intf.verbose: print p.pnfsFilename," deleted"
                 else:
                     print "ERROR: could not delete ",p.pnfsFilename
 

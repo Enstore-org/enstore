@@ -14,7 +14,7 @@ try:
     import ETape
 except  ImportError:
     print "ETape unavailable!"
-
+import interface
 
 class GenericDriver:
 
@@ -269,112 +269,101 @@ class  DelayDriver(RawDiskDriver) :
 	time.sleep(bytesskipped/20E6)    # skip at 20MB/sec
 	RawDiskDriver.open_file_write(self)
 
+class DriverInterface(interface.Interface):
+
+    def __init__(self):
+        Trace.trace(10,'{dri.__init__')
+        # fill in the defaults for the possible options
+        self.size=760000
+        self.device = "./rdd-testfile.fake"
+        self.eod_cookie = "0"
+        self.verbose = 0
+        interface.Interface.__init__(self)
+
+        # now parse the options
+        self.parse_options()
+        Trace.trace(10,'}dri.__init')
+
+    # define the command line options that are valid
+    def options(self):
+        Trace.trace(16,"{}options")
+        return ["verbose=","size=","device=","eod_cookie="] +\
+               self.help_options()
+
 
 if __name__ == "__main__" :
-    import getopt
     import string
-    # Import SOCKS module if it exists, else standard socket module socket
-    # This is a python module that works just like the socket module, but uses
-    # the SOCKS protocol to make connections through a firewall machine.
-    # See http://www.w3.org/People/Connolly/support/socksForPython.html or
-    # goto www.python.org and search for "import SOCKS"
-    try:
-        import SOCKS; socket = SOCKS
-    except ImportError:
-        import socket
 
     status = 0
 
-    # defaults
-    size = 760000
-    device = "./rdd-testfile.fake"
-    eod_cookie = "0"
-    verbose = 0
+    intf = DriverInterface()
 
-    # see what the user has specified. bomb out if wrong options specified
-    options = ["size=","device=","eod_cookie=","verbose=","help"]
-    optlist,args=getopt.getopt(sys.argv[1:],'',options)
-    for (opt,value) in optlist :
-        if opt == "--size" :
-            size = string.atoi(value)
-        elif opt == "--device" :
-            device = value
-        elif opt == "--eod_cookie":
-            eod_cookie = value
-        elif opt == "--verbose=":
-            verbose = string.atoi(value)
-        elif opt == "--help" :
-            print "python ",sys.argv[0], options
-            print "   do not forget the '--' in front of each option"
-            sys.exit(0)
-
-
-    if verbose:
-        print "Creating RawDiskDriver device",device, "with",size,"bytes"
-    rdd = RawDiskDriver (device,eod_cookie,size)
-    #rdd = DelayDriver (device,eod_cookie,size)
-    rdd.load( eod_cookie )
+    if intf.verbose:
+        print "Creating RawDiskDriver device",intf.device, "with",intf.size,"bytes"
+    rdd = RawDiskDriver (intf.device,intf.eod_cookie,intf.size)
+    #rdd = DelayDriver (intf.device,intf.eod_cookie,intf.size)
+    rdd.load( intf.eod_cookie )
 
     cookie = {}
 
     try:
-        if verbose:
+        if intf.verbose:
             print "writing 1 0's"
         rdd.open_file_write()
         rdd.write_block("0"*1)
         cookie[0] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[0]
 
-        if verbose:
+        if intf.verbose:
             print "writing 10 1's"
         rdd.open_file_write()
         rdd.write_block("1"*10)
         cookie[1] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[1]
 
-        if verbose:
+        if intf.verbose:
             print "writing 100 2's"
         rdd.open_file_write()
         rdd.write_block("2"*100)
         cookie[2] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[2]
 
-        if verbose:
+        if intf.verbose:
             print "writing 1,000 3's"
         rdd.open_file_write()
         rdd.write_block("3"*1000)
         cookie[3] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[3]
 
-        if verbose:
+        if intf.verbose:
             print "writing 10,000 4's"
         rdd.open_file_write()
         rdd.write_block("4"*10000)
         cookie[4] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[4]
 
-        if verbose:
+        if intf.verbose:
             print "writing 100,000 5's"
         rdd.open_file_write()
         rdd.write_block("5"*100000)
         cookie[5] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[5]
 
-        if verbose:
+        if intf.verbose:
             print "writing 1,000,000 6's"
         rdd.open_file_write()
         rdd.write_block("6"*1000000)
         cookie[6] = rdd.close_file_write()
-        if verbose:
+        if intf.verbose:
             print "   ok",cookie[6]
 
-        if verbose:
+        if intf.verbose:
             print "writing 1,000,000 7's"
         rdd.open_file_write()
         rdd.write_block("7"*1000000)
@@ -382,11 +371,11 @@ if __name__ == "__main__" :
         print "   ok",cookie[7]
 
     except:
-        if verbose:
+        if intf.verbose:
             print "ok, processed exception:"\
                   #,sys.exc_info()[0],sys.exc_info()[1]
 
-    if verbose:
+    if intf.verbose:
         print "EOD cookie:",rdd.get_eod()
         print "lower bound on bytes available:", rdd.get_eod_remaining_bytes()
 
@@ -398,7 +387,7 @@ if __name__ == "__main__" :
             print "Read error on cookie",k, cookie[k],"- not enough bytes. "\
                   +"Read=",rlen ," should have read= ",10**k
             status = status|1
-        if verbose:
+        if intf.verbose:
             print "cookie=",k," readback[0]=",readback[0]\
                   ,"readback[end]=",readback[rlen-1]
         if readback[0] != repr(k) or readback[rlen-1] != repr(k) :
@@ -410,19 +399,3 @@ if __name__ == "__main__" :
     rdd.unload()
 
     sys.exit(status)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

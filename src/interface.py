@@ -149,8 +149,19 @@ class Interface:
                 self.delvol = 1
             elif opt == "--clrvol" :
                 self.clrvol = 1
+            elif opt == "--eod_cookie" :
+                self.eod_cookie = value
+            elif opt == "--size" :
+                self.size = string.atoi(value)
+            elif opt == "--device" :
+                self.device = value
             elif opt == "--test" :
                 self.test = 1
+            elif opt == "--restore" :
+                self.restore = 1
+	        self.file = value
+            elif opt == "--status" :
+                self.status = 1
             elif opt == "--logit" :
                 self.logit1 = 1
                 self.logmsg = value
@@ -178,6 +189,9 @@ class Interface:
                 self.get_max_ascii_size = 1
             elif opt == "--html_file" :
                 self.html_file = value
+            elif opt == "--file" :
+	        self.info = 1
+                self.file = value
             elif opt == "--nocrc":
                 self.chk_crc = 0
             elif opt == "--pri" :
