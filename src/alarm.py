@@ -4,7 +4,6 @@ import time
 import string
 
 # enstore imports
-import enstore_status
 import e_errors
 
 # key to get at a server supplied short text string
@@ -47,7 +46,7 @@ class GenericAlarm:
         # mentioned above
         if self.patrol:
             host = string.split(self.host,".")
-            return string.join((host[0], "Enstore", repr(self.severity), \
+            return string.join((host[0], "Enstore", repr(self.severity),
                                 self.short_text(), "\n"))
         else:
             return repr([self.timedate, self.host, self.pid, self.uid,
@@ -68,9 +67,10 @@ class GenericAlarm:
 
     # compare the passed in info to see if it the same as that of the alarm
     def compare(self, host, severity, root_error, source, alarm_info):
-        if (self.host == host) and \
-           (self.severity == e_errors.sevdict[severity]) and \
-           (self.root_error == root_error) and (self.source == source):
+        if (self.host == host and 
+            self.severity == e_errors.sevdict[severity] and 
+            self.root_error == root_error and
+            self.source == source):
             # now that all that is done we can compare the dictionary to see
             # if it is the same
             if len(alarm_info) == len(self.alarm_info):
