@@ -923,27 +923,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 self.__init__(intf.filepath)
                 self.pduplicate(intf)
 
-    def penstore_state(self):  #, intf):
-        fname = os.path.join(self.dir, ".(config)(flags)/disabled")
-        print fname
-        if os.access(fname, os.F_OK):# | os.R_OK):
-            f=open(fname,'r')
-            self.enstore_state = f.readlines()
-            f.close()
-            print "Enstore disabled:", self.enstore_state[0],
-        else:
-            print "Enstore enabled"
-            
-    def ppnfs_state(self):  #, intf):
-        fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
-        if os.access(fname, os.F_OK | os.R_OK):
-            f=open(fname,'r')
-            self.pnfs_state = f.readlines()
-            f.close()
-            print "Pnfs:", self.pnfs_state[0],
-        else:
-            print "Pnfs: unknown"
-
 ##############################################################################
 
     def pls(self, intf):
@@ -1961,6 +1940,29 @@ class Tag:
             self.storage_group = storage_group
 
         return storage_group
+
+    def penstore_state(self):  #, intf):
+        fname = os.path.join(self.dir, ".(config)(flags)/disabled")
+        print fname
+        if os.access(fname, os.F_OK):# | os.R_OK):
+            f=open(fname,'r')
+            self.enstore_state = f.readlines()
+            f.close()
+            print "Enstore disabled:", self.enstore_state[0],
+        else:
+            print "Enstore enabled"
+
+    ##########################################################################
+            
+    def ppnfs_state(self):  #, intf):
+        fname = "%s/.(config)(flags)/.(id)(pnfs_state)" % self.dir
+        if os.access(fname, os.F_OK | os.R_OK):
+            f=open(fname,'r')
+            self.pnfs_state = f.readlines()
+            f.close()
+            print "Pnfs:", self.pnfs_state[0],
+        else:
+            print "Pnfs: unknown"
 
 ##############################################################################
 
