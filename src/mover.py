@@ -992,6 +992,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(25, "maybe_clean: open device to get tape statistics")
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=1)
             stats = self.tape_driver.ftt.get_stats()
+            try:
+                self.tape_driver.close()
+            except:
+                pass #XXX
             cleaning_bit = stats and stats[ftt.CLEANING_BIT]
             Trace.trace(25, "maybe_clean: got tape statistics, stats=%s, stats[CLEANING_BIT]=%s (%s)" % (
                 stats, cleaning_bit, type(cleaning_bit)))
@@ -1127,7 +1131,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                       (exc, msg, traceback.format_tb(tb)))
             return None, None 
     
-    def format_lm_ticket(self, state=None, error_info=None, returned_work=None):
+    def format_lm_ticket(self, state=None, error_info=None, returned_work=None, error_source=None):
         status = e_errors.OK, None
         work = None
         if state is None:
@@ -1168,6 +1172,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "volume_family": self.volume_family,
             "volume_status": self.volume_status,
             "operation": mode_name(self.mode),
+            "error_source", error_source,
             "work": work,
             }
         return ticket
