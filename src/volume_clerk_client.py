@@ -1469,7 +1469,7 @@ def do_work(intf):
             if record.has_key('deleted'):
                 if record['deleted'] == 'yes':
                     deleted = 'deleted'
-                elif record['deleted'] == 'no'::
+                elif record['deleted'] == 'no':
                     deleted = 'active'
             print "%10s %s %10i %22s %7s %s" % (intf.list,
                 record['bfid'], record['size'],
