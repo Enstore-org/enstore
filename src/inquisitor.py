@@ -423,11 +423,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     def update_lm_function(self, lib_man):
         # get a client and then check if the server is alive
-        lmc = self.lmc.get[lib_man.name]
-        if lmc is None:
-            lmc = library_manager_client.LibraryManagerClient(
-                self.csc, lib_man.name)
-            self.lmc[lib_man.name] = lmc
+        lmc = library_manager_client.LibraryManagerClient(
+            self.csc, lib_man.name)
         host = lib_man.host
         port = lib_man.port
         now = time.time()
@@ -464,10 +461,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the movers
     def update_mover(self, mover):
-        movc = self.movc.get(mover.name)
-        if movc is None:
-            movc = mover_client.MoverClient(self.csc, mover.name)
-            self.movc[mover.name] = movc
+        movc = mover_client.MoverClient(self.csc, mover.name)
         self.mover_status(movc, (mover.host, mover.port), mover.name, time.time())
         self.new_server_status = 1
 
@@ -770,8 +764,6 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.name = MY_NAME
         self.startup_state = e_errors.OK
 
-        self.lmc = {} 
-        self.movc = {}
         
         # set an interval and retry that we will use the first time to get the
         # config information from the config server.  we do not use the
