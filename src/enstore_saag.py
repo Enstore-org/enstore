@@ -3,6 +3,7 @@ import sys
 import os
 import stat
 
+import Trace
 import enstore_constants
 import enstore_functions
 import enstore_files
@@ -36,6 +37,8 @@ class SaagInterface(generic_client.GenericClientInterface):
 def do_work(intf):
     # we do not want anything printed out
     summary = 1
+    
+    Trace.init("ENSAAG")
 
     # get the location of where the html file should go.  we do not want to
     # go thru an enstore server because we need to do this even when enstore
