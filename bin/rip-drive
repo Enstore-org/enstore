@@ -74,6 +74,7 @@ stkenmvr3a=131.225.13.9
 stkenmvr3b=131.225.13.10
 stkenmvr4a=131.225.13.11
 stkenmvr4b=131.225.13.12
+
 stkenmvr5a=131.225.13.13
 stkenmvr5b=131.225.13.14
 fntt=131.225.13.15
@@ -86,9 +87,9 @@ acsssnode=$fntt
 de01node=$rip2
 de02node=$rip2
 
-dc03node=$rip1
+dc03node=$rip2
 dc04node=$rip1
-dc05node=$rip1
+dc05node=$rip2
 dc06node=$rip1
 
 dm07node=$ripsgi
@@ -141,9 +142,9 @@ jde04node=$rip9
 
 de01device=/dev/rmt/tps2d1n
 de02device=/dev/rmt/tps2d2n
-dc03device=/dev/rmt/tps2d1n
+dc03device=/dev/rmt/tps3d1n
 dc04device=/dev/rmt/tps2d2n
-dc05device=/dev/rmt/tps3d3n
+dc05device=/dev/rmt/tps2d3n
 dc06device=/dev/rmt/tps3d4n
 dm07device=/dev/rmt/tps2d1nrvc
 dm08device=/dev/rmt/tps2d2nrvc
