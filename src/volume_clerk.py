@@ -77,7 +77,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 	 for bfid in cur_rec['bfids']:
 	     ret = fcc.rename_volume(bfid, new_label, 
 				     set_deleted, restore, restore_dir)
-	     if ret["status"][0] == e_errors.OK:
+	     if ret["status"][0] != e_errors.OK:
+		 Trace.log(e_erros.ERROR, "rename_volume failed: "+repr(ret))
 		 
 	 # create new record in the database
 	 dict[new_label] = cur_rec
