@@ -47,67 +47,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def getworks_sorted(self) :
         return self.getlist("getworks_sorted")
 
-    #Print out the relavent information on the volume assert.
-    def get_asserts(self):
-
-        #Pending volume asserts get printed here.
-        asserts = self.getlist("get_asserts").get("pending_asserts",[])
-        if asserts:
-            print "Pending assert requests"
-        for assert_work in asserts:
-            #Get and format the node the request came from.
-            node = assert_work.get("wrapper", {}).get("machine", ("",)*6)[1]
-            node = socket.getfqdn(node)
-            #Get and format the library name.
-            lib = assert_work.get("vc", {}).get("library", "Library_Manager")
-            if lib != "Library_Manager" and lib[-16:] != ".library_manager":
-                lib = lib + ".library_manager"
-            #Get the username.
-            user = assert_work.get("wrapper", {}).get("uname", "Unknown")
-            #Get the volume name.
-            volume = assert_work.get("vc", {}).get("external_label", "Unknown")
-
-            #Print the volume information.
-            print "%s %s %s %s" % (node, lib, user, volume)
-
-        #Active volume asserts get printed here.
-        lst = self.getwork()
-        pw_list = lst["pending_work"]
-        at_list = lst["at movers"]
-        active_assert_cnt = 0
-        #If at_list has items, print heading
-        if at_list:
-            print "Active assert requests"
-        for work in at_list:
-            if work['work'] != "volume_assert":
-                continue
-
-            #Total up the active volume assert requests.
-            active_assert_cnt = active_assert_cnt + 1
-
-            #Get and format the node the request came from.
-            node = work.get("wrapper", {}).get("machine", ("",)*6)[1]
-            node = socket.getfqdn(node)
-            #Get and format the library name.
-            lib = work.get("vc", {}).get("library", "Library_Manager")
-            if lib != "Library_Manager" and lib[-16:] != ".library_manager":
-                lib = lib + ".library_manager"
-            #Get the username.
-            user = work.get("wrapper", {}).get("uname", "Unknown")
-            #Get the volume name.
-            volume = work.get("vc", {}).get("external_label", "Unknown")
-            #Get the mover the volume is being asserted at.
-            mover = work.get("mover", "Unknown")
-
-            #Print the volume information.
-            print "%s %s %s %s %s" % (node, lib, user, volume, mover)
-            
-
-        print "Pending assert requests:", len(asserts)
-        print "Active assert requests:", active_assert_cnt
-
-        return {"status" :(e_errors.OK, None)}
-
     def get_queue(self, node=None, lm=None):
         if not lm: lmname = "library_manager"
         else: lmname = lm
@@ -175,15 +114,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
                            ff_msg = string.join((ff_msg,"FF_W %s"%(work['vc']['file_family_width'],)),' ')
                        if (host == node) or (not node):
                            print "%s %s %s %s %s P %d %s %s %s %s" % (host,self.name,user,fn,pnfsfn, at_top, reject_reason[0], reject_reason[1], vol_msg, ff_msg)
-               #If at_list has items, print heading
-               if at_list:
-                   print "Active requests"
+                           
                for work in at_list:
-                   #Work at movers will contain volume_assert requests.  Skip
-                   # them here; they are handled with another switch.
-                   if work["work"] == "volume_assert":
-                       continue
-                   
                    host = work["wrapper"]["machine"][1]
                    user = work["wrapper"]["uname"]
                    pnfsfn = work["wrapper"]["pnfsFilename"]
@@ -305,7 +237,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.get_susp_vols = 0
         self.delete_work = 0
         self.priority = -1
-        self.get_asserts = None
         self.get_queue = None
         self.start_draining = 0
         self.stop_draining = 0
@@ -347,11 +278,6 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                             option.VALUE_USAGE:option.REQUIRED,
                             option.VALUE_LABEL:"unique_id",
                             option.USER_LEVEL:option.ADMIN},
-        option.GET_ASSERTS:{option.HELP_STRING:
-                                "print sorted lists of pending volume asserts",
-                                option.DEFAULT_TYPE:option.INTEGER,
-                                option.VALUE_USAGE:option.IGNORED,
-                                option.USER_LEVEL:option.USER},
         option.GET_QUEUE:{option.HELP_STRING:
                           "print queue submitted from the specified host.  "
                           "If empty string specified, print the whole queue",
@@ -438,10 +364,6 @@ def do_work(intf):
         if enstore_functions.is_ok(ticket):
             print ticket['pending_work']
             print ticket['at movers']
-    elif intf.get_asserts:
-        ticket = lmc.get_asserts()
-        if enstore_functions.is_ok(ticket):
-            print ticket
     elif  intf.get_work_sorted:
         ticket = lmc.getworks_sorted()
         if enstore_functions.is_ok(ticket):
