@@ -308,6 +308,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         generic_server.GenericServer.__init__(self, csc_address, name)
         self.name = name
         self.shortname = name
+        self.unique_id = None #Unique id of last transfer, whether success or failure
         self.notify_transfer_threshold = 2*1024*1024
         if self.shortname[-6:]=='.mover':
             self.shortname = name[:-6]
@@ -831,6 +832,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
+        self.unique_id = ticket['unique_id']
         volume_label = fc['external_label']
         self.current_work_ticket = ticket
         self.vol_info.update(self.vcc.inquire_vol(volume_label))
@@ -988,6 +990,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def transfer_failed(self, exc=None, msg=None, error_source=None):
         Trace.log(e_errors.ERROR, "transfer failed %s %s" % (str(exc), str(msg)))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_hostname))
+        
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
         
@@ -1000,6 +1003,16 @@ class Mover(dispatching_worker.DispatchingWorker,
         ### network errors should not count toward rd_err, wr_err
             if self.mode == WRITE:
                 self.vcc.update_counts(self.current_volume, wr_err=1, wr_access=1)
+                #Heuristic: if tape is more than 90% full and we get a write error, mark it full
+                try:
+                    capacity = self.vol_info['capacity_bytes']
+                    remaining = self.vol_info['remaining_bytes']
+                    eod = self.vol_info['eod_cookie']
+                    if remaining <= 0.1 * capacity:
+                        Trace.log(e_errors.INFO,
+                                  "write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
+                                  (self.current_volume, remaining, capacity))
+                        self.vcc.set_remaining_bytes(self.current_volume, 0, None, None)
             else:
                 self.vcc.update_counts(self.current_volume, rd_err=1, rd_access=1)       
 
@@ -1222,6 +1235,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "volume_status": self.volume_status,
             "operation": mode_name(self.mode),
             "error_source": error_source,
+            "unique_id", self.unique_id,
             "work": work,
             }
         return ticket
