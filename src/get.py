@@ -115,27 +115,6 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 
         Trace.message(5, "Sending next file request to the mover.")
 
-        # Send the request to the mover.  However, first wait for the
-        # mover to send an "I'm ready" message.
-        """
-        #Keep the udp socket queues clear.
-        start_time = time.time()
-        while time.time() < start_time + e.mover_timeout:
-            #Keep looping until one of these three messages arives.  Ignore
-            # any other that my be received.  The most notable message
-            # to be ignored is the {'work': 'done_cleanup'} message.
-            mover_ready = udp_socket.process_request()
-            if mover_ready['work'] == 'mover_bound_volume' or \
-               mover_ready['work'] == 'mover_error' or \
-               mover_ready['work'] == 'mover_idle':
-                break
-        Trace.message(10, "MOVER_READY:")
-        Trace.message(10, pprint.pformat(mover_ready))
-
-        if not e_errors.is_ok(mover_ready):
-            work_ticket = encp.combine_dict(mover_ready, work_ticket)
-            return 'work_ticket'
-        """
         #This is an evil hack to modify work_ticket outside of
         # create_read_requests().
         work_ticket['method'] = "read_next"
@@ -227,13 +206,19 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             #Keep looping until one of these two messages arives.  Ignore
             # any other that my be received.
             mover_udp_done_ticket = udp_socket.process_request()
-            print "mover_udp_done_ticket:"
-            pprint.pprint(mover_udp_done_ticket)
+
+            #If requested output the raw 
+            Trace.trace(11, "UDP MOVER MESSAGE:")
+            Trace.trace(11, pprint.pformat(mover_udp_done_ticket))
+
+            #Make sure the messages are what we expect.
+            if mover_udp_done_ticket == None: #Something happened, keep trying.
+                continue
             if mover_udp_done_ticket['work'] == 'mover_bound_volume' or \
                mover_udp_done_ticket['work'] == 'mover_error':
                 break
         Trace.message(5, "Received final dialog (2).")
-        Trace.message(10, "MOVER RESPONCE (udp):")
+        Trace.message(10, "FINAL DIALOG (udp):")
         Trace.message(10, pprint.pformat(mover_udp_done_ticket))
 
         #Combine these tickets.
@@ -568,20 +553,35 @@ def main(e):
 
         use_unique_id = request['unique_id']
 
-        #Wait for the mover to send a message stating it is ready.
-        mover_ready = udp_socket.process_request()
-        if mover_ready['work'] != "mover_idle":
-            #We are done with this mover.
-            end_session(udp_socket, control_socket)
-            #Set completion status to failure.
-            request['completion_status'] = FAILURE
+        #Keep the udp socket queues clear.
+        start_time = time.time()
+        Trace.message(5, "Waiting for final dialog (2).")
+        while time.time() < start_time + e.mover_timeout:
+            #Keep looping until the message arives.
+            mover_ready = udp_socket.process_request()
 
-            #Tell the calling process, this file failed.
-            error_output(mover_ready)
-            #Tell the calling process, of those files not attempted.
-            untried_output(requests_per_vol[e.volume])
-            #Perform any necessary file cleanup.
-            encp.quit(0)
+            #If requested output the raw 
+            Trace.trace(11, "UDP MOVER READY MESSAGE:")
+            Trace.trace(11, pprint.pformat(mover_ready))
+
+            #Make sure the messages are what we expect.
+            if mover_ready == None: #Something happened, keep trying.
+                continue
+            elif mover_ready['work'] == "mover_idle":
+                break
+            else: # mover_ready['work'] != "mover_idle":
+                #We are done with this mover.
+                end_session(udp_socket, control_socket)
+                #Set completion status to failure.
+                request['completion_status'] = FAILURE
+
+                #Tell the calling process, this file failed.
+                error_output(mover_ready)
+                #Tell the calling process, of those files not attempted.
+                untried_output(requests_per_vol[e.volume])
+                #Perform any necessary file cleanup.
+                encp.quit(0)
+                
 
         # Keep looping until the READ_EOD error occurs.
         while requests_outstanding(requests_per_vol[e.volume]):
