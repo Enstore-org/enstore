@@ -255,7 +255,7 @@ def write_to_hsm(input, output,
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        "from u.send to " +library[i]+" at "\
                        +vticket['hostip']+"/"+repr(vticket['port'])\
-                       +", ticket[\"status\"]="+ticket["status"])
+                       +", ticket[\"status\"]="+repr(ticket["status"]))
 
             tinfo1["send_ticket"+repr(i)] = time.time() - t1 #-----------Lap End
             if list:
@@ -306,7 +306,7 @@ def write_to_hsm(input, output,
                 jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                        +"1st (pre-file-send) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+ticket["status"],2)
+                       +"ticket[\"status\"]="+repr(ticket["status"]),2)
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo1["tot_to_mover_callback"+repr(i)] = time.time() - t0 #-----Cum
@@ -381,7 +381,7 @@ def write_to_hsm(input, output,
             jraise(errno.errorcode[errno.EPROTO]," encp.write_to_hsm: "\
                    +"2nd (post-file-send) mover callback on socket "\
                    +repr(address)+", failed to transfer: "\
-                   +"done_ticket[\"status\"]="+done_ticket["status"])
+                   +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
         # Check the CRC
             if chk_crc != 0:
@@ -695,7 +695,7 @@ def read_from_hsm(input, output,
                            " encp.read_from_hsm: from"\
                            +"u.send to file_clerk at "+fticket['hostip']+"/"\
                            +repr(fticket['port']) +", ticket[\"status\"]="\
-                           +ticket["status"])
+                           +repr(ticket["status"]))
                 submitted = submitted+1
                 tinfo["send_ticket"+repr(i)] = time.time() - t2 #------Lap-End
                 if list :
@@ -769,7 +769,7 @@ def read_from_hsm(input, output,
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"1st (pre-file-read) mover callback on socket "\
                        +repr(address)+", failed to setup transfer: "\
-                       +"ticket[\"status\"]="+ticket["status"])
+                       +"ticket[\"status\"]="+repr(ticket["status"]))
             data_path_socket = callback.mover_callback_socket(ticket)
 
             tinfo["tot_to_mover_callback"+repr(j)] = time.time() - t0 #-----Cum
@@ -832,7 +832,7 @@ def read_from_hsm(input, output,
                 jraise(errno.errorcode[errno.EPROTO]," encp.read_from_hsm: "\
                        +"2nd (post-file-read) mover callback on socket "\
                        +repr(address)+", failed to transfer: "\
-                       +"done_ticket[\"status\"]="+done_ticket["status"])
+                       +"done_ticket[\"status\"]="+repr(done_ticket["status"]))
 
             # verify that the crc's match
             if chk_crc != 0 :
