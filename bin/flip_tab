@@ -14,19 +14,19 @@ for i in $work/*; do
   . $i |tee $output 2>&1
   echo 
   echo
-# /usr/bin/rsh $sun -l acsss "echo enter 0,0,0 |/export/home/ACSSS/bin/cmd_proc" 
-  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic 0,0,0 |/export/home/ACSSS/bin/cmd_proc"
+  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic 0,0,0 |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
   echo 
-  /bin/echo -n "Push Enter when all tapes have been loaded with tab in write-protect mode"
+  echo 
+  /bin/echo -n "Push Enter when all tapes have been loaded with tab in write-protect mode "
   read ans
   while /bin/true; do 
     cap=`/usr/bin/rsh $sun -l acsss "echo q cap 0,0,0 |/export/home/ACSSS/bin/cmd_proc 2>/dev/null"`
     capstate=`echo $cap  | sed -e 's#.*automatic ##' | cut -f1 -d\ `
     if [ "$capstate" = "available" ]; then break; fi
-    echo `date` waiting for cap to be unloaded: $capstate
-    sleep 15
+    echo `date` waiting for cap to be unloaded.
+    sleep 5
   done
-  /usr/bin/rsh $sun -l acsss "echo set cap mode manual 0,0,0 |/export/home/ACSSS/bin/cmd_proc"
+  /usr/bin/rsh $sun -l acsss "echo set cap mode manual 0,0,0 |/export/home/ACSSS/bin/cmd_proc >/dev/null 2>/dev/null"
   echo 
   echo
   /bin/echo -n "Were all of these steps successful [y or n]? "
