@@ -73,8 +73,21 @@ MY_NAME = "MNTR_SRV"
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
 
-SERVER_CONNECTION_ERROR = "Server connection error"
-CLIENT_CONNECTION_ERROR = "Client connection error"
+class MonitorError(Exception):
+    def __init__(self, error_message):
+
+        Exception.__init__(self)
+
+        self.error_message = error_message
+
+    def __str__(self):
+        return self.error_message
+
+    def __repr__(self):
+        return "MonitorError"
+
+#SERVER_CONNECTION_ERROR = "Server connection error"
+#CLIENT_CONNECTION_ERROR = "Client connection error"
 
 class MonitorServer(dispatching_worker.DispatchingWorker,
                     generic_server.GenericServer):
@@ -141,8 +154,14 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             # second, the smallest resolution the API specifies.
             wait_time = self.timeout - (time.time() - t1) + .000001
 
-            r,w,ex = select.select(sock_read_list, sock_write_list,
-                                   [data_sock], wait_time)
+            try:
+                r,w,ex = select.select(sock_read_list, sock_write_list,
+                                       [data_sock], wait_time)
+            except KeyboardInterrupt:
+                raise sys.exc_info()
+            except:
+                r, w, ex = (None, None, None)
+                
 
             if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
@@ -168,8 +187,9 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                         # somthing bad happened (which makes return_value
                         # equal to zero).
                         data_sock.close()
-                        raise CLIENT_CONNECTION_ERROR, \
-                              os.strerror(errno.ECONNRESET)
+                        #raise CLIENT_CONNECTION_ERROR, \
+                        #      os.strerror(errno.ECONNRESET)
+                        raise MonitorError(os.strerror(errno.ECONNRESET))
                     
                     #Get the new number of bytes sent.
                     bytes_transfered = bytes_transfered + return_value
@@ -178,13 +198,15 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
 
                 except socket.error, detail:
                     data_sock.close()
-                    raise CLIENT_CONNECTION_ERROR, detail[1]
+                    #raise CLIENT_CONNECTION_ERROR, detail[1]
+                    raise MonitorError(detail[1])
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
-                raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+                #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+                raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         return time.time() - t0
 
@@ -199,7 +221,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
         try:
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
-            raise CLIENT_CONNECTION_ERROR, detail[1]
+            #raise CLIENT_CONNECTION_ERROR, detail[1]
+            raise MonitorError(detail[1])
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -217,7 +240,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 pass
             #A real or fatal error has occured.  Handle accordingly.
             else:
-                raise CLIENT_CONNECTION_ERROR, detail[1]
+                #raise CLIENT_CONNECTION_ERROR, detail[1]
+                raise MonitorError(detail[1])
 
         #Check if the socket is open for reading and/or writing.
         r, w, ex = select.select([sock], [sock], [], self.timeout)
@@ -226,11 +250,13 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             #Get the socket error condition...
             rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         else:
-            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         #...if it is zero then success, otherwise it failed.
         if rtn != 0:
-            raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+            raise MonitorError(os.strerror(rtn))
         
         #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
@@ -255,7 +281,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                                self.timeout)
         if not r :
             listen_sock.close()
-            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         #Wait for the client to connect creating the data socket used for the
         # encp rate tests.
@@ -300,9 +327,11 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
             data_sock = self._open_data_socket(listen_sock)
             
             if not data_sock:
-                raise CLIENT_CONNECTION_ERROR, "no connection established"
+                #raise CLIENT_CONNECTION_ERROR, "no connection established"
+                raise MonitorError("no connection established")
             
-        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        except MonitorError:
             print sys.exc_info()[:2]
             return
 
@@ -322,7 +351,8 @@ class MonitorServer(dispatching_worker.DispatchingWorker,
                 reply['elapsed'] = self._test_encp_transfer(
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
-        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        except MonitorError:
             print sys.exc_info()[:2]
             return
 

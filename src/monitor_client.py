@@ -38,8 +38,22 @@ MY_SERVER = enstore_constants.MONITOR_SERVER
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
 
-SERVER_CONNECTION_ERROR = "Server connection error"
-CLIENT_CONNECTION_ERROR = "Client connection error"
+class MonitorError(Exception):
+    def __init__(self, error_message):
+
+        Exception.__init__(self)
+
+        self.error_message = error_message
+
+    def __str__(self):
+        return self.error_message
+
+    def __repr__(self):
+        return "MonitorError"
+
+
+#SERVER_CONNECTION_ERROR = "Server connection error"
+#CLIENT_CONNECTION_ERROR = "Client connection error"
 
 class MonitorServerClient(generic_client.GenericClient):
 
@@ -129,9 +143,14 @@ class MonitorServerClient(generic_client.GenericClient):
             # possiblity of loosing connections.  The .000001 is one micro-
             # second, the smallest resolution the API specifies.
             wait_time = self.timeout - (time.time() - t1) + .000001
-            
-            r,w,ex = select.select(sock_read_list, sock_write_list,
-                                   [data_sock], wait_time)
+
+            try:
+                r,w,ex = select.select(sock_read_list, sock_write_list,
+                                       [data_sock], wait_time)
+            except KeyboardInterrupt:
+                raise sys.exc_info()
+            except:
+                r, w, ex = (None, None, None)
 
             if w or r or ex:
                 #if necessary make the send string the correct (smaller) size.
@@ -158,8 +177,9 @@ class MonitorServerClient(generic_client.GenericClient):
                         # somthing bad happened (which makes return_value
                         # equal to zero).
                         data_sock.close()
-                        raise CLIENT_CONNECTION_ERROR, \
-                              os.strerror(errno.ECONNRESET)
+                        #raise CLIENT_CONNECTION_ERROR, \
+                        #      os.strerror(errno.ECONNRESET)
+                        raise MonitorError(os.strerror(errno.ECONNRESET))
                     
                     #Get the new number of bytes sent.
                     bytes_transfered = bytes_transfered + return_value
@@ -168,13 +188,15 @@ class MonitorServerClient(generic_client.GenericClient):
 
                 except socket.error, detail:
                     data_sock.close()
-                    raise SERVER_CONNECTION_ERROR, detail[1]
+                    #raise SERVER_CONNECTION_ERROR, detail[1]
+                    raise MonitorError(os.strerror(detail[1]))
 
             #If there hasn't been any traffic in the last timeout number of
             # seconds, then timeout the connection.
             elif time.time() - t1 > self.timeout:
                 data_sock.close()
-                raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+                #raise SERVER_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+                raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         return time.time() - t0
 
@@ -187,7 +209,8 @@ class MonitorServerClient(generic_client.GenericClient):
         try:
             sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error, detail:
-            raise CLIENT_CONNECTION_ERROR, detail[1]
+            #raise CLIENT_CONNECTION_ERROR, detail[1]
+            raise MonitorError(detail[1])
 
         #Put the socket into non-blocking mode.
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFL)
@@ -207,7 +230,8 @@ class MonitorServerClient(generic_client.GenericClient):
             #A real or fatal error has occured.  Handle accordingly.
             else:
                 Trace.trace(10, "connect failed: " + detail[1])
-                raise CLIENT_CONNECTION_ERROR, detail[1]
+                #raise CLIENT_CONNECTION_ERROR, detail[1]
+                raise MonitorError(detail[1])
 
         Trace.trace(10, "Obtaining error status for data socket.")
         #Check if the socket is open for reading and/or writing.
@@ -218,12 +242,14 @@ class MonitorServerClient(generic_client.GenericClient):
             rtn = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         else:
             Trace.trace(10, "Timedout.")
-            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         #...if it is zero then success, otherwise it failed.
         if rtn != 0:
             Trace.trace(10, os.strerror(rtn))
-            raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(rtn)
+            raise MonitorError(os.strerror(rtn))
         
         #Restore flag values to blocking mode.
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, flags)
@@ -242,7 +268,8 @@ class MonitorServerClient(generic_client.GenericClient):
 
         if not r:
             Trace.trace(10, "Waiting for control socket timed out.")
-            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            #raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+            raise MonitorError(os.strerror(errno.ETIMEDOUT))
 
         Trace.trace(10, "Accepting control socket connetion.")
         #Wait for the client to connect creating the control socket.
@@ -284,10 +311,12 @@ class MonitorServerClient(generic_client.GenericClient):
             data_sock = self._open_data_socket(mon_serv_callback_addr)
 
             if not data_sock:
-                raise CLIENT_CONNECTION_ERROR, "no connection established"
+                #raise CLIENT_CONNECTION_ERROR, "no connection established"
+                raise MonitorError("no connection established")
             
-        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            raise sys.exc_info()
+        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        except MonitorError, msg:
+            raise msg
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
@@ -303,8 +332,9 @@ class MonitorServerClient(generic_client.GenericClient):
                     data_sock,ticket['block_size'], ticket['block_count'],
                     "recv")
 
-        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
-            raise sys.exc_info()
+        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        except MonitorError, msg:
+            raise msg
 
         #If we get here, the status is ok.
         reply['status'] = ('ok', None)
@@ -351,15 +381,17 @@ class MonitorServerClient(generic_client.GenericClient):
             else:
                 reply['status'] = ('INVALIDACTION', "failed to simulate encp")
 
-        except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        #except (CLIENT_CONNECTION_ERROR, SERVER_CONNECTION_ERROR):
+        #    exc, msg = sys.exc_info()[:2]
+        #    reply = {}
+        #    reply['status'] = (exc, msg)
+        #    reply['elapsed'] = self.timeout*10
+        #    reply['block_count'] = 0
+        except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT],
+                MonitorError), detail:
             exc, msg = sys.exc_info()[:2]
             reply = {}
-            reply['status'] = (exc, msg)
-            reply['elapsed'] = self.timeout*10
-            reply['block_count'] = 0
-        except (errno.ETIMEDOUT,  errno.errorcode[errno.ETIMEDOUT]), detail:
-            reply = {}
-            reply['status'] = (SERVER_CONNECTION_ERROR, detail)
+            reply['status'] = (exc, msg)  #(SERVER_CONNECTION_ERROR, detail)
             reply['elapsed'] = self.timeout*10
             reply['block_count'] = 0
 
@@ -563,7 +595,8 @@ def get_all_ips(config_host, config_port, csc):
     ## What if we cannot get to config server
     x = csc.u.send({"work":"reply_serverlist"},
                    (config_host, config_port))
-    if x['status'][0] != 'ok': raise "error from config server"
+    if x['status'][0] != e_errors.OK:
+        raise MonitorError("error from config server")
     server_dict = x['server_list']
     ip_dict = {}
     for k in server_dict.keys():
