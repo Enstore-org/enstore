@@ -250,15 +250,16 @@ files after that backup.
 
 	# get a list of backup directory available
 
-	for i in os.popen("enrsh -n "+bckHost+" ls -1r "+bckHome).readlines():
-		bf = string.strip(i)
-		head, time1, time2 = string.split(bf, ".")
-		timeStamp = float(time1+"."+time2)
-		if timeStamp < when:
-			break	# early exit
-		backups.append(bf)
-		if when < 0:
-			break	# only take the last one
+	for i in os.popen("enrsh -n "+bckHost+" ls -1t "+bckHome).readlines():
+		if i[:6] == 'dbase.':
+			bf = string.strip(i)
+			head, time1, time2 = string.split(bf, ".")
+			timeStamp = float(time1+"."+time2)
+			if timeStamp < when:
+				break	# early exit
+			backups.append(bf)
+			if when < 0:
+				break	# only take the last one
 
 	# get the right order again
 
