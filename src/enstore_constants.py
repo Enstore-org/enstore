@@ -1,4 +1,12 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
 # this file contains constants used in several enstore modules
+#
+###############################################################################
 
 DEFAULT_CONF_FILE = "/pnfs/enstore/.(config)(flags)/enstore.conf"
 
@@ -136,6 +144,27 @@ SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
 		CONFIGS : CONFIG_SERVER,
 		EV_RLY : EVENT_RELAY,
 		RATE : RATEKEEPER}
+
+#The client names.
+ACCOUNTING_CLIENT = "accounting_client"
+ALARM_CLIENT = "ALARM_CLIENT"
+CONFIG_CLIENT = "CONFIG_CLIENT"
+CONFIGURATION_CLIENT = "CONFIG_CLIENT"
+DRIVESTAT_CLIENT = "drivestat_client"
+ENSTORE_RESTART = "ENSTORE_RESTART"
+ENSTORE_START = "ENSTORE_START"
+ENSTORE_STOP = "ENSTORE_STOP"
+FILE_CLERK_CLIENT = "FILE_C_CLIENT"
+INFO_CLIENT = "info_client"
+INQUISITOR_CLIENT = "INQ_CLIENT"
+LIBRARY_MANAGER_CLIENT = ".LM"
+LOG_CLIENT = "LOG_CLIENT"
+MEDIA_CHANGER_CLIENT = ".MC"
+MONITOR_CLIENT = "MNTR_CLI"
+#MOVER_CLIENT = ?
+RATEKEEPER_CLIENT = "RATEKEEPER_CLIENT"
+VOLUME_CLERK_CLIENT = "VOLUME_C_CLIENT"
+
 
 OUTAGEFILE = "enstore_outage.py"
 SEENDOWNFILE = "enstore_seen_down.py"
