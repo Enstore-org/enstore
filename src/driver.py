@@ -2,6 +2,7 @@ import sys
 import errno
 import posix
 import string
+import time
 try:
     import ETape
 except  ImportError:
@@ -121,6 +122,8 @@ class  RawDiskDriver(GenericDriver) :
     A driver for testing with disk files
     """
 
+    firstbyte = 0 
+
     def __init__(self, device, eod_cookie, remaining_bytes):
         GenericDriver.__init__(self, device, eod_cookie, remaining_bytes)
         #print "opening file"
@@ -216,6 +219,34 @@ class  RawDiskDriver(GenericDriver) :
     def Xferred_bytes(self,size) :
         self.remaining_bytes = self.remaining_bytes - size
 
+class  DelayDriver(RawDiskDriver) :
+    """
+    A specialized RawDisk Driver for testing with disk files, but with 
+    crude delays modeled on no particular tape drive.
+
+    """
+    def load(self):
+        time.sleep(10)                   # load time 10 seconds
+	RawDiskDriver.load(self)
+
+    def unload(self):
+	time.sleep(self.firstbyte/20E6)   # rewind time @ 20MB/sec
+	time.sleep(10)			  # unload time -- 10 seconds
+        RawDiskDriver.unload(self)
+
+    def open_file_read(self, file_location_cookie) :
+        whereb4 = self.firstbyte
+        RawDiskDriver.open_file_read(self, file_location_cookie)
+	bytesskipped = abs(whereb4 - self.firstbyte);
+	time.sleep(bytesskipped/20E6)    # skip at 20MB/sec
+
+    def open_file_write(self):
+        #print "   open_file_write"
+	bytesskipped = abs(self.eod - self.firstbyte);
+	time.sleep(bytesskipped/20E6)    # skip at 20MB/sec
+	RawDiskDriver.open_file_write(self)
+
+
 if __name__ == "__main__" :
     import getopt
     import string
@@ -258,6 +289,7 @@ if __name__ == "__main__" :
     if list:
         print "Creating RawDiskDriver device",device, "with",size,"bytes"
     rdd = RawDiskDriver (device,eod_cookie,size)
+    #rdd = DelayDriver (device,eod_cookie,size)
     rdd.load()
 
     cookie = {}
@@ -329,7 +361,7 @@ if __name__ == "__main__" :
     except:
         if list:
             print "ok, processed exception:"\
-                  ,sys.exc_info()[0],sys.exc_info()[1]
+                  #,sys.exc_info()[0],sys.exc_info()[1]
 
     if list:
         print "EOD cookie:",rdd.get_eod_cookie()
@@ -347,7 +379,7 @@ if __name__ == "__main__" :
             print "cookie=",k," readback[0]=",readback[0]\
                   ,"readback[end]=",readback[rlen-1]
         if readback[0] != repr(k) or readback[rlen-1] != repr(k) :
-            print "Read error. Should have read",k, " but "\
+            print "Read error. ",  cookie[k], "Should have read",k, " but "\
                   ,"First=",readback[0],"  Last=",readback[rlen-1]
             status = status|2
         rdd.close_file_read()
@@ -355,3 +387,19 @@ if __name__ == "__main__" :
     rdd.unload()
 
     sys.exit(status)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
