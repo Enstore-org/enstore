@@ -29,6 +29,13 @@ def get_alive_interval(csc, name, config={}):
 
 class MonitoredServer:
 
+    def update_alive_interval(self):
+	if not self.config.has_key(enstore_constants.ALIVE_INTERVAL):
+	    self.alive_interval = DEFAULT_ALIVE_INTERVAL
+	else:
+	    self.alive_interval = self.config[enstore_constants.ALIVE_INTERVAL]
+	self.twice_alive_interval = self.alive_interval + self.alive_interval
+
     def __init__(self, config, name, hung_interval=DEFAULT_HUNG_INTERVAL):
 	self.name = name
 	# set this to now because we will check this before any of the servers 
@@ -41,11 +48,7 @@ class MonitoredServer:
 	self.restart_failed = 0
 	self.did_restart_alarm = 0
         self.state = NO_TIMEOUT
-	if not self.config.has_key(enstore_constants.ALIVE_INTERVAL):
-	    self.alive_interval = DEFAULT_ALIVE_INTERVAL
-	else:
-	    self.alive_interval = self.config[enstore_constants.ALIVE_INTERVAL]
-	self.twice_alive_interval = self.alive_interval + self.alive_interval
+	self.update_alive_interval()
 
     def __getattr__(self, attr):
 	if attr[:2]=='__':
@@ -104,6 +107,7 @@ class MonitoredServer:
 
     def update_config(self, new_config):
 	self.config = new_config
+	self.update_alive_interval()
 
     def __repr__(self):
 	import pprint
@@ -113,14 +117,21 @@ class MonitoredServer:
 
 class MonitoredInquisitor(MonitoredServer):
 
+    def update_default_alive_interval(self, config):
+	global DEFAULT_ALIVE_INTERVAL
+	DEFAULT_ALIVE_INTERVAL = config.get('default_alive_interval', 
+					    DEFAULT_ALIVE_INTERVAL)
+
+    def update_config(self, new_config):
+	self.update_default_alive_interval(new_config)
+	MonitoredServer.update_config(self, new_config)
+
     def get_hung_interval(self, server_name):
 	return(self.config.get("hung_interval", {}).get(server_name, 
 							DEFAULT_HUNG_INTERVAL))
 
     def __init__(self, config):
-	global DEFAULT_ALIVE_INTERVAL
-	DEFAULT_ALIVE_INTERVAL = config.get('default_alive_interval', 
-					    DEFAULT_ALIVE_INTERVAL)
+	self.update_default_alive_interval(config)
 	MonitoredServer.__init__(self, config, enstore_constants.INQUISITOR)
 
 

@@ -70,6 +70,7 @@ class EventRelay:
 	self.sent_own_alive = 0
 	self.state = enstore_constants.NEVER_ALIVE
 	self.start = time.time()
+	self.name = enstore_constants.EVENT_RELAY
 
     def __repr__(self):
 	import pprint
@@ -478,6 +479,8 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
 	    # nothing back.  mark it as dead
 	    self.mark_event_relay(DEAD)
 	    self.event_relay.dead()
+	    Trace.alarm(e_errors.ERROR, e_errors.TIMEDOUT, {'server' : self.event_relay.name,
+							    'host' : self.erc.host })
 
 	# whoops have not seen anything for awhile, try to send ourselves our own 
 	# alive, if this does not work, then the event relay process is not running
