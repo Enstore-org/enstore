@@ -15,7 +15,6 @@ import fcntl, FCNTL
 
 # enstore imports
 import callback
-#import interface
 import option
 import hostaddr
 import socket_ext
@@ -448,28 +447,6 @@ class MonitorServerClient(generic_client.GenericClient):
             print x
         return x
 
-"""
-class MonitorServerClientInterface(generic_client.GenericClientInterface):
-
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.summary = 0
-        self.html_gen_host = None
-        self.name = MY_SERVER
-        self.alive_rcv_timeout = 10
-        self.alive_retries = 3
-        self.hostip = ""
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.help_options() +  self.alive_options() +\
-                   ["summary", "html-gen-host=", "hostip="]
-"""
 
 class MonitorServerClientInterface(generic_client.GenericClientInterface):
 

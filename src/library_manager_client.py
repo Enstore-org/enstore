@@ -12,7 +12,6 @@ import select
 #enstore imports
 import callback
 import hostaddr
-#import interface
 import option
 import generic_client
 import udp_client
@@ -218,76 +217,6 @@ class LibraryManagerClient(generic_client.GenericClient) :
     def storage_groups(self):
         return self.send({"work":"storage_groups"})
         
-"""
-class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
-    def __init__(self, flag=1, opts=[]) :
-        # this flag if 1, means do everything, if 0, do no option parsing
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.name = ""
-        self.get_work = 0
-        self.get_work_sorted = 0
-        self.alive_retries = 0
-        self.alive_rcv_timeout = 0
-        self.get_susp_vols = 0
-        self.get_susp_vols = 0
-        self.delete_work = 0
-        self.priority = -1
-        self.get_queue = None
-        self.start_draining = 0
-        self.stop_draining = 0
-        self.status = 0
-        self.vols = 0
-        self.storage_groups = 0
-        self.rm_suspect_vol = 0
-        self.rm_active_vol = 0
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "get-work", "get-work-sorted", "get-suspect-vols",
-                "delete-work=","priority=",
-                "get-queue=",
-                "start-draining=", "stop-draining", "status", "vols",
-                "storage-groups", "rm-suspect-vol=","rm-active-vol="]
-
-    # tell help that we need a library manager specified on the command line
-    def parameters(self):
-        return "library"
-
-    # parse the options like normal but make sure we have a library manager
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        # bomb out if we don't have a library
-        if len(self.args) < 1:
-            self.missing_parameter(self.parameters())
-            self.print_help()
-            sys.exit(1)
-        else:
-            #If the user opted not to add the ".mover" to the end of the
-            # server, then it should be concatenated.
-            try:
-                if self.args[0][-16:] != ".library_manager":
-                    self.name = self.args[0] + ".library_manager"
-                else:
-                    self.name = self.args[0]
-            except IndexError:
-                #The string does not contain enough characters to end in
-                # ".library_manager".  So, it must be added.
-                self.name = self.args[0] + ".library_manager"
-            
-    # print delete _work arguments
-    def print_delete_work_args(self):
-        print "   delete arguments: library"
-
-    # print priority arguments
-    def print_priority_args(self):
-        print "   priority arguments: library work_id"
-"""
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, args=sys.argv, user_mode=1) :

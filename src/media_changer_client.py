@@ -17,7 +17,6 @@ import time
 
 #enstore imports
 import udp_client
-#import interface
 import option
 import generic_client
 import Trace
@@ -117,114 +116,7 @@ class MediaChangerClient(generic_client.GenericClient):
         ticket = {'work'           : 'getwork'
                  }
         return self.send(ticket)
-"""
-class MediaChangerClientInterface(generic_client.GenericClientInterface):
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-        self.media_changer = ""
-        self.get_work=0
-        self.max_work=-1
-        self.volume = 0
-        self._import = 0
-        self._export = 0
-        self.mount = 0
-        self.dismount = 0
-        self.viewattrib = 0
-        self.drive = 0
-        self.show = 0
-        generic_client.GenericClientInterface.__init__(self)
 
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "max-work=","get-work","import","show",
-                "export","mount","dismount"]
-    #  define our specific help
-    def parameters(self):
-        return "media_changer"
-
-    # parse the options like normal but make sure we have other args
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-
-        if self.args != []:
-            #If the user opted not to add the ".media_changer" to the end of
-            # the server, then it should be concatenated.
-            try:
-                if self.args[0][-14:] != ".media_changer":
-                    name = self.args[0] + ".media_changer"
-                else:
-                    name = self.args[0]
-            except IndexError:
-                #The string does not contain enough characters to end in
-                # ".media_changer".  So, it must be added.
-                name = self.args[0] + ".media_changer"
-
-        if self._import:
-            if len(self.args) < 2:
-                self.missing_parameter("--import media_changer insertNewLib")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.media_changer = name  #self.args[0]
-                self.insertNewLib = self.args[1]
-                self.ioarea = []
-                if len(self.args) > 2:
-                    for pos in range(2,len(self.args)):
-                        self.ioarea.append(self.args[pos])
-        elif self._export:
-            if len(self.args) < 3:
-                self.missing_parameter("--export media_changer media_type volumeList")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.media_changer = name  #self.args[0]
-                self.media_type = self.args[1]
-                self.volumeList = []
-                for pos in range(2,len(self.args)):
-                    self.volumeList.append(self.args[pos])
-        elif self.mount:
-            if len(self.args) < 3:
-                self.missing_parameter("--mount media_changer external_label drive")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.media_changer = name  #self.args[0]
-                self.volume=self.args[1]
-                self.drive = self.args[2]
-        elif self.dismount:
-            if len(self.args) < 3:
-                self.missing_parameter("--dismount media_changer external_lable drive")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.media_changer = name  #self.args[0]
-                self.volume=self.args[1]
-                self.drive = self.args[2]
-        elif self.show:
-            self.media_changer = name  #self.args[0]
-        else:
-            if len(self.args) < 1 :
-                self.missing_parameter("media_changer")
-                self.print_help()
-                sys.exit(1)
-            else:
-                self.media_changer = name  #self.args[0]
-
-    # print out our extended help
-    def print_help(self):
-        interface.Interface.print_help(self)
-        #print "        --max-work=N        Max simultaneous operations allowed (may be 0)"
-        #print "        --get-work          List operations in progress"
-        #print "        --import insertNewLib [IOarea]"
-        #print "        --export media_type volume1 [volume2 ...]"
-"""
 
 class MediaChangerClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):

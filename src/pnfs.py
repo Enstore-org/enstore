@@ -24,7 +24,6 @@ try:
     import Devcodes # this is a compiled enstore module
 except ImportError:
     Trace.log(e_errors.INFO, "Devcodes unavailable")
-#import interface
 import option
 import enstore_constants
 import hostaddr
@@ -1038,7 +1037,6 @@ class PnfsInterface(option.Interface):
         #self.restore = 0
         #These my be used, they may not.
         #self.duplicate_file = None
-        #interface.Interface.__init__(self)
         option.Interface.__init__(self, args, user_mode)
 
     pnfs_user_options = {

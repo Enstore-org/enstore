@@ -24,7 +24,6 @@ import generic_server
 import event_relay_client
 import monitored_server
 import enstore_constants
-#import interface
 import option
 import Trace
 import udp_client
@@ -2014,33 +2013,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
             
 
-"""
-class LibraryManagerInterface(generic_server.GenericServerInterface):
-
-    def __init__(self):
-        # fill in the defaults for possible options
-        generic_server.GenericServerInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+\
-               ["debug"]
-
-    #  define our specific help
-    def parameters(self):
-        return "library_manager"
-
-    # parse the options like normal but make sure we have a library manager
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        # bomb out if we don't have a library manager
-        if len(self.args) < 1 :
-            self.missing_parameter(self.parameters())
-            self.print_help(),
-            sys.exit(1)
-        else:
-            self.name = self.args[0]
-"""
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):

@@ -20,7 +20,6 @@ def eval(stuff):
 import setpath
 import callback
 import hostaddr
-#import interface
 import option
 import generic_client
 import backup_client
@@ -572,98 +571,7 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'storage_group': sg}
         return self.send(ticket)
 
-"""
-class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-        self.clear = ""
-        self.backup = 0
-        self.vols = 0
-        self.in_state = 0
-        self.next = 0
-        self.vol = ""
-        self.check = ""
-        self.add = ""
-        self.modify = ""
-        self.delete = ""
-        self.restore = ""
-        self.all = 0
-        self.new_library = ""
-        self.read_only = ""
-        self.no_access = ""
-        self.decr_file_count = 0
-        self.rmvol = 0
-        self.vol1ok = 0
-        self.lm_to_clear = ""
-        self.list = None
-        self.ls_active = None
-        self.recycle = None
-        self.export = None
-        self._import = None
-        self.ignore_storage_group = None
-        self.forget_ignored_storage_group = None
-        self.forget_all_ignored_storage_groups = 0
-        self.show_ignored_storage_groups = 0
-        
-        generic_client.GenericClientInterface.__init__(self)
-
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            return self.client_options()+[
-                "clear=", "backup", "vols","vol=","check=","add=",
-                "delete=","new-library=","read-only=",
-                "no-access=", "decr-file-count=",
-                "restore=", "all", "modify=","VOL1OK",
-                "reset-lib=", "list=", "ls-active=", "recycle=",
-                "export=", "import=", "ignore-storage-group=",
-                "clear-ignored-storage-group=",
-                "clear-all-ignored-storage-groups",
-                "list-ignored-storage-groups"]
-
-    # parse the options like normal but make sure we have necessary params
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        if self.next:
-            if len(self.args) < 3:
-                self.print_add_args()
-                sys.exit(1)
-        elif self.add:
-            if len(self.args) < 6:
-                self.print_add_args()
-                sys.exit(1)
-        elif self.new_library:
-            if len(self.args) < 1:
-                self.print_new_library_args()
-                sys.exit(1)
-
-    def print_new_library_args(self):
-        print "   new-library arguments: volume_name"
-
-    def print_add_args(self):
-        print "   add arguments: volume_name library storage_group file_family wrapper"\
-              +" media_type volume_byte_capacity"
-        
-    def print_clear_args(self):
-        print "usage: --clear volume_name"
-        print "       --clear volume_name {system_inhibit|user_inhibit} position(1 or 2)"
-
-    def print_bfid_args(self):
-        print "   usage: --bfid bfid volume"
-        
-    # print out our extended help
-    def print_help(self):
-        interface.Interface.print_help(self)
-        self.print_add_args()
-        self.print_new_library_args()
-        self.print_clear_args()
-"""
 class VolumeClerkClientInterface(generic_client.GenericClientInterface):
 
     def __init__(self, args=sys.argv, user_mode=1):

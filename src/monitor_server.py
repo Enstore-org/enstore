@@ -18,7 +18,6 @@ import errno
 # enstore imports
 import dispatching_worker
 import generic_server
-#import interface
 import option
 import Trace
 import e_errors
@@ -365,13 +364,6 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 
     def valid_dictionaries(self):
         return (self.help_options,)
-
-"""
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+\
-               self.alive_options() + ["html-dir="]
-"""
 
 config = None
 

@@ -35,7 +35,6 @@ import dispatching_worker
 import generic_server
 import monitored_server
 import enstore_constants
-#import interface
 import option
 import Trace
 import traceback
@@ -1496,16 +1495,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
             sys.exit(1)
         else:
             self.name = self.args[0]
-"""
-    # define the command line options that are valid
-    def options(self):
-        return generic_server.GenericServerInterface.options(self)+[
-            "log=","max_work="]
 
-    #  define our specific help
-    def parameters(self):
-        return "media_changer"
-"""
 
 if __name__ == "__main__" :
     Trace.init("MEDCHANGER")

@@ -15,7 +15,6 @@ import pprint
 
 #enstore imports
 import udp_client
-#import interface
 import option
 import generic_client
 import Trace
@@ -48,65 +47,6 @@ class MoverClient(generic_client.GenericClient):
         return self.send({"work" : "device_dump_S",
                           "sendto" : sendto,
                           "notify" : notify}, rcv_timeout, tries)
-"""
-class MoverClientInterface(generic_client.GenericClientInterface):
-    def __init__(self, flag=1, opts=[]):
-        self.do_parse = flag
-        self.restricted_opts = opts
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
-        self.mover = ""
-        self.local_mover = 0
-        self.clean_drive = 0
-        self.enable = 0
-        self.status = 0
-        self.start_draining = 0
-        self.stop_draining = 0
-        self.notify = []
-        self.sendto = []
-        self.dump = 0
-        self.warm_restart = 0
-        generic_client.GenericClientInterface.__init__(self)
-        
-    # define the command line options that are valid
-    def options(self):
-        if self.restricted_opts:
-            return self.restricted_opts
-        else:
-            # start draining needs a parameter because the library manager uses the same
-            # option and it needs a parameter.  the interface is dumb enough not to know
-            # the difference between the mover and the library manager.
-            return self.client_options()+["status", "clean-drive", "offline",
-                                          "down", "start-draining=",
-                                          "stop-draining", "online",
-                                          "up", "sendto=", "notify=",
-                                          "dump", "warm-restart"]
-
-    #  define our specific help
-    def parameters(self):
-        return "mover"
-
-    # parse the options like normal but make sure we have a mover name
-    def parse_options(self):
-        interface.Interface.parse_options(self)
-        # bomb out if we don't have a mover
-        if len(self.args) < 1 :
-            self.missing_parameter(self.parameters())
-            self.print_help()
-            sys.exit(1)
-        else:
-            #If the user opted not to add the ".mover" to the end of the
-            # server, then it should be concatenated.
-            try:
-                if self.args[0][-6:] != ".mover":
-                    self.mover = self.args[0] + ".mover"
-                else:
-                    self.mover = self.args[0]
-            except IndexError:
-                #The string does not contain enough characters to end in
-                # ".mover".  So, it must be added.
-                self.mover = self.args[0] + ".mover"
-"""
 
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
