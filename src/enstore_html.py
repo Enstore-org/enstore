@@ -697,11 +697,18 @@ class EnLmStatusPage(EnBaseHtmlDoc):
 	tr.append(HTMLgen.TD(elem[2]))
 	# only display the last n characters of the file name
 	tr.append(HTMLgen.TD(HTMLgen.Font(elem[1][-70:], color=LIGHTBLUE)))
+	# use the location cookie to find out the file number for a file on tape.  if this
+	# is a disk move, then do not use it
 	file_num = string.split(elem[5], '_')
-	file_num = string.atoi(file_num[-1])
-	tr.append(HTMLgen.TD("(CurPri%s:%s%s%sFile%s:%s%s)"%(NBSP, NBSP, elem[4], 
-							     NBSP, NBSP, NBSP, file_num),
-			     html_escape='OFF'))
+	try:
+	    file_num = string.atoi(file_num[-1])
+	    str = "(CurPri%s:%s%s%sFile%s:%s%s)"%(NBSP, NBSP, elem[4], 
+						  NBSP, NBSP, NBSP, file_num)
+	except ValueError:
+	    # this is a disk move, or the location cookie is wrong.
+	    str = "(CurPri%s:%s%s)"%(NBSP, NBSP, elem[4])
+
+	tr.append(HTMLgen.TD(str, html_escape='OFF'))
         return tr
 
     def write_row(self, elem, print_ff=0):
