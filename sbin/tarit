@@ -70,21 +70,18 @@ dd if=/dev/hda of=$M/partition_table.dd bs=512 count=1
 
 # generate a script excluding files we don't care about.
 # NOTE:  no users files are backed up.
-tar_script=/tmp/tar_script
-rm -f $tar_script
-echo 'nice -n 20 tar -l \
---exclude="/lost+found/*" --exclude=/proc/ --exclude="/tmp/*" --exclude="/var/log/*" \
---exclude="/*\.jon*" --exclude="/*\.fnal\.gov\.startup"  --exclude=BITERROR --exclude=SEL \
---exclude="/var/tmp/*" --exclude="/var/spool/mqueue/*" --exclude=.netscape \ ' >$tar_script
 users=""
 ls -1 /home | while read user; do if [ "$user" != "enstore" ]; then
-   echo "--exclude=\"/home/$user/*\" \\">>$tar_script ;fi; done
-echo "$users  -czf $M/files.tgz  / 2>$M/files.err" >>$tar_script
-echo
+   users="$users --exclude=\'/home/$user/*\'" ; fi; done
+cmd=""
+cmd="nice -n 20 tar -l 
+--exclude='/lost+found/*' --exclude=/proc/ --exclude='/tmp/*' --exclude='/var/log/*' 
+--exclude='/*\.jon*' --exclude='/*\.fnal\.gov\.startup'  --exclude=BITERROR --exclude=SEL 
+--exclude='/var/tmp/*' --exclude='/var/spool/mqueue/*' --exclude=.netscape
+$cmd $users  -czf $M/files.tgz  / 2>$M/files.err"
 echo "`date`: starting tar"
-cat $tar_script
-
-. $tar_script
+echo $cmd
+eval $cmd
 echo "`date`: tar complete"
 ls -alR $M
 
