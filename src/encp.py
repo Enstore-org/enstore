@@ -292,10 +292,11 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
                +"system disabled"+running)
     tinfo["pnfscheck"] = time.time() - t1
     try:
-	(parked_node,parked_name) = p.lastparked
-	print "Last parked on ",parked_node,parked_name
+        (parked_node,parked_name) = p.lastparked
+        print "Last parked on ",parked_node,parked_name
     except:
-	pass
+        print sys.exc_info()[0],sys.exc_info()[1]
+        print p.lastparked
     if list:
         print "  dt:",tinfo["pnfscheck"], "   cum=",time.time()-t0
 
@@ -314,7 +315,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, list, chk_crc) :
                +outfile+" already exists")
     dir,file = os.path.split(outfile)
     if dir == '' :
-	dir = os.getcwd()
+        dir = os.getcwd()
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
