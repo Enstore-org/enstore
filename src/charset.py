@@ -1,6 +1,6 @@
 import string
 
-charset=string.join((string.letters,string.digits,'_','-'),'')
+charset=string.join((string.letters,string.digits,'_','-','/'),'')
 
 def is_in_charset(string):
     #print "charset",charset
