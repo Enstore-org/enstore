@@ -53,14 +53,26 @@ measurements against all nodes of an enstore cluster are sent to a
 designated monitor server, named in the config file, accessed via an
 IP address stored in the configuration item "html_gen_host"
 
+There are three connections opened for this test.
+  ____                                ____
+ |    | --- 1 UDP request ---------> |    |
+ | MC | <-- 2 TCP control socket --- | MS |
+ |____| --- 3 TCP data socket -----> |____|
+
+This mimics the connections where in a real encp:
+1) ecnp to library manager
+2) library manager to encp
+3) encp to mover
+
 """
 
 MY_NAME = "MNTR_SRV"
 
 SEND_TO_SERVER = "send_to_server"
 SEND_FROM_SERVER = "send_from_server"
-SERVER_CLOSED_CONNECTION = "Server closed connection"
-CLIENT_CLOSED_CONNECTION = "Client closed connection"
+
+SERVER_CONNECTION_ERROR = "Server connection error"
+CLIENT_CONNECTION_ERROR = "Client connection error"
 
 class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
@@ -68,6 +80,7 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         self.timeout = 10
 	self.running = 0
 	self.print_id = MY_NAME
+
         print "Monitor Server at %s %s" %(csc[0], csc[1])
         Trace.trace(10,
             "Monitor Server at %s %s" %(csc[0], csc[1]))
@@ -77,31 +90,85 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 
         #If socket.MSG_DONTWAIT isn't there add it, because should be.
         if not hasattr(socket, "MSG_DONTWAIT"): #Python 1.5 test
-            socket.MSG_DONTWAIT = None
             host_type = os.uname()[0]
             if host_type == 'Linux':
                 socket.MSG_DONTWAIT = 64
             elif host_type[:4]=='IRIX':
                 socket.MSG_DONTWAIT = 128
+            else: #No flag value.
+                socket.MSG_DONTWAIT = 0
 
         # always nice to let the user see what she has
         Trace.trace(10, repr(self.__dict__))
         self.page = None
 
-    def simulate_encp_transfer(self, ticket):
-        reply = {'status'     : (None, None),
-                 'block_size' : ticket['block_size'],
-                 'block_count': ticket['block_count']}
+    #This function should only be called from simulate_encp_transfer.
+    #data_sock: already connected tcp socket.
+    #block_size and block_count: the size of the buffer to attempt to move
+    # at a time and the number of them to move.
+    #function: a string with one of two possible values "send" or "recv".
+    # These are for accessing the socket.send() and socket.recv() functions.
+    def _test_encp_transfer(self, data_sock, block_size, block_count,function):
+        bytes_transfered = 0
+        sendstr = "S"*block_size
+        bytes_to_transfer = block_size * block_count
+        t0=time.time() #Grab the current time.
+        t1=time.time() #Reset counter to current time (aka zero).
+
+        #Set args outside of the loop for performance reasons.
+        if function == "send":
+            args = (sendstr, socket.MSG_DONTWAIT)
+            sock_read_list = []
+            sock_write_list = [data_sock]
+        else:  #if read
+            args = (block_size,)
+            sock_read_list = [data_sock]
+            sock_write_list = []
+    
+        while bytes_transfered < bytes_to_transfer:
+            r,w,ex = select.select(sock_read_list, sock_write_list,
+                                   [data_sock], self.timeout)
+            
+            if w or r:
+                #if necessary make the send string the correct (smaller) size.
+                bytes_left = bytes_to_transfer - bytes_transfered
+                if w and bytes_left < block_size:
+                    sendstr = "S"*bytes_left
+                    args = (sendstr, socket.MSG_DONTWAIT)
+                try:
+                    #By handling the similarities of sends and recieves the
+                    # same way, a lot of duplicate code is removed.  
+                    transfer_function = getattr(data_sock, function)
+                    return_value = apply(transfer_function, args)
+                    
+                    #For reads, we only care about the length sent...
+                    if r:
+                        return_value = len(return_value)
+                    #Get the new number of bytes sent.
+                    bytes_transfered = bytes_transfered + return_value
+
+                    t1 = time.time() #t1 is now current time
+
+                except socket.error, detail:
+                    data_sock.close()
+                    raise CLIENT_CONNECTION_ERROR, detail[1]
+
+            elif time.time() - t1 > self.timeout:
+                data_sock.close()
+                raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
+                
+        return time.time() - t0
+
+
+    #Open up the server side of the control socket.
+    #client_addr: The (host, port) of the node where the client is running.
+    #mover_addr: In the actual encp, the mover node is not necessarily the
+    # same node that the library manager runs on.  For this test, they are
+    # the same machine.
+    def _open_cntl_socket(self, client_addr, mover_addr):
+        #Create the return ticket to tell the client what addr to 
+        return_ticket = {'mover' :{'callback_addr': mover_addr} }
         
-        #simulate mover connecting on callback and a read_from_HSM transfer
-        data_ip = ticket['remote_interface'] ## XXX this is a silly name
-                                             ## because it's not "remote"
-                                             ## on this end.  Sigh...
-
-        localhost, localport, listen_sock = callback.get_callback(ip=data_ip)
-        listen_sock.listen(1)
-        ticket['mover']={'callback_addr': (localhost,localport)}
-
         #Create the TCP socket, remeber the current settings (to reset them
         # back later) and set the new file control flags.
         sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,109 +177,125 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
 
         for retry in xrange(self.timeout):
             try:
-                sock.connect(ticket['callback_addr'])
-                if not sock:
-                    print "unable to open connection to client"
-                    raise CLIENT_CLOSED_CONNECTION
+                sock.connect(client_addr)
                 break #Success, so get out of the loop.
             except socket.error, detail:
                 #We have seen that on IRIX, when the connection succeds, we
                 # get an ISCONN error.
                 if hasattr(errno, 'ISCONN') and detail[0] == errno.ISCONN:
                     break
-                #Rename this error to be handled the same as the others.
-                elif detail[0] == errno.ECONNREFUSED:
-                    print "connection refused"
-                    return
-                    raise CLIENT_CLOSED_CONNECTION, detail[0]
+                elif detail[0] == errno.EINPROGRESS:
+                    pass #Keep trying.
+                #A real or fatal error has occured.  Handle accordingly.
                 else:
-                    pass #somethin...something...something...
-                time.sleep(1)
+                    raise CLIENT_CONNECTION_ERROR, detail[1]
+
+                time.sleep(1) #Wait a sec, so each pass is a second of timeout.
+                
         else: #If we did not break out of the for loop, flag the error.
-            print "major problem"
-            raise SERVER_CLOSED_CONNECTION
+            raise SERVER_CLOSED_CONNECTION, os.srterror(errno.ETIMEDOUT)
 
         #Success on the connection!  Restore flag values.
         fcntl.fcntl(sock.fileno(), FCNTL.F_SETFL, flags)
 
-        #All this connect() timeout code, when this is all that it is used for.
-        callback.write_tcp_obj(sock,ticket)
+        callback.write_tcp_obj(sock, return_ticket)
         sock.close()
+
+    #Return the socket to use for the encp rate tests.
+    #mover_addr: In the actual encp, the mover node is not necessarily the
+    # same node that the library manager runs on.  For this test, they are
+    # the same machine.
+    #listen_sock: The socket to wait for the client to connect to creating the
+    # data socket.
+    def _open_data_socket(self, mover_addr, listen_sock):
+        #reply_ticket = {'status'     : (None, None)}
+        
+        listen_sock.listen(1)
 
         #wait for a responce
         r,w,ex = select.select([listen_sock], [], [listen_sock],
                                self.timeout)
         if not r :
-            print "passive listen did not hear back from monitor client via TCP"
-            reply['status'] = ('ETIMEDOUT', "failed to simulate encp")
-            self.reply_to_caller(reply)
             listen_sock.close()
-            return
+            raise CLIENT_CONNECTION_ERROR, os.strerror(errno.ETIMEDOUT)
 
+        #Wait for the client to connect creating the data socket used for the
+        # encp rate tests.
         data_sock, address = listen_sock.accept()
+        listen_sock.close()
 
-        interface=hostaddr.interface_name(data_ip)
+        #For machines with multiple network interfaces, pick the best one.
+        interface=hostaddr.interface_name(mover_addr[0])
         if interface:
             status=socket_ext.bindtodev(data_sock.fileno(),interface)
             if status:
-                Trace.log(e_errors.ERROR, "bindtodev(%s): %s"%(interface,os.strerror(status)))
+                Trace.log(e_errors.ERROR, "bindtodev(%s): %s" %
+                          (interface,os.strerror(status)))
         
-        listen_sock.close()
+        return data_sock
 
-        #Determine the amount of bytes to transfer for the rate test.
-        bytes_to_transfer = ticket['block_size']*ticket['block_count']
+    #This is the function mentioned in the 'work' section of the ticket sent
+    # from the client.  
+    def simulate_encp_transfer(self, ticket):
+        reply = {'status'     : (None, None),
+                 'block_size' : ticket['block_size'],
+                 'block_count': ticket['block_count']}
+
+        #A little easier to read now.
+        data_ip = ticket['server_addr'][0]
+        client_addr = ticket['client_addr']
+
+        #Get the addr to tell the client to call back to and get the listening
+        # socket to listen with.
+        localhost, localport, listen_sock = callback.get_callback(ip=data_ip)
+        #Instead of using an actual mover, this is the addr that this server
+        # must tell the client it will be listening (via listen_sock) on.
+        test_mover_addr = (localhost, localport)
+        
+        #Simulate the opening and initial handshake of the control socket.
+        try:
+            self._open_cntl_socket(client_addr, test_mover_addr)
+            data_sock = self._open_data_socket(test_mover_addr, listen_sock)
+
+            if not data_sock:
+                raise CLIENT_CONNECTION_ERROR, "no connection established"
+            
+        except CLIENT_CONNECTION_ERROR, detail:
+            print CLIENT_CONNECTION_ERROR, detail
+            return
+        except SERVER_CONNECTION_ERROR, detail:
+            print SERVER_CONNECTION_ERROR, detail
+            return
+        if not data_sock:
+            return
 
         #Now that all of the socket connections have been opened, let the
         # transfers begin.
-        if ticket['transfer'] == SEND_FROM_SERVER:
-            bytes_sent = 0
-            sendstr = "S"*ticket['block_size']
-            while bytes_sent < bytes_to_transfer:
-                r,w,ex = select.select([], [data_sock], [data_sock],
-                               self.timeout)
-                if w:
-                    bytes_left = bytes_to_transfer - bytes_sent
-                    if bytes_left < ticket['block_size']:
-                        sendstr = "S"*bytes_left
-                    try:
-                        bytes_sent = bytes_sent + data_sock.send(sendstr,
-                                                         socket.MSG_DONTWAIT)
-                    except socket.error, detail:
-                        reply['status'] = (CLIENT_CLOSED_CONNECTION, detail[1])
-                        self.reply_to_caller(reply)
-                        data_sock.close()
-                        print "Timing out after send."
-                        return
+        try:
+            if ticket['transfer'] == SEND_FROM_SERVER:
+                self._test_encp_transfer(data_sock, ticket['block_size'],
+                                         ticket['block_count'], "send")
 
-                
-            print "Data sent", bytes_sent
-            reply['elapsed'] = -1
+                reply['elapsed'] = -1
 
-        elif ticket['transfer'] == SEND_TO_SERVER:
-            bytes_received = 0
-            t0=time.time() #Grab the current time.
-            print "Blocking on read select for", self.timeout, "seconds"
-            while bytes_received < bytes_to_transfer:
-                r,w,ex = select.select([data_sock], [], [data_sock],
-                               self.timeout)
-                if r:
-                    try:
-                        data = data_sock.recv(ticket['block_size'])
-                        bytes_received=bytes_received+len(data)
-                    except socket.error, detail:
-                        reply['status'] = (CLIENT_CLOSED_CONNECTION, detail[1])
-                        self.reply_to_caller(reply)
-                        data_sock.close()
-                        print "Timming out after recv."
-                        return
-                
-            print "Data recieved", bytes_received
-            reply['elapsed']=time.time()-t0
-
+            elif ticket['transfer'] == SEND_TO_SERVER:
+                reply['elapsed'] = self._test_encp_transfer(
+                    data_sock,ticket['block_size'], ticket['block_count'],
+                    "recv")
+        except CLIENT_CONNECTION_ERROR, detail:
+            print CLIENT_CONNECTION_ERROR, detail
+            return
+        except SERVER_CONNECTION_ERROR, detail:
+            print SERVER_CONNECTION_ERROR, detail
+            return
+        if not data_sock:
+            return
+            
         reply['status'] = ('ok', None)
         self.reply_to_caller(reply)
         data_sock.close()
-        
+
+    
     def _become_html_gen_host(self, ticket):
         #setup for HTML output if we are so stimulated by a client
         #self.page is None if we have not setup.
@@ -223,6 +306,10 @@ class MonitorServer(dispatching_worker.DispatchingWorker, generic_server.Generic
         else:
             pass #have already set up
 
+    #After a client has executed both tests (read and write) it sends a ticket
+    # with two keys.  'work' is the first and is set to 'recieve_measurement.
+    # The other is 'measurement' and holds a 5-tuple.  See
+    # _become_html_gen_host for more info on the 5 tuple.
     def recieve_measurement(self, ticket):
         self.reply_to_caller({"status" : ('ok', "")})
         self._become_html_gen_host(ticket) #setup for making html
@@ -251,18 +338,14 @@ class MonitorServerInterface(generic_server.GenericServerInterface):
 config = None
 
 if __name__ == "__main__":
-
- 
-    Trace.init(MY_NAME)
-    Trace.trace( 6, "called args="+repr(sys.argv) )
-    import sys
-
     intf = MonitorServerInterface()
 
     ms = MonitorServer(('', enstore_constants.MONITOR_PORT))
 
+    #This is a server and therfore must handle things like --alive requests.
     ms.handle_generic_commands(intf)
 
+    #Main loop.
     while 1:
         try:
             Trace.trace(6,"Monitor Server (re)starting")
