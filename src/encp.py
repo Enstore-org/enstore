@@ -9,6 +9,7 @@ import grp
 import pnfs
 import callback
 import binascii
+import regsub
 import log_client
 from configuration_client import configuration_client
 from udp_client import UDPClient, TRANSFER_MAX
@@ -31,9 +32,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     t1 = time.time()
     if list:
         print "Checking",unixfile
-    dir,file = os.path.split(unixfile)
-    if dir == '' :
-        dir = os.getcwd()
+    (machine, fullname, dir) = fullpath(unixfile)
     in_file = open(unixfile, "r")
     statinfo = os.stat(unixfile)
     fsize = statinfo[stat.ST_SIZE]
@@ -88,8 +87,7 @@ def write_to_hsm(unixfile, pnfsfile, u, csc, logc, list, chk_crc) :
     uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
     uinfo['machine'] = os.uname()
-    uinfo['fullname'] = (uinfo['machine'][1],dir+"/"+file)
-    #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
+    uinfo['fullname'] = (machine,fullname)
 
     tinfo["localinfo"] = time.time() - t1
     if list:
@@ -327,9 +325,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
     if itsthere:
         jraise(errno.errorcode[errno.EEXIST],"encp.write_to_hsm: "\
                +outfile+" already exists")
-    dir,file = os.path.split(outfile)
-    if dir == '' :
-        dir = os.getcwd()
+    (machine, fullname, dir) = fullpath(outfile)
     command="if test -w "+dir+"; then echo ok; else echo no; fi"
     writable = os.popen(command,'r').readlines()
     if "ok\012" != writable[0] :
@@ -361,8 +357,7 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
     uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     uinfo['uname'] = pwd.getpwuid(uinfo['uid'])[0]
     uinfo['machine'] = os.uname()
-    uinfo['fullname'] = (uinfo['machine'][1],dir+"/"+file)
-    #uinfo['node'] = socket.gethostbyaddr(socket.gethostname())
+    uinfo['fullname'] = (machine,fullname)
 
     tinfo["localinfo"] = time.time() - t1
     if list:
@@ -533,10 +528,25 @@ def read_from_hsm(pnfsfile, outfile, u, csc, logc, list, chk_crc) :
 
 
 ##############################################################################
+
 def jraise(errcode,errmsg,exit_code=1) :
     print "Fatal error:",errcode, errmsg
     #raise errcode,errmsg
     sys.exit(exit_code)
+
+##############################################################################
+
+def fullpath(filename):
+    machine = socket.gethostbyaddr(socket.gethostname())[0]
+    dir, file = os.path.split(filename)
+    if dir == '' :
+        dir = os.getcwd()
+    command="cd "+dir+";pwd"
+    try:
+        dir = regsub.sub("\012","",os.popen(command,'r').readlines()[0])
+        return (machine, dir+"/"+file, dir)
+    except:
+        return (machine, filename, dir)
 
 ##############################################################################
 

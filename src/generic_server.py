@@ -12,6 +12,9 @@ class GenericServer:
     def set_csc(self, configuration_client) :
         self.csc = configuration_client
 
+    # we need to know where the logger is - keep track of it
+    def set_csc(self, log_client) :
+        self.logc = log_client
 
     # this overrides the server_bind in TCPServer for the hsm system
     def server_bind(self) :
