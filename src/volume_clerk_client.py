@@ -159,8 +159,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
         # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. It is dicey to time out, as it
-        # is probably legitimate to wait for hours....
+        # call-back to this very same port. 
         while 1:
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_obj(control_socket)
@@ -241,8 +240,7 @@ class VolumeClerkClient(generic_client.GenericClient,
         # We have placed our request in the system and now we have to wait.
         # All we  need to do is wait for the system to call us back,
         # and make sure that is it calling _us_ back, and not some sort of old
-        # call-back to this very same port. It is dicey to time out, as it
-        # is probably legitimate to wait for hours....
+        # call-back to this very same port. 
         while 1:
             control_socket, address = listen_socket.accept()
             new_ticket = callback.read_tcp_obj(control_socket)
