@@ -18,6 +18,7 @@ import socket
 import pdb
 import string
 import traceback
+import select
 
 # enstore modules
 import Trace_lite; Trace=Trace_lite
@@ -318,7 +319,9 @@ def write_to_hsm(input_files, output, output_file_family='',
 		    # the user key takes #precedence over the 
 		    # pnfs key
                     wrapper[key] = pinfo[i][key]
-
+            #file permissions from PNFS are junk, replace them
+            #with the real mode
+            wrapper['mode']=os.stat(inputlist[i])[stat.ST_MODE]
             # if old ticket exists, that means we are retrying
             #    then just bump priority and change unique id
             try:
@@ -390,8 +393,6 @@ def write_to_hsm(input_files, output, output_file_family='',
 	    # sort of old call-back to this very same port. 
 	    # It is dicey to time out, as it is probably 
 	    # legitimate to wait for hours....
-
-            #sys.exit(1)
 
             while 1 :
                 Trace.trace(10,"write_to_hsm listening for callback")
