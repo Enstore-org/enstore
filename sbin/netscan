@@ -227,6 +227,7 @@ ALLOW_SRV2="$ALLOW_BASE
 # Extra for d0ensrv4 - portmapper is needed for adic calls
 ALLOW_DSRV4="$ALLOW_BASE
        LISTEN,portmap,:sunrpc,TCP,x
+       LISTEN,dasadmin,:,TCP,x
 "
 
 
