@@ -36,14 +36,10 @@ UNKNOWN = "???"
 TAG = 'tag'
 
 MEDIA_CHANGERS = "Media Changers"
-MEDIA_CHANGER = "media_changer"
 SERVERS = "Servers"
 MOVERS = "Movers"
 THE_INQUISITOR = "The Inquisitor"
 THE_ALARM_SERVER = "The Alarm Server"
-
-GENERIC_SERVERS = ["alarm_server", "config_server", "file_clerk",
-		   "inquisitor", "log_server", "volume_clerk"]
 
 PLOT_INFO = [[enstore_constants.MPH_FILE, "Mounts/Hour"],
 	     [enstore_constants.MPD_FILE, "Cumulative Mounts"],
@@ -79,38 +75,6 @@ def table_spacer(table):
     table.append(empty_row())
     table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.HR())))
     table.append(empty_row())
-
-def is_this(server, suffix):
-    stype = string.split(server, ".")
-    if stype[len(stype)-1] == suffix:
-	return 1
-    return 0
-
-# return true if the passed server name ends in ".library_manager"
-def is_library_manager(server):
-    return is_this(server, "library_manager")
-
-# return true if the passed server name ends in ".mover"
-def is_mover(server):
-    return is_this(server, "mover")
-
-# return true if the passed server name ends in ".media_changer"
-def is_media_changer(server):
-    return is_this(server, MEDIA_CHANGER)
-
-# return true if the passed server name is one of the following -
-#   file_clerk, volume_clerk, alarm_server, inquisitor, log_server, config
-#   server
-def is_generic_server(server):
-    if server in GENERIC_SERVERS:
-	return 1
-    return 0
-
-# return try if this server is the blocksizes
-def is_blocksizes(server):
-    if server == enstore_constants.BLOCKSIZES:
-	return 1
-    return 0
 
 def check_row(num_tds_so_far, tr, table):
     if num_tds_so_far == MAX_SROW_TDS:
@@ -284,16 +248,16 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	got_movers = 0
 	shortcut_lm = []
 	for server in self.servers:
-	    if is_library_manager(server):
+	    if enstore_functions.is_library_manager(server):
 		shortcut_lm.append(server)
-	    elif not got_media_changers and is_media_changer(server):
+	    elif not got_media_changers and enstore_functions.is_media_changer(server):
 		got_media_changers = 1
-	    elif not got_generic_servers and is_generic_server(server):
+	    elif not got_generic_servers and enstore_functions.is_generic_server(server):
 		got_generic_servers = 1
-	    elif not got_movers and is_mover(server):
+	    elif not got_movers and enstore_functions.is_mover(server):
                 first_mover = server
 		got_movers = 1
-	    elif is_blocksizes(server):
+	    elif enstore_functions.is_blocksizes(server):
 		got_blocksizes = 1
 	# now we have the list of table data elements.  now create the table.
 	caption = HTMLgen.Caption(HTMLgen.Bold(HTMLgen.Font("Shortcuts", 
@@ -315,7 +279,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
 	# now finish up with the media changers, movers and blocksizes
 	if got_media_changers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
-						  '#%s'%(MEDIA_CHANGER,),
+						  '#%s'%(enstore_constants.MEDIA_CHANGER,),
 						  MEDIA_CHANGERS)
 	if got_movers:
 	    tr, num_tds_so_far = add_to_scut_row(num_tds_so_far, tr, table,
@@ -355,7 +319,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # add in the information for the generic servers. these only have alive
     # information
     def generic_server_rows(self, table):
-	for server in GENERIC_SERVERS:
+	for server in enstore_constants.GENERIC_SERVERS:
 	    if self.data_dict[server]:
 		# output its information
 		table.append(self.alive_row(server, 
@@ -683,7 +647,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     # output all of the library manager rows and their associated movers
     def library_manager_rows(self, table, skeys):
 	for server in skeys:
-	    if is_library_manager(server):
+	    if enstore_functions.is_library_manager(server):
 		# this is a library manager. output all of its info and then
 		# info for each of its movers
 		self.lm_rows(server, table)
@@ -692,10 +656,11 @@ class EnSysStatusPage(EnBaseHtmlDoc):
     def media_changer_rows(self, table, skeys):
 	first_time = 1
 	for server in skeys:
-	    if is_media_changer(server):
+	    if enstore_functions.is_media_changer(server):
 		# this is a media changer. output its alive info
 		if first_time:
-		    table.append(self.alive_row(HTMLgen.Name(MEDIA_CHANGER, server), 
+		    table.append(self.alive_row(HTMLgen.Name(enstore_constants.MEDIA_CHANGER,
+                                                             server), 
 				self.data_dict[server][enstore_constants.STATUS]))
                     first_time = 0
 		else:
@@ -707,7 +672,7 @@ class EnSysStatusPage(EnBaseHtmlDoc):
         first_time = 1
 	for server in skeys:
 	    # look for movers
-	    if is_mover(server):
+	    if enstore_functions.is_mover(server):
 		# this is a mover. output its info
 		self.mv_row(server, table)
 
@@ -947,7 +912,10 @@ class EnMiscPage(EnBaseHtmlDoc):
 	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Font(HTMLgen.Bold("Directories Created For Currently Running Miscellaneous Processes"), size="+4"))))
 	table.append(empty_row())
 	home = "%s/MISC"%(os.environ['HOME'],)
-	dirs = os.listdir(home)
+        try:
+            dirs = os.listdir(home)
+        except OSError:
+            dirs = []
 	tr = HTMLgen.TR(self.make_th("Directory"))
 	tr.append(self.make_th("Creation Date"))
 	dirs_table = HTMLgen.TableLite(tr, border=1, cellspacing=5, cellpadding=CELLP,
@@ -1362,6 +1330,7 @@ class EnSaagPage(EnBaseHtmlDoc):
 
     greenball = HTMLgen.Image("greenball.gif", width=17, height=17, border=0)
     redball = HTMLgen.Image("redball.gif", width=17, height=17, border=0)
+    star = HTMLgen.Image("star.gif", width=17, height=17, border=0)
     yellowball = HTMLgen.Image("yelball.gif", width=17, height=17, border=0)
     checkmark = HTMLgen.Image("checkmark.gif", width=17, height=17, border=0)
 
@@ -1378,6 +1347,8 @@ class EnSaagPage(EnBaseHtmlDoc):
 	    td = HTMLgen.TD(self.yellowball, align=direction)
 	elif val == enstore_constants.UP:
 	    td = HTMLgen.TD(self.greenball, align=direction)
+	elif val == enstore_constants.SEEN_DOWN:
+	    td = HTMLgen.TD(self.star, align=direction)
 	else:
 	    td = HTMLgen.TD(self.redball, align=direction)
 	return td
@@ -1460,11 +1431,11 @@ class EnSaagPage(EnBaseHtmlDoc):
 	gs = {}
 	for key in keys:
 	    if not key in ignore:
-		if is_library_manager(key):
+		if enstore_functions.is_library_manager(key):
 		    lm[key] = dict[key]
-		elif is_mover(key):
+		elif enstore_functions.is_mover(key):
 		    mv[key] = dict[key]
-		elif is_media_changer(key):
+		elif enstore_functions.is_media_changer(key):
 		    mc[key] = dict[key]
 		else:
 		    gs[key] = dict[key]
@@ -1540,12 +1511,15 @@ class EnSaagPage(EnBaseHtmlDoc):
 	entable.append(tr)
 	tr = HTMLgen.TR()
 	for (ball, txt) in [(self.greenball, "All systems are operational"),
-			    (self.checkmark, "Scheduled outage")]:
+			    (self.star, "Situation under investigation")]:
 	    tr.append(HTMLgen.TD(ball))
 	    tr.append(HTMLgen.TD(HTMLgen.Font(txt, size="-1")))
 	entable.append(tr)
-	entable.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Strike("Known Down"), colspan=4, 
-					     align="CENTER")))
+	tr = HTMLgen.TR()
+	tr.append(HTMLgen.TD(self.checkmark))
+	tr.append(HTMLgen.TD(HTMLgen.Font("Scheduled outage", size="-1")))
+	tr.append(HTMLgen.TD(HTMLgen.Strike("Known Down"), colspan=2, align="CENTER"))
+	entable.append(tr)
 	return entable
 
     def make_node_server_table(self, dict):
