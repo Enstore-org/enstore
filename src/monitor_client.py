@@ -468,7 +468,7 @@ class Vetos:
         # and the value field being a reason why it is in the veto list
 
         # don't send to yourself
-#        vetos[socket.gethostname()] = 'thishost'
+        vetos[socket.gethostname()] = 'thishost'
 
         self.veto_item_dict = {}
         for v in vetos.keys():
