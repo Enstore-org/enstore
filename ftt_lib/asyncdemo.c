@@ -3,8 +3,6 @@ static char rcsid[] = "#(@)$Id$";
 #include <unistd.h>
 #include <ftt_private.h>
 
-/* this comment added to check cvs repository */
-
 void
 demo_with_delay(char *dev, int n) {
 	ftt_descriptor d;
