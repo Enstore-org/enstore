@@ -14,6 +14,7 @@ import stat
 import signal
 import threading
 import socket 
+import re
 
 # enstore imports
 import setpath
@@ -29,6 +30,22 @@ import enstore_functions
 import enstore_constants
 import www_server
 import safe_dict
+
+server_map = {"log_server" : enstore_constants.LOGS,
+	      "alarm_server" : enstore_constants.ALARMS,
+	      "configuration" : enstore_constants.CONFIGS,
+	      "file_clerk" : enstore_constants.FILEC,
+	      "inquisitor" : enstore_constants.INQ,
+	      "volume_clerk" : enstore_constants.VOLC,
+	      "enstore" : enstore_constants.ENSTORE,
+	      "network" : enstore_constants.NETWORK,
+	      "media" : ""}
+server_keys = server_map.keys()
+
+UP = 1
+DOWN = 2
+OUTAGE = 3
+NOOUTAGE = 4
 
 MY_NAME = "inquisitor"
 LOGHTMLFILE_NAME = "enstore_logs.html"
@@ -384,17 +401,17 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     def make_config_html_file(self):
         d = {}
         # get the config dictionary
-        d=self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
+        d = self.csc.dump(self.alive_rcv_timeout, self.alive_retries)
         if enstore_functions.is_timedout(d):
             Trace.trace(enstore_constants.INQERRORDBG,
                         "make_config_html_file - ERROR, getting config dict timed out")
             return
         # we may not have gotten the dict so check for it first before writing it.
-        new_config = d.get('dump', {})
-        self.update_config_page(new_config)
+        self.config_d = d.get('dump', {})
+        self.update_config_page(self.config_d)
 
         # now update all of the internal information based on the new config info.
-        self.update_variables_from_config(new_config)
+        self.update_variables_from_config(self.config_d)
 
     def handle_lmc_error(self, lib_man, time, state):
         status = enstore_functions.get_status(state)
@@ -768,12 +785,106 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.erc.subscribe()
         self.send_reply(ticket)
         Trace.trace(enstore_constants.INQWORKDBG, "event relay subscribe work from user")
+    # the following routines manage the file enstore_outage.py in the web area
+    def find_server_match(self, text):
+	total_matches = 0
+	matched_server = None
+	pattern = "^%s"%(text,)
+	for server in server_keys:
+	    match = re.match(pattern, server, re.I)
+	    if not match is None:
+		total_matches = total_matches + 1
+		matched_server = server
+	return (total_matches, matched_server)
+
+    def is_valid(self, server):
+	# look and see if this server is listed in the config file
+	if self.config_d.has_key(server):
+	    # this is a valid server
+	    return 1
+	else:
+	    # this server was not listed in the config file
+	    return 0
+
+    def update_schedule_file(self, ticket, func):
+	ticket["status"] = (e_errors.OK, None)
+	ticket["bad_server"] = []
+	server_l = string.split(ticket["servers"], ',')
+        sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+	for key in server_l:
+	    # map the entered name to the name in the outage dictionary
+	    num, server = self.find_server_match(key)
+	    if num == 1:
+		# we found a match
+		if func == UP:
+		    out_key = server_map[server]
+		    if offline_d.has_key(out_key):
+			del offline_d[out_key]
+		elif func == DOWN:
+		    offline_d[server_map[server]] = ticket["time"]
+		elif func == OUTAGE:
+		    outage_d[server_map[server]] = ticket["time"]
+		elif func == NOOUTAGE:
+		    out_key = server_map[server]
+		    if outage_d.has_key(out_key):
+			del outage_d[out_key]
+	    elif self.is_valid(key):
+		if func == UP:
+		    if offline_d.has_key(key):
+			del offline_d[key]
+		elif func == DOWN:
+		    offline_d[key] = ticket["time"]
+		elif func == OUTAGE:
+		    outage_d[key] = ticket["time"]
+		elif func == NOOUTAGE:
+		    if outage_d.has_key(key):
+			del outage_d[key]
+	    else:
+		ticket["status"] = (e_errors.DOESNOTEXIST, None)
+		ticket["bad_server"].append(key)
+	if not sfile.write(outage_d, offline_d, seen_down_d):
+	    ticket["status"] = (e_errors.IOERROR, None)
+	    Trace.log(e_errors.ERROR, "Could not write to file %s/%s"%(self.html_dir, 
+						      enstore_constants.OUTAGEFILE))
+	sfile.close()
+
+    def up(self, ticket):
+	self.update_schedule_file(ticket, UP)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, "mark server up work from user")
+
+    def down(self, ticket):
+	self.update_schedule_file(ticket, DOWN)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, "mark server down work from user")
+
+    def outage(self, ticket):
+	self.update_schedule_file(ticket, OUTAGE)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, "mark server outage work from user")
+
+    def nooutage(self, ticket):
+	self.update_schedule_file(ticket, NOOUTAGE)
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, 
+		    "mark server nooutage work from user")
+
+    def show(self, ticket):
+	ticket["status"] = (e_errors.OK, None)
+        sfile, outage_d, offline_d, seen_down_d = enstore_functions.read_schedule_file(self.html_dir)
+	ticket["outage"] = outage_d
+	ticket["offline"] = offline_d
+	ticket["seen_down"] = seen_down_d
+	sfile.close()
+        self.send_reply(ticket)
+        Trace.trace(enstore_constants.INQWORKDBG, "show up/down status work from user")
 
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
 
     def __init__(self, csc, html_file="", update_interval=-1, alive_rcv_to=-1, 
                  alive_retries=-1, max_encp_lines=-1, refresh=-1):
+	global server_map
         generic_server.GenericServer.__init__(self, csc, MY_NAME, 
                                               self.process_event_message)
         Trace.init(self.log_name)
@@ -794,10 +905,10 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
             self.startup_state = e_errors.TIMEDOUT
             self.startup_text = enstore_constants.CONFIG_SERVER
             return
-        config_d = config_d['dump']
+        self.config_d = config_d['dump']
         # these are the servers we will be monitoring, always get the inquisitor first
         self.inquisitor = monitored_server.MonitoredInquisitor(\
-                                    config_d.get(enstore_constants.INQUISITOR, {}))
+                                   self.config_d.get(enstore_constants.INQUISITOR, {}))
         self.server_d = {enstore_constants.INQUISITOR : self.inquisitor}
 
         self.got_from_cmdline = {}
@@ -818,7 +929,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.max_encp_lines = self.get_value('max_encp_lines', max_encp_lines)
 
         # get the keys that are associated with the web information
-        self.www_server = config_d.get(enstore_constants.WWW_SERVER, {})
+        self.www_server = self.config_d.get(enstore_constants.WWW_SERVER, {})
+	server_map["media"] = self.www_server.get(www_server.MEDIA_TAG, 
+						  www_server.MEDIA_TAG_DEFAULT)
 
         # get the directory where the files we create will go.  this should
         # be in the configuration file.
@@ -858,7 +971,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.configfile = enstore_files.HTMLConfigFile(config_file, 
                                                        self.system_tag)
 
-        cdict = config_d.get(enstore_constants.ALARM_SERVER, {})
+        cdict = self.config_d.get(enstore_constants.ALARM_SERVER, {})
         self.alarm_server = monitored_server.MonitoredAlarmServer(cdict)
         if self.ok_to_monitor(cdict):
             self.server_d[enstore_constants.ALARM_SERVER] = self.alarm_server
@@ -867,7 +980,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                          self.alarm_server.host,
                                          self.alarm_server.port)
 
-        cdict = config_d.get(enstore_constants.LOG_SERVER, {})
+        cdict = self.config_d.get(enstore_constants.LOG_SERVER, {})
         self.log_server = monitored_server.MonitoredLogServer(cdict)
         if self.ok_to_monitor(cdict):
             self.server_d[enstore_constants.LOG_SERVER]  = self.log_server
@@ -876,7 +989,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                          self.log_server.host,
                                          self.log_server.port)
 
-        cdict = config_d.get(enstore_constants.FILE_CLERK, {})
+        cdict = self.config_d.get(enstore_constants.FILE_CLERK, {})
         self.file_clerk = monitored_server.MonitoredFileClerk(cdict)
         if self.ok_to_monitor(cdict):
             self.server_d[enstore_constants.FILE_CLERK]  = self.file_clerk
@@ -885,7 +998,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                          self.file_clerk.host,
                                          self.file_clerk.port)
 
-        cdict = config_d.get(enstore_constants.VOLUME_CLERK, {})
+        cdict = self.config_d.get(enstore_constants.VOLUME_CLERK, {})
         self.volume_clerk = monitored_server.MonitoredVolumeClerk(cdict)
         if self.ok_to_monitor(cdict):
             self.server_d[enstore_constants.VOLUME_CLERK]  = self.volume_clerk
@@ -894,7 +1007,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
                                          self.volume_clerk.host,
                                          self.volume_clerk.port)
 
-        cdict = config_d.get(enstore_constants.CONFIG_SERVER, {})
+        cdict = self.config_d.get(enstore_constants.CONFIG_SERVER, {})
         self.config_server = monitored_server.MonitoredConfigServer(cdict)
         if self.ok_to_monitor(cdict):
             self.server_d[enstore_constants.CONFIG_SERVER]  = self.config_server
@@ -910,9 +1023,9 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.lib_man_d = {}
         self.mover_d = {}
         self.media_changer_d = {}
-        for key in config_d.keys():
-            self.add_new_mv_lm_mc(key, config_d)
-
+        for key in self.config_d.keys():
+            self.add_new_mv_lm_mc(key, self.config_d)
+	
         dispatching_worker.DispatchingWorker.__init__(self, 
                                                       (self.inquisitor.hostip,
                                                        self.inquisitor.port))
@@ -951,7 +1064,7 @@ class Inquisitor(InquisitorMethods, generic_server.GenericServer):
         self.mark_event_relay(NO_INFO_YET)
 
         # update the config page    
-        self.update_config_page(config_d)
+        self.update_config_page(self.config_d)
 
         # update the encp page
         self.make_encp_html_file(time.time())

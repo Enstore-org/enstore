@@ -1452,13 +1452,23 @@ class EnSaagPage(EnBaseHtmlDoc):
 	if offline_dict.has_key(key):
 	    # this element is known to be offline
 	    td = HTMLgen.TD(HTMLgen.Strike(alt_key))
+	    # record the fact that this one is offline so we can add the reason later.
+	    # we do it later to allow a scheduled outage checkmark to appear next to
+	    # the server name and not after the offline reason
+	    is_offline = 1
 	else:
+	    is_offline = 0
 	    td = HTMLgen.TD(alt_key)
 	if sched != enstore_constants.NOSCHEDOUT:
-	    td.append(" ")
-	    td.append(self.checkmark)
+	    if sched is not "":
+		td.append(" ")
+		td.append(self.checkmark)
+		td.append(HTMLgen.BR())
+		td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(sched,), size="-1")))
+	if is_offline == 1 and offline_dict[key] is not "":
 	    td.append(HTMLgen.BR())
-	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(sched,), size="-1")))
+	    td.append(HTMLgen.Emphasis(HTMLgen.Font("(%s)"%(offline_dict[key],), 
+						    size="-1")))
 	return td
 
     def make_overall_table(self, enstat_d, netstat_d, medstat_d, alarms_d, outage_d, 

@@ -9,7 +9,6 @@ import generic_client
 import enstore_up_down
 import monitor_client
 import enstore_files
-import enstore_schedule
 import www_server
 import alarm_server
 
@@ -20,6 +19,12 @@ This main line must have read access to the configuration
 file.
 
 """
+
+SERVER_NAMES = {enstore_constants.LOGS : 'log_server',
+		enstore_constants.ALARMS : 'alarm_server',
+		enstore_constants.FILEC : 'file_clerk',
+		enstore_constants.INQ : 'inquisitor',
+		enstore_constants.VOLC : 'volume_clerk'}
 
 class SaagInterface(generic_client.GenericClientInterface):
 
@@ -84,7 +89,7 @@ def do_work(intf):
     for server in enstat.keys():
 	# translate the output server name to the config file key, remember, the config server
 	# has no entry in the config file
-	server = enstore_schedule.SERVER_NAMES.get(server, server)
+	server = SERVER_NAMES.get(server, server)
 	if server != enstore_constants.CONFIGS:
 	    if config.configdict.has_key(server):
 		host = config.configdict[server].get('host', "")

@@ -5,6 +5,7 @@ import sys
 # enstore imports
 import generic_client
 import udp_client
+import enstore_constants
 import interface
 import Trace
 
@@ -64,6 +65,67 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to subscribe to the event relay
 	return self.send({"work"     : "subscribe" })
 
+    def down (self, server_list, time):
+	# tell the inquisitor to mark the passed servers as down
+	return self.send({"work"    : "down",
+			  "servers" : server_list,
+			  "time"    : time})
+
+    def up (self, server_list):
+	# tell the inquisitor to mark the passed servers as up
+	return self.send({"work"    : "up",
+			  "servers" : server_list })
+
+    def nooutage (self, server_list):
+	# tell the inquisitor to mark the passed servers as no longer scheduled 
+	# for an outage
+	return self.send({"work"    : "nooutage",
+			  "servers" : server_list })
+
+    def outage (self, server_list, time):
+	# tell the inquisitor to mark the passed servers as scheduled for an outage
+	return self.send({"work"    : "outage",
+			  "servers" : server_list,
+			  "time"    : time})
+
+    def show (self):
+	# tell the inquisitor to return the outage/status of the servers in the 
+	# schedule file
+	return self.send({"work"    : "show" })
+
+    def print_show(self, ticket):
+	print "\n Enstore Items Scheduled To Be Down"
+	print   " ----------------------------------"
+	outage_d = ticket["outage"]
+	keys = outage_d.keys()
+	keys.sort()
+	for key in keys:
+	    print "   %s : %s"%(key, outage_d[key])
+	else:
+	    print ""
+	# now output the servers that are known down but not scheduled down
+	offline_d = ticket["offline"]
+	if offline_d:
+	    keys = offline_d.keys()
+	    keys.sort()
+	    print "\n Enstore Items Known Down"
+	    print   " ------------------------"
+	    for key in keys:
+		print "   %s : %s"%(key, offline_d[key])
+	    else:
+		print ""
+	# output the servers that we have seen down and been monitoring
+	seen_down_d = ticket["seen_down"]
+	if seen_down_d:
+	    keys = seen_down_d.keys()
+	    keys.sort()
+	    print "\n Enstore Items Down and the Number of Times Seen Down"
+	    print   " ----------------------------------------------------"
+	    for key in keys:
+		print "   %s : %s"%(key, seen_down_d[key])
+	    else:
+		print ""
+
 
 class InquisitorClientInterface(generic_client.GenericClientInterface):
 
@@ -88,6 +150,12 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.update_interval = -1
         self.get_update_interval = 0
 	self.subscribe = None
+	self.show = 0
+	self.up = ""
+	self.down = ""
+	self.time = ""
+	self.outage = ""
+	self.nooutage = ""
 	self.update_and_exit = 0
         generic_client.GenericClientInterface.__init__(self)
         
@@ -100,7 +168,8 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                 "update-interval=", "get-update-interval",
                 "update", "dump", "update-and-exit",
                 "refresh=", "get-refresh", "max-encp-lines=",
-                "get-max-encp-lines", "subscribe"]
+                "get-max-encp-lines", "subscribe", "up=", "down=",
+		"outage=", "nooutage=", "show", "time="]
 
 # this is where the work is actually done
 def do_work(intf):
@@ -144,6 +213,22 @@ def do_work(intf):
 
     elif intf.subscribe:
 	ticket = iqc.subscribe()
+
+    elif intf.up:
+	ticket = iqc.up(intf.up)
+
+    elif intf.down:
+	ticket = iqc.down(intf.down, intf.time)
+
+    elif intf.outage:
+	ticket = iqc.outage(intf.outage, intf.time)
+
+    elif intf.nooutage:
+	ticket = iqc.nooutage(intf.nooutage)
+
+    elif intf.show:
+	ticket = iqc.show()
+	iqc.print_show(ticket)
 
     else:
 	intf.print_help()

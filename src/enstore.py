@@ -35,7 +35,6 @@ import monitor_client
 import volume_clerk_client
 import enstore_up_down
 import enstore_saag
-import enstore_schedule
 import dbs
 import ratekeeper_client
 
@@ -66,8 +65,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                   enstore_up_down.do_work],
                      "system" : [enstore_saag.SaagInterface,
                                  enstore_saag.do_work],
-                     "schedule" : [enstore_schedule.ScheduleInterface,
-                                   enstore_schedule.do_work],
+                     "schedule" : [inquisitor_client.InquisitorClientInterface,
+                                   inquisitor_client.do_work],
                      "volume" : [volume_clerk_client.VolumeClerkClientInterface,
                                  volume_clerk_client.do_work],
 		     "database" : [dbs.Interface,
