@@ -784,7 +784,7 @@ def open_data_socket(mover_addr):
             raise socket.error, msg
 
     #Check if the socket is open for reading and/or writing.
-    r, w, ex = select.select([data_path_socket], [data_path_socket],[],10)
+    r, w, ex = select.select([data_path_socket], [data_path_socket], [], 30)
 
     if r or w:
         #Get the socket error condition...
@@ -832,20 +832,11 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
                 listen_socket, mover_timeout, verbose)
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
-            ticket = {'status':(exc, msg)}
-            message = str(exc) + ": " + str(msg)
-            Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except control_socket: socket.error")
-            Trace.log(e_errors.INFO, message)
+            ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+            Trace.log(e_errors.INFO, str(msg))
+
             #Since an error occured, just return it.
             return None, None, ticket
-
-        #except (e_errors.NET_ERROR,), detail:
-        #    exc, msg, tb = sys.exc_info()
-        #    ticket = {'status':(exc, msg)}
-        #    message = str(exc) + ":" + str(msg)
-        #    Trace.log(e_errors.INFO, message)
-        #    #Since an error occured, just return it.
-        #    return None, None, ticket
 
         if verbose > 4:
             print "MOVER HANDSHAKE"
@@ -890,22 +881,12 @@ def mover_handshake(listen_socket, work_tickets, mover_timeout, max_retry,
 
         except (socket.error,), detail:
             exc, msg, tb = sys.exc_info()
-            ticket = {'status':(exc, msg)}
-            message = str(exc) + ": " + str(msg)
-            Trace.log(e_errors.INFO, "Investigating malformed bug: mover_handshake: except data_path_socket: socket.error")
-            Trace.log(e_errors.INFO, message)
+            ticket = {'status':(e_errors.NET_ERROR, str(msg))}
+            Trace.log(e_errors.INFO, str(msg))
             
             #Since an error occured, just return it.
             return None, None, ticket
-        #except (e_errors.NET_ERROR,), detail:
-        #    exc, msg, tb = sys.exc_info()
-        #    ticket = {'status':(exc, msg)}
-        #    message = str(exc) + ": " + str(msg)
-        #    Trace.log(e_errors.INFO, message)
-        #    
-        #    #Since an error occured, just return it.
-        #    return None, None, ticket
-
+        
         #If we got here then the status is OK.
         ticket['status'] = (e_errors.OK, None)
         #Include new info from mover.
@@ -951,15 +932,10 @@ def recieve_final_dialog(control_socket, work_ticket, max_retry):
     
     try:
         done_ticket = callback.read_tcp_obj(control_socket)
-    except:
-        exc, msg, tb = sys.exc_info()
-        done_ticket = {'status':(exc, msg)}
+    except e_errors.TCP_EXCEPTION, msg:
+        done_ticket = {'status':(e_errors.TCP_EXCEPTION,
+                                 e_errors.TCP_EXCEPTION)}
         
-        #try:
-        #    control_socket.close()
-        #except socket.error:
-        #    pass
-
     return done_ticket
 
 ############################################################################
@@ -1055,9 +1031,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     retry = request_dictionary.get('retry', 0)
     
     status = error_dictionary.get('status', (e_errors.OK, None))
-    print "Error dict. status:", status
-    print "Req dict. stauts:", request_dictionary.get('status',
-                                                      (e_errors.OK, None))
+
     #If there is no error, then don't do anything
     if status == (e_errors.OK, None):
         result_dict = {'status':(e_errors.OK, None), 'retry':retry, 
@@ -1132,7 +1106,7 @@ def calculate_rate(done_ticket, tinfo, verbose):
     # overheads I've neglected are small so the quoted rate is close
     # to the right one.  In any event, I calculate an overall rate at
     # the end of all transfers
-    
+
     #calculate MB relatated stats
     bytes_per_MB = 1024 * 1024
     MB_transfered = float(done_ticket['file_size']) / float(bytes_per_MB)
@@ -1141,8 +1115,9 @@ def calculate_rate(done_ticket, tinfo, verbose):
     id = done_ticket['unique_id']
 
     #Make these variables easier to use.
-    transfer_time = tinfo['%s_elapsed_time' % (id,)]
+    network_time = tinfo['%s_elapsed_time' % (id,)]
     complete_time = tinfo['%s_elapsed_finished' % (id,)]
+    drive_time = done_ticket['times']['transfer_time']
 
     if done_ticket['work'] == "read_from_hsm":
         preposition = "from"
@@ -1152,32 +1127,37 @@ def calculate_rate(done_ticket, tinfo, verbose):
     if done_ticket['status'][0] == e_errors.OK:
 
         if complete_time != 0:
-            tinfo['rate_%s'%(id,)] = MB_transfered / complete_time
+            tinfo['overall_rate_%s'%(id,)] = MB_transfered / complete_time
+            tinfo['network_rate_%s'%(id,)] = MB_transfered / network_time
+            tinfo['drive_rate_%s'%(id,)] = MB_transfered / drive_time
         else:
-            tinfo['rate_%s'%(id,)] = 0.0
-
-        if transfer_time != 0:
-            tinfo['transrate_%s'%(id,)] = MB_transfered / transfer_time
-        else:
-            tinfo['transrate_%s'%(id,)] = 0.0
+            tinfo['overall_rate_%s'%(id,)] = 0.0
+            tinfo['network_rate_%s'%(id,)] = 0.0
+            tinfo['drive_rate_%s'%(id,)] = 0.0
 
         print_format = "Transfer %s -> %s:\n" \
-                 "\t%d bytes copied %s %s at %.3g MB/S (%.3g MB/S)\n" \
+                 "\t%d bytes copied %s %s at %.3g MB/S\n " \
+                 "\t(%.3g MB/S network) (%.3g MB/S drive)\n " \
                  "\tdrive_id=%s drive_sn=%s drive_vendor=%s\n" \
-                 "\tmover=%s media_changer=%s   elapsed= %.02f"
+                 "\tmover=%s media_changer=%s   elapsed=%.02f"
         
-        log_format = "  %s %s -> %s: %d bytes copied %s %s at %.3g MB/S " \
-                     "(%.3g MB/S) mover=%s drive_id=%s drive_sn=%s "\
-                     "drive_venor=%s elapsed= %s.02f {'media_changer' : '%s',"\
-                     "'mover_interface' : '%s', 'driver' : '%s'}"
+        log_format = "  %s %s -> %s: "\
+                     "%d bytes copied %s %s at %.3g MB/S (%.3g MB/S) " \
+                     "mover=%s " \
+                     "drive_id=%s drive_sn=%s drive_venor=%s elapsed=%s.02f "\
+                     "{'media_changer' : '%s', 'mover_interface' : '%s', " \
+                     "'driver' : '%s'}"
+                     #"%d bytes copied %s %s at %.3g MB/S " \
+                     #"(%.3g MB/S network) (%.3g MB/S drive) " \
 
         print_values = (done_ticket['infile'],
                         done_ticket['outfile'],
                         done_ticket['file_size'],
                         preposition,
                         done_ticket["fc"]["external_label"],
-                        tinfo["rate_%s"%(id,)],
-                        tinfo["transrate_%s"%(id,)],
+                        tinfo["overall_rate_%s"%(id,)],
+                        tinfo['network_rate_%s'%(id,)],
+                        tinfo["drive_rate_%s"%(id,)],
                         done_ticket["mover"]["product_id"],
                         done_ticket["mover"]["serial_num"],
                         done_ticket["mover"]["vendor_id"],
@@ -1191,8 +1171,9 @@ def calculate_rate(done_ticket, tinfo, verbose):
                       done_ticket['file_size'],
                       preposition,
                       done_ticket["fc"]["external_label"],
-                      tinfo["rate_%s"%(id,)],
-                      tinfo["transrate_%s"%(id,)],
+                      tinfo["overall_rate_%s"%(id,)],
+                      tinfo["network_rate_%s"%(id,)],
+                      #tinfo['drive_rate_%s'%(id,)],
                       done_ticket["mover"]["name"],
                       done_ticket["mover"]["product_id"],
                       done_ticket["mover"]["serial_num"],
@@ -1206,7 +1187,7 @@ def calculate_rate(done_ticket, tinfo, verbose):
             print print_format % print_values
 
         Trace.log(e_errors.INFO, log_format % log_values, Trace.MSG_ENCP_XFER )
-        
+
 ############################################################################
 
 def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
@@ -1220,26 +1201,52 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     bytes_per_MB = 1024 * 1024
     MB_transfered = float(bytes) / float(bytes_per_MB)
 
-    done_ticket = {}
-    done_ticket['times'] = tinfo
-
     if tinfo['total']: #protect against division by zero.
-        done_ticket['MB_per_S'] = MB_transfered / (tinfo['total'])
+        tinfo['MB_per_S_total'] = MB_transfered / tinfo['total']
     else:
-        done_ticket['MB_per_S'] = 0.0
+        tinfo['MB_per_S_total'] = 0.0
+
+    #get all the drive rates from the dictionary.
+    drive_rate  = 0L
+    count = 0
+    for value in tinfo.keys():
+        if string.find(value, "drive_rate") != -1:
+            count = count + 1
+            drive_rate  = drive_rate  + tinfo[value]
+    if count:
+        tinfo['MB_per_S_drive'] = drive_rate / count
+    else:
+        tinfo['MB_per_S_drive'] = 0.0
+
+    #get all the drive rates from the dictionary.
+    network_rate  = 0L
+    count = 0
+    for value in tinfo.keys():
+        if string.find(value, "network_rate") != -1:
+            count = count + 1
+            network_rate  = network_rate  + tinfo[value]
+    if count:
+        tinfo['MB_per_S_network'] = network_rate / count
+    else:
+        tinfo['MB_per_S_network'] = 0.0
     
     msg = "%s transferring %s bytes in %s files in %s sec.\n" \
-          "\tOverall rate = %s MB/sec.  Exit status = %s."
+          "\tOverall rate = %.3g MB/sec.  Drive rate = %.3g MB/sec.\n" \
+          "\tNetwork rate = %.3g MB/sec.  Exit status = %s."
     
     if exit_status:
         msg = msg % ("Error after", bytes, number_of_files,
-                     done_ticket['times']['total'], done_ticket["MB_per_S"],
+                     tinfo['total'], tinfo["MB_per_S_total"],
+                     tinfo['MB_per_S_drive'], tinfo['MB_per_S_network'],
                      exit_status)
     else:
         msg = msg % ("Completed", bytes, number_of_files,
-                     done_ticket['times']['total'], done_ticket["MB_per_S"],
+                     tinfo['total'], tinfo["MB_per_S_total"],
+                     tinfo['MB_per_S_drive'], tinfo['MB_per_S_network'],
                      exit_status)
 
+    done_ticket = {}
+    done_ticket['times'] = tinfo
     #set the final status values
     done_ticket['exit_status'] = exit_status
     done_ticket['status'] = (e_errors.OK, msg)
@@ -2130,6 +2137,10 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
             t2 = time.time() - tinfo['encp_start_time']
             print "Output file", request['outfile'], "opened.  elapsed=", t2
 
+        #Stall starting the count until the first byte is ready for reading.
+        read_fd, write_fd, exc_fd = select.select([data_path_socket], [],
+                                                  [data_path_socket], 30)
+
         lap_start = time.time() #----------------------------------------Start
 
         #Read in the data from the mover and write it out to file.  Also,
@@ -2187,9 +2198,10 @@ def read_hsm_files(listen_socket, submitted, requests, tinfo, e):
 
             continue
 
+        lap_end = time.time()
         tstring = "%s_elapsed_time" % requests[j]['unique_id']
-        tinfo[tstring] = time.time() - lap_start #-------------------------End
-
+        tinfo[tstring] = lap_end - lap_start #----------------------------End
+        
         if e.verbose > 1:
             t2 = time.time() - tinfo['encp_start_time']
             print "Verifying", requests[j]['infile'], "transfer.  elapsed=", t2
@@ -2505,6 +2517,7 @@ class encp(interface.Interface):
 
         self.dcache = 0 #Special options for operation with a disk cache layer.
         self.put_cache = self.get_cache = 0
+        self.pnfs_mount_point = ""
 
         self.storage_info = None # Ditto
         self.test_mode = 0
@@ -2520,7 +2533,7 @@ class encp(interface.Interface):
         return self.config_options()+[
             "verbose=","no-crc","priority=","delpri=","age-time=",
             "delayed-dismount=", "file-family=", "ephemeral",
-            "get-cache", "put-cache", "storage-info=",
+            "get-cache", "put-cache", "storage-info=", "pnfs-mount-point=",
             "data-access-layer"] + self.help_options()
 
     
@@ -2560,18 +2573,22 @@ class encp(interface.Interface):
         if self.get_cache:
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]
-            remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            self.args[0:2] = [remote_file[0][:-1], local_file]
-
+            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            p.get_path()
+            remote_file = p.path
+            #self.args[0:2] = [remote_file[0][:-1], local_file]
+            self.args[0:2] = [remote_file, local_file]
         if self.put_cache:
             pnfs_id = sys.argv[-2]
             local_file = sys.argv[-1]
-            remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
-            self.args[0:2] = [local_file, remote_file[0][:-1]]
+            #remote_file=os.popen("enstore pnfs --path " + pnfs_id).readlines()
+            p = pnfs.Pnfs(pnfs_id=pnfs_id, mount_point=self.pnfs_mount_point)
+            p.get_path()
+            remote_file = p.path
+            #self.args[0:2] = [local_file, remote_file[0][:-1]]
+            self.args[0:2] = [local_file, remote_file]
 
-        #if not client: 
-        #    clients(self.config_host, self.config_port)
-            
         # get fullpaths to the files
         p = []
         for i in range(0,self.arglen):
@@ -2603,7 +2620,6 @@ class encp(interface.Interface):
             self.outtype="hsmfile"
         else:
             self.outtype="unixfile"
-
 
 ##############################################################################
 
