@@ -32,7 +32,12 @@ def _open1(pathname,mode=0666):
 
 def _open2(pathname,mode=0666):
 
-    tmpname = "%s-%s-%s" % (pathname, os.uname()[1], os.getpid())
+    #tmpname = "%s-%s-%s" % (pathname, os.uname()[1], os.getpid())
+    tmpname = "%s_%s_%s_%s_%s_%s_%s_lock" % (
+        os.uname()[1], os.getpid(), os.getuid(), os.getgid(),
+        os.geteuid(), os.getegid(), time.ctime(time.time()).replace(" ", "_"))
+    tmpname = os.path.join(os.path.dirname(pathname), tmpname)
+    
     delete_at_exit.register(tmpname)
     fd_tmp = os.open(tmpname, os.O_CREAT|os.O_RDWR, mode)
 
@@ -66,14 +71,22 @@ def _open2(pathname,mode=0666):
     else:
         delete_at_exit.unregister(pathname)
         if s and s[stat.ST_NLINK] > 2:
-            msg = os.strerror(errno.EMLINK) + ": " + str(s[stat.ST_NLINK])
-            rtn_errno = errno.EMLINK
+            #If there happen to be more than 2 hard links to the same file.
+            # This should never happen.
+            rtn_errno = getattr(errno, "EMLINK", "EIO")
+            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
         elif s:
-            msg = os.strerror(errno.ENOLINK) + ": " + str(s[stat.ST_NLINK])
-            rtn_errno = errno.ENOLINK
+            #If there is only one link to the file.  In this case the link
+            # failed.  The use of "ENOLINK" is for Linux, IRIX and SunOS.
+            # The "EFTYPE" is for OSF1.
+            rtn_errno = getattr(errno, "ENOLINK", "EFTYPE")
+            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
+
         else:
-            msg = os.strerror(errno.ENOLINK) + ": " + "Unknown"
-            rtn_errno = errno.ENOLINK
+            #If we get here, then something really bad happened.
+            rtn_errno = getattr(errno, "ENOLINK", "EFTYPE")
+            msg = os.strerror(rtn_errno) + ": " + "Unknown"
+
         os.close(fd_tmp)
         #return -(detail.errno) #return errno values as negative.
         raise OSError(rtn_errno, msg)
