@@ -13,11 +13,35 @@ import db
 import enstore_functions
 import checkBackedUpDatabases
 import configuration_client
+import enstore_constants
 import volume_clerk
 import cPickle
 
 #Grab the start time.
 t0 = time.time()
+
+def get_vq_format_file(output_dir):
+    return output_dir + enstore_constants.VQFORMATED
+
+# return filenames
+def get_vol_filenames(output_dir):
+    if string.find(output_dir, "/dev/stdout") != -1: 
+        last_access_file = "/dev/stdout"
+        volume_size_file = "/dev/stdout"
+        volumes_defind_file = "/dev/stdout"
+        volume_quotas_file = "/dev/stdout"
+	volume_quotas_format_file = "/dev/stdout"
+        total_bytes_file = "/dev/stdout"
+    else:
+        last_access_file = output_dir + "LAST_ACCESS"
+        volume_size_file = output_dir + "VOLUME_SIZE"
+        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
+        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
+	volume_quotas_format_file = get_vq_format_file(output_dir)
+        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+    return last_access_file, volume_size_file, volumes_defind_file, \
+		      volume_quotas_file, volume_quotas_format_file, \
+		      total_bytes_file
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -474,12 +498,16 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     vq_file.close()
 
 
-def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
+def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
+			    output_format_file):
     vq_file = open(output_file, "a")
     vq_file.write(("-" * 140) + "\n\n")
-    
+
+    vq_format_file = open(output_format_file, "w")
+
     #Sum up each column for each library and print the results
     library_dict = {}
+    library_format_dict = {}
     requested = authorized = 0
     quotas = volume_quotas.keys()
     for key in quotas:
@@ -514,6 +542,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
         library_dict[l] = (l, "", requested, authorized, quota, allocated,
                            blank_v, written_v, deleted_v, used, active_f,
                            deleted_f, unknown_f)
+	library_format_dict[l] = used
 
     #Since this info is appened to the same file as the volume quotas, make
     # it have the same format.
@@ -527,6 +556,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
                          library_dict[key][10:]
         vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
+	vq_format_file.write("%s %s\n"%(key, library_format_dict[key]))
     vq_file.write("\n") #insert newline between sections
 
     blanks = authorized_tapes.get('blanks', None)
@@ -534,6 +564,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file):
         vq_file.write("blanks=" + blanks + "\n")
     
     vq_file.close()
+    vq_format_file.close()
 
 def print_total_bytes_on_tape(volume_sums, output_file):
     sum = 0
@@ -855,18 +886,9 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
         verify_volume_quotas(file_data, volume, volumes_allocated)
 
 
-    if string.find(output_dir, "/dev/stdout") != -1: 
-        last_access_file = "/dev/stdout"
-        volume_size_file = "/dev/stdout"
-        volumes_defind_file = "/dev/stdout"
-        volume_quotas_file = "/dev/stdout"
-        total_bytes_file = "/dev/stdout"
-    else:
-        last_access_file = output_dir + "LAST_ACCESS"
-        volume_size_file = output_dir + "VOLUME_SIZE"
-        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
-        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
-        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+    last_access_file, volume_size_file, volumes_defind_file, \
+		      volume_quotas_file, volume_quotas_format_file, \
+		      total_bytes_file = get_vol_filenames(output_dir)
 
     #Create files that hold statistical data.
     print_last_access_status(volume_list, last_access_file)
@@ -875,7 +897,7 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
                                volume_quotas_file)
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
-                            volume_quotas_file)
+                            volume_quotas_file, volume_quotas_format_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return len(volume_list), count_metadata
@@ -888,18 +910,9 @@ def inventory2(volume_file, metadata_file, output_dir, tmp_dir, volume):
 # If output_dir is set to /dev/stdout/ then everything is sent to standard out.
 def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     # determine the output path
-    if string.find(output_dir, "/dev/stdout") != -1: 
-        last_access_file = "/dev/stdout"
-        volume_size_file = "/dev/stdout"
-        volumes_defind_file = "/dev/stdout"
-        volume_quotas_file = "/dev/stdout"
-        total_bytes_file = "/dev/stdout"
-    else:
-        last_access_file = output_dir + "LAST_ACCESS"
-        volume_size_file = output_dir + "VOLUME_SIZE"
-        volumes_defind_file = output_dir + "VOLUMES_DEFINED"
-        volume_quotas_file = output_dir + "VOLUME_QUOTAS"
-        total_bytes_file = output_dir + "TOTAL_BYTES_ON_TAPE"
+    last_access_file, volume_size_file, volumes_defind_file, \
+		      volume_quotas_file, volume_quotas_format_file, \
+		      total_bytes_file = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
     volume_summary_cache_file = os.path.join(cache_dir, 'volume_summary')
@@ -1158,7 +1171,7 @@ def inventory(volume_file, metadata_file, output_dir, cache_dir, volume):
     print_volume_quotas_status(volumes_allocated, authorized_tapes,
                                volume_quotas_file)
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
-                            volume_quotas_file)
+                            volume_quotas_file, volume_quotas_format_file)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
 
     return n_vols, n_files, n_unchanged, n_changed
