@@ -440,13 +440,13 @@ def swap_metadata(bfid1, src, bfid2, dst):
 
 	# check if the metadata are consistent
 	res = compare_metadata(p1, f1)
-	# deal with already swapped file record
-	if res == 'pnfsid':
-		res = compare_metadata(p1, f1, p1.pnfs_id)
 	if res:
 		return "metadata %s %s are inconsistent on %s"%(bfid1, src, res)
 
 	res = compare_metadata(p2, f2)
+	# deal with already swapped file record
+	if res == 'pnfsid':
+		res = compare_metadata(p2, f2, p1.pnfs_id)
 	if res:
 		return "metadata %s %s are inconsistent on %s"%(bfid2, dst, res)
 
