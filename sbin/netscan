@@ -70,7 +70,13 @@ logit() { $ECHO `$DATE` "$1" >>$LOG 2>&1
         }
 
 # function to compare files and complain if they are not the same
-right_file() { if ! $CMP $1 $2 2>/dev/null; then
+right_file() { if [ ! -r $1 -o ! -r $2 ]; then 
+                  msg1="BAD CONFIGURATION: $1 $2  do not both exist"
+                  logit "$msg1"
+                  if [ $ALARM -eq 1 ]; then
+                    enstore alarm --raise --severity "A" --root-error "$msg1"
+                  fi
+               elif ! $CMP $1 $2 2>/dev/null; then
                   msg1="BAD CONFIGURATION: $1 $2  do not match"
                   logit "$msg1"
                   if [ $ALARM -eq 1 ]; then
@@ -292,16 +298,22 @@ fi
 
 # check that we have two processors running
 if [ `$CAT /proc/cpuinfo | $EGREP -c processor` -ne 2 ]; then
-   logit "ONLY 1 PROCESSOR RUNNING"
-    if [ $ALARM -eq 1 ]; then
-      enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
-    fi
+   if [ "$node" = "stkensrv5" ]; then
+      if [ $QUIET -ne 1 ]; then
+         logit  "One processor found, ok"
+      fi
+   else
+      logit "ONLY 1 PROCESSOR RUNNING"
+      if [ $ALARM -eq 1 ]; then
+         enstore alarm --raise --severity "A" --root-error "ONLY 1 PROCESSOR RUNNING"
+      fi
+   fi
 else
   if [ $QUIET -ne 1 ]; then
     logit  "Two processors found, ok"
   fi
 fi
-\
+
 
 # check that we have sufficient disk space available.
 dflines=`$DF -P`
