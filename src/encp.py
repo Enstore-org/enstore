@@ -31,7 +31,6 @@ import pnfs
 import callback
 import log_client
 import configuration_client
-#import udp_client
 import udp_server
 import EXfer
 import interface
@@ -39,7 +38,6 @@ import e_errors
 import hostaddr
 import host_config
 import atomic
-import multiple_interface
 import library_manager_client
 import delete_at_exit
 import runon
@@ -159,6 +157,15 @@ class EncpError(Exception):
 ############################################################################
 
 def signal_handler(sig, frame):
+
+    try:
+        if sig != signal.SIGTERM and sig != signal.SIGINT:
+            sys.stderr.write("Signal caught at: ", frame.f_code.co_filename,
+                             frame.f_lineno);
+            sys.stderr.flush()
+    except:
+        pass
+    
     try:
         sys.stderr.write("Caught signal %s, exiting\n" % (sig,))
         sys.stderr.flush()
@@ -1372,7 +1379,6 @@ def mover_handshake(listen_socket, route_server, work_tickets, encp_intf):
         except (socket.error, EncpError):
             exc, msg, tb = sys.exc_info()
             if msg.errno == errno.ETIMEDOUT:
-		print "CONTROL SOCKET TIMEOUT OCCURED!!!"
                 ticket = {'status':(e_errors.RESUBMITTING, None)}
             elif hasattr(msg, "type"):
                 ticket = {'status':(msg.type, msg.strerror)}                
@@ -2256,6 +2262,10 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         elif len(e.input) == 1 and os.path.isdir(ofullname):
             ofullname = os.path.join(ofullname, ibasename)
             omachine, ofullname, odir, obasename = fullpath(ofullname)
+
+        #Fundamentally this belongs in veriry_write_request_consistancy(), but
+        # information needed about the input file requires this check.
+        inputfile_check(ifullname)
 
         file_size = get_file_size(ifullname)
 
