@@ -31,6 +31,8 @@ class MoverClient(generic_client.GenericClient):
     def local_mover(self, enable, rcv_timeout=0, tries=0):
 	return self.send({"work" : "local_mover",
                           "enable" : enable}, rcv_timeout, tries)
+    def clean_drive(self, rcv_timeout=0, tries=0):
+	return self.send({"work" : "clean_drive"}, rcv_timeout, tries)
 
     def start_draining(self, rcv_timeout=0, tries=0):
 	return self.send({"work" : "start_draining"}, rcv_timeout, tries)
@@ -51,6 +53,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.alive_retries = 0
         self.mover = ""
         self.local_mover = 0
+        self.clean_drive = 0
         self.enable = 0
 	self.status = 0
         self.start_draining = 0
@@ -62,7 +65,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         if self.restricted_opts:
             return self.restricted_opts
         else:
-            return self.client_options()+["status", "local_mover=", "start_draining", "stop_draining"]
+            return self.client_options()+["status", "local_mover=", "cleanDrive", "start_draining", "stop_draining"]
 
     #  define our specific help
     def parameters(self):
@@ -97,6 +100,8 @@ def do_work(intf):
     elif intf.local_mover:
         ticket = movc.local_mover(intf.enable, intf.alive_rcv_timeout,
                                   intf.alive_retries)
+    elif intf.clean_drive:
+        ticket = movc.clean_drive(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.start_draining:
         ticket = movc.start_draining(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.stop_draining:
