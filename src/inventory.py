@@ -413,7 +413,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file):
     vq_file.write("   %-15s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %12s %-12s %-13s %s\n" %
           ("Library", "Storage Group", "Req. Alloc.",
            "Auth. Alloc.", "Quota", "Allocated",
-           "Blank Vols", "Written Vols", "Deleted Vols", "Space Used",
+           "Blank Vols", "Written Vols", "Deleted Vols", "Space Used ",
            "Active Files", "Deleted Files", "Unknown Files"))
 
     libraries = quotas['libraries'].keys()
