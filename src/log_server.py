@@ -184,6 +184,15 @@ if __name__ == "__main__" :
 
     logserver.set_csc(csc)
 
+    if keys["log_file_path"][0] == '$':
+	tmp = keys["log_file_path"][1:]
+	try:
+	    tmp = os.environ[tmp];
+	except:
+	    print "log_file_path '",keys["log_file_path"],"' configuration ERROR"
+	    sys.exit(1)
+	keys["log_file_path"] = tmp
+
     while 1:
         try:
             Trace.trace(1,'Log Server (re)starting')
