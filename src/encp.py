@@ -1910,9 +1910,6 @@ def read_from_hsm(input_files, output,
                                              verbose, 
                                              retry_flag)
 
-            if verbose:
-                print "Queued", request_list
-
             if submitted != 0:
                 requests_list, brcvd, error = read_hsm_files(listen_socket,
                                                             submitted,
