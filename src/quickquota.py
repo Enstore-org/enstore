@@ -31,7 +31,7 @@ if len(sys.argv)>2:
         detailed = 1
         detailed_output=sys.argv[2]
 
-r, w = popen2.popen2 ("enstore vol --vols")
+r, w = popen2.popen2 ("enstore info --vols")
 
 total_vols_for_entity={}
 unused_vols_for_entity={}
