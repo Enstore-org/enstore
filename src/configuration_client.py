@@ -27,6 +27,9 @@ class ConfigurationClient(generic_client.GenericClient):
         self.server_address=address
         self.u = udp_client.UDPClient()
 
+    def config_address(self):
+        return self.server_address()
+    
     # get rid of all cached values - go back to server for information
     def clear(self):
         self.cache = {}
