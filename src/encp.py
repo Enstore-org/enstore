@@ -336,7 +336,7 @@ def extract_file_number(location_cookie):
             #Return just third integer portion of the string.
             return int(string.split(location_cookie, "_")[2])
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             return None
         
@@ -760,7 +760,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
                 __csc = csc_test  #Set global for performance reasons.
                 return __csc
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
@@ -850,7 +850,7 @@ def _get_csc_from_brand(brand): #Should only be called from get_csc().
                 __fcc = fcc_test
                 return __csc
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
@@ -1029,7 +1029,7 @@ def get_fcc(parameter = None):
                 __fcc = fcc_test
                 return __fcc
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
@@ -1131,7 +1131,7 @@ def get_vcc(parameter = None):
                 __vcc = vcc_test
                 return __vcc
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
@@ -1297,7 +1297,7 @@ def check_server(csc, server_name):
     try:
         stati = csc.alive(server_name, rcv_timeout, alive_retries)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
         stati={}
@@ -1446,7 +1446,7 @@ def filesystem_check(target_filesystem, inputfile):
     try:
         size = get_file_size(inputfile)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1462,7 +1462,7 @@ def filesystem_check(target_filesystem, inputfile):
         bits = os.pathconf(target_filesystem,
                            os.pathconf_names['PC_FILESIZEBITS'])
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except KeyError:
         return
     except (OSError, IOError):
@@ -1506,7 +1506,7 @@ def wrappersize_check(target_filepath, inputfile):
         wrapper_max = wrappersizes.get(pout.file_family_wrapper,
                                        MAX_FILE_SIZE)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1531,7 +1531,7 @@ def librarysize_check(target_filepath, inputfile):
         library = csc.get(pout.library + ".library_manager", {})
         library_max = library.get('max_file_size', MAX_FILE_SIZE)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError):
         msg = sys.exc_info()[1]
         raise EncpError(getattr(msg,"errno",None), str(msg), e_errors.OSERROR)
@@ -1617,16 +1617,16 @@ def inputfile_check(input_files, e):
                 pass  #There is no error.
 
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except EncpError:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #msg = sys.exc_info()[1]
             #size = get_file_size(inputlist[i])
             #print_data_access_layer_format(inputlist[i], "", size,
             #                               {'status':(msg.type, msg.strerror)})
             #quit()
         except (OSError, IOError):
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #msg = sys.exc_info()[1]
             #size = get_file_size(inputlist[i])
             #error = errno.errorcode.get(getattr(msg, "errno", None),
@@ -1834,16 +1834,16 @@ def outputfile_check(inputlist, outputlist, e):
                 pass  #There is no error.
 
         #except KeyboardInterrupt:
-        #    raise sys.exc_info()
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         #except EncpError:
-        #    raise sys.exc_info()
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         #    #msg = sys.exc_info()[1]
         #    #size = get_file_size(inputlist[i])
         #    #print_data_access_layer_format("", outputlist[i], size,
         #    #                               {'status':(msg.type, msg.strerror)})
         #    #quit()
         #except (OSError, IOError):
-        #    raise sys.exc_info()
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
 #######################################################################
 
@@ -1912,7 +1912,7 @@ def create_zero_length_local_files(filenames):
             os.close(fd)
 
         except OSError:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #if raise_error:
             #    #Originally needed for "Get", don't abort.
             #    exc, msg = sys.exc_info()[:2]
@@ -1945,7 +1945,7 @@ def create_zero_length_local_files(filenames):
 #            os.close(fd)
 #
 #        except OSError:
-#            raise sys.exc_info()
+#            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 #            #if raise_error:
 #            #    #Originally needed for "Get", don't abort.
 #            #    exc, msg = sys.exc_info()[:2]
@@ -3245,7 +3245,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             del request_list[request_list.index(request_dictionary)]
             queue_size = len(request_list)
         except KeyboardInterrupt:
-            raise sys.exc_info()
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except (KeyError, ValueError):
             queue_size = len(request_list) - 1
 
@@ -3308,7 +3308,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lm_responce = submit_one_request(req)
 
             except KeyboardInterrupt:
-                raise sys.exc_info()
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 exc, msg = sys.exc_info()[:2]
                 sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
@@ -3843,7 +3843,7 @@ def set_pnfs_settings(ticket, intf_encp):
         # save the bfid
         p.set_bit_file_id(ticket["fc"]["bfid"])
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         #Get the exception.
         msg = sys.exc_info()[1]
@@ -3894,7 +3894,7 @@ def set_pnfs_settings(ticket, intf_encp):
             drive,
             crc)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         #Get the exception.
         msg = sys.exc_info()[1]
@@ -3946,7 +3946,7 @@ def set_pnfs_settings(ticket, intf_encp):
 
         ticket['status'] = fc_reply['status']
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
         Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
@@ -3977,7 +3977,7 @@ def set_pnfs_settings(ticket, intf_encp):
                 # set the file size
                 p.set_file_size(ticket['file_size'])
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
 	ticket['status'] = (str(exc), str(msg))
@@ -4038,7 +4038,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #try:
         inputfile_check(ifullname, e)
         #except KeyboardInterrupt:
-        #    raise sys.exc_info()
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         #except (OSError, IOError, EncpError):
         #    msg = sys.exc_info()[1]
         #    size = get_file_size(ifullname)
@@ -4056,7 +4056,7 @@ def create_write_requests(callback_addr, routing_addr, e, tinfo):
         #try:
         outputfile_check(ifullname, ofullname, e)
         #except KeyboardInterrupt:
-        #    raise sys.exc_info()
+        #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         #except (OSError, IOError, EncpError):
         #    msg = sys.exc_info()[1]
         #    size = get_file_size(ofullname)
@@ -4498,7 +4498,7 @@ def write_to_hsm(e, tinfo):
         request_list = create_write_requests(callback_addr, routing_addr,
                                              e, tinfo)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, EncpError), msg:
         if hasattr(msg, "type"):
             error = msg.type
@@ -5502,7 +5502,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #try:
             inputfile_check(ifullname, e)
             #except KeyboardInterrupt:
-            #    raise sys.exc_info()
+            #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #except (OSError, IOError, EncpError):
             #    msg = sys.exc_info()[1]
             #    size = get_file_size(ofullname)
@@ -5520,7 +5520,7 @@ def create_read_requests(callback_addr, routing_addr, tinfo, e):
             #try:
             outputfile_check(ifullname, ofullname, e)
             #except KeyboardInterrupt:
-            #    raise sys.exc_info()
+            #    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             #except (OSError, IOError, EncpError):
             #    msg = sys.exc_info()[1]
             #    size = get_file_size(ofullname)
@@ -6014,7 +6014,7 @@ def read_from_hsm(e, tinfo):
         requests_per_vol = create_read_requests(callback_addr, routing_addr,
                                                 tinfo, e)
     except KeyboardInterrupt:
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except (OSError, IOError, EncpError), msg:
         if hasattr(msg, "type"):
             error = msg.type
