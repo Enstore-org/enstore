@@ -1040,12 +1040,13 @@ class Mover:
 
     def resize(self):
 
-        #Set the mover size in the display.
+        #Used to calculate width.
+        total_columns = self.display.get_total_column_count()
+
+        #Set the mover size in the display.  For the width, add 1 for
+        # seperating space.
         self.height = ((self.display.height - 40) / 20)
-        #This line assumes that their will not be 40 or more movers.
-        self.width = (self.display.get_client_column_count() +
-                      self.display.get_mover_column_count() + 1)
-        self.width = (self.display.height / self.width)
+        self.width = (self.display.width / (total_columns + 1))
         
         #Font geometry. (state, label, timer)
         self.font = get_font(self.height/3.5, 'arial',
