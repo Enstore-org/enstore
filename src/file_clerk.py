@@ -435,11 +435,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         # copy all file information we have to user's ticket
-        try:
-            ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
-            ticket["status"] = (e_errors.OK, None)
-        except KeyError:
-            ticket['status'] = (e_errors.KEYERROR, None)
+        ticket["pnfs_mapname"] = finfo["pnfs_mapname"]
+        ticket["status"] = (e_errors.OK, None)
 
         self.reply_to_caller(ticket)
         Trace.trace(10,"get_volmap_name %s"%(ticket["status"],))
@@ -508,41 +505,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
         return
 
-    # rename volume and volume map
-    # this version rename volume for all files in it
-
-    def rename_volume2(self, ticket):
-        try:
-            label = ticket["external_label"]
-            set_deleted = ticket[ "set_deleted"]
-            restore_volmap = ticket["restore"]
-            restore_dir = ticket["restore_dir"]
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        bfids = self.get_all_bfids(external_label)
-
-        for bfid in bfids:
-            record = self.dict[bfid] 
-            # replace old volume name with new one
-            record["pnfs_mapname"] = string.replace(record["pnfs_mapname"], 
-                                                record["external_label"], 
-                                                label)
-            ticket["pnfs_mapname"] = record["pnfs_mapname"]
-            record["external_label"] = label
-            record["deleted"] = set_deleted
-            self.dict[bfid] = record 
- 
-        # and return to the caller
-        ticket["status"] = (e_errors.OK, None)
-        self.reply_to_caller(ticket)
-        Trace.log(e_errors.INFO,'volume renamed for %s'%(ticket,))
-        return
-
     # A bit file id is defined to be a 64-bit number whose most significant
     # part is based on the time, and the least significant part is a count
     # to make it unique
@@ -553,194 +515,67 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             bfid = bfid + 1
         return str(bfid)
 
-    # get_bfids(self, ticket) -- get bfids of a certain volume
-    #        This is almost the same as tape_list() yet it does not
-    #        retrieve any information from primary file database
-
-    def get_bfids(self, ticket):
-        try:
-            external_label = ticket["external_label"]
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        # get a user callback
-        if not self.get_user_sockets(ticket):
-            return
-        callback.write_tcp_obj(self.data_socket,ticket)
-
-        bfids = self.get_all_bfids(external_label)
-        for bfid in bfids:
-            callback.write_tcp_raw(self.data_socket, bfid+'\n')
-        # finishing up
-        callback.write_tcp_raw(self.data_socket, "")
-        self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
-        self.control_socket.close()
-        return
-
-    # get_all_bfids(external_label) -- get all bfids of a particular volume
-
-    def get_all_bfids(self, external_label):
-        bfids = []
-        if self.dict.inx.has_key('external_label'):
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                bfids.append(pkey)
-                key, pkey = c.nextDup()
-            c.close()
-        else:  # use bfid_db
-            try:
-                bfids = self.bfid_db.get_all_bfids(external_label)
-            except:
-                bfids = None
-        return bfids
-
     def tape_list(self,ticket):
-        try:
-            external_label = ticket["external_label"]
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            ####XXX client hangs waiting for TCP reply
-            return
+     try:
+         external_label = ticket["external_label"]
+         ticket["status"] = (e_errors.OK, None)
+         self.reply_to_caller(ticket)
+     except KeyError, detail:
+         msg = "File Clerk: key %s is missing"%(detail,)
+         ticket["status"] = (e_errors.KEYERROR, msg)
+         Trace.log(e_errors.ERROR, msg)
+         self.reply_to_caller(ticket)
+         ####XXX client hangs waiting for TCP reply
+         return
 
-        # fork as it may take quite a while to get the list
-        # if self.fork() != 0:
-        #    return
+     # disable fork() and tape_list
 
-        # get a user callback
-        if not self.get_user_sockets(ticket):
-            return
-        callback.write_tcp_obj(self.data_socket,ticket)
-        msg="     label            bfid       size        location_cookie delflag original_name\n"
-        callback.write_tcp_raw(self.data_socket, msg)
+     # fork as it may take quite a while to get the list
+     # if self.fork() != 0:
+     #    return
+     
+     # try:
+     #    bfid_list = self.bfid_db.get_all_bfids(external_label)
+     # except:
+     #    msg = "File Clerk: no entry for volume %s" % external_label
+     #    ticket["status"] = (e_errors.KEYERROR, msg)
+     #    Trace.log(e_errors.ERROR, msg)
+     #    bfid_list = []
+         
+     msg = "File Clerk: tape_list() has been disabled"
+     ticket["status"] = (e_errors.KEYERROR, msg)
+     Trace.log(e_errors.ERROR, msg)
+     bfid_list = []
+     
+     # get a user callback
+     if not self.get_user_sockets(ticket):
+         return
+     callback.write_tcp_obj(self.data_socket,ticket)
+     msg="     label            bfid       size        location_cookie delflag original_name\n"
+     callback.write_tcp_raw(self.data_socket, msg)
 
-        # if index is available, use index, otherwise use bfid_db to be
-        # backward compatible
-
-        if self.dict.inx.has_key('external_label'):  # use index
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                value = self.dict[pkey]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                    value['pnfs_name0'] = "unknown"
-                msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
-                    value['size'],value['location_cookie'],
-                    deleted,value['pnfs_name0'])
-                callback.write_tcp_raw(self.data_socket, msg)
-                key,pkey = c.nextDup()
-            c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                value = self.dict[bfid]
-                if value.has_key('deleted'):
-                    if value['deleted']=="yes":
-                        deleted = "deleted"
-                    else:
-                        deleted = " active"
-                else:
-                    deleted = "unknown"
-                if not value.has_key('pnfs_name0'):
-                     value['pnfs_name0'] = "unknown"
-                msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
+         
+     for bfid in bfid_list:
+         value = self.dict[bfid]
+         if value.has_key('deleted'):
+             if value['deleted']=="yes":
+                 deleted = "deleted"
+             else:
+                 deleted = " active"
+         else:
+             deleted = "unknown"
+         if not value.has_key('pnfs_name0'):
+             value['pnfs_name0'] = "unknown"
+         msg= "%10s %s %10i %22s %7s %s\n" % (external_label, value['bfid'],
                                                       value['size'],value['location_cookie'],
                                                       deleted,value['pnfs_name0'])
-                callback.write_tcp_raw(self.data_socket, msg)
+         callback.write_tcp_raw(self.data_socket, msg)
 
-        # finishing up
-
-        callback.write_tcp_raw(self.data_socket, "")
-        self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
-        self.control_socket.close()
-        return
-
-    # list_active(self, ticket) -- list the active files on a volume
-    #     only the /pnfs path is listed
-    #     the purpose is to generate a list for deletion before the
-    #     deletion of a volume
-
-    def list_active(self,ticket):
-        try:
-            external_label = ticket["external_label"]
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-        except KeyError, detail:
-            msg = "File Clerk: key %s is missing"%(detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            ####XXX client hangs waiting for TCP reply
-            return
-
-        # get a user callback
-        if not self.get_user_sockets(ticket):
-            return
-        callback.write_tcp_obj(self.data_socket,ticket)
-
-        # if index is available, use index, otherwise use bfid_db to be
-        # backward compatible
-
-        if self.dict.inx.has_key('external_label'):  # use index
-            # now get a cursor so we can loop on the database quickly:
-            c = self.dict.inx['external_label'].cursor()
-            key, pkey = c.set(external_label)
-            while key:
-                value = self.dict[pkey]
-                if not value.has_key('deleted') or value['deleted'] != "yes":
-                    if value.has_key('pnfs_name0'):
-                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
-                key,pkey = c.nextDup()
-            c.close()
-        else:  # use bfid_db
-            try:
-                bfid_list = self.bfid_db.get_all_bfids(external_label)
-            except:
-                msg = "File Clerk: no entry for volume %s" % external_label
-                ticket["status"] = (e_errors.KEYERROR, msg)
-                Trace.log(e_errors.ERROR, msg)
-                bfid_list = []
-            for bfid in bfid_list:
-                value = self.dict[bfid]
-                if not value.has_key('deleted') or value['deleted'] != "yes":
-                    if value.has_key('pnfs_name0'):
-                        callback.write_tcp_raw(self.data_socket, value['pnfs_name0']+'\n')
-
-        # finishing up
-
-        callback.write_tcp_raw(self.data_socket, "")
-        self.data_socket.close()
-        callback.write_tcp_obj(self.control_socket,ticket)
-        self.control_socket.close()
-        return
+     callback.write_tcp_raw(self.data_socket, "")
+     self.data_socket.close()
+     callback.write_tcp_obj(self.control_socket,ticket)
+     self.control_socket.close()
+     return
 
     def start_backup(self,ticket):
         try:
@@ -834,13 +669,7 @@ if __name__ == "__main__":
         jouHome = dbHome
 
     Trace.log(e_errors.INFO,"opening file database using DbTable")
-    # see if there is an index file
-    if os.access(os.path.join(dbHome, 'file.external_label.index'), os.F_OK):
-        print "open with index"
-        fc.dict = db.DbTable("file", dbHome, jouHome, ['external_label']) 
-    else:
-        print "open with no index"
-        fc.dict = db.DbTable("file", dbHome, jouHome) 
+    fc.dict = db.DbTable("file", dbHome, jouHome) 
     fc.bfid_db = bfid_db.BfidDb(dbHome)
     Trace.log(e_errors.INFO,"hurrah, file database is open")
     
