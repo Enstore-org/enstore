@@ -18,7 +18,7 @@ record_size = 15+256
 def fetch_log_file(addr, month, day, filename):
     # Use ftp to grab log for "date"  from robot  at "addr"
     # It would be nice to use a "reget" but the OS/2 ftp server on
-    # the ADIC robot doesn't suppor this
+    # the AML/2 robot doesn't suppor this
     ftp_obj = ftplib.FTP(addr,"anonymous")
     ofile = open(filename,'w')
     infile = "log%02d%02d.001" % (day, month)
@@ -50,7 +50,7 @@ def format_record(timecode, code1, code2, msg):
         year, month, day, hour, minute, second, code1, code2, msg)
     
 def dump_log_file(addr, month, day, output=sys.stdout, update=0):
-    prefix="/tmp/adiclog"
+    prefix="/tmp/aml2log"
     if not os.path.isdir(prefix):
         os.mkdir(prefix)
     filename = os.path.join(prefix, "%s.%02d.%02d.log"%(addr, month, day))

@@ -212,7 +212,7 @@ def insert(ticket, classTicket):
 
     robot_host = "adic2.fnal.gov"
     year, month, day, hour, minute = time.localtime(timeL1)[:5]
-    outfileName = "/tmp/adicLog%02d%02d" % (day, month)
+    outfileName = "/tmp/aml2Log%02d%02d" % (day, month)
 
     mcSelf.workQueueClosed = 0
 
