@@ -126,12 +126,14 @@ enstore_movers=
 enstore_start_fileclerk=0
 enstore_start_volumeclerk=0
 enstore_start_log=0
+
 enstore_start_admin=0
 enstore_start_inquisitor=0
 ENSTORE_CONFIG_HOST=$ENSTORE_CONFIG_HOST;export ENSTORE_CONFIG_HOST
 ENSTORE_CONFIG_PORT=$ENSTORE_CONFIG_PORT;export ENSTORE_CONFIG_PORT
 
 # get all the servers for this port and other important servers (file_clerk, volume_clerk, ...)
+#note that conf.sh will reset the above vars.
 nodeplus_servers=`conf.sh $local_host 3 2`
 
 # check if Configuration Server is up
@@ -177,8 +179,6 @@ for server in $node_servers;do
         enstore_start_fileclerk=1;;
     volume_clerk)
         enstore_start_volumeclerk=1;;
-    admin_clerk)
-        enstore_start_admin=1;;
     inquisitor)
         enstore_start_inquisitor=1;;
     esac
@@ -453,20 +453,20 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
 		eval "$cmd &"
                 echo $! >> $PID_DIR/`uname -n`-db_dlck_pids
 
-                echo "Starting DB Admin Server"
-		out=$PID_DIR/admin_server
-		rm -f $out
-                cmd="python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
-		eval "$cmd &"
-                echo $! >> $PID_DIR/`uname -n`-admin_pids
-            fi
+##                echo "Starting DB Admin Server"
+##		out=$PID_DIR/admin_server
+##		rm -f $out
+##               cmd="python $ENSTORE_DIR/src/admin_clerk.py --config_host=$ENSTORE_CONFIG_HOST --config_port=$ENSTORE_CONFIG_PORT `output $out`"
+##		eval "$cmd &"
+##                echo $! >> $PID_DIR/`uname -n`-admin_pids
+##            fi
         else
             echo "ERROR: file and volume database are not present - can't start db tools"
             exit 1
         fi
     fi
 
-    check_server admin_clerk $PID_DIR/`uname -n`-admin_pids
+##    check_server admin_clerk $PID_DIR/`uname -n`-admin_pids
 
 fi
 

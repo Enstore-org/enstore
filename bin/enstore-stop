@@ -81,7 +81,7 @@ if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep adm`" ];then
       udp_sendWaitReply-withTimeout.sh $local_host `echo "$node_servers"|grep adm |sed -e 's/.*://'` $timeout --work quit >/dev/null
     fi
     turnoff_s "$PID_DIR/`uname -n`-db_*_pids"          "databases"
-    turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
+##    turnoff "$PID_DIR/`uname -n`-admin*pids"           "admin"
 fi
 if [ "${opt_just-}" = "" -o "`echo ${opt_just-}|grep inq`" ];then
     if [ $config_running -eq 1 ] ; then
