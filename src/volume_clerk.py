@@ -46,7 +46,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             Trace.trace(0,"}addvol "+repr(ticket["status"]))
             return
-
+        print "vc.addvol dict=", dict
+        print "vc.addvol dict.keys=", dict.keys()
         # can't have 2 with same label
         if dict.has_key(external_label):
             ticket["status"] = (errno.errorcode[errno.EEXIST], \
@@ -71,6 +72,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                 return
 
         # optional keys - use default values if not specified
+	# record['last_access'] = ticket.get('last_access',-1)
         try:
             record['last_access'] = ticket['last_access']
         except KeyError:
@@ -350,7 +352,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		    file_family = label
                 v["file_family"] = file_family+"."+wrapper_type
 		v["wrapper"] = wrapper_type
-                self.logc.send(e_errors.INFO,2,
+                self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
                 dict[label] = copy.deepcopy(v)
                 v["status"] = (e_errors.OK, None)
@@ -373,7 +375,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 		file_family = label
             vol["file_family"] = file_family+"."+wrapper_type
 	    vol["wrapper"] = wrapper_type
-            self.logc.send(e_errors.INFO,2,
+            self.logc.send(log_client.INFO,2,
                   "Assigning blank volume"+label+"to"+library+" "+file_family)
             dict[label] = copy.deepcopy(vol)
             vol["status"] = (e_errors.OK, None)
@@ -385,7 +387,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
         # nothing was available at all
         ticket["status"] = (e_errors.NOVOLUME, \
 			    "Volume Clerk: no new volumes available")
-        self.logc.send(e_errors.ERROR,1, "No blank volumes"+str(ticket) )
+        self.logc.send(log_client.ERROR,1, "No blank volumes"+str(ticket) )
         self.reply_to_caller(ticket)
         Trace.trace(0,"}delvol "+repr(ticket["status"]))
         return
@@ -396,7 +398,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                      str(sys.exc_info()[1]))
 	 traceback.print_exc()
          ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-         self.logc.send(e_errors.ERROR,1, str(ticket) )
+         self.logc.send(log_client.ERROR,1, str(ticket) )
          self.reply_to_caller(ticket)
          return
 
@@ -657,7 +659,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
     # flag the database that we are now writing the system
     def clr_system_inhibit(self, ticket):
-     Trace.trace(10,'{clr_system_inhibit '+repr(ticket))
+     Trace.trace(10,'{vc.clr_system_inhibit '+repr(ticket))
      try:
         # everything is based on external label - make sure we have this
         try:
@@ -685,7 +687,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
         # update the fields that have changed
         record ["system_inhibit"] = "none"
-        record ["at_mover"] = ('unmounted','none')
+	l = list(record['at_mover'])
+	r = self.get_media_changer_state(record["library"],
+	                          record["external_label"], record["media_type"])
+	l[0]=r
+	record['at_mover']=tuple(l)
         dict[external_label] = copy.deepcopy(record) # THIS WILL JOURNAL IT
         record["status"] = (e_errors.OK, None)
         self.reply_to_caller(record)
@@ -694,12 +700,46 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
 
      # even if there is an error - respond to caller so he can process it
      except:
-         ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
-	 self.enprint(ticket, generic_cs.PRETTY_PRINT)
-         self.reply_to_caller(ticket)
-         Trace.trace(0,"}clr_system_inhibit "+repr(ticket["status"]))
-         return
-
+        ticket["status"] = (str(sys.exc_info()[0]), str(sys.exc_info()[1]))
+        self.enprint(ticket, generic_cs.PRETTY_PRINT)
+        self.reply_to_caller(ticket)
+        Trace.trace(0,"}vc.clr_system_inhibit "+repr(ticket["status"]))
+        return
+	 
+    # get the actual state of the media changer
+    def get_media_changer_state(self, libMgr, volume, m_type):
+     Trace.trace(11,'{vc.get_media_changer_state '+repr(volume))
+     import library_manager_client
+     lmc = library_manager_client.LibraryManagerClient(self.csc, 0,
+        	           libMgr+".library_manager", 0, 0)
+     mchgr = lmc.get_mc()      # return media changer
+     del lmc
+     if None != mchgr :
+         import media_changer_client
+         mcc = media_changer_client.MediaChangerClient(self.csc, 0, mchgr )
+	 del mchgr
+         vol_ticket = {'external_label' : volume,
+                       'media_type' : m_type
+                      }
+         mc_ticket = {'work' : 'viewvol',
+                      'vol_ticket' : vol_ticket
+                     }
+         stat = mcc.viewvol(mc_ticket)["status"][3]
+	 del mcc
+         if 'O' == stat :
+           state = 'unmounted'
+         elif 'M' == stat :
+           state = 'mounted'
+         else :
+           state = stat
+     else :
+         #print "vc.get_media_changer_state: ERROR: no media changer found" \
+	 #       +repr(volume) 
+         Trace.trace(0," }vc.get_media_changer_state: ERROR: no media changer found "
+	             +repr(volume))
+         return 'unknown'
+     return state
+    
     # for the backward compatibility D0_TEMP
     # flag the database that we are now writing the system
     def add_at_mover(self, ticket):
@@ -1120,7 +1160,7 @@ if __name__ == "__main__":
     while 1:
         try:
             Trace.trace(1,'Volume Clerk (re)starting')
-            vc.logc.send(e_errors.INFO, 1, "Volume Clerk (re)starting")
+            vc.logc.send(log_client.INFO, 1, "Volume Clerk (re)starting")
             vc.serve_forever()
         except:
 	    vc.serve_forever_error("volume clerk", vc.logc)
