@@ -402,6 +402,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             import ftt_driver
             import ftt
             self.tape_driver = ftt_driver.FTTDriver()
+            self.maybe_clean()
             have_tape = self.tape_driver.open(self.device, mode=0, retry_count=3)
             stats = self.tape_driver.ftt.get_stats()
             self.config['product_id'] = stats[ftt.PRODUCT_ID]
@@ -948,10 +949,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         else:
             self.state = HAVE_BOUND
+            self.maybe_clean()
         now = time.time()
         self.dismount_time = now + self.delay
         self.update(state=ERROR, reset_timer=1)
-
+        
         
     def transfer_completed(self):
         Trace.log(e_errors.INFO, "transfer complete, current_volume = %s, current_location = %s"%(
@@ -968,13 +970,43 @@ class Mover(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
+        self.update(reset_timer=1)
+        
         if self.state == DRAINING:
             self.dismount_volume()
             self.state = OFFLINE
         else:
             self.state = HAVE_BOUND
-        self.update(reset_timer=1)
+            self.maybe_clean()
+        
+    def maybe_clean(self):
+        needs_cleaning = 0
+        if self.driver_type == 'FTTDriver':
+            ##XXX
+            import ftt
+            Trace.trace(25, "maybe_clean: open device to get tape statistics")
+            have_tape = self.tape_driver.open(self.device, mode=0, retry_count=1)
+            stats = self.tape_driver.ftt.get_stats()
+            Trace.trace(25, "maybe_clean: got tape statistics, stats=%s, stats[CLEANING_BIT]=%s"%(
+                stats, stats and stats[ftt.CLEANING_BIT]))
 
+            needs_cleaning = stats and stats[ftt.CLEANING_BIT]
+            if needs_cleaning and needs_cleaning != '0':
+                needs_cleaning = 1
+
+        if needs_cleaning:
+            Trace.log(e_errors.INFO, "initiating automatic cleaning")
+            save_state = self.state
+            if save_state == HAVE_BOUND:
+                self.dismount_volume()
+                save_state = IDLE
+            self.state = CLEANING
+            self.mcc.doCleaningCycle(self.config)
+            self.state = save_state
+            Trace.log(e_errors.INFO, "cleaning complete")
+        needs_cleaning = 0
+        
+        
     def update_after_writing(self):
         previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
         self.current_location = self.tape_driver.tell()
