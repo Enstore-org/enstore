@@ -109,7 +109,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    stat = client.alive(self.alive_rcv_timeout, self.alive_retries)
 	    self.essfile.output_alive(host, prefix, stat, time, key)
 	    self.htmlfile.output_alive(host, prefix, stat, time, key)
-	    self.last_alive[client] = time
+	    self.last_alive[key] = time
 	except errno.errorcode[errno.ETIMEDOUT]:
 	    if self.last_alive.has_key(client):
 	        last_time = self.last_alive[client]
