@@ -270,7 +270,7 @@ def print_data(volume, fd_temp, fd_data):
         
     #...make sure that there is data in the file (string)...
     if len(entire_file_string) == 0:
-        return ['']
+        return []
     
     #...then obtain a list of strings, where each line in the file
     # is an element in the list.
@@ -357,16 +357,18 @@ def print_volume_quotas_status(volume_quotas, output_file):
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("%-10s %-13s %-6s %-10s %-12s %-7s %s\n" %
+    vq_file.write("%-10s %-13s %-6s %-10s %-12s %-7s %-10s %-12s %-13s %s\n" %
           ("Library", "Storage Group", "Quota",
-           "Blank Vols", "Written Vols", "Deleted", "Space Used"))
+           "Blank Vols", "Written Vols", "Deleted", "Space Used",
+           "Active Files", "Deleted Files", "Unknown Files"))
 
     quotas = volume_quotas.keys()
     quotas.sort()
     for keys in quotas:
         formated_tuple = volume_quotas[keys][0:6] + \
-                         format_storage_size(volume_quotas[keys][6])
-        vq_file.write("%-10s %-13s %-6d %-10d %-12d %-7d %6.2f%s\n"
+                         format_storage_size(volume_quotas[keys][6]) + \
+                         volume_quotas[keys][7:]
+        vq_file.write("%-10s %-13s %-6d %-10d %-12d %-7d %7.2f%-3s %-12d %-13d %d\n"
                       % formated_tuple)
 
 
@@ -497,7 +499,7 @@ def verify_volume_quotas(volume_data, volume, volume_quotas):
 
     #Since the data of which files are on what volume is already known,
     # that same data can be used here.
-    if len(volume_data) == 1 and volume_data[0] == "":
+    if len(volume_data) == 0:
         blank_vols = 1
         written_vols = 0
     else:
@@ -514,16 +516,37 @@ def verify_volume_quotas(volume_data, volume, volume_quotas):
     # each library/storage group.
     space_used = volume['capacity_bytes'] - volume['remaining_bytes']
 
+    #Count the number of files in each storage group, that are deleted, active,
+    # and unknown.
+    num_active_files = 0
+    num_deleted_files = 0
+    num_unknown_files = 0
+    for file in volume_data:
+        row = string.split(file)
+        if row[4] == "no":
+            num_active_files = num_active_files + 1
+        elif row[4] == "yes":
+            num_deleted_files = num_deleted_files + 1
+        else:
+            num_unknown_files = num_unknown_files + 1
+
+    #Try to update results for each storage group.  If that fails, it means
+    # that it is the first volume of a storage group that has been found.
+    # Therefore act accordingly with initalization.
     try:
         quota = volume_quotas[(library, storage_group)]
 
-        volume_quotas[(library, storage_group)] = (library,
-                                                   storage_group,
-                                                   quota[2] + 1,
-                                                   quota[3] + blank_vols,
-                                                   quota[4] + written_vols,
-                                                   quota[5] + deleted,
-                                                   quota[6] + space_used)
+        volume_quotas[(library, storage_group)] =\
+                                (library,
+                                 storage_group,
+                                 quota[2] + 1,
+                                 quota[3] + blank_vols,
+                                 quota[4] + written_vols,
+                                 quota[5] + deleted,
+                                 quota[6] + space_used,
+                                 quota[7] + num_active_files,
+                                 quota[8] + num_deleted_files,
+                                 quota[9] + num_unknown_files)
 
     except KeyError:
         volume_quotas[(library, storage_group)] = (library,
@@ -532,7 +555,10 @@ def verify_volume_quotas(volume_data, volume, volume_quotas):
                                                    blank_vols,
                                                    written_vols,
                                                    deleted,
-                                                   space_used)
+                                                   space_used,
+                                                   num_active_files,
+                                                   num_deleted_files,
+                                                   num_unknown_files)
         
     
 
