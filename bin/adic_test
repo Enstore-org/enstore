@@ -1,0 +1,313 @@
+#!/bin/sh
+set -u  # force better programming and ability to use check for not set
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
+
+# test/$RCSfile$  $Revision$
+
+. /usr/local/etc/setups.sh
+setup enstore
+
+usage="`basename $0` -D drive [-V volume] [-M media-changer] [-E enstore_config_host] [-m] [-d] [-q]
+  where
+    -m mounts the tape once
+    -d dismounts the tape once
+and -q returns tape and media_changer for the drive
+"
+
+maxtries=300
+sleeptime=3
+
+dm=1 # dismount flag
+mo=1 # mount    flag
+on=1 # online   flag
+of=1 # offline  flag
+co=1 # continuous dismount->mount->dismount flag
+
+# This information belongs in the config file, BUT this script has the
+# requirement that it must not depend enstore being up.  Note the
+# media changer could be a direct dasadmin call and not go through the
+# enstore media changer.  This needs work.
+
+# Also note that if dasadmin is the media_changer, then this needs to
+# be run on the correct host - the one that "owns" the right not mount
+# a tape on the drive; this is not (usually) the node that the drive's
+# scsi cable is connected to.
+
+defaults="DE01-CA2502-aml2r1.media_changer-rip7.fnal.gov \
+          DE02-CA2503-aml2r1.media_changer-rip7.fnal.gov \
+          DC03-CA2290-aml2r1.media_changer-rip7.fnal.gov \
+          DC04-CA2297-aml2r1.media_changer-rip7.fnal.gov \
+          DC05-CA2296-aml2r1.media_changer-rip7.fnal.gov \
+          DC06-CA2298-aml2r1.media_changer-rip7.fnal.gov \
+          DM07-CA2930-aml2r1.media_changer-rip7.fnal.gov \
+          DM08-CA2931-aml2r1.media_changer-rip7.fnal.gov \
+          DM09-CA2932-aml2r1.media_changer-rip7.fnal.gov \
+          DM10-CA2933-aml2r1.media_changer-rip7.fnal.gov \
+          DM11-CA2934-aml2r1.media_changer-rip7.fnal.gov \
+          DM12-CA2935-aml2r1.media_changer-rip7.fnal.gov \
+          DE13-CA2548-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DE14-CA2549-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC15-CA2260-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC16-CA2261-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC17-CA2262-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DM18-CA2948-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DM19-CA2949-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC20-CA2263-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC21-CA2264-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC22-CA2265-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC23-CA2266-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC24-CA2267-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC25-CA2268-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC26-CA2269-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC27-CA2270-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC28-CA2271-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          DC29-CA2272-aml2r2.media_changer-d0ensrv2.fnal.gov \
+          "
+
+media_changer="MISSING"
+volume="MISSING"
+drive="MISSING"
+ens_host="MISSING"
+query_flag=0
+dismount_flag=0
+mount_flag=0
+
+
+# function that waits for tape to be mounted/dismount
+checkdas()  { drv=$1
+              count=0
+              if [ "$media_changer" = "dasadmin" ]; then
+                lookfor="dasadmin"
+              else
+                lookfor="enstore med"
+              fi
+              while [ $count -le $maxtries ]; do
+                if [ `ps axuww| grep "$lookfor" | grep $drv | egrep -c 'mount|dismoumt'` -eq 0 ]; then
+                  /bin/echo -n " " `date` mcclr
+                  return 0
+                fi
+                sleep $sleeptime
+                count=`expr $count + 1`
+              done
+              /bin/echo -n " " `date` robot FAILED, $lookfor process still active
+              exit 1
+            }
+
+# function that dismounts a tape
+edismount() { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
+              drv=`echo $2 | tr '[a-z]' '[A-Z]'`
+              # make sure there isn't some other pending request for this drive, exit if there is one pending
+              checkdas $drv
+              if [ "$media_changer" = "dasadmin" ]; then
+                 /bin/echo -n " " `date` issuing dasadmin dismount -d $drv
+                 dasadmin dismount -d $drv </dev/null >/dev/null 2>&1 &
+              else
+                 /bin/echo -n " " `date` enstore med --dismount $media_changer $tap $drv
+                 enstore med --dismount $media_changer $tap $drv </dev/null >/dev/null 2>&1 &
+              fi
+              # if just doing once, wait for it to complete, otherwise we will check later
+              if [ $co -eq 0 ]; then
+                checkdas $drv
+              fi
+              return 0
+            }
+
+# function that mounts a tape
+emount()    { tap=`echo $1 | tr '[a-z]' '[A-Z]'`
+              drv=`echo $2 | tr '[a-z]' '[A-Z]'`
+              # make sure there isn't some other pending request for this drive, exit if there is one pending
+              checkdas $drv
+              if [ "$media_changer" = "dasadmin" ]; then
+                 if    [ `echo $drv | grep -c DC` -eq 1 ] ; then
+                   typ="8MM"
+                 elif  [ `echo $drv | grep -c DM` -eq 1 ] ; then
+                   typ="8MM"
+                 elif  [ `echo $drv | grep -c DE` -eq 1 ] ; then
+                   typ="DECDLT"
+                 else
+                   echo "UNKNOWN DRIVE TYPE" $drv
+                   exit 1
+                 fi
+                 /bin/echo -n " "`date` issuing dasadmin mount -t $typ $tap $drv
+                 dasadmin mount -t $typ $tap $drv </dev/null >/dev/null 2>&1 &
+              else
+                 /bin/echo -n " " `date` issuing enstore med --mount $media_changer $tap $drv
+                 enstore med --mount $media_changer $tap $drv  </dev/null >/dev/null 2>&1 &
+              fi
+              # if just doing once, wait for it to complete, otherwise we will check later
+              if [ $co -eq 0 ]; then
+                checkdas $drv
+              fi
+              return 0
+            }
+
+# function that waits for a drive to go online
+eonline()   { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
+              # make sure there isn't some other pending request for this drive, exit if there is one pending
+              checkdas $drv
+              count=0
+              while [ $count -le $maxtries ]; do
+                if [ `rip-drive $drv status | grep -c "ONLINE"` -eq 1 ]; then
+                  return 0
+                fi
+                sleep $sleeptime
+                count=`expr $count + 1`
+              done
+              /bin/echo -n " " `date` drive $drv failed to go ONLINE
+              exit 1
+            }
+
+# function that waits for a drive to go offline
+eoffline()  { drv=`echo $1 | tr '[a-z]' '[A-Z]'`
+              # make sure there isn't some other pending request for this drive, exit if there is one pending
+              checkdas $drv
+              rip-drive $drv offline 1>/dev/null 2>&1
+              # can't check status of rip-drive offline command because of the case
+              # where the tape is already ejected, then an offline command returns an error
+              # and this is really ok, so just continue - will error out on the dr_open
+              # check if tape can't be ejected.
+              count=0
+              while [ $count -le $maxtries ]; do
+                if [ `rip-drive $drv status | grep -c "DR_OPEN"` -eq 1 ]; then
+                  return 0
+                fi
+                sleep $sleeptime
+                count=`expr $count + 1`
+              done
+              /bin/echo -n " " `date` drive $drv failed to eject tape go OFFLINE
+              exit 1
+            }
+
+
+# parse the options
+while getopts dmM:V:D:qhE: flag ; do
+  case $flag in
+       d)  dismount_flag=1; dm=1; mo=0; on=0; of=1; co=0     # dismount
+           ;;
+       m)  mount_flag=1;    dm=1; mo=1; on=1; of=1; co=0     # mount
+           ;;
+       M)  media_changer=$OPTARG                             # media changer
+           ;;
+       V)  volume=`echo $OPTARG|tr '[a-z]' '[A-Z]'`          # volume
+           ;;
+       D)  drive=`echo $OPTARG|tr '[a-z]' '[A-Z]'`           # drive
+           ;;
+       q)  query_flag=1;    co=0                             # query
+           ;;
+       e)  ens_host=$OPTARG                                  # enstore config host
+           ;;
+       h) echo "$usage" ; exit 0                             # help
+          ;;
+       \?) echo BAD SYNTAX. Correct usage is >&2; echo "$usage">&2; exit 1
+   esac
+done
+shift `expr $OPTIND - 1`        # shift options away
+
+# we need the drive to be specified
+if [ "$drive" = "MISSING" ]; then
+    echo "Drive must be specified"
+    echo "$usage"
+    exit 1
+fi
+
+if [ "$volume" = "MISSING" -o "$media_changer" = "MISSING" -o "$ens_host" = "MISSING" ]; then
+  # get the default string for this drive
+  default_info=`echo $defaults | sed -e "s/.*\(${drive}\)/\1/" | cut -f1 -d\ `
+  if [ `echo $default_info|cut -f1 -d-` != ${drive} ]; then
+     echo "Can not find defaults for  tape for drive $drive"
+     exit 1
+  fi
+
+  # if the volume isn't specified, get one based on the default for the drive
+  if [ "$volume" = "MISSING" ]; then
+      volume="`echo $default_info|cut -f2 -d-`"
+      if [ "${volume:-MISSING}" = "MISSING" ]; then
+         echo "Can not find default tape for drive $drive"
+         exit 1
+      fi
+  fi
+
+  # if the media_changer isn't specified, get one based on the default for the drive
+  if [ "$media_changer" = "MISSING" ]; then
+      media_changer="`echo $default_info|cut -f3 -d-`"
+      if [ "${media_changer:-MISSING}" = "MISSING" ]; then
+         echo "Can not find default media_changer for drive $drive"
+         exit 1
+      fi
+  fi
+
+  # if the enstore config host isn't specified, get one based on the default for the drive
+  if [ "$ens_host" = "MISSING" ]; then
+      ens_host="`echo $default_info|cut -f4 -d-`"
+      if [ "${ens_host:-MISSING}" = "MISSING" ]; then
+         echo "Can not find default enstore host for drive $drive"
+         exit 1
+      fi
+  fi
+fi
+
+if [ "$media_changer" != "dasadmin" ]; then
+    export ENSTORE_CONFIG_HOST=$ens_host
+    export ENSTORE_CONFIG_PORT=7500 # bad, but this will never change while I work here
+    # should I check if media changer is alive?
+fi
+
+# print out a little message to calm users
+if [ $co -eq 1 ]; then
+    echo "`date` Starting continuous test cycle for drive $drive with volume $volume using media_changer $media_changer ($ens_host configuration)"
+else
+    if [ $dismount_flag -ne 0 ]; then
+       echo "`date` Dismounting tape from drive $drive using media_changer $media_changer ($ens_host configuration)"
+    elif [ $mount_flag -ne 0 ]; then
+       echo "`date` Mounting volume $volume on drive $drive using media_changer $media_changer ($ens_host configuration)"
+    elif [ $query_flag -ne 0 ]; then
+       echo "`date` Defaults for drive $drive are volume $volume and media_changer $media_changer ($ens_host configuration)"
+       scsi_node=`conf.sh | grep $drive|cut -f2 -d:`
+       if [ -z "$scsi_node" ]; then
+          scsi_node="UNKNOWN (call developers)"
+          other_movers="UNKNOWN (call developers)"
+       else
+         other_movers="`conf.sh |grep $scsi_node|cut -f1 -d:`"
+       fi
+       echo "`date` Drive $drive has scsi connections to $scsi_node.  Movers on this node are" $other_movers
+       exit 0
+    fi
+fi
+
+while true; do
+
+# offline the drive and check for offline drive status
+  if [ $of -eq 1 ]; then
+     /bin/echo -n `date` offline $drive
+     eoffline $drive
+     stat=$?
+     echo " " $stat `date`
+  fi
+
+# dismount tape from drive
+  if [ $dm -eq 1 ]; then
+     /bin/echo -n `date` dismount $drive
+     edismount $volume $drive
+     stat=$?
+     echo " " $stat `date`
+  fi
+
+# mount tape in drive
+  if [ $mo -eq 1 ]; then
+     /bin/echo -n `date` mount $volume $drive
+     emount $volume $drive
+     stat=$?
+     echo " " $stat `date`
+  fi
+
+# check for online drive status
+  if [ $on -eq 1 ]; then
+     /bin/echo -n `date` online $drive
+     eonline $drive
+     stat=$?
+     echo " " $stat `date`
+  fi
+
+  if [ $co -eq 0 ]; then break; fi
+
+done
