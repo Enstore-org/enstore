@@ -47,7 +47,8 @@ if eod is None:
         print "no EOD cookie for volume", vol
         sys.exit(-1)
 
-print eod
+        
+print "Writing eod cookie %s on volume %s using device %s" % (eod,vol,dev)
 
 part, block, file = string.split(eod,'_')
 file = int(file)
