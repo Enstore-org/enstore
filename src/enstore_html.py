@@ -172,7 +172,8 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	# rows
 	table.append(empty_row())
 	table.append(empty_row())
-	table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.Image(self.script_title_gif)))))
+        if self.script_title_gif :
+            table.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.Center(HTMLgen.Image(self.script_title_gif)))))
 	table.append(empty_row())
 	table.append(empty_row())
 
@@ -1189,7 +1190,7 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         of performance data we must fill in
         """
 	self.title = "ENSTORE Active Network Monitoring"
-	self.script_title_gif = "encph.gif"
+	self.script_title_gif = None
 	self.description = "%s%sRecent network monitoring results"%(NBSP, NBSP)
         EnBaseHtmlDoc.__init__(self, refresh)
         
@@ -1218,6 +1219,13 @@ class EnActiveMonitorPage(EnBaseHtmlDoc):
         for h in headings:
             head_row.append(HTMLgen.TD(h))
 
+    "override the one in the base class, it does not update the data ach time we write"
+    def table_top_b(self, table, td):
+        td.append(HTMLgen.Font(self.description, html_escape='OFF', size="+2"))
+	td.append(HTMLgen.HR())
+	table.append(HTMLgen.TR(td))
+	table.append(empty_row())
+	return table
         
         
     def add_measurement(self, measurement):

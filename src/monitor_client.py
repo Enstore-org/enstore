@@ -67,7 +67,7 @@ class MonitorServerClient:
             ticket = self._simulate_encp_transfer(ticket, c_socket)
         except errno.errorcode[errno.ETIMEDOUT]:
             ticket['status'] = ('ETIMEDOUT', "failed to simulate encp")
-            ticket['elapsed'] = self.timeout
+            ticket['elapsed'] = self.timeout*10
             ticket['block_count'] = 0
 
         return ticket
@@ -112,10 +112,12 @@ class MonitorServerClient:
         block_size = measurement_dict['block_size']
         elapsed = measurement_dict['elapsed']
         callback_addr = measurement_dict['callback_addr'][0]
+        remote_addr = measurement_dict['remote_interface']
         #be paranoid abou the address translation. not spending the time
         #to research it.
         try:
             callback_addr = socket.gethostbyaddr(callback_addr)[0]
+            remote_addr = socket.gethostbyaddr(remote_addr)[0]
         except:
             pass
         
@@ -126,11 +128,11 @@ class MonitorServerClient:
             'measurement' : (
             time.asctime(time.localtime(time.time())), 
             callback_addr,
-            measurement_dict['remote_interface'],
+            remote_addr,
             block_count,
             block_size,
             elapsed,
-            (block_count * block_size) / elapsed / 1000000
+            "%5.3f" % ((block_count * block_size) / elapsed / (1024*1024))
             )
             }
             )
@@ -180,7 +182,7 @@ def get_all_ips(config_host, config_port, csc):
 class Vetos:
     """
     A small class to manage the veto dictionary that is provided
-    buy the configuration server. The administator does not
+    by the configuration server. The administator does not
     want us to probe these nodes.
     """
     def __init__(self, vetos):
