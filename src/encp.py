@@ -360,8 +360,11 @@ def write_to_hsm(input, output,
                        repr(statinfo[stat.ST_SIZE]))
 
             try:
-                mycrc = EXfer.usrTo_(in_file,data_path_socket,ECRC.ECRC,
-                                     bufsize, chk_crc )
+		if chk_crc != 0: crc_fun = ECRC.ECRC
+		else:            crc_fun = None
+                mycrc = EXfer.fd_xfer( in_file.fileno(),
+				       data_path_socket.fileno(), fsize,
+				       bufsize, crc_fun )
                 retry = 0
             except:
                 Trace.trace(0,"write_to_hsm EXfer error:"+str(sys.argv)+" "+\
@@ -994,17 +997,19 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         Trace.trace(8,"read_hsm_files: reading data to  file="+\
                     inputlist[j]+" socket="+repr(data_path_socket)+\
                     " bufsize="+repr(bufsize)+" chk_crc="+repr(chk_crc))
-        while 1:
-            buf = data_path_socket.recv(bufsize)
-            l = l + len(buf)
-            if len(buf) == 0 : break
-            if chk_crc != 0 :
-                mycrc = ECRC.ECRC(buf,mycrc)
-            f.write(buf)
-        data_path_socket.close()
-	data_path_socket_closed = 1
-        f.close()
-        fsize = l
+
+	# someone should catch the exceptions fd_xfer throws, for possible
+	# retry
+	if chk_crc != 0: crc_fun = ECRC.ECRC
+	else:            crc_fun = None
+	mycrc = EXfer.fd_xfer( data_path_socket.fileno(), f.fileno(),
+			       file_size[j], bufsize, crc_fun )
+	# if no exceptions, fsize is file_size[j]
+	fsize = file_size[j]
+	# fd_xfer does not check for EOF after reading the specified
+	# number of bytes.
+	buf = data_path_socket.recv(bufsize)# there should not be any more
+	fsize = fsize + len(buf)
 
         tinfo["recvd_bytes"+repr(j)] = time.time()-t2 #-------------Lap-End
         if verbose>1:
@@ -1069,13 +1074,13 @@ def read_hsm_files(listen_socket, submitted, ninput, unique_id, inputlist, outpu
         if chk_crc != 0 :
             if done_ticket["fc"]["complete_crc"] != mycrc :
 		# print error to stdout in d0sam format
-		done_ticket['status'][0] = e_errors.READ_COMPCRC
+		done_ticket['status'] = (e_errors.READ_COMPCRC,'crc mismatch')
 		print_d0sam_format(inputlist[j], outputlist[j], file_size[j],
 				   done_ticket)
 
                 print_error(errno.errorcode[errno.EPROTO],\
                        " encp.read_from_hsm: CRC's mismatch: "\
-                       +repr(complete_crc)+" "+repr(mycrc))
+                       +repr(done_ticket["fc"]["complete_crc"])+" "+repr(mycrc))
 
 		# no retry for this case
 		bytes = bytes+file_size[j]
