@@ -17,6 +17,7 @@ import select
 import socket
 import cPickle
 import rexec
+import errno
 
 _rexec = rexec.RExec()
 def _eval(stuff):
@@ -103,7 +104,10 @@ def timeout_recv(sock,nbytes,timeout=15*60):
         try:
             fds, junk, junk = select.select([sock], [], [], time_left)
         except select.error, msg:
-            fds = []
+            if getattr(msg, "errno", None) == errno.EINTR:
+                time_left = max(total_start_time + timeout - time.time(), 0.0)
+                continue
+            #fds = []
             Trace.log(e_errors.ERROR, "timeout_recv(): %s" % str(msg))
             #Return to handle the error.
             return ""
@@ -111,9 +115,9 @@ def timeout_recv(sock,nbytes,timeout=15*60):
         if sock not in fds:
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): select duration: %s  fds: %s  sock: %s"
-                      % (start_time - end_time, fds, sock))
+                      % (end_time - start_time, fds, sock))
             #return ""
-            time_left = total_start_time + timeout - time.time()
+            time_left = max(total_start_time + timeout - time.time(), 0.0)
             #Hopefully, this situation is different than other situations
             # that were all previously lumped together as "error".
             continue
