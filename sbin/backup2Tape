@@ -150,7 +150,7 @@ rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
 ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
 find $ELAST -type f $find_options -print > $ENSTORE_FILES
-find $ENSTORE/JOURNALS -type f $find_options -print >> /tmp/journals
+find $ENSTORE/JOURNALS -type f $find_options -print > /tmp/journals
 cat /tmp/journals >> $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
