@@ -1156,7 +1156,11 @@ def get_state_build_next_lm_req( self, wait, exit_status ):
 def status_to_request( client_obj_inst, exit_status ):
     next_req_to_lm = {}
     if   m_err[exit_status] == e_errors.OK:
-	next_req_to_lm = have_bound_volume_next( client_obj_inst )
+	if client_obj_inst.vol_info['external_label'] == '':
+	    next_req_to_lm = idle_mover_next( client_obj_inst )
+	else:
+	    next_req_to_lm = have_bound_volume_next( client_obj_inst )
+	    pass
 	next_req_to_lm['state'] = 'idle'
     elif m_err[exit_status] == e_errors.ENCP_GONE:
 	if client_obj_inst.vol_info['external_label'] == '':
