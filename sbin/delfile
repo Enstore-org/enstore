@@ -37,7 +37,8 @@ else
   fi
 
   # the bfid is the 9th element in the file
-  bfid=`echo $a | awk '{print $9}'`
+  #bfid=`echo $a | awk '{print $9}'`
+  bfid=`cat $1 | sed -n 9p`
   if [ $? -ne 0 ]; then
     echo "Can not get the bfid from $1"
     echo "$a"
