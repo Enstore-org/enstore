@@ -40,6 +40,9 @@ int	traceOnOff( int on, char *id, unsigned lvl1, unsigned lvl2 );
 
 static	char	*version = "Release- $Revision$ $Date$ $Author$";
 
+char	*trc_key_file = "";
+
+#define OPT_ARG( x )	do{if(++arg==argc){printf("arg required\n");exit(1);} x=argv[arg]; } while (0)
 
 int
 main(  int	argc
@@ -54,6 +57,7 @@ main(  int	argc
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{        if (strcmp(argv[arg],"-lvl") == 0)      incLVL=1;
 	    else if (strcmp(argv[arg],"-nohdr") == 0)    incHDR=0;
+	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
 	    else if (strcmp(argv[arg],"-noindent") == 0) incINDT=0;
 	    else
@@ -71,6 +75,7 @@ main(  int	argc
     {   int	arg, start=0, num=0;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] [num_procs [start_proc]]\n"
 			, trc_basename(argv[0],'/') );
@@ -90,6 +95,7 @@ main(  int	argc
     {   int	arg;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options]\n"
 			, trc_basename(argv[0],'/') );
@@ -103,6 +109,7 @@ main(  int	argc
     {   int	arg, mode;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
 			, trc_basename(argv[0],'/') );
@@ -122,6 +129,7 @@ main(  int	argc
     {   unsigned	arg, lvl1, lvl2;
 	for (arg=1; (arg<argc)&&(argv[arg][0]=='-'); arg++)
 	{   if (strcmp(argv[arg],"--version") == 0) { printf( "%s\n", version ); exit (0); }
+	    else if (strcmp(argv[arg],"-key") == 0)      OPT_ARG(trc_key_file);
 	    else
 	    {   fprintf(  stderr, "usage: %s [options] <0-5>\n"
 			, trc_basename(argv[0],'/') );
@@ -160,7 +168,7 @@ traceShow( int delta_t, int lines, int incHDR,int incLVL,int incINDT,int incCPU,
         char    traceLvlStr[33] = "                                ";
         int     line_count=0, c2=0;
 
-    trace_init_trc("");
+    trace_init_trc( trc_key_file );
 
     head = trc_cntl_sp->head_idx;
     if ((head==trc_cntl_sp->tail_idx) && !trc_cntl_sp->full_flg)
@@ -314,7 +322,7 @@ traceInfo( int start, int num )
 	int	begin, end, head, tail;
 	int	ents_qued;
 
-    trace_init_trc("");
+    trace_init_trc( trc_key_file );
 
     begin = 0;
     end   = trc_cntl_sp->last_idx;
@@ -381,7 +389,7 @@ trace mode: %d  0=off 1=cirQ   2=logMsg 3=cirQ/logMsg 4=USR       5=cirQ/USR\n"
 int
 traceReset( void )
 {   
-    trace_init_trc("");
+    trace_init_trc( trc_key_file );
 
     semop( trc_sem_id, &trc_sem_get_s, 1 );
     trc_cntl_sp->tail_idx = trc_cntl_sp->head_idx;
@@ -400,7 +408,7 @@ traceMode( int mode )
 {   
     register int	_r_;
 
-    trace_init_trc("");
+    trace_init_trc( trc_key_file );
 
     _r_ = trc_cntl_sp->mode;
 
@@ -421,7 +429,7 @@ traceOnOff( int on, char *id_s, unsigned lvl1, unsigned lvl2 )
 	char		*end_p;
 	unsigned	old_lvl;
 
-    trace_init_trc("");
+    trace_init_trc( trc_key_file );
 
     if (lvl1 > 31) lvl1 = 31;
     if (lvl2 > 31) lvl2 = 31;
