@@ -625,6 +625,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # fourth - error source
         self.need_lm_update = (0, None, 0, None)
         self.asc = None
+        self.send_update_cnt = 0
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -1262,9 +1263,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return
                         
         ticket = self.format_lm_ticket(state=state, error_source=error_source)
-        # send offline only once
-        if not ((self.state == self._last_state) and
+        # send offline less often
+        send_rq = 1
+        if ((self.state == self._last_state) and
             self.state == OFFLINE):
+            send_rq = 0
+            if self.send_update_cnt > 0:
+               self.send_update_cnt = self.send_update_cnt - 1 
+            if self.send_update_cnt == 0:
+               send_rq = 1
+               self.send_update_cnt = 10
+        
+        if send_rq:
             for lib, addr in self.libraries:
                 if state != self._last_state:
                     Trace.trace(10, "update_lm: %s to %s" % (ticket, addr))
@@ -1303,7 +1313,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
                     Trace.trace(20,"update_lm: send with no wait %s"%(ticket['work'],))
                     self.udpc.send_no_wait(ticket, addr)
-                        
         self.check_dismount_timer()
 
 
