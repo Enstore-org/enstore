@@ -524,7 +524,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        bfids = self.get_all_bfids(external_label)
+        bfids = self.get_all_bfids(label)
 
         for bfid in bfids:
             record = self.dict[bfid] 
