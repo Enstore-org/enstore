@@ -1401,7 +1401,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
                 #replace last argument with ticket
-                args.remove({})
+                #args.remove({})
+                # for some reason discipline has begun to return a complete ticket as a
+                # last argument on 05/10/2002 after update
+                # that's why I excplicitely remove a 3rd argument
+                del(args[2])
                 args.append(ticket)
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, 'reject')):
@@ -1518,7 +1522,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, None)
             if fun == 'restrict_version_access':
                 #replace last argument with ticket
-                args.remove({})
+                #args.remove({})
+                # for some reason discipline has begun to return a complete ticket as a
+                # last argument on 05/10/2002 after update
+                # that's why I excplicitely remove a 3rd argument
+                del(args[2])
                 args.append(ticket)
             ret = apply(getattr(self,fun), args)
             if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, 'reject')):
