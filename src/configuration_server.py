@@ -160,10 +160,13 @@ class ConfigurationDict(dispatching_worker.DispatchingWorker):
         try:
             ticket['status']=(e_errors.OK, None)
             reply=ticket.copy()
-            #reply["dump"] = pprint.pformat(self.configdic)
 	    reply["dump"] = self.configdict
             self.reply_to_caller(ticket)
-            callback.user_callback_socket(reply)
+            addr = ticket['callback_addr']
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(addr)
+            callback.write_tcp_obj(sock,reply)
+            sock.close()
 
         # even if there is an error - respond to caller so he can process it
         except:
