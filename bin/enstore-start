@@ -25,6 +25,7 @@ if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/configuration_server.py \
            --config_host=$enstore_config_host --config_port=$enstore_config_port --config_file=$enstore_config_file &
     echo $! >> $enstore_db/`uname -n`-configuration_pids
+    sleep 1
     ecmd config --alive --list
     if [ $? -ne 0 ]; then
       echo "Configuration Server didn't start properly - aborting..."
@@ -51,6 +52,7 @@ if [ $ping_only -eq 0 ] ; then
     echo "$What Log Server"
     python $ENSTORE_DIR/src/log_server.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-log_server_pids
+    sleep 1
     ecmd log --alive --list
     if [ $? -ne 0 ]; then
       echo "Log Server didn't start properly - aborting..."
@@ -77,7 +79,7 @@ if [ $ping_only -eq 0 ] ; then
     echo "$What Volume Clerk"
     python $ENSTORE_DIR/src/volume_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-volume_clerk_pids
-    sleep 1 # has to read in database
+    sleep 1
     ecmd vcc --alive --list
     if [ $? -ne 0 ]; then
       echo "Volume Clerk didn't start properly - aborting..."
@@ -105,7 +107,7 @@ if [ $ping_only -eq 0 ] ; then
     echo "$What File Clerk"
     python $ENSTORE_DIR/src/file_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
     echo $! >> $enstore_db/`uname -n`-file_clerk_pids
-    sleep 1 # has to read in database
+    sleep 1
     ecmd fcc --alive --list
     if [ $? -ne 0 ]; then
       echo "File Clerk didn't start properly - aborting..."
@@ -132,6 +134,7 @@ for i in $enstore_libraries; do
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/library_manager.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i &
     echo $! >> $enstore_db/`uname -n`-library_manager_pids
+    sleep 1
     ecmd lmc --alive --list $i
     if [ $? -ne 0 ]; then
       echo "Library Manager didn't start properly - aborting..."
@@ -158,6 +161,7 @@ for i in $enstore_media_changers; do
   if [ $ping_only -eq 0 ] ; then
     python $ENSTORE_DIR/src/media_changer.py --config_host=$enstore_config_host --config_port=$enstore_config_port $i &
     echo $! >> $enstore_db/`uname -n`-media_changer_pids
+    sleep 1
     ecmd mcc --alive --list $i
     if [ $? -ne 0 ]; then
       echo "Media Changer didn't start properly - aborting..."
@@ -212,6 +216,7 @@ if [ $ping_only -eq 0 ] ; then
       echo "$What DB Admin Server"
       python $ENSTORE_DIR/src/admin_clerk.py --config_host=$enstore_config_host --config_port=$enstore_config_port &
       echo $! >> $enstore_db/`uname -n`-admin_pids
+      sleep 1
       ecmd acc --alive
       if [ $? -ne 0 ]; then
         echo "Admin Clerk didn't start properly - aborting..."
