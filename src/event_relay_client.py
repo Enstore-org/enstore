@@ -1,7 +1,10 @@
 
 import socket
 import os
+import sys
+import select
 
+import enstore_erc_functions
 import event_relay_messages
 import enstore_constants
 import e_errors
@@ -140,6 +143,12 @@ class EventRelayClient:
 	self.dump_msg.encode()
 	self.send(self.dump_msg)
 
+    def quit(self):
+        # send the quit message to the event relay
+        self.quit_msg = event_relay_messages.EventRelayQuitMsg(self.host, self.port)
+	self.quit_msg.encode()
+	self.send(self.quit_msg)
+
     def do_print(self):
 	# send the do_print request to the event relay
 	self.doprint_msg = event_relay_messages.EventRelayDoPrintMsg(self.host, self.port)
@@ -152,3 +161,75 @@ class EventRelayClient:
 	self.dontprint_msg.encode()
 	self.send(self.dontprint_msg)
 
+    def event_relay_heartbeat(self):
+	# send the heartbeat request to the event relay
+	self.heartbeat_msg = event_relay_messages.EventRelayHeartbeatMsg(self.host, self.port)
+	self.heartbeat_msg.encode()
+	self.send(self.heartbeat_msg)
+
+    def alive(self):
+        # check if the event_relay is alive.  do this by subscribing
+        # for alive messages and then asking the event relay to send
+        # its own heartbeat.
+        self.start([event_relay_messages.ALIVE,])
+        self.event_relay_heartbeat()
+	# wait for events
+        readable, junk, junk = select.select([self.sock], [], [], 25)
+        if readable:
+            for fd in readable:
+                msg = enstore_erc_functions.read_erc(self)
+                if msg:
+                    # we got one, we are done
+                    self.unsubscribe()
+                    self.sock.close()
+                    sys.exit(0)
+        # we did not get a message, assume the event relay is not alive
+        sys.exit(1)
+        
+
+class EventRelayClientInterface:
+
+
+    # since we do not use the Interface class, the 2 args are place
+    # holders only.
+    def __init__(self, args=None, user_mode=None):
+        if "--%s"%(event_relay_messages.DUMP,) in sys.argv:
+            self.dump = 1
+        else:
+            self.dump = 0
+        if "--%s"%(event_relay_messages.ALIVE,) in sys.argv:
+            self.alive = 1
+        else:
+            self.alive = 0
+        if "--%s"%(event_relay_messages.QUIT,) in sys.argv:
+            self.quit = 1
+        else:
+            self.quit = 0
+
+    def print_help(self):
+        print "[--%s] [--%s] [--%s]"%(event_relay_messages.ALIVE,
+                                      event_relay_messages.DUMP,
+                                      event_relay_messages.QUIT)
+
+def do_work(intf):
+    # now get an event relay client
+    erc = EventRelayClient()
+
+    if intf.alive:
+        erc.alive()
+
+    elif intf.dump:
+        erc.dump()
+
+    elif intf.quit:
+        erc.quit()
+
+    else:
+        intf.print_help()
+        sys.exit(0)
+
+if __name__ == "__main__" :
+ 
+    intf = EventRelayClientInterface()
+
+    do_work(intf)

@@ -23,7 +23,9 @@ my_ip = socket.gethostbyaddr(socket.gethostname())[2][0]
 ALL = "all"
 NOTIFY = "notify"
 UNSUBSCRIBE = "unsubscribe"
+HEARTBEAT = "heartbeat"
 DUMP = "dump"
+QUIT = "quit"
 DO_PRINT = "do_print"
 DONT_PRINT = "dont_print"
 MAX_TIMEOUTS = 20
@@ -79,6 +81,9 @@ class Relay:
 					    "%H:%M:%S"), time.localtime(time.time())),)
 	print "Subscribed clients : %s"%(self.clients,)
 	print "Timeouts : %s"%(self.timeouts,)
+
+    def doQuit(self):
+        sys.exit(0)
 
     def cleanup(self, key, log=0):
 	if self.clients.has_key(key):
@@ -145,14 +150,20 @@ class Relay:
 			msg = "cannot handle request %s"%(msg,)
 			Trace.log(e_errors.INFO, msg, Trace.MSG_EVENT_RELAY)
 
+		elif tok[0] == HEARTBEAT:
+		    self.send_message(self.alive_msg, 'alive', now)
 		elif tok[0] == DUMP:
 		    self.dump()
+                elif tok[0] == QUIT:
+                    self.doQuit()
 		elif tok[0] == DO_PRINT:
 		    self.do_print = YES
 		elif tok[0] == DONT_PRINT:
 		    self.do_print = 0
 		else:
 		    self.send_message(msg, tok[0], now)
+        except SystemExit:
+            pass
 	except:
 	    self.dump()
 	    Trace.handle_error(msg_type=Trace.MSG_EVENT_RELAY)

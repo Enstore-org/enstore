@@ -28,6 +28,7 @@ import file_clerk_client
 import inquisitor_client
 import library_manager_client
 import log_client
+import event_relay_client
 import media_changer_client
 import mover_client
 import monitor_client
@@ -52,6 +53,8 @@ server_functions = { "alarm" : [alarm_client.AlarmClientInterface,
                                 alarm_client.do_work, option.ADMIN],
                      "configuration" : [configuration_client.ConfigurationClientInterface,
                                         configuration_client.do_work, option.ADMIN],
+                     "event_relay" : [event_relay_client.EventRelayClientInterface,
+                                      event_relay_client.do_work, option.ADMIN],
                      "file" : [file_clerk_client.FileClerkClientInterface,
                                file_clerk_client.do_work, option.USER],
                      "inquisitor" : [inquisitor_client.InquisitorClientInterface,

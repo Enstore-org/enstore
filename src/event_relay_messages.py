@@ -17,8 +17,10 @@ UNLOAD = "unload"
 LOADED = "loaded"
 ENCPXFER = "encp_xfer"
 DUMP = "dump"
+QUIT = "quit"
 DOPRINT = "do_print"
 DONTPRINT = "dont_print"
+HEARTBEAT = "heartbeat"
 
 MSG_FIELD_SEPARATOR = " "
 
@@ -271,6 +273,19 @@ class EventRelayDumpMsg(EventRelayMsg):
 	self.extra_info = ""
 
 
+# Message format:  quit
+class EventRelayQuitMsg(EventRelayMsg):
+
+    def decode(self, msg):
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
+
+    def encode(self):
+	self.type = QUIT
+	self.extra_info = ""
+
+
 # Message format:  do_print
 class EventRelayDoPrintMsg(EventRelayMsg):
 
@@ -296,6 +311,18 @@ class EventRelayDontPrintMsg(EventRelayMsg):
 	self.type = DONTPRINT
 	self.extra_info = ""
 
+# Message format:  heartbeat
+class EventRelayHeartbeatMsg(EventRelayMsg):
+
+    def decode(self, msg):
+	dec_msg = decode_type(msg)
+	self.type = dec_msg[0]
+	self.extra_info = ""
+
+    def encode(self):
+	self.type = HEARTBEAT
+	self.extra_info = ""
+
 
 # list of supported messages
 SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
@@ -311,8 +338,10 @@ SUPPORTED_MESSAGES = {NOTIFY : EventRelayNotifyMsg,
 		      LOADED : EventRelayLoadedMsg,
 		      ENCPXFER : EventRelayEncpXferMsg,
 		      DUMP : EventRelayDumpMsg,
+		      QUIT : EventRelayQuitMsg,
 		      DOPRINT : EventRelayDoPrintMsg,
-		      DONTPRINT : EventRelayDontPrintMsg
+		      DONTPRINT : EventRelayDontPrintMsg,
+                      HEARTBEAT : EventRelayHeartbeatMsg,
 		      }
 
 
