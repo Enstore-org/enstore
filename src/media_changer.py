@@ -40,7 +40,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def __init__(self, medch, maxwork, csc=0, verbose=0,\
 	         host=interface.default_host(), \
 	         port=interface.default_port()):
-        Trace.trace(10, '{__init__')
         self.MaxWork = maxwork
 	self.verbose = verbose
 	self.print_id = medch
@@ -63,7 +62,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.logc = log_client.LoggerClient(self.csc, \
 	                                    self.mc_config["logname"], \
                                             'logserver', 0)
-        Trace.trace(10, '}__init__')
 
     # wrapper method for client - server communication
     def loadvol(self, ticket):        
@@ -225,6 +223,7 @@ class EMASS_MediaLoader(MediaLoaderMethods) :
         self.prepare=EMASS.dismount
 
     def view(self, external_label, media_type):
+	"get current state of the tape"
         import EMASS
 	rt = EMASS.view(external_label, media_type)
         if 'O' == rt[5] :
@@ -255,174 +254,288 @@ class RDD_MediaLoader(MediaLoaderMethods) :
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
 
     def view(self, external_label, media_type):
+	"get current state of the tape"
         return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
 
 # "Shelf" manual media server - interfaces with OCS
 class Shelf_MediaLoader(MediaLoaderMethods) :
-    status_table = (
-         (e_errors.OK,	"request successful"),                              #0
-         (e_errors.MOUNTFAILED, "mc: on OCS"),                              #1
-         (e_errors.MOUNTFAILED, "mc: on OCS, no pipeObj"),                  #2
-         (e_errors.MOUNTFAILED, "mc: on OCS, OCS command unsuccessful"),    #3
-         (e_errors.MOUNTFAILED, "mc: on OCS, drive not available"),         #4
-         (e_errors.MOUNTFAILED, "mc: on OCS, rsh error"),                   #5
-         (e_errors.DISMOUNTFAILED, "mc: on OCS"),                           #6
-         (e_errors.DISMOUNTFAILED, "mc: on OCS, no pipeObj"),               #7
-         (e_errors.DISMOUNTFAILED, "mc: on OCS, OCS command unsuccessful"), #8
-         (e_errors.DISMOUNTFAILED, "mc: on OCS, rsh error")                 #9
-	 )
-    remoteHost = "bastet"
+    status_message = {
+      'OK':        (e_errors.OK, "request successful"),
+      'ERRCfgHst': (e_errors.NOACCESS, "mc:Shlf config OCShost incorrect"),
+      'ERRLoHoNR': (e_errors.NOACCESS, "mc:Shlf local host not responding"),
+      'ERRPipe':   (e_errors.NOACCESS, "mc:Shlf no pipeObj"),
+      'ERRHoNoRe': (e_errors.NOACCESS, "mc:Shlf remote host not responding"),
+      'ERRHoCmd':  (e_errors.NOACCESS, "mc:Shlf remote host command unsuccessful"),
+      'ERROCSCmd': (e_errors.NOACCESS, "mc:Shlf OCS not responding"),
+      'ERRHoNamM': (e_errors.NOACCESS, "mc:Shlf remote host name match"),
+      'ERRAloPip': (e_errors.MOUNTFAILED, "mc:Shlf allocate no pipeObj"),
+      'ERRAloCmd': (e_errors.MOUNTFAILED, "mc:Shlf allocate failed"),
+      'ERRAloDrv': (e_errors.MOUNTFAILED, "mc:Shlf allocate drive not available"),
+      'ERRAloRsh': (e_errors.MOUNTFAILED, "mc:Shlf allocate rsh error"),
+      'ERRReqPip': (e_errors.MOUNTFAILED, "mc:Shlf request no pipeObj"),
+      'ERRReqCmd': (e_errors.MOUNTFAILED, "mc:Shlf request failed"),
+      'ERRReqRsh': (e_errors.MOUNTFAILED, "mc:Shlf request rsh error"),
+      'ERRDeaPip': (e_errors.DISMOUNTFAILED, "mc:Shlf deallocate no pipeObj"),
+      'ERRDeaCmd': (e_errors.DISMOUNTFAILED, "mc:Shlf deallocate failed"),
+      'ERRDeaRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf deallocate rsh error"),
+      'ERRDsmPip': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount no pipeObj"),
+      'ERRDsmCmd': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount failed"),
+      'ERRDsmRsh': (e_errors.DISMOUNTFAILED, "mc:Shlf dismount rsh error")
+      }
 
     def __init__(self, medch, maxwork=1, csc=0, verbose=0,\
                  host=interface.default_host(), \
                  port=interface.default_port()):
         MediaLoaderMethods.__init__(self,medch,maxwork,csc,verbose,host,port)
 	#self.prepare=self.unload  #  override prepare with dismount
+	
+	fnstatusR = self.getRemoteHost()
+	fnstatus = self.getLocalHost()
+	if fnstatus == 'OK' and fnstatusR == 'OK' :
+	    if self.remoteHostShort == self.localHost:
+	        self.cmdPrefix = ""
+	        self.cmdSuffix = ""
+	    else :
+	        self.cmdPrefix = "rsh " + self.remoteHost + " '"
+	        self.cmdSuffix = "'"
+                fnstatus = self.checkRemoteConnection()
+            Trace.log(e_errors.INFO, "MedChShf init Host=%s shortHost=%s" % (self.remoteHost, self.remoteHostShort) )
+	    if fnstatus == 'OK' :
+	        fnstatus = self.checkOCSalive()
+	else :
+            Trace.log(e_errors.ERROR, "ERROR:MedChShf init %s %s" % (fnstatusR, self.status_message[fnstatusR][1]) )
+            Trace.log(e_errors.ERROR, "ERROR:MedChShf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        Trace.log(e_errors.INFO, "MedChShf init %s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+	return
 
-    def view(self, external_label, media_type):
-        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
-
-    def allocateOCSdrive(self, remoteHost, drive):
-        status = 0
-	fnstatus = 0
-	command = "rsh " + remoteHost + " 'ocs_allocate -T " + drive + \
-	          " ; echo $?' "
-        #Trace.trace(7, "media changer rsh Command=", command )
-	pipeObj = popen2.Popen3(command, 0, 0)
+    def getRemoteHost(self):
+        "get the hostname of the remote machine from the config server"
+        fnstatus = 'OK'
+	self.remoteHost = self.mc_config['OCSclient']
+	index = string.find(self.remoteHost,".")
+	if index > 0 :
+	    self.remoteHostShort = self.remoteHost[:index]
+	elif index == 0 :
+	    fnstatus = 'ERRCfgHst'
+	else :
+	    self.remoteHostShort = self.remoteHost
+        return fnstatus
+	
+    def getLocalHost(self):
+        "get the hostname of the local machine"
+        fnstatus = 'OK'
+        command = "echo $(hostname -s) ; echo $?"
+        Trace.log(e_errors.INFO, "MedChShf gLH Cmd=%s" % command )
+        pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
-	    status = 1
-	    fnstatus = 2
-            return status, fnstatus
+	    fnstatus = 'ERRPipe'
+            return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        #Trace.trace(7, "media changer rsh return strings=", result, " stat=", stat )
+        Trace.log(e_errors.INFO, "MedChShf gLH return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
-	    retval = result[1][0]
+	    retval = result[len(result)-1][0]
 	    if retval != '0':
-	        status = 1
-	        fnstatus = 3
-                return status, fnstatus
+	        fnstatus = 'ERRLoHoNR'
+                return fnstatus
+	    else :
+	        self.localHost = result[0]
+	else :
+	    fnstatus = 'ERRLoHoNR'
+            return fnstatus
+        return fnstatus
+    
+    def checkRemoteConnection(self):
+	"check to see if remote host is there"
+        fnstatus = 'OK'
+        command = self.cmdPrefix + "echo $(hostname -s) ; echo $?" \
+	          + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf cRC Cmd=%s" % command )
+        pipeObj = popen2.Popen3(command, 0, 0)
+	if pipeObj is None:
+	    fnstatus = 'ERRPipe'
+            return fnstatus
+	stat = pipeObj.wait()
+	result = pipeObj.fromchild.readlines()  # result has returned string
+        Trace.log(e_errors.INFO, "MedChShf cRC rsh return strings=%s stat=%s" % (result, stat))
+	if stat == 0:
+	    retval = result[len(result)-1][0]
+	    if retval != '0':
+	        fnstatus = 'ERRHoCmd'
+                return fnstatus
+	    else :   # check if remote hostname matches self.remoteHostShort
+	        retstring = result[0]
+	        pos=string.find(retstring, self.remoteHostShort)
+		if pos == -1 :
+		    fnstatus = 'ERRHoNamM'  # hostname mismatch
+                    return fnstatus
+	else :
+	    fnstatus = 'ERRHoNoRe'
+            return fnstatus
+        return fnstatus
+
+    def checkOCSalive(self):
+	"check to see if OCS is alive"
+        fnstatus = 'OK'
+        command = self.cmdPrefix + "ocs_left_allocated -l 0 ; echo $?" \
+	          + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf cOa Cmd=%s" % command )
+        pipeObj = popen2.Popen3(command, 0, 0)
+	if pipeObj is None:
+	    fnstatus = 'ERRPipe'
+            return fnstatus
+	stat = pipeObj.wait()
+	result = pipeObj.fromchild.readlines()  # result has returned string
+        Trace.log(e_errors.INFO, "MedChShf cOa rsh return strings=%s stat=%s" % (result, stat))
+	if stat == 0:
+	    retval = result[len(result)-1][0]
+	    if retval != '0':
+	        fnstatus = 'ERROCSCmd'
+                return fnstatus
+	else :
+	    fnstatus = 'ERRHoNoRe'
+            return fnstatus
+	return fnstatus
+	
+    def view(self, external_label, media_type):
+	"get current state of the tape"
+        return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
+
+    def allocateOCSdrive(self, drive):
+	"allocate an OCS managed drive"
+	fnstatus = 'OK'
+	command = self.cmdPrefix + "ocs_allocate -T " + drive + \
+	          " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf aOd Cmd=%s" % command )
+	pipeObj = popen2.Popen3(command, 0, 0)
+	if pipeObj is None:
+	    fnstatus = 'ERRAloPip'
+            return fnstatus
+	stat = pipeObj.wait()
+	result = pipeObj.fromchild.readlines()  # result has returned string
+        Trace.log(e_errors.INFO, "MedChShf aOd rsh return strings=%s stat=%s" % (result, stat))
+	if stat == 0:
+	    retval = result[len(result)-1][0]
+	    if retval != '0':
+	        fnstatus = 'ERRAloCmd'
+                return fnstatus
 	    else :   # check if OCS allocated a different drive
 	        retstring = result[0]
 		pos=string.find(retstring," "+drive)
-		if pos == -1 :
-		    status = 1        # different drive was allocated 
-		    fnstatus = 4
-         	    pos=string.find(retstring,remoteHost)
-		    if pos == 0 :
-		        wrongdrive=string.strip(retstring[len(remoteHost):])
-                        #Trace.trace(7, "media changer rsh wrongdrive=", wrongdrive )
-			status, fnstatus = self.deallocateOCSdrive(remoteHost, drive)
-                        return status, fnstatus
-                    else :
-		        status = 1        # returned hostname malformed,
-		        fnstatus = 4      # cannot deallocate the drive
-                        return status, fnstatus
+		if pos == -1 :  # different drive was allocated 
+		    fnstatus = 'ERRAloDrv'
+         	    pos=string.find(retstring," ")
+		    if pos != -1 :
+		        wrongdrive=string.strip(retstring[pos+1:])
+                        Trace.log(e_errors.ERROR, "ERROR:MedChShf aOd rsh wrongdrive=" % wrongdrive )
+		    fnstatusR = self.deallocateOCSdrive(drive)
+                    return fnstatus
 	else :
-	    status = 1
-	    fnstatus = 5
-        return status, fnstatus
+	    fnstatus = 'ERRAloRsh'
+            return fnstatus
+        return fnstatus
         
-    def mountOCSdrive(self, external_label, remoteHost, drive):
-        status = 0
-	fnstatus = 0
-	command = "rsh " + remoteHost + " 'ocs_request -t " + drive + \
-	          " -v " + external_label + " ; echo $?' "
-        #Trace.trace(7, "media changer rsh Command=", command )
+    def mountOCSdrive(self, external_label, drive):
+	"request an OCS managed tape"
+	fnstatus = 'OK'
+	command = self.cmdPrefix + "ocs_request -t " + drive + \
+	          " -v " + external_label + " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf mOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
-	    status = 1
-	    fnstatus = 2
-	    statusR, fnstatusR = self.deallocateOCSdrive(remoteHost, drive)
-            return status, fnstatus
+	    fnstatus = 'ERRReqPip'
+	    fnstatusR = self.deallocateOCSdrive(drive)
+            return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        #Trace.trace(7, "media changer rsh return strings=", result, " stat=", stat )
+        Trace.log(e_errors.INFO, "MedChShf mOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
-	    retval = result[1][0]
+	    retval = result[len(result)-1][0]
 	    if retval != '0':
-	        status = 1
-	        fnstatus = 3
-	        statusR, fnstatusR = self.deallocateOCSdrive(remoteHost, drive)
-                return status, fnstatus
+	        fnstatus = 'ERRReqCmd'
+	        fnstatusR = self.deallocateOCSdrive(drive)
+                return fnstatus
 	else :
-	    status = 1
-	    fnstatus = 5
-	    statusR, fnstatusR = self.deallocateOCSdrive(remoteHost, drive)
-            return status, fnstatus
-        return status, fnstatus
+	    fnstatus = 'ERRReqRsh'
+	    fnstatusR = self.deallocateOCSdrive(drive)
+            return fnstatus
+        return fnstatus
 
-    def deallocateOCSdrive(self, remoteHost, drive):
-        status = 0
-	fnstatus = 0
-	command = "rsh " + remoteHost + " 'ocs_deallocate -t " + drive + \
-	          " ; echo $?' "
-        #Trace.trace(7, "media changer rsh Command=", command )
+    def deallocateOCSdrive(self, drive):
+	"deallocate an OCS managed drive"
+	fnstatus = 'OK'
+	command = self.cmdPrefix + "ocs_deallocate -t " + drive + \
+	          " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf dOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
-	    status = 1
-	    fnstatus = 7
-            return status, fnstatus
+	    fnstatus = 'ERRDeaPip'
+            return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        #Trace.trace(7, "media changer rsh return strings=", result, " stat=", stat )
+        Trace.log(e_errors.INFO, "MedChShf dOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
-	    retval = result[1][0]
+	    retval = result[len(result)-1][0]
 	    if retval != '0': #check if drive already deallocated (not an error)
 	        retstring = result[0]
 		pos=string.find(retstring,"drive is already deallocated")
 		if pos == -1 :  # really an error
-	            status = 1
-	            fnstatus = 8
-                    return status, fnstatus
+	            fnstatus = 'ERRDeaCmd'
+                    return fnstatus
 	else :
-	    status = 1
-	    fnstatus = 9
-        return status, fnstatus
+	    fnstatus = 'ERRDeaRsh'
+            return fnstatus
+        return fnstatus
 
-    def unmountOCSdrive(self, remoteHost, drive):
-        status = 0
-	fnstatus = 0
-	command = "rsh " + remoteHost + " 'ocs_dismount -t " + drive + \
-	          " ; echo $?' "
-        #Trace.trace(7, "media changer rsh Command=", command )
+    def unmountOCSdrive(self, drive):
+	"dismount an OCS managed tape"
+	fnstatus = 'OK'
+	command = self.cmdPrefix + "ocs_dismount -t " + drive + \
+	          " ; echo $?" + self.cmdSuffix
+        Trace.log(e_errors.INFO, "MedChShf uOd Cmd=%s" % command )
 	pipeObj = popen2.Popen3(command, 0, 0)
 	if pipeObj is None:
-	    status = 1
-	    fnstat = 7
-            return status, fnstatus
+	    fnstat = 'ERRDsmPip'
+            return fnstatus
 	stat = pipeObj.wait()
 	result = pipeObj.fromchild.readlines()  # result has returned string
-        #Trace.trace(7, "media changer rsh return strings=", result, " stat=", stat )
+        Trace.log(e_errors.INFO, "MedChShf uOd rsh return strings=%s stat=%s" % (result, stat))
 	if stat == 0:
-	    retval = result[1][0]
+	    retval = result[len(result)-1][0]
 	    if retval != '0':
-	        status = 1
-	        fnstatus = 8
-                return status, fnstatus
+	        fnstatus = 'ERRDsmCmd'
+                return fnstatus
 	else :
-	    status = 1
-	    fnstatus = 9
-        return status, fnstatus
+	    fnstatus = 'ERRDsmRsh'
+            return fnstatus
+        return fnstatus
 
     def load(self, external_label, drive, media_type):
-	status = 0
-	fnstat = 0
-	status, fnstatus = self.allocateOCSdrive(self.remoteHost, drive)
-	if status == 0 :
-	    status, fnstatus = self.mountOCSdrive(external_label, self.remoteHost, \
-	                       drive)
-        return self.status_table[status][0], status, self.status_table[status][1]
+	"load a tape"
+	fnstatus = self.allocateOCSdrive(drive)
+	if fnstatus == 'OK' :
+	    fnstatus = self.mountOCSdrive(external_label, drive)
+	if fnstatus == 'OK' :
+	    status = 0
+	else :
+	    status = 1
+            Trace.log(e_errors.ERROR, "ERROR:MedChShf load exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 
     def unload(self, external_label, drive, media_type):
-	status = 0
-	fnstat = 0
-	statusTmp, fnstatusTmp = self.unmountOCSdrive(self.remoteHost, drive)
-     	status, fnstatus = self.deallocateOCSdrive(self.remoteHost, drive)
-	if statusTmp != 0 :
-	    status = statusTmp
+	"unload a tape"
+	fnstatusTmp = self.unmountOCSdrive(drive)
+     	fnstatus = self.deallocateOCSdrive(drive)
+        Trace.log(e_errors.INFO, "MedChShf unload deallocate exit fnstatus=%s" % fnstatus)
+	if fnstatusTmp != 'OK' :
+            Trace.log(e_errors.ERROR, "ERROR:MedChShf unload deall exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
 	    fnstatus = fnstatusTmp
-        return self.status_table[status][0], status, self.status_table[status][1]
+	if fnstatus == 'OK' :
+	    status = 0
+	else :
+	    status = 1
+            Trace.log(e_errors.ERROR, "ERROR:MedChShf unload exit fnst=%s %s" % (fnstatus, self.status_message[fnstatus][1]) )
+        return self.status_message[fnstatus][0], status, self.status_message[fnstatus][1]
 	
 class MediaLoaderInterface(generic_server.GenericServerInterface):
 
