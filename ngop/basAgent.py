@@ -129,6 +129,20 @@ L = [20, 10, 20, 10, 10, 6, 10, 6, 1, 2, 1, 2]
 
 PATH = 'testfile/www'
 
+node_d = node_init.node_d
+nodes = node_d.keys()      
+nodeValue = node_d.values()
+
+mibflow = {}   
+
+system_d = {} 
+tcp_d = {}
+udp_d = {}
+ip_d = {}
+icmp_d = {}
+snmp_d = {}
+
+
 
 #########################################################################
 ## This function searches a string from the input file and returns an   #
@@ -717,7 +731,8 @@ if __name__=="__main__":
     for i in 1, 2, 3, 4, 5, 6, 7, 10, 11, 16, 17, 31, 47:
         miblist[i] = "%s/%d"%(mibdir, i)
                 
-    mibflow = {}
+#    mibflow = {}
+    global  mibflow    
     mibflow["duplex"] = ["%s/%s"%(mibdir,"duplex"), "%s%s"%(flownum, "10")]
 
     k = 12
@@ -749,9 +764,9 @@ if __name__=="__main__":
    
 #### setup the lists that will be the keys to update the node dictionary
  
-    node_d = node_init.node_d
-    nodes = node_d.keys()
-    nodeValue = node_d.values()
+#    node_d = node_init.node_d
+#    nodes = node_d.keys()
+#    nodeValue = node_d.values()
 
     cableVal = []
     for dic in nodeValue:
@@ -822,6 +837,8 @@ if __name__=="__main__":
 
 #### Update the group dictionaries
 
+    global system_d, tcp_d, udp_d, ip_d, icmp_d, snmp_d
+ 
     system_d = get_mib_info(SYS_L, 'system.sys', 1)
     tcp_d = get_mib_info(TCP_L, 'tcp.tcp', 6)  
     udp_d = get_mib_info(UDP_L, 'udp.udp', 7)
