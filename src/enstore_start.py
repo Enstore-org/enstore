@@ -432,9 +432,9 @@ def do_work(intf):
     csc = get_csc()
 
     #If the log server is already running, send log messages there.
-    if e_errors.is_ok(csc.alive("log_server", 2, 2)):
-        logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
-        Trace.set_log_func(logc.log_func)
+    #if e_errors.is_ok(csc.alive("log_server", 2, 2)):
+    #    logc = log_client.LoggerClient(csc, MY_NAME, 'log_server')
+    #    Trace.set_log_func(logc.log_func)
 
     #Check if the user is enstore or root on a production node.  
     check_user()
