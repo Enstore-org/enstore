@@ -2029,7 +2029,7 @@ def verify_read_request_consistancy(requests_per_vol):
                 Trace.alarm(e_errors.ERROR, e_errors.UNKNOWN, rest)
             
             elif request['fc']['external_label'] != p.volume or \
-               request['fc']['location_cookie'] != p.location_cookie or \
+               not same_cookie(request['fc']['location_cookie'], p.location_cookie) or \
                long(request['fc']['size']) != long(p.size):
 
                 rest = {'infile':request['infile'],
@@ -2048,6 +2048,18 @@ def verify_read_request_consistancy(requests_per_vol):
                                                request['outfile'],
                                                request['file_size'], request)
                 quit() #Harsh, but necessary.
+
+
+#######################################################################
+
+# same_cookie(c1, c2) -- to see if c1 and c2 are the same
+
+def same_cookie(c1, c2):
+    try: # just to be paranoid
+        return string.split(c1, '_')[-1] == string.split(c2, '_')[-1]
+    except:
+        return 0
+
 
 #######################################################################
 
