@@ -30,6 +30,15 @@ case $node in
           ;;
 esac
 
+case $node in
+  stksrv*|d0ensrv*) type=server
+          ;;
+  stkmvr*|d0enmvr*) type=mover
+          ;;
+       *) type=UNKNOWN
+          ;;
+esac
+
 case $job in
 
 ################################################################################
@@ -37,7 +46,7 @@ add*)
 
     e=`/sbin/ifconfig eth1`
     eth1=eth1
-    if [ `echo $e | grep -c UP` -eq 0 -o $node = stkensrv4 ]; then
+    if [ `echo $e | grep -c UP` -eq 0 -o $type == "server" ]; then
       eth1=eth0
     fi
 
