@@ -515,6 +515,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker):
                     ret_stat = (record['user_inhibit'][1], None)
                 else:
                     vf = string.split(ticket['volume_family'],'.')
+                    Trace.trace(35, "is_vol_available: ticket %s, record %s" %
+                                (ticket['volume_family'],record['volume_family']))
+                    
                     if (ticket['volume_family'] == record['volume_family'] or
                         vf[1] == 'ephemeral'):
                         ret = self.is_volume_full(record,ticket['file_size'])
