@@ -185,6 +185,9 @@ ftt_write( ftt_descriptor d, char *buf, int length ) {
 	d->writekb += d->writelo >> 10;
 	d->writelo &= (1<<10) - 1;
 	d->current_block++;
+        if ( res != len ) {
+            ftt_eprintf("Notice: wrote fewer bytes than requested.");
+        }
     } else {
 	DEBUG0(stderr,"HARD error - writing record - error %d \n",res);
 	d->nharderrors++;
