@@ -36,7 +36,7 @@ class MonitoredServer:
 	    self.alive_interval = self.config[enstore_constants.ALIVE_INTERVAL]
 	self.twice_alive_interval = self.alive_interval + self.alive_interval
 
-    def __init__(self, config, name, hung_interval=DEFAULT_HUNG_INTERVAL):
+    def __init__(self, config, name, hung_interval=None):
 	self.name = name
 	# set this to now because we will check this before any of the servers 
 	# heartbeats have been forwarded to us
@@ -44,6 +44,8 @@ class MonitoredServer:
 	self.output_last_alive = enstore_constants.NEVER_ALIVE  # last time server was alive
 	self.restart_thread = None          # thread id if trying to restart server
 	self.config = config                # config file dictionary for this server
+	if hung_interval is None:
+	    hung_interval = DEFAULT_HUNG_INTERVAL
 	self.hung_interval = hung_interval  # wait this long if server appears hung
 	self.start_time = time.time()
 	self.restart_failed = 0
@@ -120,17 +122,21 @@ class MonitoredServer:
 class MonitoredInquisitor(MonitoredServer):
 
     def update_default_alive_interval(self, config):
-	global DEFAULT_ALIVE_INTERVAL
+	global DEFAULT_ALIVE_INTERVAL, DEFAULT_HUNG_INTERVAL
 	DEFAULT_ALIVE_INTERVAL = config.get('default_alive_interval', 
 					    DEFAULT_ALIVE_INTERVAL)
+	DEFAULT_HUNG_INTERVAL = config.get('default_hung_interval', 
+					    DEFAULT_HUNG_INTERVAL)
 
     def update_config(self, new_config):
 	self.update_default_alive_interval(new_config)
 	MonitoredServer.update_config(self, new_config)
 
-    def get_hung_interval(self, server_name):
-	return(self.config.get("hung_interval", {}).get(server_name, 
-							DEFAULT_HUNG_INTERVAL))
+    def get_hung_interval(self, server_name, config=None):
+	if config is None:
+	    config = self.config
+	return(config.get("hung_intervals", {}).get(server_name, 
+						   DEFAULT_HUNG_INTERVAL))
 
     def __init__(self, config):
 	self.update_default_alive_interval(config)

@@ -117,7 +117,7 @@ class InquisitorMethods(inquisitor_plots.InquisitorPlots,
     # config info.  if it does not exist, return the default
     def get_hung_to(self, key):
 	return self.inquisitor.get("hung_rcv_timeout", {}).get(key, 
-					       monitored_server.HUNG_INTERVAL_DEFAULT)
+					       monitored_server.DEFAULT_HUNG_INTERVAL)
 
     def mark_event_relay(self, state):
 	self.serverfile.output_etimedout(self.erc.event_relay_addr[0], 
