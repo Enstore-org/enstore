@@ -97,9 +97,12 @@ class Queue:
    # before calling this function
    def get_next_for_this_volume(self, v):
       for i in range (0, len(self.queue)):
-	  if self.queue[i]['vc']['external_label'] == v['vc']["external_label"]:
-	      if self.queue[i]['fc']['location_cookie'] > v['vc']['current_location']:
-		  return self.queue[i]
+	  if self.queue[i]["work"] == "read_from_hsm":
+	      if self.queue[i]['vc']['external_label'] == \
+		 v['vc']["external_label"]:
+		  if self.queue[i]['fc']['location_cookie'] > \
+		     v['vc']['current_location']:
+		      return self.queue[i]
       # no match has been found, return first for this volume
       for i in range (0, len(self.queue)):
 	  if self.queue[i]['vc']['external_label'] == v['vc']["external_label"]:
