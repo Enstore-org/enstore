@@ -150,8 +150,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 	    self.deleted = "no"
 	    decr_count = -1
         if record["deleted"] == deleted:
-            status = (e_errors.USER_ERROR,
-                                "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+            # don't return a status error to the user - she needs a 0 status in order to delete
+            # the file in the trashcan.  Otherwise we are in a hopeless loop & it makes no sense
+            # to try and keep deleting the already deleted file over and over again
+            #status = (e_errors.USER_ERROR,
+            #                    "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
+            status = (e_errors.OK, None)
             Trace.log(e_errors.USER_ERROR, 
             "%s = %s deleted flag already set to %s - no change." % (bfid,record["pnfs_name0"],record["deleted"]))
             Trace.trace(12,'set_deleted_priv '+repr(status))
