@@ -213,6 +213,8 @@ ecmd mov `ecmd mov --usage_line`
 ecmd log `ecmd log --usage_line`
 
 ecmd inq `ecmd inq --usage_line`
+
+ecmd ala `ecmd ala --usage_line`
 $usage2
 "
     echo "$usage"
