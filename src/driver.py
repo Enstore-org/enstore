@@ -85,6 +85,8 @@ class GenericDriver:
         if s[-1]=='L':
             s=s[:-1]
         s='0'*(12-len(s))+s
+        print 'int2loc returning',s
+        return s
 
 
     
