@@ -59,10 +59,22 @@
  * constants and macros
  **************************************************************************/
 
-/* OSF1 V4 defines MAP_FAILED incorrectly. */
+/* OSF1 V4 defines these macros incorrectly. */
 #ifdef __osf__
-# undef MAP_FAILED
-# define MAP_FAILED ((void*)-1L)
+# ifdef MAP_FAILED
+#  undef MAP_FAILED
+#  define MAP_FAILED ((void*)-1L)
+# endif
+
+# ifdef _POSIX_FSYNC
+#  undef _POSIX_FSYNC
+#  define _POSIX_FSYNC 199506L
+# endif
+
+# ifdef _POSIX_SYNCHRONIZED_IO
+#  undef _POSIX_SYNCHRONIZED_IO
+#  define _POSIX_SYNCHRONIZED_IO 199506L
+# endif
 #endif /*__osf__*/
 
 /* This is the largest size a size_t type can hold.  It is defined in C99
