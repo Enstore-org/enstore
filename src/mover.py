@@ -15,11 +15,7 @@ import struct
 import select
 import exceptions
 import traceback
-import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_GETFL
-    fcntl.F_SETFL = FCNTL.F_SETFL
+import fcntl, FCNTL
 import random
 import popen2
 
@@ -1523,7 +1519,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
         # send a trigger message to the client
-        bytes_written = self.net_driver.write("B", # write anything
+        bytes_written = self.net_driver.write(self.header_labels, # write anything
                                               0,
                                               1) # just 1 byte
         if self.header_labels:
@@ -2868,8 +2864,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             ticket['mover']['callback_addr'] = (host,port) #client expects this
 
             control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            flags = fcntl.fcntl(control_socket.fileno(), fcntl.F_GETFL)
-            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags | os.O_NONBLOCK)
+            flags = fcntl.fcntl(control_socket.fileno(), FCNTL.F_GETFL)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags | os.O_NONBLOCK)
             # the following insertion is for antispoofing
             if ticket.has_key('route_selection') and ticket['route_selection']:
                 ticket['mover_ip'] = host
@@ -2959,7 +2955,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
 
 	    # we have a connection
-            fcntl.fcntl(control_socket.fileno(), fcntl.F_SETFL, flags)
+            fcntl.fcntl(control_socket.fileno(), FCNTL.F_SETFL, flags)
             Trace.trace(10, "connected")
             try:
                 ### cgw - abstract this to a check_valid_filename method of the driver ?
@@ -3195,18 +3191,17 @@ class Mover(dispatching_worker.DispatchingWorker,
         broken = ""
         self.dismount_time = None
         Trace.log(e_errors.INFO, "Updating stats")
-        try:
-            self.update_stat()
-        except TypeError:
-            Trace.handle_error()
+        #try:
+        self.update_stat()
+        #except TypeError:
             #exc, msg = sys.exc_info()[:2]
             #Trace.log(e_errors.ERROR, "in update_stat: %s %s" % (exc, msg))
             # perhaps it is due to scsi error
             #self.watch_syslog()
-        except:
+        #except:
             # I do not know what kind of exception this can be 
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
+        #    exc, msg = sys.exc_info()[:2]
+        #    Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
@@ -3919,7 +3914,7 @@ class DiskMover(Mover):
         failed = 0
         self.media_transfer_time = 0.
         # send a trigger message to the client
-        bytes_written = self.net_driver.write("B", # write anything
+        bytes_written = self.net_driver.write(bytes_notified, # write anything
                                               0,
                                               1) # just 1 byte
 
