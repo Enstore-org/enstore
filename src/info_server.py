@@ -415,13 +415,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 		res = self.db.query(q).dictresult()
 
-		vol = {}
+		vol = []
 
 		for ff in res:
 			value = self.file.export_format(ff)
 			if not value.has_key('pnfs_name0'):
 				value['pnfs_name0'] = "unknown"
-			vol[value['bfid']] = value
+			vol.append(value)
 
 		# finishing up
 

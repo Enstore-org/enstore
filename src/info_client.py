@@ -520,8 +520,7 @@ def do_work(intf):
 			
 			print "	 label		   bfid	   size		location_cookie delflag original_name\n"
 			tape = ticket['tape_list']
-			for key in tape.keys():
-				record = tape[key]
+			for record in tape:
 				deleted = 'unknown'
 				if record.has_key('deleted'):
 					if record['deleted'] == 'yes':
