@@ -294,7 +294,6 @@ def forked_write_to_hsm( self, ticket ):
 
         # setup values before transfer - incase of exception
         wr_size = 0
-        media_error = 0
         user_file_crc = 0			# This is the crc of all the data in
 					# the file; this does not include any
 					# wrapper data.
@@ -325,56 +324,57 @@ def forked_write_to_hsm( self, ticket ):
 
 	    # close hsm file
             file_cookie = self.hsm_driver.close_file_write()
+        #except EWHATEVER_NET_ERROR:
         except:
             logc.send( log_client.ERROR, 1, "Error writing "+str(ticket) )
 	    traceback.print_exc()
-            media_error = 1 # I don't know what else to do right now
             wr_err,rd_err,wr_access,rd_access = (1,0,1,0)
-
-        # we've read the file from user, shut down data transfer socket
-        self.net_driver.data_socket.close()
-
-        # check for errors and inform volume clerk
-        if media_error:
             vcc.update_counts( self.vol_info['external_label'],
                                wr_err, rd_err, wr_access, rd_access )
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
 	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
 
+        # we've read the file from user, shut down data transfer socket
+        self.net_driver.data_socket.close()
+
+        # check for (user/network) errors and inform volume clerk
         if wr_size != ticket['wrapper']['size_bytes']:
             msg = "Expected "+str(ticket['wrapper']['size_bytes'])+\
 		  " bytes  but only" +" stored"+str(wr_size)
             logc.send( log_client.ERROR, 1, msg )
+	    # THIS SHOULD NOT BE A WRITE ERROR (i.e. they are caught above)
             send_user_done( self, ticket, e_errors.WRITE_ERROR )
-	    return_or_update_and_exit( self, origin_addr, e_errors.WRITE_ERROR )
 
-        # All is well - write has finished successfully.
-        #  get file/eod cookies & remaining bytes & errs & mnts
-        eod_cookie = self.hsm_driver.get_eod()
-        remaining_bytes = self.hsm_driver.get_eod_remaining_bytes()
-        wr_err,rd_err,wr_access,rd_access = self.hsm_driver.get_errors()
+	else:
+	    # All is well - write has finished successfully.
+	    #  get file/eod cookies & remaining bytes & errs & mnts
+	    eod_cookie = self.hsm_driver.get_eod()
+	    remaining_bytes = self.hsm_driver.get_eod_remaining_bytes()
+	    wr_err,rd_err,wr_access,rd_access = self.hsm_driver.get_errors()
 
-        # Tell volume server & update database
-        ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
-						     remaining_bytes,
-						     eod_cookie,
-						     wr_err,rd_err, # added to total
-						     wr_access,rd_access) )
-	rsp = fcc.new_bit_file( {'work':"new_bit_file",
-				 'fc'  :{'bof_space_cookie':file_cookie,
-					 'sanity_cookie':sanity_cookie,
-					 'external_label':self.vol_info['external_label'],
-					 'complete_crc':user_file_crc}} )
-	if rsp['status'][0] != e_errors.OK:
-	    print "XXXXXXXXXXXenstore software error"
+	    # Tell volume server & update database
+	    ticket['vc'].update( vcc.set_remaining_bytes(self.vol_info['external_label'],
+							 remaining_bytes,
+							 eod_cookie,
+							 wr_err,rd_err, # added to total
+							 wr_access,rd_access) )
+	    rsp = fcc.new_bit_file( {'work':"new_bit_file",
+				     'fc'  :{'bof_space_cookie':file_cookie,
+					     'sanity_cookie':sanity_cookie,
+					     'external_label':self.vol_info['external_label'],
+					     'complete_crc':user_file_crc}} )
+	    if rsp['status'][0] != e_errors.OK:
+		print "XXXXXXXXXXXenstore software error"
+		pass
+	    ticket['fc'] = rsp['fc']
+	    ticket['mover'] = self.config
+	    ticket['mover']['callback_addr']        = self.callback_addr# this was the data callback
+	    
+	    logc.send(log_client.INFO,2,"WRITE"+str(ticket))
+	    
+	    send_user_done( self, ticket, e_errors.OK )
 	    pass
-	ticket['fc'] = rsp['fc']
-	ticket['mover'] = self.config
-	ticket['mover']['callback_addr']        = self.callback_addr# this was the data callback
 
-        logc.send(log_client.INFO,2,"WRITE"+str(ticket))
-
-	send_user_done( self, ticket, e_errors.OK )
 	return_or_update_and_exit( self, origin_addr, e_errors.OK )
 	pass
     return {}
