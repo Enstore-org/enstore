@@ -66,6 +66,33 @@ def fullpath(filename):
 
     return machine, filename, dirname, basename
 
+def is_pnfs_path(filename):
+
+    #Expand the filename to the absolute path.
+    pathname = fullpath(filename)[1]
+    
+    #Determine if the target file or directory is in the pnfs namespace.
+    if string.find(pathname,"/pnfs/") < 0:
+        return 0; #If we get here it is not a pnfs directory.
+
+    #Determine the path for the cursor existance test.
+    if os.path.isdir(pathname):
+        fname = os.path.join(pathname, ".(get)(cursor)")
+    else:
+        fname = os.path.join(os.path.dirname(pathname), ".(get)(cursor)")
+
+    #If the curosr 'file' exists, then this is a real pnfs file system.
+    if os.path.exists(fname):
+        return 1
+
+    #If we get here, then the path contains a directory named 'pnfs' but does
+    # not point to a pnfs directory.
+    return 0
+
+    #raise OSError(errno.EIO,
+    #              "%s: %s" % (os.strerror(errno.EIO),
+    #                          "A /pnfs/ directory is not a pnfs directory."))
+
 ##############################################################################
 
 class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
@@ -259,7 +286,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             (directory, file) = os.path.split(self.filepath)
             
-        fname =os.path.join(directory, ".(id)(%s)" % (file,))
+        fname = os.path.join(directory, ".(id)(%s)" % (file,))
 
         f = open(fname,'r')
         id = f.readlines()
@@ -303,7 +330,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             fname = os.path.join(use_dir, ".(nameof)(%s)"%(id,))
         else:
             fname = os.path.join(use_dir, ".(nameof)(%s)"%(self.id,))
-
+        
         f = open(fname,'r')
         nameof = f.readlines()
         f.close()
@@ -1636,9 +1663,10 @@ class Tag:
         #        fname = ""
 
         #Determine if the target directory is in pnfs namespace
-        if fname[:6] != "/pnfs/":
+        if is_pnfs_path(fname) == 0:
             raise IOError(errno.EINVAL,
-                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+                   os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+
 
         f = open(fname,'w')
         f.write(value)
@@ -1672,9 +1700,9 @@ class Tag:
         #    fname = os.path.join(os.getcwd(), fname)
         
         #Determine if the target directory is in pnfs namespace
-        if fname[:6] != "/pnfs/":
+        if is_pnfs_path(fname) == 0:
             raise IOError(errno.EINVAL,
-                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
+                   os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
         f = open(fname,'r')
         t = f.readlines()

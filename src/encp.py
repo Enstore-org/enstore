@@ -4894,34 +4894,54 @@ class EncpInterface(option.Interface):
             #self.args[0:2] = [local_file, remote_file[0][:-1]]
             self.args[0:2] = [local_file, remote_file]
 
-        # get fullpaths to the files
+        #Determine whether the files are in /pnfs or not.
         p = []
-        for i in range(0,self.arglen):
+        for i in range(0, self.arglen):
+            #Get fullpaths to the files.
             (machine, fullname, dir, basename) = fullpath(self.args[i])
-            self.args[i] = os.path.join(dir,basename)
-            p.append(string.find(dir,"/pnfs"))
-        # all files on the hsm system have /pnfs/ as 1st part of their name
-        # scan input files for /pnfs - all have to be the same
+            self.args[i] = fullname  #os.path.join(dir,basename)
+            #If the file is a pnfs file, store a 1 in the list, if not store
+            # a zero.  All files on the hsm system have /pnfs/ as 1st part
+            # of their name.  Scan input files for /pnfs/ - all have to be the
+            # same.
+            p.append(pnfs.is_pnfs_path(dir))
+
+        #Initialize some important values.
+
+        #The p# variables are used as holders for testing if all input files
+        # are unixfiles or hsmfiles (aka pnfs files).
         p1 = p[0]
-        p2 = p[self.arglen-1]
+        p2 = p[self.arglen - 1]
+
+        #Also, build two new lists of input and output files.  The output
+        # list should always be 1 in length.  A simple, assignment is not
+        # performed because that only returns a reference to the original,
+        # it does not create a distinct copy.
         self.input = [self.args[0]]
         self.output = [self.args[self.arglen-1]]
-        for i in range(1,len(self.args)-1):
-            if p[i]!=p1:
+
+        #Loop through all the input files.  Compare against the first input
+        # file for similarity in being a pnfs or unix file.  This check only
+        # makes sure that all input files are either unix or pnfs files.
+        # The check to prevent unix to unix or pnfs to pnfs copies is done
+        # later on in the code.
+        for i in range(1, len(self.args) - 1):
+            if p[i] != p1:
                 msg = "Not all input_files are %s files"
-                if p1:
+                if p2:
                     print_error(e_errors.USERERROR, msg % "/pnfs/...")
                 else:
                     print_error(e_errors.USERERROR, msg % "unix")
                 quit()
             else:
-                self.input.append(self.args[i])
+                self.input.append(self.args[i]) #Do this way for a copy.
 
-        if p1 == 0:
+        #Assign the collection of types to these variables.
+        if p1 == 1:
             self.intype="hsmfile"
         else:
             self.intype="unixfile"
-        if p2 == 0:
+        if p2 == 1:
             self.outtype="hsmfile"
         else:
             self.outtype="unixfile"
