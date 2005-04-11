@@ -4123,7 +4123,13 @@ class Mover(dispatching_worker.DispatchingWorker,
             # of the tape.
             if str(detail) == "FTT_EBLANK":
                 prev_loc = self.current_location
-                self.current_location = self.tape_driver.tell()
+                try:
+                    self.current_location = self.tape_driver.tell()
+                except self.ftt.FTTError, detail:
+                    self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
+                                     error_source=DRIVE)
+                    return
+                    
                 Trace.log(e_errors.INFO,
                           "Reached EOT seeking location %s.  Current "
                           "Location %s Previous location %s" %
