@@ -2966,12 +2966,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.stop:
                     self.offline() # stop here for investigation
                     return
-                elif msg.find("FTT_EUNRECOVERED") != -1:
-                    Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
-                    self.set_volume_noaccess(volume_label) 
+            elif msg.find("FTT_EUNRECOVERED") != -1:
+                Trace.alarm(e_errors.ERROR, "encountered FTT_EUNRECOVERED error. Going OFFLINE. Please check the tape drive")
+                self.set_volume_noaccess(volume_label) 
                     
-                    self.offline() # stop here for investigation
-                    return
+                self.offline() # stop here for investigation
+                return
         
         ### XXX translate this to an e_errors code?
         self.last_error = str(exc), str(msg)
