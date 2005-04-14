@@ -13,19 +13,107 @@ import string
 import time
 import errno
 import types
+import threading
+import thread
+import copy
+import gc
+import signal
 
 import info_client
 import option
 import pnfs
 import volume_family
 import e_errors
+import Trace
 #from encp import e_access  #for e_access().
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
+class ThreadWithResult(threading.Thread):
+    def __init__(self, *pargs, **kwargs):
+        threading.Thread.__init__(self, *pargs, **kwargs)
+        self.result = None
+
+    def get_args(self):
+        return copy.deepcopy(self._Thread__args)
+
+    def get_result(self):
+        return copy.deepcopy(self.result)
+
+    def run(self):
+
+        # do my stuff here that generates results
+        try:
+            self.result = apply(self._Thread__target, self._Thread__args)
+        except KeyError:
+            exc, msg, tb = sys.exc_info()
+            import traceback
+            traceback.print_tb(tb)
+            print str(exc), str(msg)
+
+        # and now the thread exits
+
+    def reset(self, *pargs):
+        self._Thread__args = pargs
+        self._Thread__started = 0
+        self._Thread__stopped = 0
+        self.result = None
+    
+
 infc = None
 ff = {} #File Family cache.
 ONE_DAY = 24*60*60
+ts_check = []
+stop_threads_lock=threading.Lock()
+threads_stop = False
+
+
+#For cleanup_objects() to report problems.
+old_list = []
+old_len  = 0
+def cleanup_objects():
+    global old_list
+    global old_len
+
+    #Get current information on the number of objects currently consuming
+    # resources.
+    new_list = gc.get_objects()
+    new_len = len(new_list)
+    del new_list[:]
+    
+    #Force garbage collection while the display is off while awaiting
+    # initialization.
+    gc.collect()
+    del gc.garbage[:]
+    gc.collect()
+    uncollectable_count = len(gc.garbage)
+    del gc.garbage[:]
+
+    #First report what the garbage collection algorithm says...
+    if uncollectable_count > 0:
+        Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
+
+    #Then (starting with the second pass) report the object count difference.
+    if old_len == 0:
+        old_len = new_len #Only set this on the first pass.
+    else:
+        if new_len - old_len > 0:
+            sys.stderr.write("NEW COUNT DIFFERENCE: %s - %s = %s\n"
+                        % (new_len, old_len, new_len - old_len))
+            """
+            i = 0
+            for item in gc.get_objects():
+                print i
+                if item not in old_list:
+                    print str(item)[:77]
+                    i = i + 1
+            """
+        if new_len - old_len >= 100:
+            #Only return true if 
+            return True
+
+    return None
+
 
 def usage():
     print "usage: %s [path [path2 [path3 [ ... ]]]]"%(sys.argv[0])
@@ -38,12 +126,15 @@ def error(s):
 def warning(s):
     print s, '... WARNING'
 
+print_lock = threading.Lock()
 def errors_and_warnings(fname, error, warning, information):
 
     if type(error) != types.ListType or \
            type(warning) != types.ListType or \
            type(information) != types.ListType:
         return
+
+    print_lock.acquire()
 
     print fname +' ...',
     # print warnings
@@ -64,6 +155,7 @@ def errors_and_warnings(fname, error, warning, information):
     else:
         print 'OK'
 
+    print_lock.release()
 
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the
@@ -164,7 +256,41 @@ def check_permissions(file_stats, mode):
 
     return 1
 
+def get_enstore_pnfs_path(filename):
 
+    absolute_path = os.path.abspath(filename)
+
+    #This is not automount safe.
+    if absolute_path[:13] == "/pnfs/fs/usr/":
+        return os.path.join("/pnfs/", absolute_path[13:])
+    elif absolute_path[:6] == "/pnfs/":
+        return absolute_path
+    else:
+        return absolute_path
+    
+def is_new_database(d):
+
+    dbname = os.path.join(d, ".(get)(database)")
+    dbparent = os.path.join(os.path.dirname(d), ".(get)(database)")
+
+    dbnamefile = open(dbname)
+    dbnameinfo = dbnamefile.readline().strip()
+    dbnamefile.close()
+
+    try:
+        dbparentfile = open(dbparent)
+        dbparentinfo = dbparentfile.readline().strip()
+        dbparentfile.close()
+    except IOError:
+        #In order to get this error, we need to be at the top of the
+        # filesystem.  Just return False because there should be no need to
+        # worry about another starting point.
+        return False
+
+    if dbnameinfo == dbparentinfo:
+        return False
+
+    return True
 
 def layer_file(f, n):
     pn, fn = os.path.split(f)
@@ -186,78 +312,339 @@ def parent_file(f, pnfsid = None):
         return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
 
 
-def check_link(l, f_stats):
-    __pychecker__ = "unusednames=f_stats"
+def get_layer_1(f):
 
     err = []
     warn = []
     info = []
+
+    # get bfid from layer 1
+    try:
+        f1 = open(layer_file(f, 1))
+        bfid = f1.readline()
+        f1.close()
+    except (OSError, IOError), detail:
+        bfid = None
+        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
+            err.append('no read permissions for layer 1')
+        else:
+            err.append('corrupted layer 1 metadata')
+
+    return bfid, (err, warn, info)
+
+def get_layer_2(f):
+
+    err = []
+    warn = []
+    info = []
+
+    # get bfid from layer 1
+    try:
+        f2 = open(layer_file(f, 2))
+        layer2 = f2.readline()
+        f2.close()
+    except (OSError, IOError), detail:
+        layer2 = None
+        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
+            err.append('no read permissions for layer 1')
+        else:
+            err.append('corrupted layer 1 metadata')
+
+    return layer2, (err, warn, info)
+
+def get_layer_4(f):
+
+    err = []
+    warn = []
+    info = []
+    
+    # get xref from layer 4 (?)
+    try:
+        f4 = open(layer_file(f, 4))
+        layer4 = f4.readlines()
+        f4.close()
+
+        l4 = {}
+        if layer4:
+            l4 = {'volume' : layer4[0].strip(),
+                  'location_cookie' : layer4[1].strip(),
+                  'size' : layer4[2].strip(),
+                  'file_family' : layer4[3].strip(),
+                  'original_name' : layer4[4].strip(),
+                  # map file no longer used
+                  'pnfsid' : layer4[6].strip(),
+                  # map pnfsid no longer used
+                  'bfid' : layer4[8].strip(),
+                  }
+
+        try:
+            l4['drive'] = layer4[9].strip()
+        except IndexError:
+            pass
+        try:
+            l4['crc'] = layer4[10].strip()
+        except IndexError:
+            pass
+
+    except (KeyboardInterrupt, SystemExit), msg:
+        raise msg
+    except (OSError, IOError), msg:
+        #pf = None
+        l4 = None
+        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
+            err.append('no read permissions for layer 4')
+        else:
+            err.append('corrupted layer 4 metadata')
+
+    return l4, (err, warn, info)
+
+def get_layers(f):
+    bfid, (err, warn, info) = get_layer_1(f)
+    layer4, (err1, warn1, info1) = get_layer_4(f)
+
+    return (bfid, layer4), (err + err1, warn + warn1, info + info1)
+
+def get_filedb_info(bfid):
+    
+    err = []
+    warn = []
+    info = []
+
+    if not bfid:
+        return None, (err, warn, info)
+    
+    # Get file database information.
+    fr = infc.bfid_info(bfid)
+    if fr['status'][0] == e_errors.KEYERROR:
+        err.append('not in db')
+    elif not e_errors.is_ok(fr):
+        err.append('file db error (%s)' % (fr['status'],))
+    else:
+        # Look for missing file database information.
+        if not fr.has_key('pnfs_name0'):
+            err.append('no filename in db')
+        if not fr.has_key('pnfsid'):
+            err.append('no pnfs id in db')
+
+    return fr, (err, warn, info)
+
+def get_stat(f):
+
+    err = []
+    warn = []
+    info = []
+    
+    #Do one stat() for each file instead of one for each os.path.isxxx() call.
+    try:
+        f_stats = os.lstat(f)
+    except OSError, msg:
+	if msg.errno == errno.ENOENT:
+            #Before blindly returning this error, first check the directory
+            # listing for this entry.  A known 'ghost' file problem exists
+            # and this is how to find out.
+            try:
+                directory, filename = os.path.split(f)
+                dir_list = os.listdir(directory)
+                if filename in dir_list:
+                    #We have this special error situation.
+                    err.append("invalid directory entry")
+                    return None, (err, warn, info)
+            except OSError:
+                pass
+          
+            err.append("does not exist")
+            return None, (err, warn, info)
+        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
+            err.append("permission error")
+            return None, (err, warn, info)
+        
+        err.append(os.strerror(msg.errno))
+        return None, (err, warn, info)
+
+    return f_stats, (err, warn, info)
+
+def get_pnfsid(f):
+
+    err = []
+    warn = []
+    info = []
+    
+    #Get the id of the parent directory.
+    try:
+        fname = id_file(f)
+        f = open(fname)
+        pnfs_id = f.readline().strip()
+        f.close()
+    except(OSError, IOError), detail:
+        pnfs_id = None
+        if not detail.errno == errno.ENOENT or not os.path.ismount(f):
+            err.append("unable to obtain pnfs id")
+
+    return pnfs_id, (err, warn, info)
+
+def get_parent_id(f):
+
+    err = []
+    warn = []
+    info = []
+    
+    #Get the parent id.
+    try:
+        dname = parent_file(f)
+        f = open(dname)
+        parent_id = f.readline().strip()
+        f.close()
+    except(OSError, IOError), detail:
+        parent_id = None
+        if not detail.errno == errno.ENOENT or not os.path.ismount(f):
+            err.append("unable to obtain directory's parent id")
+
+    return parent_id, (err, warn, info)
+
+def get_parent_dir_id(f):
+
+    err = []
+    warn = []
+    info = []
+    
+    #Get the id of the parent directory.
+    try:
+        dname = id_file(os.path.dirname(f))
+        f = open(dname)
+        parent_dir_id = f.readline().strip()
+        f.close()
+    except (OSError, IOError), detail:
+        parent_dir_id = None
+        if not detail.errno == errno.ENOENT or \
+               (not os.path.ismount(f) \
+                and not os.path.ismount(os.path.dirname(f))):
+            err.append("unable to obtain parent directory's id")
+
+    return parent_dir_id, (err, warn, info)
+
+def get_parent_ids(f):
+    
+    parent_id, (err, warn, info) = get_parent_id(f)
+    parent_dir_id, (err1, warn1, info1) = get_parent_dir_id(f)
+
+    return (parent_id, parent_dir_id), (err + err1, warn + warn1, info + info1)
+
+def get_all_ids(f):
+    parent_id, (err, warn, info) = get_parent_id(f)
+    parent_dir_id, (err1, warn1, info1) = get_parent_dir_id(f)
+    pnfs_id, (err2, warn2, info2) = get_pnfsid(f)
+
+    return (pnfs_id, parent_id, parent_dir_id), \
+           (err + err1 + err2, warn + warn1 + warn2, info + info1 + info2)
+
+
+def check(f, f_stats = None):
+
+    #We need to know if we should stop now.  Otherwise the main thread
+    # will wait for child threads to finish.
+    stop_threads_lock.acquire()
+    if threads_stop:
+        stop_threads_lock.release()
+        thread.exit()
+    stop_threads_lock.release()
+
+    err = []
+    warn = []
+    info = []
+
+    if type(f_stats) != types.DictType:
+        f_stats, (err, warn, info) = get_stat(f)
+
+    if err or warn:
+        errors_and_warnings(f, err, warn, info)
+        return
+    
+    file_info = {"f_stats"       : f_stats}
+
+    # if f is a file, check its metadata
+    if stat.S_ISREG(f_stats[stat.ST_MODE]):
+        err_f, warn_f, info_f = check_file(f, file_info)
+        errors_and_warnings(f, err + err_f, warn + warn_f, info + info_f)
+        
+    # if f is a directory, recursively check its files
+    elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
+
+        if is_new_database(f):
+            #If we have the top directory of a new database, fork off a thread
+            # for it.
+            ts_check.append(ThreadWithResult(target = check_dir,
+                                             args = (f, file_info)))
+            ts_check[-1].start()
+        else:
+            err_d, warn_d, info_d = check_dir(f, file_info)
+            if err or warn:
+                errors_and_warnings(f, err + err_d,
+                                    warn + warn_d, info + info_d)
+
+    # if f is a link, check that the target exists
+    elif stat.S_ISLNK(f_stats[stat.ST_MODE]):
+        err_l, warn_l, info_l = check_link(f, file_info)
+        errors_and_warnings(f, err + err_l, warn + warn_l, info + info_l)
+        
+    else:
+        err.append("unrecognized type")
+        errors_and_warnings(f, err, warn, info)
+
+
+def check_link(l, file_info):
+    __pychecker__ = "unusednames=file_info"
+
+    err = []
+    warn = []
+    info = []
+
+    err, warn, info = check_parent(l)
+    if err or warn:
+        return err, warn, info
     
     if not os.path.exists(l):
         warn.append("missing the original of link")
 
     return err, warn, info
 
-def check_dir(d, f_stats):
+
+def check_dir(d, dir_info):
+
+    d_stats = dir_info['f_stats']
 
     err = []
     warn = []
     info = []
 
-    #First check that the directory's parent id and the id of the parent
-    # directory match.
-    parent_id = parent_dir_id = None
-
-    #Get the parent id.
-    try:
-        dname = parent_file(d)
-        f = open(dname)
-        parent_id = f.readline()
-        f.close()
-    except(OSError, IOError), detail:
-        if detail.errno == errno.ENOENT:
-            if not os.path.ismount(d):
-                err.append("unable to obtain directory's parent id")
-
-    #Get the id of the parent directory.
-    try:
-        dname = id_file(os.path.dirname(d))
-        f = open(dname)
-        parent_dir_id = f.readline()
-        f.close()
-    except (OSError, IOError), detail:
-        if detail.errno == errno.ENOENT:
-            if not os.path.ismount(os.path.dirname(d)) and \
-                   not os.path.ismount(d):
-                err.append("unable to obtain parent directory's id")
-
-    if err or warn:
-        return err, warn, info
-
-    #Actually perform the check.
-    if parent_id == None or parent_dir_id == None:
-        pass
-    elif parent_id != parent_dir_id:
-        err.append("parent id (%s) does not match parent directory's id (%s)"
-                   % (parent_id, parent_dir_id))
-        return err, warn, info
-
     # skip volmap and .bad and .removed directory
-    lc = os.path.split(d)[1]
-    if lc == 'volmap' or lc[:3] == '.B_' or lc[:3] == '.A_' \
-           or lc[:8] == '.removed':
+    fname = os.path.basename(d)
+    if fname == 'volmap' or fname[:3] == '.B_' or fname[:3] == '.A_' \
+           or fname[:8] == '.removed':
         return err, warn, info
         
-    if check_permissions(f_stats, os.R_OK | os.X_OK):
-        for entry in os.listdir(d):
+    if check_permissions(d_stats, os.R_OK | os.X_OK):
+        err, warn, info = check_parent(d)
+        if err or warn:
+            return err, warn, info
 
-            check(os.path.join(d, entry))
+        #Get the list of files.
+        file_list = os.listdir(d)
+
+        for i in range(0, len(file_list)):
+            
+            f = os.path.join(d, file_list[i])
+
+            check(f)
+
     else:
         err.append("can not access directory")
-
+    
     return err, warn, info
 
-def check_file(f, f_stats):
+
+def check_file(f, file_info):
+
+    f_stats = file_info['f_stats']
 
     err = []
     warn = []
@@ -273,88 +660,54 @@ def check_file(f, f_stats):
 
     #Skip blacklisted files.
     if fname[:4] == '.bad':
-        return None, None, None #Non-lists skips any output.
+        info.append("marked bad")
+        return err, warn, info #Non-lists skips any output.
 
-    """
-    #Determine if the file exists and we can access it.
-    try:
-        f_stats = os.stat(f)
-    except OSError:
-        f = pnfs.get_local_pnfs_path(f)
-        try:
-            f_stats = os.stat(f)
-        except OSError:
-            #No read permission is the likeliest at this point...
-            err.append('no read permission')
-            return err, warn, info
-    """
+    #Get information from the layer 1 and layer 4.
+    bfid, (err1, warn1, info1) = get_layer_1(f)
+    layer4, (err4, warn4, info4) = get_layer_4(f)
 
-    # get bfid from layer 1
-    try:
-        f1 = open(layer_file(f, 1))
-        bfid = f1.readline()
-        f1.close()
-    except (OSError, IOError), detail:
-        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
-            err.append('no read permissions for layer 1')
-        else:
-            err.append('corrupted layer 1 metadata')
-
-    # get xref from layer 4 (?)
-    try:
-        pf = pnfs.File(f)
-    except (KeyboardInterrupt, SystemExit), msg:
-        raise msg
-    except (OSError, IOError), msg:
-        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
-            err.append('no read permissions for layer 4')
-        else:
-            err.append('corrupted layer 4 metadata')
-
+    err = err + err1 + err4
+    warn = warn + warn1 + warn4
+    info = info + info1 + info4
     if err or warn:
         return err, warn, info
 
     #Look for missing pnfs information.
     try:
-        if bfid != pf.bfid:
-            err.append('bfid(%s, %s)'%(bfid, pf.bfid))
-    except (TypeError, ValueError, IndexError, AttributeError):
-    	age = time.time() - f_stats[8]
+        if bfid != layer4['bfid']:
+            err.append('bfid(%s, %s)' % (bfid, layer4['bfid']))
+    except (TypeError, ValueError, IndexError, AttributeError, KeyError):
+    	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:
-            warn.append('younger than 1 day (%d)'%(age))
-            return err, warn, info
-        
-        if len(bfid) < 8:
-            err.append('missing layer 1')
+            warn.append('younger than 1 day (%d)' % (age))
+        else:
+            if f_stats[stat.ST_SIZE] == 0 and not get_layer_2(f)[0]:
+                err.append('missing file')
+            else:
+                if len(bfid) < 8:
+                    err.append('missing layer 1')
 
-        if not hasattr(pf, 'bfid'):
-            err.append('missing layer 4')
-            
-        if err or warn:
-            return err, warn, info
-
-    # Get file database information.
-    fr = infc.bfid_info(bfid)
-    if fr['status'][0] != e_errors.OK:
-        err.append('not in db')
-        return err, warn, info
-
-    # Look for missing file database information.
-    if not fr.has_key('pnfs_name0'):
-        err.append('no filename in db')
-    if not fr.has_key('pnfsid'):
-        err.append('no pnfs id in db')
+                if not layer4.has_key('bfid'):
+                    err.append('missing layer 4')
 
     if err or warn:
         return err, warn, info
 
-    
-    #Compare pnfs metadata with file database metadata.
-    
+    # Get file database information.
+    filedb, (err_f, warn_f, info_f) = get_filedb_info(bfid)
+    # Get file database errors.
+    err = err + err_f
+    warn = warn + warn_f
+    info = info + info_f
+    if err or warn:
+        return err, warn, info
+
     # volume label
     try:
-        if pf.volume != fr['external_label']:
-            err.append('label(%s, %s)'%(pf.volume, fr['external_label']))
+        if layer4['volume'] != filedb['external_label']:
+            err.append('label(%s, %s)' % (layer4['volume'],
+                                          filedb['external_label']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted external_label')
         
@@ -362,154 +715,147 @@ def check_file(f, f_stats):
     try:
         # if pf.location_cookie != fr['location_cookie']:
         #    err.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
-        p_lc = string.split(pf.location_cookie, '_')[2]
-        f_lc = string.split(fr['location_cookie'], '_')[2]
+        p_lc = string.split(layer4['location_cookie'], '_')[2]
+        f_lc = string.split(filedb['location_cookie'], '_')[2]
         if p_lc != f_lc:
-            err.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
+            err.append('location_cookie(%s, %s)'%(layer4['location_cookie'],
+                                                  filedb['location_cookie']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted location_cookie')
         
     # size
     try:
-        real_size = os.stat(f)[stat.ST_SIZE]
-        if long(pf.size) != long(fr['size']):
-            err.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
-        elif real_size != 1 and long(real_size) != long(pf.size):
-            err.append('size(%d, %d, %d)'%(long(pf.size), long(real_size), long(fr['size'])))
+        real_size = f_stats[stat.ST_SIZE]
+
+        if long(layer4['size']) != long(filedb['size']):
+            err.append('size(%d, %d, %d)' % (long(layer4['size']),
+                                             long(real_size),
+                                             long(filedb['size'])))
+        elif real_size != 1 and long(real_size) != long(layer4['size']):
+            err.append('size(%d, %d, %d)' % (long(layer4['size']),
+                                             long(real_size),
+                                             long(filedb['size'])))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted size')
         
     # file_family
     try:
-        if ff.has_key(fr['external_label']):
-            file_family = ff[fr['external_label']]
+        if ff.has_key(filedb['external_label']):
+            file_family = ff[filedb['external_label']]
         else:
-            vol = infc.inquire_vol(fr['external_label'])
+            vol = infc.inquire_vol(filedb['external_label'])
             if vol['status'][0] != e_errors.OK:
-                err.append('missing vol '+fr['external_label'])
+                err.append('missing vol ' + filedb['external_label'])
                 return err, warn, info
             file_family = volume_family.extract_file_family(vol['volume_family'])
-            ff[fr['external_label']] = file_family
+            ff[filedb['external_label']] = file_family
         # take care of MIGRATION, too
-        if pf.file_family != file_family and \
-            pf.file_family+'-MIGRATION' != file_family:
-            err.append('file_family(%s, %s)'%(pf.file_family, file_family))
+        if layer4['file_family'] != file_family and \
+            layer4['file_family'] + '-MIGRATION' != file_family:
+            err.append('file_family(%s, %s)' % (layer4['file_family'],
+                                                file_family))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted file_family')
         
-    # pnfsid
-    try:
-        pnfs_id = pf.get_pnfs_id()
-        if pnfs_id != pf.pnfs_id or pnfs_id != fr['pnfsid']:
-            err.append('pnfsid(%s, %s, %s)'%(pf.pnfs_id, pnfs_id, fr['pnfsid']))
-    except (TypeError, ValueError, IndexError, AttributeError):
-        err.append('no or corrupted pnfsid')
-        
     # drive
     try:
-        if fr.has_key('drive'):	# some do not have this field
-            if fr['drive'] != '' and pf.drive != fr['drive']:
-                if pf.drive != 'imported' and pf.drive != "missing" \
-                    and fr['drive'] != 'unknown:unknown':
-                    err.append('drive(%s, %s)'%(pf.drive, fr['drive']))
+        # some do not have this field
+        if filedb.has_key('drive') and layer4.has_key('drive'):
+            if layer4['drive'] != filedb['drive']:
+                if layer4['drive'] != 'imported' \
+                       and layer4['drive'] != "missing" \
+                       and filedb['drive'] != 'unknown:unknown':
+                    err.append('drive(%s, %s)' % (layer4['drive'],
+                                                  filedb['drive']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted drive')
-        
+
+    # CRC
+    try:
+        if layer4.get('crc', "") != "": # some do not have this field
+            if long(layer4['crc']) != long(filedb['complete_crc']):
+                err.append('crc(%s, %s)' % (layer4['crc'],
+                                            filedb['complete_crc']))
+    except (TypeError, ValueError, IndexError, AttributeError):
+        err.append('no or corrupted CRC')
+
     # path
     try:
-        if pf.p_path != fr['pnfs_name0'] and \
-               pnfs.get_local_pnfs_path(pf.p_path) != pnfs.get_local_pnfs_path(fr['pnfs_name0']):
+        if layer4['original_name'] != filedb['pnfs_name0']: #layer 4 vs. file db
             #print layer 4, current name, file database.  ERROR
-            err.append("filename(%s, [%s], %s)" % (pf.p_path, pf.path, fr['pnfs_name0']))
-        elif pf.path != pf.p_path and \
-                 pnfs.get_local_pnfs_path(pf.path) != pnfs.get_local_pnfs_path(pf.p_path):
-            #print current name, then original name.  INFORMATIONAL
-            if os.path.basename(pf.path) != os.path.basename(pf.p_path):
-                info.append('renamed(%s, %s)'%(pf.path, pf.p_path))
-            if os.path.dirname(pf.path) != os.path.dirname(pf.p_path):
-                info.append('moved(%s, %s)'%(pf.path, pf.p_path))
+            err.append("filename(%s, [%s], %s)" %
+                       (layer4['original_name'], f, filedb['pnfs_name0']))
+        elif f != layer4['original_name']: # current pathname vs. layer 4
+            layer4_name = get_enstore_pnfs_path(layer4['original_name'])
+            current_name = get_enstore_pnfs_path(f)
+
+            if os.path.basename(current_name) != os.path.basename(layer4_name):
+                #print current name, then original name.  INFORMATIONAL
+                info.append('renamed(%s, %s)' % (f, layer4['original_name']))
+            if os.path.dirname(current_name) != os.path.dirname(layer4_name):
+                #print current name, then original name.  INFORMATIONAL
+                info.append('moved(%s, %s)' % (f, layer4['original_name']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted pnfs_path')
 
-    # deleted
+    # pnfsid
     try:
-        if fr['deleted'] != 'no':
-            err.append('deleted(%s)'%(fr['deleted']))
+        pnfs_id = get_pnfsid(f)[0]
+        
+        if pnfs_id != layer4['pnfsid'] or pnfs_id != filedb['pnfsid']:
+            err.append('pnfsid(%s, %s, %s)' % (layer4['pnfsid'], pnfs_id,
+                                               filedb['pnfsid']))
     except (TypeError, ValueError, IndexError, AttributeError):
-        err.append('no deleted field')
-
-    if err or warn:
-        return err, warn, info
+        err.append('no or corrupted pnfsid')
 
     # parent id
     try:
-        parent_id = pf.get_parent_id()
-    except (OSError, IOError):
-        err.append('corrupted pnfs metadata')
-        return err, warn, info
+        parent_id = get_parent_id(f)[0]
+        parent_dir_id = get_parent_dir_id(f)[0]
+        
+        #Actually perform this check that is common to all types of files.
+        if parent_id != parent_dir_id:
+            if parent_id != None and parent_dir_id != None:
+                err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
+        
+    except (TypeError, ValueError, IndexError, AttributeError):
+        err.append('no or corrupted parent id')
+
+    # deleted
     try:
-        #Get the id of the directory that claims to be the parent of the file.
-        target_name = id_file(os.path.dirname(f))
-        target_file = open(target_name)
-        parent_dir_id = target_file.readline()[:-1]
-        target_file.close()
-    except OSError:
-        parent_dir_id = ""
-    if parent_id != parent_dir_id:
+        if filedb['deleted'] != 'no':
+            err.append('deleted(%s)' % (filedb['deleted']))
+    except (TypeError, ValueError, IndexError, AttributeError):
+        err.append('no deleted field')
+
+        
+    return err, warn, info
+
+
+def check_parent(f):
+
+    err = []
+    warn = []
+    info = []
+
+    parent_id, unused = get_parent_id(f)
+    parent_dir_id, unused = get_parent_dir_id(f)
+
+    #Actually perform this check that is common to all types of files.
+    if parent_id != None and parent_dir_id != None and \
+           parent_id != parent_dir_id:
         err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
 
     return err, warn, info
-
-def check(f):
-
-    #Do one stat() for each file instead of one for each os.path.isxxx() call.
-    try:
-        f_stats = os.lstat(f)
-    except OSError, msg:
-	if msg.errno == errno.ENOENT:
-            #Before blindly returning this error, first check the directory
-            # listing for this entry.  A known 'ghost' file problem exists
-            # and this is how to find out.
-            try:
-                directory, filename = os.path.split(f)
-                dir_list = os.listdir(directory)
-                if filename in dir_list:
-                    #We have this special error situation.
-                    error(f + " ... invalid directory entry")
-                    return
-            except OSError:
-                pass
-          
-            error(f + " ... does not exist")
-            return
-        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
-            error(f + " ... permission error")
-            return
-        
-        error(f + " ... " + os.strerror(msg.errno))
-        return
-
-    if stat.S_ISLNK(f_stats[stat.ST_MODE]):
-        err, warn, info = check_link(f, f_stats)
-        errors_and_warnings(f, err, warn, info)
-        
-    # if f is a directory, recursively check its files
-    elif stat.S_ISDIR(f_stats[stat.ST_MODE]):
-        err, warn, info = check_dir(f, f_stats)
-        if err or warn:
-            errors_and_warnings(f, err, warn, info)
-            
-    elif stat.S_ISREG(f_stats[stat.ST_MODE]):
-        err, warn, info = check_file(f, f_stats)
-        errors_and_warnings(f, err, warn, info)
-        
-    else:
-        error(f+' ... unrecognized type')
-        return
-
-
+    
 def start_check(line):
     line = os.path.abspath(line.strip())
+
+    #Sanity check incase of user error specifying a non-pnfs path.
+    if not pnfs.is_pnfs_path(line, check_name_only = 1):
+        error(line+' ... not a pnfs file or directory')
+        return
+
     """
     import profile
     import pstats
@@ -517,32 +863,81 @@ def start_check(line):
     p = pstats.Stats("/tmp/scanfiles_profile")
     p.sort_stats('cumulative').print_stats(100)
     """
+
     check(line)
 
+    for a_thread in ts_check:
+        a_thread.join()
+        err_j, warn_j, info_j = a_thread.get_result()
+        del ts_check[0]
+    
+class ScanfilesInterface(option.Interface):
+    def __init__(self, args=sys.argv, user_mode=0):
+
+        self.infile = None
+
+        self.file_threads = 3
+        self.directory_threads = 1
+
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
+
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.scanfile_options)
+    
+    #  define our specific parameters
+    parameters = ["[target_path [target_path_2 ...]]"] 
+
+    scanfile_options = {
+        option.INFILE:{option.HELP_STRING:"Use the contents of this file"
+                       " as a list of targets to scan.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.STRING,
+                         option.USER_LEVEL:option.USER,},
+        option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER,},
+        }
+
+def handle_signal(sig, frame):
+    __pychecker__ = "unusednames=sig,frame"
+    global threads_stop
+
+    #Tell other threads to stop now.
+    stop_threads_lock.acquire()
+    threads_stop = True
+    stop_threads_lock.release()
+
+    sys.exit(1)
+    
 if __name__ == '__main__':
 
-    if len(sys.argv) >= 2 and sys.argv[1] == '--help':
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
+
+    if intf_of_scanfiles.help:
         usage()
         sys.exit(0)
 
-    if len(sys.argv) == 3 and sys.argv[1] == '--infile':
-        file_object = open(sys.argv[2])
+    if intf_of_scanfiles.infile:
+        file_object = intf_of_scanfiles.infile
         file_list = None
-        #f = open(sys.argv[2])
-        #f_list = map(string.strip, f.readlines())
-        #f.close()
     elif len(sys.argv) == 1:
         file_object = sys.stdin
         file_list = None
-        #f_list = map(string.strip, sys.stdin.readlines())
     else:
         file_object = None
         file_list = sys.argv[1:]
-        #f_list = sys.argv[1:]
 
-    intf = option.Interface()
-    infc = info_client.infoClient((intf.config_host, intf.config_port))
+    infc = info_client.infoClient((intf_of_scanfiles.config_host,
+                                   intf_of_scanfiles.config_port))
 
+    #number of threads to use for checking files.
+    AT_ONE_TIME = max(1, min(intf_of_scanfiles.file_threads, 10))
+    
     try:
 
         #When the entire list of files/directories is listed on the command
