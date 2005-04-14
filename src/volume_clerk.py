@@ -213,7 +213,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             exc_type, exc_value = sys.exc_info()[:2]
             msg = str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, msg)
         self.reply_to_caller(ticket)
         return
 
@@ -235,7 +235,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             exc_type, exc_value = sys.exc_info()[:2]
             msg = str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, msg)
         self.reply_to_caller(ticket)
         return
 
@@ -269,7 +269,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             exc_type, exc_value = sys.exc_info()[:2]
             msg = 'write_protect_status(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
             Trace.log(e_errors.ERROR, msg)
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, msg)
         self.reply_to_caller(ticket)
         return
         
@@ -679,7 +679,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if not record:
             msg = "trying to reassign sg for non-existing volume %s"%(vol)
             Trace.log(e_errors.ERROR, msg)
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.NO_VOLUME, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -687,7 +687,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if sg != 'none': # can not do it
             msg = "can not reassign from existing storage group %s"%(sg)
             Trace.log(e_errors.ERROR, msg)
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -742,7 +742,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if not record:
             msg = "trying to set comment for non-existing volume %s"%(vol)
             Trace.log(e_errors.ERROR, msg)
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.NO_VOLUME, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -795,7 +795,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # can't have 2 with same external_label
         if self.dict.has_key(external_label):
             msg="Volume Clerk: volume %s already exists" % (external_label,)
-            ticket["status"] = (errno.errorcode[errno.EEXIST], msg)
+            ticket["status"] = (e_errors.VOLUME_EXISTS, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -909,7 +909,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # make sure it exists
         if not self.dict.has_key(external_label):
             msg="Volume Clerk: volume %s does not exist" % (external_label,)
-            ticket["status"] = (errno.errorcode[errno.EEXIST], msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -977,7 +977,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -997,7 +997,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (label)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1406,7 +1406,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         v = self.dict[external_label]
         if not v:
             msg="Volume Clerk: no such volume %s" % (external_label)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1449,7 +1449,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1482,7 +1482,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s"%(external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1535,7 +1535,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1568,7 +1568,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1617,7 +1617,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record = self.dict[external_label]
             if not record:
                 msg="Volume Clerk: no such volume %s" % (external_label,)
-                ticket["status"] = (e_errors.KEYERROR, msg)
+                ticket["status"] = (e_errors.NO_VOLUME, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
@@ -1626,7 +1626,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
         else:
             msg = "Volume Clerk::inquire_vol(): external_label == None"
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1646,7 +1646,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]
         if not record:
             msg="touch(): no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1676,7 +1676,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]
         if not record:
             msg="check_record(): no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1710,7 +1710,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1718,7 +1718,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # check the range of position
         if position != 0 and position != 1:
             msg="Volume Clerk: clr_system_inhibit(%s, %d), no such position %d"%(inhibit, position, position)
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.VOLUME_CLERK_ERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1789,7 +1789,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -1810,7 +1810,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record = self.dict[external_label]  
         if not record:
             msg="Volume Clerk: no such volume %s" % (external_label,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_VOLUME, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return ticket["status"]
@@ -2190,7 +2190,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 	ticket['count'] = self.sgdb.set_sg_counter(lib, sg, count)
         if ticket['count'] == -1:
-            ticket['status'] = (e_errors.ERROR, "failed to set %s.%s"%(lib,sg))
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, "failed to set %s.%s"%(lib,sg))
         else:
             ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -2208,7 +2208,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return
 	ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
         if ticket['count'] == -1:
-            ticket['status'] = (e_errors.ERROR, "failed to get %s.%s"%(lib,sg))
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, "failed to get %s.%s"%(lib,sg))
         else:
             ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -2393,7 +2393,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         if len(string.split(sg, '.')) != 2:
             msg = 'wrong format. It has to be "library.storage_group"'
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.WRONG_FORMAT, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -2408,7 +2408,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 Trace.log(e_errors.INFO, 'storage group "%s" has been ignored'%(sg))
             except:
                 msg = 'Volume Clerk: failed to ignore storage group "%s"'%(sg)
-                ticket['status'] = (e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
@@ -2438,13 +2438,13 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 Trace.log(e_errors.INFO, 'ignored storage group "%s" has been cleared'%(sg))
             except:
                 msg = 'Volume Clerk: failed to clear ignored storage group "%s"'%(sg)
-                ticket['status'] = (e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, msg)
                 Trace.log(e_errors.ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
         else:
             msg = '"%s" is not in ignored storage group list'%(sg)
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -2462,7 +2462,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.INFO, 'all ignored storage groups has been cleared')
         except:
             msg = 'Volume Clerk: failed to clear all ignored storage groups'
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.VOLUME_CLERK_ERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return

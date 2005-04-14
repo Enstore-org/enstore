@@ -131,7 +131,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		# look up in our dictionary the request bit field id
 		finfo = self.file[bfid] 
 		if not finfo:
-			ticket["status"] = (e_errors.KEYERROR,
+			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
 			Trace.log(e_errors.INFO, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
@@ -162,7 +162,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		# look up in our dictionary the request bit field id
 		finfo = self.file[bfid] 
 		if not finfo:
-			ticket["status"] = (e_errors.KEYERROR,
+			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
 			Trace.log(e_errors.INFO, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
@@ -201,7 +201,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			record = self.volume[external_label]
 			if not record:
 				msg="Info Clerk: no such volume %s" % (external_label,)
-				ticket["status"] = (e_errors.KEYERROR, msg)
+				ticket["status"] = (e_errors.NO_VOLUME, msg)
 				Trace.log(e_errors.ERROR, msg)
 				self.reply_to_caller(ticket)
 				return
@@ -210,7 +210,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			return
 		else:
 			msg = "Info Clerk::inquire_vol(): external_label == None"
-			ticket["status"] = (e_errors.ERROR, msg)
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
 			Trace.log(e_errors.ERROR, msg)
 			self.reply_to_caller(ticket)
 			return
@@ -319,7 +319,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			exc_type, exc_value = sys.exc_info()[:2]
 			msg = 'write_protect_status(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
 			Trace.log(e_errors.ERROR, msg)
-			ticket["status"] = (e_errors.ERROR, msg)
+			ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
 		self.reply_to_caller(ticket)
 		return
 
@@ -571,7 +571,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 		ticket['count'] = self.sgdb.get_sg_counter(lib, sg)
 		if ticket['count'] == -1:
-			ticket['status'] = (e_errors.ERROR, "failed to get %s.%s"%(lib,sg))
+			ticket['status'] = (e_errors.INFO_SERVER_ERROR, "failed to get %s.%s"%(lib,sg))
 		else:
 			ticket['status'] = (e_errors.OK, None)
 		self.reply_to_caller(ticket)
@@ -877,7 +877,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 			if query_parts[0] != "SELECT" or "INTO" in query_parts:
 				msg = "only simple select statement is allowed"
-				ticket["status"] = (e_errors.ERROR, msg)
+				ticket["status"] = (e_errors.INFO_SERVER_ERROR, msg)
 			else:
 				ticket["status"] = (e_errors.OK, None)
 			self.reply_to_caller(ticket)
@@ -904,7 +904,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]
 			msg = 'query_db(): '+str(exc_type)+' '+str(exc_value)+' query: '+q
-			result['status'] = (e_errors.ERROR, msg)
+			result['status'] = (e_errors.INFO_SERVER_ERROR, msg)
 
 		# finishing up
 

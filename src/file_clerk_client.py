@@ -296,12 +296,12 @@ class FileClient(generic_client.GenericClient,
 	# does it exist?
         if not os.access(path, os.F_OK):
             msg = "%s does not exist!"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # check premission
         if not os.access(dir, os.W_OK):
             msg = "not enough privilege to rename %s"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # get bfid
         bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
@@ -311,7 +311,7 @@ class FileClient(generic_client.GenericClient,
 
         if len(bfid) < 12:
             msg = "can not find bfid for %s"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         record = self.bfid_info(bfid)
         if record['status'][0] != e_errors.OK:
@@ -323,7 +323,7 @@ class FileClient(generic_client.GenericClient,
             os.rename(a_path, bad_file)
         except:
             msg = "failed to rename %s to %s"%(a_path, bad_file)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # log it
         ticket = {'work': 'mark_bad', 'bfid': bfid, 'path': bad_file};
@@ -340,17 +340,17 @@ class FileClient(generic_client.GenericClient,
         # is it a "bad" file?
 	if file[:5] != ".bad.":
             msg = "%s is not officially a bad file"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
 	# does it exist?
         if not os.access(path, os.F_OK):
             msg = "%s does not exist!"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # check premission
         if not os.access(dir, os.W_OK):
             msg = "not enough privilege to rename %s"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # get bfid
         bfid_file = os.path.join(dir, '.(use)(1)(%s)'%(file))
@@ -359,7 +359,7 @@ class FileClient(generic_client.GenericClient,
         f.close()
         if len(bfid) < 12:
             msg = "can not find bfid for %s"%(path)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         record = self.bfid_info(bfid)
         if record['status'][0] != e_errors.OK:
@@ -371,7 +371,7 @@ class FileClient(generic_client.GenericClient,
             os.rename(a_path, good_file)
         except:
             msg = "failed to rename %s to %s"%(a_path, good_file)
-            return {'status': (e_errors.ERROR, msg)}
+            return {'status': (e_errors.FILE_CLERK_ERROR, msg)}
 
         # log it
         ticket = {'work': 'unmark_bad', 'bfid': bfid}
@@ -428,11 +428,10 @@ class FileClient(generic_client.GenericClient,
             bfid = self.bfid
         r = self.send({"work" : "bfid_info",
                        "bfid" : bfid }, timeout, retry)
-        try:
+
+        if r.has_key("work"):
             del r['work']
-        except: # something is wrong
-            msg = 'ticket = '+`r`
-            r['status'] = (e_errors.ERROR, msg)
+
         return r
 
     # This is only to be used internally
@@ -495,24 +494,24 @@ class FileClient(generic_client.GenericClient,
 
         # check if the volume is deleted
         if bit_file["external_label"][-8:] == '.deleted':
-            return {'status': (e_errors.ERROR, "volume %s is deleted"%(bit_file["external_label"]))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "volume %s is deleted"%(bit_file["external_label"]))}
 
         # make sure the file has to be deleted
         if bit_file['deleted'] != 'yes':
-            return {'status': (e_errors.ERROR, "%s is not deleted"%(bfid))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "%s is not deleted"%(bfid))}
 
         # check if the path is a valid pnfs path
         if bit_file['pnfs_name0'][:5] != '/pnfs':
-            return {'status': (e_errors.ERROR, "%s is not a valid pnfs path"%(bit_file['pnfs_name0']))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "%s is not a valid pnfs path"%(bit_file['pnfs_name0']))}
 
         # check if the file has already existed
         if os.access(bit_file['pnfs_name0'], os.F_OK): # file exists
-            return {'status': (e_errors.ERROR, "%s exists"%(bit_file['pnfs_name0']))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "%s exists"%(bit_file['pnfs_name0']))}
 
         # its path has to exist
         pp, pf = os.path.split(bit_file['pnfs_name0'])
         if not os.access(pp, os.W_OK):
-            return {'status': (e_errors.ERROR, "can not write in directory %s"%(pp))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "can not write in directory %s"%(pp))}
 
         if not file_family:
             # has to find it out
@@ -529,7 +528,7 @@ class FileClient(generic_client.GenericClient,
 
         # Has it already existed?
         if pf.exists():
-            return {'status': (e_errors.ERROR, "%s already exists"%(bit_file['pnfs_name0']))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "%s already exists"%(bit_file['pnfs_name0']))}
 
         # To Do: check if any file has the same pnfs_id
 
@@ -537,7 +536,7 @@ class FileClient(generic_client.GenericClient,
         try:
             pf.create()
         except:
-            return {'status': (e_errors.ERROR, "can not create %s"%(pf.path))}
+            return {'status': (e_errors.FILE_CLERK_ERROR, "can not create %s"%(pf.path))}
 
         pnfs_id = pf.get_pnfs_id()
         if pnfs_id != pf.pnfs_id:

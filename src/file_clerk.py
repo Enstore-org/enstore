@@ -88,14 +88,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if bfid[:4] != self.brand:
                 msg = "new_bit_file(): wrong brand %s (%s)"%(bfid, self.brand)
                 Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
             # make sure the bfid does not exist
             if self.dict[bfid]:
                 msg = "new_bit_file(): %s exists"%(bfid)
                 Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.BFID_EXISTS, msg)
                 self.reply_to_caller(ticket)
                 return
         else:
@@ -149,7 +149,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record = self.dict[bfid] 
         if not record:
             msg = "File Clerk: bfid %s not found"%(bfid,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_FILE, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -198,7 +198,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record=self.dict[bfid]
         if not record:
             msg = "File Clerk: no such bfid %s"%(bfid)
-            ticket["status"]=(e_errors.KEYERROR, msg)
+            ticket["status"]=(e_errors.NO_FILE, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -226,7 +226,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record=self.dict[bfid]
         if not record:
             msg = "File Clerk: no such bfid %s"%(bfid)
-            ticket["status"]=(e_errors.KEYERROR, msg)
+            ticket["status"]=(e_errors.NO_FILE, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -259,7 +259,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record = self.dict[bfid]
         if not record:
             msg = "File Clerk: no such bfid %s"%(bfid)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_FILE, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
@@ -316,7 +316,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # look up in our dictionary the request bit field id
         finfo = self.dict[bfid] 
         if not finfo:
-            ticket["status"] = (e_errors.KEYERROR, 
+            ticket["status"] = (e_errors.NO_FILE, 
                                 "File Clerk: bfid %s not found"%(bfid,))
             Trace.log(e_errors.INFO, "%s"%(ticket,))
             self.reply_to_caller(ticket)
@@ -416,7 +416,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             exc_type, exc_value = sys.exc_info()[:2]
             msg = 'erase failed due to: '+str(exc_type)+' '+str(exc_value)
             Trace.log(e_errors.ERROR, msg)
-            ticket["status"] = (e_errors.ERROR, msg)
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -455,7 +455,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             self.__delete_volume(vol)
         except:
-            ticket["status"] = (e_errors.ERROR, "delete failed")
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "delete failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -491,7 +491,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             result = self.__has_undeleted_file(vol)
             ticket["status"] = (e_errors.OK, result)
         except:
-            ticket["status"] = (e_errors.ERROR, "inquire failed")
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquire failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
@@ -822,7 +822,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if record:
                 msg = 'bfid "%s" has already been used'%(bfid)
                 Trace.log(e_errors.ERROR, msg)
-                ticket['status'] = (e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.BFID_EXISTS, msg)
                 self.reply_to_caller(ticket)
                 return
         else:
@@ -899,12 +899,12 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if not record:
                 msg = 'modify_file_record(): bfid "%s" does not exist'%(bfid)
                 Trace.log(e_errors.ERROR, msg)
-                ticket['status'] = (e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.NO_FILE, msg)
                 self.reply_to_caller(ticket)
                 return
         else:
             msg = 'modify_file_record(): no bfid specified'
-            ticket['status'] = (e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.KEYERROR, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -939,7 +939,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         record = self.dict[bfid]
         if not record:
             msg = "file %s does not exist in DB"%(bfid)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.NO_FILE, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -948,7 +948,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         res = self.dict.db.query(q).dictresult()
         if res:
             msg = "file %s has already been marked bad"%(bfid)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -961,7 +961,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         except:
             exc_type, exc_value = sys.exc_info()[:2]
             msg = "failed to mark %s bad due to "%(bfid)+str(exc_type)+' '+str(exc_value)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
         self.reply_to_caller(ticket)
@@ -983,8 +983,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
-            msg = "failed to mark %s bad due to "%(bfid)+str(exc_type)+' '+str(exc_value)
-            ticket["status"] = (e_errors.KEYERROR, msg)
+            msg = "failed to unmark %s bad due to "%(bfid)+str(exc_type)+' '+str(exc_value)
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
             Trace.log(e_errors.KEYERROR, msg)
 
         self.reply_to_caller(ticket)

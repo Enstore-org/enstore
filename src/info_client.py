@@ -138,11 +138,8 @@ class infoClient(generic_client.GenericClient):
 
 	def bfid_info(self, bfid):
 		r = self.send({"work" : "bfid_info", "bfid" : bfid } )
-		try:
+		if r.has_key('work'):
 			del r['work']
-		except: # something is wrong
-			msg = 'ticket = '+`r`
-			r['status'] = (e_errors.ERROR, msg)
 		return r
 
 	def find_same_file(self, bfid):
