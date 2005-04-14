@@ -168,7 +168,7 @@ class infoClient(generic_client.GenericClient):
 
 		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
-			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for info clerk callback"
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
 		
 		control_socket, address = listen_socket.accept()
 		
@@ -227,7 +227,7 @@ class infoClient(generic_client.GenericClient):
 
 		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
-			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for info clerk callback"
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for info clerk callback"
 		
 		control_socket, address = listen_socket.accept()
 		
@@ -279,7 +279,7 @@ class infoClient(generic_client.GenericClient):
 
 		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
-			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
 		
 		control_socket, address = listen_socket.accept()
 		
@@ -325,7 +325,7 @@ class infoClient(generic_client.GenericClient):
 
 		r,w,x = select.select([listen_socket], [], [], 60)
 		if not r:
-			raise errno.errorcode[errno.ETIMEDOUT], "timeout wiating for volume clerk callback"
+			raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for volume clerk callback"
 		
 		control_socket, address = listen_socket.accept()
 		
