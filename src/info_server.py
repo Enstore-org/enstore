@@ -210,7 +210,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		res = self.db.query(q).dictresult()
 		if len(res) == 0:
 			ticket["status"] = (e_errors.NO_FILE,
-				"Info Server: pnfsid %s not found"%(pnfsid))
+				"Info Server: pnfsid %s not found"%(pnfs_id))
 			Trace.log(e_errors.INFO, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			return
