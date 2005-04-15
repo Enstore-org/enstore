@@ -21,6 +21,7 @@ except ImportError:
     thread_support=0
 
 import rexec
+import types
 
 # enstore imports
 import Trace
@@ -40,8 +41,15 @@ class UDPError(socket.error):
 
         #If the only a message is present, it is in the e_errno spot.
         if e_message == None:
-            self.errno = None
-            self.message = e_errno
+            if type(e_errno) == types.IntType:
+                self.errno = e_errno
+                self.message = None
+            elif type(e_errno) == types.StringType:
+                self.errno = None
+                self.message = e_errno
+            else:
+                self.errno = None
+                self.message = "Unknown error"
         #If both are there then we have both to use.
         else:
             self.errno = e_errno
@@ -257,8 +265,9 @@ class UDPClient:
 
         if len(message) > TRANSFER_MAX:
             errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
-            Trace.log(e_errors.ERROR,errmsg)
+            Trace.log(e_errors.ERROR, errmsg)
             raise errno.errorcode[errno.EMSGSIZE],errmsg
+            #raise UDPError(errno.EMSGSIZE, errmsg)
 
         return message, tsd.txn_counter
 
@@ -334,6 +343,7 @@ class UDPClient:
         #If we got here, it's because we didn't receive a response to the
 	# message we sent.
         raise errno.errorcode[errno.ETIMEDOUT]
+        #raise UDPError(errno.ETIMEDOUT)
         
     # send message without waiting for reply and resend
     def send_no_wait(self, data, address) :
@@ -413,7 +423,7 @@ class UDPClient:
         ##If we got here, it's because we didn't receive a response to the
         ## message we sent.
         raise errno.errorcode[errno.ETIMEDOUT]
-
+        #raise UDPError(errno.ETIMEDOUT)
         
     
         

@@ -107,11 +107,17 @@ class GenericClient:
 
         if server_address:
             self.server_address = server_address
+            if server_name:
+                self.server_name = server_name
+            else:
+                self.server_name = "server at %s" % (server_address,)
         elif server_name:
             self.server_address = self.get_server_address(
                 server_name, rcv_timeout=rcv_timeout, tries=rcv_tries)
+            self.server_name = server_name
         else:
             self.server_address = None
+            self.server_name = None
 
 	# get the log client
 	if logc:
@@ -210,8 +216,9 @@ class GenericClient:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             exc, msg = sys.exc_info()[:2]
-            if exc == errno.errorcode[errno.ETIMEDOUT]:
-                x = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            if exc == errno.errorcode[errno.ETIMEDOUT] or \
+                   isinstance(exc, udp_client.UDPError):
+                x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
             else:
                 x = {'status' : (str(exc), str(msg))}
         return x
@@ -227,13 +234,20 @@ class GenericClient:
         try:
             t = csc.get(server, timeout=rcv_timeout, retry=tries)
         except errno.errorcode[errno.ETIMEDOUT]:
-            return {'status' : (e_errors.TIMEDOUT, None)}
+            return {'status' : (e_errors.TIMEDOUT,
+                                enstore_constants.CONFIGURATION_SERVER)}
+        except udp_client.UDPError, msg:
+            if msg.errno == errno.ETIMEDOUT:
+                return {'status' : (e_errors.TIMEDOUT,
+                                    enstore_constants.CONFIGURATION_SERVER)}
+            else:
+                return {'status' : (e_errors.BROKEN, str(msg))}
         
         #Check for errors.
-        if t['status'] == (e_errors.TIMEDOUT, None):
+        if e_errors.is_timedout(t['status']):
             Trace.trace(14,"alive - ERROR, config server get timed out")
             return {'status' : (e_errors.CONFIGDEAD, None)}
-        elif t['status'] != (e_errors.OK, None):
+        elif not e_errors.is_ok(t['status']):
             return {'status':t['status']}
         
         #Send and recieve the alive message.
@@ -242,7 +256,12 @@ class GenericClient:
                             rcv_timeout, tries)
         except errno.errorcode[errno.ETIMEDOUT]:
             Trace.trace(14,"alive - ERROR, alive timed out")
-            x = {'status' : (e_errors.TIMEDOUT, None)}
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+        except udp_client.UDPError, msg:
+            if msg.errno == errno.ETIMEDOUT:
+                return {'status' : (e_errors.TIMEDOUT, self.server_name)}
+            else:
+                return {'status' : (e_errors.BROKEN, str(msg))}
         except KeyError, detail:
             sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
             os._exit(1)
@@ -259,7 +278,12 @@ class GenericClient:
             x = self.u.send({'work': work,
                              'levels':levels}, (t['hostip'], t['port']))
         except errno.errorcode[errno.ETIMEDOUT]:
-            x = {'status' : (e_errors.TIMEDOUT, None)}
+            x = {'status' : (e_errors.TIMEDOUT, self.server_name)}
+        except udp_client.UDPError, msg:
+            if msg.errno == errno.ETIMEDOUT:
+                return {'status' : (e_errors.TIMEDOUT, self.server_name)}
+            else:
+                return {'status' : (e_errors.BROKEN, str(msg))}
         except KeyError:
             sys.stderr.write("Unknown server %s\n" % (server,))
             sys.exit(1)
