@@ -197,6 +197,8 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          CRC_ERROR,  #Set by mover
                          FILE_MODIFIED, #When writing the file changed.
                          NO_FILES, #encp has no files to transfer???
+                         NO_FILE,   #FC does not know about requested bfid
+                         NO_VOLUME, #VC does not know about requested volume
                          )
 
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
