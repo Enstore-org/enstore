@@ -148,6 +148,125 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
 		return
 
+	# find_file_by_path() -- find a file using pnfs_path
+	def find_file_by_path(self, ticket):
+		try:
+			pnfs_path = ticket["pnfs_name0"]
+		except KeyError, detail:
+			msg = "Info Server: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				pnfs_path = '%s';"%(pnfs_path)
+
+		res = self.db.query(q).dictresult()
+		if len(res) == 0:
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Server: path %s not found"%(pnfs_path))
+			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			return
+
+		finfo = self.file.export_format(res[0])
+
+		for key in finfo.keys():
+			ticket[key] = finfo[key]
+	
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		return
+				
+	# find_file_by_pnfsid() -- find a file using pnfs_path
+	def find_file_by_pnfsid(self, ticket):
+		try:
+			pnfs_id = ticket["pnfsid"]
+		except KeyError, detail:
+			msg = "Info Server: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				pnfs_id = '%s';"%(pnfs_id)
+
+		res = self.db.query(q).dictresult()
+		if len(res) == 0:
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Server: pnfsid %s not found"%(pnfsid))
+			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			return
+
+		finfo = self.file.export_format(res[0])
+
+		for key in finfo.keys():
+			ticket[key] = finfo[key]
+	
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		return
+				
+	# find_file_by_location() -- find a file using pnfs_path
+	def find_file_by_location(self, ticket):
+		try:
+			label = ticket['external_label']
+			location_cookie = ticket['location_cookie']
+		except KeyError, detail:
+			msg = "Info Server: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select \
+			bfid, crc, deleted, drive, \
+			volume.label, location_cookie, pnfs_path, \
+			pnfs_id, sanity_size, sanity_crc, size, \
+			uid, gid \
+			from file, volume \
+			where \
+				file.volume = volume.id and \
+				label = '%s' and \
+				location_cookie = '%s';"%(label,
+				location_cookie)
+
+		res = self.db.query(q).dictresult()
+		if len(res) == 0:
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Server: location %s %s not found"%(label, location_cookie))
+			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			return
+
+		finfo = self.file.export_format(res[0])
+
+		for key in finfo.keys():
+			ticket[key] = finfo[key]
+	
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		return
+				
+
+
 	def find_same_file(self, ticket):
 		try:
 			

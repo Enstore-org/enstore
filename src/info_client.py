@@ -142,6 +142,25 @@ class infoClient(generic_client.GenericClient):
 			del r['work']
 		return r
 
+	def find_file_by_path(self, pnfs_name0):
+		r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
+		if r.has_key('work'):
+			del r['work']
+		return r
+
+	def find_file_by_pnfsid(self, pnfsid):
+		r = self.send({"work" : "find_file_by_pnfsid", "pnfsid" : pnfsid})
+		if r.has_key('work'):
+			del r['work']
+		return r
+
+	def find_file_by_location(self, vol, loc):
+		r = self.send({"work" : "find_file_by_location",
+			"external_label" : vol, "location_cookie" : loc})
+		if r.has_key('work'):
+			del r['work']
+		return r
+
 	def find_same_file(self, bfid):
 		return self.send({"work": "find_same_file", "bfid": bfid})
 
@@ -717,6 +736,7 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.show_bad = 0
 		self.query = ''
 		self.find_same_file = None
+		self.file = None
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
@@ -736,6 +756,11 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_LABEL: "bfid",
 				option.VALUE_USAGE:option.REQUIRED,
 				option.USER_LEVEL:option.ADMIN},
+		option.FILE:{option.HELP_STRING:"get info of a file",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"path|pnfsid|bfid|vol:loc",
+				option.USER_LEVEL:option.USER},
 		option.BFIDS:{option.HELP_STRING:"list all bfids on a volume",
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
@@ -855,6 +880,22 @@ def do_work(intf):
 					record['bfid'], record['size'],
 					record['location_cookie'], deleted,
 					record['pnfs_name0'])
+	elif intf.file:
+		# is it vol:loc?
+		if string.find(intf.file, ":") != -1:
+			vol, loc = string.split(intf.file, ":")
+			ticket = ifc.find_file_by_location(vol, loc)
+		elif intf.file[:5] == '/pnfs':
+			ticket = ifc.find_file_by_path(intf.file)
+		elif len(intf.file) < 20:	# bfid
+			ticket = ifc.bfid_info(intf.file)
+		else:
+			ticket = ifc.find_file_by_pnfsid(intf.file)
+		if ticket['status'][0] ==  e_errors.OK:
+			status = ticket['status']
+			del ticket['status']
+			pprint.pprint(ticket)
+			ticket['status'] = status
 
 	elif intf.ls_active:
 		ticket = ifc.list_active(intf.ls_active)
