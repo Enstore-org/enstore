@@ -191,6 +191,12 @@ class GenericClient:
         ticket = self.get_server_configuration(my_server,
                                                rcv_timeout, tries)
 
+        if not e_errors.is_ok(ticket):
+            sys.stderr.write(
+                "Got error while trying to obtain configuration: %s\n" %
+                (ticket['status'],))
+            return None
+        
         try:
             server_address = (ticket['hostip'], ticket['port'])
         except KeyError, detail:
