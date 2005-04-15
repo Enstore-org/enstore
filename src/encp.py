@@ -585,9 +585,16 @@ def is_read(ticket_or_interface):
     if type(ticket_or_interface) == types.DictionaryType:
         infile = ticket_or_interface.get('infile', "")
         outfile = ticket_or_interface.get('outfile', "")
-        if infile[:6] == "/pnfs/" and outfile[:6] != "/pnfs/":
+        #if infile[:6] == "/pnfs/" and outfile[:6] != "/pnfs/":
+        #    return 1
+        #elif infile[:6] != "/pnfs/" and outfile[:6] == "/pnfs/":
+        #    return 0
+        if not infile or not outfile:
+            raise EncpError(errno.EINVAL, "Inconsistant file types.",
+                            e_errors.BROKEN)
+        elif pnfs.is_pnfs_path(infile) and not pnfs.is_pnfs_path(outfile):
             return 1
-        elif infile[:6] != "/pnfs/" and outfile[:6] == "/pnfs/":
+        elif not pnfs.is_pnfs_path(infile) and pnfs.is_pnfs_path(outfile):
             return 0
         else:
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
@@ -1251,12 +1258,12 @@ def __get_fcc(parameter = None):
             #Now that we have the csc, we can get the fcc.
             __fcc = file_clerk_client.FileClient(
                 csc, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
+                rcv_timeout=5, rcv_tries=12)
             return __fcc, None
     
     #First check that the cached version matches the bfid brand.
     if __fcc != None:
-        file_info = __fcc.bfid_info(bfid, 5, 3)
+        file_info = __fcc.bfid_info(bfid, 5, 12)
         if e_errors.is_ok(file_info):
             return __fcc, file_info
 
@@ -1264,11 +1271,11 @@ def __get_fcc(parameter = None):
     if __csc != None:
         fcc = file_clerk_client.FileClient(
             __csc, logc = __logc, alarmc = __alarmc,
-            rcv_timeout=5, rcv_tries=2)
+            rcv_timeout=5, rcv_tries=12)
         if fcc.server_address == None:
             Trace.log(e_errors.WARNING, "Locating cached file clerk failed.\n")
         else:
-            file_info = fcc.bfid_info(bfid, 5, 3)
+            file_info = fcc.bfid_info(bfid, 5, 12)
             if e_errors.is_ok(file_info):
                 __fcc = fcc
                 return __fcc, file_info
@@ -1278,11 +1285,11 @@ def __get_fcc(parameter = None):
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host, config_port))
     fcc = file_clerk_client.FileClient(
-        csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
+        csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=12)
     if fcc.server_address == None:
         Trace.log(e_errors.WARNING, "Locating default file clerk failed.\n")
     else:
-        file_info = fcc.bfid_info(bfid, 5, 3)
+        file_info = fcc.bfid_info(bfid, 5, 12)
         if e_errors.is_ok(file_info):
             __csc = csc
             __fcc = fcc
@@ -1298,9 +1305,9 @@ def __get_fcc(parameter = None):
         del config_servers['status']
     else:
         __fcc = file_clerk_client.FileClient(
-            csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=2)
+            csc, logc = __logc, alarmc = __alarmc, rcv_timeout=5, rcv_tries=12)
         if bfid:
-            file_info = __fcc.bfid_info(bfid, 5, 3)
+            file_info = __fcc.bfid_info(bfid, 5, 12)
             if e_errors.is_ok(file_info):
                 return __fcc, file_info
         else:
@@ -1316,7 +1323,7 @@ def __get_fcc(parameter = None):
             #Get the next file clerk client and its brand.
             fcc_test = file_clerk_client.FileClient(
                 csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
+                rcv_timeout=5, rcv_tries=3)
 
             if fcc_test.server_address != None:
 		#If the fcc has been initialized correctly; use it.
@@ -1337,13 +1344,26 @@ def __get_fcc(parameter = None):
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
     __fcc = fcc
-
     if __fcc.server_address != None and bfid != None:
         #If the fcc has been initialized correctly; use it.
         file_info = __fcc.bfid_info(bfid, 5, 3)
     else:
         file_info = None
 
+    #In theory the only spot that an error responce can be returned
+    # from this function is at the very end.
+    if file_info and not e_errors.is_ok(file_info):
+        #Stuff this back in.  Some message building code looks for this.
+        # On errors the file clerk does not put it back.
+        file_info['bfid'] = bfid
+        
+        message = "Failure communicating with file clerk (%s) about" \
+                  " bfid %s: %s" \
+                  % (__fcc.server_address, bfid,
+                     str(file_info['status'][0]))
+
+        Trace.log(e_errors.WARNING, message)
+        
     return __fcc, file_info
 
 def get_fcc(bfid = None):
@@ -1389,48 +1409,28 @@ def __get_vcc(parameter = None):
             #Now that we have the csc, we can get the vcc.
             __vcc = volume_clerk_client.VolumeClerkClient(
                 csc, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
+                rcv_timeout=5, rcv_tries=12)
             return __vcc, None
-    
+
     #First check that the cached version knows about the volume.
     if __vcc != None:
-        volume_info = __vcc.inquire_vol(volume, 5, 20)
+        volume_info = __vcc.inquire_vol(volume, 5, 12)
         if e_errors.is_ok(volume_info):
             return __vcc, volume_info
-        elif volume_info['status'][0] == e_errors.KEYERROR:
-            Trace.log(e_errors.WARNING,
-                      "Volume clerk (%s) knows nothing about %s.\n"
-                      % (__vcc.server_address, volume))
-        else:
-            Trace.log(e_errors.WARNING,
-                      "Failure communicating with volume clerk (%s) about"
-                      " volume %s: %s"
-                      % (__vcc.server_address, volume,
-                         str(volume_info['status'])))
 
     #Next check the vcc associated with the cached csc.
     if __csc != None:
         test_vcc = volume_clerk_client.VolumeClerkClient(
             __csc, logc = __logc, alarmc = __alarmc,
-            rcv_timeout = 5, rcv_tries = 20)
+            rcv_timeout = 5, rcv_tries = 12)
         if test_vcc.server_address == None:
             Trace.log(e_errors.WARNING,
                       "Locating cached volume clerk failed.\n")
         else:
-            volume_info = test_vcc.inquire_vol(volume, 5, 20)
+            volume_info = test_vcc.inquire_vol(volume, 5, 12)
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
                 return __vcc, volume_info
-            elif volume_info['status'][0] == e_errors.KEYERROR:
-                Trace.log(e_errors.WARNING,
-                          "Volume clerk (%s) knows nothing about %s.\n"
-                          % (test_vcc.server_address, volume))
-            else:
-                Trace.log(e_errors.WARNING,
-                          "Failure communicating with volume clerk (%s) about"
-                          " volume %s: %s"
-                          % (test_vcc.server_address, volume,
-                             str(volume_info['status'])))
 
     # get a configuration server
     config_host = enstore_functions2.default_host()
@@ -1442,7 +1442,7 @@ def __get_vcc(parameter = None):
         Trace.log(e_errors.WARNING, "Locating default volume clerk failed.\n")
     #Before checking other systems, check the current system.
     else:
-        volume_info = vcc.inquire_vol(volume)
+        volume_info = vcc.inquire_vol(volume, 5, 12)
         if e_errors.is_ok(volume_info):
             __csc = csc
             __vcc = vcc
@@ -1459,7 +1459,7 @@ def __get_vcc(parameter = None):
     else:
         __vcc = vcc
         if volume:
-            volume_info = __vcc.inquire_vol(volume, 5, 20)
+            volume_info = __vcc.inquire_vol(volume, 5, 12)
             return __vcc, volume_info
         else:
             return __vcc, None
@@ -1475,14 +1475,14 @@ def __get_vcc(parameter = None):
             #Get the next volume clerk client and volume inquiry.
             vcc_test = volume_clerk_client.VolumeClerkClient(
                 csc_test, logc = __logc, alarmc = __alarmc,
-                rcv_timeout=5, rcv_tries=2)
+                rcv_timeout=5, rcv_tries=3)
             if vcc_test.server_address == None:
                 #If we failed to find this volume clerk, move on to the
                 # next one.
                 continue
 		#pass
 
-            volume_info = vcc_test.inquire_vol(volume, 5, 2)
+            volume_info = vcc_test.inquire_vol(volume, 5, 3)
             if e_errors.is_ok(volume_info):
                 msg = "Using %s based on volume %s." % \
                       (vcc_test.server_address, volume)
@@ -1503,15 +1503,29 @@ def __get_vcc(parameter = None):
             Trace.log(e_errors.WARNING, str((str(exc), str(msg))))
 
     __vcc = vcc
-    
-    if vcc_test and vcc_test.server_address != None and volume != None:
+    #if vcc_test and vcc_test.server_address != None and volume != None:
+    if __vcc and __vcc.server_address != None and volume != None:
         #If the vcc has been initialized correctly; use it.
         volume_info = __vcc.inquire_vol(volume, 5, 20)
     else:
         volume_info = None
-        
-    return __vcc, volume_info
 
+    #In theory the only spot that an error responce can be returned
+    # from this function is at the very end.
+    if volume_info and not e_errors.is_ok(volume_info):
+        #Stuff this back in.  Some message building code looks for this.
+        # On errors the volume clerk does not put it back.
+        volume_info['external_label'] = volume
+        
+        message = "Failure communicating with volume clerk (%s) about" \
+                  " volume %s: %s" \
+                  % (__vcc.server_address, volume,
+                     str(volume_info['status']))
+            
+        Trace.log(e_errors.WARNING, message)
+                  
+    return __vcc, volume_info
+ 
 def get_vcc(volume = None):
 
     return __get_vcc(volume)[0]
@@ -1520,14 +1534,23 @@ def get_acc():
     global __acc
     global __csc
 
+    #If we don't have the log client or alarm client by now, there is
+    # likely something quite wrong.  So, don't try.  If __logc and __alarmc
+    # are set when passed in these flags have no effect.
+    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
+
     if __acc:
         return __acc
     elif __csc:
         __acc = accounting_client.accClient(__csc, logname = 'ENCP',
+                                            flags = flags,
                                             logc = __logc, alarmc = __alarmc)
         return __acc
     else:
-        csc, config = __get_csc()
+        try:
+            csc, config = __get_csc()
+        except EncpError:
+            csc, config = None, None
 
         acc_addr = None  #Default.
         if config:
@@ -1538,6 +1561,7 @@ def get_acc():
                             acc_info.get('port', None))
 
         __acc = accounting_client.accClient(csc, logname = 'ENCP',
+                                            flags = flags,
                                             logc = __logc, alarmc = __alarmc,
                                             server_address = acc_addr)
         return __acc
@@ -1626,38 +1650,59 @@ def check_library(library, e):
             rcv_timeout = 5, rcv_tries = 20)
 
         if lmc.server_address == None:
-            status_ticket = {'status' : (e_errors.KEYERROR,
-                                         "No LM %s found." % lib)}
-        else:
-            status_ticket = lmc.get_lm_state()
+            status = (e_errors.KEYERROR, "No LM %s found." % lib)
+            if e.check:
+                status_ticket = {'status' : status, 'exit_status' : 2}
+            else:
+                status_ticket = {'status' : status}
 
-        if e_errors.is_ok(status_ticket):
-            state = status_ticket.get("state", e_errors.UNKNOWN)
-
-            if state == "locked":
-                status_ticket['status'] = (e_errors.LOCKED,
-                                           "%s is locked." % lib)
-            #if state == "ignore":
-            #    status_ticket['status'] = (e_errors.IGNORE,
-            #                               "%s is ignoring requests." % lib)
-            #if state == "pause":
-            #    status_ticket['status'] = (e_errors.PAUSE,
-            #                               "%s is paused." % lib)
-            if state == "noread" and is_read(e):
-                status_ticket['status'] = (e_errors.NOREAD,
-                                        "%s is ignoring read requests." % lib)
-            if state == "nowrite" and is_write(e):
-                status_ticket['status'] = (e_errors.NOREAD,
-                                        "%s is ignoring write requests." % lib)
-
-            if state == e_errors.UNKNOWN:
-                status_ticket['status'] = (e_errors.UNKNOWN,
-                                        "Unable to determine %s state." % lib)
+            return status_ticket
+        
     except SystemExit:
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
-        status_ticket = {'status' : (e_errors.TIMEDOUT,
-                            "Unable to locate %s." % lib)}
+        status = (e_errors.TIMEDOUT,
+                  "No responce from configuration server for location"
+                  " of %s." % lib)
+        if e.check:
+            status_ticket = {'status' : status, 'exit_status' : 2}
+        else:
+            status_ticket = {'status' : status}
+
+        Trace.message(1, "LM status: %s" % status_ticket)
+
+        return status_ticket
+
+    
+    status_ticket = lmc.get_lm_state(timeout=5, tries=5)
+
+    if e_errors.is_ok(status_ticket):
+        state = status_ticket.get("state", e_errors.UNKNOWN)
+
+        if state == "locked":
+            status_ticket['status'] = (e_errors.LOCKED,
+                                       "%s is locked." % lib)
+        #if state == "ignore":
+        #    status_ticket['status'] = (e_errors.IGNORE,
+        #                               "%s is ignoring requests." % lib)
+        #if state == "pause":
+        #    status_ticket['status'] = (e_errors.PAUSE,
+        #                               "%s is paused." % lib)
+        if state == "noread" and is_read(e):
+            status_ticket['status'] = (e_errors.NOREAD,
+                                    "%s is ignoring read requests." % lib)
+        if state == "nowrite" and is_write(e):
+            status_ticket['status'] = (e_errors.NOREAD,
+                                    "%s is ignoring write requests." % lib)
+
+        if state == e_errors.UNKNOWN:
+            status_ticket['status'] = (e_errors.UNKNOWN,
+                                       "Unable to determine %s state." % lib)
+
+    if e.check and not e_errors.is_ok(status_ticket):
+        #If one of these temporary library states is true and the
+        # user is only checking, don't give a normal error.
+        status_ticket['exit_status'] = 2
 
     Trace.message(1, "LM status: %s" % status_ticket)
 
@@ -1691,6 +1736,17 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                                                  ticket.get('volume', "")))
     location_cookie = fc_ticket.get('location_cookie', "")
     storage_group = vc_ticket.get('storage_group', "")
+    if not storage_group:
+        storage_group = volume_family.extract_storage_group(
+            vc_ticket.get('vc', {}).get('volume_family', ""))
+    file_family = vc_ticket.get('file_family', "")
+    if not file_family:
+        file_family = volume_family.extract_file_family(
+            vc_ticket.get('vc', {}).get('volume_family', ""))
+    wrapper = vc_ticket.get('storage_group', "")
+    if not wrapper:
+        wrapper = volume_family.extract_wrapper(
+            vc_ticket.get('vc', {}).get('volume_family', ""))
 
     #Check the mover sub-ticket.
     mover_ticket = ticket.get('mover', {})
@@ -1700,6 +1756,8 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                   % (str(mover_ticket), str(type(mover_ticket))))
         mover_ticket = {}
     device = mover_ticket.get('device', '')
+    mover_name = mover_ticket.get('name','')
+    product_id = mover_ticket.get('product_id','')
     device_sn = mover_ticket.get('serial_num','')
 
     #Check the time sub-ticket.
@@ -1718,6 +1776,11 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
 
     #Check miscellaneous field(s).
     unique_id = ticket.get('unique_id', "")
+    hostname = ticket.get('encp_ip',
+                          ticket.get('wrapper', {}).get('machine',
+                                                        ("", "", "", "")[2]))
+    if hostname:
+        hostname = socket.gethostbyname(hostname)
 
     #Check status field.
     sts =  ticket.get('status', ('Unknown', None))
@@ -1759,6 +1822,17 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
         outputfile = ""
     if filesize == None:
         filesize = ""
+
+    # Use an 'r' or 'w' to signify read or write in the accounting db.
+    try:
+        if is_read(ticket):  #['work'] == "read_from_hsm":
+            rw = 'r'
+        elif is_write(ticket):
+            rw = 'w'
+        else:
+            rw = "u"
+    except EncpError:
+        rw = "u"
         
     if not data_access_layer_requested and status != e_errors.OK:
         out=sys.stderr
@@ -1820,16 +1894,21 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         sys.stderr.write("cannot log error message %s\n" % (errmsg,))
         sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
 
-
     if not e_errors.is_ok(status):
+        if not filesize:
+            use_file_size = 0
+        else:
+            use_file_size = filesize
         #We need to filter out the situations where status is OK.
         # On OK status printed out with the error data_access_layer format
         # can occur with the use of --data-access-layer.  However, such
         # success should not go into the encp_error table.
         acc = get_acc()
-        acc.log_encp_error(inputfile, outputfile, filesize, storage_group,
+        acc.log_encp_error(inputfile, outputfile, use_file_size, storage_group,
                            unique_id, encp_client_version(),
-                           status, msg)
+                           status, msg, hostname, time.time(),
+                           file_family, wrapper, mover_name,
+                           product_id, device_sn, rw, external_label)
 
 #######################################################################
 
@@ -4475,9 +4554,17 @@ def calculate_rate(done_ticket, tinfo):
         else:
             tinfo['%s_disk_rate'%(u_id,)] = 0.0
             
-        sg = done_ticket.get('fc', {}).get('storage_group', "")
+        sg = done_ticket.get('vc', {}).get('storage_group', "")
+        ff = done_ticket.get('vc', {}).get('file_family', "")
+        ffw = done_ticket.get('vc', {}).get('file_family_wraper', "")
         if not sg:
             sg = volume_family.extract_storage_group(
+                done_ticket.get('vc', {}).get('volume_family', ""))
+        if not ff:
+            ff = volume_family.extract_file_family(
+                done_ticket.get('vc', {}).get('volume_family', ""))
+        if not ffw:
+            ffw = volume_family.extract_wrapper(
                 done_ticket.get('vc', {}).get('volume_family', ""))
         
         print_format = "Transfer %s -> %s:\n" \
@@ -4564,7 +4651,7 @@ def calculate_rate(done_ticket, tinfo):
         Trace.log(e_errors.INFO, log_format % log_values, Trace.MSG_ENCP_XFER )
 
         # Use an 'r' or 'w' to signify read or write in the accounting db.
-	if done_ticket['work'] == "read_from_hsm":
+        if is_read(done_ticket):  #['work'] == "read_from_hsm":
 		rw = 'r'
 	else:
 		rw = 'w'
@@ -4617,7 +4704,9 @@ def calculate_rate(done_ticket, tinfo):
                           done_ticket["encp_ip"],
                           done_ticket['unique_id'],
                           rw,
-                          encp_client_version(),)
+                          encp_client_version(),
+                          ff,
+                          ffw)
 
     Trace.message(TIME_LEVEL, "Time to calculate and record rate: %s sec." %
                   (time.time() - calculate_rate_start_time,))
@@ -5613,7 +5702,9 @@ def write_to_hsm(e, tinfo):
         try:
             return check_library(check_lib, e), request_list
         except EncpError, msg:
-            return {'status' : (msg.type, str(msg))}, request_list
+            return_ticket = { 'status'      : (msg.type, str(msg)),
+                              'exit_status' : 2 }
+            return return_ticket, request_list
 
     #Create the zero length file entry.
     if not e.put_cache: #Skip this for dcache transfers.
@@ -6090,7 +6181,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
 #######################################################################
 
-def get_file_clerk_info(bfid_or_ticket):
+def get_file_clerk_info(bfid_or_ticket, encp_intf=None):
     #While __get_fcc() can accept None as the parameter value,
     # we expect that it will not be, since the purpose of
     # get_file_clerk_info() is to return the information about a bfid.
@@ -6099,25 +6190,33 @@ def get_file_clerk_info(bfid_or_ticket):
     fcc, fc_ticket = __get_fcc(bfid_or_ticket)
 
     # Determine if the information returned is complete.
-    if fc_ticket == None or \
-           not e_errors.is_ok(fc_ticket) or \
-           not fc_ticket.get('external_label', None):
-        raise EncpError(None,
-              "Failed to obtain information for bfid %s." % fc_ticket['bfid'],
-                        fc_ticket.get('status', e_errors.EPROTO), fc_ticket)
+    if fc_ticket == None or not e_errors.is_ok(fc_ticket):
+        fc_status = fc_ticket.get('status', (e_errors.EPROTO, None))
+        fc_error_ticket = {'fc' : fc_ticket}
+
+        if encp_intf != None and encp_intf.check \
+           and e_errors.is_retriable(fc_ticket):
+            #Should this only be for TIMEDOUT or all unknown errors?
+
+            #We did not get the hard answer back that the bfid was not
+            # found.  So, for these errors when --check is used only
+            # also send back an exit status of 2.
+            fc_error_ticket['exit_status'] = 2
+
+        raise EncpError(None, fc_status[1], fc_status[0], fc_error_ticket)
     if fc_ticket["deleted"] == "yes":
         raise EncpError(None,
                         "File %s is marked %s." % (fc_ticket.get('pnfs_name0',
                                                                  "Unknown"),
                                                   e_errors.DELETED),
-                        e_errors.DELETED, fc_ticket)
+                        e_errors.DELETED, {'fc' : fc_ticket})
 
     #Include the server address in the returned info.
     fc_ticket['address'] = fcc.server_address
 
     return fc_ticket
 
-def get_volume_clerk_info(volume_or_ticket):
+def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
     #While __get_vcc() can accept None as the parameter value,
     # we expect that it will not be, since the purpose of
     # get_volume_clerk_info() is to return the information about a bfid.
@@ -6129,21 +6228,28 @@ def get_volume_clerk_info(volume_or_ticket):
     
     if vc_ticket == None or not e_errors.is_ok(vc_ticket):
         vc_status = vc_ticket.get('status', (e_errors.EPROTO, None))
-        if vc_status[0] == e_errors.KEYERROR:
-            #If the error from the volume clerk is KEYERROR, change it to
-            # say NOVOLUME.
-            vc_status = (e_errors.NOVOLUME, vc_status[1])
-        raise EncpError(None, vc_status[1], vc_status[0], {'vc' : vc_ticket})
+        vc_error_ticket = {'vc' : vc_ticket}
+
+        if encp_intf != None and encp_intf.check \
+               and e_errors.is_retriable(vc_ticket):
+            #Should this only be for TIMEDOUT or all unknown errors?
+
+            #We did not get the hard answer back that the volume was not
+            # found.  So, for these errors when --check is used only
+            # also send back an exit status of 2.
+            vc_error_ticket['exit_status'] = 2
+
+        raise EncpError(None, vc_status[1], vc_status[0], vc_error_ticket)
     if not vc_ticket.get('system_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain system_inhibit information."
                         % vc_ticket['external_label'],
-                        e_errors.EPROTO, vc_ticket)
+                        e_errors.EPROTO, {'vc' : vc_ticket})
     if not vc_ticket.get('user_inhibit', None):
         raise EncpError(None,
                         "Volume %s did not contain user_inhibit information."
                         % vc_ticket['external_label'],
-                        e_errors.EPROTO, vc_ticket)
+                        e_errors.EPROTO, {'vc' : vc_ticket})
 
     #Include the server address in the returned info.
     vc_ticket['address'] = vcc.server_address
@@ -6156,7 +6262,7 @@ def get_volume_clerk_info(volume_or_ticket):
         vc_ticket['wrapper'] = volume_family.extract_wrapper(vf)
     except (ValueError, AttributeError, TypeError,
             IndexError, KeyError), msg:
-        raise EncpError(None, str(msg), e_errors.KEYERROR)
+        raise EncpError(None, str(msg), e_errors.KEYERROR, {'vc' : vc_ticket})
 
     # Determine if either the NOACCESS or NOTALLOWED inhibits are set for
     # the volume.  This is done after the above information is included
@@ -6165,15 +6271,25 @@ def get_volume_clerk_info(volume_or_ticket):
     
     inhibit = vc_ticket['system_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        if encp_intf != None and encp_intf.check:
+            vc_error_ticket = {'vc' : vc_ticket, 'exit_status' : 2}
+        else:
+            vc_error_ticket = {'vc' : vc_ticket}
+
         raise EncpError(None,
             "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
-                        inhibit, vc_ticket)
+                        vc_error_ticket)
 
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
+        if encp_intf != None and encp_intf.check:
+            vc_error_ticket = {'vc' : vc_ticket, 'exit_status' : 2}
+        else:
+            vc_error_ticket = {'vc' : vc_ticket}
+
         raise EncpError(None,
             "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
-                        inhibit, vc_ticket)
+                        vc_error_ticket)
 
     return vc_ticket
 
@@ -6182,12 +6298,13 @@ def get_clerks_info(bfid, e):
     #Get the clerk info.  These functions raise EncpError on error.
 
     #For the file clerk.
-    fc_ticket = get_file_clerk_info(bfid)
+    fc_ticket = get_file_clerk_info(bfid, encp_intf=e)
 
     #The volume clerk is much more complicated.  In some situations we
     # may wish to override the NOACCESS and NOTALLOWED system inhibts.
     try:
-        vc_ticket = get_volume_clerk_info(fc_ticket['external_label'])
+        vc_ticket = get_volume_clerk_info(fc_ticket['external_label'],
+                                          encp_intf=e)
     except EncpError, msg:
         if msg.type in [e_errors.NOACCESS, e_errors.NOTALLOWED] \
                and e.override_noaccess:
@@ -6254,8 +6371,15 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         #Make sure that the volume exists.
         if vc_reply['status'][0] == e_errors.KEYERROR:
             rest = {'volume':e.volume}
-            raise EncpError(None, "",
+            raise EncpError(None, e.volume,
                             e_errors.NOVOLUME, rest)
+        #Address any other error.
+        elif not e_errors.is_ok(vc_reply):
+            if e.check:
+                vc_reply['exit_status'] = 2
+                
+            raise EncpError(None, e.volume,
+                            vc_reply['status'][0], vc_reply)
 
         Trace.message(TRANSFER_LEVEL, "Obtaining tape metadata.")
         sys.stdout.flush()
@@ -6273,6 +6397,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             rest = {'volume':e.volume}
             status = tape_ticket.get('status', (e_errors.BROKEN, "failed"))
             message = "Error obtaining tape listing: %s" % status[1]
+            if e.check:
+                rest['exit_status'] = 2
             raise EncpError(None, message, status[0], rest)
 
         #Set these here.  ("Get" with --list.)
@@ -7106,7 +7232,9 @@ def read_from_hsm(e, tinfo):
         try:
             return check_library(check_lib, e), requests_per_vol
         except EncpError, msg:
-            return {'status' : (msg.type, str(msg))}, requests_per_vol
+            return_ticket = { 'status'      : (msg.type, str(msg)),
+                              'exit_status' : 2 }
+            return return_ticket, requests_per_vol
 
     #Create the zero length file entry.
     for vol in requests_per_vol.keys():
