@@ -251,7 +251,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		res = self.db.query(q).dictresult()
 		if len(res) == 0:
 			ticket["status"] = (e_errors.NO_FILE,
-				"Info Server: location %s %s not found"%(label, location_cookie))
+				"Info Server: location %s:%s not found"%(label, location_cookie))
 			Trace.log(e_errors.INFO, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			return
