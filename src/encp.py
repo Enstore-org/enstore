@@ -656,7 +656,7 @@ def get_enstore_pnfs_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
-    if dirname[:6] != "/pnfs/":
+    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
         raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:13] == "/pnfs/fs/usr/":
@@ -683,7 +683,7 @@ def get_enstore_fs_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
     
     #Return an error if the file is not a pnfs filename.
-    if dirname[:6] != "/pnfs/":
+    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
         raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:13] == "/pnfs/fs/usr/":
@@ -715,7 +715,7 @@ def get_enstore_canonical_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
-    if dirname[:6] != "/pnfs/":
+    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
         raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:19] == canonical_pathbase: #i.e. "/pnfs/fnal.gov/usr/"
@@ -867,11 +867,10 @@ def get_next_request(request_list):
             for copy_request in request_list[i]['copies'].values():
                 completion_status = copy_request.get('completion_status', None)
                 if completion_status == None:
-                    #We need to set the bfid to be the same as the original.
-                    # It will be made unique by the either the file clerk
-                    # or the mover later on.
-                    copy_request['fc']['bfid'] = request_list[i]['fc']['bfid']
+                    #If we found an untransfered copy request, return
+                    # it so it can be processed.
                     return copy_request, i, copy_request['copy']
+
         except KeyError:
             pass
         
@@ -923,7 +922,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
         volume_info = __vcc.inquire_vol(volume, 5, 20)
         if e_errors.is_ok(volume_info):
             return __csc
-        elif volume_info['status'][0] == e_errors.KEYERROR:
+        elif volume_info['status'][0] == e_errors.NO_VOLUME:
             Trace.log(e_errors.WARNING,
                       "Volume clerk (%s) knows nothing about %s.\n"
                       % (__vcc.server_address, volume))
@@ -947,7 +946,7 @@ def _get_csc_from_volume(volume): #Should only be called from get_csc().
             if e_errors.is_ok(volume_info):
                 __vcc = test_vcc
                 return __csc
-            elif volume_info['status'][0] == e_errors.KEYERROR:
+            elif volume_info['status'][0] == e_errors.NO_VOLUME:
                 Trace.log(e_errors.WARNING,
                           "Volume clerk (%s) knows nothing about %s.\n"
                           % (test_vcc.server_address, volume))
@@ -1778,7 +1777,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     unique_id = ticket.get('unique_id', "")
     hostname = ticket.get('encp_ip',
                           ticket.get('wrapper', {}).get('machine',
-                                                        ("", "", "", "")[2]))
+                                                     ("", "", "", "", "")))[1]
     if hostname:
         hostname = socket.gethostbyname(hostname)
 
@@ -5178,9 +5177,13 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         # on the first pass.
         if not library:
             if e.output_library:
-                library = e.output_library
+                #Only take the first item of a possible comma seperated list.
+                library = e.output_library.split(",")[0]
+                if not library:
+                    #If empty, use the default
+                    library = t.get_library().split(",")[0]
             else:
-                library = t.get_library()
+                library = t.get_library().split(",")[0]
         #The pnfs file family may be overridden with the options
         # --ephemeral or --file-family.
         if not file_family:
@@ -5282,18 +5285,47 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['wrapper'] = wrapper
 
         #Make dictionaries for the copies of the data.
-        if e.copy > 0:
+        if e.copies > 0:
             copy_ticket = copy.deepcopy(work_ticket)
-            for n_copy in range(1, e.copy + 1):
+            for n_copy in range(1, e.copies + 1):
+                #Specify the copy number; this is the copy number relative to
+                # this encp.
                 copy_ticket['copy'] = n_copy
+                #Make the transfer id unique.
                 copy_ticket['unique_id'] = generate_unique_id()
+                #Move the file_family to original_file_family; this is similar
+                # to how the original_bfid is sent too.
+                copy_ticket['vc']['original_file_family'] = \
+                                             copy_ticket['vc']['file_family']
+                del copy_ticket['vc']['file_family']
+                #Determine the library manager to use.  First, try to see if
+                # the command line has the information.  Otherwise, check
+                # the library tag.  In both cases, the library should be a
+                # comma seperated list of library manager short names.
+                try:
+                    copy_ticket['vc']['library'] = \
+                                          e.output_library.split(",")[n_copy]
+                except IndexError:
+                    try:
+                        copy_ticket['vc']['library'] = \
+                                          t.get_library().split(",")[n_copy]
+                    except IndexError:
+                        #We get here if n copies were requested, but less than
+                        # that number of libraries were found.
+                        copy_ticket['vc']['library'] = None
+                        raise EncpError(None,
+                                        "Too many copies requested for the "
+                                        "number of configured copy libraries.",
+                                        e_errors.USERERROR, copy_ticket)
+
+                #Store the copy ticket.
                 try:
                     work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
                 except KeyError:
                     #First copy will create work_ticket['copies'].
                     work_ticket['copies'] = {}
                     work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
-            
+
         request_list.append(work_ticket)
 
     return request_list
@@ -5650,19 +5682,13 @@ def write_to_hsm(e, tinfo):
     exit_status = 0 #Used to determine the final message text.
 
     # get a port to talk on and listen for connections
-    callback_addr, listen_socket = get_callback_addr()  #e)
-    #Get an ip and port to listen for the mover address for routing purposes.
-    #udp_callback_addr, udp_server = get_udp_callback_addr(e)
-
+    callback_addr, listen_socket = get_callback_addr()
+    
     #If the sockets do not exist, do not continue.
     if listen_socket == None:
         done_ticket = {'status':(e_errors.NET_ERROR,
                                  "Unable to obtain control socket.")}
         return done_ticket, None
-    #if udp_server.server_socket == None:
-    #    done_ticket = {'status':(e_errors.NET_ERROR,
-    #                             "Unable to obtain udp socket.")}
-    #    return done_ticket
 
     #Build the dictionary, work_ticket, that will be sent to the
     # library manager.
@@ -5767,6 +5793,9 @@ def write_to_hsm(e, tinfo):
                 request_list[index]['copies'][copy] = work_ticket
 
             exit_status = 1
+
+            #Pick up the next file.
+            work_ticket, index, copy = get_next_request(request_list)
             
         if not e_errors.is_ok(done_ticket):
             continue
@@ -6369,10 +6398,10 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         vc_reply = get_volume_clerk_info(e.volume)
 
         #Make sure that the volume exists.
-        if vc_reply['status'][0] == e_errors.KEYERROR:
+        if vc_reply['status'][0] == e_errors.NO_VOLUME:
             rest = {'volume':e.volume}
             raise EncpError(None, e.volume,
-                            e_errors.NOVOLUME, rest)
+                            e_errors.NO_VOLUME, rest)
         #Address any other error.
         elif not e_errors.is_ok(vc_reply):
             if e.check:
@@ -7388,7 +7417,7 @@ class EncpInterface(option.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # higher the number the more is output
         self.version = 0           # print out the encp version
-        self.copy = 0              # number of copies to write to tape
+        self.copies = 0            # number of copies to write to tape
 
         #EXfer optimimazation options
         self.buffer_size = 262144  # 256K: the buffer size
@@ -7520,10 +7549,10 @@ class EncpInterface(option.Interface):
                       option.VALUE_USAGE:option.IGNORED,
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
-        #option.COPY:{option.HELP_STRING:"Write N copies of the file.",
-        #             option.VALUE_USAGE:option.REQUIRED,
-        #             option.VALUE_TYPE:option.INTEGER,
-        #             option.USER_LEVEL:option.USER,},
+        option.COPIES:{option.HELP_STRING:"Write N copies of the file.",
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.VALUE_TYPE:option.INTEGER,
+                       option.USER_LEVEL:option.ADMIN,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -7760,7 +7789,7 @@ class EncpInterface(option.Interface):
             self.print_usage("Argument for --max-resubmit must be a "
                              "positive integer or None.")
 
-        if self.copy < 0:
+        if self.copies < 0:
             self.print_usage("Argument for --copy must be a positive integer.")
 
         # bomb out if we don't have an input/output if a special command
@@ -7818,6 +7847,10 @@ class EncpInterface(option.Interface):
 
             #Store the name into this list.
             self.args[i] = fullname
+
+            #We need to make sure that all the files are to/from the same place.
+            # Store it here for processing later.
+            m.append((host, port))
             
             #If the file is a pnfs file, store a 1 in the list, if not store
             # a zero.  All files on the hsm system have /pnfs/ in there name.
@@ -7833,58 +7866,58 @@ class EncpInterface(option.Interface):
             # 2) The user misspelled the path before the pnfs mount point
             #    in the absolute filename.
 
-            result = []
-            file_name_list = []
             try:
                 #Original full path.  (Best choice if possible)
-                result.append(pnfs.is_pnfs_path(fullname,
-                                                check_name_only = 1))
-                file_name_list.append(fullname)
+                result = pnfs.is_pnfs_path(fullname,
+                                           check_name_only = 1)
             except EncpError:
-                result.append(0)
-                file_name_list.append("")
+                result = 0
+                
+            if result:
+                p.append(result)
+                continue
+
             try:
                 #Traditional encp path.
                 pnfs_path = get_enstore_pnfs_path(fullname)
-                result.append(pnfs.is_pnfs_path(pnfs_path,
-                                                check_name_only = 1))
-                file_name_list.append(pnfs_path)
+                result = pnfs.is_pnfs_path(pnfs_path,
+                                           check_name_only = 1)
             except EncpError:
-                result.append(0)
-                file_name_list.append("")
+                result = 0
+
+            if result:
+                p.append(result)
+                self.args[i] = pnfs_path
+                continue
+
             try:
-                #Traditional dcache path.
-                dcache_path = get_enstore_fs_path(fullname)
-                result.append(pnfs.is_pnfs_path(dcache_path,
-                                                check_name_only = 1))
-                file_name_list.append(dcache_path)
+                #Traditional admin path.
+                admin_path = get_enstore_fs_path(fullname)
+                result = pnfs.is_pnfs_path(admin_path,
+                                           check_name_only = 1)
             except EncpError:
-                result.append(0)
-                file_name_list.append("")
+                result = 0
+
+            if result:
+                p.append(result)
+                self.args[i] = admin_path
+                continue
+
             try:
-                #Traditional srm path.
-                srm_path = get_enstore_canonical_path(fullname)
-                result.append(pnfs.is_pnfs_path(srm_path,
-                                                check_name_only = 1))
-                file_name_list.append(srm_path)
+                #Traditional grid path.
+                grid_path = get_enstore_canonical_path(fullname)
+                result = pnfs.is_pnfs_path(grid_path,
+                                           check_name_only = 1)
             except EncpError:
-                result.append(0)
-                file_name_list.append("")
+                result = 0
 
-            #Use the first of the different possible pnfs paths.  If all
-            # fail assume it is a local file.
-            for j in range(len(result)):
-                if result[j]:
-                    p.append(result[j])
-                    #Store the corrected name back into the list of files.
-                    self.args[i] = file_name_list[j]
-                    break
-            else:
-                p.append(0) #Assume local file.
+            if result:
+                p.append(result)
+                self.args[i] = grid_path
+                continue
 
-            #Do the same for which node as we do for is pnfs file.
-            m.append((host, port))
-
+            p.append(0) #Assume local file.
+            
         #Initialize some important values.
 
         #The p# variables are used as holders for testing if all input files
@@ -8099,7 +8132,7 @@ def final_say(intf, done_ticket):
             ofilename = intf.output
 
 
-        if intf.data_access_layer or not e_errors.is_ok(status):
+        if intf.data_access_layer or not e_errors.is_ok(status):            
             #We only want to print the data access layer if there was an error
             # or the user explicitly requested it.  In the cases where it will
             # be printed here, encp never got to the point of submitting
