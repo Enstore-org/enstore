@@ -133,7 +133,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if not finfo:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
 			return
@@ -173,7 +173,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if len(res) == 0:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Server: path %s not found"%(pnfs_path))
-			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			return
 
@@ -211,7 +211,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if len(res) == 0:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Server: pnfsid %s not found"%(pnfs_id))
-			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			return
 
@@ -252,7 +252,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if len(res) == 0:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Server: location %s:%s not found"%(label, location_cookie))
-			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			return
 
@@ -283,7 +283,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if not finfo:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.INFO, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
 			self.reply_to_caller(ticket)
 			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
 			return
