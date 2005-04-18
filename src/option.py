@@ -173,7 +173,7 @@ CLIENT_NAME="client-name"                    # log, alarm
 CONDITION = "condition"                      #alarm_server
 CONFIG_FILE = "config-file"                  #configuration(c&s)
 CONST = "const"                              #pnfs
-COPY = "copy"                                #encp
+COPIES = "copies"                            #encp
 COUNTERS = "counters"                        #pnfs
 COUNTERSN = "countersN"                      #pnfs
 CP = "cp"                                    #pnfs
@@ -416,7 +416,7 @@ valid_option_list = [
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
     CLEAN_DRIVE, CLEAR, CLIENT_NAME,
-    CONDITION, CONFIG_FILE, CONST, COPY,
+    CONDITION, CONFIG_FILE, CONST, COPIES,
     COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
