@@ -2951,7 +2951,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s" % (
             exc, msg, error_source,self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
-        if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR:
+        if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR or exc == e_errors.POSITIONING_ERROR:
             if (msg.find("FTT_") != -1):
                 # log low level diagnostics
                 self.watch_syslog()
