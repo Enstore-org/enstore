@@ -12,21 +12,19 @@ node=`hostname -s`
 
 case $node in
   stkensrv4)
-     icap="0,0,0"
+     icap="0,1,0"
      ocap="0,0,0"
      sun=fntt
      ;;
   d0ensrv4)
-     icap="1,0,0"
-     ocap="1,1,0"
+     icap="1,1,0"
+     ocap="1,0,0"
      sun=fntt
-     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
      ;;
   cdfensrv4)
-     icap="0,1,0"
-     ocap="0,0,0"
+     icap="0,0,0"
+     ocap="0,1,0"
      sun=fntt2
-     /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
      ;;
   *) usage
      exit 1
@@ -35,7 +33,7 @@ esac
 
 output=/tmp/`basename $0`.output
 
-action=${1:-lock}
+action=${1:-"lock"}
 case $action in
   lock)
      work=/write_protect_work
@@ -55,6 +53,10 @@ if [ ! -d $work ]; then
   exit 1
 fi
 
+if [ "$icap" != "$ocap" ]; then
+  /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
+fi
+
 cd $work
 
 for i in `ls -vI \*.\*`; do
@@ -62,25 +64,23 @@ for i in `ls -vI \*.\*`; do
   . $i |tee -a $output 2>&1
   echo
   echo
-  case $node in
-    stk*)
-      /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
-      echo
-      echo
-      /bin/echo -n "Press Enter when all tapes have been loaded with tab in ${action}ed position"
-      read ans
-      while /bin/true; do
-	cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
-	capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
-	if [ "$capstate" = "available" ]; then break; fi
-	echo `date` Waiting for cap to be unloaded...
-	sleep 5
-      done
-      /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
-      echo
-      echo
-      ;;
-  esac
+  if [ "$icap" = "$ocap" ]; then
+    /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
+    echo
+    echo
+    /bin/echo -n "Press Enter when all tapes have been loaded with tab in ${action}ed position"
+    read ans
+    while /bin/true; do
+      cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
+      capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+      if [ "$capstate" = "available" ]; then break; fi
+      echo `date` Waiting for cap to be unloaded...
+      sleep 5
+    done
+    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
+    echo
+    echo
+  fi
   t1=`date  +'%s'`
   delta=`expr $t1 - $t0`
   deltam=`expr $delta / 60`
@@ -117,19 +117,17 @@ for i in `ls -vI \*.\*`; do
   fi
 done
 
-case $node in
-  d0*|cdf*)
-    msgflag=
-    while /bin/true; do
-      cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
-      capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
-      if [ "$capstate" = "available" ]; then break; fi
-      if [ -z "$msgflag" ]; then
-	echo `date` Waiting for cap to be unloaded ...
-	msgflag=done
-      fi
-      sleep 5
-    done
-    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
-    ;;
-esac
+if [ "$icap" != "$ocap" ]; then
+  msgflag=
+  while /bin/true; do
+    cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
+    capstate=`echo $cap | sed -e 's#.*automatic ##' | cut -f1 -d\ `
+    if [ "$capstate" = "available" ]; then break; fi
+    if [ -z "$msgflag" ]; then
+      echo `date` Waiting for cap to be unloaded ...
+      msgflag=done
+    fi
+    sleep 5
+  done
+  /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
+fi
