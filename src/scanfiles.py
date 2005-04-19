@@ -415,7 +415,7 @@ def get_filedb_info(bfid):
     
     # Get file database information.
     fr = infc.bfid_info(bfid)
-    if fr['status'][0] == e_errors.KEYERROR:
+    if fr['status'][0] == e_errors.NO_FILE:
         err.append('not in db')
     elif not e_errors.is_ok(fr):
         err.append('file db error (%s)' % (fr['status'],))
@@ -744,8 +744,11 @@ def check_file(f, file_info):
             file_family = ff[filedb['external_label']]
         else:
             vol = infc.inquire_vol(filedb['external_label'])
-            if vol['status'][0] != e_errors.OK:
-                err.append('missing vol ' + filedb['external_label'])
+            if not e_errors.is_ok(vol['status']):  #[0] != e_errors.OK:
+                if vol['status'][0] == e_errors.NO_VOLUME:
+                    err.append('missing vol ' + filedb['external_label'])
+                else:
+                    err.append('error finding vol' + filedb['external_label'])
                 return err, warn, info
             file_family = volume_family.extract_file_family(vol['volume_family'])
             ff[filedb['external_label']] = file_family
@@ -783,7 +786,7 @@ def check_file(f, file_info):
     try:
         if layer4['original_name'] != filedb['pnfs_name0']: #layer 4 vs. file db
             #print layer 4, current name, file database.  ERROR
-            err.append("filename(%s, [%s], %s)" %
+            err.append("filename(%s, %s, %s)" %
                        (layer4['original_name'], f, filedb['pnfs_name0']))
         elif f != layer4['original_name']: # current pathname vs. layer 4
             layer4_name = get_enstore_pnfs_path(layer4['original_name'])
