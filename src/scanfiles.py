@@ -30,15 +30,18 @@ import Trace
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
 class ThreadWithResult(threading.Thread):
-    def __init__(self, *pargs, **kwargs):
-        threading.Thread.__init__(self, *pargs, **kwargs)
-        self.result = None
+    #def __init__(self, *pargs, **kwargs):
+    #    threading.Thread.__init__(self, *pargs, **kwargs)
+    #    self.result = None
 
     def get_args(self):
         return copy.deepcopy(self._Thread__args)
 
     def get_result(self):
-        return copy.deepcopy(self.result)
+        try:
+            return copy.deepcopy(self.result)
+        except:
+            return None
 
     def run(self):
 
