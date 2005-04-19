@@ -5286,8 +5286,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         #Make dictionaries for the copies of the data.
         if e.copies > 0:
-            copy_ticket = copy.deepcopy(work_ticket)
             for n_copy in range(1, e.copies + 1):
+                copy_ticket = copy.deepcopy(work_ticket)
                 #Specify the copy number; this is the copy number relative to
                 # this encp.
                 copy_ticket['copy'] = n_copy
