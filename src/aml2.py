@@ -154,7 +154,7 @@ def dismount(volume, drive, media_type,view_first=1):
     if view_first:
         stat,drvstate = drive_state(drive,"")
         if stat!=0:
-            return 'BAD', e_errors.MC_FAILCHKDRV, 'aci_drivestatus2 return code = %d'
+            return 'BAD', e_errors.MC_FAILCHKDRV, 'aci_drivestatus2 return code = %d'%(stat,)
         if drvstate == None:
             return 'BAD', e_errors.MC_DRVNOTFOUND, 'drive %s not found = %d'%(drive,stat)
         if drvstate.volser == "": # look for any tape mounted in this drive
