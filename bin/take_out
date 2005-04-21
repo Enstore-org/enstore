@@ -11,19 +11,19 @@ usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
 node=`hostname -s`
 
 case $node in
-  d0ensrv4)
-     clerk=d0ensrv0
-     ocap="1,1,0"
-     sun=fntt
-     ;;
   stkensrv4)
      clerk=stkensrv0
      ocap="0,0,0"
      sun=fntt
      ;;
+  d0ensrv4)
+     clerk=d0ensrv0
+     ocap="1,0,0"
+     sun=fntt
+     ;;
   cdfensrv4)
      clerk=cdfensrv0
-     ocap="0,0,0"
+     ocap="0,1,0"
      sun=fntt2
      ;;
   *) usage
@@ -34,6 +34,7 @@ esac
 output=/tmp/`basename $0`.output
 
 work=/purge_volumes_work
+
 if [ ! -d $work ]; then
   echo `date` ERROR. $work does not exist
   exit 1
