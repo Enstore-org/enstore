@@ -748,7 +748,8 @@ def check_file(f, file_info):
                 if not layer4.has_key('bfid'):
                     err.append('missing layer 4')
 
-                info.append("pools(%s)" % (layer2['pools'],))
+                if layer2['pools']:
+                    info.append("pools(%s)" % (layer2['pools'],))
                 
     if err or warn:
         return err, warn, info
