@@ -1743,7 +1743,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["file_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action in (e_errors.LOCKED, e_errors.NOWRITE):
+                if action in (e_errors.LOCKED, e_errors.NOWRITE, 'reject'):
                     ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, ff, action))
@@ -1884,7 +1884,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["volume_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action in (e_errors.LOCKED, e_errors.NOREAD):
+                if action in (e_errors.LOCKED, e_errors.NOREAD,'reject'):
                     ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, vol, action))
