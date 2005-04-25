@@ -382,9 +382,6 @@ def get_layer_2(f):
         for item in layer2[2:]:
             l2['pools'].append(item.strip())
 
-        if l2['pools']:
-            print "HAVE_POOLS:", l2['pools']
-        
     return l2, (err, warn, info)
 
 def get_layer_4(f):
@@ -751,6 +748,8 @@ def check_file(f, file_info):
                 if not layer4.has_key('bfid'):
                     err.append('missing layer 4')
 
+                info.append("pools(%s)" % (layer2['pools'],))
+                
     if err or warn:
         return err, warn, info
 
