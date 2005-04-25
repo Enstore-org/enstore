@@ -21,11 +21,13 @@ import signal
 import re
 
 import info_client
+import configuration_client
 import option
 import pnfs
 import volume_family
 import e_errors
 import Trace
+import charset
 #from encp import e_access  #for e_access().
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
@@ -65,7 +67,8 @@ class ThreadWithResult(threading.Thread):
     
 
 infc = None
-ff = {} #File Family cache.
+vol_info = {} #File Family and Library Manager cache.
+lm = [] #Library Manager cache.
 ONE_DAY = 24*60*60
 ts_check = []
 stop_threads_lock=threading.Lock()
@@ -773,15 +776,28 @@ def check_file(f, file_info):
         
     # location cookie
     try:
-        # if pf.location_cookie != fr['location_cookie']:
-        #    err.append('location_cookie(%s, %s)'%(pf.location_cookie, fr['location_cookie']))
+        #The location cookie is split into three sections.  All but the eariest
+        # files use only the last of these three sections.  Thus, this check
+        # makes sure that (1) the length of both original strings are the same
+        # and (2) only the last section matches exactly.
         p_lc = string.split(layer4['location_cookie'], '_')[2]
         f_lc = string.split(filedb['location_cookie'], '_')[2]
-        if p_lc != f_lc:
+        if p_lc != f_lc or \
+               len(layer4['location_cookie']) != len(filedb['location_cookie']):
             err.append('location_cookie(%s, %s)'%(layer4['location_cookie'],
                                                   filedb['location_cookie']))
     except (TypeError, ValueError, IndexError, AttributeError):
-        err.append('no or corrupted location_cookie')
+        #Before writting this off as an error, first determine if this
+        # is a disk mover location cookie.
+        p_lc = string.split(layer4['location_cookie'], ':')
+        f_lc = string.split(filedb['location_cookie'], ':')
+        if layer4['location_cookie'] == filedb['location_cookie'] \
+               and charset.is_in_filenamecharset(p_lc[0]) \
+               and p_lc[1].isdigit():
+            #This is a valid disk mover.
+            pass
+        else:
+            err.append('no or corrupted location_cookie')
         
     # size
     try:
@@ -798,10 +814,12 @@ def check_file(f, file_info):
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted size')
         
-    # file_family
+    # file_family and library
     try:
-        if ff.has_key(filedb['external_label']):
-            file_family = ff[filedb['external_label']]
+        #Get the volume specific information.
+        if vol_info.has_key(filedb['external_label']):
+            file_family = vol_info[filedb['external_label']]['ff']
+            library = vol_info[filedb['external_label']]['lm']
         else:
             vol = infc.inquire_vol(filedb['external_label'])
             if not e_errors.is_ok(vol['status']):  #[0] != e_errors.OK:
@@ -811,12 +829,19 @@ def check_file(f, file_info):
                     err.append('error finding vol' + filedb['external_label'])
                 return err, warn, info
             file_family = volume_family.extract_file_family(vol['volume_family'])
-            ff[filedb['external_label']] = file_family
-        # take care of MIGRATION, too
+            library = vol['library']
+            vol_info[filedb['external_label']] = {}
+            vol_info[filedb['external_label']]['ff'] = file_family
+            vol_info[filedb['external_label']]['lm'] = library
+
+        # File Family check.  Take care of MIGRATION, too.
         if layer4['file_family'] != file_family and \
             layer4['file_family'] + '-MIGRATION' != file_family:
             err.append('file_family(%s, %s)' % (layer4['file_family'],
                                                 file_family))
+        # Library Manager check.
+        if library not in lm:
+            err.append('no such library (%s)' % (library))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted file_family')
         
@@ -995,11 +1020,17 @@ if __name__ == '__main__':
         file_object = None
         file_list = sys.argv[1:]
 
-    infc = info_client.infoClient((intf_of_scanfiles.config_host,
-                                   intf_of_scanfiles.config_port))
+    csc = configuration_client.ConfigurationClient(
+        (intf_of_scanfiles.config_host,
+         intf_of_scanfiles.config_port))
+
+    #Get the list of library managers.
+    lm = csc.get_library_managers().keys()
+
+    infc = info_client.infoClient(csc)
 
     #number of threads to use for checking files.
-    AT_ONE_TIME = max(1, min(intf_of_scanfiles.file_threads, 10))
+    #AT_ONE_TIME = max(1, min(intf_of_scanfiles.file_threads, 10))
     
     try:
 
