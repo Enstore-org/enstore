@@ -1716,7 +1716,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
-        if fun == 'restrict_host_access':
+        if fun == 'restrict_host_access' and action != 'reject':
             action = None   # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
@@ -1858,7 +1858,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
-        if fun == 'restrict_host_access':
+        if fun == 'restrict_host_access' and action != 'reject':
             action = None    # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
@@ -2494,8 +2494,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         listen_socket.listen(4)
         ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
         self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.control_socket.connect(ticket['callback_addr'])
+        print "CONNECT",ticket['callback_addr']
+        i=self.control_socket.connect(ticket['callback_addr'])
+        print "CONNET RETURNED",i
         callback.write_tcp_obj_new(self.control_socket, ticket)
+        print "WRITE returned"
         r,w,x = select.select([listen_socket], [], [], 15)
         if not r:
             listen_socket.close()
