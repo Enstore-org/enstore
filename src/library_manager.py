@@ -850,7 +850,7 @@ class LibraryManagerMethods:
                     ret = apply(getattr(self,fun), args)
                     Trace.trace(17, "restrict_host_access returned %s"%(ret,))
 
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
@@ -1113,7 +1113,7 @@ class LibraryManagerMethods:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "bound1:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
@@ -1216,7 +1216,7 @@ class LibraryManagerMethods:
                             args[-1]=args[-1]+1
                         args.append(host_from_ticket)
                         ret = apply(getattr(self,fun), args)
-                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                             if not (rej_reason == "RESTRICTED_ACCESS"):
                                 format = "bound2:access delayed for %s : library=%s family=%s requester:%s"
                                 Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
@@ -1329,7 +1329,7 @@ class LibraryManagerMethods:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
                     args.append(host_from_ticket)
                     ret = apply(getattr(self,fun), args)
-                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', 'reject')):
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "bound:access delayed for %s : library=%s family=%s requester:%s"
                             Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
@@ -1716,7 +1716,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
-        if fun == 'restrict_host_access' and action != 'reject':
+        if fun == 'restrict_host_access' and action != e_errors.REJECT:
             action = None   # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
@@ -1737,13 +1737,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 args.append(host_from_ticket)
             
             ret = apply(getattr(self,fun), args)
-            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, 'reject')):
+            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, e_errors.REJECT)):
                 format = "access restricted for %s : library=%s family=%s requester:%s "
                 Trace.log(e_errors.INFO, format%(ticket["wrapper"]["fullname"],
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["file_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action in (e_errors.LOCKED, e_errors.NOWRITE, 'reject'):
+                if action in (e_errors.LOCKED, e_errors.NOWRITE, e_errors.REJECT):
                     ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, ff, action))
@@ -1858,7 +1858,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ## check if there are any additional restrictions
         rc, fun, args, action = self.restrictor.match_found(ticket)
         Trace.trace(30,"match returned %s %s %s %s"% (rc, fun, args, action))
-        if fun == 'restrict_host_access' and action != 'reject':
+        if fun == 'restrict_host_access' and action != e_errors.REJECT:
             action = None    # do nothing here
         if rc and fun and action:
             ticket["status"] = (e_errors.OK, None)
@@ -1878,13 +1878,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     host_from_ticket = ticket['wrapper']['machine'][1]
                 args.append(host_from_ticket)
             ret = apply(getattr(self,fun), args)
-            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, 'reject')):
+            if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, e_errors.REJECT)):
                 format = "access restricted for %s : library=%s family=%s requester:%s"
                 Trace.log(e_errors.INFO, format%(ticket['wrapper']['pnfsFilename'],
                                                  ticket["vc"]["library"],
                                                  ticket["vc"]["volume_family"],
                                                  ticket["wrapper"]["uname"]))
-                if action in (e_errors.LOCKED, e_errors.NOREAD,'reject'):
+                if action in (e_errors.LOCKED, e_errors.NOREAD, e_errors.REJECT):
                     ticket["status"] = (action, "Library manager is locked for external access")
                 self.reply_to_caller(ticket)
                 Trace.notify("client %s %s %s %s" % (host, work, vol, action))

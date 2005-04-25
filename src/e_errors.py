@@ -64,6 +64,7 @@ VERSION_MISMATCH="VERSION MISMATCH"     #Tells user to update encp.
 LOCKED="locked"
 NOREAD="noread"
 NOWRITE="nowrite"
+REJECT='reject'
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
 ENCP_STUCK = "ENCP STUCK"               #Mover detected no encp progress.
@@ -193,6 +194,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          LOCKED,  # Library is locked for the access
                          NOREAD,  # Library is locked for the read access
                          NOWRITE, # Library is locked for the write access
+                         REJECT, # Library Manager rejects to accept request
                          NOSPACE, # Local disk full on read.
                          CRC_ERROR,  #Set by mover
                          FILE_MODIFIED, #When writing the file changed.
