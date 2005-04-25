@@ -18,6 +18,7 @@ import thread
 import copy
 import gc
 import signal
+import re
 
 import info_client
 import option
@@ -341,19 +342,50 @@ def get_layer_2(f):
     warn = []
     info = []
 
-    # get bfid from layer 1
+    # get dcache info from layer 2
     try:
         f2 = open(layer_file(f, 2))
-        layer2 = f2.readline()
+        layer2 = f2.readlines()
         f2.close()
     except (OSError, IOError), detail:
         layer2 = None
         if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
-            err.append('no read permissions for layer 1')
+            err.append('no read permissions for layer 2')
         else:
-            err.append('corrupted layer 1 metadata')
+            err.append('corrupted layer 2 metadata')
 
-    return layer2, (err, warn, info)
+    l2 = {}
+    if layer2:
+        try:
+            l2['line1'] = layer2[0].strip()
+        except IndexError:
+            l2['line1'] = None
+
+        try:
+            line2 = layer2[1].strip()
+        except IndexError:
+            line2 = ""
+
+        try:
+            crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
+            l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
+        except AttributeError:
+            l2['crc'] = None
+
+        try:
+            size_match = re.compile("l=[0-9]+")
+            l2['size'] = long(size_match.search(line2).group().split("=")[1])
+        except AttributeError:
+            l2['size'] = None
+
+        l2['pools'] = []
+        for item in layer2[2:]:
+            l2['pools'].append(item.strip())
+
+        if l2['pools']:
+            print "HAVE_POOLS:", l2['pools']
+        
+    return l2, (err, warn, info)
 
 def get_layer_4(f):
 
@@ -432,16 +464,32 @@ def get_filedb_info(bfid):
     return fr, (err, warn, info)
 
 def get_stat(f):
+    __pychecker__="unusednames=i"
 
     err = []
     warn = []
     info = []
+
+    ### We need to try a few times.  There are situations where the server
+    ### is busy and the lack of responce looks like a 'does not exist' responce.
+    ### This can lead 'invalid directory entry' situation, but in reality
+    ### it is a false negative.
     
     #Do one stat() for each file instead of one for each os.path.isxxx() call.
+    for i in range(5):
+        try:
+            f_stats = os.lstat(f)
+
+            #On success return immediatly.
+            return f_stats, (err, warn, info)
+        except OSError:
+            time.sleep(0.25) #Sleep for a quarter of a second.
+            continue
+            
     try:
         f_stats = os.lstat(f)
     except OSError, msg:
-	if msg.errno == errno.ENOENT:
+        if msg.errno == errno.ENOENT:
             #Before blindly returning this error, first check the directory
             # listing for this entry.  A known 'ghost' file problem exists
             # and this is how to find out.
@@ -454,13 +502,13 @@ def get_stat(f):
                     return None, (err, warn, info)
             except OSError:
                 pass
-          
+
             err.append("does not exist")
             return None, (err, warn, info)
         if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
             err.append("permission error")
             return None, (err, warn, info)
-        
+
         err.append(os.strerror(msg.errno))
         return None, (err, warn, info)
 
@@ -685,7 +733,16 @@ def check_file(f, file_info):
         if age < ONE_DAY:
             warn.append('younger than 1 day (%d)' % (age))
         else:
-            if f_stats[stat.ST_SIZE] == 0 and not get_layer_2(f)[0]:
+            #Get the info from layer 2.
+            layer2 = get_layer_2(f)[0]
+
+            #If the size from stat(1) and layer 2 are both zero, then the
+            # file really is zero length and the dCache did not forward
+            # the file to tape/Enstore.
+            if f_stats[stat.ST_SIZE] == 0L and layer2.get('size', None) == 0L:
+                info.append("zero length dCache file not on tape")
+                return err, warn, info
+            elif f_stats[stat.ST_SIZE] == 0 and not layer2:
                 err.append('missing file')
             else:
                 if len(bfid) < 8:
