@@ -343,6 +343,7 @@ radius-acct	1813/tcp	radacct		# Radius Accounting
 radius-acct	1813/udp	radacct		# Radius Accounting
 mtp		1911/tcp			#
 mtp		1911/udp			#
+terad		1967/tcp			# TiBS client
 hsrp		1985/tcp			# Cisco Hot Standby Router Protocol
 hsrp		1985/udp			# Cisco Hot Standby Router Protocol
 licensedaemon	1986/tcp
