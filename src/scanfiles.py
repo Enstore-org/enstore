@@ -1011,7 +1011,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if intf_of_scanfiles.infile:
-        file_object = intf_of_scanfiles.infile
+        file_object = open(intf_of_scanfiles.infile)
         file_list = None
     elif len(sys.argv) == 1:
         file_object = sys.stdin
