@@ -656,12 +656,13 @@ def get_enstore_pnfs_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
-    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
-        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+    #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
+    #    print "AAAAAAAAAAAAA", dirname
+    #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:13] == "/pnfs/fs/usr/":
         return os.path.join("/pnfs/", filename[13:])
-    elif dirname[:19] == canonical_pathbase:
+    elif dirname[:len(canonical_pathbase)] == canonical_pathbase:
         return os.path.join("/pnfs/", filename[19:])
     elif dirname[:6] == "/pnfs/":
         return filename
@@ -683,17 +684,18 @@ def get_enstore_fs_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
     
     #Return an error if the file is not a pnfs filename.
-    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
-        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+    #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
+    #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
     if dirname[:13] == "/pnfs/fs/usr/":
         return filename
-    elif dirname[:19] == canonical_pathbase:  #i.e. "/pnfs/fnal.gov/usr/"
+    elif dirname[:len(canonical_pathbase)] == canonical_pathbase:
+        #i.e. "/pnfs/fnal.gov/usr/"
         return os.path.join("/pnfs/fs/usr/", filename[19:])
     elif dirname[:6] == "/pnfs/":
         return os.path.join("/pnfs/fs/usr/", filename[6:])
     else:
-        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+        raise EncpError(None, "Unable to return enstore pnfs admin pathname.",
                         e_errors.WRONGPARAMETER)
 
 def get_enstore_canonical_path(filepath):
@@ -715,17 +717,19 @@ def get_enstore_canonical_path(filepath):
     canonical_pathbase = os.path.join("/pnfs", canonical_name, "usr") + "/"
 
     #Return an error if the file is not a pnfs filename.
-    if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
-        raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
+    #if not pnfs.is_pnfs_path(dirname, check_name_only = 1):
+    #    raise EncpError(None, "Not a pnfs filename.", e_errors.WRONGPARAMETER)
 
-    if dirname[:19] == canonical_pathbase: #i.e. "/pnfs/fnal.gov/usr/"
+    if dirname[:len(canonical_pathbase)] == canonical_pathbase:
+        #i.e. "/pnfs/fnal.gov/usr/"
         return filename
     elif dirname[:13] == "/pnfs/fs/usr/":
         return os.path.join(canonical_pathbase, filename[13:])
     elif dirname[:6] == "/pnfs/":
         return os.path.join(canonical_pathbase, filename[6:])
     else:
-        raise EncpError(None, "Unable to return enstore pnfs pathname.",
+        raise EncpError(None,
+                        "Unable to return enstore pnfs canonical pathname.",
                         e_errors.WRONGPARAMETER)
     
 ############################################################################
@@ -825,29 +829,42 @@ def e_access(path, mode):
 
 ############################################################################
 
+def get_original_request(request_list, index_of_copy):
+    oui = request_list[index_of_copy].get('original_unique_id', None)
+    if oui:  #oui == Original Unique Id
+        for j in range(len(request_list)):
+            if request_list[j].get('completion_status', None) == SUCCESS \
+               and oui == request_list[j].get('unique_id', None):
+                return request_list[j]
+
+    return None
+
+def did_original_succeed(request_list, index_of_copy):
+    oui = request_list[index_of_copy].get('original_unique_id', None)
+    if oui:  #oui == Original Unique Id
+        for j in range(len(request_list)):
+            if request_list[j].get('completion_status', None) == SUCCESS \
+               and oui == request_list[j].get('unique_id', None):
+                return True #The original succeeded.
+        else:
+            return False #Original not done yet or failed.
+            
+    return True #Is an original.
+
+
+
 #Return the number of files in the list left to transfer.
 def requests_outstanding(request_list):
 
     files_left = 0
 
-    for request in request_list:
-        completion_status = request.get('completion_status', None)
+    for i in range(len(request_list)):
+        completion_status = request_list[i].get('completion_status', None)
         if completion_status == None:
-            files_left = files_left + 1
+            if did_original_succeed(request_list, i):
+                #Don't worry about copies when the original failed.
+                files_left = files_left + 1
 
-        if completion_status == FAILURE:
-            #Don't worry about copies when the original failed.
-            continue
-
-        try:
-            #Also count any unwritten copies.
-            for copy_request in request['copies'].values():
-                completion_status = copy_request.get('completion_status', None)
-                if completion_status == None:
-                    files_left = files_left + 1
-        except KeyError:
-            pass
-        
     return files_left
 
 #Return the next uncompleted transfer.
@@ -856,24 +873,22 @@ def get_next_request(request_list):
     for i in range(len(request_list)):
         completion_status = request_list[i].get('completion_status', None)
         if completion_status == None:
-            return request_list[i], i, 0
-
-        if completion_status == FAILURE:
             #Don't worry about copies when the original failed.
-            continue
+            orig_request = get_original_request(request_list, i)
+            if orig_request:
+                if orig_request.get('completion_status', None) == SUCCESS:
+                    #Store the original bfid into the copy ticket so the
+                    # mover can mangle it.
+                    request_list[i]['fc']['original_bfid'] = \
+                                    orig_request['fc']['bfid']
+                elif orig_request.get('completion_status', None) == FAILURE:
+                    # We should skip copy transfers when the original failed.
+                    continue
 
-        try:
-            #Also check any copies.
-            for copy_request in request_list[i]['copies'].values():
-                completion_status = copy_request.get('completion_status', None)
-                if completion_status == None:
-                    #If we found an untransfered copy request, return
-                    # it so it can be processed.
-                    return copy_request, i, copy_request['copy']
+            #If we have an original transfer, we jump right here and skip the
+            # special processing for copy transfers.
+            return request_list[i], i, request_list[i].get('copy', 0)
 
-        except KeyError:
-            pass
-        
     return None, 0, 0
 
 #Return the index that the specified request refers to.
@@ -885,15 +900,7 @@ def get_request_index(request_list, request):
 
     for i in range(len(request_list)):
         if unique_id == request_list[i]['unique_id']:
-            return i, 0  #file number, copy number
-
-        try:
-            #Also check any copies.
-            for copy_request in request_list[i]['copies'].values():
-                if unique_id == copy_request.get('unique_id', None):
-                    return i, copy_request['copy']  #file number, copy number
-        except KeyError:
-            pass
+            return i, request_list[i].get('copy', 0)  #file number, copy number
 
     return None, None
     
@@ -4855,8 +4862,8 @@ def verify_write_request_consistancy(request_list):
         # two files with the same basename in different directories
         # into the same destination directory.
         result = outputfile_dict.get(request['outfile'], None)
-        if result: 
-            #If the file is already in the list, give error.
+        if result and not request.get('copy', None):
+            #If the file is already in the list (and not a copy), give error.
             raise EncpError(None,
                             'Duplicate file entry: %s' % (result,),
                             e_errors.USERERROR,
@@ -4866,12 +4873,19 @@ def verify_write_request_consistancy(request_list):
             #Put into one place all of the output names.  This is to check
             # that two file to not have the same output name.
             outputfile_dict[request['outfile']] = request['infile']
-
+            
         #Consistancy check for valid pnfs tag values.  These values are
         # placed inside the 'vc' sub-ticket.
         tags = ["file_family", "wrapper", "file_family_width",
                 "storage_group", "library"]
         for key in tags:
+            if request.get('copy', None):
+                #If this is a copy request (via --copies), skip this check,
+                # since checking the original is good enough.  Otherwise,
+                # the lack of 'file_family' (becuase on copies it is
+                # original_file_family) would fail all copies.
+                break
+            
             try:
                 #check for values that contain letters, digits and _.
                 if not charset.is_in_charset(str(request['vc'][key])):
@@ -4881,8 +4895,8 @@ def verify_write_request_consistancy(request_list):
                                     e_errors.PNFS_ERROR)
             except (ValueError, AttributeError, TypeError,
                     IndexError, KeyError), msg:
-                    msg = "Error checking tag %s: %s" % (key, str(msg))
-                    raise EncpError(None, str(msg), e_errors.USERERROR)
+                msg = "Error checking tag %s: %s" % (key, str(msg))
+                raise EncpError(None, str(msg), e_errors.USERERROR)
 
         #Verify that the file family width is in fact a non-
         # negitive integer.
@@ -4899,7 +4913,7 @@ def verify_write_request_consistancy(request_list):
         #Verify that the library and wrappers are valid.
         librarysize_check(request)
         wrappersize_check(request)
-                
+
 ############################################################################
 
 def set_pnfs_settings(ticket, intf_encp):
@@ -5284,6 +5298,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['work'] = "write_to_hsm"
         work_ticket['wrapper'] = wrapper
 
+        request_list.append(work_ticket)
+
         #Make dictionaries for the copies of the data.
         if e.copies > 0:
             for n_copy in range(1, e.copies + 1):
@@ -5291,7 +5307,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 #Specify the copy number; this is the copy number relative to
                 # this encp.
                 copy_ticket['copy'] = n_copy
-                #Make the transfer id unique.
+                #Make the transfer id unique, but also keep the original around.
+                copy_ticket['original_unique_id'] = copy_ticket['unique_id']
+                del copy_ticket['unique_id']
                 copy_ticket['unique_id'] = generate_unique_id()
                 #Move the file_family to original_file_family; this is similar
                 # to how the original_bfid is sent too.
@@ -5319,14 +5337,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                                         e_errors.USERERROR, copy_ticket)
 
                 #Store the copy ticket.
-                try:
-                    work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
-                except KeyError:
-                    #First copy will create work_ticket['copies'].
-                    work_ticket['copies'] = {}
-                    work_ticket['copies'][n_copy] = copy.deepcopy(copy_ticket)
-
-        request_list.append(work_ticket)
+                request_list.append(copy_ticket)
 
     return request_list
 
@@ -5491,6 +5502,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
             verify_write_request_consistancy([ticket])
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
+            print "STATUS:", msg.ticket['status']
             return msg.ticket
 
         #This should be redundant error check.
@@ -5714,9 +5726,11 @@ def write_to_hsm(e, tinfo):
         return done_ticket, request_list
 
     #This will halt the program if everything isn't consistant.
+
     try:
         verify_write_request_consistancy(request_list)
     except EncpError, msg:
+        msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, request_list
 
     #Determine the name of the library.
@@ -5733,11 +5747,14 @@ def write_to_hsm(e, tinfo):
             return return_ticket, request_list
 
     #Create the zero length file entry.
-    if not e.put_cache: #Skip this for dcache transfers.
+    #Skip this for dcache transfers.
+    if not e.put_cache:
         #for request in request_list:
         for i in range(len(request_list)):
             try:
-                create_zero_length_pnfs_files(request_list[i])
+                #Also, skip this for copies.
+                if not request_list[i].get('copy', None):
+                    create_zero_length_pnfs_files(request_list[i])
             except OSError, msg:
                 request_list[i]['status'] = (e_errors.OSERROR, msg.strerror)
                 return request_list[i], request_list
@@ -5763,11 +5780,7 @@ def write_to_hsm(e, tinfo):
 
         #Store the combined tickets back into the master list.
         work_ticket = combine_dict(done_ticket, work_ticket)
-        if copy == 0:
-            request_list[index] = work_ticket
-        else:
-            request_list[index]['copies'][copy] = work_ticket
-            print 
+        request_list[index] = work_ticket
 
         #handle_retries() is not required here since write_hsm_file()
         # handles its own retrying when an error occurs.
@@ -5775,11 +5788,8 @@ def write_to_hsm(e, tinfo):
             #Set completion status to successful.
             work_ticket['completion_status'] = SUCCESS
             #Store these changes back into the master list.
-            if copy == 0:
-                request_list[index] = work_ticket
-            else:
-                request_list[index]['copies'][copy] = work_ticket
-
+            request_list[index] = work_ticket
+            
             #Pick up the next file.
             work_ticket, index, copy = get_next_request(request_list)
 
@@ -5787,11 +5797,8 @@ def write_to_hsm(e, tinfo):
             #Set completion status to successful.
             work_ticket['completion_status'] = FAILURE
             #Store these changes back into the master list.
-            if copy == 0:
-                request_list[index] = work_ticket
-            else:
-                request_list[index]['copies'][copy] = work_ticket
-
+            request_list[index] = work_ticket
+            
             exit_status = 1
 
             #Pick up the next file.
