@@ -82,7 +82,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             record["gid"] = ticket["fc"]["gid"]
 
         # does it have bfid?
-        if ticket["fc"].has_key("bifd"):
+        if ticket["fc"].has_key("bfid"):
             bfid = ticket["fc"]["bfid"]
             # make sure the brand is right
             if bfid[:4] != self.brand:
