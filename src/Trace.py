@@ -222,7 +222,7 @@ def default_alarm_func(time, pid, name, root_error, severity,
                        condition, remedy_type, args):
     __pychecker__ = "unusednames=time,pid,name,root_error,severity," \
                     "condition,remedy_type,args"
-    print "default alarm_func", args
+    print "default_alarm_func:", args
     #lvl = args[0]
     #msg = args[1]
     return None
