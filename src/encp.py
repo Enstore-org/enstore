@@ -5018,9 +5018,12 @@ def set_pnfs_settings(ticket, intf_encp):
     #Write to the metadata layer 4 "file".
     Trace.message(INFO_LEVEL, "Setting layer 4.")
     try:
+        #Perform the following get functions; even if it is a copy.  These,
+        # calls set values in the object that are used to also update
+        # file db entires for copies.
+        p.get_bit_file_id()
+        p.get_id()
         if not ticket.get('copy', None):  #Don't set layer 4 if copy.
-            p.get_bit_file_id()
-            p.get_id()
             p.set_xreference(
                 ticket["fc"]["external_label"],
                 ticket["fc"]["location_cookie"],
