@@ -105,6 +105,7 @@ scan_queue = Queue.Queue(1024)
 dbhost = None
 dbport = None
 dbname = None
+dbuser = "enstore"
 
 # migration log file
 LOG_DIR = SPOOL_DIR
@@ -355,7 +356,7 @@ def temp_file(vol, location_cookie):
 def copy_files(files):
 	MY_TASK = "COPYING_TO_DISK"
 	# get a db connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -536,7 +537,7 @@ def swap_metadata(bfid1, src, bfid2, dst):
 def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	# get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -645,7 +646,7 @@ def final_scan():
 	fcc = file_clerk_client.FileClient(csc)
 
 	#get a database connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -691,7 +692,7 @@ def final_scan_volume(vol):
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
 	# get a db connection
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -720,7 +721,7 @@ def final_scan_volume(vol):
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
 	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
-		error_log(MY_TASK, "%s is not a migration volume")
+		error_log(MY_TASK, "%s is not a migration volume"%(vol))
 		return 1
 
 	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
@@ -864,7 +865,7 @@ def migrated_to(vol, db):
 def migrate_volume(vol):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	# get its own vcc
 	vcc = volume_clerk_client.VolumeClerkClient(csc)
 
@@ -958,7 +959,7 @@ def restore(bfids):
 # restore_volume(vol) -- restore all deleted files on vol
 def restore_volume(vol):
 	MY_TASK = "RESTORE_VOLUME"
-	db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 	log(MY_TASK, "restoring", vol, "...")
 	q = "select bfid from file, volume where \
 		file.volume = volume.id and label = '%s' and \
@@ -1018,7 +1019,7 @@ if __name__ == '__main__':
 			final_scan_volume(i)
 	elif sys.argv[1] == "--migrated-from":
 		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for i in sys.argv[2:]:
 			from_list = migrated_from(i, db)
 			print "%s <="%(i),
@@ -1027,7 +1028,7 @@ if __name__ == '__main__':
 			print
 	elif sys.argv[1] == "--migrated-to":
 		# get a db connection
-		db = pg.DB(host=dbhost, port=dbport, dbname=dbname)
+		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for i in sys.argv[2:]:
 			to_list = migrated_to(i, db)
 			print "%s =>"%(i),
