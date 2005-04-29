@@ -2451,6 +2451,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     # the library manager has asked us to write a file to the hsm
     def write_to_hsm(self, ticket):
         Trace.log(e_errors.INFO, "WRITE_TO_HSM")
+        if ticket.has_key('copy') and not ticket['fc'].has_key('original_bfid'):
+            # this is a file copy request
+            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID. No original_bfid key in ticket")
+            return
+                
         self.setup_transfer(ticket, mode=WRITE)
 
     def update_volume_info(self, ticket):
@@ -3250,6 +3255,25 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         fc_ticket['gid'] = self.gid
         fc_ticket['uid'] = self.uid
+        # if this is a copy then mangle bfid
+        if self.current_work_ticket.has_key('copy'):
+            index = int(self.current_work_ticket['copy'])
+            # select new bfid
+            while 1:
+                new_bfid = '%s_%s'%(self.file_info['original_bfid'], index)
+                reply = self.fcc.bfid_info(new_bfid)
+                if reply['status'][0] != e_errors.OK:
+                    break
+                else:
+                    # file exists, try another bfid
+                    index = index + 1
+            if reply['status'][0] == e_errors.NO_FILE:
+                # this is our bfid
+                fc_ticket['bfid'] = new_bfid
+            else:
+                self.transfer_failed(e_errors.ERROR,'file clerk error: %s'%(reply['status'],))
+                return 0
+                
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
