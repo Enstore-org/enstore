@@ -3083,15 +3083,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.need_lm_update = (1, ERROR, 1, error_source)
         else:
             Trace.alarm(e_errors.ERROR,"FTT_EIO: tape drive or IC problem")
-            after_dismount_function = self.offline 
         if ((exc in (e_errors.READ_VOL1_WRONG,
                    e_errors.WRITE_VOL1_WRONG,
                    e_errors.WRITE_VOL1_MISSING,
                    e_errors.READ_VOL1_MISSING,
                    e_errors.READ_VOL1_READ_ERR,
                    e_errors.WRITE_VOL1_READ_ERR,
-                   e_errors.MOVER_STUCK)) or
-            ftt_eio):
+                   e_errors.MOVER_STUCK))):
+            self.set_volume_noaccess(volume_label) 
+        if ftt_eio and self.mode != WRITE:
+            # if it was WRITE then the tape was set to readonly, which is enough
+            # action for tape
             self.set_volume_noaccess(volume_label) 
         if dism_allowed:
             if save_state == DRAINING:
