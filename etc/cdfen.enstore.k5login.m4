@@ -42,6 +42,7 @@ huangch@FNAL.GOV
 ivm@FNAL.GOV
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
+litvinse@FNAL.GOV
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
 oleynik@FNAL.GOV
