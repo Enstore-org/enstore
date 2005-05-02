@@ -38,6 +38,7 @@ NOUPDOWN = "noupdown"
 TRUE = 1
 FALSE = 0
 WAIT_THIS_AMOUNT = 120
+WAIT_THIS_AMOUNT = 12
 ALIVE_INTERVAL = 10
 
 LOW_CAPACITY = 0
@@ -302,6 +303,33 @@ class Inquisitor(EnstoreServer):
 			       enstore_constants.WARNING)
 	self.reason_down = None
 
+class AccountingServer(EnstoreServer):
+
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, enstore_constants.ACCOUNTING_SERVER,
+                               enstore_constants.ACCS,
+			       offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.WARNING)
+	self.reason_down = None
+
+class DrivestatServer(EnstoreServer):
+
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, enstore_constants.DRIVESTAT_SERVER,
+                               enstore_constants.DRVS,
+			       offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.WARNING)
+	self.reason_down = None
+
+class InfoServer(EnstoreServer):
+
+    def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
+	EnstoreServer.__init__(self, enstore_constants.INFO_SERVER,
+                               enstore_constants.INFO,
+			       offline_d, override_d, seen_down_d, allowed_down_d,
+			       enstore_constants.WARNING)
+	self.reason_down = None
+
 class VolumeClerk(EnstoreServer):
 
     def __init__(self, offline_d, override_d, seen_down_d, allowed_down_d):
@@ -485,7 +513,11 @@ def do_real_work():
     server_list = [cs, log, alarm,
 	    Inquisitor(offline_d, override_d, seen_down_d, allowed_down_d),
 	    FileClerk(offline_d, override_d, seen_down_d, allowed_down_d),
-	    VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d)]
+	    VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d),
+	    AccountingServer(offline_d, override_d, seen_down_d, allowed_down_d),
+	    InfoServer(offline_d, override_d, seen_down_d, allowed_down_d),
+	    DrivestatServer(offline_d, override_d, seen_down_d, allowed_down_d),
+                   ]
     library_managers = get_library_managers(config_d_keys)
 
     meds = {}
@@ -657,9 +689,9 @@ def do_real_work():
         if not offline_d.has_key(enstore_constants.ENSTORE):
             # only raise an alarm if we got a message from the alarm server and the log_server
             # because the alarm will be logged
-            if summary_d[log.format_name] == enstore_constants.UP and \
-                   summary_d[alarm.format_name] == enstore_constants.UP and \
-                   summary_d[cs.format_name] == enstore_constants.UP:
+            if summary_d.get(log.format_name, "") == enstore_constants.UP and \
+                   summary_d.get(alarm.format_name, "") == enstore_constants.UP and \
+                   summary_d.get(cs.format_name, "") == enstore_constants.UP:
                 # determine remedy type based on config node
                 remedy_type = REMEDY_TYPE_D.get(cs.config_host[0:2], cs.config_host)
                 # the following line will set the alarm function
