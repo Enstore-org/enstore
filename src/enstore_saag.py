@@ -104,7 +104,7 @@ def do_work(intf):
 	# translate the output server name to the config file key, remember, the config server
 	# has no entry in the config file
 	server = enstore_constants.SERVER_NAMES.get(server, server)
-	if server != enstore_constants.CONFIGS:
+	if server != enstore_constants.CONFIG_SERVER:
 	    if config.configdict.has_key(server):
 		host = config.configdict[server].get('host', "")
 		host = enstore_functions2.strip_node(host)
