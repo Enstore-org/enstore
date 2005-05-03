@@ -280,9 +280,13 @@ def is_new_database(d):
     dbname = os.path.join(d, ".(get)(database)")
     dbparent = os.path.join(os.path.dirname(d), ".(get)(database)")
 
-    dbnamefile = open(dbname)
-    dbnameinfo = dbnamefile.readline().strip()
-    dbnamefile.close()
+    try:
+        dbnamefile = open(dbname)
+        dbnameinfo = dbnamefile.readline().strip()
+        dbnamefile.close()
+    except IOError:
+        #This should never happen.
+        return False
 
     try:
         dbparentfile = open(dbparent)
