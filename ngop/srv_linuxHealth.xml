@@ -12,6 +12,18 @@
          <Disk Name="/diskc"/>
    </DiskList>
       <System Name="OSHealth" Cluster="localhost">
+      <MonitoredElement Name="privateNetworkPing" Host="localhost" Type="Network">
+         <ConditionSet>
+         <fn Name="plug_ins" Arg="python /var/ngop/include/checkNode.py" RetVal="int:pingRtn"/>
+         <Condition State="1" SevLevel="6" Description="Could not ping node on private network">
+            <apply>
+	          <eq/>
+                  <ci>pingRtn</ci>
+                  <cn>0</cn>
+            </apply>
+	 </Condition>
+        </ConditionSet>
+       </MonitoredElement>
           <MonitoredElement Name="cpuLoad" Host="localhost" Type="sysUsage">
           <ConditionSet>
                 <fn Name="plug_ins" Arg="python /var/ngop/include/checkCpuLoad.py" RetVal="float:cpuLoad"/>
