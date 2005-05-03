@@ -51,12 +51,12 @@ if __name__=="__main__":
 
     # determine what node we are running on.  only certain nodes are connected to
     # a private network
-    thisNode = strip_domain(os.uname[1])
+    thisNode = strip_domain(os.uname()[1])
 
     pingNode_l = NODES_TO_PING.get(thisNode, None)
     rtn = IS_ALIVE
     if pingNode_l:
-        for pingNode in pingnode_l:
+        for pingNode in pingNode_l:
             if ping(pingNode) == IS_DEAD:
                 # raise an alarm
                 msg = "No ping response from %s (pinged from %s)"%(pingNode, thisNode)
