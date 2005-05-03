@@ -156,14 +156,16 @@ def timeout_recv(sock,nbytes,timeout=15*60):
 
 # read a complete message
 def read_tcp_raw(sock, timeout=15*60):
-    tmp = timeout_recv(sock,8, timeout)
+    tmp = timeout_recv(sock, 8, timeout)
     try:
         bytecount = int(tmp)
-    except:
-        bytecount = None
-    if len(tmp)!=8 or bytecount == None:
+    except (ValueError, TypeError):
+        #bytecount = None
+        Trace.log(e_errors.ERROR, "read_tcp_raw: bad bytecount %s" % (tmp,))
+        return ""
+    if len(tmp) != 8:
         try:
-            Trace.log(e_errors.ERROR,"read_tcp_raw: bad bytecount %s"%(tmp,))
+            Trace.log(e_errors.ERROR,"read_tcp_raw: wrong bytecount %s"%(tmp,))
         except ValueError, msg:
             Trace.log(e_errors.ERROR,"read_tcp_raw: %s"%(msg,))
         return ""
