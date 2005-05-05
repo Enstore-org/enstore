@@ -696,6 +696,57 @@ def check_dir(d, dir_info):
     
     return err, warn, info
 
+# mount_point(p) -- get the first three component from a path
+
+def mount_point(p):
+    d, f = os.path.split(p)
+    if not d or not f:
+        return None
+
+    if d == '/pnfs':
+        return os.path.join(d, f)
+    else:
+        return mount_point(d)
+
+
+# check_bit_file(bfid) -- check file using bfid
+#
+# [1] get file record using bfid
+# [2] get pnfsid and pnfs path
+# [3] using pnfs prefix and pnfsid to find the real path
+# [4] use real path to scan the file
+
+def check_bit_file(bfid):
+    err = []
+    warn = []
+    info = []
+
+    print bfid, "...",
+    file_record = infc.bfid_info(bfid)
+    if file_record['status'][0] != e_errors.OK:
+        print "not exist ... ERROR"
+        return
+
+    if file_record['deleted'] == 'yes':
+        print "deleted ... WARNING"
+        return
+
+    print file_record['external_label'], file_record['location_cookie'], "...",
+
+    # find mount point
+    mp = mount_point(file_record['pnfs_name0'])
+
+    if not mp:
+        print file_record['pnfsid'], "does not exist ... ERROR"
+        return
+
+    try:
+        pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+    except:
+        print file_record['pnfsid'], "does not exist ... ERROR"
+        return
+
+    check(pnfs_path)
 
 def check_file(f, file_info):
 
@@ -967,7 +1018,8 @@ class ScanfilesInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
 
         self.infile = None
-
+        self.bfid = 0
+	self.vol = 0
         self.file_threads = 3
         self.directory_threads = 1
 
@@ -990,6 +1042,16 @@ class ScanfilesInterface(option.Interface):
                          option.VALUE_USAGE:option.REQUIRED,
                          option.VALUE_TYPE:option.INTEGER,
                          option.USER_LEVEL:option.USER,},
+        option.BFID:{option.HELP_STRING:"using bfid",
+                         option.VALUE_USAGE:option.IGNORED,
+                         option.DEFAULT_VALUE:option.DEFAULT,
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER},
+        option.VOL:{option.HELP_STRING:"using vol",
+                         option.VALUE_USAGE:option.IGNORED,
+                         option.DEFAULT_VALUE:option.DEFAULT,
+                         option.DEFAULT_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER},
         }
 
 def handle_signal(sig, frame):
@@ -1014,15 +1076,21 @@ if __name__ == '__main__':
         usage()
         sys.exit(0)
 
+    # only --bfid or --vol is allowed
+    if intf_of_scanfiles.bfid and intf_of_scanfiles.vol:
+        usage()
+        sys.exit(0)
+
     if intf_of_scanfiles.infile:
         file_object = open(intf_of_scanfiles.infile)
         file_list = None
-    elif len(sys.argv) == 1:
+    elif len(intf_of_scanfiles.args) == 0:
         file_object = sys.stdin
         file_list = None
     else:
         file_object = None
-        file_list = sys.argv[1:]
+        # file_list = sys.argv[1:]
+        file_list = intf_of_scanfiles.args
 
     csc = configuration_client.ConfigurationClient(
         (intf_of_scanfiles.config_host,
@@ -1043,14 +1111,20 @@ if __name__ == '__main__':
         if file_list:
             for line in file_list:
                 if line[:2] != '--':
-                    start_check(line)
+                    if intf_of_scanfiles.bfid:
+                        check_bit_file(line)
+                    else:
+                        start_check(line)
                     
         #When the list of files/directories is of an unknown size from a file
         # object; read the filenames in one at a time for resource efficiency.
         elif file_object:
-            line = file_object.readline()
+            line = file_object.readline().strip()
             while line:
-                start_check(line)
+                if intf_of_scanfiles.bfid:
+                    check_bit_file(line)
+                else:
+                    start_check(line)
                 line = file_object.readline()
 
     except (KeyboardInterrupt, SystemExit):
