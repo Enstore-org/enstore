@@ -711,16 +711,12 @@ def mount_point(p):
 # check_vol(vol) -- check whole volume
 
 def check_vol(vol):
-    print "checking volume", vol, "...",
     res = infc.get_bfids(vol)
     if res['status'][0] != e_errors.OK:
-        print "can not get info ... ERROR"
+        print "can not get info of volume %s ... ERROR"%(vol)
         return
-    else:
-        print
     for i in res['bfids']:
         check_bit_file(i)
-    print "done checking volume", vol, "%%%%%%%%"
 
 # check_bit_file(bfid) -- check file using bfid
 #
