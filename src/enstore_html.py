@@ -2032,6 +2032,14 @@ class EnLogPage(EnBaseHtmlDoc):
 	self.trailer(table)
 	self.append(table)							 
 
+def latest_time_sort(one, two):
+    if one[0] < two[0]:
+        return 1
+    elif one[0] > two[0]:
+        return -1
+    else:
+        return 0
+
 class EnAlarmPage(EnBaseHtmlDoc):
 
     def __init__(self, refresh=600, system_tag=""):
@@ -2044,6 +2052,17 @@ class EnAlarmPage(EnBaseHtmlDoc):
                                                                    str(HTMLgen.BR()),
                   str(HTMLgen.Bold(HTMLgen.Href("volume_audit.html", "volume audit"))))
 
+    def sort_by_latest_time(self, alarms):
+        # return a list of keys to the alarms hash, sorted from most recent alarmed to earliest
+        keys = alarms.keys()
+        # build array
+        latest_time_keys = []
+        for key in keys:
+            latest_time_keys.append([alarms[key].timedate_last, key])
+        else:
+            latest_time_keys.sort(latest_time_sort)
+        return latest_time_keys
+
     def alarm_table(self, alarms):
 	tr = HTMLgen.TR()
         for hdr in ["%sKey%s"%(NBSP*8,NBSP*8), "Time\n(last)", "Node", "PID", "User", "Severity", 
@@ -2053,8 +2072,9 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	table = HTMLgen.TableLite(tr, width="100%", border=1, cellspacing=5, 
 				  cellpadding=CELLP, align="LEFT", bgcolor=AQUA)
 	i = 0
-	akeys = sort_keys(alarms)
+	akeys = self.sort_by_latest_time(alarms)
 	for akey in akeys:
+            akey = akey[1]    # pick out the actual key to the alarms hash. 0 is the latest time
 	    alarm = alarms[akey].list_alarm()
 	    td = HTMLgen.TD(HTMLgen.Input(type="checkbox", name="alarm%s"%(i,),
 					  value=alarm[0]),
@@ -2080,15 +2100,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	    i = i + 1
 	return table
 
-    def body(self, alarms, web_host):
-	table = self.table_top()
-	# now the data
-	form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
-	# get rid of the default submit button, we will add our own below
-	form.submit = ''
-	form.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
-	form.append(empty_row())
-	form.append(empty_row())
+    def addButtons(self):
 	tr = HTMLgen.TR(HTMLgen.TD(HTMLgen.Input(value="Resolve Selected", 
 						 type="submit",
 						 name=RESOLVESELECTED)))
@@ -2099,6 +2111,23 @@ class EnAlarmPage(EnBaseHtmlDoc):
 					   name="Reset")))
 	tr.append(HTMLgen.TD("Alarms may be cancelled by selecting the alarm(s), pressing the %s button and then reloading the page. All alarms may be cancelled by pressing the %s button."%(str(HTMLgen.Bold(RESOLVESELECTED)),
 		    str(HTMLgen.Bold(RESOLVEALL))), html_escape='OFF'))
+        return tr
+        
+    def body(self, alarms, web_host):
+	table = self.table_top()
+	# now the data
+	form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
+	# get rid of the default submit button, we will add our own below
+	form.submit = ''
+        tr = self.addButtons()
+	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
+							    width="100%"))))
+	form.append(empty_row())
+	form.append(empty_row())
+	form.append(HTMLgen.TR(HTMLgen.TD(self.alarm_table(alarms))))
+	form.append(empty_row())
+	form.append(empty_row())
+        tr = self.addButtons()
 	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
