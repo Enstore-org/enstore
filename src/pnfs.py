@@ -2410,6 +2410,8 @@ def get_mtab():
             f.close()
     return _mtab
 
+LOCAL_PNFS_PREFIX = '/pnfs/fs/usr'
+
 # get_local_pnfs_path(p) -- find local pnfs path
 
 def get_local_pnfs_path(p):
@@ -2417,13 +2419,33 @@ def get_local_pnfs_path(p):
     for i in mtab.keys():
         if string.find(p, i) == 0 and \
            string.split(os.uname()[1], '.')[0] == mtab[i][1]:
-            p1 = os.path.join('/pnfs/fs/usr', string.replace(p, i, mtab[i][0][1:]))
+            p1 = os.path.join(LOCAL_PNFS_PREFIX, string.replace(p, i, mtab[i][0][1:]))
             if os.access(p1, os.F_OK):
                 return p1
             else:
                 return p
     return p
 
+# get_normal_pnfs_path(p)
+#
+# from /pnfs/fs/usr/XXX to get /pnfs/XXX
+
+def get_normal_pnfs_path(p):
+    # is it /pnfs/fs/usr*?
+    if p[:12] != LOCAL_PNFS_PREFIX:
+        return p
+
+    p1= p[12:]
+    mtab = get_mtab()
+    for i in mtab.keys():
+        if p1.find(mtab[i][0]) == 0:
+            p2 = p1.replace(mtab[i][0], i)
+            if os.access(p2, os.F_OK):
+                return p2
+            else:
+                return p
+    return p
+    
 # This is a cleaner interface to access the file, as well as its
 # metadata, in /pnfs
 
