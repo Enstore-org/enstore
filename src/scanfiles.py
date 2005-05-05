@@ -708,6 +708,17 @@ def mount_point(p):
     else:
         return mount_point(d)
 
+# check_vol(vol) -- check whole volume
+
+def check_vol(vol):
+    print "checking volume", vol, "========"
+    res = infc.get_bfids(vol)
+    if res['status'] != e_errors.OK:
+        print "can not get info ... ERROR"
+        return
+    for i in res['bfids']:
+        check_bit_file(i)
+    print "done checking volume", vol, "%%%%%%%%"
 
 # check_bit_file(bfid) -- check file using bfid
 #
@@ -727,11 +738,49 @@ def check_bit_file(bfid):
         print "not exist ... ERROR"
         return
 
-    if file_record['deleted'] == 'yes':
-        print "deleted ... WARNING"
+    print file_record['external_label'], file_record['location_cookie'], "...",
+
+    if file_record['deleted'] == "unknown":
+        print "deleted=unknown ... OK"
         return
 
-    print file_record['external_label'], file_record['location_cookie'], "...",
+    # we can not simply skip deleted files
+    #
+    # for each deleted file, we have to make sure:
+    #
+    # [1] no pnfsid, or
+    # [2] no valid pnfsid, or
+    # [3] in reused pnfsid case, the bfids are not the same
+
+    if file_record['deleted'] == 'yes':
+        print "deleted ...",
+        # check if pnfsid exist
+        if file_record['pnfsid']:
+            # make sure either pnfsid is not valid or the bfids are not
+            # the same
+            mp = mount_point(file_record['pnfs_name0'])
+            if not mp:
+                print "mount point does not exist ... WARNING"
+                return
+            try:
+                pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+                # it does exist
+                # check if the bfid is the same
+                pf = pnfs.File(pnfs_path)
+                if pf.bfid == file_record['bfid']:  # this is a mistake
+                    print "pnfs entry exists ... ERROR"
+                    return
+                else:
+                    print "reused pnfsid ...",
+                    # check it any way
+            except:
+                # very well, it doesn't exist
+                print "OK"
+                return
+
+        else:
+            print "OK"
+            return
 
     # find mount point
     mp = mount_point(file_record['pnfs_name0'])
@@ -1113,6 +1162,8 @@ if __name__ == '__main__':
                 if line[:2] != '--':
                     if intf_of_scanfiles.bfid:
                         check_bit_file(line)
+                    elif intf_of_scanfiles.vol:
+                        check_vol(line)
                     else:
                         start_check(line)
                     
@@ -1123,6 +1174,8 @@ if __name__ == '__main__':
             while line:
                 if intf_of_scanfiles.bfid:
                     check_bit_file(line)
+                elif intf_of_scanfiles.vol:
+                    check_vol(line)
                 else:
                     start_check(line)
                 line = file_object.readline()
