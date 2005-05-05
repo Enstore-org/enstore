@@ -713,7 +713,7 @@ def mount_point(p):
 def check_vol(vol):
     print "checking volume", vol, "...",
     res = infc.get_bfids(vol)
-    if res['status'] != e_errors.OK:
+    if res['status'][0] != e_errors.OK:
         print "can not get info ... ERROR"
         return
     else:
