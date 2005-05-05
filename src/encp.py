@@ -3373,12 +3373,18 @@ def submit_one_request(ticket):
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(resubmits))
 
     #Determine the type of transfer.
-    if is_write(ticket):
-        transfer_type = "write"
-        filename = ticket['outfile']
-    else:
-        transfer_type = "read"
-        filename = ticket['infile']
+    try:
+        if is_write(ticket):
+            transfer_type = "write"
+            filename = ticket['outfile']
+        else:
+            transfer_type = "read"
+            filename = ticket['infile']
+    except EncpError, msg:
+        transfer_type = "unknown"
+        filename = "unknown filename"
+        Trace.log(e_errors.ERROR,
+                  "Failed to determine the type of transfer: %s" % str(ticket))
 
     #Put in the log file a message connecting filenames to unique_ids.
     msg = "Sending %s %s request to LM: uninque_id: %s inputfile: %s " \
