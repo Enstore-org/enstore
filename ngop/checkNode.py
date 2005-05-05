@@ -20,7 +20,7 @@ PING_HISTORY_FILE = "pingHistoryFile.py"
 NODES_TO_PING = {"d0ensrv4" : ["fntt","adic2"],
                  "cdfensrv4" : ["fntt2.fnal.gov",],
                  "stkensrv4" : ["fntt","adic2"],
-                 "fndapr" : ["pcqcd1",]
+                 "fndapr" : ["pcqcd1","hppc"]
                  }
 PING_KEYS_L = NODES_TO_PING.keys()
 
@@ -78,7 +78,6 @@ class PingHistory:
     def setLastTimeAliveToZero(self, node):
         # the node has not been seen alive.  record this.
         self.pingHistory_d[node] = 0.0
-
 
     def raiseAlarm(self, node, thisNode):
         # check if we should raise an alarm.  if we already have, do not raise
