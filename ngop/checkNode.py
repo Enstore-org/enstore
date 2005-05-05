@@ -20,7 +20,6 @@ PING_HISTORY_FILE = "pingHistoryFile.py"
 NODES_TO_PING = {"d0ensrv4" : ["fntt","adic2"],
                  "cdfensrv4" : ["fntt2.fnal.gov",],
                  "stkensrv4" : ["fntt","adic2"],
-                 "fndapr" : ["pcqcd1","hppc"]
                  }
 PING_KEYS_L = NODES_TO_PING.keys()
 
