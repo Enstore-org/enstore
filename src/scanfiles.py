@@ -713,7 +713,7 @@ def mount_point(p):
 def check_vol(vol):
     res = infc.get_bfids(vol)
     if res['status'][0] != e_errors.OK:
-        print "can not get info of volume %s ... ERROR"%(vol)
+        errors_and_warnings(vol, ['can not get info'],[],[])
         return
     for i in res['bfids']:
         check_bit_file(i)
@@ -730,16 +730,18 @@ def check_bit_file(bfid):
     warn = []
     info = []
 
-    print bfid, "...",
+    prefix = bfid
     file_record = infc.bfid_info(bfid)
     if file_record['status'][0] != e_errors.OK:
-        print "not exist ... ERROR"
+        err = err + ["does not exist"]
+        errors_and_warnings(prefix, err, warn, info)
         return
 
-    print file_record['external_label'], file_record['location_cookie'], "...",
+    prefix = prefix+" ... "+file_record['external_label']+' '+file_record['location_cookie']
 
     if file_record['deleted'] == "unknown":
-        print "deleted=unknown ... OK"
+        info = info + ["deleted=unkown"]
+        errors_and_warnings(prefix, err, warn, info)
         return
 
     # we can not simply skip deleted files
@@ -751,14 +753,15 @@ def check_bit_file(bfid):
     # [3] in reused pnfsid case, the bfids are not the same
 
     if file_record['deleted'] == 'yes':
-        print "deleted ...",
+        info = info + ["deleted"]
         # check if pnfsid exist
         if file_record['pnfsid']:
             # make sure either pnfsid is not valid or the bfids are not
             # the same
             mp = mount_point(file_record['pnfs_name0'])
             if not mp:
-                print "mount point does not exist ... WARNING"
+                warn = warn + ["mount point does not exist"]
+                errors_and_warnings(prefix, err, warn, info)
                 return
             try:
                 pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
@@ -766,34 +769,47 @@ def check_bit_file(bfid):
                 # check if the bfid is the same
                 pf = pnfs.File(pnfs_path)
                 if pf.bfid == file_record['bfid']:  # this is a mistake
-                    print "pnfs entry exists ... ERROR"
+                    err = err + ["pnfs entry exists"]
+                    errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
-                    print "reused pnfsid ...",
+                    info = info + ["reused pnfsid"]
                     # check it any way
             except:
                 # very well, it doesn't exist
-                print "OK"
+                errors_and_warnings(prefix, err, warn, info)
                 return
 
         else:
-            print "OK"
+            errors_and_warnings(prefix, err, warn, info)
             return
 
     # find mount point
     mp = mount_point(file_record['pnfs_name0'])
 
     if not mp:
-        print file_record['pnfsid'], "does not exist ... ERROR"
+        err = err + ["%s does not exist"%(file_record['pnfsid'])]
+        errors_and_warnings(prefix, err, warn, info)
         return
 
     try:
         pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
     except:
-        print file_record['pnfsid'], "does not exist ... ERROR"
+        err = err + ["%s does not exist"%(file_record['pnfsid'])]
+        errors_and_warnings(prefix, err, warn, info)
         return
 
-    check(pnfs_path)
+    f_stats, (e2, w2, i2) = get_stat(pnfs_path)
+    if e2 or w2:
+        errors_and_warnings(prefix, err+e2, warn+w2, info+i2)
+        return
+    file_info = {"f_stats"       : f_stats}
+
+    e1, w1, i1 = check_file(pnfs_path, file_info)
+    err = err + e1
+    warn = warn + w1
+    info = info + i1
+    errors_and_warnings(prefix+' '+pnfs_path, err, warn, info)
 
 def check_file(f, file_info):
 
