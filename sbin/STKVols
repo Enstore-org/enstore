@@ -81,7 +81,7 @@ EOF
 </body>
 EOF
 
-  lsms=`/usr/bin/rsh $silo_node -l acsss "echo query lsm all | bin/cmd_proc -l -q 2>/dev/null" | grep online`
+  lsms=`/usr/bin/rsh $silo_node -l acsss "echo query lsm all '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" | grep online`
   now=`date +"%Y-%m-%d:%H:%M:%S"`
   for silo in $silo_list; do
     free=`echo "$lsms" | sed 's/, /,/' | awk -v silo="$silo" '$1 == silo {print $3}'`
