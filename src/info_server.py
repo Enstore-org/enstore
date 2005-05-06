@@ -775,8 +775,9 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	def get_all_bfids(self, external_label):
 		q = "select bfid from file, volume\
-			 where volume.label = '%s' and \
-				   file.volume = volume.id;"%(external_label)
+			where volume.label = '%s' and \
+				   file.volume = volume.id \
+			order by location_cookie;"%(external_label)
 		res = self.db.query(q).getresult()
 		bfids = []
 		for i in res:
