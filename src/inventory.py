@@ -333,11 +333,12 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
     vq_file.write("Date this listing was generated: %s\n" % \
                   time.asctime(time.localtime(time.time())))
     
-    vq_file.write("   %-15s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %12s %-12s %-13s %s\n" %
+    vq_file.write("   %-15s %-15s %-11s %-12s %-6s %-9s %-10s %-12s %-7s %12s %-12s %-13s %-13s %-16s %-13\n" %
           ("Library", "Storage Group", "Req. Alloc.",
            "Auth. Alloc.", "Quota", "Allocated",
            "Blank Vols", "Used Vols", "Deleted Vols", "Space Used ",
-           "Active Files", "Deleted Files", "Unknown Files"))
+           "Active Files", "Deleted Files", "Unknown Files",
+           "Recycleable Vols", "Migrated Vols"))
 
     if quotas.has_key('libraries'):
         libraries = quotas['libraries'].keys()
@@ -391,7 +392,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
                              volume_quotas[keys][2:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
-            vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %d\n"
+            vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %-13d %-16d %-13d\n"
                           % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
@@ -887,12 +888,18 @@ def inventory(output_dir, cache_dir):
         if vv['system_inhibit'][1] == 'migrated' and active == 0:
             mv_file.write("%s\t%s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
             n_migrated = n_migrated + 1
+            migrated_vol = 1
+        else:
+            migrated_vol = 0
 
         # can it be recycled?
         if (vv['system_inhibit'][1] == 'full' or \
             vv['system_inhibit'][1] == 'migrated') and active == 0:
             rc_file.write("%s\t%8s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable = n_recyclable + 1
+            recycleable_vol = 1
+        else:
+            recycleable_vol = 0
 
         # check if the volume is declared right
         if vk[:3] != 'CLN':
@@ -955,7 +962,9 @@ def inventory(output_dir, cache_dir):
                 v_info[7] + total_size,
                 v_info[8] + active,
                 v_info[9] + deleted,
-                v_info[10] + unknown)
+                v_info[10] + unknown,
+                v_info[11] + recycleable_vol,
+                v_info[12] + migrated_vol)
         else:
             volumes_allocated[(library, storage_group)] = (
                 library,
@@ -968,7 +977,9 @@ def inventory(output_dir, cache_dir):
                 total_size,
                 active,
                 deleted,
-                unknown)
+                unknown,
+                recycleable_vol,
+                migrated_vol)
 
         # statistics stuff
         la_file.write("%f, %s %s\n" % (vv['last_access'],
