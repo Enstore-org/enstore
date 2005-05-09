@@ -401,7 +401,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
 def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
 			    output_format_file):
     vq_file = open(output_file, "a")
-    vq_file.write(("-" * 140) + "\n\n")
+    vq_file.write(("-" * 160) + "\n\n")
 
     vq_format_file = open(output_format_file, "w")
 
@@ -418,30 +418,32 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
         #For each library total up the numbers.
         try: # total up the number of requested tapes.
             requested = int(authorized_tapes.get((l, sg), (0,) * 2)[0]) + \
-                        int(library_dict.get(l, (0,) * 13)[2])
+                        int(library_dict.get(l, (0,) * 15)[2])
         except ValueError:
-            requested = int(library_dict.get(l, (0,) * 13)[2])
+            requested = int(library_dict.get(l, (0,) * 15)[2])
         try: # total up the number of authorized tapes.
             authorized = int(authorized_tapes.get((l, sg), (0,) * 2)[1]) + \
-                         int(library_dict.get(l, (0,) * 13)[3])
+                         int(library_dict.get(l, (0,) * 15)[3])
         except ValueError:
-            authorized = int(library_dict.get(l, (0,) * 13)[3])
+            authorized = int(library_dict.get(l, (0,) * 15)[3])
         try:
-            quota = int(quota) + int(library_dict.get(l, (0,) * 13)[4])
+            quota = int(quota) + int(library_dict.get(l, (0,) * 15)[4])
         except:
-            quota = int(library_dict.get(l, (0,) * 13)[4])
-        allocated = allocated + library_dict.get(l, (0,) * 13)[5]
-        blank_v = blank_v + library_dict.get(l, (0,) * 13)[6]
-        written_v =  written_v + library_dict.get(l, (0,) * 13)[7]
-        deleted_v =  deleted_v + library_dict.get(l, (0,) * 13)[8]
-        used = used + library_dict.get(l, (0,) * 13)[9]
-        active_f = active_f + library_dict.get(l, (0,) * 13)[10]
-        deleted_f =  deleted_f + library_dict.get(l, (0,) * 13)[11]
-        unknown_f = unknown_f + library_dict.get(l, (0,) * 13)[12]
+            quota = int(library_dict.get(l, (0,) * 15)[4])
+        allocated = allocated + library_dict.get(l, (0,) * 15)[5]
+        blank_v = blank_v + library_dict.get(l, (0,) * 15)[6]
+        written_v =  written_v + library_dict.get(l, (0,) * 15)[7]
+        deleted_v =  deleted_v + library_dict.get(l, (0,) * 15)[8]
+        used = used + library_dict.get(l, (0,) * 15)[9]
+        active_f = active_f + library_dict.get(l, (0,) * 15)[10]
+        deleted_f =  deleted_f + library_dict.get(l, (0,) * 15)[11]
+        unknown_f = unknown_f + library_dict.get(l, (0,) * 15)[12]
+        recycleable_v = recycleable_v + library_dict.get(l, (0,) * 15)[13]
+        migrated_v = migrated_v + library_dict.get(l, (0,) * 15)[14]
 
         library_dict[l] = (l, "", requested, authorized, quota, allocated,
                            blank_v, written_v, deleted_v, used, active_f,
-                           deleted_f, unknown_f)
+                           deleted_f, unknown_f, recycleable_v, migrated_v)
 	library_format_dict[l] = used
 
     #Since this info is appened to the same file as the volume quotas, make
@@ -455,7 +457,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
                          format_storage_size(library_dict[key][9]) + \
                          library_dict[key][10:]
         # vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %-13d %-16d %-13d\n"
-        vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %-13d\n"
+        vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %-13d %-16d %-13d\n"
                       % formated_tuple)
 	vq_format_file.write("%s %s\n"%(key, library_format_dict[key]))
     vq_file.write("\n") #insert newline between sections
