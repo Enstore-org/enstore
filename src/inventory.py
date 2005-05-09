@@ -413,7 +413,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
     for key in quotas:
         #Get the current (library, storage_group) out of the dict.
         (l, sg, quota, allocated, blank_v, written_v, deleted_v, used,
-            active_f, deleted_f, unknown_f) = volume_quotas[key]
+            active_f, deleted_f, unknown_f, recycleable_v, migrated_v) = volume_quotas[key]
 
         #For each library total up the numbers.
         try: # total up the number of requested tapes.
@@ -454,7 +454,7 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
         formated_tuple = (count,) + library_dict[key][0:9] + \
                          format_storage_size(library_dict[key][9]) + \
                          library_dict[key][10:]
-        vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %d\n"
+        vq_file.write("%2d %-15s %-15s %-11s %-12s %-6s %-9d %-10d %-12d %-12d %9.2f%-3s %-12d %-13d %-13d %-16d %-13d\n"
                       % formated_tuple)
 	vq_format_file.write("%s %s\n"%(key, library_format_dict[key]))
     vq_file.write("\n") #insert newline between sections
