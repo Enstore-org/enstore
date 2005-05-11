@@ -65,6 +65,7 @@ def lib_capacity(g):
             break
     else:
         cap = 0
+    print "CAPACITY %s"%(cap,)
     return cap
 
     
@@ -136,14 +137,14 @@ for thefile in systems:
             continue
         if string.find(line,'emergency') >= 0:
             try:
-                (c,l,sg,e,ra,aa,q,a,bv,wv,dv,su,af,df,uf) = line.split()
+                (c,l,sg,e,ra,aa,q,a,bv,wv,dv,su,af,df,uf, rf, mf) = line.split()
             except:
                 print 'can not parse', line,len(line)
                 continue
         else:
 
             try:
-                (c,l,sg,ra,aa,q,a,bv,wv,dv,su,af,df,uf) = line.split()
+                (c,l,sg,ra,aa,q,a,bv,wv,dv,su,af,df,uf, rf, mf) = line.split()
             except:
                 print 'can not parse', line,len(line)
                 continue
