@@ -177,7 +177,22 @@ def extract_backup(check_dir, container):
 	os.chdir(check_dir)
 	os.system("dropdb backup")
 	os.system("createdb backup")
-	os.system("pg_restore -d backup -v "+container)
+	# os.system("pg_restore -d backup -v "+container)
+	os.system("pg_restore -d backup -v -s -t bad_file "+container)
+	os.system("pg_restore -d backup -v -s -t file "+container)
+	os.system("pg_restore -d backup -v -s -t media_capacity "+container)
+	os.system("pg_restore -d backup -v -s -t migration "+container)
+	os.system("pg_restore -d backup -v -s -t migration_history "+container)
+	os.system("pg_restore -d backup -v -s -t option "+container)
+	os.system("pg_restore -d backup -v -s -t qa "+container)
+	os.system("pg_restore -d backup -v -s -t quota "+container)
+	os.system("pg_restore -d backup -v -s -t sg_count "+container)
+	os.system("pg_restore -d backup -v -s -t state "+container)
+	os.system("pg_restore -d backup -v -s -t state_type "+container)
+	os.system("pg_restore -d backup -v -s -t tc "+container)
+	os.system("pg_restore -d backup -v -s -t volume "+container)
+	os.system("pg_restore -d backup -v -a "+container)
+        os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
 
 # the way to check it is to run file listing on all
 def check_db(check_dir):
