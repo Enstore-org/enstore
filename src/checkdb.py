@@ -179,7 +179,7 @@ def extract_backup(check_dir, container):
 	os.system("createdb backup")
 	# os.system("pg_restore -d backup -v "+container)
 	os.system("psql backup -c 'create sequence volume_seq;'")
-	os.system("psql backup -c 'create sequence tate_type_seq;'")
+	os.system("psql backup -c 'create sequence state_type_seq;'")
 	os.system("pg_restore -d backup -v -s -t bad_file "+container)
 	os.system("pg_restore -d backup -v -s -t file "+container)
 	os.system("pg_restore -d backup -v -s -t media_capacity "+container)
