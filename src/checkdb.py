@@ -196,17 +196,54 @@ def extract_backup(check_dir, container):
 	os.system("pg_restore -d backup -v -a "+container)
         os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
 
+LISTING_FILE = "COMPLETE_FILE_LISTING"
+
 # the way to check it is to run file listing on all
 def check_db(check_dir):
-	out_file = os.path.join(check_dir, "COMPLETE_FILE_LISTING")
+	out_file = os.path.join(check_dir, LISTING_FILE)
 	f = open(out_file, 'w')
-	f.write('Listed at %s\n\n'%(time.ctime(time.time())))
+	time_stamp = time.ctime(time.time())
+	f.write("Listed at %s\n\n"%(time_stamp))
 	f.close()
-	print timeofday.tod(), "Listing all files ..."
+	print timeofday.tod(), "Listing all files ... (old style)"
 	cmd = "psql -d backup -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" | sed -e 's/|/ /g' >> "+out_file
-
 	print cmd
 	os.system(cmd)
+
+	out_file = out_file+"_ALL"
+	f = open(out_file, 'w')
+	f.write("Listed at %s\n\n"%(time_stamp))
+	f.close()
+	print timeofday.tod(), "Listing all files ... "
+	
+	cmd = "psql -d backup -c "+'"'+"select storage_group, file_family, label as volume, bfid, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" | sed -e 's/|/ /g' >> "+out_file
+	print cmd
+	os.system(cmd)
+
+	# parse this ...
+
+	out = {}
+	f = open(out_file)
+	# skip first 4 lines
+	l = f.readline()
+	l = f.readline()
+	heading = f.readline()
+	heading2 = f.readline()
+	l = f.readline()
+	while l:
+		sg = l.split()[0]
+		if not out.has_key(sg):
+			out[sg] = open(LISTING_FILE+"_"+sg.upper(), "w")
+			out[sg].write("Listed at %s\n\n"%(time_stamp))
+			out[sg].write("STORAGE GROUP: %s\n\n"%(sg))
+			out[sg].write(heading)
+			out[sg].write(heading2)
+		out[sg].write(l)
+		l = f.readline()
+
+	# close the files
+	for i in out.keys():
+		out[i].close()
 
 if __name__ == "__main__":
 	if "--help" in sys.argv:
@@ -220,6 +257,6 @@ if __name__ == "__main__":
 	check_db(check_dir)
 	stop_postmaster()
 	# moving COMPLETE_FILE_LISTING to dest_path
-	cmd = "enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING"), dest_path)
+	cmd = "enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING*"), dest_path)
 	print timeofday.tod(), cmd
 	os.system(cmd)
