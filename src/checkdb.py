@@ -231,7 +231,11 @@ def check_db(check_dir):
 	heading2 = f.readline()
 	l = f.readline()
 	while l:
-		sg = l.split()[0]
+		e =l.split()
+		if not e:
+			# end of data, skip the rest
+			break
+		sg = e[0]
 		if not out.has_key(sg):
 			out[sg] = open(LISTING_FILE+"_"+sg.upper(), "w")
 			out[sg].write("Listed at %s\n\n"%(time_stamp))
