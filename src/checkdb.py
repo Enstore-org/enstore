@@ -222,6 +222,7 @@ def check_db(check_dir):
 
 	# parse this ...
 
+	print timeofday.tod(), "Parsing on storage group ... "
 	out = {}
 	count = {}
 	f = open(out_file)
