@@ -1641,6 +1641,24 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
+        # mangle file family for file copy request
+        if ticket.has_key('copy'):
+            if ticket['fc'].has_key('original_bfid'):
+                if ticket.has_key('vc') and ticket['vc'].has_key('original_file_family'):
+                    ticket['vc']['file_family'] = "%s_%s"%(ticket['vc']['original_file_family'],ticket['copy'])
+                else:
+                    ticket['status'] = (e_errors.MALFORMED,
+                                        "ticket does not have a key for copy %s"%('original_file_family',))
+                    self.reply_to_caller(ticket)
+                    return
+            else:
+                ticket['status'] = (e_errors.MALFORMED,
+                                    "ticket does not have a key for copy %s"%('original_bfid',))
+                self.reply_to_caller(ticket)
+                return
+                
+        if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
+            ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
         else:
