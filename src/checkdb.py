@@ -216,7 +216,7 @@ def check_db(check_dir):
 	f.close()
 	print timeofday.tod(), "Listing all files ... "
 	
-	cmd = "psql -d backup -c "+'"'+"select storage_group, file_family, label as volume, bfid, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" | sed -e 's/|/ /g' >> "+out_file
+	cmd = "psql -d backup -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"+'"'+" | sed -e 's/|/ /g' >> "+out_file
 	print cmd
 	os.system(cmd)
 
@@ -228,7 +228,7 @@ def check_db(check_dir):
 	# skip first 4 lines
 	l = f.readline()
 	l = f.readline()
-	heading = f.readline()
+	heading = '\t'.join(f.readline().split())+'\n'
 	heading2 = f.readline()
 	l = f.readline()
 	while l:
@@ -241,18 +241,17 @@ def check_db(check_dir):
 			break
 		if not out.has_key(sg):
 			out[sg] = open(LISTING_FILE+"_"+sg.upper(), "w")
-			out[sg].write("Listed at %s\n\n"%(time_stamp))
-			out[sg].write("STORAGE GROUP: %s\n\n"%(sg))
+			out[sg].write("-- Listed at %s\n--\n"%(time_stamp))
+			out[sg].write("-- STORAGE GROUP: %s\n--\n"%(sg))
 			out[sg].write(heading)
-			out[sg].write(heading2)
 			count[sg] = 0
-		out[sg].write(l)
+		out[sg].write('\t'.join(e))
 		count[sg] = count[sg]+1
 		l = f.readline()
 
 	# close the files
 	for i in out.keys():
-		out[i].write("== %d files\n"%(count[i]))
+		out[i].write("-- %d files\n"%(count[i]))
 		out[i].close()
 
 if __name__ == "__main__":
