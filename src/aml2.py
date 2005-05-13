@@ -335,7 +335,7 @@ def insert(ticket, classTicket):
         if not info[1]:
             ret = vcc.new_library(info[0],ticket["newlib"])
 	    if ret['status'][0] != 'ok':
-                Trace.trace(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % (ret,))
+                Trace.log(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % (ret,))
                 status = 38
 	    else:
                 Trace.trace(e_errors.INFO, 'aml2 NewLib-InsertVol sucessful %s' % (vol_label,))
