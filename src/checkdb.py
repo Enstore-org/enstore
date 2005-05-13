@@ -223,6 +223,7 @@ def check_db(check_dir):
 	# parse this ...
 
 	out = {}
+	count = {}
 	f = open(out_file)
 	# skip first 4 lines
 	l = f.readline()
@@ -236,17 +237,22 @@ def check_db(check_dir):
 			# end of data, skip the rest
 			break
 		sg = e[0]
+		if sg[0] == "(":
+			break
 		if not out.has_key(sg):
 			out[sg] = open(LISTING_FILE+"_"+sg.upper(), "w")
 			out[sg].write("Listed at %s\n\n"%(time_stamp))
 			out[sg].write("STORAGE GROUP: %s\n\n"%(sg))
 			out[sg].write(heading)
 			out[sg].write(heading2)
+			count[sg] = 0
 		out[sg].write(l)
+		count[sg] = count[sg]+1
 		l = f.readline()
 
 	# close the files
 	for i in out.keys():
+		out[i].write("== %d files\n"%(count[i]))
 		out[i].close()
 
 if __name__ == "__main__":
