@@ -246,7 +246,7 @@ def check_db(check_dir):
 			out[sg].write("-- STORAGE GROUP: %s\n--\n"%(sg))
 			out[sg].write(heading)
 			count[sg] = 0
-		out[sg].write('\t'.join(e))
+		out[sg].write('\t'.join(e)+'\n')
 		count[sg] = count[sg]+1
 		l = f.readline()
 
