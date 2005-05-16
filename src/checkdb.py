@@ -241,7 +241,7 @@ def check_db(check_dir):
 		if sg[0] == "(":
 			break
 		if not out.has_key(sg):
-			out[sg] = open(LISTING_FILE+"_"+sg.upper(), "w")
+			out[sg] = open(LISTING_FILE+"_"+sg, "w")
 			out[sg].write("-- Listed at %s\n--\n"%(time_stamp))
 			out[sg].write("-- STORAGE GROUP: %s\n--\n"%(sg))
 			out[sg].write(heading)
