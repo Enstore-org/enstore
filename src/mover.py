@@ -392,7 +392,7 @@ class Buffer:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise CRC_ERROR
                 
-        Trace.trace(100, "block_read: len(buf)=%s"%(len(self._buf),)) #XXX remove CGW
+
         if data and fill_buffer:
             self.push(data)
             if partial:
@@ -1109,6 +1109,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.state = OFFLINE
                     else:
                         mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+                        status = mcc_reply.get('status')
+                        if status and status[0] != e_errors.OK:
+                            self.offline()
+                            return
                 if good_label: # to prevent mover from failure in ftt_get_stats
                     if self.maybe_clean():
                         have_tape = 0
@@ -3329,7 +3333,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
-        if self.method and self.method != 'read_next':
+        if ((self.method and self.method != 'read_next') or
+            (self.method == None)):
             # close sockets only for general case
             # in case of tape reads do not close them
             try:
@@ -3935,13 +3940,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     error_source=err_source,
                                     returned_work=None)
                 if self.control_socket:
-                    self.send_client_done(self.current_work_ticket, e_errors.MOUNTFAILED, s_status[0])
+                    self.send_client_done(self.current_work_ticket, e_errors.DISMOUNTFAILED, s_status[0])
                     self.net_driver.close()
                 Trace.alarm(e_errors.ERROR, "dismount %s failed: %s" % (self.current_volume, status))
                 self.last_error = s_status
-                return
-            else:    
-                broken = "dismount %s failed: %s" % (self.current_volume, status)
+            broken = "dismount %s failed: %s" % (self.current_volume, status)
+
             if self.current_volume:
                 try:
                     #self.vcc.set_system_noaccess(volume_label)
