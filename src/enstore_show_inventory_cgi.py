@@ -65,7 +65,10 @@ print '<hr>'
 
 print '<p>'
 for i in special:
-	print '<a href="'+os.path.join(inv_dir, i)+'">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+	if i == 'COMPLETE_FILE_LISTING':
+		print '<a href="enstore_file_listing_cgi.py">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
+	else:
+		print '<a href="'+os.path.join(inv_dir, i)+'">', string.split(i, '.')[0], '</a>&nbsp;&nbsp;'
 print '<p><a href="'+inv_dir+'">Raw Directory Listing</a>'
 print '<hr>'
 print '<p>'
