@@ -55,7 +55,9 @@ print 'Many of the files are huge. Do not view them directly in the browser.<br>
 print '</i>'
 print '</font>'
 print '<br><br>'
-print '<table>'
+print 'The following files are tab-delimited.'
+print '<br><br>'
+print '<table border="1">'
 print '<th>Storage Group<th>Time<th>File Listing<th>Size<tr>'
 for i in listing:
 	sg = i[0].split('_')[-1]
