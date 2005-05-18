@@ -5170,9 +5170,17 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     for i in range(len(e.input)):
 
         if e.put_cache:
-            p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point)
+            p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point,
+                          shortcut = e.shortcut)
 
-            ofullname = p.get_path()
+            if e.shortcut and e.override_path:
+                #If the user specified a pathname (with --override-path)
+                # on the command line use that name.  Otherwise if just
+                # --shortcut is used, the filename name will be recored as
+                # a /.(access)(<pnfsid>) style filename.
+                ofullname = e.override_path
+            else:
+                ofullname = p.pnfsFilename
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
 
@@ -6707,17 +6715,17 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                                 e_errors.CONFLICT,
                                 {'fc' : fc_reply, 'vc' : vc_reply})
 
-            p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point)
+            p = pnfs.Pnfs(pnfsid, mount_point=e.pnfs_mount_point,
+                          shortcut=e.shortcut)
 
-            if e.shortcut:
-                ifullname = os.path.join(e.pnfs_mount_point,
-                                         ".(access)(%s)" % pnfsid)
+            if e.shortcut and e.override_path:
+                #If the user specified a pathname (with --override-path)
+                # on the command line use that name.  Otherwise if just
+                # --shortcut is used, the filename name will be recored as
+                # a /.(access)(<pnfsid>) style filename.
+                ifullname = e.override_path
             else:
-                try:
-                    ifullname = p.get_path()
-                except (OSError, IOError, AttributeError, ValueError):
-                    ifullname = os.path.join(e.pnfs_mount_point,
-                                             ".(access)(%s)" % pnfsid)
+                ifullname = p.pnfsFilename
 
             if e.output[0] == "/dev/null":
                 ofullname = e.output[0]
@@ -6732,9 +6740,17 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         #### PNFS ID ###################################################
         elif e.get_cache:
-            p = pnfs.Pnfs(e.get_cache, mount_point=e.pnfs_mount_point)
+            p = pnfs.Pnfs(e.get_cache, mount_point=e.pnfs_mount_point,
+                          shortcut=e.shortcut)
 
-            ifullname = p.get_path()
+            if e.shortcut and e.override_path:
+                #If the user specified a pathname (with --override-path)
+                # on the command line use that name.  Otherwise if just
+                # --shortcut is used, the filename name will be recored as
+                # a /.(access)(<pnfsid>) style filename.
+                ifullname = e.override_path
+            else:
+                ifullname = p.pnfsFilename
             
             file_size = get_file_size(ifullname)
             
@@ -7468,6 +7484,9 @@ class EncpInterface(option.Interface):
                                    # mounted read/write.
         self.override_noaccess = 0 # Override reading/writing to a tape
                                    # marked NOACCESS or NOTALLOWED.
+        self.override_path = ""    # If --put-cache and --shortcut are used
+                                   # this switch will use the specified
+                                   # string as the filename.
 
         #Special options for operation with a disk cache layer.
         #self.dcache = 0            #obsolete???
@@ -7704,6 +7723,13 @@ class EncpInterface(option.Interface):
         #                          option.DEFAULT_TYPE:option.INTEGER,
         #                          option.DEFAULT_VALUE:1,
         #                          option.USER_LEVEL:option.ADMIN,},
+        option.OVERRIDE_PATH:{option.HELP_STRING:
+                              "When --put-cache and --shortcut are both used "
+                              "this will tell encp what the filename "
+                              "should be.",
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.VALUE_TYPE:option.STRING,
+                              option.USER_LEVEL:option.ADMIN,},
         option.OVERRIDE_RO_MOUNT:{option.HELP_STRING:
                                   "Override read only tape for read/write.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -7733,7 +7759,7 @@ class EncpInterface(option.Interface):
                           option.USER_LEVEL:option.ADMIN,},
         option.SHORTCUT:{option.HELP_STRING:
                          "Used with dcache transfers to avoid pathname "
-                         "lookups of pnfs ids on reads.",
+                         "lookups of pnfs ids.",
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.DEFAULT_VALUE:1,
                          option.USER_LEVEL:option.ADMIN,},

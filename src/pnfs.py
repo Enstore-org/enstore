@@ -128,7 +128,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #mount_point: The mount point that the file should be under when
     #             pnfsFilename is really a pnfsid or pnfsFilename does
     #             not contain an absolute path.
-    def __init__(self, pnfsFilename="", mount_point=""):
+    #shortcut: If passed a pnfsid and this is true, don't lookup the
+    #          full filepath.  Use the .../.(access)(%s) name instead.
+    def __init__(self, pnfsFilename="", mount_point="", shortcut=None):
 
                  #get_details=1, get_pinfo=0, timeit=0, mount_point=""):
 
@@ -151,6 +153,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if is_pnfsid(pnfsFilename):
             self.id = pnfsFilename
             try:
+                if shortcut:
+                    raise ValueError, "Applying filename shortcut"
+                
                 pnfsFilename = self.get_path(self.id)
             except (OSError, IOError, AttributeError, ValueError):
                 #No longer do just the following: pnfsFilename = ""

@@ -303,6 +303,7 @@ OUTOFDATE = "outofdate"                      #plotter
 OUTPUT_DIR = "output-dir"                    #plotter
 OVERRIDE = "override"                        #inquisitor
 OVERRIDE_NOACCESS = "override-noaccess"      #encp
+OVERRIDE_PATH = "override-path"              #encp
 OVERRIDE_RO_MOUNT = "override-ro-mount"      #encp
 RECURSIVE = "recursive"                      #file
 REFRESH = "refresh"                          #inquisitor(c&s)
@@ -451,7 +452,7 @@ valid_option_list = [
     NO_PLOT_HTML,
     NOTIFY, NOOUTAGE, NOOVERRIDE,
     OFFLINE, ONLINE, OPT, OUTAGE, OUTPUT_DIR, OUTOFDATE, OVERRIDE,
-    OVERRIDE_NOACCESS, OVERRIDE_RO_MOUNT,
+    OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
     POSITION, PREFIX, PRIORITY, PROFILE, PTS_DIR,
