@@ -2331,7 +2331,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0]:
             return
-        self.volumes_at_movers.delete(mticket)
+        self.volumes_at_movers.put(mticket)
+        #self.volumes_at_movers.delete(mticket)
         #self.volumes_at_movers.put(mticket) I don't remember why this was done
         # but it causes problems with correct request processing. 
         #if mticket.has_key(['volume_family']):
