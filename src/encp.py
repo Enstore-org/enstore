@@ -3072,6 +3072,10 @@ def open_control_socket(listen_socket, mover_timeout):
     try:
         if fds:
             ticket = callback.read_tcp_obj(control_socket)
+
+            Trace.log(e_errors.INFO,
+                      "Received second ticket in open_control_socket: %s" %
+                      (str(ticket),))
     except e_errors.TCP_EXCEPTION:
         raise EncpError(errno.ENOTCONN,
                         "Control socket no longer usable after initalization.",
