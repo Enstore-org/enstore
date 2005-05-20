@@ -55,38 +55,38 @@ def main():
       str_from_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(zero_time))
       str_to_time     = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(stop_time))
       select_stmt =  "psql   enstore -h stkensrv6 -t -q  -c \""
-      select_stmt +=  "insert into encp_xfer_average_by_storage_group "
-      select_stmt +=  " ( select "
-      select_stmt += str(middle_time)
-      select_stmt += ",'"
-      select_stmt += str_middle_time
-      select_stmt += "','"
-      select_stmt += str_from_time
-      select_stmt += "','"
-      select_stmt += str_to_time
-      select_stmt += "',storage_group, rw,"
-      select_stmt += "avg(overall_rate)/1024./1024,"
-      select_stmt += "avg(network_rate)/1024./1024,"
-      select_stmt += "avg(disk_rate)/1024./1024,"
-      select_stmt += "avg(transfer_rate)/1024./1024,"
-      select_stmt += "avg(drive_rate)/1024./1024,"
-      select_stmt += "avg(size)/1024./1024,"
-      select_stmt += "stddev(overall_rate)/1024./1024,"
-      select_stmt += "stddev(network_rate)/1024./1024,"
-      select_stmt += "stddev(disk_rate)/1024./1024,"
-      select_stmt += "stddev(transfer_rate)/1024./1024,"
-      select_stmt += "stddev(drive_rate)/1024./1024,"
-      select_stmt += "stddev(size)/1024./1024, count(*) from"
-      select_stmt  += " encp_xfer where date between '"
-      select_stmt  += str_from_time
-      select_stmt  += "' and '"
-      select_stmt  += str_to_time
-      select_stmt  += "' group by storage_group, rw)"
-      select_stmt  += ";\" enstore"
+      select_stmt = select_stmt +  "insert into encp_xfer_average_by_storage_group "
+      select_stmt = select_stmt +  " ( select "
+      select_stmt = select_stmt + str(middle_time)
+      select_stmt = select_stmt + ",'"
+      select_stmt = select_stmt + str_middle_time
+      select_stmt = select_stmt + "','"
+      select_stmt = select_stmt + str_from_time
+      select_stmt = select_stmt + "','"
+      select_stmt = select_stmt + str_to_time
+      select_stmt = select_stmt + "',storage_group, rw,"
+      select_stmt = select_stmt + "avg(overall_rate)/1024./1024,"
+      select_stmt = select_stmt + "avg(network_rate)/1024./1024,"
+      select_stmt = select_stmt + "avg(disk_rate)/1024./1024,"
+      select_stmt = select_stmt + "avg(transfer_rate)/1024./1024,"
+      select_stmt = select_stmt + "avg(drive_rate)/1024./1024,"
+      select_stmt = select_stmt + "avg(size)/1024./1024,"
+      select_stmt = select_stmt + "stddev(overall_rate)/1024./1024,"
+      select_stmt = select_stmt + "stddev(network_rate)/1024./1024,"
+      select_stmt = select_stmt + "stddev(disk_rate)/1024./1024,"
+      select_stmt = select_stmt + "stddev(transfer_rate)/1024./1024,"
+      select_stmt = select_stmt + "stddev(drive_rate)/1024./1024,"
+      select_stmt = select_stmt + "stddev(size)/1024./1024, count(*) from"
+      select_stmt  = select_stmt + " encp_xfer where date between '"
+      select_stmt  = select_stmt + str_from_time
+      select_stmt  = select_stmt + "' and '"
+      select_stmt  = select_stmt + str_to_time
+      select_stmt  = select_stmt + "' group by storage_group, rw)"
+      select_stmt  = select_stmt + ";\" enstore"
 
 #      print 'Executing:',select_stmt
       os.system(select_stmt)
-      zero_time += delta_time
+      zero_time = zero_time + delta_time
 
     sys.exit(0)
 
