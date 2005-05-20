@@ -44,7 +44,7 @@ def main():
     delta_time = 60 * 20
     zero_time  = int(zero_time+0.5*delta_time)
 
-    print 'Max time',zero_time
+#    print 'Max time',zero_time
 
     now_time   =  int(time.time())
 
