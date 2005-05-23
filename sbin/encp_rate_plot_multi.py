@@ -99,7 +99,7 @@ def main():
 # extract values for a month
 # 
     
-    cmd = "psql   enstore -t -q  -c \"select  "
+    cmd = "psql   enstore -h stkensrv6 -t -q  -c \"select  "
     cmd = cmd + "date,unix_time,storage_group,rw,"
     cmd = cmd + "avg_overall_rate,stddev_overall_rate,"
     cmd = cmd + "avg_network_rate,stddev_network_rate,"
