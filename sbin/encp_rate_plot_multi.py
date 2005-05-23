@@ -50,11 +50,7 @@ def main():
 
     now_time   =  int(time.time())
     delta_time =  30*24*60*60
-#
-# Get maximum time from encp_xfer_average_by_storage_group and exit quickly
-# if the difference is less than 20 minutes
-#
-    
+
     cmd = "psql   enstore -h stkensrv6 -t -q -c \"select max(unix_time) from encp_xfer_average_by_storage_group\""
 
     inp,out = os.popen2 (cmd, 'r')
@@ -70,11 +66,6 @@ def main():
            continue
        max_time = int(line.strip(' '))
     out.close()
-
-#    print max_time, now_time
-
-    if ( now_time - max_time < 20*60 ):
-        sys.exit(0)
 
 #
 # Get list of storage groups
