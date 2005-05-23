@@ -248,33 +248,33 @@ def main():
             os.system("rm -f %s"%file_name)
 
 
-    for sg in storage_groups:
-
-        postscript_output="encp_rates_%s_r.ps"%(sg.strip(' '))
-        jpeg_output="encp_rates_%s_r.jpg"%(sg.strip(' '))
-        jpeg_output_stamp="encp_rates_%s_r_stamp.jpg"%(sg.strip(' '))
-
-
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(postscript_output,postscript_output))
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output,jpeg_output))
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output_stamp,jpeg_output_stamp))
-
-        os.system("rcp -f %s"%(postscript_output))
-        os.system("rcp -f %s"%(jpeg_output))
-        os.system("rcp -f %s"%(jpeg_output_stamp))
-
-        postscript_output="encp_rates_%s_w.ps"%(sg.strip(' '))
-        jpeg_output="encp_rates_%s_w.jpg"%(sg.strip(' '))
-        jpeg_output_stamp="encp_rates_%s_w_stamp.jpg"%(sg.strip(' '))
-
-
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(postscript_output,postscript_output))
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output,jpeg_output))
-        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output_stamp,jpeg_output_stamp))
-
-        os.system("rcp -f %s"%(postscript_output))
-        os.system("rcp -f %s"%(jpeg_output))
-        os.system("rcp -f %s"%(jpeg_output_stamp))
+#    for sg in storage_groups:
+#
+#        postscript_output="encp_rates_%s_r.ps"%(sg.strip(' '))
+#        jpeg_output="encp_rates_%s_r.jpg"%(sg.strip(' '))
+#        jpeg_output_stamp="encp_rates_%s_r_stamp.jpg"%(sg.strip(' '))
+#
+#
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(postscript_output,postscript_output))
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output,jpeg_output))
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output_stamp,jpeg_output_stamp))
+#
+#        os.system("rcp -f %s"%(postscript_output))
+#        os.system("rcp -f %s"%(jpeg_output))
+#        os.system("rcp -f %s"%(jpeg_output_stamp))
+#
+#        postscript_output="encp_rates_%s_w.ps"%(sg.strip(' '))
+#        jpeg_output="encp_rates_%s_w.jpg"%(sg.strip(' '))
+#        jpeg_output_stamp="encp_rates_%s_w_stamp.jpg"%(sg.strip(' '))
+#
+#
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(postscript_output,postscript_output))
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output,jpeg_output))
+#        os.system("rcp %s enstore@stkensrv2.fnal.gov:/diska/www_pages/%s"%(jpeg_output_stamp,jpeg_output_stamp))
+#
+#        os.system("rcp -f %s"%(postscript_output))
+#        os.system("rcp -f %s"%(jpeg_output))
+#        os.system("rcp -f %s"%(jpeg_output_stamp))
 
 
     for storage_group in storage_groups:
