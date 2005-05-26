@@ -433,6 +433,44 @@ def combine_dict(*dictionaries):
 
     return new
 
+def is_access_name(filepath):
+    #Determine if it is an ".(access)()" name.
+    access_match = re.compile("/\.\(access\)\([0-9A-Ea-e]+\)")
+    if re.search(access_match, filepath):
+        return True
+
+    return False
+
+def get_directory_name(filepath):
+
+    if type(filepath) != types.StringType:
+        return None
+
+    #If we already have a directory...
+    #if os.path.isdir(filepath):
+    #    return filepath
+
+    #Determine if it is an ".(access)()" name.
+    if is_access_name(filepath):
+        #Since, we have the .(access)() name we need to split off the id.
+        dirname, filename = os.path.split(filepath)
+        pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+
+        #Create the filename to obtain the parent id.
+        parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
+
+        #Read the parent id.
+        f = open(parent_id_name)
+        parent_id = f.readlines()[0].strip()
+        f.close()
+
+        #Build the .(access)() filename of the parent directory.
+        directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
+    else:
+        directory_name = os.path.dirname(filepath)
+   
+    return directory_name
+
 #Make this shortcut so there is less to type.
 fullpath = enstore_functions2.fullpath
 
@@ -2362,7 +2400,7 @@ def outputfile_check(inputlist, outputlist, e):
             # should be).
             if not access_check(outputlist[i], os.F_OK) and not dcache:
 
-                directory = os.path.dirname(outputlist[i])
+                directory = get_directory_name(outputlist[i])
                 
                 #Check for existance and write permissions to the directory.
                 if not access_check(directory, os.F_OK):
@@ -2393,7 +2431,7 @@ def outputfile_check(inputlist, outputlist, e):
             elif not access_check(outputlist[i], os.F_OK) and dcache:
                 #Check if the filesystem is corrupted.  This entails looking
                 # for directory entries without valid inodes.
-                directory_listing = os.listdir(os.path.dirname(outputlist[i]))
+                directory_listing=os.listdir(get_directory_name(outputlist[i]))
                 if os.path.basename(outputlist[i]) in directory_listing:
                     #If the platform supports EFSCORRUPTED use it.
                     # Otherwise use the generic EIO.
@@ -2817,7 +2855,7 @@ def get_finfo(inputfile, outputfile, e, p = None):
     #Append these for writes.
     #if e.outtype == "hsmfile": #writes
     if is_write(e):
-        t = pnfs.Tag(os.path.dirname(remote_file))
+        t = pnfs.Tag(get_directory_name(remote_file))
         finfo['type'] = t.get_file_family_wrapper()
         finfo['mode'] = os.stat(local_file)[stat.ST_MODE]
         finfo['mtime'] = int(time.time())
@@ -4947,7 +4985,7 @@ def set_pnfs_settings(ticket, intf_encp):
         if pnfsid:
             try:
                 p = pnfs.Pnfs(pnfsid,
-                           os.path.dirname(ticket['wrapper']['pnfsFilename']))
+                         get_directory_name(ticket['wrapper']['pnfsFilename']))
                 path = p.get_path()  #Find the new path.
                 Trace.log(e_errors.INFO,
                           "File %s was moved to %s." %
@@ -5176,7 +5214,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point,
                           shortcut = e.shortcut)
-
             if e.shortcut and e.override_path:
                 #If the user specified a pathname (with --override-path)
                 # on the command line use that name.  Otherwise if just
@@ -5189,7 +5226,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             unused, ifullname, unused, unused = fullpath(e.input[0])
 
         else: #The output file was given as a normal filename.
-
             ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
 
         #Fundamentally this belongs in veriry_read_request_consistancy(),
@@ -5206,7 +5242,17 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         file_inode = stats[stat.ST_INO]
 
         #Obtain the pnfs tag information.
-        t=pnfs.Tag(os.path.dirname(ofullname))
+        #If verbosity is turned on and the transfer is a write to enstore,
+        # output the tag information.
+        if e.put_cache:
+            p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point,
+                          shortcut = e.shortcut)
+            if getattr(p, "directory", None):
+                t = pnfs.Tag(p.directory)
+            else:
+                t = None
+        else:
+            t=pnfs.Tag(get_directory_name(ofullname))
 
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
@@ -6228,7 +6274,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 pass #If the size is not known (aka None) move on.
 
         if request['outfile'] != "/dev/null":
-            fs_stats = os.statvfs(os.path.dirname(request['outfile']))
+            fs_stats = os.statvfs(get_directory_name(request['outfile']))
             bytes_free = long(fs_stats[statvfs.F_BAVAIL]) * \
                          long(fs_stats[statvfs.F_FRSIZE])
             if  bytes_free < sum_size:
@@ -6652,7 +6698,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 try:
                     #Using the original directory as a starting point, try
                     # and determine the new file name/path/location.
-                    orignal_directory = os.path.dirname(pnfs_name0)
+                    orignal_directory = get_directory_name(pnfs_name0)
                     #Try to obtain the file name and path that the
                     # file currently has.
                     p = pnfs.Pnfs(pnfsid, orignal_directory)
@@ -8080,7 +8126,7 @@ def log_encp_start(tinfo, intf):
         elif os.path.isdir(intf.output[0]):
             t = pnfs.Tag(intf.output[0])
         else:
-            t = pnfs.Tag(os.path.dirname(intf.output[0]))
+            t = pnfs.Tag(get_directory_name(intf.output[0]))
     except (OSError, IOError):
         t = None
         

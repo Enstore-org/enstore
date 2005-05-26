@@ -56,6 +56,14 @@ def print_results(result):
 #Make this shortcut so there is less to type.
 fullpath = enstore_functions2.fullpath
 
+def is_access_name(filepath):
+    #Determine if it is an ".(access)()" name.
+    access_match = re.compile("\.\(access\)\([0-9A-Fa-f]+\)")
+    if re.search(access_match, os.path.basename(filepath)):
+        return True
+
+    return False
+
 def is_pnfs_path(pathname, check_name_only = None):
 
     #Expand the filename to the absolute path.
@@ -117,6 +125,36 @@ def is_pnfsid(pnfsid):
             return 1
     return 0
 
+def get_directory_name(filepath):
+
+    if type(filepath) != types.StringType:
+        return None
+
+    #If we already have a directory...
+    #if os.path.isdir(filepath):
+    #    return filepath
+
+    #Determine if it is an ".(access)()" name.
+    if is_access_name(filepath):
+        #Since, we have the .(access)() name we need to split off the id.
+        dirname, filename = os.path.split(filepath)
+        pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+        #Create the filename to obtain the parent id.
+        parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
+
+        #Read the parent id.
+        f = open(parent_id_name)
+        parent_id = f.readlines()[0].strip()
+        f.close()
+
+        #Build the .(access)() filename of the parent directory.
+        directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
+
+    else:
+        directory_name = os.path.dirname(filepath)
+   
+    return directory_name
+
 
 ##############################################################################
 
@@ -173,6 +211,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
                            fullpath(pnfsFilename)
+
+            if shortcut and self.id:
+                parent_id = self.get_parent(id = self.id, directory = self.dir)
+                self.directory = os.path.join(self.dir,
+                                              ".(access)(%s)" % parent_id)
+
             self.pstatinfo()
 
         try:
@@ -180,6 +224,89 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except AttributeError:
             #sys.stderr.write("self.filepath DNE after initialization\n")
             pass
+
+    ##########################################################################
+
+    def layer_file(self, f, n):
+        pn, fn = os.path.split(f)
+        return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
+
+    def id_file(self, f):
+        pn, fn = os.path.split(f)
+        print pn, fn, is_access_name(fn)
+        if is_access_name(fn):
+            #Just a note:  This is silly.  Finding out the pnfs id when the
+            # id is already in the .(access)(<pnfsid>) name.  However,
+            # we should be able to handle this, just in case.  The nameof
+            # lookup is limited to just the parent directory and not the entire
+            # path.
+            
+            #Since, we have the .(access)() name we need to split off the id.
+            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+            parent_id = self.get_parent(pnfsid, pn) #Get parent id
+            nameof = self.get_nameof(pnfsid, pn) #Get nameof file
+
+            #Create the filename to obtain the parent id.
+            return os.path.join(pn, ".(access)(%s)" % parent_id,
+                                ".(id)(%s)" % nameof)
+        else:
+            return os.path.join(pn, ".(id)(%s)" % (fn, ))
+
+    def parent_file(self, f, pnfsid = None):
+        pn, fn = os.path.split(f)
+        if pnfsid:
+            if os.path.isdir(f):
+                return os.path.join(f, ".(parent)(%s)" % (pnfsid))
+            else:
+                return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+        else:
+            fname = self.id_file(f)
+            f = open(fname)
+            pnfsid = f.readline()
+            f.close()
+            return os.path.join(pn, ".(parent)(%s)" % (pnfsid))
+
+    def access_file(self, pn, pnfsid):
+        return os.path.join(pn, ".(access)(%s)" % pnfsid)
+            
+    def use_file(self, f, layer):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            #Use the .(access)() extension path for layers.
+            return "%s(%s)" % (f, layer)
+        else:
+            return os.path.join(pn, '.(use)(%d)(%s)' % (layer, fn))
+
+    def fset_file(self, f, size):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+            parent_id = self.get_parent(pnfsid, pn)
+
+            directory = os.path.join(pn, ".(access)(%s)" % parent_id)
+            name = self.get_nameof(pnfsid, pn)
+        else:
+            directory = pn
+            name = fn
+            
+        return os.path.join(directory, ".(fset)(%s)(size)(%s)" % (name, size))
+
+    def nameof_file(self, pn, pnfsid):
+        return os.path.join(pn, ".(nameof)(%s)" % (pnfsid,))
+
+    def const_file(self, f):
+        pn, fn = os.path.split(f)
+        if is_access_name(fn):
+            pnfsid = fn[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+            parent_id = self.get_parent(pnfsid, pn)
+
+            directory = os.path.join(pn, ".(access)(%s)" % parent_id)
+            name = self.get_nameof(pnfsid, pn)
+        else:
+            directory = pn
+            name = fn
+            
+        return os.path.join(directory, ".(const)(%s)" % (name,))
 
     ##########################################################################
 
@@ -285,11 +412,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # the file needs to exist before you call this
     def writelayer(self, layer, value, filepath=None):
         if filepath:
-            (directory, name) = os.path.split(filepath)
+            use_filepath = filepath
         else:
-            (directory, name) = os.path.split(self.filepath)
-            
-        fname = os.path.join(directory, ".(use)(%s)(%s)"%(layer, name))
+            use_filepath = self.filepath
+
+        fname = self.use_file(use_filepath, layer)
 
         #If the value isn't a string, make it one.
         if type(value)!=types.StringType:
@@ -304,15 +431,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # read the value stored in the requested file layer
     def readlayer(self, layer, filepath=None):
         if filepath:
-            (directory, name) = os.path.split(filepath)
+            use_filepath = filepath
         else:
-            (directory, name) = os.path.split(self.filepath)
+            use_filepath = self.filepath
 
-        if name[:9] == ".(access)":
-            fname = os.path.join(directory, "%s(%s)" % (name, layer))
-        else:
-            fname = os.path.join(directory, ".(use)(%s)(%s)" % (layer, name))
-        
+        fname = self.use_file(use_filepath, layer)
+            
         f = open(fname,'r')
         l = f.readlines()
         f.close()
@@ -325,11 +449,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def get_const(self, filepath=None):
 
         if filepath:
-            (directory, name) = os.path.split(filepath)
+            use_filepath = filepath
         else:
-            (directory, name) = os.path.split(self.filepath)
+            use_filepath = self.filepath
 
-        fname = os.path.join(directory, ".(const)(%s)" % (name,))
+        fname = self.const_file(use_filepath)
 
         f=open(fname,'r')
         const = f.readlines()
@@ -346,15 +470,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             (directory, name) = os.path.split(filepath)
         else:
             (directory, name) = os.path.split(self.filepath)
+
+        if is_access_name(name):
+            pnfs_id = name[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+        else:
+            fname = os.path.join(directory, ".(id)(%s)" % (name,))
+
+            f = open(fname, 'r')
+            pnfs_id = f.readlines()
+            f.close()
+
+            pnfs_id = string.replace(pnfs_id[0], '\n', '')
             
-        fname = os.path.join(directory, ".(id)(%s)" % (name,))
-
-        f = open(fname,'r')
-        pnfs_id = f.readlines()
-        f.close()
-
-        pnfs_id = string.replace(pnfs_id[0],'\n','')
-
         if not filepath:
             self.id = pnfs_id
         return pnfs_id
@@ -388,10 +515,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             use_dir = self.dir
 
         if id:
-            fname = os.path.join(use_dir, ".(nameof)(%s)"%(id,))
+            use_id = id
         else:
-            fname = os.path.join(use_dir, ".(nameof)(%s)"%(self.id,))
-        
+            use_id = self.id
+
+        fname = self.nameof_file(use_dir, use_id)
+
         f = open(fname,'r')
         nameof = f.readlines()
         f.close()
@@ -408,11 +537,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             use_dir = directory
         else:
             use_dir = self.dir
-            
+        
         if id:
-            fname = os.path.join(use_dir, ".(parent)(%s)"%(id,))
+            use_id = id
         else:
-            fname = os.path.join(use_dir, ".(parent)(%s)"%(self.id,))
+            use_id = self.id
+
+        fname = self.parent_file(use_dir, use_id)
 
         f = open(fname,'r')
         parent = f.readlines()
@@ -468,7 +599,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # directory (pnfs_id=000000000000000000001020).
         try:
             filepath = self.get_nameof(use_id, use_dir) # starting point.
-        except (OSError, IOError):
+        except (OSError, IOError), msg:
             raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
                                                     "Not a valid pnfs id"))
         #Loop through the pnfs ids to find each ids parent until the "root"
@@ -634,11 +765,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         #Set the filesize that the filesystem knows about.
         if filepath:
-            (directory, name) = os.path.split(filepath)
+            use_filepath = filepath
         else:
-            (directory, name) = os.path.split(self.filepath)
-        fname = os.path.join(directory,
-                             ".(fset)(%s)(size)(%s)"%(name, size))
+            use_filepath = self.filepath
+
+        fname = self.fset_file(use_filepath, size)
+
         f = open(fname,'w')
         f.close()
 
@@ -772,7 +904,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except OSError, msg:
             # if that fails, try the directory
             try:
-                pstat = os.stat(os.path.dirname(fname))
+                pstat = os.stat(get_directory_name(fname))
             except OSError:
                 raise msg
 
@@ -1023,10 +1155,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 ##############################################################################
 
     def pls(self, intf):
-        (directory, name) = os.path.split(self.filepath)
-        filename = os.path.join(directory, "\".(use)(%s)(%s)\"" % \
-                                (intf.named_layer, name))
-        os.system("ls -alsF " + filename)
+        filename = self.use_file(self.filepath, int(intf.named_layer))
+        os.system("ls -alsF \"%s\"" % filename)
         
     def pecho(self, intf):
         try:
@@ -1829,14 +1959,14 @@ class Tag:
         fname = fullpath(fname)[1]
 
         #If directory is empty indicating the current directory, prepend it.
-        #if not os.path.dirname(self.dir):
+        #if not get_directory_name(self.dir):
         #    try:
         #        fname = os.path.join(os.getcwd(), fname)
         #    expect OSError:
         #        fname = ""
 
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(os.path.dirname(fname)) == 0:
+        if is_pnfs_path(get_directory_name(fname)) == 0:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
@@ -1867,13 +1997,13 @@ class Tag:
 
         #Make sure this is the full file path of the tag.
         fname = fullpath(fname)[1]
-            
+        
         #If directory is empty indicating the current directory, prepend it.
-        #if not os.path.dirname(self.dir):
+        #if not get_directory_name(self.dir):
         #    fname = os.path.join(os.getcwd(), fname)
         
         #Determine if the target directory is in pnfs namespace
-        if is_pnfs_path(os.path.dirname(fname)) == 0:
+        if is_pnfs_path(get_directory_name(fname)) == 0:
             raise IOError(errno.EINVAL,
                    os.strerror(errno.EINVAL) + ": Not a valid pnfs directory")
 
@@ -2105,6 +2235,12 @@ class Tag:
                 print self.get_library()
             else:
                 if charset.is_in_charset(intf.library):
+                    self.set_library(intf.library)
+                elif intf.user_level == option.ADMIN and \
+                         charset.is_string_in_character_set(intf.library,
+                                                       charset.charset + ","):
+                    #If we are an administrator, allow the comma (,) character
+                    # so that copies can be enabled.
                     self.set_library(intf.library)
                 else:
                     print "Pnfs tag, library, contains invalid characters."
