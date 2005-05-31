@@ -1185,8 +1185,9 @@ if __name__ == '__main__':
         #When the list of files/directories is of an unknown size from a file
         # object; read the filenames in one at a time for resource efficiency.
         elif file_object:
-            line = file_object.readline().strip()
+            line = file_object.readline()
             while line:
+                line = line.strip()
                 if intf_of_scanfiles.bfid:
                     check_bit_file(line)
                 elif intf_of_scanfiles.vol:
