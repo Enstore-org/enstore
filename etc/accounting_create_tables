@@ -106,3 +106,33 @@ create index error_storage_group_idx on encp_error(storage_group);
 create index error_file_family_idx on encp_error(file_family);
 create index error_wrapper_idx on encp_error(wrapper);
 
+create table encp_xfer_average_by_storage_group (
+	unix_time integer not null, 
+	date timestamp  without time zone  not null, 
+	from_date timestamp  without time zone  not null, 
+	to_date timestamp  without time zone  not null, 
+        storage_group  character varying(16)  not null,
+	rw character(1) not null,
+	avg_overall_rate double precision ,
+	avg_network_rate double precision ,
+	avg_disk_rate double precision ,
+	avg_transfer_rate double precision ,
+	avg_drive_rate double precision ,
+	avg_size double precision ,
+	stddev_overall_rate double precision ,
+	stddev_network_rate double precision ,
+	stddev_disk_rate double precision ,
+	stddev_transfer_rate double precision ,
+	stddev_drive_rate double precision, 
+	stddev_size double precision ,
+	counter integer
+);
+
+
+
+CREATE INDEX encp_xfer_average_by_storage_group_unix_time_index on encp_xfer_average_by_storage_group (unix_time);
+CREATE INDEX encp_xfer_average_by_storage_group_from_date_index on encp_xfer_average_by_storage_group (from_date);
+CREATE INDEX encp_xfer_average_by_storage_group_to_date_index on encp_xfer_average_by_storage_group (to_date);
+CREATE INDEX encp_xfer_average_by_storage_group_date_index on encp_xfer_average_by_storage_group (date);
+CREATE INDEX encp_xfer_average_by_storage_group_storage_group_index on encp_xfer_average_by_storage_group (storage_group);
+CREATE INDEX encp_xfer_average_by_storage_group_rw_index on encp_xfer_average_by_storage_group (rw);
