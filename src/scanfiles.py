@@ -959,7 +959,8 @@ def check_file(f, file_info):
                                                 file_family))
         # Library Manager check.
         if library not in lm:
-            err.append('no such library (%s)' % (library))
+            if library.find("shelf") == -1: #Skip reporting on shelf libraries.
+                err.append('no such library (%s)' % (library))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted file_family')
         
