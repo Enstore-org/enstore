@@ -25,7 +25,7 @@ def write_request_ok(ticket):
               }
 
     vc_keys = {'address': ('', 0),
-               'file_family': '',
+               #'file_family': '',
                'file_family_width': 0,
                'library': '',
                'storage_group': '',
