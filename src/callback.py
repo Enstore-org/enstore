@@ -38,6 +38,53 @@ def hex8(x):
         raise OverflowError, x
     return '0'*(8-l)+s
 
+def __get_socket_state(fd):
+    import os
+    if os.uname()[0] == "Linux":
+        import stat
+        try:
+            #Determine the current socket state.
+
+            #This table of values is from /usr/include/linux/tcp.h.
+            tcp_states = { 1 : "ESTABLISHED",
+                           2 : "SYN_SENT",
+                           3 : "SYN_RECV",
+                           4 : "FIN_WAIT1",
+                           5 : "FIN_WAIT2",
+                           6 : "TIME_WAIT",
+                           7 : "CLOSE",
+                           8 : "CLOSE_WAIT",
+                           9 : "LAST_ACK",
+                           10 : "LISTEN",
+                           11 : "CLOSING"
+                           }
+            #First get the inode (as a string for comparison).
+            inode = str(os.fstat(fd)[stat.ST_INO])[:-1]
+
+            #Second, read the entire table of tcp sockets.
+            net_tcp = open("/proc/net/tcp", "r")
+            net_tcp_data = net_tcp.readlines()
+            net_tcp.close()
+
+            #Find the entry that corresponds to this socket.
+            state = ""
+            line = ""
+            for line in net_tcp_data:
+                result = line.find(inode)
+                if result >= 0:
+                    state = line[33:37]
+                    break
+            else:
+                line = ""
+                state = ""
+
+            return tcp_states.get(int(state), "UNKNOWN")
+        except socket.error, msg:
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): /proc/net/tcp: %s" % str(msg))
+            
+    return None
+
 # get an unused tcp port for control communication
 def get_callback(ip=None):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -94,22 +141,26 @@ def write_tcp_obj_new(sock,obj,timeout=15*60):
 
 
 #recv with a timeout
-def timeout_recv(sock,nbytes,timeout=15*60):
+def timeout_recv(sock, nbytes, timeout = 15 * 60):
     total_start_time = time.time()
-    time_left = timeout
+    #time_left = timeout
+    timeout_time = time.time() + timeout
+    
     #Loop until a the timeout has passed, a hard error occurs or
     # the message has really arrived.
-    while time_left > 0.0:
+    #while time_left > 0.0:
+    while timeout_time > time.time():
         start_time = time.time()
         try:
+            time_left = max(timeout_time - time.time(), 0.0)
             fds, junk, junk = select.select([sock], [], [], time_left)
         except select.error, msg:
             if getattr(msg, "errno", None) == errno.EINTR:
-                time_left = max(total_start_time + timeout - time.time(), 0.0)
+                #time_left = max(total_start_time + timeout - time.time(), 0.0)
                 continue
             #fds = []
             Trace.log(e_errors.ERROR, "timeout_recv(): %s" % str(msg))
-            #Return to handle the error.
+            #Return to handl the error.
             return ""
         end_time = time.time()
         if sock not in fds:
@@ -117,7 +168,7 @@ def timeout_recv(sock,nbytes,timeout=15*60):
                       "timeout_recv(): select duration: %s  fds: %s  sock: %s"
                       % (end_time - start_time, fds, sock))
             #return ""
-            time_left = max(total_start_time + timeout - time.time(), 0.0)
+            #time_left = max(total_start_time + timeout - time.time(), 0.0)
             #Hopefully, this situation is different than other situations
             # that were all previously lumped together as "error".
             continue
@@ -126,6 +177,11 @@ def timeout_recv(sock,nbytes,timeout=15*60):
         if data_string == "":
             #According to python documentation when recv() returns the empty
             # string the other end has closed the connection.
+
+            #Log the time spent waiting.
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): time passed: %s sec of %s sec" %
+                      (time.time() - total_start_time, timeout))
             
             try:
                 #Verify if the connection is still up.
@@ -144,9 +200,13 @@ def timeout_recv(sock,nbytes,timeout=15*60):
             except socket.error, msg:
                 Trace.log(e_errors.ERROR,
                           "timeout_recv(): getsockopt: %s" % str(msg))
-                
-            #If there is no error, try again.
+
             Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
+
+            #Log the current socket state (only works on Linux).
+            socket_state = __get_socket_state(sock.fileno())
+            Trace.log(e_errors.ERROR,
+                      "timeout_recv(): socket state: %s" % str(socket_state))
 
         return data_string
         
@@ -156,6 +216,7 @@ def timeout_recv(sock,nbytes,timeout=15*60):
 
 # read a complete message
 def read_tcp_raw(sock, timeout=15*60):
+    #Trace.log(e_errors.INFO, "read_tcp_raw: starting")
     tmp = timeout_recv(sock, 8, timeout)
     try:
         bytecount = int(tmp)
