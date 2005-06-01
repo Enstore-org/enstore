@@ -4021,23 +4021,24 @@ def verify_inode(ticket):
 
 def set_outfile_permissions(ticket):
 
-    set_outfile_permissions_start_time = time.time()
-    
-    #Attempt to get the input files permissions and set the output file to
-    # match them.
-    if ticket['outfile'] != "/dev/null":
-        try:
-            perms = os.stat(ticket['infile'])[stat.ST_MODE]
-            os.chmod(ticket['outfile'], perms)
-            ticket['status'] = (e_errors.OK, None)
-        except OSError, msg:
-            Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
-                      (ticket['outfile'], msg))
-            ticket['status'] = (e_errors.USERERROR,
-                                "Unable to set permissions.")
-    
-    Trace.message(TIME_LEVEL, "Time to set_outfile_permissions: %s sec." %
-                  (time.time() - set_outfile_permissions_start_time,))
+    if not ticket.get('copy', None):  #Don't set permissions if copy.
+        set_outfile_permissions_start_time = time.time()
+
+        #Attempt to get the input files permissions and set the output file to
+        # match them.
+        if ticket['outfile'] != "/dev/null":
+            try:
+                perms = os.stat(ticket['infile'])[stat.ST_MODE]
+                os.chmod(ticket['outfile'], perms)
+                ticket['status'] = (e_errors.OK, None)
+            except OSError, msg:
+                Trace.log(e_errors.INFO, "chmod %s failed: %s" % \
+                          (ticket['outfile'], msg))
+                ticket['status'] = (e_errors.USERERROR,
+                                    "Unable to set permissions.")
+
+        Trace.message(TIME_LEVEL, "Time to set_outfile_permissions: %s sec." %
+                      (time.time() - set_outfile_permissions_start_time,))
     
 ############################################################################
 
@@ -5016,43 +5017,57 @@ def set_pnfs_settings(ticket, intf_encp):
             #Ticket is already set.
             return
 
+        try:
+            p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            #Get the exception.
+            msg = sys.exc_info()[1]
+            #If it is a user access/permitted problem handle accordingly.
+            if hasattr(msg, "errno") and \
+                   (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                ticket['status'] = (e_errors.USERERROR, str(msg))
+            #Handle all other errors.
+            else:
+                ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+            #Log the problem.
+            Trace.log(e_errors.INFO,
+                      "Trouble with pnfs: %s %s." % ticket['status'])
+            return
+    
     Trace.message(TIME_LEVEL, "Time to veify pnfs file location: %s sec." %
                   (time.time() - location_start_time,))
 
-    layer1_start_time = time.time() # Start time of setting pnfs layer 1.
+    if not ticket.get('copy', None):  #Don't set layer 1 if copy.
+        layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
-    #The first piece of metadata to set is the bit file id which is placed
-    # into layer 1.
-    Trace.message(INFO_LEVEL, "Setting layer 1: %s" %
-                  ticket["fc"]["bfid"])
-    try:
-        p = pnfs.Pnfs(ticket['wrapper']['pnfsFilename'])
-        if not ticket.get('copy', None):  #Don't set layer 1 if copy.
-            # save the bfid
-            p.set_bit_file_id(ticket["fc"]["bfid"])
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        #Get the exception.
-        msg = sys.exc_info()[1]
-        #If it is a user access/permitted problem handle accordingly.
-        if hasattr(msg, "errno") and \
-           (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
-            ticket['status'] = (e_errors.USERERROR, str(msg))
-        #Handle all other errors.
-        else:
-            ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-        #Log the problem.
-        Trace.log(e_errors.INFO,
-                  "Trouble with pnfs: %s %s." % ticket['status'])
-        return
+        #The first piece of metadata to set is the bit file id which is placed
+        # into layer 1.
+        Trace.message(INFO_LEVEL, "Setting layer 1: %s" %
+                      ticket["fc"]["bfid"])
+        try:
+                # save the bfid
+                p.set_bit_file_id(ticket["fc"]["bfid"])
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            #Get the exception.
+            msg = sys.exc_info()[1]
+            #If it is a user access/permitted problem handle accordingly.
+            if hasattr(msg, "errno") and \
+               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                ticket['status'] = (e_errors.USERERROR, str(msg))
+            #Handle all other errors.
+            else:
+                ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+            #Log the problem.
+            Trace.log(e_errors.INFO,
+                      "Trouble with pnfs: %s %s." % ticket['status'])
+            return
 
-    Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
-                  (time.time() - layer1_start_time,))
-
-    layer4_start_time = time.time() # Start time of setting pnfs layer 4.
-        
-    #Store the cross reference data into layer 4.
+        Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
+                      (time.time() - layer1_start_time,))
 
     #Format some tape drive output.
     mover_ticket = ticket.get('mover', {})
@@ -5063,27 +5078,13 @@ def set_pnfs_settings(ticket, intf_encp):
         crc = 0
     else:
         crc = ticket['fc']['complete_crc']
-    #Write to the metadata layer 4 "file".
-    Trace.message(INFO_LEVEL, "Setting layer 4.")
+
     try:
         #Perform the following get functions; even if it is a copy.  These,
         # calls set values in the object that are used to also update
         # file db entires for copies.
         p.get_bit_file_id()
         p.get_id()
-        if not ticket.get('copy', None):  #Don't set layer 4 if copy.
-            p.set_xreference(
-                ticket["fc"]["external_label"],
-                ticket["fc"]["location_cookie"],
-                ticket["fc"]["size"],
-                volume_family.extract_file_family(ticket["vc"]["volume_family"]),
-                p.pnfsFilename,
-                "", #p.volume_filepath,
-                p.id,
-                "", #p.volume_fileP.id,
-                p.bit_file_id,
-                drive,
-                crc)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
@@ -5091,7 +5092,7 @@ def set_pnfs_settings(ticket, intf_encp):
         msg = sys.exc_info()[1]
         #If it is a user access/permitted problem handle accordingly.
         if hasattr(msg, "errno") and \
-           (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
             ticket['status'] = (e_errors.USERERROR, str(msg))
         #Handle all other errors.
         else:
@@ -5106,8 +5107,50 @@ def set_pnfs_settings(ticket, intf_encp):
         ticket['status'] = (str(exc), str(msg))
         return
 
-    Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
-                  (time.time() - layer4_start_time,))
+    if not ticket.get('copy', None):  #Don't set layer 4 if copy.
+        layer4_start_time = time.time() # Start time of setting pnfs layer 4.
+
+        #Store the cross reference data into layer 4.
+        
+        #Write to the metadata layer 4 "file".
+        Trace.message(INFO_LEVEL, "Setting layer 4.")
+        try:
+            p.set_xreference(
+                ticket["fc"]["external_label"],
+                ticket["fc"]["location_cookie"],
+                ticket["fc"]["size"],
+                volume_family.extract_file_family(ticket["vc"]["volume_family"]),
+                p.pnfsFilename,
+                "", #p.volume_filepath,
+                p.id,
+                "", #p.volume_fileP.id,
+                p.bit_file_id,
+                drive,
+                crc)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            #Get the exception.
+            msg = sys.exc_info()[1]
+            #If it is a user access/permitted problem handle accordingly.
+            if hasattr(msg, "errno") and \
+               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                ticket['status'] = (e_errors.USERERROR, str(msg))
+            #Handle all other errors.
+            else:
+                ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+            #Log the problem.
+            Trace.log(e_errors.INFO,
+                      "Trouble with pnfs: %s %s." % ticket['status'])
+
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
+                      % (str(exc), str(msg)))
+            ticket['status'] = (str(exc), str(msg))
+            return
+
+        Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
+                      (time.time() - layer4_start_time,))
 
     filedb_start_time = time.time() # Start time of updating file database.
 
@@ -5151,33 +5194,35 @@ def set_pnfs_settings(ticket, intf_encp):
     Trace.message(TIME_LEVEL, "Time to set file database: %s sec." %
                   (time.time() - filedb_start_time,))
 
-    filesize_start_time = time.time() # Start time of setting the filesize.
+    if not ticket.get('copy', None):  #Don't set size if copy.
+        filesize_start_time = time.time() # Start time of setting the filesize.
 
-    # file size needs to be the LAST metadata to be recorded
-    Trace.message(INFO_LEVEL, "Setting filesize.")
-    try:
-        #The dcache sets the file size.  If encp tries to set it again, pnfs
-        # sets the size to zero.  Thus, only do this for normal transfers.
-        if not intf_encp.put_cache:
-            #If the size is already set don't set it again.  Doing so
-            # would set the filesize back to zero.
-            size = os.stat(ticket['wrapper']['pnfsFilename'])[stat.ST_SIZE]
-            if long(size) == long(ticket['file_size']) or long(size) == 1L:
-                Trace.log(e_errors.INFO,
-                          "Filesize (%s) for file %s already set." %
-                          (ticket['file_size'],
-                           ticket['wrapper']['pnfsFilename']))
-            else:
-                # set the file size
-                p.set_file_size(ticket['file_size'])
-    except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    except:
-        exc, msg = sys.exc_info()[:2]
-	ticket['status'] = (str(exc), str(msg))
-        return
+        # file size needs to be the LAST metadata to be recorded
+        Trace.message(INFO_LEVEL, "Setting filesize.")
+        try:
+            #The dcache sets the file size.  If encp tries to set it again,
+            # pnfs sets the size to zero.  Thus, only do this for normal
+            # transfers.
+            if not intf_encp.put_cache:
+                #If the size is already set don't set it again.  Doing so
+                # would set the filesize back to zero.
+                size = os.stat(ticket['wrapper']['pnfsFilename'])[stat.ST_SIZE]
+                if long(size) == long(ticket['file_size']) or long(size) == 1L:
+                    Trace.log(e_errors.INFO,
+                              "Filesize (%s) for file %s already set." %
+                              (ticket['file_size'],
+                               ticket['wrapper']['pnfsFilename']))
+                else:
+                    # set the file size
+                    p.set_file_size(ticket['file_size'])
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg = sys.exc_info()[:2]
+            ticket['status'] = (str(exc), str(msg))
+            return
 
-    Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
+        Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
                   (time.time() - filesize_start_time,))
 
     #This functions write errors/warnings to the log file and put an
