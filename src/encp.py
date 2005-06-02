@@ -628,16 +628,19 @@ def is_read(ticket_or_interface):
         #elif infile[:6] != "/pnfs/" and outfile[:6] == "/pnfs/":
         #    return 0
         if not infile or not outfile:
+            Trace.log(e_errors.ERROR,
+                      "Inconsistant file types:" + str(ticket_or_interface))
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
-                            e_errors.BROKEN)
+                            e_errors.BROKEN, ticket_or_interface)
         elif pnfs.is_pnfs_path(infile) and not pnfs.is_pnfs_path(outfile):
             return 1
         elif not pnfs.is_pnfs_path(infile) and pnfs.is_pnfs_path(outfile):
             return 0
         else:
+            Trace.log(e_errors.ERROR,
+                      "Inconsistant file types:" + str(ticket_or_interface))
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
-                            e_errors.BROKEN,
-                            {'infile' : infile, 'outfile' : outfile})
+                            e_errors.BROKEN, ticket_or_interface)
     #If the type is an interface class...
     elif type(ticket_or_interface) == types.InstanceType:
         intype = getattr(ticket_or_interface, 'intype', "")
@@ -647,6 +650,9 @@ def is_read(ticket_or_interface):
         elif intype == "unixfile" and outtype == "hsmfile":
             return 0
         else:
+            Trace.log(e_errors.ERROR,
+                      "Inconsistant file types:" + str({'infile' : infile,
+                                                        'outfile' : outfile}))
             raise EncpError(errno.EINVAL, "Inconsistant file types.",
                             e_errors.BROKEN,
                             {'infile' : infile, 'outfile' : outfile})
