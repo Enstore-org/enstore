@@ -49,6 +49,7 @@ class NetDriver(generic_driver.Driver):
     
     def close(self):
         r = 0
+	Trace.log(e_errors.INFO,"NetDriver:close %s"%(self.sock,))
         if self.sock is not None:
             r = self.sock.close()
             if r:
