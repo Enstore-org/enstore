@@ -20,7 +20,7 @@ import string
 # import math
 
 MB=1024*1024.
-
+ENCP_RATE = "encp-rates"
 
 
 def showError(msg):
@@ -141,9 +141,10 @@ def main():
 
     for sg in storage_groups:
 
-        postscript_output="encp_rates_%s_r.ps"%(sg.strip(' '))
-        jpeg_output="encp_rates_%s_r.jpg"%(sg.strip(' '))
-        jpeg_output_stamp="encp_rates_%s_r_stamp.jpg"%(sg.strip(' '))
+        postscript_output="%s/encp_rates_%s_r.ps"%(ENCP_RATE,sg.strip(' '))
+        jpeg_output="%s/encp_rates_%s_r.jpg"%(ENCP_RATE,sg.strip(' '))
+        jpeg_output_stamp="%s/encp_rates_%s_r_stamp.jpg"%(ENCP_RATE,sg.strip(' '))
+
         plot_data_file_r="rate_%s_r.dat"%(sg.strip(' '))
         plot_data_file_w="rate_%s_w.dat"%(sg.strip(' '))
 
@@ -191,9 +192,9 @@ def main():
             os.system("rm -f %s"%file_name)
 
 
-        postscript_output="encp_rates_%s_w.ps"%(sg.strip(' '))
-        jpeg_output="encp_rates_%s_w.jpg"%(sg.strip(' '))
-        jpeg_output_stamp="encp_rates_%s_w_stamp.jpg"%(sg.strip(' '))
+        postscript_output="%s/encp_rates_%s_w.ps"%(ENCP_RATE,sg.strip(' '))
+        jpeg_output="%s/encp_rates_%s_w.jpg"%(ENCP_RATE,sg.strip(' '))
+        jpeg_output_stamp="%s/encp_rates_%s_w_stamp.jpg"%(ENCP_RATE,sg.strip(' '))
 
         if (os.path.exists(plot_data_file_w)) : 
             lower = "%s"%(time.strftime("%Y-%m-%d",time.localtime(now_time-delta_time)))

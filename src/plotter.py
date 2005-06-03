@@ -15,6 +15,7 @@ import Trace
 
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
+ENCP_RATE = "encp-rates"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
@@ -85,7 +86,22 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	    links_to_add.append(("%s/%s"%(enstore_constants.BPD_SUBDIR, 
 					  enstore_files.plot_html_file_name()),
 				 "Bytes/Day per Mover Plots"))
-	# see if we should add a link to the burn rate plot
+	# --------------------------------------------------
+        # added by Dmitry, subdirectory displays encp rates per storage group
+        # --------------------------------------------------
+	dir = "%s/%s"%(self.html_dir, ENCP_RATE)
+	if os.path.isdir(dir):
+            Trace.trace(enstore_constants.PLOTTING,
+                    "adding links to encp rate plots")
+            # there are plots here
+            plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+						   self.system_tag, "../")
+            self.plotfile_l.append([plotfile2, dir])
+            links_to_add.append(("%s/%s"%(ENCP_RATE, 
+                                          enstore_files.plot_html_file_name()),
+                                 "Encp rates per Storage Group Plots"))
+        # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
 	if os.path.isdir(dir):
 	    Trace.trace(enstore_constants.PLOTTING,
