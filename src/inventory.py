@@ -1106,7 +1106,7 @@ def inventory(output_dir, cache_dir):
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
     vols.close()
-    file.close()
+    # file.close()
 
     #Create files that hold statistical data.
     fmt, tl = print_volume_quotas_status(volumes_allocated, authorized_tapes,
