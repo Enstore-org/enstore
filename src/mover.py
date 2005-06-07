@@ -646,6 +646,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
+        self.stream_w_flag = 0 # this flag is set when before stream_write is called
+        
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -1397,7 +1399,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                     else:
                         if transfer_stuck:
-                            msg = "data transfer to or from client stuck. Breaking connection"
+                            msg = "data transfer to or from client stuck. Breaking connection."
+                            if self.mode == WRITE:
+                                msg1 = "Stream write flag %s. Bytes %s/%s"%(self.write_stream, self.bytes_written, self.bytes_to_write)
+                                msg = msg+msg1
                             self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                             return
                         
@@ -2373,7 +2378,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 nbytes = min(self.bytes_to_write - self.bytes_written, self.buffer.blocksize)
                 bytes_written = 0
                 try:
+                    self.stream_w_flag = 1
                     bytes_written = self.buffer.stream_write(nbytes, driver)
+                    self.stream_w_flag = 0
                 except CRC_ERROR:
                     Trace.alarm(e_errors.ERROR, "CRC error in write client",
                                 {'outfile':self.current_work_ticket['outfile'],
