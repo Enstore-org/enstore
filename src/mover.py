@@ -1114,7 +1114,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                         status = mcc_reply.get('status')
                         if status and status[0] != e_errors.OK:
                             self.offline()
-                            return
+                            #return Do not return here as this does not comlete
+                            # the initialization
+                            # dispathing worker does not get instantiated and
+                            # this causes a failure, causing exceptions and
+                            # restarts in a loop
                 if good_label: # to prevent mover from failure in ftt_get_stats
                     if self.maybe_clean():
                         have_tape = 0
