@@ -3803,6 +3803,10 @@ def check_crc(done_ticket, encp_intf, fd=None):
     #Make these more accessable.
     mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
+
+    Trace.log(e_errors.INFO,
+              "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc))
+    
     #Check this just to be safe.
     if mover_crc == None:
         msg =   "warning: mover did not return CRC; skipping CRC check\n"
