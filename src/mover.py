@@ -1405,7 +1405,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         if transfer_stuck:
                             msg = "data transfer to or from client stuck. Breaking connection."
                             if self.mode == READ:
-                                msg1 = "Stream write flag %s. Bytes %s/%s"%(self.write_stream, self.bytes_written, self.bytes_to_write)
+                                msg1 = "Stream write flag %s. Bytes %s/%s"%(self.stream_w_flag, self.bytes_written, self.bytes_to_write)
                                 msg = msg+msg1
                             self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
                             return
