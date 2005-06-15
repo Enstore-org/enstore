@@ -196,10 +196,10 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
                                                socket.SO_ERROR)
                 if socket_error != 0:
                     Trace.log(e_errors.ERROR,
-                             "timeout_recv(): socket error: %s" % socket_error)
+                              "timeout_recv(): socket error: %s" % socket_error)
             except socket.error, msg:
                 Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getsockopt: %s" % str(msg))
+                          "timeout_recv(): getsockopt(SO_ERROR): %s" % str(msg))
 
             Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
 
@@ -207,6 +207,30 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             socket_state = __get_socket_state(sock.fileno())
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): socket state: %s" % str(socket_state))
+
+            try:
+                #Obtain the bytes in the socket buffer.
+                recv_buffer_size = sock.getsockopt(socket.SOL_SOCKET,
+                                                   socket.SO_RCVBUF)
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): recv buffer size: %s" %
+                          (str(recv_buffer_size,)))
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): getsockopt(SO_RCVBUF): %s" %
+                          (str(msg),))
+
+            try:
+                #Obtain the bytes in the socket buffer.
+                send_buffer_size = sock.getsockopt(socket.SOL_SOCKET,
+                                                   socket.SO_SNDBUF)
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): send buffer size: %s" %
+                          (str(send_buffer_size),))
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): getsockopt(SO_SNDBUF): %s" %
+                          (str(msg),))
 
         return data_string
         
