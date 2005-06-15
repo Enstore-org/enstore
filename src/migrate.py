@@ -70,7 +70,7 @@ import Queue
 debug = False	# debugging mode
 
 icheck = True	# instant readback check after swap
-		# this is turned by default for file based migration
+		# this is turned on by default for file based migration
 		# It is turned off by default for volume based migration
 
 errors = 0	# over all errors per migration run
@@ -91,7 +91,10 @@ MIGRATION_DB = 'Migration'
 # CMS_MIGRATION_DB = 'cms/WAX/repairing2bstayout/Migration'
 CMS_MIGRATION_DB = 'cms/MIGRATION-9940A-TO-9940B'
 
+DELETED_TMP = 'DELETED'
+
 MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
+DELETED_FILE_FAMILY = "DELETED_FILES"
 lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
 
 csc = None
@@ -347,6 +350,16 @@ def migration_path(path):
 		pl[f_n] = MIGRATION_DB+'/'+pl[f_n]
 	return string.join(pl, '/')
 
+def deleted_path(path, vol, location_cookie):
+	pl = string.split(path, '/')
+	if pl[:f_n] != f_p:
+		return None
+	if pl[f_n] == 'cms':    # special case, different pnfs server
+		dp = CMS_MIGRATION_DB+'/'+'DELETE_TMP'
+	else:
+		dp = MIGRATION_DB+'/'+DELETED_TMP
+	return os.path.join(SPOOL_DIR, vol+':'+location_cookie)
+
 # temp_file(file) -- get a temporary destination file from file
 def temp_file(vol, location_cookie):
 	return os.path.join(SPOOL_DIR, vol+':'+location_cookie)
@@ -357,6 +370,9 @@ def copy_files(files):
 	MY_TASK = "COPYING_TO_DISK"
 	# get a db connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+
+	# get a file clerk client
+	fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -370,7 +386,8 @@ def copy_files(files):
 		log(MY_TASK, "processing %s"%(bfid))
 		# get file info
 		q = "select bfid, label, location_cookie, pnfs_id, \
-			storage_group, file_family from file, volume \
+			storage_group, file_family, deleted \
+                        from file, volume \
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
 		if debug:
@@ -383,22 +400,10 @@ def copy_files(files):
 			continue
 
 		f = res[0]
+
 		if debug:
 			log(MY_TASK, `f`)
 		log(MY_TASK, "copying %s %s %s"%(bfid, f['label'], f['location_cookie']))
-		tmp = temp_file(f['label'], f['location_cookie'])
-		try:
-			src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
-		except:
-			exc_type, exc_value = sys.exc_info()[:2]
-			error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
-			continue
-		if debug:
-			log(MY_TASK, "src:", src)
-			log(MY_TASK, "tmp:", tmp)
-		if not os.access(src, os.R_OK):
-			error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
-			continue
 
 		# check if it has been copied
 		ct = is_copied(bfid, db)
@@ -406,6 +411,43 @@ def copy_files(files):
 			res = 0
 			ok_log(MY_TASK, "%s has already been copied at %s"%(bfid, ct))
 		else:
+			tmp = temp_file(f['label'], f['location_cookie'])
+
+			if f['deleted'] == 'n':
+				try:
+					src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
+				except:
+					exc_type, exc_value = sys.exc_info()[:2]
+					error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
+					continue
+			elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
+
+				# making up a pnfs entry for deleted file
+				finfo = fcc.bfid_info(bfid)
+				if finfo['status'][0] != e_errors.OK:
+					error_log(MY_TASK, "can not find %s"%(bfid))
+					continue
+
+				src = deleted_path(finfo['pnfs_name0'])
+				finfo['pnfs_name0'] = src
+				pf = pnfs.File(findo)
+				try:
+					pf.create(finfo['pnfsid'])
+				except:
+					exc_type, exc_value = sys.exc_info()[:2]
+					error_log(MY_TASK, str(exc_type), str(exc_value), "can not create %s"%(src)
+
+			else:
+				# what to do?
+				error_log(MY_TASK, "can not copy %s"%(bfid))
+				continue
+				
+			if debug:
+				log(MY_TASK, "src:", src)
+				log(MY_TASK, "tmp:", tmp)
+			if not os.access(src, os.R_OK):
+				error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
+				continue
 			# make sure the tmp file is not there
 			if os.access(tmp, os.F_OK):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
@@ -417,9 +459,13 @@ def copy_files(files):
 			else:
 				error_log(MY_TASK, "failed to copy %s %s to %s, error = %d"%(bfid, src, tmp, res))
 
+			if f['deleted'] == 'y':
+				# clean up tmp pnfs entry
+				nullify_pnfs(src)
+				os.remove(src)
 		if res == 0:
 			copy_queue.put((bfid, src, tmp, f['file_family'],
-				f['storage_group']), True)
+				f['storage_group'], f['deleted']), True)
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
