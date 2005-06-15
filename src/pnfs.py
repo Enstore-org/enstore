@@ -2662,7 +2662,9 @@ class File:
 				#	print 'different paths'
 				#	print '\t f>', self.path
 				#	print '\t 4>', p_path
-                        except OSError:
+                        except IOError:
+				exc_type, exc_value = sys.exc_info()[:2]
+				print exc_type, exc_value
 				self.volume = ""
 				self.location_cookie = ""
 				self.size = 0
@@ -2764,7 +2766,7 @@ class File:
 		return
 
 	# update() -- write out to pnfs files
-	def update(self):
+	def update(self, pnfsid=None):
 		if not self.bfid:
 			return
 		if not self.consistent():
@@ -2782,8 +2784,11 @@ class File:
 			f.write(self.file_family+'\n')
 			f.write(self.p_path+'\n')
 			f.write(self.volmap+'\n')
-			# always use real pnfs id
-			f.write(self.get_pnfs_id()+'\n')
+			if not pnfsid:
+				# always use real pnfs id
+				f.write(self.get_pnfs_id()+'\n')
+			else:
+				f.write(self.pnfs_id,+'\n')
 			f.write(self.pnfs_vid+'\n')
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
@@ -2812,14 +2817,14 @@ class File:
 		return os.access(self.path, os.F_OK)
 
 	# create() -- create the file
-	def create(self):
+	def create(self, pnfsid=None):
 		# do not create if there is no BFID
 		if not self.bfid:
 			return
 		if not self.exists() and self.consistent():
 			f = open(self.path, 'w')
 			f.close()
-			self.update()
+			self.update(pnfsid)
 
 	# update_bfid(bfid) -- change the bfid
 	def update_bfid(self, bfid):
