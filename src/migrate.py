@@ -435,7 +435,7 @@ def copy_files(files):
 					pf.create(finfo['pnfsid'])
 				except:
 					exc_type, exc_value = sys.exc_info()[:2]
-					error_log(MY_TASK, str(exc_type), str(exc_value), "can not create %s"%(src)
+					error_log(MY_TASK, str(exc_type), str(exc_value), "can not create %s"%(src))
 
 			else:
 				# what to do?
