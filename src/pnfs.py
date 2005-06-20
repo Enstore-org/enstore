@@ -2596,7 +2596,7 @@ class File:
 		if type(file) == types.DictionaryType:  # a dictionary
 			self.volume = file['external_label']
 			self.location_cookie = file['location_cookie']
-			self.size = file['size']
+			self.size = str(file['size'])
 			if file.has_key('file_family'):
 				self.file_family = file['file_family']
 			else:
@@ -2620,7 +2620,7 @@ class File:
 			else:
 			    self.path = 'unknown'
 			if file.has_key('complete_crc'):
-			    self.complete_crc = file['complete_crc']
+			    self.complete_crc = str(file['complete_crc'])
 			else:
 			    self.complete_crc = ''
 			self.p_path = self.path
@@ -2788,7 +2788,7 @@ class File:
 				# always use real pnfs id
 				f.write(self.get_pnfs_id()+'\n')
 			else:
-				f.write(self.pnfs_id,+'\n')
+				f.write(self.pnfs_id+'\n')
 			f.write(self.pnfs_vid+'\n')
 			f.write(self.bfid+'\n')
 			f.write(self.drive+'\n')
