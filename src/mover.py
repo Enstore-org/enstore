@@ -1153,6 +1153,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         p.write(ecmd)
         p.close()
         sys.exit(0)
+        Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
         
     # device_dump(self, sendto=[], notify=['enstore-admin@fnal.gov'])
     #   -- internal device dump
