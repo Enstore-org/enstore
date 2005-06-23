@@ -328,8 +328,12 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
     config_options = {
         option.SHOW:{option.HELP_STRING:"print the current configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
+                     #Default label is used for switches that take an
+                     # unknown number arguments from intf.args and not
+                     # from the specification in this dictionary.
+                     option.DEFAULT_LABEL:"[value_name [value_name [...]]]",
                      option.USER_LEVEL:option.ADMIN,
-                     option.VALUE_LABEL:"[value_name [value_name [...]]]",
+                     #option.VALUE_LABEL:"[value_name [value_name [...]]]",
                      #option.EXTRA_VALUES:[{
                      #    option.VALUE_NAME:"server",
                      #    option.VALUE_TYPE:option.STRING,
