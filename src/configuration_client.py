@@ -86,7 +86,7 @@ class ConfigurationClient(generic_client.GenericClient):
         self.have_complete_config = 0
         self.config_load_timestamp = None
 
-    #Retrun these values when requested.
+    #Return these values when requested.
     def get_address(self):
         return self.server_address
     def get_timeout(self):
@@ -365,11 +365,10 @@ def do_work(intf):
         pass
     elif intf.show:
         result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        
-        if not e_errors.is_ok(result):
-            #If an error occured, print the error and move on.
-            pprint.pprint(result)
-        else:
+       
+        #If there is an error it is printed out at the end of the function
+        # in csc.check_ticket().  On success, work as normal. 
+        if e_errors.is_ok(result):
             #Loop through what the user specified (if anything) and return
             # the desired result(s).
             use_result = result['dump']
@@ -378,12 +377,12 @@ def do_work(intf):
                     try:
                         use_result = use_result[item]
                     except KeyError:
-                        sys.stderr.write(
+                        result['status'] = (e_errors.KEYERROR,
                             "Unable to find requested information (1).\n")
                         break
                 else:
-                    sys.stderr.write(
-                        "Unable to find requested information (2).\n")
+                    result['status'] = (e_errors.CONFLICT,
+                            "Unable to find requested information (2).\n")
                     break
             else:
                 #If there wasn't a problem finding the information, print it.
