@@ -796,6 +796,13 @@ class Interface:
                     has_value = has_value + "<" + arg + "> "
                 elif value == OPTIONAL:
                     has_value = has_value + "[" + arg + "] "
+                elif value == IGNORED and \
+                     opt_arg.get(VALUE_LABEL, None) != None:
+                    #This case may be true for switches that take zero
+                    # or more (unknown number of) arguments that are
+                    # processed via intf.args.
+                    has_value = opt_arg[VALUE_LABEL]
+                    
 
             #Get and calculate various variables needed to format the output.
             # help_string - shorter than accessing the dictionary
