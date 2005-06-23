@@ -329,13 +329,15 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         option.SHOW:{option.HELP_STRING:"print the current configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.USER_LEVEL:option.ADMIN,
-                     option.EXTRA_VALUES:[{
-                         option.VALUE_NAME:"server",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.OPTIONAL,
-                         option.DEFAULT_TYPE:None,
-                         option.DEFAULT_VALUE:None
-                         }]},
+                     option.VALUE_LABEL:"[value_name [value_name [...]]]",
+                     #option.EXTRA_VALUES:[{
+                     #    option.VALUE_NAME:"server",
+                     #    option.VALUE_TYPE:option.STRING,
+                     #    option.VALUE_USAGE:option.OPTIONAL,
+                     #    option.DEFAULT_TYPE:None,
+                     #    option.DEFAULT_VALUE:None
+                     #    }]
+                     },
         option.LOAD:{option.HELP_STRING:"load a new configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN},
@@ -364,13 +366,34 @@ def do_work(intf):
     elif intf.show:
         result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
         
-        if e_errors.is_ok(result) and intf.server:
-            pprint.pprint(result["dump"].get(intf.server, {}))
-        elif e_errors.is_ok(result):
-            pprint.pprint(result["dump"])
-        else:
+        if not e_errors.is_ok(result):
+            #If an error occured, print the error and move on.
             pprint.pprint(result)
-            
+        else:
+            #Loop through what the user specified (if anything) and return
+            # the desired result(s).
+            use_result = result['dump']
+            for item in intf.args:
+                if type(use_result) == types.DictType:
+                    try:
+                        use_result = use_result[item]
+                    except KeyError:
+                        sys.stderr.write(
+                            "Unable to find requested information (1).\n")
+                        break
+                else:
+                    sys.stderr.write(
+                        "Unable to find requested information (2).\n")
+                    break
+            else:
+                #If there wasn't a problem finding the information, print it.
+                if type(use_result) == types.StringType:
+                    #Suppress the '' that pprint.pprint() wants to surround
+                    # native strings.
+                    print use_result
+                else:
+                    pprint.pprint(use_result)
+
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
