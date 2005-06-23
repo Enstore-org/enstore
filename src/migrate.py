@@ -358,7 +358,7 @@ def deleted_path(path, vol, location_cookie):
 		dp = CMS_MIGRATION_DB+'/'+'DELETE_TMP'
 	else:
 		dp = MIGRATION_DB+'/'+DELETED_TMP
-	return os.path.join(SPOOL_DIR, vol+':'+location_cookie)
+	return os.path.join(string.join(pl[:f_n], '/'), dp, vol+':'+location_cookie)
 
 # temp_file(file) -- get a temporary destination file from file
 def temp_file(vol, location_cookie):
@@ -372,7 +372,7 @@ def copy_files(files):
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 
 	# get a file clerk client
-	fcc = file_clerk_client.FileClient(csc)
+	# fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -386,7 +386,8 @@ def copy_files(files):
 		log(MY_TASK, "processing %s"%(bfid))
 		# get file info
 		q = "select bfid, label, location_cookie, pnfs_id, \
-			storage_group, file_family, deleted \
+			storage_group, file_family, deleted, \
+			pnfs_path, size, crc as complete_crc \
                         from file, volume \
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
@@ -422,20 +423,22 @@ def copy_files(files):
 					continue
 			elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
 
-				# making up a pnfs entry for deleted file
-				finfo = fcc.bfid_info(bfid)
-				if finfo['status'][0] != e_errors.OK:
-					error_log(MY_TASK, "can not find %s"%(bfid))
-					continue
+				log(MY_TASK, "%s %s %s is a DELETED FILE"%(f['bfid'], f['pnfs_id'], f['pnfs_path']))
 
-				src = deleted_path(finfo['pnfs_name0'])
-				finfo['pnfs_name0'] = src
-				pf = pnfs.File(findo)
+				# making up a pnfs entry for deleted file
+				f['external_label'] = f['label']
+				f['pnfsid'] = f['pnfs_id']
+				f['pnfs_name0'] = f['pnfs_path']
+				src = deleted_path(f['pnfs_path'], f['label'], f['location_cookie'])
+				f['pnfs_name0'] = src
+				pf = pnfs.File(f)
+				pf.p_path = f['pnfs_path']
 				try:
-					pf.create(finfo['pnfsid'])
+					pf.create(1)
 				except:
 					exc_type, exc_value = sys.exc_info()[:2]
 					error_log(MY_TASK, str(exc_type), str(exc_value), "can not create %s"%(src))
+					continue
 
 			else:
 				# what to do?
@@ -453,16 +456,28 @@ def copy_files(files):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
 				os.remove(tmp)
 			cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(src, tmp)
+			# reset deleted status
+			if f['deleted'] == 'y':
+				q = "update file set deleted = 'n' where bfid = '%s';"%(bfid)
+				db.query(q)
+				log(MY_TASK, "set %s deleted = no"%(bfid))
+
 			res = encp.encp(cmd)
 			if res == 0:
 				ok_log(MY_TASK, "%s %s to %s"%(bfid, src, tmp))
 			else:
 				error_log(MY_TASK, "failed to copy %s %s to %s, error = %d"%(bfid, src, tmp, res))
 
+			
 			if f['deleted'] == 'y':
+				# reset deleted status
+				q = "update file set deleted = 'y' where bfid = '%s';"%(bfid)
+				db.query(q)
+				log(MY_TASK, "set %s deleted = yes"%(bfid))
 				# clean up tmp pnfs entry
 				nullify_pnfs(src)
 				os.remove(src)
+
 		if res == 0:
 			copy_queue.put((bfid, src, tmp, f['file_family'],
 				f['storage_group'], f['deleted']), True)
