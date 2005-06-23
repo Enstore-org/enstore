@@ -135,6 +135,7 @@ HELP_STRING = "help string"
 DEFAULT_NAME = "default name"
 DEFAULT_VALUE = "default value"
 DEFAULT_TYPE = "default type"
+DEFAULT_LABEL = "default label"  #This is a rare one...
 VALUE_NAME = "value name"
 VALUE_TYPE = "value type"
 VALUE_USAGE = "value usage"
@@ -797,7 +798,7 @@ class Interface:
                 elif value == OPTIONAL:
                     has_value = has_value + "[" + arg + "] "
                 elif value == IGNORED and \
-                     opt_arg.get(VALUE_LABEL, None) != None:
+                     opt_arg.get(DEFAULT_LABEL, None) != None:
                     #This case may be true for switches that take zero
                     # or more (unknown number of) arguments that are
                     # processed via intf.args.
