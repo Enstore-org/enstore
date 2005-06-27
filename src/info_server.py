@@ -371,7 +371,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		q = "select time, label, state_type.name as type, state.value \
 			 from state, state_type, volume \
 			 where \
-				label = '%s' and \
+				label like '%s%%' and \
 				state.volume = volume.id and \
 				state.type = state_type.id \
 			 order by time desc;"%(vol)
