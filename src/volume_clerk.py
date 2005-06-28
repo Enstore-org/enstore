@@ -158,7 +158,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         q = "select time, label, state_type.name as type, state.value \
              from state, state_type, volume \
              where \
-                label = '%s' and \
+                label like '%s%%' and \
                 state.volume = volume.id and \
                 state.type = state_type.id \
              order by time desc;"%(vol)
@@ -421,7 +421,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     #
     # if recycle flag is set, vol will be redeclared as a new volume
 
-    def __delete_volume(self, vol, recycle = 0, check_state = 1):
+    def __delete_volume(self, vol, recycle = 0, check_state = 1, clear_sg = False):
         # check existence of the volume
         record = self.dict[vol]
         if not record:
@@ -463,6 +463,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             if status[0] != e_errors.OK:
                 return status
 
+        renamed = None
         # check if it is never written, if so, erase it
         if record['sum_wr_access']:
 	    status = self.__rename_volume(vol, vol+'.deleted')
@@ -472,6 +473,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                 self.dict[vol+'.deleted'] = record
 		self.change_state(vol+'.deleted', 'system_inhibit_0', e_errors.DELETED)
                 Trace.log(e_errors.INFO, 'volume "%s" has been deleted'%(vol))
+                renamed = vol+'.deleted'
             else: # don't do anything further
                 return status
         else:    # never written
@@ -497,7 +499,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             record['non_del_files'] = 0
             # reseting volume family
             sg = string.split(record['volume_family'], '.')[0]
-            record['volume_family'] = sg+'.none.none'
+            if clear_sg:
+                record['volume_family'] = 'none.none.none'
+            else:
+                record['volume_family'] = sg+'.none.none'
             # check for obsolete fields
             for ek in ['at_mover', 'file_family', 'status']:
                 if record.has_key(ek):
@@ -505,6 +510,28 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.dict[vol] = record
             self.change_state(vol, 'other', "RECYCLED");
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
+            # take care of sg_count
+            if clear_sg and sg != 'none':
+                self.sgdb.inc_sg_counter(library, sg, increment=-1)
+                self.sgdb.inc_sg_counter(library, 'none', increment=1)
+
+            # take care of write_protect state
+            if renamed: # take it from its previous life
+                q = "select time, value from state, state_type, volume \
+                    where \
+                        state.type = state_type.id and \
+                        state_type.name = 'write_protect' and \
+                        state.volume = volume.id and \
+                        volume.label = '%s' \
+                        order by time desc limit 1;"%(renamed)
+                try:
+                    res = self.dict.db.query(q).dictresult()
+                    if res:
+                        self.change_state(vol, 'write_protect', res[0]['value'])
+                        Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
+                except:    # fail save
+                    pass
+
         else:
 
             # get storage group and take care of quota
@@ -576,7 +603,17 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        ticket['status'] = self.__delete_volume(vol, 1)
+        if ticket.has_key('check_state'):
+            check_state = ticket['check_state']
+        else:
+            check_state = 1
+
+        if ticket.has_key('clear_sg'):
+            clear_sg = True 
+        else:
+            clear_sg = False
+        ticket['status'] = self.__delete_volume(vol, 1, check_state = 
+eck_state, clear_sg = clear_sg)
         self.reply_to_caller(ticket)
         return
 
