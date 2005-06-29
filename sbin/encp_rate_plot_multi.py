@@ -18,6 +18,10 @@ import os
 import string
 # import getopt, string
 # import math
+import accounting_query
+import enstore_constants
+import enstore_functions
+import configuration_client
 
 MB=1024*1024.
 ENCP_RATE = "encp-rates"
@@ -31,12 +35,23 @@ def usage():
     print "date format: YYYY-MM-DD"
     print "example: 2005-04-01 2005-04-02 cmsstor01.fnal.gov cms w"
 def main():
+    intf = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    csc.csc = csc
+    acc = csc.get(enstore_constants.ACCOUNTING_SERVER, {})
 
+    accounting_db_server_name = acc.get('dbhost')
+    accounting_db_name        = acc.get('dbname')
+
+    acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
+    
     if len(sys.argv)<1:
         usage()
         sys.exit(0)
 
-       
+
+    login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name,)
+
 #    start = sys.argv[1]
 #    stop  = sys.argv[2]
 #    storage_group = sys.argv[4]
@@ -51,7 +66,7 @@ def main():
     now_time   =  int(time.time())
     delta_time =  30*24*60*60
 
-    cmd = "psql   enstore -h stkensrv6 -t -q -c \"select max(unix_time) from encp_xfer_average_by_storage_group\""
+    cmd = "%s  \"select max(unix_time) from encp_xfer_average_by_storage_group\""%(login_string)
 
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
@@ -71,8 +86,8 @@ def main():
 # Get list of storage groups
 #
 
-    cmd = "psql   enstore -h stkensrv6 -t -q -c \"select distinct(storage_group) from encp_xfer_average_by_storage_group\""
-
+    cmd = "%s  \"select distinct(storage_group) from encp_xfer_average_by_storage_group\""%(login_string)
+    
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
     inp.close ()
@@ -99,7 +114,7 @@ def main():
 # extract values for a month
 # 
     
-    cmd = "psql   enstore -h stkensrv6 -t -q  -c \"select  "
+    cmd = "%s  \"select  "%(login_string)
     cmd = cmd + "date,unix_time,storage_group,rw,"
     cmd = cmd + "avg_overall_rate,stddev_overall_rate,"
     cmd = cmd + "avg_network_rate,stddev_network_rate,"

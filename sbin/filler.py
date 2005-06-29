@@ -18,6 +18,10 @@ import popen2
 import os
 import getopt, string
 import math
+import accounting_query
+import enstore_constants
+import enstore_functions
+import configuration_client
 
 MB=1024*1024.
 
@@ -28,8 +32,18 @@ def showError(msg):
 def usage():
     print ""
 def main():
+    intf = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    csc.csc = csc
+    acc = csc.get(enstore_constants.ACCOUNTING_SERVER, {})
 
-    cmd = "psql   enstore -h stkensrv6 -t -q -c \" select max(unix_time) from encp_xfer_average_by_storage_group;\""
+    accounting_db_server_name = acc.get('dbhost')
+    accounting_db_name        = acc.get('dbname')
+
+    acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
+
+    login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name,)
+    cmd = "%s \" select max(unix_time) from encp_xfer_average_by_storage_group;\""%(login_string,)
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
     inp.close ()
@@ -54,7 +68,7 @@ def main():
       str_middle_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(middle_time))
       str_from_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(zero_time))
       str_to_time     = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(stop_time))
-      select_stmt =  "psql   enstore -h stkensrv6 -t -q  -c \""
+      select_stmt = "%s \""%(login_string,)
       select_stmt = select_stmt +  "insert into encp_xfer_average_by_storage_group "
       select_stmt = select_stmt +  " ( select "
       select_stmt = select_stmt + str(middle_time)
@@ -85,6 +99,7 @@ def main():
       select_stmt  = select_stmt + ";\" enstore"
 
 #      print 'Executing:',select_stmt
+      sys.exit(0)
       os.system(select_stmt)
       zero_time = zero_time + delta_time
 
