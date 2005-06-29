@@ -800,9 +800,11 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket,timeout,retry)
 
-    def recycle_volume(self, vol, timeout=300, retry=1):
+    def recycle_volume(self, vol, clear_sg = False, timeout=300, retry=1):
         ticket = {'work': 'recycle_volume',
                   'external_label': vol}
+        if clear_sg:
+            ticket['clear_sg'] = True
         return self.send(ticket,timeout,retry)
 
     def set_ignored_sg(self, sg, timeout=60, retry=1):
@@ -885,6 +887,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.set_comment = None
         self.volume = None
         self.assign_sg = None
+        self.clear_sg = False
         self.touch = None
 	self.trim_obsolete = None
         self.show_quota = 0
@@ -1036,6 +1039,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.CLEAR_SG:{option.HELP_STRING:"used with recycle to clear storage group",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.DEFAULT_VALUE:option.DEFAULT,
+                      option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.ADMIN},
         option.FORGET_IGNORED_STORAGE_GROUP:{option.HELP_STRING:
                       "clear a ignored storage group",
@@ -1625,7 +1633,12 @@ def do_work(intf):
         # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
         ticket = vcc.restore_volume(intf.restore)  # name of volume
     elif intf.recycle:
-        ticket = vcc.recycle_volume(intf.recycle)
+        if intf.clear_sg:
+            ticket = vcc.recycle_volume(intf.recycle, clear_sg = True)
+        else:
+            ticket = vcc.recycle_volume(intf.recycle)
+    elif intf.clear_sg:    # This is wrong
+        print "Error: --clear-sg must be used with --recycle"
     elif intf.clear:
         nargs = len(intf.args)
         try:
