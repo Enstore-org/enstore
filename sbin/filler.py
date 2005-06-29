@@ -40,8 +40,6 @@ def main():
     accounting_db_server_name = acc.get('dbhost')
     accounting_db_name        = acc.get('dbname')
 
-    acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
-
     login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name,)
     cmd = "%s \" select max(unix_time) from encp_xfer_average_by_storage_group;\""%(login_string,)
     inp,out = os.popen2 (cmd, 'r')

@@ -43,8 +43,6 @@ def main():
     accounting_db_server_name = acc.get('dbhost')
     accounting_db_name        = acc.get('dbname')
 
-    acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
-    
     if len(sys.argv)<1:
         usage()
         sys.exit(0)
