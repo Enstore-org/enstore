@@ -18,6 +18,7 @@ import socket
 import cPickle
 import rexec
 import errno
+import fcntl
 
 _rexec = rexec.RExec()
 def _eval(stuff):
@@ -208,30 +209,21 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): socket state: %s" % str(socket_state))
 
+            # It would be useful to output the number of bytes in the
+            # read buffer.  Python does not yet support it.
             try:
-                #Obtain the bytes in the socket buffer.
-                recv_buffer_size = sock.getsockopt(socket.SOL_SOCKET,
-                                                   socket.SO_RCVBUF)
+                OPT = getattr(fcntl, "FIONREAD", None)
+                if OPT != None:
+                    Trace.log(e_errors.ERROR,
+                              "timeout_recv(): fcntl(FIONREAD): %s"
+                              % (str(fcntl.fcntl(sock, OPT)),))
+            except AttributeError:
+                #FIONREAD not known on this system.
+                pass
+            except IOError, msg:
                 Trace.log(e_errors.ERROR,
-                          "timeout_recv(): recv buffer size: %s" %
-                          (str(recv_buffer_size,)))
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getsockopt(SO_RCVBUF): %s" %
-                          (str(msg),))
-
-            try:
-                #Obtain the bytes in the socket buffer.
-                send_buffer_size = sock.getsockopt(socket.SOL_SOCKET,
-                                                   socket.SO_SNDBUF)
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): send buffer size: %s" %
-                          (str(send_buffer_size),))
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getsockopt(SO_SNDBUF): %s" %
-                          (str(msg),))
-
+                          "timeout_recv(): fcntl(FIONREAD): %s" % (str(msg),))
+            
         return data_string
         
     #timedout
