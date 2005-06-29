@@ -512,8 +512,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             Trace.log(e_errors.INFO, 'volume "%s" has been recycled'%(vol))
             # take care of sg_count
             if clear_sg and sg != 'none':
-                self.sgdb.inc_sg_counter(library, sg, increment=-1)
-                self.sgdb.inc_sg_counter(library, 'none', increment=1)
+                self.sgdb.inc_sg_counter(record['library'], sg, increment=-1)
+                self.sgdb.inc_sg_counter(record['library'], 'none', increment=1)
 
             # take care of write_protect state
             if renamed: # take it from its previous life
@@ -612,8 +612,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             clear_sg = True 
         else:
             clear_sg = False
-        ticket['status'] = self.__delete_volume(vol, 1, check_state = 
-eck_state, clear_sg = clear_sg)
+        ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg)
         self.reply_to_caller(ticket)
         return
 
