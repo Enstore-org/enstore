@@ -170,6 +170,7 @@ CAT = "cat"                                  #pnfs
 CHECK = "check"                              #volume, encp
 CLEAN_DRIVE = "clean-drive"                  #mover
 CLEAR = "clear"                              #volume
+CLEAR_SG = "clear-sg"                        #volume
 CLIENT_NAME="client-name"                    # log, alarm
 CONDITION = "condition"                      #alarm_server
 CONFIG_FILE = "config-file"                  #configuration(c&s)
@@ -418,7 +419,7 @@ valid_option_list = [
     BACKUP, BFID, BFIDS, BUFFER_SIZE,
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
-    CLEAN_DRIVE, CLEAR, CLIENT_NAME,
+    CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
     CONDITION, CONFIG_FILE, CONST, COPIES,
     COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
