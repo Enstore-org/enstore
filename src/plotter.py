@@ -111,7 +111,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
 						   self.system_tag, "../")
             self.plotfile_l.append([plotfile2, dir])
-            links_to_add.append(("%s/%s"%(XFER_RATE, 
+            links_to_add.append(("%s/%s"%(XFER_SIZE, 
                                           enstore_files.plot_html_file_name()),
                                  "Xfer size per Storage Group Plots"))
         # --------------------------------------------------
