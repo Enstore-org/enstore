@@ -16,6 +16,7 @@ import Trace
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
 ENCP_RATE = "encp-rates"
+XFER_SIZE = "xfer-size"
 
 class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 
@@ -101,6 +102,18 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
             links_to_add.append(("%s/%s"%(ENCP_RATE, 
                                           enstore_files.plot_html_file_name()),
                                  "Encp rates per Storage Group Plots"))
+        dir = "%s/%s"%(self.html_dir, XFER_SIZE)
+	if os.path.isdir(dir):
+            Trace.trace(enstore_constants.PLOTTING,
+                    "adding links to encp size plots")
+            # there are plots here
+            plot_file = "%s/%s"%(dir, enstore_files.plot_html_file_name())
+            plotfile2 = enstore_files.HTMLPlotFile(plot_file, 
+						   self.system_tag, "../")
+            self.plotfile_l.append([plotfile2, dir])
+            links_to_add.append(("%s/%s"%(XFER_RATE, 
+                                          enstore_files.plot_html_file_name()),
+                                 "Xfer size per Storage Group Plots"))
         # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
 	if os.path.isdir(dir):
