@@ -73,8 +73,6 @@
 131.225.164.96		d0enmvr57a.fnal.gov	d0enmvr57a
 131.225.164.120		d0enmvr58a.fnal.gov	d0enmvr58a
 131.225.164.121		d0enmvr59a.fnal.gov	d0enmvr59a
-131.225.164.123		d0enmvr60a.fnal.gov	d0enmvr60a
-131.225.164.122		d0enmvr61a.fnal.gov	d0enmvr61a
 131.225.164.66		d0enout1a.fnal.gov	d0enout1a
 131.225.164.67		d0enout2a.fnal.gov	d0enout2a
 131.225.164.62		d0enload.fnal.gov	d0enload
@@ -88,14 +86,10 @@
 131.225.164.7		rip7.fnal.gov		rip7
 131.225.164.8		rip8.fnal.gov		rip8
 131.225.13.20		rip9.fnal.gov		rip9
-#131.225.13.21		rip9-ge.fnal.gov	rip9-ge
 131.225.13.22		rip10.fnal.gov		rip10
-#131.225.13.23		rip10-ge.fnal.gov	rip10-ge
-131.225.164.9		ripcon.fnal.gov		ripcon
 131.225.164.16		ripsgi.fnal.gov		ripsgi
-#131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
-131.225.223.201 	ripsgi-g2.fnal.gov	ripsgi-g2
-131.225.223.205 	ripsgi-g3.fnal.gov	ripsgi-g3
+131.225.223.201		ripsgi-g2.fnal.gov	ripsgi-g2
+131.225.223.205		ripsgi-g3.fnal.gov	ripsgi-g3
 
 131.225.13.59		stkensrv0.fnal.gov	stkensrv0
 131.225.13.1		stkensrv1.fnal.gov	stkensrv1
@@ -105,14 +99,8 @@
 131.225.13.82		stkensrv5.fnal.gov	stkensrv5
 131.225.13.24		stkensrv6.fnal.gov	stkensrv6
 131.225.13.30		stkensrv7.fnal.gov	stkensrv7
-131.225.13.5		stkenmvr1a.fnal.gov	stkenmvr1a
-131.225.13.7		stkenmvr2a.fnal.gov	stkenmvr2a
-131.225.13.9		stkenmvr3a.fnal.gov	stkenmvr3a
-131.225.13.11		stkenmvr4a.fnal.gov	stkenmvr4a
 131.225.13.13		stkenmvr5a.fnal.gov	stkenmvr5a
-131.225.13.14		stkenmvr5b.fnal.gov	stkenmvr5b
 131.225.13.44		stkenmvr6a.fnal.gov	stkenmvr6a
-131.225.13.58		stkenmvr6b.fnal.gov	stkenmvr6b
 131.225.13.60		stkenmvr7a.fnal.gov	stkenmvr7a
 131.225.13.72		stkenmvr8a.fnal.gov	stkenmvr8a
 131.225.13.61		stkenmvr9a.fnal.gov	stkenmvr9a
@@ -126,6 +114,9 @@
 131.225.13.26		stkenmvr17a.fnal.gov	stkenmvr17a
 131.225.13.29		stkenmvr18a.fnal.gov	stkenmvr18a
 131.225.13.31		stkenmvr19a.fnal.gov	stkenmvr19a
+131.225.13.45		stkenmvr20a.fnal.gov	stkenmvr20a
+131.225.13.15		stkenmvr21a.fnal.gov	stkenmvr21a
+131.225.13.41		stkenmvr22a.fnal.gov	stkenmvr22a
 131.225.13.32		stkenmvr23a.fnal.gov	stkenmvr23a
 131.225.13.43		stkenmvr24a.fnal.gov	stkenmvr24a
 131.225.13.63		stkenmvr25a.fnal.gov	stkenmvr25a
@@ -137,9 +128,8 @@
 131.225.13.86		stkenmvr31a.fnal.gov	stkenmvr31a
 131.225.13.102		stkenmvr32a.fnal.gov	stkenmvr32a
 131.225.13.98		stkenmvr33a.fnal.gov	stkenmvr33a
+131.225.13.93		stkendca2a.fnal.gov	stkendca2a
 131.225.13.49		stkendca3a.fnal.gov	stkendca3a
-131.225.13.50		stkendca4a.fnal.gov	stkendca4a
-131.225.13.51		stkendca5a.fnal.gov	stkendca5a
 131.225.13.27		stkendca6a.fnal.gov	stkendca6a
 131.225.13.66		stkendca7a.fnal.gov	stkendca7a
 131.225.13.68		stkendca8a.fnal.gov	stkendca8a
@@ -153,6 +143,10 @@
 131.225.13.88		stkendm4a.fnal.gov	stkendm4a
 131.225.13.76		stkenload.fnal.gov	stkenload
 131.225.13.18		stkentst1.fnal.gov	stkentst1
+
+131.225.13.39		eagpnfs1.fnal.gov	eagpnfs1
+
+131.225.206.146		cmspnfs1.fnal.gov	cmspnfs1
 
 131.225.215.17		cdfensrv0.fnal.gov	cdfensrv0
 131.225.215.3		cdfensrv1.fnal.gov	cdfensrv1
@@ -179,12 +173,10 @@
 131.225.215.7		cdfenmvr23a.fnal.gov	cdfenmvr23a
 131.225.215.8		cdfenmvr24a.fnal.gov	cdfenmvr24a
 131.225.215.37		cdfenmvr25a.fnal.gov	cdfenmvr25a
-131.225.215.38		cdfenmvr26a.fnal.gov    cdfenmvr26a
-131.225.215.36		cdfenmvr27a.fnal.gov    cdfenmvr27a
-131.225.215.18		cdfenmvr28a.fnal.gov    cdfenmvr28a
+131.225.215.38		cdfenmvr26a.fnal.gov	cdfenmvr26a
+131.225.215.36		cdfenmvr27a.fnal.gov	cdfenmvr27a
+131.225.215.18		cdfenmvr28a.fnal.gov	cdfenmvr28a
 131.225.215.22		cdfenload.fnal.gov	cdfenload
-
-131.225.206.146		cmspnfs1.fnal.gov	cmspnfs1
 
 # Assigned addresses currently not in use
 #131.225.164.14		d0enmvr1b.fnal.gov	d0enmvr1b
@@ -193,44 +185,44 @@
 #131.225.164.205	d0enmvr5b.fnal.gov	d0enmvr5b
 #131.225.164.206	d0enmvr6b.fnal.gov	d0enmvr6b
 #131.225.164.58		d0enmvr7b.fnal.gov	d0enmvr7b
-#131.225.164.108	d0enmvr8a.fnal.gov	d0enmvr8a
-#131.225.164.208	d0enmvr8b.fnal.gov	d0enmvr8b
 #131.225.164.51		d0enmvr9b.fnal.gov	d0enmvr9b
 #131.225.164.210	d0enmvr10b.fnal.gov	d0enmvr10b
 #131.225.164.54		d0enmvr11b.fnal.gov	d0enmvr11b
 #131.225.164.56		d0enmvr12b.fnal.gov	d0enmvr12b
-#131.225.164.113	d0enmvr13a.fnal.gov	d0enmvr13a
-#131.225.164.213	d0enmvr13b.fnal.gov	d0enmvr13b
 #131.225.164.214	d0enmvr14b.fnal.gov	d0enmvr14b
-#131.225.164.115	d0enmvr15a.fnal.gov	d0enmvr15a
-#131.225.164.215	d0enmvr15b.fnal.gov	d0enmvr15b
 #131.225.164.216	d0enmvr16b.fnal.gov	d0enmvr16b
 #131.225.164.217	d0enmvr17b.fnal.gov	d0enmvr17b
 #131.225.164.218	d0enmvr18b.fnal.gov	d0enmvr18b
-#131.225.164.40		d0enmvr19b.fnal.gov	d0enmvr19b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
 #131.225.164.64		d0enmvr22b.fnal.gov	d0enmvr22b
+#131.225.164.123	d0enmvr60a.fnal.gov	d0enmvr60a
+#131.225.164.122	d0enmvr61a.fnal.gov	d0enmvr61a
+#131.225.164.9		ripcon.fnal.gov		ripcon
+#131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
+#131.225.13.21		rip9-ge.fnal.gov	rip9-ge
+#131.225.13.23		rip10-ge.fnal.gov	rip10-ge
+#131.225.13.5		stkenmvr1a.fnal.gov	stkenmvr1a
 #131.225.13.6		stkenmvr1b.fnal.gov	stkenmvr1b
+#131.225.13.7		stkenmvr2a.fnal.gov	stkenmvr2a
 #131.225.13.8		stkenmvr2b.fnal.gov	stkenmvr2b
+#131.225.13.9		stkenmvr3a.fnal.gov	stkenmvr3a
 #131.225.13.10		stkenmvr3b.fnal.gov	stkenmvr3b
+#131.225.13.11		stkenmvr4a.fnal.gov	stkenmvr4a
 #131.225.13.12		stkenmvr4b.fnal.gov	stkenmvr4b
+#131.225.13.14		stkenmvr5b.fnal.gov	stkenmvr5b
+#131.225.13.58		stkenmvr6b.fnal.gov	stkenmvr6b
 #131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
-#131.225.13.41		stkenmvr22a.fnal.gov	stkenmvr22a
-#131.225.13.39		stkenout1.fnal.gov	stkenout1
-#131.225.13.40		stkenout2.fnal.gov	stkenout2
-#131.225.215.10 	cdfenmvr4a.fnal.gov	cdfenmvr4a
-#131.225.215.16 	cdfenmvr5a.fnal.gov	cdfenmvr5a
-#131.225.215.15 	cdfenmvr6a.fnal.gov	cdfenmvr6a
-#131.225.215.14 	cdfenmvr7a.fnal.gov	cdfenmvr7a
-#131.225.215.13 	cdfenmvr8a.fnal.gov	cdfenmvr8a
-#131.225.215.12 	cdfenmvr9a.fnal.gov	cdfenmvr9a
-#131.225.215.11 	cdfenmvr10a.fnal.gov	cdfenmvr10a
-#131.225.215.19		cdfendca3.fnal.gov	cdfendca3
-#131.225.215.20		cdfendca4.fnal.gov	cdfendca4
-#131.225.215.21		cdfendca5.fnal.gov	cdfendca5
+#131.225.13.50		stkendca4a.fnal.gov	stkendca4a
+#131.225.13.51		stkendca5a.fnal.gov	stkendca5a
+#131.225.13.47		cachen1a.fnal.gov	cachen1a
+#131.225.215.10		cdfenmvr4a.fnal.gov	cdfenmvr4a
+#131.225.215.16		cdfenmvr5a.fnal.gov	cdfenmvr5a
+#131.225.215.15		cdfenmvr6a.fnal.gov	cdfenmvr6a
+#131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
+#131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 
 # private subnet for d0/adic, d0/stk, and public/stk
 192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
