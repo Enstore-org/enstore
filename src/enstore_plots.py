@@ -15,6 +15,7 @@ import enstore_files
 import enstore_constants
 import Trace
 
+
 YES = 1
 NO = 0
 WRITE = "to"
@@ -421,55 +422,72 @@ class MlatDataFile(EnPlot):
 
 class XferGnuFile(enstore_files.EnFile):
 
-    def write(self, outfile1, outfile2, ptsfile1, ptsfile2):
-	self.openfile.write("set output '"+outfile2+"'\n"+ \
-	                   "set terminal postscript color solid\n"+ \
-	                   "set title 'Individual Transfer Activity (no null mvs)"+\
-			    plot_time()+"'\n"+ \
-	                   "set xlabel 'Date (year-month-day)'\n"+ \
-	                   "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
-	                   "set xdata time\n"+ \
-	                   "set xrange [ : ]\n"+ \
-                           "set size 1.5,1\n"+ \
-	                   "set ylabel 'Bytes per Transfer'\n"+ \
-	                   "set grid\n"+ \
-	                   "set format x \"%y-%m-%d\"\n"+ \
-	                   "set logscale y\n"+ \
-	                   "plot '"+ptsfile1+\
-	                   "' using 1:4 t 'reads' with points 3 1, "+ 
-			   "'"+ptsfile1+\
-			   "' using 1:3 t 'writes' with points 1 1\n"+ 
-	                   "set output '"+outfile1+"'\n"+ \
-	                   "set pointsize 2\n"+ \
-	                   "set nologscale y\n"+ \
-	                   "set yrange [0: ]\n"+ \
-			   "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
-			   "'"+ptsfile2+\
-	                   "' using 1:7 t 'mean file size' w points 3 5\n")
+    def write(self, outfile1, outfile2, ptsfile1, ptsfile2,extra=None):
+        long_string="set output '"+outfile2+"'\n"+ \
+                     "set terminal postscript color solid\n"
+        if ( extra == None ) :  
+            long_string = long_string + "set title 'Individual Transfer Activity (no null mvs)"
+        else:
+            long_string = long_string + "set title '"+extra+": Individual Transfer Activity (no null mvs)"
+        long_string = long_string + plot_time()+"'\n"+ \
+                      "set xlabel 'Date (year-month-day)'\n"+ \
+                      "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                      "set xdata time\n"+ \
+                      "set xrange [ : ]\n"+ \
+                      "set size 1.5,1\n"+ \
+                      "set ylabel 'Bytes per Transfer'\n"+ \
+                      "set grid\n"+ \
+                      "set format x \"%y-%m-%d\"\n"+ \
+                      "set logscale y\n"+ \
+                      "plot '"+ptsfile1+\
+                      "' using 1:4 t 'reads' with points 3 1, "+\
+                      "'"+ptsfile1+\
+                      "' using 1:3 t 'writes' with points 1 1\n"+\
+                      "set output '"+outfile1+"'\n"+ \
+                      "set pointsize 2\n"+ \
+                      "set nologscale y\n"+ \
+                      "set yrange [0: ]\n"+ \
+                      "plot '"+ptsfile1+"' using 1:2 t '' w impulses, "+\
+                      "'"+ptsfile2+\
+                      "' using 1:7 t 'mean file size' w points 3 5\n"
+        self.openfile.write(long_string)
 
 class XferDataFile(EnPlot):
 
-    def __init__(self, dir, bpdfile):
+    def __init__(self, dir, bpdfile,sg=None):
 	self.bpdfile = bpdfile
 	EnPlot.__init__(self, dir, enstore_constants.XFER_FILE)
+        self.sg = sg
+        if ( self.sg != None ) : 
+            self.name = self.name+"_"+self.sg
+            self.dir   = dir
+            self.ptsfile    = self.file_name+"_"+self.sg+PTS
+            self.tmpptsfile = self.file_name+"_"+self.sg+TMP+PTS
+            self.psfile     = self.file_name+"_"+self.sg+enstore_constants.PS
+            self.gnufile    = self.file_name+GNU
+            
+
+
 	self.logfile = "%s/%s%s"%(dir, enstore_constants.XFERLOG_FILE,
 				  enstore_constants.PS)
 
     # make the file with the plot points in them
     def plot(self, data):
 	# write out the data points
-	for [xpt, ypt, type, mover, drive_id] in data:
-	    if type == WRITE:
-		# this was a write request
-		self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
-	    else:
-		# this was a read request
-		self.openfile.write("%s %s 0 %s\n"%(xpt, ypt, ypt))
+	for [xpt, ypt, type, mover, drive_id, sg ] in data:
+            if ( self.sg == None or self.sg == sg ) :
+                if type == WRITE:
+                    # this was a write request
+                    self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
+                else:
+                    # this was a read request
+                    self.openfile.write("%s %s 0 %s\n"%(xpt, ypt, ypt))
 
 	# we must create our gnu plot command file too
 	gnucmds = XferGnuFile(self.gnufile)
 	gnucmds.open('w')
-	gnucmds.write(self.psfile, self.logfile, self.ptsfile, self.bpdfile)
+        gnucmds.write(self.psfile, self.logfile, self.ptsfile, self.bpdfile,self.sg)
+            
 	gnucmds.close()
 
     def install(self, dir):
@@ -645,7 +663,7 @@ class BpdDataFile(EnPlot):
     def sum_data(self, data):
 	self.read_ctr = 0
 	self.write_ctr = 0
-	for [xpt, ypt, type, mover, drive_id] in data:
+	for [xpt, ypt, type, mover, drive_id, sg] in data:
 	    adate = xpt[0:10]
             fypt = string.atof(ypt)
 	    day = self.ndata[adate]

@@ -18,6 +18,7 @@ import enstore_constants
 import accounting_query
 
 LOGFILE_DIR = "logfile_dir"
+XFER_SIZE   = "xfer-size"
 
 class InquisitorPlots:
 
@@ -162,9 +163,25 @@ class InquisitorPlots:
         # open connection to db.
         self.open_db_connection()
 
+        # Dmitry:
+        # Kludge: this seems like  the only way I can get storage groups efficiently
+        #
+
+#        res=self.acc_db.query("select distinct(storage_group) from encp_xfer_average_by_storage_group")
+        storage_groups = []
+#         for row in res.getresult():
+#            if not row:
+#                continue
+#            storage_groups.append(row[0])
+
+        storage_groups.append("cms");
+        storage_groups.append("minos");
+        
+
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
 	# the file at the beginning of the line. do not count any null moves.
+
 	encpfile = enstore_files.EnEncpDataFile("%s* /dev/null"%(prefix,), ofn,
 						"-e %s"%(Trace.MSG_ENCP_XFER,),
 						self.logfile_dir,
@@ -172,9 +189,11 @@ class InquisitorPlots:
 	# only extract the information from the newly created file that is
 	# within the requested timeframe.
 	encpfile.open('r')
+        os.system("cp %s %s_1"%(encpfile.file_name,encpfile.file_name,))
         encpfile.read_and_parse(self.start_time, self.stop_time, prefix, self.media_changer)
         encpfile.close()
         encpfile.cleanup(self.keep, self.keep_dir)
+
 
         # only do the plotting if we have some data
         if encpfile.data:
@@ -190,20 +209,30 @@ class InquisitorPlots:
 	    mbpdfile.plot(bpdfile.write_ctr)
 	    mbpdfile.close()
 	    mbpdfile.install(self.html_dir)
-
+            
             xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                   mbpdfile.ptsfile)
             xferfile.open()
             xferfile.plot(encpfile.data)
             xferfile.close()
             xferfile.install(self.html_dir)
+            xferfile.cleanup(self.keep, self.keep_dir)
 
+            for sg in storage_groups:
+                
+                xferfile = enstore_plots.XferDataFile(self.output_dir,
+                                                      mbpdfile.ptsfile,sg)
+                xferfile.open()
+                xferfile.plot(encpfile.data)
+                xferfile.close()
+                xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
+                xferfile.cleanup(self.keep, self.keep_dir)
+                
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
 	    bpdfile.cleanup(self.keep, self.keep_dir)
 	    mbpdfile.cleanup(self.keep, self.keep_dir)
-            xferfile.cleanup(self.keep, self.keep_dir)
-        # close db connection
+
         self.close_db_connection()
 
     # make the plot showing queue movement for different storage groups plot
@@ -338,20 +367,7 @@ class InquisitorPlots:
                                        "Creating inq transfer plots")
 	    alt_key = string.strip(Trace.MSG_ENCP_XFER)
 	    self.encp_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
-	if mount:
-	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
-                                       "Creating inq mount plots")
-	    alt_key = string.strip(Trace.MSG_MC_LOAD_REQ)
-	    self.mount_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
-	if sg:
-	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
-                                       "Creating inq storage group plots")
-	    alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
-	    self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
-	if total_bytes:
-	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
-                                       "Creating inq total bytes summary plot")
-	    self.total_bytes_plot()
+
 
 	# update the inquisitor plots web page
 	if not self.no_plot_html:

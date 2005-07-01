@@ -676,7 +676,8 @@ class EnEncpDataFile(EnDataFile):
                 etime = enstore_functions2.strip_file_dir(encp_line.time)
                 self.data.append([string.replace(etime, prefix, ""), 
                                   encp_line.bytes, encp_line.direction, 
-                                  encp_line.mover, encp_line.drive_id])
+                                  encp_line.mover, encp_line.drive_id,
+                                  encp_line.storage_group])
         del encp_line
 
     def read_and_parse(self, start_time, stop_time, prefix, media_changer):
