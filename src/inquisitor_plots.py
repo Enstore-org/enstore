@@ -167,16 +167,12 @@ class InquisitorPlots:
         # Kludge: this seems like  the only way I can get storage groups efficiently
         #
 
-#        res=self.acc_db.query("select distinct(storage_group) from encp_xfer_average_by_storage_group")
+        res=self.acc_db.query("select distinct(storage_group) from encp_xfer_average_by_storage_group")
         storage_groups = []
-#         for row in res.getresult():
-#            if not row:
-#                continue
-#            storage_groups.append(row[0])
-
-        storage_groups.append("cms");
-        storage_groups.append("minos");
-        
+        for row in res.getresult():
+            if not row:
+                continue
+            storage_groups.append(row[0])
 
 	# always add /dev/null to the end of the list of files to search thru 
 	# so that grep always has > 1 file and will always print the name of 
