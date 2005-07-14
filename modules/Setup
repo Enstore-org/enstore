@@ -68,9 +68,18 @@ POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
 
+#The following lines are for including the correct quotas header file(s).
+SYS_QUOTA_H=`if [ -f /usr/include/sys/quota.h ]; then echo "-DHAVE_SYS_QUOTA_H"; else echo ""; fi`
+XFS_XQM_H=`if [ -f /usr/include/xfs/xqm.h ]; then echo "-DHAVE_XFS_XQM_H"; else echo ""; fi`
+SYS_FS_UFS_QUOTA_H=`if [ -f /usr/include/sys/fs/ufs_quota.h ]; then echo "-DHAVE_SYS_FS_UFS_QUOTA_H"; else echo ""; fi`
+
+#Combine the quotas into one line.
+QUOTAS=$(SYS_QUOTA_H) $(XFS_XQM_H) $(SYS_FS_UFS_QUOTA_H)
+
 # EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
 # EXfer EXfer.c  -D`uname` -D$(EXFER_THREADED) adler32.a
-EXfer EXfer.c  -D`uname` adler32.a $(POSIX4) $(RT)
+# EXfer EXfer.c  -D`uname` adler32.a $(POSIX4) $(RT)
+EXfer EXfer.c  -D`uname` $(QUOTAS) adler32.a $(POSIX4) $(RT)
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
