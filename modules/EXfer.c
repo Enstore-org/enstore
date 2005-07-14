@@ -28,6 +28,7 @@
 #include <setjmp.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <pthread.h>
@@ -54,6 +55,16 @@
 #    include <sys/mount.h>
 #  endif /* __linux__ */
 #endif /* STAND_ALONE */
+
+
+#ifdef HAVE_XFS_XQH_H
+#include <xfs/xqm.h>
+#elif defined(HAVE_SYS_FS_UFS_QUOTA_H)
+/* Only SunOS can get here? */
+#include <sys/fs/ufs_quota.h>
+#elif defined(HAVE_SYS_QUOTA_H)
+#include <sys/quota.h>
+#endif
 
 /***************************************************************************
  * constants and macros
@@ -268,6 +279,7 @@ void initEXfer(void);
 static PyObject * raise_exception(char *msg);
 static PyObject * EXfd_xfer(PyObject *self, PyObject *args);
 static PyObject * EXfd_ecrc(PyObject *self, PyObject *args);
+static PyObject * EXfd_quotas(PyObject *self, PyObject *args);
 #endif
 
 /*
@@ -497,6 +509,34 @@ static void* thread_monitor(void *monitor);
  */
 static unsigned int ecrc_readback(int fd);
 
+#ifdef Q_GETQUOTA
+/*
+ * Given a pathname, place in block_device the device on which
+ * the file is located.  The arguement bd_len is the length of the
+ * character array block_device.  The mount_point and mp_len do the same
+ * thing as block_device, but instead for the mount_point of the filesystem.
+ *
+ * block_device and mount_point should be at least PATH_MAX + 1 in length.
+ * Returns 0 on success, -1 on error.  Errno is set from lower system call.
+ */
+static int get_bd_name(char *name, char *block_device, size_t bd_len,
+		       char *mount_point, size_t mp_len);
+
+/*
+ * get_quotas():
+ *
+ * First arguement is a string containing the name of a block device.
+ * Examples: /dev/dsk/dks20d125s6
+ *           /dev/hda3
+ * Second arguement is eiter USER_QUOTA or GROUP_QUOTA.
+ * Third arguement is the memory address of a struct dqblk variable where
+ * the quota information is returned from.
+ *
+ * Returns 0 on success, -1 on error.  Errno is set.
+ */
+int get_quotas(char *block_device, int type, struct dqblk* my_quota);
+#endif /* Q_GETQUOTA */
+
 /*
  * is_stored_empty():
  * Returns true if the bin (aka bucket) 'bin' in the 'stored' global variable,
@@ -545,6 +585,9 @@ static int invalidate_cache_irix(char* abspath);
 #  endif /* __sgi */
 #endif /* STAND_ALONE */
 
+/* Useful for printing socket information to stderr. */
+static int print_socket_info(int fd);
+
 /***************************************************************************
  * globals
  **************************************************************************/
@@ -559,6 +602,8 @@ static char EXfd_xfer_Doc[] = "\
 fd_xfer(fr_fd, to_fd, no_bytes, blk_siz, crc_flag[, crc])";
 static char EXfd_ecrc_Doc[] = "\
 unsigned int ecrc(crc, &start_addr, memory_size)";
+static char EXfd_quotas_Doc[] = "\
+unsigned int get_quotas(char *block_device, int type, struct dqblk* my_quota)";
 
 /*  Module Methods table. 
  *
@@ -573,10 +618,11 @@ unsigned int ecrc(crc, &start_addr, memory_size)";
 static PyMethodDef EXfer_Methods[] = {
     { "fd_xfer",  EXfd_xfer,  1, EXfd_xfer_Doc},
     { "ecrc", EXfd_ecrc, 1, EXfd_ecrc_Doc},
+    { "quotas", EXfd_quotas, 1, EXfd_quotas_Doc},
     { 0, 0}        /* Sentinel */
 };
 
-#endif
+#endif /* ! STAND_ALONE */
 
 static size_t *stored;               /*pointer to array of bytes in each bin*/
 static char **buffer;                /*pointer to array of buffer bins*/
@@ -901,6 +947,141 @@ static void print_profile(struct profile *profile_data, int profile_count)
 }
 #endif /*PROFILE*/
 
+static int print_socket_info(int fd)
+{
+   struct stat sock_stats;
+
+   /* Make sure this is a socket. */
+   if(fstat(fd, &sock_stats) < 0)
+   {
+      return -1;
+   }
+   if(!S_ISSOCK(sock_stats.st_mode))
+   {
+      return -1;
+   }
+   
+   /* Get any pending socket errors. */
+   {
+      int socket_error = 0;
+      socklen_t socklen;
+      char error_message[2048];
+
+      socklen = sizeof(socket_error);
+      if(getsockopt(fd, SOL_SOCKET, SO_ERROR,
+		    &socket_error, &socklen) < 0)
+      {
+	 (void) snprintf(error_message, 2047,
+			 "posix_read: getsockopt() failed: %d\n", errno);
+	 (void) write(STDERR_FILENO, error_message, strlen(error_message));
+      }
+      if(socket_error)
+      {
+	 (void) snprintf(error_message, 2047,
+			 "posix_read: pending socket error: %d\n", socket_error);
+	 (void) write(STDERR_FILENO, error_message, strlen(error_message));
+      }
+   }
+
+   /* Determine if the socket is still connected. */
+   {
+      struct sockaddr peer;
+      socklen_t socklen;
+      char error_message[2048];
+
+      socklen = sizeof(peer);
+      if(getpeername(fd, &peer, &socklen) < 0)
+      {
+	 (void) snprintf(error_message, 2047,
+			 "posix_read: getpeername() failed: %d\n", errno);
+	 (void) write(STDERR_FILENO, error_message, strlen(error_message));
+      }
+   }
+
+   /* Get the number of bytes in the receive socket buffer. */
+   {
+      int nbytes;
+      char error_message[2048];
+
+      if(ioctl(fd, FIONREAD, &nbytes) < 0)
+      {
+	 (void) snprintf(error_message, 2047,
+			 "posix_read: ioctl(FIONREAD) failed: %d\n", errno);
+	 (void) write(STDERR_FILENO, error_message, strlen(error_message));
+      }
+      else
+      {
+	 (void) fprintf(stderr, "posix_read: ioctl(FIONREAD): %d\n",
+			nbytes);
+      }
+   }
+
+   /* Get the socket state. */
+   {
+#ifdef __linux__
+      FILE        *proc_net_tcp_fp;
+      char        line[2048];
+      char        inode[50];  /* for string comparision */
+      long        state = 0;
+      char        error_message[2048];
+      char states[][12] = {"UNKNOWN",
+			   "ESTABLISHED",
+			   "SYN_SENT",
+			   "SYN_RECV",
+			   "FIN_WAIT1",
+			   "FIN_WAIT2",
+			   "TIME_WAIT",
+			   "CLOSE",
+			   "CLOSE_WAIT",
+			   "LAST_ACK",
+			   "LISTEN",
+			   "CLOSING"
+      };
+
+      /* Open the /proc file for read. */
+      if((proc_net_tcp_fp = fopen("/proc/net/tcp", "r")) == NULL)
+      {
+	 (void) snprintf(error_message, 2047,
+			 "posix_read: open failed: %d\n", errno);
+	 (void) write(STDERR_FILENO, error_message, strlen(error_message));
+	 goto skip;
+      }
+
+      /* Get the inode (as a string for comparison). */
+      (void) snprintf(inode, 49, "%lu",
+		      (unsigned long) (sock_stats.st_ino));
+
+      errno = 0;
+      /* Obtain the line we want from /proc. */
+      while(fgets(line, 2047, proc_net_tcp_fp) != NULL)
+      {
+	 if(strstr(line, inode) != NULL)
+	 {
+#if 0
+	    /* Usefull for debugging. */
+	    (void) write(STDERR_FILENO, line, strlen(line));
+#endif
+	    /* When the line with the matching inode is found, pull out the
+	     * state info (bytes 33-37) and convert to a long. */
+	    state = strtol(&(line[33]), NULL, 16);
+	    break;
+	 }
+      }
+
+      fclose(proc_net_tcp_fp);
+
+      if(state)
+      {
+	 if(state > 0 && state <= 11)
+	    (void) fprintf(stderr, "posix_read: socket state: %s\n",
+			   states[state]);
+      }
+#endif /* __linux__ */
+   }
+  skip: /* Jump here if we got an error opening /proc/net/tcp. */
+   
+   return 0;
+}
 
 /***************************************************************************/
 /***************************************************************************/
@@ -1746,6 +1927,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 			  struct transfer* info)
 {
   ssize_t sts = 0;  /* Return value from various C system calls. */
+  int remember_errno;
   struct stat stats; 
 
   errno = 0;
@@ -1765,8 +1947,18 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
     {
        if(S_ISSOCK(stats.st_mode))
        {
-	  /* If the connection is closed, give better error. */
-	  errno = ENOTCONN;
+	  /* Store this so that we can restore it after print_socket_info(). */
+	  remember_errno = errno;
+
+	  /* Print out socket information to standard error. */
+	  print_socket_info(info->fd);
+
+	  /*
+	   * If the connection is closed, give better error.
+	   * Set the errno back to what it was before print_socket_info()
+	   * was called.
+	   */
+	  errno = ((remember_errno == 0) ? ENOTCONN : remember_errno);
        }
     }
      
@@ -1774,6 +1966,7 @@ static ssize_t posix_read(void *dst, size_t bytes_to_transfer,
 		       "fd read timeout", 0.0, __FILE__, __LINE__);
     return -1;
   }
+
   return sts;
 }
 
@@ -2318,6 +2511,353 @@ static unsigned int ecrc_readback(int fd)
 
   return crc;
 }
+
+/***************************************************************************/
+/***************************************************************************/
+
+/*
+ * Given a pathname, place in block_device the device on which
+ * the file is located.  The arguement bd_len is the length of the
+ * character array block_device.  The mount_point and mp_len do the same
+ * thing as block_device, but instead for the mount_point of the filesystem.
+ *
+ * block_device and mount_point should be at least PATH_MAX + 1 in length.
+ * Returns 0 on success, -1 on error.  Errno is set from lower system call.
+ */
+static int get_bd_name(char *name, char *block_device, size_t bd_len,
+		       char *mount_point, size_t mp_len)
+{
+   /* for reading /etc/mtab */
+   FILE   *mtab_fp;
+   char   mtab_line[3 * PATH_MAX + 3];
+   void   *index, *index2;
+   size_t substring_length;
+   char   cur_block_device[PATH_MAX + 1];
+   char   cur_mount_point[PATH_MAX + 1];
+   void*  start_from;
+   
+   struct stat mp_stat; /* mount point stat */
+   struct stat bd_stat; /* block device stat */
+
+#ifdef __sun
+   const int TAB = 9;
+   int separator = TAB;
+#else
+   const int SPACE = 32;
+   int separator = SPACE;
+#endif
+
+   char   filename[PATH_MAX + 1];
+   struct stat filestat;
+
+   size_t bd_test_len; /* Does found block device fit in block_device? */
+   size_t mp_test_len; /* Does found mount point fit in mount_point? */
+   
+   /*
+    * Resolve the name given on the command line to the full absolute
+    * path name for the file.
+    */
+   if(realpath(name, filename) == NULL)
+   {
+      return -1;
+   }
+   if(stat(filename, &filestat) < 0)
+   {
+      return -1;
+   }
+
+   /*
+    * Read in the /etc/mtab file looking for the mount point that matches
+    * the file specifice in the command line.  We are looking for the
+    * block device name that matches the mount point.
+    */
+
+#ifdef __sun
+   mtab_fp = fopen("/etc/mnttab", "r");
+#else
+   mtab_fp = fopen("/etc/mtab", "r");
+#endif
+   while(fgets(mtab_line, 2047, mtab_fp) != NULL)
+   {
+      start_from = mtab_line;
+      if((index = strchr(start_from, separator)) != NULL)
+      {
+	 /* copy out the block disk device */
+	 substring_length = (size_t) index - (size_t) mtab_line;
+	 (void) strncpy(cur_block_device, mtab_line,
+			(size_t) substring_length);
+	 cur_block_device[substring_length] = (char) 0;
+
+	 start_from = (void*) ((size_t) index + 1);
+	 if((index2 = strchr(start_from, separator)) != NULL)
+	 {
+	    /* copy out the mount point */
+	    substring_length = (size_t) index2 - (size_t) start_from;
+	    (void) strncpy(cur_mount_point, start_from,
+			   (size_t) substring_length);
+	    cur_mount_point[substring_length] = (char) 0;
+	 }
+
+	 /* Get the stat of the mount point. */
+	 if(stat(cur_mount_point, &mp_stat) < 0)
+	 {
+	    continue;
+	 }
+
+	 /* Determine if the current mount point's device id read from
+	  * the /etc/mtab file matches the device id of the file passed
+	  * in by the user. */
+
+	 if(mp_stat.st_dev == filestat.st_dev)
+	 {
+	    /* Get the stat of the block device. */
+	    if(stat(cur_block_device, &bd_stat) < 0)
+	    {
+	       continue;
+	    }
+
+	    /* Determine if the current block device is indeed a block
+	     * special file.  Some OSes and filesystems (i.e. IRIX with
+	     * losf) will have the wrong devices being matched by just
+	     * comparing the device ids of the mount point (done above). */
+	    if(S_ISBLK(bd_stat.st_mode))
+	    {
+	       bd_test_len = strlen(cur_block_device);
+	       mp_test_len = strlen(cur_mount_point);
+	       if(bd_test_len < bd_len && mp_test_len < mp_len)
+	       {
+		  (void) strncpy(mount_point, cur_mount_point,
+		                 mp_test_len + 1);
+		  (void) strncpy(block_device, cur_block_device,
+				 bd_test_len + 1);
+		  return 0;
+	       }
+	       else
+	       {
+		  errno = ERANGE;
+		  return -1;
+	       }
+	    }
+	 }
+      }
+   }
+
+   errno = ESRCH;
+   return -1;
+}
+
+
+/* These are two quota specific defines.  They represent getting quota
+ * information based an uid and gid, respectively. */
+#define USER_QUOTA  0
+#define GROUP_QUOTA 1
+
+/* Some OSes use different names for the dqblk struct's fields. */
+#if defined(__linux__) || defined(__bsdi__)
+#define dqb_btimelimit dqb_btime
+	 
+#define dqb_fhardlimit dqb_ihardlimit
+#define dqb_fsoftlimit dqb_isoftlimit
+#define dqb_curfiles   dqb_curinodes
+#define dqb_ftimelimit dqb_itime
+#endif
+
+/* These are the indexes for the quota output. */
+const unsigned long BLOCK_HARD_LIMIT = 1U;
+const unsigned long BLOCK_SOFT_LIMIT = 2U;
+const unsigned long CURRENT_BLOCKS   = 3U;
+const unsigned long FILE_HARD_LIMIT  = 4U;
+const unsigned long FILE_SOFT_LIMIT  = 5U;
+const unsigned long CURRENT_FILES    = 6U;
+const unsigned long BLOCK_TIME_LIMIT = 7U;
+const unsigned long FILE_TIME_LIMIT  = 8U;
+
+/*
+ * get_quotas():
+ *
+ * First arguement is a string containing the name of a block device.
+ * Examples: /dev/dsk/dks20d125s6
+ *           /dev/hda3
+ * Second arguement is eiter USER_QUOTA or GROUP_QUOTA.
+ * Third arguement is the memory address of a struct dqblk variable where
+ * the quota information is returned from.
+ *
+ * Returns 0 on success, -1 on error.  Errno is set.
+ */
+
+#ifdef Q_QUOTACTL
+
+/*
+ * Use the Q_QUOTACTL to obtain the quota information.  (Sunos)
+ */
+
+int get_quotas(char *block_device, int type, struct dqblk* my_quota)
+{
+   /* In this case block_device really refers to the name of the quotas
+    * file at the top of the file system. */
+
+   int qf_fd;  /* quota file fd */
+   char quota_filename[PATH_MAX + 1];
+   struct quotctl quota_ioctl;
+
+   {
+       int op;
+       uid_t uid;
+       caddr_t addr;
+     };
+
+   if(type == USER_QUOTA)
+   {
+      quota_ioctl.op = Q_GETQUOTA;
+      quota_ioctl.uid = geteuid();
+      quota_ioctl.addr = (caddr_t) my_quota;
+   }
+   else
+   {
+      /* SunOS does not support group quotas. */
+      errno = EINVAL;
+      return -1;
+   }
+
+   (void) snprintf(quota_filename, PATH_MAX, "%s/%s", block_device, "quotas");
+   
+   if((qf_fd = open(quota_filename, O_RDONLY)) < 0)
+   {
+      return -1;
+   }
+
+   if(ioctl(qf_fd, Q_QUOTACTL, &quota_ioctl) < 0)
+   {
+      (void) close(qf_fd);
+      return -1;
+   }
+
+   return 0;
+}
+#elif defined(Q_GETQUOTA)
+
+/*
+ * Use the quotactl() system call to obtain the quota information.
+ */
+
+int get_quotas(char *block_device, int type, struct dqblk* my_quota)
+{
+   int cmd;
+   unsigned int gen_id;  /* generic id */
+#ifdef Q_XGETQUOTA
+   int remember_errno;
+#endif
+   
+   if(type != USER_QUOTA && type != GROUP_QUOTA)
+   {
+      errno = EINVAL;
+      return -1;
+   }
+
+#ifdef QCMD
+   if(type == USER_QUOTA)
+   {
+      cmd = QCMD(Q_GETQUOTA, USRQUOTA);  /* user */
+      gen_id = geteuid();
+   }
+   else
+   {
+      cmd = QCMD(Q_GETQUOTA, GRPQUOTA);  /* group */
+      gen_id = getegid();
+   }
+#else
+   if(type == USER_QUOTA)
+   {
+      cmd = Q_GETQUOTA;  /* user */
+      gen_id = geteuid();
+   }
+   else
+   {
+      cmd = Q_GETGQUOTA; /* group */
+      gen_id = getegid();
+   }
+#endif
+
+   if(quotactl(cmd, block_device, gen_id, (caddr_t) my_quota) == 0)
+   {
+      return 0;
+   }
+   
+   
+#ifdef Q_XGETQUOTA
+/*
+ * We need to check for quotas a little bit differently if this is an
+ * XFS filesystem.
+ */
+
+   remember_errno = errno;  /* Remember this incase it is the better error. */
+   
+
+   if(errno == EINVAL || errno == ENOTSUP)
+   {
+      struct fs_disk_quota my_disk_quota; /* for XFS */
+
+#ifdef QCMD
+      if(type == USER_QUOTA)
+	 cmd = QCMD(Q_XGETQUOTA, USRQUOTA);  /* user */
+      else
+	 cmd = QCMD(Q_XGETQUOTA, GRPQUOTA);  /* group */
+#else
+      if(type == USER_QUOTA)
+	 cmd = Q_XGETQUOTA;  /* user */
+      else
+	 cmd = Q_XGETGQUOTA; /* group */
+#endif
+   
+      if(quotactl(cmd, block_device, gen_id, (caddr_t) &my_disk_quota) == 0)
+      {
+
+	 /* Store the equivalent fields in the fs_disk_quota struct into
+	  * the dqblk struct.
+	  */
+	 
+	 my_quota->dqb_bhardlimit = my_disk_quota.d_blk_hardlimit;
+	 my_quota->dqb_bsoftlimit = my_disk_quota.d_blk_softlimit;
+	 my_quota->dqb_curblocks = my_disk_quota.d_bcount;
+	 my_quota->dqb_btimelimit = my_disk_quota.d_btimer;
+
+	 my_quota->dqb_fhardlimit = my_disk_quota.d_ino_hardlimit;
+	 my_quota->dqb_fsoftlimit = my_disk_quota.d_ino_softlimit;
+	 my_quota->dqb_curfiles = my_disk_quota.d_icount;
+	 my_quota->dqb_ftimelimit = my_disk_quota.d_itimer;
+	 
+	 return 0;
+      }
+   }
+
+   if(errno == EINVAL || errno == ENOTSUP)
+   {
+      errno = remember_errno;
+   }
+
+
+#endif /* Q_XGETQUOTA */
+
+   return -1;
+}
+
+#else
+
+/*
+ * Niether Q_QUOTACTL or Q_GETQUOTA are defined.  Return error stating that
+ * we are out of luck with respect to any quotas.
+ */
+
+/* Since quota header files were not included, we need to fake this type. */
+typedef struct dqblk {int dummy;} dqblk;
+
+int get_quotas(char *block_device, int type, struct dqblk* my_quota)
+{
+   errno = ENOTSUP;
+   return -1;
+}
+
+#endif /* Q_QUOTACTL */
 
 /***************************************************************************/
 /***************************************************************************/
@@ -4006,6 +4546,84 @@ EXfd_ecrc(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+EXfd_quotas(PyObject *self, PyObject *args)
+{
+#ifdef Q_GETQUOTA
+  char *file_target;
+  struct dqblk user_quota;
+  struct dqblk group_quota;
+  char correct_block_device[PATH_MAX + 1];
+  char correct_mount_point[PATH_MAX + 1];
+  int sts;
+  int user_rc, group_rc;  /* rc == Return Code */
+  PyObject *my_user_quotas;
+  PyObject *my_group_quotas;
+  PyObject *quota_list = PyList_New(0);
+
+  /* Get the parameter. */
+  sts = PyArg_ParseTuple(args, "s", &file_target);
+  if (!sts)
+     return(raise_exception("fd_quotas - invalid parameter"));
+
+  (void) memset(&user_quota, 0, sizeof(struct dqblk));
+  (void) memset(&group_quota, 0, sizeof(struct dqblk));
+
+  /*
+   * Obtain the quotas of the filesystem file_target is on.
+   */
+  
+  if(get_bd_name(file_target, correct_block_device, (size_t) PATH_MAX,
+		 correct_mount_point, (size_t) PATH_MAX) < 0)
+  {
+     return(raise_exception("fd_quotas - block device not found"));
+  }
+
+  /*
+   * Obtain the quotas for the file.  First look for any user quotas.
+   * Then look for any group quotas.
+   */
+  
+  if((user_rc = get_quotas(correct_block_device,
+			  USER_QUOTA, &user_quota)) == 0)
+  {
+     my_user_quotas = Py_BuildValue("(O,O,O,O,O,O,O,O)",
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_bhardlimit),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_bsoftlimit),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_curblocks),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_fhardlimit),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_fsoftlimit),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_curfiles),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_btimelimit),
+	PyLong_FromUnsignedLong((unsigned long)user_quota.dqb_ftimelimit)
+	);
+
+     PyList_Append(quota_list, my_user_quotas);
+  }
+  if((group_rc = get_quotas(correct_block_device,
+			   GROUP_QUOTA, &group_quota)) == 0)
+  {
+     my_group_quotas = Py_BuildValue("(O,O,O,O,O,O,O,O)",
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_bhardlimit),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_bsoftlimit),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_curblocks),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_fhardlimit),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_fsoftlimit),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_curfiles),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_btimelimit),
+	PyLong_FromUnsignedLong((unsigned long)group_quota.dqb_ftimelimit)
+	);
+
+     PyList_Append(quota_list, my_group_quotas);
+  }
+
+  return quota_list;
+#else
+  /* Quotas are not available. */
+  return PyList_New(0);
+#endif /* Q_GETQUOTA */
+}
+
+static PyObject *
 EXfd_xfer(PyObject *self, PyObject *args)
 {
     int		 fr_fd;
@@ -4170,6 +4788,25 @@ initEXfer()
     EXErrObject = PyErr_NewException("EXfer.error", NULL, NULL);
     if (EXErrObject != NULL)
 	PyDict_SetItemString(d,"error",EXErrObject);
+
+    /* Add members to the modules.  These members are the positional
+     * indexes for the quota tuple. */
+    PyModule_AddObject(m, "BLOCK_HARD_LIMIT",
+		       PyLong_FromUnsignedLong(BLOCK_HARD_LIMIT));
+    PyModule_AddObject(m, "BLOCK_SOFT_LIMIT",
+		       PyLong_FromUnsignedLong(BLOCK_SOFT_LIMIT));
+    PyModule_AddObject(m, "CURRENT_BLOCKS",
+		       PyLong_FromUnsignedLong(CURRENT_BLOCKS));
+    PyModule_AddObject(m, "FILE_HARD_LIMIT",
+		       PyLong_FromUnsignedLong(FILE_HARD_LIMIT));
+    PyModule_AddObject(m, "FILE_SOFT_LIMIT",
+		       PyLong_FromUnsignedLong(FILE_SOFT_LIMIT));
+    PyModule_AddObject(m, "CURRENT_FILES",
+		       PyLong_FromUnsignedLong(CURRENT_FILES));
+    PyModule_AddObject(m, "BLOCK_TIME_LIMIT",
+		       PyLong_FromUnsignedLong(BLOCK_TIME_LIMIT));
+    PyModule_AddObject(m, "FILE_TIME_LIMIT",
+		       PyLong_FromUnsignedLong(FILE_TIME_LIMIT));
 }
 
 #else
