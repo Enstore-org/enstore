@@ -2324,7 +2324,7 @@ def inputfile_check(input_files, e):
                 raise EncpError(errno.EACCES, inputlist[i],
                                 e_errors.USERERROR, {'infile' : inputlist[i]})
 
-            #Since, the file exists, we can get its stats.
+            #Since the file exists, we can get its stats.
             statinfo = os.stat(inputlist[i])
 
             # input files can't be directories
@@ -6045,6 +6045,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
     bfid_brand = None
     sum_size = 0L
+    sum_files = 0L
     outputfile_dict = {}
     
     vols = requests_per_vol.keys()
@@ -6359,14 +6360,60 @@ def verify_read_request_consistancy(requests_per_vol, e):
             except TypeError:
                 pass #If the size is not known (aka None) move on.
 
+            #sum up the file count to verify there is sufficent disk space.
+            sum_files = sum_files + 1L
+
         if request['outfile'] != "/dev/null":
             fs_stats = os.statvfs(get_directory_name(request['outfile']))
+
+            #Make sure we won't exeed the maximum size of the filesystem.
             bytes_free = long(fs_stats[statvfs.F_BAVAIL]) * \
                          long(fs_stats[statvfs.F_FRSIZE])
             if  bytes_free < sum_size:
-                msg = "Disk is full.  %d bytes available for %d requested." % \
-                      (bytes_free, sum_size)
-                raise EncpError(None, str(msg), e_errors.USERERROR, request)
+                message = \
+                     "Disk is full.  %d bytes available for %d requested." % \
+                     (bytes_free, sum_size)
+                raise EncpError(None, str(message),
+                                e_errors.USERERROR, request)
+
+            #Make sure we won't exeed any quotas.
+            fs_quotas = EXfer.quotas("/home/zalokar")
+            for quota in fs_quotas:
+                #Transfer bytes into blocks first.
+                sum_blocks = (sum_size / long(fs_stats[statvfs.F_BSIZE])) + 1
+
+                #Test if we will exeed disk usage quota.
+                if quota[EXfer.CURRENT_BLOCKS] + sum_blocks > \
+                       quota[EXfer.BLOCK_HARD_LIMIT]:
+                    #User will exeed their quota.
+                    message = "Quota (%d) would be exeeded (%d).  " % \
+                              (quota[EXfer.BLOCK_HARD_LIMIT],
+                               quota[EXfer.CURRENT_BLOCKS] + sum_blocks)
+                    raise EncpError(None, str(message),
+                                    e_errors.USERERROR, request)
+
+                #Test if we will exeed file count quota.
+                if quota[EXfer.CURRENT_FILES] + sum_files > \
+                       quota[EXfer.FILE_HARD_LIMIT]:
+                    #User will exeed their file quota.
+                    message = \
+                          "File count quota (%d) would be exeeded (%d).  " % \
+                          (quota[EXfer.FILE_HARD_LIMIT],
+                           quota[EXfer.CURRENT_FILES] + sum_files)
+                    raise EncpError(None, str(message),
+                                    e_errors.USERERROR, request)
+
+                #Test if we are near disk usage quota.
+                if quota[EXfer.CURRENT_BLOCKS] + sum_blocks > \
+                       quota[EXfer.BLOCK_SOFT_LIMIT]:
+                    message = "WARNING: Transfer will exeed soft quota limit."
+                    sys.stderr.write(message + "\n")
+
+                #Test if we are near file count quota.
+                if quota[EXfer.CURRENT_FILES] + sum_files > \
+                       quota[EXfer.FILE_SOFT_LIMIT]:
+                    message = "WARNING: Transfer will exeed soft quota limit."
+                    sys.stderr.write(message + "\n")
 
 #######################################################################
 
