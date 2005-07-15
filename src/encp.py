@@ -88,6 +88,12 @@ if not hasattr(socket, "IPTOS_RELIABILITY"):
     socket.IPTOS_RELIABILITY = 0x04              #4
 if not hasattr(socket, "IPTOS_MINCOST"):
     socket.IPTOS_IPTOS_MINCOST = 0x02            #2
+if not hasattr(socket, "SHUT_RD"):
+    socket.SHUT_RD = 0
+if not hasattr(socket, "SHUT_WR"):
+    socket.SHUT_WR = 1
+if not hasattr(socket, "SHUT_RDRW"):
+    socket.SHUT_RDWR = 2
 
 # Forward declaration.  It is assigned in get_clerks().
 __acc = None
@@ -3731,7 +3737,8 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
         # [6] write time
         # [7] filename of error
         # [8] line number that the error occured on
-        if msg.args[1] == errno.ENOSPC: #This should be non-retriable.
+        if msg.args[1] == errno.ENOSPC \
+               or msg.args[1] == errno.EDQUOT: #These should be non-retriable.
             error_type = e_errors.NOSPACE
         elif msg.args[1] == errno.EBUSY: #This should be non-retriable.
             error_type = e_errors.DEVICE_ERROR
@@ -3750,7 +3757,15 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
             EXfer_ticket['write_time'] = msg.args[6]
             EXfer_ticket['filename'] = msg.args[7]
             EXfer_ticket['line_number'] = msg.args[8]
-            
+
+        #This should only be done here on the data socket.  Otherwise,
+        # the mover may continue to wait on the data socket while encp
+        # is waiting on the control socket.
+        if is_read(e):
+            close_descriptors(input_file_obj)
+        else:
+            close_descriptors(output_file_obj)
+
         Trace.log(e_errors.WARNING, "EXfer file transfer error: %s" %
                   (str(msg),))
         Trace.message(TRANSFER_LEVEL,
@@ -3930,7 +3945,6 @@ def verify_file_size(ticket, encp_intf = None):
             pnfs_filesize = ticket['fc']['size']
             pnfs_inode = None
         else:
-            print "1111111111111111111111111111111111111"
             ticket['status'] = (e_errors.OSERROR, str(detail))
             return
 
