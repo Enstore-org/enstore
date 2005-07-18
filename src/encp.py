@@ -886,6 +886,24 @@ def e_access(path, mode):
 
 ############################################################################
 
+#Return True if the file passed in is a pnfs file with either layer 1 or
+# or layer 4 set.  False otherwise.  OSError, and IOError exceptions may
+# be thrown for other errors.
+def do_layers_exist(pnfs_filename):
+
+    if not pnfs.is_pnfs_path(pnfs_filename, check_name_only = 1):
+        return False
+    
+    if pnfs_filename:
+        p = pnfs.Pnfs(pnfs_filename)
+        if p.readlayer(1) or p.readlayer(4):
+            return True
+
+    return False
+
+
+############################################################################
+
 def get_original_request(request_list, index_of_copy):
     oui = request_list[index_of_copy].get('original_unique_id', None)
     if oui:  #oui == Original Unique Id
@@ -907,8 +925,6 @@ def did_original_succeed(request_list, index_of_copy):
             return False #Original not done yet or failed.
             
     return True #Is an original.
-
-
 
 #Return the number of files in the list left to transfer.
 def requests_outstanding(request_list):
@@ -4113,7 +4129,7 @@ def internal_handle_retries(request_list, request_dictionary, error_dictionary,
 def handle_retries(request_list, request_dictionary, error_dictionary,
                    encp_intf, listen_socket = None, udp_server = None,
                    control_socket = None, local_filename = None,
-                   external_label = None):
+                   external_label = None, pnfs_filename = None):
     #Extract for readability.
     max_retries = encp_intf.max_retry
     max_submits = encp_intf.max_resubmit
@@ -4258,6 +4274,29 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lf_status = (e_errors.OSERROR,
                              "Noticed error checking local file:" + str(msg))
 
+    pf_status = (e_errors.OK, None)
+    skip_layer_cleanup = False
+    if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
+           and pnfs_filename:
+        #If the user wants use to specifically check if another encp has
+        # written (layers 1 or 4) to this onfs file; now is the time to check.
+        try:
+            if do_layers_exist(pnfs_filename):
+                #The do_layers_exist() function should never give a
+                # exist error for the 'real' file.  Any EEXIST errors
+                # from this section should only occur if layer 1 or 4 is
+                # already set.
+                raise EncpError(errno.EEXIST,
+                                "Layer 1 and layer 4 are already set.",
+                                e_errors.FILE_MODIFIED,
+                                request_dictionary)
+        except (OSError, IOError), msg:
+            pf_status = (e_errors.PNFS_ERROR, str(msg))
+        except EncpError, msg:
+            pf_status = (msg.type, str(msg))
+            if getattr(msg, "errno", None) == errno.EEXIST:
+                skip_layer_cleanup = True
+                                
     #The volume clerk set the volume NOACCESS.
     if not e_errors.is_ok(vc_status):
         status = vc_status
@@ -4267,6 +4306,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #Set the status if the local file could not be stat-ed.
     elif not e_errors.is_ok(lf_status):
         status = lf_status
+    #Set the status if the pnfs file had layers already set.
+    elif not e_errors.is_ok(pf_status):
+        status = pf_status
     #Use the ticket status.
     else:
         status = dict_status
@@ -4291,13 +4333,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     #If the transfer is a write from dcache, we need to clear any information
     # that resides in layer 1 and/or layer 4.
     elif is_write(encp_intf) and encp_intf.put_cache:
-        try:
-            p = pnfs.Pnfs(outfile)
-            p.writelayer(1, "")
-            p.writelayer(4, "")
-        except (IOError, OSError):
-            #Something is very wrong, deal with it later.
-            pass
+        #If another encp set layer 1 and/or 4 while this encp was waiting
+        # in the queue, the layer test above will set skip_layer_cleanup
+        # to true and thus at this point be skipping the deletion of the
+        # metadata set by the other encp process.
+        if not skip_layer_cleanup:
+            try:
+                p = pnfs.Pnfs(outfile)
+                p.writelayer(1, "")
+                p.writelayer(4, "")
+            except (IOError, OSError):
+                #Something is very wrong, deal with it later.
+                pass
 
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
@@ -5672,7 +5719,8 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         done_ticket = open_local_file(work_ticket, e)
 
         result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e)
+                                     done_ticket, e,
+                                     pnfs_filename = work_ticket['outfile'])
         
         if e_errors.is_retriable(result_dict['status'][0]):
             close_descriptors(control_socket, data_path_socket)
@@ -5763,6 +5811,21 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         #Update the last access and modification times respecively.
         update_times(done_ticket['infile'], done_ticket['outfile'])
+
+        #Verify that setting times has been done successfully.
+        #
+        #Also verify, before calling set_pnfs_settings(), that another
+        # encp has not yet set layer 1 or 4 (very small chance of race
+        # condition that another encp would set them between this check
+        # and them being set).
+        result_dict = handle_retries([work_ticket], work_ticket,
+                                     done_ticket, e,
+                                     pnfs_filename = done_ticket['outfile'])
+        print result_dict
+        if e_errors.is_retriable(result_dict['status'][0]):
+            continue
+        elif e_errors.is_non_retriable(result_dict['status'][0]):
+            return combine_dict(result_dict, work_ticket)
         
         #We know the file has hit some sort of media. When this occurs
         # create a file in pnfs namespace with information about transfer.
