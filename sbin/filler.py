@@ -97,7 +97,7 @@ def main():
       select_stmt  = select_stmt + ";\" enstore"
 
 #      print 'Executing:',select_stmt
-      sys.exit(0)
+#       sys.exit(0)
       os.system(select_stmt)
       zero_time = zero_time + delta_time
 
