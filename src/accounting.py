@@ -14,9 +14,12 @@ def timestamp2time(s):
 	return time.mktime(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 
 class accDB:
-	def __init__(self, host, dbname, logname='UNKNOWN'):
+	def __init__(self, host, dbname, port= None, logname='UNKNOWN'):
 		self.logname = logname
-		self.db = pg.DB(host=host, dbname=dbname)
+		if port:
+			self.db = pg.DB(host=host, dbname=dbname, port=port)
+		else:
+			self.db = pg.DB(host=host, dbname=dbname)
 		self.pid = os.getpid()
 
 	def close(self):
