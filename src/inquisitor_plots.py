@@ -214,20 +214,25 @@ class InquisitorPlots:
             xferfile.install(self.html_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
 
-            for sg in storage_groups:
+            #
+            # check if there are other storage groups
+            #
+            
+            if (len(storage_groups)>1) :
+                for sg in storage_groups:
                 
-                xferfile = enstore_plots.XferDataFile(self.output_dir,
-                                                      mbpdfile.ptsfile,sg)
-                xferfile.open()
-                xferfile.plot(encpfile.data)
-                xferfile.close()
-                xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
-                xferfile.cleanup(self.keep, self.keep_dir)
+                    xferfile = enstore_plots.XferDataFile(self.output_dir,
+                                                          mbpdfile.ptsfile,sg)
+                    xferfile.open()
+                    xferfile.plot(encpfile.data)
+                    xferfile.close()
+                    xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
+                    xferfile.cleanup(self.keep, self.keep_dir)
                 
             # delete any extraneous files. do it here because the xfer file
             # plotting needs the bpd data file
-	    bpdfile.cleanup(self.keep, self.keep_dir)
-	    mbpdfile.cleanup(self.keep, self.keep_dir)
+            bpdfile.cleanup(self.keep, self.keep_dir)
+            mbpdfile.cleanup(self.keep, self.keep_dir)
 
         self.close_db_connection()
 
