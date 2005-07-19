@@ -156,7 +156,7 @@ def start_postmaster():
 			os.unlink(pid_file)
 
 		# starting postmaster
-		cmd = "postmaster -D %s &"%(db_path)
+		cmd = "postmaster -h '' -D %s &"%(db_path)
 		os.system(cmd)
 		time.sleep(15)
 
