@@ -801,7 +801,7 @@ def check_bit_file(bfid):
     # get path
     pnfs_path = file_record['pnfs_name0']
     pf = pnfs.File(pnfs_path)
-    if not pf.bfid or pf.bfid != file_record['pnfsid']:
+    if not pf.bfid or pf.bfid != file_record['bfid']:
         try:
             pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
         except:
