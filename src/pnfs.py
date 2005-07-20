@@ -2663,8 +2663,6 @@ class File:
 				#	print '\t f>', self.path
 				#	print '\t 4>', p_path
                         except IOError:
-				exc_type, exc_value = sys.exc_info()[:2]
-				print exc_type, exc_value
 				self.volume = ""
 				self.location_cookie = ""
 				self.size = 0
@@ -2676,7 +2674,9 @@ class File:
 				self.drive = ""
 				self.complete_crc = ''
 				self.p_path = self.path
-
+			except:
+				exc_type, exc_value = sys.exc_info()[:2]
+				print exc_type, exc_value
 		return
 
 	# layer_file(i) -- compose the layer file name
