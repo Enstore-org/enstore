@@ -740,7 +740,7 @@ def check_bit_file(bfid):
     prefix = prefix+" ... "+file_record['external_label']+' '+file_record['location_cookie']
 
     if file_record['deleted'] == "unknown":
-        info = info + ["deleted=unkown"]
+        info.append("deleted=unkown")
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -760,7 +760,7 @@ def check_bit_file(bfid):
             # the same
             mp = mount_point(file_record['pnfs_name0'])
             if not mp:
-                warn = warn + ["mount point does not exist"]
+                warn.append("mount point does not exist")
                 errors_and_warnings(prefix, err, warn, info)
                 return
             try:
@@ -769,11 +769,11 @@ def check_bit_file(bfid):
                 # check if the bfid is the same
                 pf = pnfs.File(pnfs_path)
                 if pf.bfid == file_record['bfid']:  # this is a mistake
-                    err = err + ["pnfs entry exists"]
+                    err.append("pnfs entry exists")
                     errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
-                    info = info + ["reused pnfsid"]
+                    info.append("reused pnfsid")
                     # check it any way
             except:
                 # very well, it doesn't exist
@@ -784,6 +784,12 @@ def check_bit_file(bfid):
             errors_and_warnings(prefix, err, warn, info)
             return
 
+    if len(file_record['pnfsid']) < 10:
+        # missing pnfsid
+	err.append("missing pnfsid")
+	errors_and_warnings(prefix, err, warn, info)
+	return
+
     # find mount point
     mp = mount_point(file_record['pnfs_name0'])
 
@@ -792,12 +798,16 @@ def check_bit_file(bfid):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    try:
-        pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
-    except:
-        err = err + ["%s does not exist"%(file_record['pnfsid'])]
-        errors_and_warnings(prefix, err, warn, info)
-        return
+    # get path
+    pnfs_path = file_record['pnfs_name0']
+    pf = pnfs.File(pnfs_path)
+    if not pf.bfid or pf.bfid != file_record['pnfsid']:
+        try:
+            pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+        except:
+            err = err + ["%s does not exist"%(file_record['pnfsid'])]
+            errors_and_warnings(prefix, err, warn, info)
+            return
 
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     if e2 or w2:
