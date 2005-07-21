@@ -4,6 +4,7 @@ import string
 import time
 
 import enstore_functions2
+import enstore_mail
 import enstore_constants
 import enstore_html
 
@@ -95,7 +96,7 @@ def mark_enstore_down(status_d, node, last_status_d):
 	# only send mail every approx two hours the node is seen down continuously
 	send_mail = 1
     if send_mail == 1:
-	enstore_functions2.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
+	enstore_mail.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
 				    "Overall status page has Enstore ball for %s as red"%(node,))
     
 def get_last_status():
