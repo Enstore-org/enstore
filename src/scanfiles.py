@@ -784,7 +784,7 @@ def check_bit_file(bfid):
             errors_and_warnings(prefix, err, warn, info)
             return
 
-    if len(file_record['pnfsid']) < 10:
+    if not file_record['pnfsid'] or len(file_record['pnfsid']) < 10:
         # missing pnfsid
 	err.append("missing pnfsid")
 	errors_and_warnings(prefix, err, warn, info)
