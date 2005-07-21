@@ -60,14 +60,13 @@ while 1:
             start=1
         else:
             o.write("%s %f %f\n" % (when,gigs ,tot))
-            tapes_written[t_when] = {'date':when, 'tapes':int(gigs/capacity), 'GB':gigs, 'total':tot}
+            tapes_written[t_when] = {'date':when, 'tapes':gigs/capacity, 'GB':gigs, 'total':tot}
         when = d
         t_when = long(time.mktime(time.strptime(when,"%d-%b-%y")))
         gigs = 0
     gigs = gigs + gb
     tot =  tot  + gb
- 
-tapes_written[t_when] = {'date':when, 'tapes':int(gigs/capacity), 'GB':gigs, 'total':tot}
+tapes_written[t_when] = {'date':when, 'tapes':gigs/capacity, 'GB':gigs, 'total':tot}
 o.write("%s %f %f\n" % (when,gigs ,tot))
 f.close()
 o.close()
@@ -110,8 +109,6 @@ for key in tapes_written.keys():
         tapes_written_last_week = tapes_written_last_week + tapes_written[key]['tapes']
         
 
-
-
 g = open(thefile+".gnuplot", "w")
 g.write('set terminal postscript color solid\n')
 g.write('set output "%s.ps"\n' % (thefile,))
@@ -123,8 +120,8 @@ g.write('set format x "%m-%d-%y"\n')
 g.write('set grid\n')
 g.write('set nokey\n')
 g.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (now,))
-g.write('set label "%s tapes written last month" at graph .05,.90\n' % (tapes_written_last_month,))
-g.write('set label "%s tapes written last week" at graph .05,.85\n' % (tapes_written_last_week,))
+g.write('set label "%s tapes written last month" at graph .05,.90\n' % (int(tapes_written_last_month),))
+g.write('set label "%s tapes written last week" at graph .05,.85\n' % (int(tapes_written_last_week),))
 if day1 != None and day2 != None:
     g.write('set xrange["%s":"%s"]\n' % (day1,day2))
 elif day1 != None:
