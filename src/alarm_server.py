@@ -16,14 +16,13 @@ import string
 import dispatching_worker
 import enstore_files
 import generic_server
-import event_relay_client
 import monitored_server
 import Trace
 import alarm
 import e_errors
 import hostaddr
 import enstore_constants
-import enstore_functions2
+import enstore_mail
 import www_server
 import enstore_html
 import event_relay_messages
@@ -108,7 +107,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     def send_mail_action(self, theAlarm, isNew, params):
         params_len = len(params)
         if isNew or (params_len > 1 and params[1] == "*"):
-            enstore_functions2.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
+            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
         self.action_defaults(theAlarm, isNew, params)
 
     # in order to create a new alarm action, do -
@@ -139,16 +138,16 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                    condition, remedy_type):
         # find the alarm that matches the above information
         ids = self.alarms.keys()
-        for id in ids:
-            if self.alarms[id].compare(host, severity, root_error, source, \
+        for an_id in ids:
+            if self.alarms[an_id].compare(host, severity, root_error, source, \
                                        alarm_info, condition, remedy_type) == alarm.MATCH:
-                return self.alarms[id]
+                return self.alarms[an_id]
         ids = self.info_alarms.keys()
-        for id in ids:
-            if self.info_alarms[id].compare(host, severity, root_error, source, \
+        for an_id in ids:
+            if self.info_alarms[an_id].compare(host, severity, root_error, source, \
                                             alarm_info, condition, remedy_type) == alarm.MATCH:
-                return self.info_alarms[id]
-        return
+                return self.info_alarms[an_id]
+        return None
         
 
     # raise the alarm
@@ -202,15 +201,15 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
 
     def resolve_alarm(self, ticket):
         # get the unique identifier for this alarm
-        id = ticket.get(enstore_constants.ALARM, 0)
+        this_id = ticket.get(enstore_constants.ALARM, 0)
 	ticket = {}
-	if id == enstore_html.RESOLVEALL:
-	    for id in self.alarms.keys():
-		status = self.resolve(id)
-		ticket[id] = status
+	if this_id == enstore_html.RESOLVEALL:
+	    for an_id in self.alarms.keys():
+		status = self.resolve(an_id)
+		ticket[an_id] = status
 	else:
-	    status = self.resolve(id)
-	    ticket[id] = status
+	    status = self.resolve(this_id)
+	    ticket[this_id] = status
 
         # send the reply to the client
         self.send_reply(ticket)

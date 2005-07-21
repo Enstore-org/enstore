@@ -10,7 +10,7 @@ import time
 import string
 import os
 #import exceptions
-import tempfile
+#import tempfile
 import types
 #import pwd
 import signal
@@ -233,20 +233,6 @@ def print_list(aList, sep=" "):
 	# remove the last separator
 	the_str = the_str[0:-1]
     return the_str
-
-# format the mail
-def format_mail(goal, question, metric): 
-    return "\n\n  GOAL: %s\n\n  QUESTION: %s\n\n  METRIC: %s"%(goal, question,
-							       metric)
-
-# send mail
-def send_mail(server, message, subject, destination="$ENSTORE_MAIL"):
-    mail_file = tempfile.mktemp()  
-    os.system("date >> %s"%(mail_file,))
-    os.system('echo "\n\tFrom: %s\n" >> %s' % (server, mail_file))
-    os.system('echo "\t%s" >> %s' % (message, mail_file))
-    os.system("/usr/bin/Mail -s \"%s\" %s < %s"%(subject, destination, mail_file,))
-    os.system("rm %s"%(mail_file,))
 
 def get_mover_status_filename():
     return "enstore_movers.html"

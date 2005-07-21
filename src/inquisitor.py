@@ -22,10 +22,8 @@ import copy
 import select
 
 # enstore imports
-import setpath
 import monitored_server
 import event_relay_messages
-import event_relay_client
 import dispatching_worker
 import generic_server
 import Trace
@@ -33,6 +31,7 @@ import e_errors
 import enstore_files
 import enstore_functions
 import enstore_functions2
+import enstore_mail
 import enstore_erc_functions
 import enstore_constants
 import www_server
@@ -114,15 +113,15 @@ def make_node_d(nwc):
 	return node_d
 
 # given a directory get a list of the files and their sizes
-def get_file_list(dir, prefix):
+def get_file_list(directory, prefix):
     logfiles = {}
-    files = os.listdir(dir)
+    filenames = os.listdir(directory)
     # pull out the files and get their sizes
     prefix_len = len(prefix)
-    for file in files:
+    for filename in filenames:
         if file[0:prefix_len] == prefix and (not file[-3:] == ".gz") and \
 	   (not file[-5:] == ".save"):
-            logfiles[file] = os.stat('%s/%s'%(dir,file))[stat.ST_SIZE]
+            logfiles[file] = os.stat('%s/%s'%(directory,filename))[stat.ST_SIZE]
     return logfiles
 
 class EventRelay:
@@ -252,6 +251,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # called by the signal handling routines
     def s_update_exit(self, the_signal, frame):
+        __pychecker__ = "unusednames=the_signal,frame"
         self.update_exit(0)
 
     def ok_to_monitor(self, config_dict):
@@ -672,8 +672,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 									     ff, node)
 	    Trace.alarm(e_errors.ERROR, txt)
 	    enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, txt)
-	    enstore_functions2.send_mail(MY_NAME, 
-	      enstore_functions2.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
+	    enstore_mail.send_mail(MY_NAME, 
+	      enstore_mail.format_mail("Write data using the full file_family width to enstore from %s"%(node,),
 			  "Why are there %s elems in the pend queue and only %s elems in the wam queue?"%(pend_num, 
 													  wam_num),
 					    txt), "Write Queue Stall")
@@ -1288,7 +1288,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    msg = "The saag page element %s has been overridden to %s for %.0d seconds"%(element,
 									           elist[0], 
 										   now - elist[1])
-		    enstore_functions2.send_mail(MY_NAME, msg, subject)
+		    enstore_mail.send_mail(MY_NAME, msg, subject)
 		    self.override_mail_sent[element] = now
         self.reset_interval_timer(self.saag_periodic_tasks)
 
@@ -1331,6 +1331,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				   "update_interval work from user")
 
     def get_update_interval(self, ticket):
+        __pychecker__ = "unusednames=ticket"
         ret_ticket = { 'update_interval' : self.update_interval,
                        'status'      : (e_errors.OK, None) }
         self.send_reply(ret_ticket)
@@ -1453,12 +1454,12 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    # we found a match
 		    if func == UP:
 			delkey(key, offline_d)
-                        enstore_functions2.send_mail(MY_NAME,
+                        enstore_mail.send_mail(MY_NAME,
                                                      "REASON: %s marked up"%(key,),
                                                      "%s marked up"%(key,))
 		    elif func == DOWN:
 			offline_d[key] = ticket["time"]
-                        enstore_functions2.send_mail(MY_NAME,
+                        enstore_mail.send_mail(MY_NAME,
                                                      "REASON: %s"%(ticket.get("time", "None"),),
                                                      "%s marked down"%(key,))
                     elif func == OUTAGE:
