@@ -1,10 +1,25 @@
 SHELL=/bin/sh
 
 # need a robust way of finding freeze, especially for non-kits version of python
-FREEZE=`find $(PYTHON_DIR) -name freeze.py -print` 
+FREEZE=`find $(PYTHON_DIR) -name freeze.py -print`
 #FREEZE=`ls $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py`
 #PYMODULES=`find $(PYTHON_DIR) -name Modules -print`
 PYMODULES=$(PYTHON_DIR)/Python-*/Modules
+PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
+
+# Need to build python with the freeze -E option (new with python 2.2.3).
+# This option forces all modules to be frozen.  This forces frozen python 
+# executables to keep from looking for external *.py and *.pyc files.
+# However, there are always exceptions.  Those are the -x options.  Those
+# modules listed as -x are to be excluded from the frozen binary (though if
+# they do exist they will be included).  These mostly have to do with non-UNIX
+# OSes that won't have modules be there when running on UNIX.
+FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath
+FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray -x 
+FREEZE_SKIP_MISC=-x MacOS -X sitecustomize -x _winreg -x ic -x rourl2path -x EasyDialogs -x msvcrt -x MACFS -x macfs -x SOCKS -x org.python.core -X org -X xreadlines 
+
+FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
+FREEAE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HTML)
 
 # No static version for SunOS for now
 # No static version for any one any more ... since v3_0
@@ -44,7 +59,7 @@ encp:
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
 	cp ../modules/enroute2	ENCPBIN
@@ -54,14 +69,14 @@ encp:
 
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user.py
+	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
 	rm -rf ENSTORE_USER_BIN_TEMP
 
 	- rm -rf ENSYNC_BIN_TEMP
 	mkdir ENSYNC_BIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync.py
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync.py
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENSYNC_BIN_TEMP/ensync      ENCPBIN
 	rm -rf ENSYNC_BIN_TEMP
@@ -78,7 +93,7 @@ fileinfo:
 	mkdir FILEINFO_TEMP
 	- rm -rf FILEINFOBIN
 	mkdir FILEINFOBIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o FILEINFO_TEMP fileinfo.py
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o FILEINFO_TEMP fileinfo.py
 	(cd FILEINFO_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp FILEINFO_TEMP/fileinfo FILEINFOBIN
 	cp $(ENSTORE_DIR)/ups/fileinfo.table FILEINFOBIN
@@ -90,7 +105,7 @@ get:
 	mkdir GET_TEMP
 	- rm -rf GET_BIN
 	mkdir GET_BIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP get.py
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP get.py
 	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 
 	cp GET_TEMP/get GET_BIN
@@ -105,7 +120,7 @@ entv:
 	mkdir ENTV_TEMP
 	- rm -rf ENTV_BIN
 	mkdir ENTV_BIN
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENTV_TEMP entv.py
 	(cd ENTV_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENTV_TEMP/entv ../ups/chooseConfig ENTV_BIN
 	cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTV_BIN
