@@ -9,7 +9,7 @@
 # system imports
 import time
 import sys
-#import os
+import os
 #import string
 import random
 import select
@@ -40,7 +40,6 @@ def hex8(x):
     return '0'*(8-l)+s
 
 def __get_socket_state(fd):
-    import os
     if os.uname()[0] == "Linux":
         import stat
         try:
@@ -161,7 +160,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
                 continue
             #fds = []
             Trace.log(e_errors.ERROR, "timeout_recv(): %s" % str(msg))
-            #Return to handl the error.
+            #Return to handle the error.
             return ""
         end_time = time.time()
         if sock not in fds:
@@ -183,14 +182,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): time passed: %s sec of %s sec" %
                       (time.time() - total_start_time, timeout))
-            
-            try:
-                #Verify if the connection is still up.
-                sock.getpeername()
-            except socket.error, msg:
-                Trace.log(e_errors.ERROR,
-                          "timeout_recv(): getpeername: %s" % str(msg))
-                
+
             try:
                 #Verify if there is an error on the socket.
                 socket_error = sock.getsockopt(socket.SOL_SOCKET,
@@ -201,7 +193,14 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             except socket.error, msg:
                 Trace.log(e_errors.ERROR,
                           "timeout_recv(): getsockopt(SO_ERROR): %s" % str(msg))
-
+            
+            try:
+                #Verify if the connection is still up.
+                sock.getpeername()
+            except socket.error, msg:
+                Trace.log(e_errors.ERROR,
+                          "timeout_recv(): getpeername: %s" % str(msg))
+                
             Trace.log(e_errors.ERROR, "timeout_recv(): received no data")
 
             #Log the current socket state (only works on Linux).
@@ -213,16 +212,26 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             # read buffer.  Python does not yet support it.
             try:
                 OPT = getattr(fcntl, "FIONREAD", None)
+                if OPT == None:
+                    if os.uname()[0] == "Linux":
+                        OPT = 0x541B  #Linux specific hack.
+                    if os.uname()[0][:4] == "IRIX" or \
+                       os.uname()[0] == "SunOS" or \
+                       os.uname()[0] == "OSF1":
+                        OPT = 1074030207 #Pulled from header files.
                 if OPT != None:
+                    import struct #Only import this when necessary.
+                    nbytes = struct.unpack("i",
+                                           fcntl.ioctl(sock, OPT, "    "))[0]
                     Trace.log(e_errors.ERROR,
                               "timeout_recv(): fcntl(FIONREAD): %s"
-                              % (str(fcntl.fcntl(sock, OPT)),))
+                              % (str(nbytes),))
             except AttributeError:
                 #FIONREAD not known on this system.
                 pass
             except IOError, msg:
                 Trace.log(e_errors.ERROR,
-                          "timeout_recv(): fcntl(FIONREAD): %s" % (str(msg),))
+                          "timeout_recv(): ioctl(FIONREAD): %s" % (str(msg),))
             
         return data_string
         
