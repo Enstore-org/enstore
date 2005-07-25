@@ -92,7 +92,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	def debugging(self, ticket):
 		self.debug = ticket.get('level', 0)
 		if self.debug:
-			self.accDB.db.debug = "DB DEBUG"
+			self.accDB.db.debug = "DB DEBUG> %s"
 		else:
 			self.accDB.db.debug = None
 		print 'debug =', self.debug
