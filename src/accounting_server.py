@@ -91,6 +91,10 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 	# turn on/off the debugging
 	def debugging(self, ticket):
 		self.debug = ticket.get('level', 0)
+		if self.debug:
+			self.accDB.db.debug = "DB DEBUG"
+		else:
+			self.accDB.db.debug = None
 		print 'debug =', self.debug
 
 	# These need confirmation
