@@ -4277,7 +4277,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     pf_status = (e_errors.OK, None)
     skip_layer_cleanup = False
     if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
-           and pnfs_filename:
+           and pnfs_filename and not encp_intf.copies:
         #If the user wants use to specifically check if another encp has
         # written (layers 1 or 4) to this onfs file; now is the time to check.
         try:
@@ -5821,7 +5821,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
         result_dict = handle_retries([work_ticket], work_ticket,
                                      done_ticket, e,
                                      pnfs_filename = done_ticket['outfile'])
-        print result_dict
+
         if e_errors.is_retriable(result_dict['status'][0]):
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
@@ -8588,9 +8588,6 @@ def do_work(intf):
     except:
         #Get the uncaught exception.
         exc, msg, tb = sys.exc_info()
-        print "PRINTING TRACEBACK"
-        import traceback
-        traceback.print_tb(tb)
         ticket = {'status' : (e_errors.UNCAUGHT_EXCEPTION,
                               "%s: %s" % (str(exc), str(msg)))}
 
