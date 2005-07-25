@@ -59,7 +59,7 @@ class accDB:
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			res = self.db.get('public.tape_mounts_tmp', {
+			res = self.db.get('tape_mounts_tmp', {
 				'volume': volume,
 				'state': 'm'})
 		except:
@@ -105,7 +105,7 @@ class accDB:
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			res = self.db.get('public.tape_mounts_tmp', {
+			res = self.db.get('tape_mounts_tmp', {
 				'volume': volume,
 				'state': 'd'})
 		except:
