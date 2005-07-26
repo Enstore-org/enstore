@@ -27,7 +27,7 @@ CLOSECLAUSE = ') '
 class accountingQuery(accounting.accDB):
 	
     	def __init__(self, host, dbname, logname='ACC_QUERY'):
-	    accounting.accDB.__init__(self, host, dbname, logname)
+	    accounting.accDB.__init__(self, host, dbname, logname=logname)
             self.tables_cache = self.db.get_tables()
 
         def query(self, qstr):
