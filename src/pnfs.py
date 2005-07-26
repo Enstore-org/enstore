@@ -2656,6 +2656,18 @@ class File:
 					self.bfid = finfo
 					self.drive = "unknown:unknown"
 					self.complete_crc = ''
+				else:	# corrupted L4
+					self.volume = "corrupted L4"
+					self.location_cookie = ""
+					self.size = 0
+					self.file_family = ""
+					self.volmap = ""
+					self.pnfs_id = "corrputed L4"
+					self.pnfs_vid = ""
+					self.bfid = "corrupted L4"
+					self.drive = ""
+					self.complete_crc = ''
+					self.p_path = self.path
 					
 				# if self.p_path != self.path:
 				#	raise 'DIFFERENT_PATH'
@@ -2681,7 +2693,10 @@ class File:
 
 	# layer_file(i) -- compose the layer file name
 	def layer_file(self, i):
-		return os.path.join(self.dir(),
+		if self.file()[:9] == ".(access)":
+			return "%s(%d)"%(self.path, i)
+		else:
+			return os.path.join(self.dir(),
                                     '.(use)(%d)(%s)'%(i, self.file()))
 
 	# id_file() -- compose the id file name
