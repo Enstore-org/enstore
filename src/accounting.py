@@ -47,9 +47,12 @@ class accDB:
 				'state': 'm',
 				'id': res['oid_tape_mounts']})
 		except:
-			res2 = self.db.get('tape_mounts_tmp', {
-				'volume': volume,
-				'state': 'm'})
+			q = "select oid as oid_tape_mounts_tmp, volume, state from tape_mounts_tmp where volume = '%s' and state = 'm';"%(volume)
+			res2 = self.db.query(q).dictresult()[0]
+
+			# res2 = self.db.get('tape_mounts_tmp', {
+			#	'volume': volume,
+			#	'state': 'm'})
 
 			res2 = self.db.update('tape_mounts_tmp', {
 				'oid_tape_mounts_tmp': res2['oid_tape_mounts_tmp'],
@@ -59,9 +62,11 @@ class accDB:
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			res = self.db.get('tape_mounts_tmp', {
-				'volume': volume,
-				'state': 'm'})
+			q = "select oid as oid_tape_mounts_tmp, volume, state, id from tape_mounts_tmp where volume = '%s' and state = 'm';"%(volume)
+			res = self.db.query(q).dictresult()[0]
+			# res = self.db.get('tape_mounts_tmp', {
+			#	'volume': volume,
+			#	'state': 'm'})
 		except:
 			return
 
@@ -93,9 +98,11 @@ class accDB:
 				'state': 'd',
 				'id': res['oid_tape_mounts']})
 		except:
-			res2 = self.db.get('tape_mounts_tmp', {
-				'volume': volume,
-				'state': 'd'})
+			q = "select oid as oid_tape_mounts_tmp, volume, state from tape_mounts_tmp where volume = '%s' and state = 'd';"%(volume)
+			res2 = self.db.query(q).dictresult()[0]
+			# res2 = self.db.get('tape_mounts_tmp', {
+			#	'volume': volume,
+			#	'state': 'd'})
 
 			res2 = self.db.update('tape_mounts_tmp', {
 				'oid_tape_mounts_tmp': res2['oid_tape_mounts_tmp'],
@@ -105,9 +112,11 @@ class accDB:
 		if type(finish) != type(""):
 			finish = time2timestamp(finish)
 		try:
-			res = self.db.get('tape_mounts_tmp', {
-				'volume': volume,
-				'state': 'd'})
+			q = "select oid as oid_tape_mounts_tmp, volume, state, id from tape_mounts_tmp where volume = '%s' and state = 'd';"%(volume)
+			res = self.db.query(q).dictresult()[0]
+			# res = self.db.get('tape_mounts_tmp', {
+			#	'volume': volume,
+			#	'state': 'd'})
 		except:
 			return
 
