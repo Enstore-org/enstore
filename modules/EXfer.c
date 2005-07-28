@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+#include <libgen.h>
 #if __STDC__ && __STDC_VERSION__ >= 199901L
 #  include <stdbool.h>  /* C99 implimentations have these. */
 #  include <stdint.h>
@@ -50,7 +51,6 @@
 #  include <sys/sysmp.h>
 #endif
 #ifdef STAND_ALONE
-#  include <libgen.h>
 #  if __linux__
 #    include <sys/mount.h>
 #  endif /* __linux__ */
@@ -2523,7 +2523,10 @@ static unsigned int ecrc_readback(int fd)
  *
  * block_device and mount_point should be at least PATH_MAX + 1 in length.
  * Returns 0 on success, -1 on error.  Errno is set from lower system call.
- */
+ *
+ * Note: The use of dirname() and basename() make this a non-threadsafe
+ * function.
+*/
 static int get_bd_name(char *name, char *block_device, size_t bd_len,
 		       char *mount_point, size_t mp_len)
 {
@@ -2559,7 +2562,24 @@ static int get_bd_name(char *name, char *block_device, size_t bd_len,
     */
    if(realpath(name, filename) == NULL)
    {
-      return -1;
+      if(errno == ENOENT)
+      {
+	 /* It may be true that the file does not exist.  So, lets try and
+	  * find the directory. */
+	 char tmp_copy[PATH_MAX + 1];
+	 char* dname;
+
+	 strncpy(tmp_copy, name, PATH_MAX);
+	 dname = (char*)dirname(tmp_copy);
+	 if(realpath(dname, filename) == NULL)
+	 {
+	    return -1;
+	 }
+      }
+      else
+      {
+	 return -1;
+      }
    }
    if(stat(filename, &filestat) < 0)
    {
@@ -2568,7 +2588,7 @@ static int get_bd_name(char *name, char *block_device, size_t bd_len,
 
    /*
     * Read in the /etc/mtab file looking for the mount point that matches
-    * the file specifice in the command line.  We are looking for the
+    * the file specified in the command line.  We are looking for the
     * block device name that matches the mount point.
     */
 
@@ -4575,7 +4595,10 @@ EXfd_quotas(PyObject *self, PyObject *args)
   if(get_bd_name(file_target, correct_block_device, (size_t) PATH_MAX,
 		 correct_mount_point, (size_t) PATH_MAX) < 0)
   {
-     return(raise_exception("fd_quotas - block device not found"));
+     char message[10000];
+     snprintf(message, (size_t) 10000,
+	      "fd_quotas - block device not found: %s", file_target);
+     return(raise_exception(message));
   }
 
   /*
