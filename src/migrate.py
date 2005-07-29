@@ -115,6 +115,9 @@ LOG_DIR = SPOOL_DIR
 LOG_FILE = "MigrationLog@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))+'#'+`os.getpid()`
 log_f = None
 
+# designated file family
+use_file_family = None
+
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
 	if s == '1969-12-31 17:59:59':
@@ -340,11 +343,18 @@ def run_encp(args):
 # migration_path(path) -- convert path to migration path
 # a path is of the format: /pnfs/fs/usr/X/...
 # a migration path is: /pnfs/fs/usr/Migration/X/...
-def migration_path(path):
+def migration_path(path, sg, deleted = 'n'):
+	if deleted == 'y':
+		# NOT DONE YET
+		if sg == 'cms':
+			return CMS_MIGRATION_DB+'/'+DELETED_TMP+'/'+path
+		else:
+			return MIGRATION_DB+'/'+DELETED_TMP+'/'+path
+
 	pl = string.split(path, '/')
 	if pl[:f_n] != f_p:
 		return None
-	if pl[f_n] == 'cms':	# special case, different pnfs server
+	if sg == 'cms':	# special case, different pnfs server
 		pl[f_n] = CMS_MIGRATION_DB+'/'+pl[f_n]
 	else:
 		pl[f_n] = MIGRATION_DB+'/'+pl[f_n]
@@ -387,7 +397,8 @@ def copy_files(files):
 		# get file info
 		q = "select bfid, label, location_cookie, pnfs_id, \
 			storage_group, file_family, deleted, \
-			pnfs_path, size, crc as complete_crc \
+			pnfs_path, size, crc as complete_crc, \
+			wrapper \
                         from file, volume \
 			where file.volume = volume.id and \
 				bfid = '%s';"%(bfid)
@@ -410,7 +421,7 @@ def copy_files(files):
 		ct = is_copied(bfid, db)
 		if ct:
 			res = 0
-			ok_log(MY_TASK, "%s has already been copied at %s"%(bfid, ct))
+			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, ct))
 		else:
 			tmp = temp_file(f['label'], f['location_cookie'])
 
@@ -424,22 +435,8 @@ def copy_files(files):
 			elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
 
 				log(MY_TASK, "%s %s %s is a DELETED FILE"%(f['bfid'], f['pnfs_id'], f['pnfs_path']))
-
-				# making up a pnfs entry for deleted file
-				f['external_label'] = f['label']
-				f['pnfsid'] = f['pnfs_id']
-				f['pnfs_name0'] = f['pnfs_path']
-				src = deleted_path(f['pnfs_path'], f['label'], f['location_cookie'])
-				f['pnfs_name0'] = src
-				pf = pnfs.File(f)
-				pf.p_path = f['pnfs_path']
-				try:
-					pf.create(1)
-				except:
-					exc_type, exc_value = sys.exc_info()[:2]
-					error_log(MY_TASK, str(exc_type), str(exc_value), "can not create %s"%(src))
-					continue
-
+				src = "deleted-%s-%s"%(bfid, tmp) # for debug
+				# do nothing more
 			else:
 				# what to do?
 				error_log(MY_TASK, "can not copy %s"%(bfid))
@@ -448,19 +445,21 @@ def copy_files(files):
 			if debug:
 				log(MY_TASK, "src:", src)
 				log(MY_TASK, "tmp:", tmp)
-			if not os.access(src, os.R_OK):
+			if f['deleted'] == 'n' and not os.access(src, os.R_OK):
 				error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
 				continue
 			# make sure the tmp file is not there
 			if os.access(tmp, os.F_OK):
 				log(MY_TASK, "tmp file %s exists, remove it first"%(tmp))
 				os.remove(tmp)
-			cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(src, tmp)
-			# reset deleted status
+
 			if f['deleted'] == 'y':
-				q = "update file set deleted = 'n' where bfid = '%s';"%(bfid)
-				db.query(q)
-				log(MY_TASK, "set %s deleted = no"%(bfid))
+				cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(bfid, tmp)
+			else:
+				cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(src, tmp)
+
+			if debug:
+				log(MY_TASK, "cmd =", cmd)
 
 			res = encp.encp(cmd)
 			if res == 0:
@@ -468,32 +467,30 @@ def copy_files(files):
 			else:
 				error_log(MY_TASK, "failed to copy %s %s to %s, error = %d"%(bfid, src, tmp, res))
 
-			
-			if f['deleted'] == 'y':
-				# reset deleted status
-				q = "update file set deleted = 'y' where bfid = '%s';"%(bfid)
-				db.query(q)
-				log(MY_TASK, "set %s deleted = yes"%(bfid))
-				# clean up tmp pnfs entry
-				nullify_pnfs(src)
-				os.remove(src)
-
 		if res == 0:
 			copy_queue.put((bfid, src, tmp, f['file_family'],
-				f['storage_group'], f['deleted']), True)
+				f['storage_group'], f['deleted'], f['wrapper']), True)
 
 	# terminate the copy_queue
 	log(MY_TASK, "no more to copy, terminating the copy queue")
 	copy_queue.put(None, True)
 
 # migration_file_family(ff) -- making up a file family for migration
-def migration_file_family(ff):
-	return ff+MIGRATION_FILE_FAMILY_SUFFIX
+def migration_file_family(ff, deleted = 'n'):
+	global use_file_family
+	if deleted == 'y':
+		return DELETED_FILE_FAMILY+MIGRATION_FILE_FAMILY_SUFFIX
+	else:
+		if use_file_family:
+			return use_file_family+MIGRATION_FILE_FAMILY_SUFFIX
+		else:
+			return ff+MIGRATION_FILE_FAMILY_SUFFIX
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
 def normal_file_family(ff):
-	if len(ff) > 10 and ff[-10:] == '-MIGRATION':
+	n = len(MIGRATION_FILE_FAMILY_SUFFIX)
+	if len(ff) > n and ff[-n:] == MIGRATION_FILE_FAMILY_SUFFIX:
 		return ff[:-10]
 	else:
 		return ff
@@ -599,6 +596,8 @@ def migrating():
 	MY_TASK = "COPYING_TO_TAPE"
 	# get a database connection
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
+	# get its own file clerk client
+	fcc = file_clerk_client.FileClient(csc)
 
 	# get an encp
 	encp = encp_wrapper.Encp()
@@ -609,9 +608,17 @@ def migrating():
 	while job:
 		if debug:
 			log(MY_TASK, `job`)
-		(bfid, src, tmp, ff, sg) = job
-		ff = migration_file_family(ff)
-		dst = migration_path(src)
+		(bfid, src, tmp, ff, sg, deleted, wrapper) = job
+
+		# check if it has already been copied
+		bfid2 = is_copied(bfid, db)
+		if bfid2:
+			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, bfid2))
+			job = copy_queue.get(True)
+			continue
+			
+		ff = migration_file_family(ff, deleted)
+		dst = migration_path(src, sg, deleted)
 		log(MY_TASK, "copying %s %s %s"%(bfid, src, tmp))
 		# check dst
 		if not dst:     # This can not happen!!!
@@ -636,52 +643,65 @@ def migrating():
 			job = copy_queue.get(True)
 			continue
 
-		# check if it has already been copied
-		bfid2 = is_copied(bfid, db)
-		if not bfid2:
-			cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s %s %s"%(DEFAULT_LIBRARY, sg, ff, tmp, dst)
+		cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+		if debug:
+			log(MY_TASK, 'cmd =', cmd)
+		res = encp.encp(cmd)
+		if res:
+			log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"%(bfid, src, tmp))
+			# delete the target and retry once
+			try:
+				os.remove(dst)
+			except:
+				pass
 			res = encp.encp(cmd)
 			if res:
-				log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"%(bfid, src, tmp))
+				error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
 				# delete the target and retry once
 				try:
 					os.remove(dst)
 				except:
 					pass
-				res = encp.encp(cmd)
-				if res:
-					error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
-					# delete the target and retry once
-					try:
-						os.remove(dst)
-					except:
-						pass
-					job = copy_queue.get(True)
-					continue
-
-			# get bfid of copied file
-			bfid2 = pnfs.File(dst).bfid
-			if bfid2 == None:
-				error_log(MY_TASK, "failed to get bfid of %s"%(dst))
 				job = copy_queue.get(True)
 				continue
-			else:
-				# log success of coping
-				ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
-				log_copied(bfid, bfid2, db)
 
-			# remove tmp file
-			try:
-				os.remove(tmp)
-				ok_log(MY_TASK, "removing %s"%(tmp))
-			except:
-				error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
-				pass
+		# get bfid of copied file
+		bfid2 = pnfs.File(dst).bfid
+		if bfid2 == None:
+			error_log(MY_TASK, "failed to get bfid of %s"%(dst))
+			job = copy_queue.get(True)
+			continue
+		else:
+			# log success of coping
+			ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
+			log_copied(bfid, bfid2, db)
 
+		# remove tmp file
+		try:
+			os.remove(tmp)
+			ok_log(MY_TASK, "removing %s"%(tmp))
+		except:
+			error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
+			pass
+
+		# NOT DONE YET how to swap a deleted file?
 		# is it swapped?
 		log("SWAPPING_METADATA", "swapping %s %s %s %s"%(bfid, src, bfid2, dst))
 		if not is_swapped(bfid, db):
-			res = swap_metadata(bfid, src, bfid2, dst)
+			if deleted == 'y':
+				res = ''
+				# copy the metadata
+				finfo = fcc.bfid_info(bfid)
+				if finfo['status'][0] == e_errors.OK:
+					del finfo['status']
+					finfo['bfid'] = bfid2
+					res2 = fcc.modify(finfo)
+					if res2['status'][0] != e_errors.OK:
+						res = res2['status'][1]
+				else:
+					res = "source file info missing"
+			else:
+				res = swap_metadata(bfid, src, bfid2, dst)
 			if not res:
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
 				log_swapped(bfid, bfid2, db)
@@ -692,7 +712,7 @@ def migrating():
 		else:
 			ok_log("SWAPPING_METADATA", "%s %s %s %s have already been swapped"%(bfid, src, bfid2, dst))
 			if icheck:
-				scan_queue.put((bfid, bfid2, src), True)
+				scan_queue.put((bfid, bfid2, src, deleted), True)
 
 		job = copy_queue.get(True)
 
@@ -714,11 +734,14 @@ def final_scan():
 
 	job = scan_queue.get(True)
 	while job:
-		(bfid, bfid2, src) = job
+		(bfid, bfid2, src, deleted) = job
 		log(MY_TASK, "start checking %s %s"%(bfid2, src))
 		ct = is_checked(bfid2, db)
 		if not ct:
-			cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(src)
+			if deleted == 'y':
+				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(bfid2)
+			else:
+				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(src)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_checked(bfid, bfid2, db)
@@ -742,9 +765,17 @@ def final_scan():
 
 		job = scan_queue.get(True)
 
+# NOT DONE YET, consider deleted file in final scan
+# Is the file deleted due to copying error?
+# or was it deleted before migration?
+
+
 # final_scan_volume(vol) -- final scan on a volume when it is closed to
 #				write
 # This is run without any other threads
+#
+# deal with deleted file
+# if it is a migrated deleted file, check it, too
 def final_scan_volume(vol):
 	MY_TASK = "FINAL_SCAN_VOLUME"
 	local_error = 0
@@ -785,16 +816,16 @@ def final_scan_volume(vol):
 		error_log(MY_TASK, "%s is not a migration volume"%(vol))
 		return 1
 
-	q = "select bfid, pnfs_id, src_bfid, location_cookie  \
+	q = "select bfid, pnfs_id, src_bfid, location_cookie, deleted  \
 		from file, volume, migration \
 		where file.volume = volume.id and \
 			volume.label = '%s' and \
-			deleted = 'n' and dst_bfid = bfid \
+			dst_bfid = bfid \
 		order by location_cookie;"%(vol)
 	query_res = db.query(q).getresult()
 
 	for r in query_res:
-		bfid, pnfs_id, src_bfid, location_cookie = r
+		bfid, pnfs_id, src_bfid, location_cookie, deleted = r
 		st = is_swapped(src_bfid, db)
 		if not st:
 			error_log(MY_TASK, "%s %s has not been swapped"%(src_bfid, bfid))
@@ -802,24 +833,27 @@ def final_scan_volume(vol):
 			continue
 		ct = is_closed(bfid, db)
 		if not ct:
-			# get the real path
-			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
+			if deleted == 'y':
+				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(bfid)
+			else:
+				# get the real path
+				pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
 
-			# make sure the path is NOT a migration path
-			if pnfs_path[:22] == f_prefix+'/Migration':
-				error_log(MY_TASK, 'none swapped file %s'%(pnfs_path))
-				local_error = local_error + 1
-				continue
+				# make sure the path is NOT a migration path
+				if pnfs_path[:22] == f_prefix+'/Migration':
+					error_log(MY_TASK, 'none swapped file %s'%(pnfs_path))
+					local_error = local_error + 1
+					continue
 
-			# make sure the volume is the same
-			pf = pnfs.File(pnfs_path)
-			if pf.volume != vol:
-				error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
-				local_error = local_error + 1
-				continue
+				# make sure the volume is the same
+				pf = pnfs.File(pnfs_path)
+				if pf.volume != vol:
+					error_log(MY_TASK, 'wrong volume %s (expecting %s)'%(pf.volume, vol))
+					local_error = local_error + 1
+					continue
 
-			open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
-			cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(pnfs_path)
+				open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
+				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
@@ -923,7 +957,7 @@ def migrated_to(vol, db):
 	return to_list
 
 # migrate_volume(vol) -- migrate a volume
-def migrate_volume(vol):
+def migrate_volume(vol, with_deleted = None):
 	MY_TASK = "MIGRATING_VOLUME"
 	log(MY_TASK, "start migrating volume", vol, "...")
 	db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
@@ -948,10 +982,17 @@ def migrate_volume(vol):
 
 	# now try to copy the file one by one
 	# get all bfids
-	q = "select bfid from file, volume \
-		where file.volume = volume.id and label = '%s' \
-		and deleted = 'n' and pnfs_path != '' \
-		 order by location_cookie;"%(vol)
+
+	if with_deleted:
+		q = "select bfid from file, volume \
+			where file.volume = volume.id and label = '%s' \
+			and (deleted = 'n' or deleted = 'y') and pnfs_path != '' \
+		 	order by location_cookie;"%(vol)
+	else:
+		q = "select bfid from file, volume \
+			where file.volume = volume.id and label = '%s' \
+			and deleted = 'n' and pnfs_path != '' \
+		 	order by location_cookie;"%(vol)
 	res = db.query(q).getresult()
 
 	bfids = []
@@ -1040,18 +1081,41 @@ def nullify_pnfs(p):
 		f = open(p1.layer_file(i), 'w')
 		f.close()
 
+# is_bfid(s) -- check if s is a valid bfid
+def is_bfid(s):
+	l = len(s)
+	if l == 18 or l == 19:	# with brand
+		for i in s[:4]:
+			if not i in string.letters:
+				return 0
+		for i in s[4:]:
+			if not i in string.digits:
+				return 0
+		return 1
+	elif l == 14 or l == 15: # without brand
+		for i in s:
+			if not i in string.digits:
+				return 0
+		return 1
+	else:	# mistake
+		return 0
+
 # usage() -- help
 def usage():
-	print "usage: %s <file list>"%(sys.argv[0])
-	print "       %s --bfids <bfid list>"%(sys.argv[0])
-	print "       %s --vol <volume list>"%(sys.argv[0])	
-	print "       %s --infile <file>"%(sys.argv[0])
-	print "       %s --restore <bfid list>"%(sys.argv[0])
-	print "       %s --restore-vol <volume list>"%(sys.argv[0])
-	print "       %s --scan-vol <volume list>"%(sys.argv[0])
+	print "usage:"
+	print "  %s [opt] <file list>"%(sys.argv[0])
+	print "  %s [opt] --bfids <bfid list>"%(sys.argv[0])
+	print "  %s [opt] --vol <volume list>"%(sys.argv[0])	
+	print "  %s [opt] --vol-with-deleted <volume list>"%(sys.argv[0])	
+	print "  %s --restore <bfid list>"%(sys.argv[0])
+	print "  %s --restore-vol <volume list>"%(sys.argv[0])
+	print "  %s --scan-vol <volume list>"%(sys.argv[0])
+	print "  %s --migrated-from <vol>"%(sys.argv[0])
+	print "  %s --migrated-to <vol>"%(sys.argv[0])
+	print "\nwhere opt is:"
+	print "  --use-file-family <file_family>"
 
 if __name__ == '__main__':
-	init()
 	if len(sys.argv) < 2 or sys.argv[1] == "--help":
 		usage()
 		sys.exit(0)
@@ -1061,10 +1125,41 @@ if __name__ == '__main__':
 	if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
 		log("COMMAND LINE:", cmd)
 
+	# handle --use-file-family <file_family>
+	if sys.argv[1] == "--use-file-family":
+		if len(sys.argv) < 4:
+			usage()
+			sys.exit(0)
+		# make sure the file family is not a mistake
+		if sys.argv[2][:2] == "--" or \
+			sys.argv[2].find("/") != -1 or \
+			is_bfid(sys.argv[2]):
+			print "Error: missing file family!"
+			print "cmd =", cmd
+			usage()
+			sys.exit(0)
+		if sys.argv[3][:2] == "--" and \
+			sys.argv[3] != "--bfids" and \
+			sys.argv[3] != "--vol" and \
+			sys.argv[3] != "--vol-with-deleted":
+			usage()
+			sys.exit(0)
+
+		use_file_family = sys.argv[2]
+		cmd1 = sys.argv[0]
+		sys.argv = sys.argv[2:]
+		sys.argv[0] = cmd1
+
+	init()
+
 	if sys.argv[1] == "--vol":
 		icheck = False
 		for i in sys.argv[2:]:
 			migrate_volume(i)
+	elif sys.argv[1] == "--vol-with-deleted":
+		icheck = False
+		for i in sys.argv[2:]:
+			migrate_volume(i, with_deleted = True)
 	elif sys.argv[1] == "--bfids":
 		files = []
 		for i in sys.argv[2:]:
