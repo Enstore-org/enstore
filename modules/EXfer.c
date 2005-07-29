@@ -57,12 +57,14 @@
 #endif /* STAND_ALONE */
 
 
-#ifdef HAVE_XFS_XQH_H
+#ifdef HAVE_XFS_XQM_H
 #include <xfs/xqm.h>
-#elif defined(HAVE_SYS_FS_UFS_QUOTA_H)
+#endif
+#if defined(HAVE_SYS_FS_UFS_QUOTA_H)
 /* Only SunOS can get here? */
 #include <sys/fs/ufs_quota.h>
-#elif defined(HAVE_SYS_QUOTA_H)
+#endif
+#if defined(HAVE_SYS_QUOTA_H)
 #include <sys/quota.h>
 #endif
 
