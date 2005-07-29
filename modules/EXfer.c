@@ -2795,10 +2795,15 @@ int get_quotas(char *block_device, int type, struct dqblk* my_quota)
    }
    else
    {
+#  ifdef Q_GETGQUOTA
       cmd = Q_GETGQUOTA; /* group */
       gen_id = getegid();
+#  else
+      errno = EINVAL;
+      return -1;
+#  endif /* Q_GETGQUOTA */
    }
-#endif
+#endif /* QCMD */
 
    if(quotactl(cmd, block_device, gen_id, (caddr_t) my_quota) == 0)
    {
@@ -2821,15 +2826,32 @@ int get_quotas(char *block_device, int type, struct dqblk* my_quota)
 
 #ifdef QCMD
       if(type == USER_QUOTA)
+      {
 	 cmd = QCMD(Q_XGETQUOTA, USRQUOTA);  /* user */
+	 gen_id = geteuid();
+      }
       else
+      {
 	 cmd = QCMD(Q_XGETQUOTA, GRPQUOTA);  /* group */
+	 gen_id = getegid();
+      }
 #else
       if(type == USER_QUOTA)
+      {
 	 cmd = Q_XGETQUOTA;  /* user */
+	 gen_id = geteuid();
+      }
       else
+      {
+#  ifdef Q_XGETGQUOTA
 	 cmd = Q_XGETGQUOTA; /* group */
-#endif
+	 gen_id = getegid();
+#  else
+	 errno = EINVAL;
+	 return -1;
+#  endif /* Q_XGETGQUOTA */
+      }
+#endif /* QCMD */
    
       if(quotactl(cmd, block_device, gen_id, (caddr_t) &my_disk_quota) == 0)
       {
