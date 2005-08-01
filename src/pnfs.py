@@ -2639,7 +2639,7 @@ class File:
 					self.pnfs_id, self.pnfs_vid,\
 					self.bfid, self.drive, \
 					self.complete_crc = finfo
-				if len(finfo) == 10:
+				elif len(finfo) == 10:
 					self.volume,\
 					self.location_cookie,\
 					self.size, self.file_family,\
