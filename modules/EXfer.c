@@ -209,6 +209,15 @@ typedef signed long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
 
+#if defined(__mips) && !defined(_SOCKLEN_T)
+/*
+ * Older IRIX boxes to not define socklen_t.  Newer ones do and also define
+ * macro _SOCKLEN_T that we can use to determine if socklen_t is defined
+ * already or we need to do so here.
+ */
+typedef unsigned int socklen_t;
+#endif
+
 /* This is the struct that holds all the information about one direction
  * of a transfer. */
 struct transfer
