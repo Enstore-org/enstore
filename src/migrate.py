@@ -417,34 +417,35 @@ def copy_files(files):
 			log(MY_TASK, `f`)
 		log(MY_TASK, "copying %s %s %s"%(bfid, f['label'], f['location_cookie']))
 
+		tmp = temp_file(f['label'], f['location_cookie'])
+
+		if f['deleted'] == 'n':
+			try:
+				src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
+			except:
+				exc_type, exc_value = sys.exc_info()[:2]
+				error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
+				continue
+		elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
+
+			log(MY_TASK, "%s %s %s is a DELETED FILE"%(f['bfid'], f['pnfs_id'], f['pnfs_path']))
+			src = "deleted-%s-%s"%(bfid, tmp) # for debug
+			# do nothing more
+		else:
+			# what to do?
+			error_log(MY_TASK, "can not copy %s"%(bfid))
+			continue
+			
+		if debug:
+			log(MY_TASK, "src:", src)
+			log(MY_TASK, "tmp:", tmp)
+
 		# check if it has been copied
 		ct = is_copied(bfid, db)
 		if ct:
 			res = 0
 			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, ct))
 		else:
-			tmp = temp_file(f['label'], f['location_cookie'])
-
-			if f['deleted'] == 'n':
-				try:
-					src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
-				except:
-					exc_type, exc_value = sys.exc_info()[:2]
-					error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
-					continue
-			elif f['deleted'] == 'y' and len(f['pnfs_id']) > 10:
-
-				log(MY_TASK, "%s %s %s is a DELETED FILE"%(f['bfid'], f['pnfs_id'], f['pnfs_path']))
-				src = "deleted-%s-%s"%(bfid, tmp) # for debug
-				# do nothing more
-			else:
-				# what to do?
-				error_log(MY_TASK, "can not copy %s"%(bfid))
-				continue
-				
-			if debug:
-				log(MY_TASK, "src:", src)
-				log(MY_TASK, "tmp:", tmp)
 			if f['deleted'] == 'n' and not os.access(src, os.R_OK):
 				error_log(MY_TASK, "%s %s is not readable"%(bfid, src))
 				continue
