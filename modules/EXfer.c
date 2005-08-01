@@ -7,6 +7,10 @@
 #  define _GNU_SOURCE
 #endif
 
+#if defined(__osf__) && !defined(_POSIX_PII_SOCKET)
+#  define _POSIX_PII_SOCKET
+#endif
+
 /* Macros for Large File Summit (LFS) conformance. */
 #define _FILE_OFFSET_BITS 64
 #define _LARGEFILE_SOURCE 1
@@ -965,10 +969,11 @@ static int print_socket_info(int fd)
    
    /* Get any pending socket errors. */
    {
-      int socket_error = 0;
+      int socket_error;
       socklen_t socklen;
       char error_message[2048];
 
+      socket_error = 0;
       socklen = sizeof(socket_error);
       if(getsockopt(fd, SOL_SOCKET, SO_ERROR,
 		    &socket_error, &socklen) < 0)
