@@ -261,7 +261,7 @@ struct transfer
 };
 
 /* Two pointers for use by the monitor thread. */
-struct monitor
+struct t_monitor
 {
   struct transfer *read_info;  /* Pointer to the read direction struct. */
   struct transfer *write_info; /* Pointer to the write direction struct. */
@@ -2926,7 +2926,7 @@ static void do_read_write_threaded(struct transfer *reads,
   pthread_t monitor_tid;               /* Thread id numbers. */
   struct timeval cond_wait_tv;  /* Absolute time to wait for cond. variable. */
   struct timespec cond_wait_ts; /* Absolute time to wait for cond. variable. */
-  struct monitor monitor_info;  /* Stuct pointing to both transfer stucts. */
+  struct t_monitor monitor_info;/* Stuct pointing to both transfer stucts. */
   pthread_attr_t read_attr;     /* Set any non-default thread attributes. */
   pthread_attr_t write_attr;    /* Set any non-default thread attributes. */
 
@@ -3403,8 +3403,8 @@ static void do_read_write_threaded(struct transfer *reads,
 
 static void* thread_monitor(void *monitor_info)
 {
-  struct transfer *read_info = ((struct monitor *)monitor_info)->read_info;
-  struct transfer *write_info = ((struct monitor *)monitor_info)->write_info;
+  struct transfer *read_info = ((struct t_monitor *)monitor_info)->read_info;
+  struct transfer *write_info = ((struct t_monitor *)monitor_info)->write_info;
   struct timespec sleep_time;  /* Time to wait in nanosleep. */
   struct timeval start_read;   /* Old time to remember during nanosleep. */
   struct timeval start_write;  /* Old time to remember during nanosleep. */
