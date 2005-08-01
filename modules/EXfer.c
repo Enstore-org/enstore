@@ -12,7 +12,7 @@
 #  define _POSIX_PII_SOCKET
 #endif
 
-/* A little hacke for SunOS to use the BSD FIONREAD ioctl(). */
+/* A little hack for SunOS to use the BSD FIONREAD ioctl(). */
 #if defined(__sun) && !defined(BSD_COMP)
 #  define BSD_COMP
 #endif
