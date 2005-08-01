@@ -2,13 +2,19 @@
 
 /* $Id$ */
 
-/* A little hack for linux so direct i/o will work. */
-#ifdef __linux__
+/* A little hack for Linux so direct i/o will work. */
+#if defined(__linux__) && !defined(_GNU_SOURCE)
 #  define _GNU_SOURCE
 #endif
 
+/* A little hack for OSF1 to use POSIX sockets (AKA define socklen_t). */
 #if defined(__osf__) && !defined(_POSIX_PII_SOCKET)
 #  define _POSIX_PII_SOCKET
+#endif
+
+/* A little hacke for SunOS to use the BSD FIONREAD ioctl(). */
+#if defined(__sun) && !defined(BSD_COMP)
+#  define BSD_COMP
 #endif
 
 /* Macros for Large File Summit (LFS) conformance. */
