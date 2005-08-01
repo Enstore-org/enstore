@@ -347,9 +347,9 @@ def migration_path(path, sg, deleted = 'n'):
 	if deleted == 'y':
 		# NOT DONE YET
 		if sg == 'cms':
-			return CMS_MIGRATION_DB+'/'+DELETED_TMP+'/'+path
+			return f_prefix+'/'+CMS_MIGRATION_DB+'/'+DELETED_TMP+'/'+os.path.basename(path)
 		else:
-			return MIGRATION_DB+'/'+DELETED_TMP+'/'+path
+			return f_prefix+'/'+MIGRATION_DB+'/'+DELETED_TMP+'/'+os.path.basename(path)
 
 	pl = string.split(path, '/')
 	if pl[:f_n] != f_p:
