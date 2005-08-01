@@ -667,7 +667,8 @@ def migrating():
 				continue
 
 		# get bfid of copied file
-		bfid2 = pnfs.File(dst).bfid
+		pf2 = pnfs.File(dst)
+		bfid2 = pf2.bfid
 		if bfid2 == None:
 			error_log(MY_TASK, "failed to get bfid of %s"%(dst))
 			job = copy_queue.get(True)
@@ -696,6 +697,7 @@ def migrating():
 				if finfo['status'][0] == e_errors.OK:
 					del finfo['status']
 					finfo['bfid'] = bfid2
+					finfo['location_cookie'] = pf2.location_cookie
 					res2 = fcc.modify(finfo)
 					if res2['status'][0] != e_errors.OK:
 						res = res2['status'][1]
