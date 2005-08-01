@@ -105,7 +105,7 @@ ecrc: ecrc.c
 	cp $@ ../sbin
 
 ddencp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT) $(LIBGEN)
+	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT) $(LIBGEN) $(LIBSOCKETNSL)
 	cp $(@) ../bin
 
 autologinenstore: autologinenstore.c
