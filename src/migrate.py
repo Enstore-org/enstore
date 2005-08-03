@@ -97,6 +97,7 @@ MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
 lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
 
+ENCP_PRIORITY = 0
 csc = None
 
 io_lock = thread.allocate_lock()
@@ -324,21 +325,6 @@ def log_history(src, dst, db):
 		exc_type, exc_value = sys.exc_info()[:2]
 		error_log("LOG_HISTORY", str(exc_type), str(exc_value), q)
 	return
-# run_encp(args) -- excute encp using os.system()
-# -- encp, like most of the enstore, is not thread safe.
-#    in order to run multiple encp streams, we have to use os.system()
-#    or alike, to give it a private process space.. 
-def run_encp(args):
-	# build command line
-	# use lowest priority and do not count against fair share
-	cmd = "encp --priority 0 --ignore-fair-share"
-	for i in args:
-		cmd = cmd + " " + i
-	cmd = cmd + " >/dev/null 2>1"
-	if debug:
-		log(cmd)
-	ret = os.system(cmd)
-	return ret
 
 # migration_path(path) -- convert path to migration path
 # a path is of the format: /pnfs/fs/usr/X/...
@@ -455,9 +441,9 @@ def copy_files(files):
 				os.remove(tmp)
 
 			if f['deleted'] == 'y':
-				cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(bfid, tmp)
+				cmd = "encp --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(ENCP_PRIORITY, bfid, tmp)
 			else:
-				cmd = "encp --priority 0 --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(src, tmp)
+				cmd = "encp --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(ENCP_PRIORITY, src, tmp)
 
 			if debug:
 				log(MY_TASK, "cmd =", cmd)
@@ -644,7 +630,7 @@ def migrating():
 			job = copy_queue.get(True)
 			continue
 
-		cmd = "encp --priority 0 --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+		cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
 		if debug:
 			log(MY_TASK, 'cmd =', cmd)
 		res = encp.encp(cmd)
@@ -742,9 +728,9 @@ def final_scan():
 		ct = is_checked(bfid2, db)
 		if not ct:
 			if deleted == 'y':
-				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(bfid2)
+				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid2)
 			else:
-				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(src)
+				cmd = "encp --priority %d  --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, src)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_checked(bfid, bfid2, db)
@@ -837,7 +823,7 @@ def final_scan_volume(vol):
 		ct = is_closed(bfid, db)
 		if not ct:
 			if deleted == 'y':
-				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(bfid)
+				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid)
 			else:
 				# get the real path
 				pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
@@ -856,7 +842,7 @@ def final_scan_volume(vol):
 					continue
 
 				open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
-				cmd = "encp --priority 0 --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(pnfs_path)
+				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
@@ -1123,10 +1109,24 @@ if __name__ == '__main__':
 		usage()
 		sys.exit(0)
 
+	init()
+
 	# log command line
 	cmd = string.join(sys.argv)
 	if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
 		log("COMMAND LINE:", cmd)
+
+	# handle --priority <priority>
+	if sys.argv[1] == "--priority":
+		ENCP_PRIORITY = int(sys.argv[2])
+
+		cmd1 = sys.argv[0]
+		sys.argv = sys.argv[2:]
+		sys.argv[0] = cmd1
+
+		print "ENCP_PRIORITY =", `ENCP_PRIORITY`
+		sys.exit(0)
+
 
 	# handle --use-file-family <file_family>
 	if sys.argv[1] == "--use-file-family":
@@ -1153,7 +1153,6 @@ if __name__ == '__main__':
 		sys.argv = sys.argv[2:]
 		sys.argv[0] = cmd1
 
-	init()
 
 	if sys.argv[1] == "--vol":
 		icheck = False
