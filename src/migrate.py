@@ -1124,9 +1124,6 @@ if __name__ == '__main__':
 		sys.argv = sys.argv[2:]
 		sys.argv[0] = cmd1
 
-		print "ENCP_PRIORITY =", `ENCP_PRIORITY`
-		sys.exit(0)
-
 
 	# handle --use-file-family <file_family>
 	if sys.argv[1] == "--use-file-family":
