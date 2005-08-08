@@ -695,7 +695,7 @@ def migrating():
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
 				log_swapped(bfid, bfid2, db)
 				if icheck:
-					scan_queue.put((bfid, bfid2, src), True)
+					scan_queue.put((bfid, bfid2, src, deleted), True)
 			else:
 				error_log("SWAPPING_METADATA", "%s %s %s %s failed due to %s"%(bfid, src, bfid2, dst, res))
 		else:
