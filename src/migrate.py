@@ -597,13 +597,13 @@ def migrating():
 			log(MY_TASK, `job`)
 		(bfid, src, tmp, ff, sg, deleted, wrapper) = job
 
+		dst = migration_path(src, sg, deleted)
 		# check if it has already been copied
 		bfid2 = is_copied(bfid, db)
 		if bfid2:
 			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, bfid2))
 		else:
 			ff = migration_file_family(ff, deleted)
-			dst = migration_path(src, sg, deleted)
 			log(MY_TASK, "copying %s %s %s"%(bfid, src, tmp))
 			# check dst
 			if not dst:     # This can not happen!!!
