@@ -601,78 +601,75 @@ def migrating():
 		bfid2 = is_copied(bfid, db)
 		if bfid2:
 			ok_log(MY_TASK, "%s has already been copied to %s"%(bfid, bfid2))
-			job = copy_queue.get(True)
-			continue
-			
-		ff = migration_file_family(ff, deleted)
-		dst = migration_path(src, sg, deleted)
-		log(MY_TASK, "copying %s %s %s"%(bfid, src, tmp))
-		# check dst
-		if not dst:     # This can not happen!!!
-			error_log(MY_TASK, "%s is not a pnfs entry"%(src))
-			job = copy_queue.get(True)
-			continue
-		# check if the directory is witeable
-		(dst_d, dst_f) = os.path.split(dst)
-		# does the parent directory exist?
-		if not os.access(dst_d, os.F_OK):
-			try:
-				os.makedirs(dst_d)
-				ok_log(MY_TASK, "making path %s"%(dst_d))
-			except:
-				# can not do it
-				error_log(MY_TASK, "can not make path %s"%(dst_d))
+		else:
+			ff = migration_file_family(ff, deleted)
+			dst = migration_path(src, sg, deleted)
+			log(MY_TASK, "copying %s %s %s"%(bfid, src, tmp))
+			# check dst
+			if not dst:     # This can not happen!!!
+				error_log(MY_TASK, "%s is not a pnfs entry"%(src))
 				job = copy_queue.get(True)
 				continue
-		if not os.access(dst_d, os.W_OK):
-			# can not create the file in that directory
-			error_log(MY_TASK, "%s is not writable"%(dst_d))
-			job = copy_queue.get(True)
-			continue
+			# check if the directory is witeable
+			(dst_d, dst_f) = os.path.split(dst)
+			# does the parent directory exist?
+			if not os.access(dst_d, os.F_OK):
+				try:
+					os.makedirs(dst_d)
+					ok_log(MY_TASK, "making path %s"%(dst_d))
+				except:
+					# can not do it
+					error_log(MY_TASK, "can not make path %s"%(dst_d))
+					job = copy_queue.get(True)
+					continue
+			if not os.access(dst_d, os.W_OK):
+				# can not create the file in that directory
+				error_log(MY_TASK, "%s is not writable"%(dst_d))
+				job = copy_queue.get(True)
+				continue
 
-		cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
-		if debug:
-			log(MY_TASK, 'cmd =', cmd)
-		res = encp.encp(cmd)
-		if res:
-			log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"%(bfid, src, tmp))
-			# delete the target and retry once
-			try:
-				os.remove(dst)
-			except:
-				pass
+			cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+			if debug:
+				log(MY_TASK, 'cmd =', cmd)
 			res = encp.encp(cmd)
 			if res:
-				error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
+				log(MY_TASK, "failed to copy %s %s %s ... (RETRY)"%(bfid, src, tmp))
 				# delete the target and retry once
 				try:
 					os.remove(dst)
 				except:
 					pass
+				res = encp.encp(cmd)
+				if res:
+					error_log(MY_TASK, "failed to copy %s %s %s"%(bfid, src, tmp))
+					# delete the target and retry once
+					try:
+						os.remove(dst)
+					except:
+						pass
+					job = copy_queue.get(True)
+					continue
+
+			# get bfid of copied file
+			pf2 = pnfs.File(dst)
+			bfid2 = pf2.bfid
+			if bfid2 == None:
+				error_log(MY_TASK, "failed to get bfid of %s"%(dst))
 				job = copy_queue.get(True)
 				continue
+			else:
+				# log success of coping
+				ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
+				log_copied(bfid, bfid2, db)
 
-		# get bfid of copied file
-		pf2 = pnfs.File(dst)
-		bfid2 = pf2.bfid
-		if bfid2 == None:
-			error_log(MY_TASK, "failed to get bfid of %s"%(dst))
-			job = copy_queue.get(True)
-			continue
-		else:
-			# log success of coping
-			ok_log(MY_TASK, "%s %s %s is copied to %s"%(bfid, src, tmp, dst))
-			log_copied(bfid, bfid2, db)
+			# remove tmp file
+			try:
+				os.remove(tmp)
+				ok_log(MY_TASK, "removing %s"%(tmp))
+			except:
+				error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
+				pass
 
-		# remove tmp file
-		try:
-			os.remove(tmp)
-			ok_log(MY_TASK, "removing %s"%(tmp))
-		except:
-			error_log(MY_TASK, "failed to remove temporary file %s"%(tmp))
-			pass
-
-		# NOT DONE YET how to swap a deleted file?
 		# is it swapped?
 		log("SWAPPING_METADATA", "swapping %s %s %s %s"%(bfid, src, bfid2, dst))
 		if not is_swapped(bfid, db):
