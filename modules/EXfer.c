@@ -209,18 +209,24 @@ typedef signed long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
 
-#if defined(__mips) && defined(STAND_ALONE) && !defined(_SOCKLEN_T)
+#if (defined(__mips) || defined(__sun)) 
 /*
- * Older IRIX boxes to not define socklen_t.  Newer ones do and also define
- * macro _SOCKLEN_T that we can use to determine if socklen_t is defined
+ * Older IRIX 6.5 boxes to not define socklen_t.  Newer ones do and also define
+ * the macro _SOCKLEN_T that we can use to determine if socklen_t is defined
  * already or we need to do so here.
- * 
+ *
+ * The same goes for SunOS too.  Newer ones define it (2.8), older ones do 
+ * (2.6) not.
+ */
+#if defined(STAND_ALONE) && !defined(_SOCKLEN_T)
+/*
  * Only worry about this for the STAND_ALONE executable.  The Python.h include
  * takes care of this for EXfer.so.
  */
 #define _SOCKLEN_T
 typedef int socklen_t;
-#endif
+#endif /* STAND_ALONE && !_SOCKLEN_T */
+#endif /* __mips || __sun */
 
 /* This is the struct that holds all the information about one direction
  * of a transfer. */
@@ -995,7 +1001,7 @@ static int print_socket_info(int fd)
       socket_error = 0;
       socklen = sizeof(socket_error);
       if(getsockopt(fd, SOL_SOCKET, SO_ERROR,
-		    &socket_error, &socklen) < 0)
+		    (void*) (&socket_error), &socklen) < 0)
       {
 	 (void) snprintf(error_message, 2047,
 			 "posix_read: getsockopt() failed: %d\n", errno);
