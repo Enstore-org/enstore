@@ -4295,6 +4295,19 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         except EncpError, msg:
             pf_status = (msg.type, str(msg))
             if getattr(msg, "errno", None) == errno.EEXIST:
+                #We don't want to detete the file that has been written
+                # by another encp.  In theory this can only happen with
+                # dCache encp transfers.  Normal encps should be immune
+                # do to the way that the output is created via the temporary
+                # filename linking game (However, make sure that this
+                # doesn't delete the entry regardless).
+                try:
+                    delete_at_exit.unregister(pnfs_filename)
+                except ValueError:
+                    #The name is already not in the list of files to remove.
+                    pass
+                #We don't want to do this because this will clobber what
+                # the previous encp has already set.
                 skip_layer_cleanup = True
                                 
     #The volume clerk set the volume NOACCESS.
