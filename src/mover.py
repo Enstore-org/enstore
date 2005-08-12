@@ -1901,6 +1901,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.eof_labels:
                     bytes_written = driver.write(self.eof_labels, 0, len(self.eof_labels))
                     if bytes_written != len(self.eof_labels):
+                        self.vcc.set_system_readonly(self.current_volume)
                         self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                              (bytes_written, len(self.eof_labels)), error_source=TAPE)
                         return
@@ -1908,6 +1909,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.flush()
             except:
                 exc, detail, tb = sys.exc_info()
+                self.vcc.set_system_readonly(self.current_volume)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             
@@ -1921,6 +1923,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
                 except  self.ftt.FTTError, detail:
                     Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive while checking a written file: %s %s"%(self.ftt.FTTError, detail))
+                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
 
                     return
@@ -1941,6 +1944,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
                                 (self.current_volume,save_location))
+                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     return
                 self.buffer.save_settings()
@@ -2010,9 +2014,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(22,"write_tape: read CRC %s write CRC %s"%
                             (self.buffer.complete_crc, saved_complete_crc))
                 if failed:
+                    self.vcc.set_system_readonly(self.current_volume)
                     return
                 if self.buffer.complete_crc != saved_complete_crc:
                     Trace.alarm(e_errors.ERROR, "selective CRC check error")
+                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.WRITE_ERROR, "selective CRC check error",error_source=DRIVE)
                     return
                 Trace.log(e_errors.INFO, "selective CRC check after writing file completed successfuly")
@@ -2024,6 +2030,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     exc, detail, tb = sys.exc_info()
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s after selective CRC check. Position %s"%
                                 (self.current_volume,save_location))
+                    self.vcc.set_system_readonly(self.current_volume)
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'positioning error %s' % (detail,), error_source=DRIVE)
                     return
 
@@ -2869,7 +2876,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(10, "verify label returns %s" % (status,))
                 if status[0] == e_errors.OK:  #There is a label present!
                         msg = "volume %s already labeled %s" % (volume_label,status[1])
-                        #self.vcc.set_system_noaccess(volume_label)
                         self.set_volume_noaccess(volume_label)
                         Trace.alarm(e_errors.ERROR, msg)
                         Trace.log(e_errors.ERROR, "marking %s noaccess" % (volume_label,))
