@@ -65,14 +65,13 @@ def _open2(pathname,mode=0666):
         os.link(tmpname, pathname)
         ok = 1
     except OSError, detail:
-        #If the output file already exists, we can stop now.  This is checked
-        # for already with normal transfers, but those with --get-bfid
-        # or --get-cache can see this error at this point.  Although,
-        # two competing encps can also cause one of them to have this error.
-        this_errno = getattr(detail, "errno", None)
-        if this_errno == errno.EEXIST:
-            delete_at_exit.unregister(pathname) #Don't delete real file!
-            raise OSError(this_errno, str(detail) + ": %s" % pathname)
+        #If the output file already exists, we should be able to stop now.
+        # However, EEXIST is given for two cases.  The first is that the
+        # file does already exist.  The second occurs from a race condition
+        # inherent to the NFS V2 protocol.
+        #
+        #Unfortunately, this means that we need to enter the following
+        # loop for both cases to determine which case it is.
 
         try:
             #There are timeout issues with pnfs... keep trying.
