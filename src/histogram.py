@@ -38,6 +38,7 @@ class Histogram1D:
         self.bw=(self.high-self.low)/float(self.nbins)
         self.maximum=0
         self.minimum=0
+        self.time_axis=False # time axis assumes unix time stamp
         #
         # atributes
         #
@@ -111,6 +112,9 @@ class Histogram1D:
     def set_logx(self,yes=True):
         self.logx=yes
 
+    def set_time_axis(self,yes=True):
+        self.time_axis=yes
+
     #
     # getters
     #
@@ -175,6 +179,9 @@ class Histogram1D:
     def get_logy(self):
         return self.logy
 
+    def get_time_axis(self):
+        return self.time_axis
+
     def get_logx(self):
         return self.logx
 
@@ -204,7 +211,10 @@ class Histogram1D:
             y = self.get_bin_content(i)
             dy = math.sqrt(self.get_bin_content(i))
             dx = 0.5*self.bw
-            data_file.write("%f %f %f %f\n"%(x,dx,y,dy))
+            if ( self.time_axis==False ) : 
+                data_file.write("%f %f %f %f\n"%(x,dx,y,dy))
+            else :
+                   data_file.write("%s %f %f %f \n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),dx,y,dy))
         data_file.close()
 
     #
@@ -216,30 +226,51 @@ class Histogram1D:
         self.save_data(full_file_name)
         gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
         gnu_cmd = open(gnu_file_name,'w')
-        long_string="set output '"+self.name+".ps'\n"+ \
-                     "set terminal postscript color solid\n"\
-                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set xrange [ : ]\n"+ \
-                     "set size 1.5,1\n"+ \
-                     "set ylabel '%s'\n"%(self.ylabel)+ \
-                     "set xlabel '%s'\n"%(self.xlabel)+ \
-                     "set grid\n"
-
-#                     "set style fill solid 1.000000 \n" (not working:)
-
-        if ( self.get_logy() ) :
-            long_string=long_string+"set logscale y\n"
-            long_string=long_string+"set yrange [ 0.99  : ]\n"
-        if ( self.get_logx() ) :
-            long_string=long_string+"set logscale x\n"
-        long_string=long_string+"set key right top Left samplen 20 title \""+\
-                     "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-                     "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
-                     "\\nEntries : %d"%(self.entries)+\
-                     "\\n Overflow : %d"%(self.overflow)+\
-                     "\\n Underflow : %d"%(self.underflow)+"\"\n"+\
-                     "plot '"+full_file_name+\
-                     "' using 1:3 t '' with boxes\n "
+        long_string=""
+        if ( self.time_axis==False ) : 
+            long_string=long_string+"set output '"+self.name+".ps'\n"+ \
+                         "set terminal postscript color solid\n"\
+                         "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                         "set xrange [ : ]\n"+ \
+                         "set size 1.5,1\n"+ \
+                         "set ylabel '%s'\n"%(self.ylabel)+ \
+                         "set xlabel '%s'\n"%(self.xlabel)+ \
+                         "set grid\n"
+            #                     "set style fill solid 1.000000 \n" (not working:)
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+"set key right top Left samplen 20 title \""+\
+                         "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
+                         "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
+                         "\\nEntries : %d"%(self.entries)+\
+                         "\\n Overflow : %d"%(self.overflow)+\
+                         "\\n Underflow : %d"%(self.underflow)+"\"\n"+\
+                         "plot '"+full_file_name+\
+                         "' using 1:3 t '' with boxes\n "
+        else :
+            long_string=long_string+"set output '"+self.name+".ps'\n"+ \
+                         "set terminal postscript color solid\n"\
+                         "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                         "set xlabel 'Date (year-month-day)'\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set xdata time\n"+ \
+                         "set xrange [ : ]\n"+ \
+                         "set size 1.5,1\n"+ \
+                         "set grid\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+"set ylabel '%s'\n"%(self.ylabel)+ \
+                         "set xlabel '%s'\n"%(self.xlabel)+ \
+                         "plot '"+full_file_name+\
+                         "' using 1:4 t '' with boxes\n "
+            
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -247,20 +278,33 @@ class Histogram1D:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
-    
+       
     def dump(self):
         print repr(self.__dict__)
         
 if __name__ == "__main__":
-    hist=Histogram1D("try","try",100,0,10)
-    while ( hist.n_entries() < 10000 ) :
-        x=random.gauss(5,0.5)
-        hist.fill(x)
+
+    if (1) :
+        hist=Histogram1D("try","try",100,0,10)
+        while ( hist.n_entries() < 10000 ) :
+            x=random.gauss(5,0.5)
+            hist.fill(x)
+    else:
+        now    = int(time.time())
+        then   = now - 30*3600*24
+        middle = now - 15*3600*24
+        width  = 4*3600*24
+        print float(middle),float(width)
+        hist=Histogram1D("try","try",100,then,now)
+        while ( hist.n_entries() < 10000 ) :
+            x=random.gauss(float(middle),float(width))
+            hist.fill(x)
+        hist.set_time_axis(True)
+
     hist.set_ylabel("Counts")
     hist.set_xlabel("x variable")
     hist.set_logy(True)
     hist.plot()
     os.system("display %s.jpg&"%(hist.get_name()))
     sys.exit(0)
-    
-    
+
