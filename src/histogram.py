@@ -18,7 +18,7 @@ import time
 
 class Histogram1D:
 
-    def __init__(self, name, title, nbins, xlow, xhigh):
+    def __init__(self, name, title, nbins=10, xlow=0, xhigh=1):
         self.name=name
         self.title=title
         self.nbins=int(nbins)
