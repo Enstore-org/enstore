@@ -59,11 +59,14 @@ class Histogram1D:
         elif ( x > self.high ):
             self.overflow=self.overflow+1
             return None
-        return int (float(self.nbins)*(x-self.low)/(self.high-self.low));
+        bin = int (float(self.nbins)*(x-self.low)/(self.high-self.low));
+        if ( bin == self.nbins ) :
+            bin = bin-1
+        return bin
 
     def fill(self,x,w=1.):
         bin = self.find_bin(x)
-        if bin: 
+        if bin:
             self.sum=self.sum+x
             self.sum2=self.sum2+x*x
             self.entries=self.entries+1
@@ -216,14 +219,17 @@ class Histogram1D:
         long_string="set output '"+self.name+".ps'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                     "set style fill solid 2.000000 border\n" \
                      "set xrange [ : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)+ \
                      "set grid\n"
+
+#                     "set style fill solid 1.000000 \n" (not working:)
+
         if ( self.get_logy() ) :
             long_string=long_string+"set logscale y\n"
+            long_string=long_string+"set yrange [ 0.99  : ]\n"
         if ( self.get_logx() ) :
             long_string=long_string+"set logscale x\n"
         long_string=long_string+"set key right top Left samplen 20 title \""+\
