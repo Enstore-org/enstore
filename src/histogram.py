@@ -211,10 +211,10 @@ class Histogram1D:
             y = self.get_bin_content(i)
             dy = math.sqrt(self.get_bin_content(i))
             dx = 0.5*self.bw
-            if ( self.time_axis==False ) : 
-                data_file.write("%f %f %f %f\n"%(x,dx,y,dy))
+            if ( self.time_axis ) : 
+                data_file.write("%s %f %f %f \n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),dx,y,dy))
             else :
-                   data_file.write("%s %f %f %f \n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),dx,y,dy))
+                data_file.write("%f %f %f %f\n"%(x,dx,y,dy))
         data_file.close()
 
     #
@@ -227,7 +227,27 @@ class Histogram1D:
         gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
         gnu_cmd = open(gnu_file_name,'w')
         long_string=""
-        if ( self.time_axis==False ) : 
+        if (  self.time_axis ) : 
+            long_string=long_string+"set output '"+self.name+".ps'\n"+ \
+                         "set terminal postscript color solid\n"\
+                         "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                         "set xlabel 'Date (year-month-day)'\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set xdata time\n"+ \
+                         "set xrange [ : ]\n"+ \
+                         "set size 1.5,1\n"+ \
+                         "set grid\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+"set ylabel '%s'\n"%(self.ylabel)+ \
+                         "set xlabel '%s'\n"%(self.xlabel)+ \
+                         "plot '"+full_file_name+\
+                         "' using 1:4 t '' with boxes\n "
+        else :
             long_string=long_string+"set output '"+self.name+".ps'\n"+ \
                          "set terminal postscript color solid\n"\
                          "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
@@ -250,26 +270,6 @@ class Histogram1D:
                          "\\n Underflow : %d"%(self.underflow)+"\"\n"+\
                          "plot '"+full_file_name+\
                          "' using 1:3 t '' with boxes\n "
-        else :
-            long_string=long_string+"set output '"+self.name+".ps'\n"+ \
-                         "set terminal postscript color solid\n"\
-                         "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
-                         "set xlabel 'Date (year-month-day)'\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
-                         "set xdata time\n"+ \
-                         "set xrange [ : ]\n"+ \
-                         "set size 1.5,1\n"+ \
-                         "set grid\n"+ \
-                         "set format x \"%y-%m-%d\"\n"
-            if ( self.get_logy() ) :
-                long_string=long_string+"set logscale y\n"
-                long_string=long_string+"set yrange [ 0.99  : ]\n"
-            if ( self.get_logx() ) :
-                long_string=long_string+"set logscale x\n"
-            long_string=long_string+"set ylabel '%s'\n"%(self.ylabel)+ \
-                         "set xlabel '%s'\n"%(self.xlabel)+ \
-                         "plot '"+full_file_name+\
-                         "' using 1:4 t '' with boxes\n "
             
         gnu_cmd.write(long_string)
         gnu_cmd.close()
