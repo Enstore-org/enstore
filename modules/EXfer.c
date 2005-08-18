@@ -3073,7 +3073,7 @@ static void do_read_write_threaded(struct transfer *reads,
   {
      /* Doing a memory mapped io to memory mapped io copy is not very
       *	conducive to multithreading.  Revert to the single threaded
-      * ipmlimentation. */
+      * implementation. */
      
 #ifdef DEBUG_REVERT
      (void)write(STDERR_FILENO, no_mmap_threaded_implimentation,
