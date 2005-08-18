@@ -25,6 +25,10 @@ import accounting_query
 import histogram
 
 MB=1024*1024.
+
+# SELECT_STMT= "select last_access,system_inhibit_1,(1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))*100 as percentage from volume where file_family!='none' and label not like '_______deleted' and  capacity_bytes>0 and storage_group='%s' and (1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))>0 and last_access>'1970-12-31 17:59:59'"
+SELECT_STMT= "select last_access,system_inhibit_1,(1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))*100 as percentage from volume where file_family!='none' and label not like '%deleted' and  capacity_bytes>0 and (1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))>0 and last_access>'1970-12-31 17:59:59' and storage_group='"
+
 def showError(msg):
     sys.stderr.write("Error: " + msg)
 
@@ -66,29 +70,35 @@ def main():
         h1 = histogram.Histogram1D(sg,"%s tape occupancy"%(sg),1000,0,100)
         h1.set_logy(True)
         h1.set_ylabel("Number of Volumes")
-        h1.set_xlabel("fill fraction")
-        select_stmt= "select (1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))*100 as percentage from volume where file_family!='none' and label not like '_______deleted' and  capacity_bytes>0 and storage_group='%s'"%(sg,)
-        res=db.query(select_stmt)
-        for row in res.getresult():
-            if not row:
-                continue
-            h1.fill(row[0])
+        h1.set_xlabel("Fill Fraction")
 
-        h2 = histogram.Histogram1D("time_%s"%sg,"%s tape occupancy vs time"%(sg),120,float(start_time),float(now_time))
-        h2.set_ylabel("Tape occupancy")
+        h2 = histogram.Histogram1D("%s_active"%sg,"%s active volumes vs last access time"%(sg),120,float(start_time),float(now_time))
+        h2.set_ylabel("Number of active volumes")
         h2.set_xlabel("Date")
         h2.set_time_axis(True)
-        h2.set_profile(True)
-        select_stmt= "select last_access, (1.-remaining_bytes/1024./1024./1024. / (capacity_bytes/1024./1024./1024))*100 "+\
-                     "as percentage from volume where file_family!='none' and label not like '_______deleted' "+\
-                     "and  capacity_bytes>0 and storage_group='%s' and last_access between '%s' and '%s'"%(sg,str_start_time,str_now_time)
+
+        
+        h3 = histogram.Histogram1D("%s_time"%sg,"%s tape occupancy  vs last access time"%(sg),120,float(start_time),float(now_time))
+        h3.set_ylabel("Fill Fraction")
+        h3.set_xlabel("Date")
+        h3.set_time_axis(True)
+        h3.set_profile(True)
+        
+#        select_stmt=SELECT_STMT%(sg,)
+        select_stmt=SELECT_STMT+sg+"'"
+        
         res=db.query(select_stmt)
         for row in res.getresult():
             if not row:
                 continue
-            h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[1])
+            h1.fill(row[2])
+            if ( row[1] == 'none'):  
+                h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')))
+                h3.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
+        histograms.append(h1)
         histograms.append(h2)
-        
+        histograms.append(h3)
+
     db.close()
 
     for hist in histograms:
