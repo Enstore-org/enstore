@@ -26,6 +26,7 @@ class Histogram1D:
         self.high=xhigh
         self.entries=0
         self.binarray = []
+        self.sumarray = []
         self.underflow=0
         self.overflow=0
         self.mean=0
@@ -39,6 +40,7 @@ class Histogram1D:
         self.maximum=0
         self.minimum=0
         self.time_axis=False # time axis assumes unix time stamp
+        self.profile=False
         #
         # atributes
         #
@@ -49,6 +51,7 @@ class Histogram1D:
 
         for i in range(self.nbins):
             self.binarray.append(0.)
+            self.sumarray.append(0.)
     #
     # non trivial methods 
     #
@@ -71,6 +74,10 @@ class Histogram1D:
             self.sum=self.sum+x
             self.sum2=self.sum2+x*x
             self.entries=self.entries+1
+            if ( self.profile ) :
+                sum=self.sumarray[bin]
+                sum=sum+1
+                self.sumarray[bin]=sum
             count=self.binarray[bin]
             count=count+1.*w
             self.binarray[bin]=count
@@ -114,6 +121,9 @@ class Histogram1D:
 
     def set_time_axis(self,yes=True):
         self.time_axis=yes
+
+    def set_profile(self,yes=True):
+        self.profile=yes
 
     #
     # getters
@@ -182,6 +192,9 @@ class Histogram1D:
     def get_time_axis(self):
         return self.time_axis
 
+    def get_profile(self):
+        return self.profile
+
     def get_logx(self):
         return self.logx
 
@@ -211,6 +224,10 @@ class Histogram1D:
             y = self.get_bin_content(i)
             dy = math.sqrt(self.get_bin_content(i))
             dx = 0.5*self.bw
+            if ( self.profile ) :
+                if ( self.sumarray[i] > 0 ) :
+                    y = y  / self.sumarray[i]
+                    dy = dy / self.sumarray[i]
             if ( self.time_axis ) : 
                 data_file.write("%s %f %f %f \n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),dx,y,dy))
             else :
@@ -246,7 +263,7 @@ class Histogram1D:
             long_string=long_string+"set ylabel '%s'\n"%(self.ylabel)+ \
                          "set xlabel '%s'\n"%(self.xlabel)+ \
                          "plot '"+full_file_name+\
-                         "' using 1:4 t '' with boxes\n "
+                         "' using 1:4 t '' with points\n "
         else :
             long_string=long_string+"set output '"+self.name+".ps'\n"+ \
                          "set terminal postscript color solid\n"\
