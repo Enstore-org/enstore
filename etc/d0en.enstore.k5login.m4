@@ -71,13 +71,11 @@ bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 djholm@FNAL.GOV
-genser@FNAL.GOV
 george@FNAL.GOV
 huangch@FNAL.GOV
 ivm@FNAL.GOV
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
-leoheska@FNAL.GOV
 litvinse@FNAL.GOV
 moibenko@FNAL.GOV
 neilsen@FNAL.GOV
