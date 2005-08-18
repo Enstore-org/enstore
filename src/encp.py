@@ -8012,6 +8012,7 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.USER,},
         option.NO_CRC:{option.HELP_STRING:"Do not perform CRC check.",
+                       option.DEFAULT_NAME:'chk_crc',
                        option.DEFAULT_TYPE:option.INTEGER,
                        option.DEFAULT_VALUE:0,
                        option.USER_LEVEL:option.USER,},
