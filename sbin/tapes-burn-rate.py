@@ -149,6 +149,9 @@ for thefile in systems:
                 print 'can not parse', line,len(line)
                 continue
 
+        s= sg.split(':')
+        if len(s) > 1:
+            sg = s[0]
         QUOTAS[l+'.'+sg] = (wv,bv,su,l)
         if not l in  libraries[thefile].keys():
             libraries[thefile][l]={'volume_capacity':None,'storage_groups':[]}
@@ -232,6 +235,7 @@ while 1:
     else:
         g = TAPES[v]
     l,sg = g.split('.')
+
     if group_fd.has_key(g):
         o = group_fd[g]
     else:
@@ -260,6 +264,7 @@ while 1:
         o.write('%s\n' % (ol,))
     #if g=='cdf.cdf':
         #print "WWW",ol
+    #print "LLLLL",l
     if l in ['mezsilo', 'cdf', '9940']:
        all_9940_mb = all_9940_mb + long(mb)
        all_9940_v[v] = 1
@@ -276,7 +281,7 @@ while 1:
            cd_9940b_v[v] = 1
            CD_9940B.write('%s\n' % (ol,))
          
-    elif l in ['samlto'] or sg in ['cms']:
+    elif l in ['samlto', 'samlto2'] or sg in ['cms']:
         pass
     elif l == 'eagle':
         eagle_mb = eagle_mb + long(mb)
@@ -287,8 +292,8 @@ while 1:
     #    beagle_v[v] = 1
     #    beagle.write('%s\n' % (ol,))
     else:
-        pass
-        #print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
+        #pass
+        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
 
 #sys.exit()
 for g in group_fd.keys():
@@ -324,7 +329,9 @@ for g in group_fd.keys():
         pass
         #wv = len(all_9940b_v)
         #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
+    print "GOT HERE"
     if QUOTAS.has_key(g):
+        print g, QUOTAS[g]
         (wv,bv,su, l) = QUOTAS[g]
         
         cap = lib_capacity(g)
@@ -332,11 +339,13 @@ for g in group_fd.keys():
             print "DON'T KNOW WHAT IS CAPACITY FOR %s"(g,)
         
         if l in ['D0-9940B', 'CDF-9940B', 'CD-9940B']:
+          print "LLLL",l
           _9940b_wv = _9940b_wv + int(wv)
           _9940b_bv = _9940b_bv + int(bv)
           su = float(su.split("G")[0])
           _9940b_su = _9940b_su + su
           if l == 'CD-9940B':
+              print "G %s BV %s"%(g, bv)
               cd_9940b_wv = cd_9940b_wv + int(wv)
               cd_9940b_bv = cd_9940b_bv + int(bv)
               cd_9940b_su = cd_9940b_su + su
