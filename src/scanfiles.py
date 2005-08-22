@@ -804,10 +804,29 @@ def check_bit_file(bfid):
     if not pf.bfid or pf.bfid != file_record['bfid']:
         try:
             pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
-        except:
-            err = err + ["%s does not exist"%(file_record['pnfsid'])]
-            errors_and_warnings(prefix, err, warn, info)
-            return
+        except (OSError, IOError), detail:
+            my_errno = getattr(detail, "errno", None)
+            if my_errno == errno.ENOENT or my_errno == errno.EIO:
+                try:
+                    pnfs_name = pnfs.Pnfs(mount_point = mp).get_nameof(file_record['pnfsid'])
+                except (OSError, IOError), detail2:
+                    my_errno2 = getattr(detail2, "errno", None)
+                    if my_errno2 == errno.ENOENT or my_errno2 == errno.EIO:
+                        err = err + ["%s does not exist"%(file_record['pnfsid'])]
+                        errors_and_warnings(prefix, err, warn, info)
+                        return
+                    else:
+                        err = err + ["%s error accessing file"%(file_record['pnfsid'])]
+                        errors_and_warnings(prefix, err, warn, info)
+                        return
+
+                err = err + ["%s orphaned file"%(file_record['pnfsid'])]
+                errors_and_warnings(prefix, err, warn, info)
+                return
+            else:
+                err = err + ["%s error accessing file"%(file_record['pnfsid'])]
+                errors_and_warnings(prefix, err, warn, info)
+                return
 
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     if e2 or w2:
