@@ -69,6 +69,7 @@ ivm@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
+ifelse(HOSTNAME, stkendca3a, `kurt@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
 moibenko@FNAL.GOV
