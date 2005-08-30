@@ -243,7 +243,7 @@ class EncpError(Exception):
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_4  CVS $Revision$ "
+    version_string = "v3_5a  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -6467,7 +6467,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                                 e_errors.USERERROR, request)
 
             #Make sure we won't exeed any quotas.
-            fs_quotas = EXfer.quotas("/home/zalokar")
+            fs_quotas = EXfer.quotas(request['outfile'])
             for quota in fs_quotas:
                 #Transfer bytes into blocks first.
                 sum_blocks = (sum_size / long(fs_stats[statvfs.F_BSIZE])) + 1
@@ -7599,7 +7599,7 @@ def read_from_hsm(e, tinfo):
                create_zero_length_local_files(requests_per_vol[vol][i])
             except OSError, msg:
                 requests_per_vol[vol][i]['status'] = (e_errors.OSERROR,
-                                                      msg.strerror)
+                                                      str(msg))
                 #request['exit_status'] = 1
                 return requests_per_vol[vol][i], requests_per_vol
                 #print_data_access_layer_format("", request['outfile'],
