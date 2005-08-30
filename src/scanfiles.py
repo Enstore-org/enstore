@@ -703,8 +703,19 @@ def mount_point(p):
     if not d or not f:
         return None
 
-    if d == '/pnfs':
-        return os.path.join(d, f)
+    if d == "/pnfs":
+        return os.path.join(d, f)  #isn't this p?
+    elif d[-5:] == "/pnfs" and d[:-5].find("/pnfs") == -1:
+        #If the current d in searching matches "/pnfs" (d[-5:] == "/pnfs")
+        # and there are no more "/pnfs" directories left in d
+        # (d[:-5].find("/pnfs") == -1) then start with this directory
+        # for the mountpoint.
+        #
+        #This is necessary for automounted pnfs areas that have paths like
+        # /tmp_mnt/pnfs/BDMS/tariq/p1_101/p1_101_struc007.jpg in the
+        # enstore metadata (file DB and layer 4) instead of begining with
+        # /pnfs.
+        return os.path.join(d[-5:], f)
     else:
         return mount_point(d)
 
@@ -813,6 +824,10 @@ def check_bit_file(bfid):
                     my_errno2 = getattr(detail2, "errno", None)
                     if my_errno2 == errno.ENOENT or my_errno2 == errno.EIO:
                         err = err + ["%s does not exist"%(file_record['pnfsid'])]
+                        if pf.bfid != file_record['bfid']:
+                            #If this is the case that the bfids don't match,
+                            # also include this piece of information.
+                            info.append("replaced with newer file")
                         errors_and_warnings(prefix, err, warn, info)
                         return
                     else:
@@ -829,10 +844,21 @@ def check_bit_file(bfid):
                 return
 
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
-    if e2 or w2:
-        errors_and_warnings(prefix, err+e2, warn+w2, info+i2)
+    err = err + e2
+    warn = warn + w2
+    info = info + i2
+    if err or warn:
+        errors_and_warnings(prefix, err, warn, info)
         return
-    file_info = {"f_stats"       : f_stats}
+    if stat.S_ISREG(f_stats[stat.ST_MODE]):
+        file_info = {"f_stats"       : f_stats}
+    else:
+        #If this one-time file is no longer a file, then don't continue.
+        # The check is necessary becuase there are some files that have
+        # been replaced by directories of the same pathname.
+        info.append("no longer a regular file")
+        errors_and_warnings(prefix, err, warn, info)
+        return
 
     e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
