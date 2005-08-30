@@ -4649,10 +4649,22 @@ EXfd_quotas(PyObject *self, PyObject *args)
   if(get_bd_name(file_target, correct_block_device, (size_t) PATH_MAX,
 		 correct_mount_point, (size_t) PATH_MAX) < 0)
   {
-     char message[10000];
-     snprintf(message, (size_t) 10000,
-	      "fd_quotas - block device not found: %s", file_target);
-     return(raise_exception(message));
+     if(errno == ESRCH)
+     {
+	/* AFS filesystems will give this error, though there are other
+	 * ways to get this. */
+	
+        /* Quotas are not available. */
+        return PyList_New(0);
+     }
+     else
+     {
+        char message[10000];
+	snprintf(message, (size_t) 10000,
+		 "fd_quotas - block device not found: %s: %s",
+		 strerror(errno), file_target);
+	return(raise_exception(message));
+     }
   }
 
   /*
