@@ -42,7 +42,7 @@ else
         cutoff_date=$1
 fi
 if [ -z $enabled_libs_list ]; then
-    enabled_libs="9940|eagle|cdf|mezsilo"
+    enabled_libs="9940|cdf|mezsilo|D0-9940B|CDF-9940B|CD-9940B|dlt"
 fi
 if [ -z $exclude_items_list ]; then
     excluded_items="migrated"
