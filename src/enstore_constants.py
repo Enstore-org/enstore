@@ -110,6 +110,7 @@ CONFIGS = "Configuration Server"
 FILEC = "File Clerk"
 INQ = "Inquisitor"
 VOLC = "Volume Clerk"
+PNFSA = "Pnfs Agent"
 INFO = " Info Server"
 EV_RLY = "Event Relay"
 UP_DOWN = "up_down"
@@ -126,6 +127,7 @@ EVENT_RELAY = "event_relay"
 FILE_CLERK = "file_clerk"
 INFO_SERVER = "info_server"
 VOLUME_CLERK = "volume_clerk"
+PNFS_AGENT = "pnfs_agent"
 INQUISITOR = "inquisitor"
 CONFIG_SERVER = "configuration_server"  # included for use by inquisitor
 CONFIGURATION_SERVER = "configuration_server" # included for use by inquisitor
@@ -141,6 +143,7 @@ SERVER_NAMES = {ACCS: ACCOUNTING_SERVER,
 		INQ : INQUISITOR,
                 INFO : INFO_SERVER,
 		VOLC : VOLUME_CLERK,
+		PNFSA : PNFS_AGENT,
 		CONFIGS : CONFIG_SERVER,
 		EV_RLY : EVENT_RELAY,
 		RATE : RATEKEEPER}
@@ -164,6 +167,7 @@ MONITOR_CLIENT = "MNTR_CLI"
 #MOVER_CLIENT = ?
 RATEKEEPER_CLIENT = "RATEKEEPER_CLIENT"
 VOLUME_CLERK_CLIENT = "VOLUME_C_CLIENT"
+PNFS_AGENT_CLIENT = "PNFS_A_CLIENT"
 
 
 OUTAGEFILE = "enstore_outage.py"
@@ -280,7 +284,7 @@ NOMOVER = "nomover"
 MEDIA_CHANGER = "media_changer"
 GENERIC_SERVERS = [ ACCOUNTING_SERVER, ALARM_SERVER, CONFIGURATION_SERVER,
                     DRIVESTAT_SERVER, EVENT_RELAY, FILE_CLERK, INFO_SERVER, INQUISITOR,
-		    LOG_SERVER, VOLUME_CLERK, RATEKEEPER ]
+		    LOG_SERVER, VOLUME_CLERK, PNFS_AGENT, RATEKEEPER ]
 
 # Trace.trace output levels used by the inquisitor
 INQFILEDBG = 6
