@@ -68,7 +68,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     def get_file_stat(self,filename) :
         if ( self.r_ticket['filename'] != filename ) :
             self.r_ticket['filename'] = filename 
-            self.r_ticket=self.send(self.r_ticket,5,1)
+            self.r_ticket=self.send(self.r_ticket)
             if self.r_ticket['status'][0] == e_errors.OK:
                 return self.r_ticket['statinfo'], self.r_ticket['bfid'], self.r_ticket['pinfo']
             else:
@@ -78,7 +78,53 @@ class PnfsAgentClient(generic_client.GenericClient,
                 return self.r_ticket['statinfo'], self.r_ticket['bfid'], self.r_ticket['pinfo']
             else:
                 return None, None, None
+
+    def get_library(self,dirname):
+        ticket = {'work'          : 'get_library',
+                  'dirname'       : dirname,
+                  'library'       : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['library']
+        else:
+            return None
         
+    def get_file_family(self,dirname):
+        ticket = {'work'          : 'get_file_family',
+                  'dirname'       : dirname,
+                  'file_family'   : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family']
+        else:
+           return None
+
+    def get_file_family_width(self,dirname):
+        ticket = {'work'                : 'get_file_family_width',
+                  'dirname'             : dirname,
+                  'file_family_width'   : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family_width']
+        else:
+           return None
+
+
+class PnfsAgentClientInterface(generic_client.GenericClientInterface):
+    def __init__(self, args=sys.argv, user_mode=1):
+
+        generic_client.GenericClientInterface.__init__(self, args=args,
+                                                       user_mode=user_mode)
+        return
+
+    def valid_dictionaries(self):
+        return (self.alive_options, self.help_options, self.trace_options,
+                self.volume_options)
+
+
 if __name__ == "__main__":
     Trace.init(MY_NAME)
     Trace.trace( 6, 'pac called with args: %s'%(sys.argv,) )

@@ -53,7 +53,6 @@ default_pinfo = {"inode" : 0,
                 "pnfsFilename" : None,
                 }
 
-
 class PnfsAgent(dispatching_worker.DispatchingWorker,
                 generic_server.GenericServer) :
     
@@ -62,8 +61,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                                               function = self.handle_er_msg)        
         self.name       = name
         self.shortname  = name
-#        self.log_name   = "PNFSAGENT"
-        self.keys       = self.csc.get(MY_NAME)
+        self.keys       = self.csc.get(self.name)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
         self.dict       = None
         self.set_error_handler(self.handle_error)
@@ -93,31 +91,96 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
     def get_file_stat(self, ticket):
         filename = ticket['filename']
-        if ( os.path.exists(filename) ) : 
-            tmp = os.stat(filename)
-            filesize = tmp[stat.ST_SIZE]
-            pin = pnfs.Pnfs(filename)
-            bfid = pin.get_bit_file_id()
-            ticket['bfid']=bfid
-            pinfo = {}
-            for k in [ 'pnfsFilename', 'gid', 'gname', 'uid', 'uname',
-                       'major', 'minor', 'rmajor', 'rminor',
-                       'mode', 'pstat', 'inode' ]:
-                try:
-                    pinfo[k] = getattr(pin, k)
-                except AttributeError:
-                    if default_pinfo.has_key(k):
-                        pinfo[k] = default_pinfo[k]
-            ticket['pinfo'] = pinfo
-            if ( filesize == 1 ) :
-                pin.pstatinfo()
-                pin.get_file_size()
-                filesize = pin.file_size
-            for i in range(0,len(tmp)):
-                ticket['statinfo'].append(tmp[i])
-            ticket['statinfo'][stat.ST_SIZE]=filesize
-            ticket['status']   = (e_errors.OK, None)
+        if ( os.path.exists(filename) ) :
+            if ( pnfs.is_pnfs_path(filename) ):
+                tmp = os.stat(filename)
+                filesize = tmp[stat.ST_SIZE]
+                pin = pnfs.Pnfs(filename)
+                bfid = pin.get_bit_file_id()
+                ticket['bfid']=bfid
+                pinfo = {}
+                for k in [ 'pnfsFilename', 'gid', 'gname', 'uid', 'uname',
+                           'major', 'minor', 'rmajor', 'rminor',
+                           'mode', 'pstat', 'inode' ]:
+                    try:
+                        pinfo[k] = getattr(pin, k)
+                    except AttributeError:
+                        if default_pinfo.has_key(k):
+                            pinfo[k] = default_pinfo[k]
+                ticket['pinfo'] = pinfo
+                if ( filesize == 1 ) :
+                    pin.pstatinfo()
+                    pin.get_file_size()
+                    filesize = pin.file_size
+                for i in range(0,len(tmp)):
+                    ticket['statinfo'].append(tmp[i])
+                ticket['statinfo'][stat.ST_SIZE]=filesize
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="file %s exists but not PNFS file"%filename
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
         else:
+            msg="file %s does not exist on PNFS"%filename
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def get_library(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                ticket['library']=t.get_library().split(",")[0]
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+            
+        self.reply_to_caller(ticket)
+        return
+
+    def get_file_family(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                ticket['file_family']=t.get_file_family()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def get_file_family_width(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                ticket['file_family_width']=t.get_file_family_width()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
             ticket['status'] = (e_errors.DOESNOTEXIST, None)
         self.reply_to_caller(ticket)
         return
