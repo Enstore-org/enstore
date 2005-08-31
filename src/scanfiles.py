@@ -459,11 +459,14 @@ def get_filedb_info(bfid):
     elif not e_errors.is_ok(fr):
         err.append('file db error (%s)' % (fr['status'],))
     else:
-        # Look for missing file database information.
-        if not fr.has_key('pnfs_name0'):
-            err.append('no filename in db')
-        if not fr.has_key('pnfsid'):
-            err.append('no pnfs id in db')
+        if fr.get('deleted', None) == "no":
+            # Look for missing file database information.
+            if not fr.get('pnfs_name0', None):
+                err.append('no filename in db')
+            if not fr.get('pnfsid', None):
+                err.append('no pnfs id in db')
+            elif len(fr.get('pnfsid', "")) < 10:
+                err.append('invalid pnfs id in db')
 
     return fr, (err, warn, info)
 
@@ -852,9 +855,8 @@ def check_bit_file(bfid):
     info = []
 
     prefix = bfid
-    file_record = infc.bfid_info(bfid)
-    if file_record['status'][0] != e_errors.OK:
-        err = err + ["does not exist"]
+    file_record, (err, warn, info) = get_filedb_info(bfid)
+    if err or warn:
         errors_and_warnings(prefix, err, warn, info)
         return
 
@@ -909,11 +911,11 @@ def check_bit_file(bfid):
             errors_and_warnings(prefix, err, warn, info)
             return
 
-    if not file_record['pnfsid'] or len(file_record['pnfsid']) < 10:
-        # missing pnfsid
-	err.append("missing pnfsid")
-	errors_and_warnings(prefix, err, warn, info)
-	return
+    #if not file_record['pnfsid'] or len(file_record['pnfsid']) < 10:
+    #    # missing pnfsid
+    #   err.append("missing pnfsid")
+    #   errors_and_warnings(prefix, err, warn, info)
+    #   return
 
     # find mount point
     mp = get_mount_point2(file_record['pnfsid'])
