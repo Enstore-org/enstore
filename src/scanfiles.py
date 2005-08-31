@@ -592,6 +592,139 @@ def get_all_ids(f):
     return (pnfs_id, parent_id, parent_dir_id), \
            (err + err1 + err2, warn + warn1 + warn2, info + info1 + info2)
 
+#Global cache.
+db_pnfsid_cache = {}
+
+def parse_mtab():
+    global db_pnfsid_cache
+    
+    #Clear this out to remove stale entries.
+    db_pnfsid_cache = {}
+    
+    fp = open("/etc/mtab", "r")
+    for line in fp.readlines():
+        #The 2nd and 3rd items in the list are important to us here.
+        data = line[:-1].split()
+        mp = data[1]
+        fs_type = data[2]
+
+        #If the filesystem is not an NFS filesystem, skip it.
+        if fs_type != "nfs":
+            continue
+
+        #Obtain the list of "files" in the top directory.
+        try:
+            dir_list = os.listdir(mp)
+        except (OSError, IOError):
+            continue
+
+        #If the list is empty, move on to the next.
+        if len(dir_list) == 0:
+            continue
+
+        #Unfortunately, it is possible to have files like:
+        # .(use)(1)(.(access)(0001000000000000000576C0)) in your pnfs
+        # area.  These are mostly from developers' testing, and it didn't
+        # work right.  So, keep looping passed these files until we find
+        # one that works.
+        for i in range(len(dir_list)):
+            try:
+                db_fp = open(os.path.join(mp, ".(id)(%s)" % dir_list[i]), "r")
+                break
+            except IOError:
+                continue
+        else:
+            continue
+        db_data = db_fp.readline()
+        db_fp.close()
+
+
+        #If the databases id is not in the cache, add it along with the
+        # mount point that goes with it.
+        db_pnfsid = int(db_data[:4], 16)
+        if db_pnfsid not in db_pnfsid_cache.keys():
+            db_pnfsid_cache[db_pnfsid] = mp
+
+    fp.close()
+
+def __search_for_mount_point(p):
+    for item in db_pnfsid_cache.values():
+        index = p.find(item)
+        if index != -1:
+            #Found it???
+            return item, p[index:]
+
+        mp_first_pnfs_index = item.find("/pnfs")
+        p_find_index = p.find(item[mp_first_pnfs_index:])
+        if p_find_index != -1:
+            #print os.path.join(item,
+            #                   p[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
+            #Found it???
+            return item, os.path.join(item,
+                       p[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
+
+    return None, None
+
+
+# get_mount_point(p) -- get the first three component from a path
+def __get_mount_point(p):
+    """
+    d, f = os.path.split(p)
+    if not d or not f:
+        return None
+
+    if d == "/pnfs":
+        return os.path.join(d, f)  #isn't this p?
+    elif d[-5:] == "/pnfs" and d[:-5].find("/pnfs") == -1:
+        #If the current d in searching matches "/pnfs" (d[-5:] == "/pnfs")
+        # and there are no more "/pnfs" directories left in d
+        # (d[:-5].find("/pnfs") == -1) then start with this directory
+        # for the mountpoint.
+        #
+        #This is necessary for automounted pnfs areas that have paths like
+        # /tmp_mnt/pnfs/BDMS/tariq/p1_101/p1_101_struc007.jpg in the
+        # enstore metadata (file DB and layer 4) instead of begining with
+        # /pnfs.
+        return os.path.join(d[-5:], f)
+    else:
+        return mount_point(d)
+    """
+    mp, path = __search_for_mount_point(p)
+
+    if mp and path:
+        return (mp, path)
+
+    #If we get here, (re)process the mtab file.
+    parse_mtab()
+
+    return __search_for_mount_point(p)
+
+def get_mount_point(p):
+    return __get_mount_point(p)[0]
+
+def get_file_path(p):
+    return __get_mount_point(p)[1]
+    
+
+def get_mount_point2(pnfsid):
+    #Strip off just the database id part of the pnfs id.
+    db_num = int(pnfsid[:4], 16)
+
+    #Check the cache to see if the entry is already found.
+    if db_pnfsid_cache.get(db_num, None):
+        return db_pnfsid_cache[db_num]
+
+    #If we get here, (re)process the mtab file.
+    parse_mtab()
+
+    #Check the cache again to see if it is now found.
+    if db_pnfsid_cache.get(db_num, None):
+        return db_pnfsid_cache[db_num]
+
+    #Failed to find the mount point.
+    return None
+
+
 
 def check(f, f_stats = None):
 
@@ -696,29 +829,6 @@ def check_dir(d, dir_info):
     
     return err, warn, info
 
-# mount_point(p) -- get the first three component from a path
-
-def mount_point(p):
-    d, f = os.path.split(p)
-    if not d or not f:
-        return None
-
-    if d == "/pnfs":
-        return os.path.join(d, f)  #isn't this p?
-    elif d[-5:] == "/pnfs" and d[:-5].find("/pnfs") == -1:
-        #If the current d in searching matches "/pnfs" (d[-5:] == "/pnfs")
-        # and there are no more "/pnfs" directories left in d
-        # (d[:-5].find("/pnfs") == -1) then start with this directory
-        # for the mountpoint.
-        #
-        #This is necessary for automounted pnfs areas that have paths like
-        # /tmp_mnt/pnfs/BDMS/tariq/p1_101/p1_101_struc007.jpg in the
-        # enstore metadata (file DB and layer 4) instead of begining with
-        # /pnfs.
-        return os.path.join(d[-5:], f)
-    else:
-        return mount_point(d)
-
 # check_vol(vol) -- check whole volume
 
 def check_vol(vol):
@@ -767,13 +877,17 @@ def check_bit_file(bfid):
         info = info + ["deleted"]
         # check if pnfsid exist
         if file_record['pnfsid']:
+            # find mount point
+            mp = get_mount_point2(file_record['pnfsid'])
+            if not mp and file_record['pnfs_name0']:
+                mp = get_mount_point(file_record['pnfs_name0'])
+                if not mp:
+                    warn.append("mount point does not exist")
+                    errors_and_warnings(prefix, err, warn, info)
+                    return
+            
             # make sure either pnfsid is not valid or the bfids are not
             # the same
-            mp = mount_point(file_record['pnfs_name0'])
-            if not mp:
-                warn.append("mount point does not exist")
-                errors_and_warnings(prefix, err, warn, info)
-                return
             try:
                 pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
                 # it does exist
@@ -802,13 +916,14 @@ def check_bit_file(bfid):
 	return
 
     # find mount point
-    mp = mount_point(file_record['pnfs_name0'])
-
-    if not mp:
-        err = err + ["%s does not exist"%(file_record['pnfsid'])]
-        errors_and_warnings(prefix, err, warn, info)
-        return
-
+    mp = get_mount_point2(file_record['pnfsid'])
+    if not mp and file_record['pnfs_name0']:
+        mp = get_mount_point(file_record['pnfs_name0'])
+        if not mp:
+            warn.append("mount point does not exist")
+            errors_and_warnings(prefix, err, warn, info)
+            return
+            
     # get path
     pnfs_path = file_record['pnfs_name0']
     pf = pnfs.File(pnfs_path)
@@ -924,7 +1039,7 @@ def check_file(f, file_info):
                 if not layer4.has_key('bfid'):
                     err.append('missing layer 4')
 
-                if layer2['pools']:
+                if layer2.get('pools', None):
                     info.append("pools(%s)" % (layer2['pools'],))
                 
     if err or warn:
