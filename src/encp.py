@@ -2901,6 +2901,39 @@ def get_finfo(inputfile, outputfile, e, p = None):
         
     return finfo
 
+# Dmitry - change it a bit 
+def get_finfo_remote(inputfile, outputfile, e, p = None):
+    finfo = {}
+
+    #if e.outtype == "hsmfile": #writes
+    if is_write(e):
+        remote_file = outputfile
+        local_file = inputfile
+    else: #reads
+        local_file = outputfile
+        remote_file = inputfile
+
+    #These exist for reads and writes.
+    finfo['fullname'] = local_file
+    finfo['sanity_size'] = 65536
+    if is_read(e) and isinstance(p, pnfs_agent_client.PnfsAgentClient):
+        try:
+            finfo['size_bytes'] = p.file_size()
+        except AttributeError:
+            finfo['size_bytes'] = None
+    else:
+        finfo['size_bytes'] = get_file_size(inputfile)
+
+    #Append these for writes.
+    #if e.outtype == "hsmfile": #writes
+    if is_write(e):
+        t = pnfs.Tag(get_directory_name(remote_file))
+        finfo['type'] = t.get_file_family_wrapper()
+        finfo['mode'] = os.stat(local_file)[stat.ST_MODE]
+        finfo['mtime'] = int(time.time())
+        
+    return finfo
+
 
 #This function takes as parameters...
 def get_winfo(pinfo, uinfo, finfo):
@@ -3953,12 +3986,16 @@ def verify_file_size(ticket, encp_intf = None):
         return
 
     try:
-        #Dmitry commented these three lines out
-#        pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
-#        pnfs_filesize = pnfs_stat[stat.ST_SIZE]
-#        pnfs_inode = pnfs_stat[stat.ST_INO]
-        pnfs_filesize = ticket['wrapper']['pstat'][stat.ST_SIZE]
-        pnfs_inode = ticket['wrapper']['pstat'][stat.ST_INO]
+        #Dmitry
+        if (os.path.exists(ticket['wrapper'].get('pnfsFilename', None))):
+            pnfs_stat = os.stat(ticket['wrapper'].get('pnfsFilename', None))
+            pnfs_filesize = pnfs_stat[stat.ST_SIZE]
+            pnfs_inode = pnfs_stat[stat.ST_INO]
+        else:
+            pnfs_filesize = ticket['wrapper']['pstat'][stat.ST_SIZE]
+            pnfs_inode = ticket['wrapper']['pstat'][stat.ST_INO]
+      
+         
     except (TypeError), detail:
         ticket['status'] = (e_errors.OK, "No files sizes to verify.")
         return
@@ -7733,6 +7770,353 @@ def read_from_hsm(e, tinfo):
 
     return list_done_ticket, requests_per_vol
 
+##############################################################################
+# added by Dmitry (litvinse@fnal.gov) to write to remote pnfs server
+##############################################################################
+
+
+def write_to_rhsm(e, tinfo):
+
+    pac = pnfs_agent_client.PnfsAgentClient(
+    	        	    __csc, logc = __logc, alarmc = __alarmc,
+        	        rcv_timeout = 5, rcv_tries = 20)
+
+    Trace.trace(16,"write_to_hsm input_files=%s  output=%s  verbose=%s  "
+                "chk_crc=%s t0=%s" %
+                (e.input, e.output, e.verbose, e.chk_crc,
+                 tinfo['encp_start_time']))
+
+    # initialize
+    bytes = 0L #Sum of bytes all transfered (when transfering multiple files).
+    exit_status = 0 #Used to determine the final message text.
+
+    # get a port to talk on and listen for connections
+    callback_addr, listen_socket = get_callback_addr()
+    
+    #If the sockets do not exist, do not continue.
+    if listen_socket == None:
+        done_ticket = {'status':(e_errors.NET_ERROR,
+                                 "Unable to obtain control socket.")}
+        return done_ticket, None
+
+    #Build the dictionary, work_ticket, that will be sent to the
+    # library manager.
+    try:
+        udp_callback_addr=None
+        request_list = []
+
+        #Initialize these, so that they can be set only once.
+        csc = vcc = fcc = None
+        file_family = file_family_width = file_family_wrapper = None
+        library = storage_group = None
+
+        # create internal list of input unix files even if just 1 file passed in
+        if type(e.input) == types.ListType:
+            pass  #e.input = e.input
+        else:
+            e.input = [e.input]
+
+        if not e.put_cache and len(e.output) > 1:
+            raise EncpError(None,
+                            'Cannot have multiple output files',
+                            e_errors.USERERROR)
+
+        # check the input unix file. if files don't exits, we bomb out to the user
+        for i in range(len(e.input)):
+            ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
+            #Fundamentally this belongs in veriry_read_request_consistancy(),
+            # but information needed about the input file requires this check.
+            inputfile_check(ifullname, e)
+        
+            #Fundamentally this belongs in veriry_write_request_consistancy(),
+            # but information needed about the output file requires this check.
+            # commented out by Dmitry
+            # outputfile_check(ifullname, ofullname, e)
+
+            #Get these two pieces of information about the local input file.
+            stats = os.stat(ifullname)
+            file_size = stats[stat.ST_SIZE]
+            file_inode = stats[stat.ST_INO]
+
+            if not library:
+                if e.output_library:
+                    #Only take the first item of a possible comma seperated list.
+                    library = e.output_library.split(",")[0]
+                    if not library:
+                        #If empty, use the default
+                        library = pac.get_library(get_directory_name(ofullname)).split(",")[0]
+                else:
+                    library = pac.get_library(get_directory_name(ofullname)).split(",")[0]
+                    
+            #The pnfs file family may be overridden with the options
+            # --ephemeral or --file-family.
+            if not file_family:
+                if e.output_file_family:
+                    file_family = e.output_file_family
+                else:
+                    file_family = pac.get_file_family(get_directory_name(ofullname))
+            if not file_family_width:
+                if e.output_file_family_width:
+                    file_family_width = e.output_file_family_width
+                else:
+                    file_family_width = pac.get_file_family_width(get_directory_name(ofullname))
+            if not file_family_wrapper:
+                if e.output_file_family_wrapper:
+                    file_family_wrapper = e.output_file_family_wrapper
+                else:
+                    file_family_wrapper = pac.get_file_family_wrapper(get_directory_name(ofullname))
+            if not storage_group:
+                if e.output_storage_group:
+                    storage_group = e.output_storage_group
+                else:
+                    storage_group = pac.get_storage_group(get_directory_name(ofullname))
+
+
+            #Get the data aquisition information.
+            encp_daq = get_dinfo()
+            #Snag the three pieces of information needed for the wrapper.
+            pinfo = pac.get_pinfo(ofullname)
+            uinfo = get_uinfo()
+
+            finfo = {}
+            finfo['size_bytes'] = get_file_size(ifullname)
+            finfo['type'] = file_family_wrapper
+            finfo['mode'] = os.stat(ifullname)[stat.ST_MODE]
+            finfo['mtime'] = int(time.time())
+
+            #Combine the data into the wrapper sub-ticket.
+            wrapper = get_winfo(pinfo, uinfo, finfo)
+
+            #Create the sub-ticket of the command line argument information.
+            encp_el = get_einfo(e)
+
+            # If this is not the last transfer in the list, force the delayed
+            # dismount to be 'long.'  The last transfer should continue to use
+            # the default setting.
+            if i < (len(e.input) - 1):
+                #In minutes.
+                encp_el['delayed_dismount'] = max(3, encp_el['delayed_dismount'])
+
+            #only do this the first time.
+            if not vcc or not fcc:
+                csc = get_csc() #Get csc once for max_attempts().
+                vcc, fcc = get_clerks()
+
+            #Get the information needed to contact the file clerk, volume clerk and
+            # the library manager.
+            volume_clerk = {"address"            : vcc.server_address,
+                            "library"            : library,
+                            "file_family"        : file_family,#might be overridden
+                            # technically width does not belong here,
+                            # but it associated with the volume
+                            "file_family_width"  : file_family_width,
+                            "wrapper"            : file_family_wrapper,
+                            "storage_group"      : storage_group,}
+            file_clerk = {'address' : fcc.server_address}
+
+
+            #Determine the max resend values for this transfer.
+            resend = max_attempts(csc, volume_clerk['library'], e)
+
+            work_ticket = {}
+            work_ticket['callback_addr'] = callback_addr
+            work_ticket['client_crc'] = e.chk_crc
+            work_ticket['encp'] = encp_el
+            work_ticket['encp_daq'] = encp_daq
+            work_ticket['fc'] = file_clerk
+            work_ticket['file_size'] = file_size
+            work_ticket['ignore_fair_share'] = e.ignore_fair_share
+            work_ticket['infile'] = ifullname
+            work_ticket['local_inode'] = file_inode
+            work_ticket['outfile'] = ofullname
+            work_ticket['override_ro_mount'] = e.override_ro_mount
+            work_ticket['resend'] = resend
+            work_ticket['retry'] = None #LM legacy requirement.
+            if udp_callback_addr: #For "get" only.
+                work_ticket['routing_callback_addr'] = udp_callback_addr
+                work_ticket['route_selection'] = 1
+            work_ticket['times'] = tinfo.copy() #Only info now in tinfo needed.
+            work_ticket['unique_id'] = generate_unique_id()
+            work_ticket['vc'] = volume_clerk
+            work_ticket['version'] = encp_client_version()
+            work_ticket['work'] = "write_to_hsm"
+            work_ticket['wrapper'] = wrapper
+
+            request_list.append(work_ticket)
+
+        #Make dictionaries for the copies of the data.
+        if e.copies > 0:
+            for n_copy in range(1, e.copies + 1):
+                copy_ticket = copy.deepcopy(work_ticket)
+                #Specify the copy number; this is the copy number relative to
+                # this encp.
+                copy_ticket['copy'] = n_copy
+                #Make the transfer id unique, but also keep the original around.
+                copy_ticket['original_unique_id'] = copy_ticket['unique_id']
+                del copy_ticket['unique_id']
+                copy_ticket['unique_id'] = generate_unique_id()
+                #Move the file_family to original_file_family; this is similar
+                # to how the original_bfid is sent too.
+                copy_ticket['vc']['original_file_family'] = \
+                                             copy_ticket['vc']['file_family']
+                del copy_ticket['vc']['file_family']
+                #Determine the library manager to use.  First, try to see if
+                # the command line has the information.  Otherwise, check
+                # the library tag.  In both cases, the library should be a
+                # comma seperated list of library manager short names.
+                try:
+                    copy_ticket['vc']['library'] = \
+                                          e.output_library.split(",")[n_copy]
+                except IndexError:
+                    try:
+                        copy_ticket['vc']['library'] = \
+                                          t.get_library().split(",")[n_copy]
+                    except IndexError:
+                        #We get here if n copies were requested, but less than
+                        # that number of libraries were found.
+                        copy_ticket['vc']['library'] = None
+                        raise EncpError(None,
+                                        "Too many copies requested for the "
+                                        "number of configured copy libraries.",
+                                        e_errors.USERERROR, copy_ticket)
+
+                #Store the copy ticket.
+                request_list.append(copy_ticket)
+    except (OSError, IOError, AttributeError, ValueError, EncpError), msg:
+        if isinstance(msg, EncpError):
+            e_ticket = msg.ticket
+        if e_ticket.get('status', None) == None:
+            e_ticket['status'] = (msg.type, str(msg))
+        elif isinstance(msg, OSError):
+            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+        elif isinstance(msg, IOError):
+            e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
+        else:
+            e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
+
+        return e_ticket, None
+                    
+    #If this is the case, don't worry about anything.
+    if len(request_list) == 0:
+        done_ticket = {'status' : (e_errors.NO_FILES, "No files to transfer.")}
+        return done_ticket, request_list
+
+    #This will halt the program if everything isn't consistant.
+
+#     try:
+#        verify_write_request_consistancy(request_list)
+#    except EncpError, msg:
+#        msg.ticket['status'] = (msg.type, msg.strerror)
+#        return msg.ticket, request_list
+
+    #Determine the name of the library.
+    check_lib = request_list[0]['vc']['library'] + ".library_manager"
+
+    #If we are only going to check if we can succeed, then the last
+    # thing to do is see if the LM is up and accepting requests.
+    if e.check:
+        try:
+            return check_library(check_lib, e), request_list
+        except EncpError, msg:
+            return_ticket = { 'status'      : (msg.type, str(msg)),
+                              'exit_status' : 2 }
+            return return_ticket, request_list
+
+    #Create the zero length file entry.
+    #Skip this for dcache transfers.
+    if not e.put_cache:
+        #for request in request_list:
+        for i in range(len(request_list)):
+            try:
+                #Also, skip this for copies.
+                if not request_list[i].get('copy', None):
+                    pac.create_zero_length_pnfs_files(request_list[i])
+            except OSError, msg:
+                request_list[i]['status'] = (e_errors.OSERROR, msg.strerror)
+                return request_list[i], request_list
+
+    work_ticket, index, copy = get_next_request(request_list)
+
+    # loop on all input files sequentially
+    while requests_outstanding(request_list):
+
+        Trace.message(TO_GO_LEVEL,
+                      "FILES LEFT: %s" % requests_outstanding(request_list))
+
+        #Send (write) the file to the mover.
+        done_ticket = write_hsm_file(listen_socket, work_ticket, tinfo, e)
+
+        Trace.message(TICKET_LEVEL, "DONE WRITTING TICKET")
+        Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
+
+        #Set the value of bytes to the number of bytes transfered before the
+        # error occured.
+        exfer_ticket = done_ticket.get('exfer', {'bytes_transfered' : 0L})
+        bytes = bytes + exfer_ticket.get('bytes_transfered', 0L)
+
+        #Store the combined tickets back into the master list.
+        work_ticket = combine_dict(done_ticket, work_ticket)
+        request_list[index] = work_ticket
+
+        #handle_retries() is not required here since write_hsm_file()
+        # handles its own retrying when an error occurs.
+        if e_errors.is_ok(done_ticket):
+            #Set completion status to successful.
+            work_ticket['completion_status'] = SUCCESS
+            #Store these changes back into the master list.
+            request_list[index] = work_ticket
+            
+            #Pick up the next file.
+            work_ticket, index, copy = get_next_request(request_list)
+
+        elif e_errors.is_non_retriable(done_ticket):
+            #Set completion status to successful.
+            work_ticket['completion_status'] = FAILURE
+            #Store these changes back into the master list.
+            request_list[index] = work_ticket
+            
+            exit_status = 1
+
+            #Pick up the next file.
+            work_ticket, index, copy = get_next_request(request_list)
+            
+        if not e_errors.is_ok(done_ticket):
+            continue
+
+        # calculate some kind of rate - time from beginning 
+        # to wait for mover to respond until now. This doesn't 
+        # include the overheads before this, so it isn't a 
+        # correct rate. I'm assuming that the overheads I've 
+        # neglected are small so the quoted rate is close
+        # to the right one.  In any event, I calculate an 
+        # overall rate at the end of all transfers.
+        calculate_rate(done_ticket, tinfo)
+
+    # we are done transferring - close out the listen socket
+    close_descriptors(listen_socket)
+
+    #Print to screen the exit status.
+    Trace.message(TO_GO_LEVEL, "EXIT STATUS: %d" % exit_status)
+
+    #Finishing up with a few of these things.
+    calc_ticket = calculate_final_statistics(bytes, len(request_list),
+                                             exit_status, tinfo)
+
+    #If applicable print new file family.
+    if e.output_file_family:
+        ff = string.split(done_ticket["vc"]["file_family"], ".")
+        Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
+
+    #List one ticket is the last request that was processed.
+    if e.data_access_layer:
+        list_done_ticket = combine_dict(calc_ticket, done_ticket)
+    else:
+        list_done_ticket = combine_dict(calc_ticket, {})
+
+    Trace.message(TICKET_LEVEL, "LIST DONE TICKET")
+    Trace.message(TICKET_LEVEL, pprint.pformat(list_done_ticket))
+
+    return list_done_ticket, request_list
 
 
 ##############################################################################
@@ -8524,7 +8908,7 @@ class EncpInterface(option.Interface):
             #Store the name into this list.
             self.args[i] = fullname
 
-            if ( os.path.exists(fullname) ) :
+            if ( os.path.exists(dirname) ) :
                 e.append(1)
             else:
                 e.append(0)
@@ -8949,9 +9333,9 @@ def main(intf):
         done_ticket, work_list = read_from_rhsm(intf, tinfo)
 
     elif intf.intype == "unixfile" and intf.outtype == "rhsmfile" :
-        emsg = "encp unix to remote hsm  is not implemented."
-        done_ticket = {'status':("USERERROR", emsg)}
-#        done_ticket, work_list = write_to_rhsm(intf, tinfo)
+#        emsg = "encp unix to remote hsm  is not implemented."
+#        done_ticket = {'status':("USERERROR", emsg)}
+        done_ticket, work_list = write_to_rhsm(intf, tinfo)
 
     ## have we been called "encp hsmfile hsmfile?
     elif intf.intype == "hsmfile" and intf.outtype == "hsmfile" :
