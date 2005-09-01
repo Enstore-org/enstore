@@ -61,6 +61,8 @@ class PnfsAgentClient(generic_client.GenericClient,
                          'pinfo'         : {},
                          'bfid'          : None
                        }
+    def file_size(self):
+        return self.r_ticket['statinfo'][stat.ST_SIZE]
         
     def show_state(self):
         return self.send({'work':'show_state'})
@@ -78,6 +80,17 @@ class PnfsAgentClient(generic_client.GenericClient,
                 return self.r_ticket['statinfo'], self.r_ticket['bfid'], self.r_ticket['pinfo']
             else:
                 return None, None, None
+
+    def get_pinfo(self,filename) :
+        ticket = {'work'          : 'get_pinfo',
+                  'filename'      : filename,
+                  'pinfo'         : {}
+                  }
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return ticket['pinfo']
+        else:
+            return None
 
     def get_library(self,dirname):
         ticket = {'work'          : 'get_library',
@@ -111,6 +124,40 @@ class PnfsAgentClient(generic_client.GenericClient,
             return ticket['file_family_width']
         else:
            return None
+
+    def get_file_family_wrapper(self,dirname):
+        ticket = {'work'                : 'get_file_family_wrapper',
+                  'dirname'             : dirname,
+                  'file_family_wrapper'   : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['file_family_wrapper']
+        else:
+           return None
+
+    def get_storage_group(self,dirname):
+        ticket = {'work'                : 'get_storage_group',
+                  'dirname'             : dirname,
+                  'storage_group'      : None
+                  }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] == e_errors.OK ):
+            return ticket['storage_group']
+        else:
+           return None
+
+    def create_zero_length_pnfs_files(self,filenames):
+        ticket = { 'work'      : 'create_zero_length_pnfs_files',
+                   'filenames' : filenames,
+                   'msg'       : None
+                   }
+        ticket=self.send(ticket)
+        if ( ticket['status'][0] != e_errors.OK ):
+            raise OSError, "can't create files"
+        else:
+            return 0
+    
 
 
 class PnfsAgentClientInterface(generic_client.GenericClientInterface):

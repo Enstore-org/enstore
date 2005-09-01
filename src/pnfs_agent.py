@@ -53,6 +53,7 @@ default_pinfo = {"inode" : 0,
                 "pnfsFilename" : None,
                 }
 
+
 class PnfsAgent(dispatching_worker.DispatchingWorker,
                 generic_server.GenericServer) :
     
@@ -127,6 +128,22 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def get_pinfo(self, ticket):
+        pin = pnfs.Pnfs(ticket['filename'])
+        pinfo = {}
+        for k in [ 'pnfsFilename', 'gid', 'gname', 'uid', 'uname',
+                   'major', 'minor', 'rmajor', 'rminor',
+                   'mode', 'pstat', 'inode' ]:
+            try:
+                pinfo[k] = getattr(pin, k)
+            except AttributeError:
+                if default_pinfo.has_key(k):
+                    pinfo[k] = default_pinfo[k]
+        ticket['pinfo'] = pinfo
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
     def get_library(self, ticket):
         dirname = ticket['dirname']
         if ( os.path.exists(dirname) ) :
@@ -185,6 +202,73 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+
+    def get_file_family_wrapper(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                ticket['file_family_wrapper']=t.get_file_family_wrapper()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def get_storage_group(self, ticket):
+        dirname = ticket['dirname']
+        if ( os.path.exists(dirname) ) :
+            if ( os.path.isdir(dirname) ) :
+                t = pnfs.Tag(dirname)
+                ticket['storage_group']=t.get_storage_group()
+                ticket['status']   = (e_errors.OK, None)
+            else:
+                msg="%s not a directory"%dirname
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.DOESNOTEXIST, None)
+              
+        else:
+            msg="directory %s does not exist"%dirname
+            Trace.log(e_errors.ERROR, msg)
+            ticket['status'] = (e_errors.DOESNOTEXIST, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def create_zero_length_pnfs_file(self,ticket):
+        filenames = ticket['filenames']
+        if type(filenames) != types.ListType:
+            filenames = [filenames]
+        for f in filenames:
+            if type(f) == types.DictType:
+                fname = f['wrapper']['pnfsFilename']
+            else:
+                fname = f
+            try:
+                fd = atomic.open(fname, mode=0666) #raises OSError on error.
+
+                if type(f) == types.DictType:
+                    #The inode is used later on to determine if another process
+                    # has deleted or removed the remote pnfs file.
+                    f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
+                    #The pnfs id is used to track down the new paths to files
+                    # that were moved before encp completes.
+                    f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
+
+                os.close(fd)
+                ticket['status']   = (e_errors.OK, None)
+            except OSError, msg:
+                Trace.log(e_errors.ERROR, msg)
+                ticket['status'] = (e_errors.OSERROR, None)
+                ticket['msg'] = msg
+        self.reply_to_caller(ticket)
+        return
 
 class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass
