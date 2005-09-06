@@ -1106,7 +1106,8 @@ def inventory(output_dir, cache_dir):
         wp = write_protect_status(vv['external_label'], vols.db)
         if (vv['system_inhibit'][1] == "full" or
             vv['system_inhibit'][1] == "readonly" or
-            vv['system_inhibit'][1] == "migrated") and wp != 'ON':
+            vv['system_inhibit'][1] == "migrated") and wp != 'ON' and \
+            vv['media_type'] != 'null':
             wpa_file.write(wpa_format%(vv['external_label'],
                 vv['system_inhibit'][1], wp))
 
