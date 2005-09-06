@@ -789,8 +789,9 @@ def inventory(output_dir, cache_dir):
     wpa_file.write("Date this listing was generated: %s\n\n" % \
         (time.ctime(time.time())))
 
-    wpa_format = "%-16s %-12s %-3s"
+    wpa_format = "%-16s %-12s %-3s\n"
     wpa_file.write(wpa_format%("volume", "state", "wp"))
+    wpa_file.write('\n')
 
     vd_file.write("<html><pre>\n")
     vd_file.write("Date this listing was generated: %s\n" % \
