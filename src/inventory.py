@@ -34,6 +34,7 @@ def get_vol_filenames(output_dir):
         last_access_file = "/dev/stdout"
         volume_size_file = "/dev/stdout"
         volumes_defined_file = "/dev/stdout"
+        write_protect_alert_file = "/dev/stdout"
         volumes_too_many_mounts_file = "/dev/stdout"
         volume_quotas_file = "/dev/stdout"
 	volume_quotas_format_file = "/dev/stdout"
@@ -44,6 +45,7 @@ def get_vol_filenames(output_dir):
         last_access_file = os.path.join(output_dir, "LAST_ACCESS")
         volume_size_file = os.path.join(output_dir, "VOLUME_SIZE")
         volumes_defined_file = os.path.join(output_dir, "VOLUMES_DEFINED")
+        write_protect_alert_file = os.path.join(output_dir, "WRITE_PROTECTION_ALERT")
         volumes_too_many_mounts_file = os.path.join(output_dir, "VOLUMES_TOO_MANY_MOUNTS")
         volume_quotas_file = os.path.join(output_dir, "VOLUME_QUOTAS")
 	volume_quotas_format_file = get_vq_format_file(output_dir)
@@ -52,9 +54,10 @@ def get_vol_filenames(output_dir):
         migrated_volumes = os.path.join(output_dir, "MIGRATED_VOLUMES")
         recyclable_volume = os.path.join(output_dir, "RECYCLABLE_VOLUMES")
     return last_access_file, volume_size_file, volumes_defined_file, \
-		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file, \
-                      declaration_error, migrated_volumes, recyclable_volume
+        volume_quotas_file, volume_quotas_format_file, \
+        total_bytes_file, volumes_too_many_mounts_file, \
+        declaration_error, migrated_volumes, recyclable_volume, \
+        write_protect_alert_file
 
 #This is the "magic" class to use when filtering out elements that have the
 # same external label in a list.
@@ -732,9 +735,10 @@ def write_protect_status(vol, db):
 def inventory(output_dir, cache_dir):
     # determine the output path
     last_access_file, volume_size_file, volumes_defined_file, \
-		      volume_quotas_file, volume_quotas_format_file, \
-		      total_bytes_file, volumes_too_many_mounts_file, \
-                      declaration_error, migrated_volumes, recyclable_volume \
+        volume_quotas_file, volume_quotas_format_file, \
+        total_bytes_file, volumes_too_many_mounts_file, \
+        declaration_error, migrated_volumes, recyclable_volume, \
+        write_protect_alert_file \
                       = get_vol_filenames(output_dir)
 
     # open volume_summary_cache
@@ -771,6 +775,7 @@ def inventory(output_dir, cache_dir):
     la_file = open(last_access_file, "w")
     vs_file = open(volume_size_file, "w")
     vd_file = open(volumes_defined_file, "w")
+    wpa_file = open(write_protect_alert_file, "w")
     tm_file = open(volumes_too_many_mounts_file, "w")
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
@@ -781,11 +786,17 @@ def inventory(output_dir, cache_dir):
         "Expected", "active", "deleted", "unknown",
         "Volume-Family"))
 
+    wpa_file.write("Date this listing was generated: %s\n\n" % \
+        (time.ctime(time.time())))
+
+    wpa_format = "%-16s %-12s %-3s"
+    wpa_file.write(wpa_format%("volume", "state", "wp"))
+
     vd_file.write("<html><pre>\n")
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
 
-    vd_format = "%-10s %-10s %-25s %-20s %-12s %3s %6s %-40s\n\n"
+    vd_format = "%-10s %-10s %-25s %-20s %-12s %-3s %6s %-40s\n\n"
     vd_file.write(vd_format % \
         ("label", "avail.", "system_inhibit", "user_inhibit",
          "library", "wp", "mounts",  "volume_family"))
@@ -1091,8 +1102,14 @@ def inventory(output_dir, cache_dir):
                       vv['external_label'], vv['media_type'],
                       mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
-	wp = write_protect_status(vv['external_label'], vols.db)
-        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %3s %6s %-40s\n" % \
+        wp = write_protect_status(vv['external_label'], vols.db)
+        if (vv['system_inhibit'][1] == "full" or
+            vv['system_inhibit'][1] == "readonly" or
+            vv['system_inhibit'][1] == "migrated") and wp != 'ON':
+            wpa_file.write(wpa_format%(vv['external_label'],
+                vv['system_inhibit'][1], wp))
+
+        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-3s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
                 vv['system_inhibit'][0],
@@ -1115,6 +1132,7 @@ def inventory(output_dir, cache_dir):
     vs_file.close()
     vd_file.write("</pre></html>\n")
     vd_file.close()
+    wpa_file.close()
     tm_file.close()
     de_file.close()
     # write out the count of migrated volumes
