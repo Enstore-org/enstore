@@ -704,6 +704,25 @@ def is_b_library(lib):
         return 1
     return 0
 
+# write_protect_status -- check the write protect status of the volume
+def write_protect_status(vol, db):
+	q = "select time, value from state, state_type, volume where \
+		state.type = state_type.id and \
+		state_type.name = 'write_protect' and \
+		state.volume = volume.id and \
+		volume.label = '%s' \
+		order by time desc limit 1;"%(vol)
+
+	try:
+		res = db.query(q).dictresult()
+		if not res:
+			status = "---"
+		else:
+			status = res[0]['value']
+	except:
+		status = "---"
+	return status
+		
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
 #Takes the full filepath name to the volume file in the first parameter.
@@ -766,10 +785,10 @@ def inventory(output_dir, cache_dir):
     vd_file.write("Date this listing was generated: %s\n" % \
         (time.ctime(time.time())))
 
-    vd_format = "%-10s %-10s %-25s %-20s %-12s %6s %-40s\n\n"
+    vd_format = "%-10s %-10s %-25s %-20s %-12s %3s %6s %-40s\n\n"
     vd_file.write(vd_format % \
         ("label", "avail.", "system_inhibit", "user_inhibit",
-         "library", "mounts",  "volume_family"))
+         "library", "wp", "mounts",  "volume_family"))
 
     de_file.write("Date this listing was generated: %s\n\n"%(
         time.ctime(time.time())))
@@ -1072,7 +1091,8 @@ def inventory(output_dir, cache_dir):
                       vv['external_label'], vv['media_type'],
                       mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
-        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %6s %-40s\n" % \
+	wp = write_protect_status(vv['external_label'], vols.db)
+        vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %3s %6s %-40s\n" % \
                (vv['external_label'],
                 formated_size[0], formated_size[1],
                 vv['system_inhibit'][0],
@@ -1080,6 +1100,7 @@ def inventory(output_dir, cache_dir):
                 vv['user_inhibit'][0],
                 vv['user_inhibit'][1],
                 vv['library'],
+		wp,
                 mnts,
                 vv['volume_family']))
 
