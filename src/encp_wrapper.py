@@ -4,10 +4,8 @@ a quick and not so dirty wrapper for encp so that multiple encps can be
 instantiated in the same program, probably in different threads.
 """
 
-import encp
 import string
 import sys
-import e_errors
 
 class Encp:
 	def __init__(self):
@@ -22,9 +20,14 @@ class Encp:
 		argv = string.split(cmd)
 		intf = self.my_encp.EncpInterface(argv, 0)
 		try:
-			return self.my_encp.main(intf)
+			res = self.my_encp.main(intf)
+			if res == None:
+				return -10
+			return res
 		except:
 			return 1
+		# can't be
+		return -10
 
 if __name__ == '__main__':
 	encp = Encp()
