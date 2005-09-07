@@ -13,7 +13,8 @@ instead of after the timeout.
 Added the ability for encp to obtain the filesystem quota information for the
 user.  If the read transfer will put them over their soft limit, a warning will
 be printed to standard error.  If the read transfer will put the user over
-their hard limit the transfer will be aborted. 
+their hard limit the transfer will be aborted.  (NOTE: This feature is broken
+in encp v3_5, but has been fixed in encp v3_5a.)
 
 Added a new encp switch: --check.  Using encp with this switch will cause
 encp to check if there are any up-front errors that would cause an actual
@@ -32,7 +33,6 @@ Misc.:
 
 A number of network failure diagnostics have been added.  This is in response
 to some intermittent errors that occur on some nodes.
-
 
 Added --file to "enstore info".  This command prints out the file DB
 information on the specified file.   The command will look like:
