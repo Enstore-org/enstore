@@ -480,7 +480,7 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["monitor_server"]
+    non_default_names = ["monitor_server","pnfs_agent"]
 
     complete_names = [
         "accounting_server",
@@ -492,14 +492,15 @@ class EnstoreStopInterface(generic_client.GenericClientInterface):
         "volume_clerk",
         "file_clerk",
         "info_server",
-        "db_checkpoint",
-        "db_deadlock",
+#        "db_checkpoint",
+#        "db_deadlock",
         "inquisitor",
         "ratekeeper",
         "library",
         "media",
         "mover",
         "monitor_server",
+        "pnfs_agent",
         ]
 
     start_options = {
@@ -555,6 +556,13 @@ def do_work(intf):
         if intf.should_stop(enstore_constants.LIBRARY_MANAGER) or \
            intf.should_stop(library_manager):
             check_server(csc, library_manager)
+
+    #Added by Dmitry, stopping pnfs_agent
+    agents = find_servers_by_type(csc, enstore_constants.PNFS_AGENT)
+    for agent in agents:
+        if intf.should_stop(enstore_constants.PNFS_AGENT) or \
+           intf.should_stop(agent):
+            check_server(csc, agent)
 
     # db_checkpoint and db_deadlock should be stopped if and only if
     # both file_clerk and volume_clerk are gone.

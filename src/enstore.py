@@ -46,6 +46,7 @@ import enstore_start
 import enstore_stop
 import enstore_restart
 import backup
+import pnfs_agent_client
 try:
 	import quota
 except:
@@ -90,6 +91,8 @@ server_functions = {
                      event_relay_client.do_work, option.ADMIN],
     "file" : [file_clerk_client.FileClerkClientInterface,
               file_clerk_client.do_work, option.USER],
+    "pnfs_agent" : [pnfs_agent_client.PnfsAgentClientInterface,
+		    pnfs_agent_client.do_work, option.ADMIN],
     "inquisitor" : [inquisitor_client.InquisitorClientInterface,
                     inquisitor_client.do_work, option.ADMIN],
     "library" : [library_manager_client.LibraryManagerClientInterface,

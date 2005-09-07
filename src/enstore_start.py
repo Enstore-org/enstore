@@ -482,7 +482,7 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["monitor_server"]
+    non_default_names = ["monitor_server","pnfs_agent"]
 
     complete_names = [
         "accounting_server",
@@ -494,14 +494,15 @@ class EnstoreStartInterface(generic_client.GenericClientInterface):
         "volume_clerk",
         "file_clerk",
         "info_server",
-        "db_checkpoint",
-        "db_deadlock",
+#        "db_checkpoint", 
+#        "db_deadlock",
         "inquisitor",
         "ratekeeper",
         "library",
         "media",
         "mover",
         "monitor_server",
+        "pnfs_agent",
         ]
         
 
@@ -590,6 +591,15 @@ def do_work(intf):
         if intf.should_start(server):
             check_server(csc, server, intf,
                          "%s $ENSTORE_DIR/src/%s.py" % (python_binary,server,))
+    #
+    # Added by Dmitry and Michael to start pnfs_agent which needs to be run as user
+    # root via sudo.
+    #
+    for server in [enstore_constants.PNFS_AGENT] :
+        if intf.should_start(server):
+            check_server(csc, server, intf,
+                         "%s %s $ENSTORE_DIR/src/%s.py" %
+                         (sudo, python_binary, server))
 
     #Start the Berkley DB dameons.
     #if intf.should_start(enstore_constants.VOLUME_CLERK) or \

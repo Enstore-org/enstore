@@ -30,7 +30,6 @@ import backup_client
 #import udp_client
 import Trace
 import e_errors
-import file_clerk_client
 import cPickle
 import info_client
 import enstore_constants
@@ -61,6 +60,9 @@ class PnfsAgentClient(generic_client.GenericClient,
                          'pinfo'         : {},
                          'bfid'          : None
                        }
+    def status(self, rcv_timeout=RCV_TIMEOUT, tries=RCV_TRIES):
+        return self.send({"work" : "show_state"}, rcv_timeout, tries)
+
     def file_size(self):
         return self.r_ticket['statinfo'][stat.ST_SIZE]
         
@@ -248,14 +250,52 @@ class PnfsAgentClient(generic_client.GenericClient,
 
 class PnfsAgentClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
-
+        self.alive_rcv_timeout = RCV_TIMEOUT
+        self.alive_retries = RCV_TRIES
+        self.enable = 0
+        self.status = 0
+        self.notify = []
+        self.sendto = []
+        self.dump = 0
+        self.warm_restart = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
         return
 
     def valid_dictionaries(self):
         return (self.alive_options, self.help_options, self.trace_options,
-                self.volume_options)
+                self.pnfs_agent_options)
+
+    pnfs_agent_options = {
+        option.STATUS:{option.HELP_STRING:"print pnfs_agent status",
+                       option.DEFAULT_VALUE:option.DEFAULT,
+                       option.DEFAULT_TYPE:option.INTEGER,
+                       option.VALUE_USAGE:option.IGNORED,
+                       option.USER_LEVEL:option.ADMIN},
+        }
+
+def do_work(intf):
+    pac = PnfsAgentClient((intf.config_host, intf.config_port),
+                          rcv_timeout = intf.alive_rcv_timeout,
+                          rcv_tries = intf.alive_retries)
+    Trace.init(pac.get_name(MY_NAME))
+    ifc = info_client.infoClient(pac.csc)
+    ticket = {}
+    msg_id = None
+    try:
+        ticket = pac.handle_generic_commands(MY_SERVER, intf)
+        if ticket:
+            pass
+        elif intf.status:
+            ticket = pac.status(intf.alive_rcv_timeout,intf.alive_retries)
+            pprint.pprint(ticket)
+        else:
+            intf.print_help()
+            sys.exit(0)
+    except (KeyboardInterrupt,SystemExit):
+        sys.exit(1)
+         
+
 
 
 if __name__ == "__main__":

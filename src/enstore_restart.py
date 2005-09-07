@@ -66,7 +66,7 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
 
         return 0
 
-    non_default_names = ["monitor_server"]
+    non_default_names = ["monitor_server","pnfs_agent"]
 
     complete_names = [
         "accounting_server",
@@ -78,14 +78,15 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         "volume_clerk",
         "file_clerk",
         "info_server",
-        "db_checkpoint",
-        "db_deadlock",
+#        "db_checkpoint",
+#        "db_deadlock",
         "inquisitor",
         "ratekeeper",
         "library",
         "media",
         "mover",
         "monitor_server",
+        "pnfs_agent",
         ]
         
 
