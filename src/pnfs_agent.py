@@ -19,6 +19,7 @@ import string
 import socket
 import select
 import stat
+import types
 
 # enstore imports
 import hostaddr
@@ -37,6 +38,9 @@ import inquisitor_client
 import cPickle
 import event_relay_messages
 import pnfs
+import atomic
+import enstore_functions2
+import file_utils
 
 MY_NAME = enstore_constants.PNFS_AGENT   #"pnfs_agent"
 
@@ -52,6 +56,8 @@ default_pinfo = {"inode" : 0,
                 "mode" : None,
                 "pnfsFilename" : None,
                 }
+
+fullpath = enstore_functions2.fullpath
 
 
 class PnfsAgent(dispatching_worker.DispatchingWorker,
@@ -241,16 +247,16 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def create_zero_length_pnfs_file(self,ticket):
-        filenames = ticket['filenames']
-        if type(filenames) != types.ListType:
-            filenames = [filenames]
-        for f in filenames:
+    def create_zero_length_pnfs_files(self,ticket):
+        if type(ticket['filenames']) != types.ListType:
+            ticket['filenames'] = [ticket['filenames']]
+        for f in ticket['filenames']:
             if type(f) == types.DictType:
                 fname = f['wrapper']['pnfsFilename']
             else:
                 fname = f
             try:
+                Trace.log(e_errors.INFO, 'opening file %s'%fname)
                 fd = atomic.open(fname, mode=0666) #raises OSError on error.
 
                 if type(f) == types.DictType:
@@ -260,15 +266,142 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                     #The pnfs id is used to track down the new paths to files
                     # that were moved before encp completes.
                     f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
-
                 os.close(fd)
-                ticket['status']   = (e_errors.OK, None)
             except OSError, msg:
                 Trace.log(e_errors.ERROR, msg)
                 ticket['status'] = (e_errors.OSERROR, None)
                 ticket['msg'] = msg
+                self.reply_to_caller(ticket)
+                return
+        ticket['status']   = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
+
+    def get_ninfo(self,ticket) :
+        unused, ifullname, unused, ibasename = fullpath(ticket['inputfile']) #e.input[i])
+        unused, ofullname, unused, unused = fullpath(ticket['outputfile']) #e.output[0])
+        inlen = ticket['inlen']
+        if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
+            pass
+        elif ifullname == "/dev/zero":
+            pass
+        elif ( inlen > 1) or \
+         (inlen == 1 and os.path.isdir(ofullname)):
+            ofullname = os.path.join(ofullname, ibasename)
+            unused, ofullname, unused, unused = fullpath(ofullname)
+        ticket['inputfile']=ifullname
+        ticket['outputfile']=ofullname
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def get_path(self,ticket) :
+        pnfs_id  = ticket['pnfs_id']
+        dirname  = ticket['dirname']
+        p = pnfs.Pnfs(pnfs_id,dirname)
+        ticket['path'] = p.get_path()
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def e_access(self,ticket) :
+        path  = ticket['path']
+        mode  = ticket['mode']
+        rc = file_utils.e_access(path,mode)
+        Trace.log(e_errors.INFO, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
+        ticket['rc']=rc
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def set_bit_file_id(self,ticket) :
+        bfid  = ticket['bfid']
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        p.set_bit_file_id(bfid)
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def get_bit_file_id(self,ticket) :
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        ticket['bfid']=p.get_bit_file_id()
+        ticket['status']   = (e_errors.OK, None)
+        Trace.log(e_errors.INFO, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
+        self.reply_to_caller(ticket)
+        return
+
+    def get_id(self,ticket) :
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        ticket['file_id']=p.get_id()
+        ticket['status']   = (e_errors.OK, None)
+        Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
+        self.reply_to_caller(ticket)
+        return
+
+    def set_xreference(self,ticket) :
+        fname = ticket['pnfsFilename']
+        p=pnfs.Pnfs(fname)
+        p.get_bit_file_id()
+        p.get_id()
+        p.set_xreference(ticket['volume'],
+                         ticket['location_cookie'],
+                         ticket['size'],
+                         ticket['file_family'],
+                         ticket['pnfsFilename'],
+                         ticket['volume_filepath'],
+                         ticket['id'],
+                         ticket['volume_fileP'],
+                         ticket['bit_file_id'],
+                         ticket['drive'],
+                         ticket['crc'],
+                         ticket['filepath'])
+        ticket['status']   = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+
+    def set_file_size(self,ticket) :
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        p.get_bit_file_id()
+        p.get_id()
+        p.set_file_size(ticket['size'])
+        ticket['status']   = (e_errors.OK, None)
+        Trace.log(e_errors.INFO, 'set_file_size %s %s'%(fname,ticket['size'],))
+        self.reply_to_caller(ticket)
+        return
+
+    def set_outfile_permissions(self,ticket) :
+        work_ticket = ticket['ticket']
+        if not ticket.get('copy', None):  #Don't set permissions if copy.
+            set_outfile_permissions_start_time = time.time()
+            #Attempt to get the input files permissions and set the output file to
+            # match them.
+            if work_ticket['outfile'] != "/dev/null":
+                try:
+                    perms = None
+                    if ( os.path.exists(work_ticket['infile']) ):
+                        perms = os.stat(work_ticket['infile'])[stat.ST_MODE]
+                    else:
+                        perms = work_ticket['wrapper']['pstat'][stat.ST_MODE]
+                    os.chmod(work_ticket['outfile'], perms)
+                    uid=work_ticket['wrapper'].get('uid',None)
+                    gid=work_ticket['wrapper'].get('gid',None)
+                    os.chown(work_ticket['outfile'],uid,gid)
+                    work_ticket['status'] = (e_errors.OK, None)
+                except OSError, msg:
+                    Trace.log(e_errors.INFO, "chmod %s failed %s:" % \
+                              (work_ticket['outfile'], msg))
+                    work_ticket['status'] = (e_errors.USERERROR,
+                                        "Unable to set permissions.")
+#        file_utils.set_outfile_permissions(work_ticket)
+        ticket['status']   = (e_errors.OK, None)
+        ticket['ticket']   = work_ticket
+        self.reply_to_caller(ticket)
+        return
+
 
 class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass

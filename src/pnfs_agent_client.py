@@ -156,9 +156,95 @@ class PnfsAgentClient(generic_client.GenericClient,
         if ( ticket['status'][0] != e_errors.OK ):
             raise OSError, "can't create files"
         else:
-            return 0
-    
+            filenames = ticket['filenames']
+            return filenames[0]
 
+    def get_ninfo(self,inputfile,outputfile,inlen) :
+        ticket = { 'work'       : 'get_ninfo',
+                   'inputfile'  : inputfile,
+                   'outputfile' : outputfile,
+                   'inlen'      : inlen
+                   }
+        ticket=self.send(ticket)
+        return ticket['inputfile'],ticket['outputfile']
+
+    def get_path(self,pnfs_id,dirname):
+        ticket = { 'work'    : 'get_path',
+                   'pnfs_id' : pnfs_id,
+                   'dirname' : dirname,
+                   'path'    : None
+                   }
+        ticket=self.send(ticket)
+        return ticket['path']
+
+    def e_access(self,path,mode):
+        ticket = { 'work' : 'e_access',
+                   'path' : path,
+                   'mode' : mode,
+                   'rc'   : 1
+                   }
+        ticket=self.send(ticket)
+        return ticket['rc']
+
+    def set_bit_file_id(self,fname,bfid):
+        ticket = {'work'  : 'set_bit_file_id',
+                  'fname' : fname,
+                  'bfid'  : bfid
+                  }
+        ticket=self.send(ticket)
+        return 
+
+    def get_bit_file_id(self,fname):
+        ticket = {'work'  : 'get_bit_file_id',
+                  'fname' : fname,
+                  'bfid'  : None
+                  }
+        ticket=self.send(ticket)
+        return ticket['bfid']
+
+    def get_id(self,fname):
+        ticket = {'work'  : 'get_id',
+                  'fname' : fname,
+                  'file_id'  : None
+                  }
+        ticket=self.send(ticket)
+        return ticket['file_id']
+
+    def set_file_size(self,fname,size):
+        ticket = {'work'  : 'set_file_size',
+                  'fname' : fname,
+                  'size'  : size
+                  }
+        ticket=self.send(ticket)
+        return
+
+    def set_xreference(self, volume, location_cookie, size, file_family,
+                       pnfsFilename, volume_filepath, id, volume_fileP,
+                       bit_file_id, drive, crc, filepath=None):
+        
+        ticket = {'work'             : 'set_xreference',
+                  'volume'           : volume,
+                  'location_cookie'  : location_cookie,
+                  'size'             : size,
+                  'file_family'      : file_family,
+                  'pnfsFilename'     : pnfsFilename,
+                  'volume_filepath'  : volume_filepath,
+                  'id'               : id,
+                  'volume_fileP'     : volume_fileP,
+                  'bit_file_id'      : bit_file_id,
+                  'drive'            : drive,
+                  'crc'              : crc,
+                  'filepath'         : filepath
+                  }
+        ticket=self.send(ticket)
+        return
+
+    def set_outfile_permissions(self,work_ticket):
+        ticket = { 'work' : 'set_outfile_permissions',
+                   'ticket' : work_ticket
+                   }
+        ticket=self.send(ticket)
+        return ticket['ticket']
 
 class PnfsAgentClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
