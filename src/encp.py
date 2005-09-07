@@ -6269,7 +6269,6 @@ def write_rhsm_file(listen_socket, work_ticket, tinfo, e, pac=None):
             bfid=pac.get_bit_file_id(done_ticket['wrapper']['pnfsFilename'])
             fid=pac.get_id(done_ticket['wrapper']['pnfsFilename'])
             fname=done_ticket['wrapper']['pnfsFilename']
-            print bfid,fid,fname
         except (KeyboardInterrupt, SystemExit):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
