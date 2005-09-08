@@ -15,6 +15,7 @@ import enstore_constants
 import alarm_client
 import e_errors
 import quota as equota
+import accounting
 
 mount_limit = {}
 acc = None
@@ -752,14 +753,24 @@ def inventory(output_dir, cache_dir):
         vol_sum = {}
 
     csc = configuration_client.ConfigurationClient()
+    invinfo = csc.get('inventory')
+    wpa_states = invinfo.get('wpa_states', [])
+    wpa_media_types = invinfo.get('wpa_media_types', [])
+    wpa_excluded_libraries = invinfo.get('wpa_excluded_libraries', [])
     dbinfo = csc.get('database')
+    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
 
     vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
     file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vols.db)
+    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+
     eq = equota.Quota(vols.db)
 
     n_vols = 0L
     n_files = 0L
+    n_rf_vols = 0L     # number of vols that should be write-protected
+    n_not_rp_vols = 0L # number of vols in n_rf_vols but are not write-protected
+    n_rp_vols = 0L     # number of vols that are write-protected
     volume_sums = {}   #The summation of all of the file sizes on a volume.
     volumes_allocated = {} #Stats on usage of storage groups.
 
@@ -789,8 +800,8 @@ def inventory(output_dir, cache_dir):
     wpa_file.write("Date this listing was generated: %s\n\n" % \
         (time.ctime(time.time())))
 
-    wpa_format = "%-16s %-12s %-3s\n"
-    wpa_file.write(wpa_format%("volume", "state", "wp"))
+    wpa_format = "%-16s %-12s %-16s %-16s %-3s\n"
+    wpa_file.write(wpa_format%("volume", "state", "library", "media type", "wp"))
     wpa_file.write('\n')
 
     vd_file.write("<html><pre>\n")
@@ -1104,12 +1115,18 @@ def inventory(output_dir, cache_dir):
                       mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
         wp = write_protect_status(vv['external_label'], vols.db)
-        if (vv['system_inhibit'][1] == "full" or
-            vv['system_inhibit'][1] == "readonly" or
-            vv['system_inhibit'][1] == "migrated") and wp != 'ON' and \
-            vv['media_type'] != 'null':
-            wpa_file.write(wpa_format%(vv['external_label'],
-                vv['system_inhibit'][1], wp))
+
+        if vv['system_inhibit'][1] in wpa_states and \
+            vv['media_type'] in wpa_media_types and \
+            not vv['library'] in wpa_excluded_libraries and \
+            vv['library'].find("shelf") == -1:
+            n_rf_vols = n_rf_vols + 1
+            if wp != 'ON':
+                wpa_file.write(wpa_format%(vv['external_label'],
+                    vv['system_inhibit'][1], vv['library'], vv['media_type'], wp))
+                n_not_rp_vols = n_not_rp_vols + 1
+            else:
+                n_rp_vols = n_rp_vols + 1
 
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-3s %6s %-40s\n" % \
                (vv['external_label'],
@@ -1134,6 +1151,8 @@ def inventory(output_dir, cache_dir):
     vs_file.close()
     vd_file.write("</pre></html>\n")
     vd_file.close()
+    wpa_file.write("\n\n")
+    wpa_filw.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_vols))
     wpa_file.close()
     tm_file.close()
     de_file.close()
