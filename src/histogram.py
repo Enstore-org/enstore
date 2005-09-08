@@ -52,153 +52,16 @@ class Histogram1D:
         for i in range(self.nbins):
             self.binarray.append(0.)
             self.sumarray.append(0.)
-
-    #
-    # Operators
-    #
-
-    def __eq__(self, other):
-        return (other is self) or (
-            self.nbins == other.nbins and
-            self.low == other.low and
-            self.high == other.high)
-
-    def __add__(self, other):
-        if ( self == other ) :
-            hist = Histogram1D("sum","sum",self.n_bins(),self.get_bin_low_edge(0),
-                               self.get_bin_high_edge(self.n_bins()-1))
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
-            hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
-            for i in range(hist.n_bins()):
-                hist.binarray[i]=self.binarray[i]+other.binarray[i]
-                hist.sumarray[i]=self.sumarray[i]+other.sumarray[i]
-                if (  hist.binarray[i] > hist.maximum ) :
-                    hist.maximum = hist.binarray[i]
-                    if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
-            return hist
-        else:
-            if ( math.fabs( self.bw - other.bw ) < 1.e-16 ) :
-                low = self.low
-                if ( self.low < other.low ) :
-                    low = self.low
-                else:
-                    low = other.low
-                high = self.high
-                if ( self.high > other.high ) :
-                    high = self.high
-                else:
-                    high = other.high
-                nbins = int((high-low)/self.bw)
-                hist = Histogram1D("sum","sum",nbins,low,high)
-                hist.sum=self.sum+other.sum
-                hist.sum2=self.sum2+other.sum2
-                hist.entries=self.entries+other.entries
-                hist.mean=hist.sum/float(hist.entries)
-                rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-                hist.rms=math.sqrt(rms2/float(hist.entries))
-                hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-                hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
-                for i in range(hist.n_bins()):
-                    x    = hist.get_bin_center(i)
-                    bin1 = self.find_bin(x)
-                    bin2 = other.find_bin(x)
-                    c1 = 0
-                    c2 = 0
-                    s1 = 0
-                    s2 = 0
-                    if ( bin1 ) :
-                        c1 = self.get_bin_content(bin1)
-                        s1 = self.get_sum_content(bin1)
-                    if ( bin2 ) :
-                        c2 = other.get_bin_content(bin2)
-                        s2 = other.get_sum_content(bin2)
-                    hist.binarray[i] = c1+c2
-                    hist.sumarray[i] = s1+s2
-                    if (  hist.binarray[i] > hist.maximum ) :
-                        hist.maximum = hist.binarray[i]
-                        if (  hist.binarray[i] < hist.minimum ) :
-                            hist.minimum  = hist.binarray[i] 
-                return hist
-
-
-    def __sub__(self, other):
-        if ( self == other ) :
-            hist = Histogram1D("diff","diff",self.n_bins(),self.get_bin_low_edge(0),
-                               self.get_bin_high_edge(self.n_bins()-1))
-            hist.sum=self.sum+other.sum
-            hist.sum2=self.sum2+other.sum2
-            hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
-            rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
-            for i in range(hist.n_bins()):
-                hist.binarray[i]=self.binarray[i]-other.binarray[i]
-                hist.sumarray[i]=self.sumarray[i]-other.sumarray[i]
-                if (  hist.binarray[i] > hist.maximum ) :
-                    hist.maximum = hist.binarray[i]
-                    if (  hist.binarray[i] < hist.minimum ) :
-                        hist.minimum  = hist.binarray[i] 
-            return hist
-        else:
-            if ( math.fabs( self.bw - other.bw ) < 1.e-16 ) :
-                low = self.low
-                if ( self.low < other.low ) :
-                    low = self.low
-                else:
-                    low = other.low
-                high = self.high
-                if ( self.high > other.high ) :
-                    high = self.high
-                else:
-                    high = other.high
-                nbins = int((high-low)/self.bw)
-                hist = Histogram1D("sum","sum",nbins,low,high)
-                hist.sum=self.sum+other.sum
-                hist.sum2=self.sum2+other.sum2
-                hist.entries=self.entries+other.entries
-                hist.mean=hist.sum/float(hist.entries)
-                rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-                hist.rms=math.sqrt(rms2/float(hist.entries))
-                hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-                hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
-                for i in range(hist.n_bins()):
-                    x    = hist.get_bin_center(i)
-                    bin1 = self.find_bin(x)
-                    bin2 = other.find_bin(x)
-                    c1 = 0
-                    c2 = 0
-                    s1 = 0
-                    s2 = 0
-                    if ( bin1 ) :
-                        c1 = self.get_bin_content(bin1)
-                        s1 = self.get_sum_content(bin1)
-                    if ( bin2 ) :
-                        c2 = other.get_bin_content(bin2)
-                        s2 = other.get_sum_content(bin2)
-                    hist.binarray[i] = c1-c2
-                    hist.sumarray[i] = s1-s2
-                    if (  hist.binarray[i] > hist.maximum ) :
-                        hist.maximum = hist.binarray[i]
-                        if (  hist.binarray[i] < hist.minimum ) :
-                            hist.minimum  = hist.binarray[i] 
-                return hist
     #
     # non trivial methods 
     #
 
     def find_bin(self,x):
         if ( x < self.low ):
+            self.underflow=self.underflow+1
             return None
         elif ( x > self.high ):
+            self.overflow=self.overflow+1
             return None
         bin = int (float(self.nbins)*(x-self.low)/(self.high-self.low));
         if ( bin == self.nbins ) :
@@ -206,33 +69,27 @@ class Histogram1D:
         return bin
 
     def fill(self,x,w=1.):
-        if ( x < self.low ):
-            self.underflow=self.underflow+1
-            return
-        elif ( x > self.high ):
-            self.overflow=self.overflow+1
-            return
         bin = self.find_bin(x)
-        self.sum=self.sum+x
-        self.sum2=self.sum2+x*x
-        self.entries=self.entries+1
-        if ( self.profile ) :
-            sum=self.sumarray[bin]
-            sum=sum+1
-            self.sumarray[bin]=sum
-        count=self.binarray[bin]
-        count=count+1.*w
-        self.binarray[bin]=count
-        self.mean=self.sum/float(self.entries)
-        rms2=self.sum2-2.*self.sum*self.mean+float(self.entries)*self.mean*self.mean
-        self.rms=math.sqrt(rms2/float(self.entries))
-        self.mean_error=self.rms/math.sqrt(float(self.entries))
-        self.rms_error=self.rms/math.sqrt(2.*float(self.entries))
-        if ( count > self.maximum ) :
-            self.maximum=count
-        if ( count < self.minimum ) :
-            self.minimum=count
-
+        if bin:
+            self.sum=self.sum+x
+            self.sum2=self.sum2+x*x
+            self.entries=self.entries+1
+            if ( self.profile ) :
+                sum=self.sumarray[bin]
+                sum=sum+1
+                self.sumarray[bin]=sum
+            count=self.binarray[bin]
+            count=count+1.*w
+            self.binarray[bin]=count
+            self.mean=self.sum/float(self.entries)
+            rms2=self.sum2-2.*self.sum*self.mean+float(self.entries)*self.mean*self.mean
+            self.rms=math.sqrt(math.fabs(rms2)/float(self.entries))
+            self.mean_error=self.rms/math.sqrt(float(self.entries))
+            self.rms_error=self.rms/math.sqrt(2.*float(self.entries))
+            if ( count > self.maximum ) :
+                self.maximum=count
+            if ( count < self.minimum ) :
+                self.minimum=count
     #
     # setters 
     #
@@ -286,13 +143,8 @@ class Histogram1D:
 
     def get_bin_content(self,bin):
         if ( bin >= self.nbins or bin < 0 ) :
-            return 0
+            return None
         return self.binarray[bin]
-
-    def get_sum_content(self,bin):
-        if ( bin >= self.nbins or bin < 0 ) :
-            return 0
-        return self.sumarray[bin]    
 
     def get_bin_center(self,bin):
         if ( bin >= self.nbins or bin < 0 ) :
@@ -443,47 +295,17 @@ class Histogram1D:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
-
-    def ascii_plot(self,token="X"):
-        i=self.get_maximum()
-        while ( i > 0 ) :
-            long_string=""
-            if ( i%10 == 0 ) :
-                long_string="%4.4d +"%(i,)
-            else :
-                long_string="     |"
-            for bin in range(self.n_bins()) :
-                if ( self.binarray[bin] >= i ) :
-                    long_string = long_string+token
-                else:
-                    long_string = long_string+" "
-            print long_string
-            i=i-1
-        long_string="      "
-        for bin in range(self.n_bins()) :
-            if ( bin%10 == 0 ) :
-                long_string=long_string+"+"
-            else:
-                long_string=long_string+"-"
-                
-        long_string=long_string+"+"
-        print long_string
-        
-                    
+       
     def dump(self):
         print repr(self.__dict__)
         
 if __name__ == "__main__":
+
     if (1) :
         hist=Histogram1D("try","try",100,0,10)
-        hist1=Histogram1D("try1","try1",100,0,10)
-
         while ( hist.n_entries() < 10000 ) :
-            x=random.gauss(3,0.5)
+            x=random.gauss(5,0.5)
             hist.fill(x)
-            x=random.gauss(7,0.5)
-            hist1.fill(x)
-        hist2=hist+hist1
     else:
         now    = int(time.time())
         then   = now - 30*3600*24
@@ -495,11 +317,11 @@ if __name__ == "__main__":
             x=random.gauss(float(middle),float(width))
             hist.fill(x)
         hist.set_time_axis(True)
-    hist2.set_ylabel("Counts")
-    hist2.set_xlabel("x variable")
-    hist2.set_logy(True)
-    hist2.plot()
-#    hist2.ascii_plot("X")
-    os.system("display %s.jpg&"%(hist2.get_name()))
+
+    hist.set_ylabel("Counts")
+    hist.set_xlabel("x variable")
+    hist.set_logy(True)
+    hist.plot()
+    os.system("display %s.jpg&"%(hist.get_name()))
     sys.exit(0)
 
