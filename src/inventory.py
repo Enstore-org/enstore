@@ -1152,7 +1152,7 @@ def inventory(output_dir, cache_dir):
     vd_file.write("</pre></html>\n")
     vd_file.close()
     wpa_file.write("\n\n")
-    wpa_file.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_vols))
+    wpa_file.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f%%\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_rf_vols))
     wpa_file.close()
     tm_file.close()
     de_file.close()
