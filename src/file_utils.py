@@ -22,6 +22,7 @@ import rexec
 import os
 import stat
 import Trace
+import e_errors
 
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the

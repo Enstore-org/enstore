@@ -13,17 +13,16 @@
 # system imports
 import sys
 import string
-import time
+# import time
 import errno
 import socket
-import select
+# import select
 import pprint
-import rexec
+# import rexec
 import stat
 
 # enstore imports
 #import setpath
-import callback
 import hostaddr
 import option
 import generic_client
@@ -31,7 +30,7 @@ import backup_client
 #import udp_client
 import Trace
 import e_errors
-import cPickle
+# import cPickle
 import info_client
 import enstore_constants
 
@@ -280,9 +279,7 @@ def do_work(intf):
                           rcv_timeout = intf.alive_rcv_timeout,
                           rcv_tries = intf.alive_retries)
     Trace.init(pac.get_name(MY_NAME))
-    ifc = info_client.infoClient(pac.csc)
     ticket = {}
-    msg_id = None
     try:
         ticket = pac.handle_generic_commands(MY_SERVER, intf)
         if ticket:
