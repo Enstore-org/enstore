@@ -758,11 +758,9 @@ def inventory(output_dir, cache_dir):
     wpa_media_types = invinfo.get('wpa_media_types', [])
     wpa_excluded_libraries = invinfo.get('wpa_excluded_libraries', [])
     dbinfo = csc.get('database')
-    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
 
     vols = edb.VolumeDB(host=dbinfo['db_host'], jou='/tmp')
     file = edb.FileDB(host=dbinfo['db_host'], jou='/tmp', rdb = vols.db)
-    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
 
     eq = equota.Quota(vols.db)
 
@@ -1154,6 +1152,14 @@ def inventory(output_dir, cache_dir):
     wpa_file.write("\n\n")
     wpa_file.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f%%\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_rf_vols))
     wpa_file.close()
+
+    # log wpa info once a day
+    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
+    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+    q = "insert into write_protect_summary (date, total, should, not_yet, done) values(now(), %d, %d, %d, %d);"%(n_vols, n_rf_vols, n_not_rp_vols, n_rp_vols)
+    res = acs.db.query(q)
+    acs.db.close()
+
     tm_file.close()
     de_file.close()
     # write out the count of migrated volumes
