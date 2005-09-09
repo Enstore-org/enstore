@@ -1153,12 +1153,14 @@ def inventory(output_dir, cache_dir):
     wpa_file.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f%%\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_rf_vols))
     wpa_file.close()
 
-    # log wpa info once a day
-    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
-    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
-    q = "insert into write_protect_summary (date, total, should, not_yet, done) values(now(), %d, %d, %d, %d);"%(n_vols, n_rf_vols, n_not_rp_vols, n_rp_vols)
-    res = acs.db.query(q)
-    acs.db.close()
+    # log wpa info twice a day
+    hour = time.localtime(time.time())[3]
+    if hour == 7 or hour == 18:
+        accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
+        acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+        q = "insert into write_protect_summary (date, total, should, not_yet, done) values(now(), %d, %d, %d, %d);"%(n_vols, n_rf_vols, n_not_rp_vols, n_rp_vols)
+        res = acs.db.query(q)
+        acs.db.close()
 
     tm_file.close()
     de_file.close()
