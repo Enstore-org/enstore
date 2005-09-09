@@ -1154,7 +1154,7 @@ def inventory(output_dir, cache_dir):
     wpa_file.close()
 
     # log wpa info twice a day
-    hour = time.localtime(time.time())[3]
+    hour = time.localtime(t0)[3]
     if hour == 7 or hour == 18:
         accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
         acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
