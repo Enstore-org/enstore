@@ -79,7 +79,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
     def handle_error(self, exc, msg, tb):
         x = tb 
         Trace.log(e_errors.ERROR, "handle pnfs agent error %s %s"%(exc, msg))
-        Trace.trace(10, "%s %s" %(self.current_work_ticket, state_name(self.state)))
+        Trace.trace(10, "%s " %(self.current_work_ticket, ))
         if self.current_work_ticket:
             try:
                 Trace.trace(10, "handle error: calling transfer failed, str(msg)=%s"%(str(msg),))
