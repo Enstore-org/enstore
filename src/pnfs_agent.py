@@ -20,6 +20,7 @@ import socket
 import select
 import stat
 import types
+import traceback
 
 # enstore imports
 import hostaddr
