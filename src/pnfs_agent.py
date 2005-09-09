@@ -17,26 +17,18 @@ import time
 import errno
 import string
 import socket
-import select
 import stat
 import types
 import traceback
 
 # enstore imports
 import hostaddr
-import callback
 import dispatching_worker
 import generic_server
-import edb
 import Trace
 import e_errors
-import configuration_client
-import volume_family
-import esgdb
 import enstore_constants
 import monitored_server
-import inquisitor_client
-import cPickle
 import event_relay_messages
 import pnfs
 import atomic
