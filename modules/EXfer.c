@@ -2682,11 +2682,14 @@ static int get_bd_name(char *name, char *block_device, size_t bd_len,
 		                 mp_test_len + 1);
 		  (void) strncpy(block_device, cur_block_device,
 				 bd_test_len + 1);
+
+		  fclose(mtab_fp);  /* Close file to prevent resource leak. */
 		  return 0;
 	       }
 	       else
 	       {
 		  errno = ERANGE;
+		  fclose(mtab_fp);  /* Close file to prevent resource leak. */
 		  return -1;
 	       }
 	    }
@@ -2695,6 +2698,7 @@ static int get_bd_name(char *name, char *block_device, size_t bd_len,
    }
 
    errno = ESRCH;
+   fclose(mtab_fp);  /* Close file to prevent resource leak. */
    return -1;
 }
 
