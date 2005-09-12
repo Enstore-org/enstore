@@ -368,6 +368,20 @@ class InquisitorPlots:
                                        "Creating inq transfer plots")
 	    alt_key = string.strip(Trace.MSG_ENCP_XFER)
 	    self.encp_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if mount:
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq mount plots")
+	    alt_key = string.strip(Trace.MSG_MC_LOAD_REQ)
+	    self.mount_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if sg:
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq storage group plots")
+	    alt_key = string.strip(Trace.MSG_ADD_TO_LMQ)
+	    self.sg_plot(alt_logs.get(alt_key, enstore_constants.LOG_PREFIX))
+	if total_bytes:
+	    enstore_functions.inqTrace(enstore_constants.PLOTTING,
+                                       "Creating inq total bytes summary plot")
+	    self.total_bytes_plot()
 
 
 	# update the inquisitor plots web page
