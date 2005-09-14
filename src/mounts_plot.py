@@ -77,7 +77,7 @@ if __name__ == '__main__':
 		t = string.split(l)
 		if len(t) > 8 and t[0] != 'Date':
 			sg, ff, wp = string.split(t[-1], '.')
-			if not library or (t[-3] == library):
+			if not library or (t[-4] == library):
 				m = int(string.split(t[-2], '<')[0])
 				if m == -1:
 					m = 0
