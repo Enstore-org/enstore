@@ -2214,6 +2214,18 @@ class EnPlotPage(EnBaseHtmlDoc):
 		    # get rid of _stamp.jpg too
 		    index = string.find(just_mover, enstore_constants.STAMP)
 		    return "%s %s"%(just_mover[0:index], file_label[1])
+                elif file_label[0] == enstore_constants.XFERLOG_FILE or file_label[0] == enstore_constants.XFER_FILE:
+		    just_sg = string.replace(text[index:], file_label[0], "")
+		    index = string.find(just_sg, enstore_constants.STAMP)
+
+                    if just_sg == "":
+                        return  file_label[1]
+
+                    tmp = string.split(just_sg,"_",1)[1]
+                    tmp1 = string.replace(tmp,"."," ")
+                    tmp2 = string.replace(tmp1,"log","Log Scale")
+#                    return "%s "%(just_sg[1:index])
+                    return "%s "%(tmp2)
 		elif file_label[0] == enstore_constants.MPD_FILE or \
 		     file_label[0] == enstore_constants.MPD_MONTH_FILE or \
 		     file_label[0] == enstore_constants.MLAT_FILE:
