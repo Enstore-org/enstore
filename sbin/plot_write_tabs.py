@@ -2,7 +2,6 @@
 # $Id$
 import sys
 import popen2
-import time
 import os
 import string
 
@@ -88,7 +87,7 @@ def make_plot(host):
    
 
 #d1, d2 =  generate_date()   
-for host in "stkensrv6", "d0ensrv6", "cdfensrv6":
-    get_stats(host, 5432)
-    make_plot_file(host)
-    make_plot(host)
+for h in "stkensrv6", "d0ensrv6", "cdfensrv6":
+    get_stats(h, 5432)
+    make_plot_file(h)
+    make_plot(h)
