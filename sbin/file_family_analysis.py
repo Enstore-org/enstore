@@ -69,11 +69,11 @@ def main():
     for sg in storage_groups:
         h1 = histogram.Histogram1D(sg,"%s tape occupancy"%(sg),1000,0,100)
         h1.set_logy(True)
-        h1.set_ylabel("Number of Volumes")
+        h1.set_ylabel("Number of Volumes / %s"%(h1.get_bin_width(0)))
         h1.set_xlabel("Fill Fraction")
 
         h2 = histogram.Histogram1D("%s_active"%sg,"%s active volumes vs last access time"%(sg),120,float(start_time),float(now_time))
-        h2.set_ylabel("Number of active volumes")
+        h2.set_ylabel("Number of active volumes ")
         h2.set_xlabel("Date")
         h2.set_time_axis(True)
 
