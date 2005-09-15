@@ -4,6 +4,7 @@ import sys
 import popen2
 import os
 import string
+import time
 
 def generate_date():
     d1 = None
@@ -58,10 +59,11 @@ def make_plot_file(host):
             break
 
 def make_plot(host):
+   t = time.ctime(time.time()) 
    f = open("write_tabs_%s.gnuplot"%(host,),'w')
    f.write('set terminal postscript color solid\n')
    f.write('set output "write_tabs_%s.ps"\n' % (host,))
-   f.write('set title "Write Tabs States"\n')
+   f.write('set title "Write Tabs States. (Plotted %s)"\n'%(t,))
    f.write('set xlabel "Date (year-month-day)"\n')
    f.write('set timefmt "%Y-%m-%d"\n')
    f.write('set xdata time\n')
