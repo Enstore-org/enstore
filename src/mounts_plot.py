@@ -6,7 +6,7 @@ import string
 import time
 import sys
 
-library = None
+library = ""
 if len(sys.argv) > 1:
 	library = sys.argv[1]
 
