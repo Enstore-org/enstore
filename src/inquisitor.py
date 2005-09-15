@@ -119,9 +119,10 @@ def get_file_list(directory, prefix):
     # pull out the files and get their sizes
     prefix_len = len(prefix)
     for filename in filenames:
-        if file[0:prefix_len] == prefix and (not file[-3:] == ".gz") and \
-	   (not file[-5:] == ".save"):
-            logfiles[file] = os.stat('%s/%s'%(directory,filename))[stat.ST_SIZE]
+        if filename[0:prefix_len] == prefix and \
+               (not filename[-3:] == ".gz") and \
+               (not filename[-5:] == ".save"):
+            logfiles[filename] = os.stat('%s/%s'%(directory,filename))[stat.ST_SIZE]
     return logfiles
 
 class EventRelay:
