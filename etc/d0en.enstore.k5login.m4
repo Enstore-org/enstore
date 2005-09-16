@@ -34,8 +34,6 @@ enstore/cd/d0enmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr28a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr29a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr30a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr31a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr32a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr33a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr34a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr35a.fnal.gov@FNAL.GOV
