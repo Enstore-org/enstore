@@ -2224,7 +2224,7 @@ class EnPlotPage(EnBaseHtmlDoc):
                     tmp1 = string.replace(tmp,"."," ")
                     tmp2 = string.replace(tmp1,"log","Log Scale")
                     index = string.find(tmp2, enstore_constants.STAMP)
-                    return "%s "%(tmp2[1:index])
+                    return "%s "%(tmp2[0:index])
 		elif file_label[0] == enstore_constants.MPD_FILE or \
 		     file_label[0] == enstore_constants.MPD_MONTH_FILE or \
 		     file_label[0] == enstore_constants.MLAT_FILE:
