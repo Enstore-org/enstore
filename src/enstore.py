@@ -298,10 +298,20 @@ class EnstoreInterface:
         try:
             pattern = "^%s"%(sys.argv[1],)
             for server in servers:
+	        #If we find an exact match, we are done.
+	        if server == sys.argv[1]:
+		    total_matches = 1
+		    self.matched_server = server
+		    break
+
+		#Attempt to find any partial matches.
                 match = re.match(pattern, server, re.I)
                 if not match is None:
                     total_matches = total_matches + 1
                     self.matched_server = server
+
+	    #Return the number of matches.  This will be one for an
+	    # exact server name match.
             return total_matches
         except (TypeError, IndexError):
             total_matches = 0
