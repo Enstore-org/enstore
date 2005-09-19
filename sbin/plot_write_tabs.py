@@ -80,7 +80,7 @@ def make_plot(host, should, not_done, done):
    f.write('set ylabel "# tapes that should have write tabs ON"\n')
    f.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (t,))
    
-   f.write('set label "Should %s, Done %s, Not Done %s. %%Done %3.1f" at graph .05,.90\n' % (should, done, not_done,done*100./should))
+   f.write('set label "Should %s, Done %s(%3.1f%%), Not Done %s." at graph .05,.90\n' % (should, done, done*100./should, not_done))
 
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1 using 1:8 t "OFF" w impulses lw %s 1 1\n'%
    #        (host, 20, 20))
