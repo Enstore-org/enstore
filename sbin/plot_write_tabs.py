@@ -47,23 +47,28 @@ def make_plot_file(host):
     f=open("write_tabs_%s.report"%(host,),'r')
     of=open("write_tabs_%s"%(host,),'w')
     l = f.readline()
+    first = 1
     while 1:
         l = f.readline()
         if l:
             a = l.split('|')
             if len(a) == 5:
+                if first:
+                    s,n,d = int(a[2]), int(a[3]), int(a[4])
+                    first = 0
                 a[4] = str(int(a[4][:-1])+int(a[3]))
                 lo = string.join(a)
                 of.write("%s\n"%(lo,))
         else:
             break
+    return s,n,d
 
-def make_plot(host):
+def make_plot(host, should, not_done, done):
    t = time.ctime(time.time()) 
    f = open("write_tabs_%s.gnuplot"%(host,),'w')
    f.write('set terminal postscript color solid\n')
    f.write('set output "write_tabs_%s.ps"\n' % (host,))
-   f.write('set title "Write Tabs States. (Plotted %s)"\n'%(t,))
+   f.write('set title "Write Tabs States for %s."\n'%(host,))
    f.write('set xlabel "Date (year-month-day)"\n')
    f.write('set timefmt "%Y-%m-%d"\n')
    f.write('set xdata time\n')
@@ -73,6 +78,10 @@ def make_plot(host):
    f.write('set yrange [0: ]\n')
    f.write('set format x "%y-%m-%d"\n')
    f.write('set ylabel "# tapes that should have write tabs ON"\n')
+   f.write('set label "Plotted %s " at graph .99,0 rotate font "Helvetica,10"\n' % (t,))
+   
+   f.write('set label "Should %s, Done %s, Not Done %s. %%Done %3.1f" at graph .05,.90\n' % (should, done, not_done,done*100./should))
+
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1 using 1:8 t "OFF" w impulses lw %s 1 1\n'%
    #        (host, 20, 20))
    f.write('plot "write_tabs_%s" using 1:6 t "ON" w impulses lw %s 2 1, "write_tabs_%s" using 1:5 t "OFF" w impulses lw %s 1 1\n'%
@@ -91,5 +100,5 @@ def make_plot(host):
 #d1, d2 =  generate_date()   
 for h in "stkensrv6", "d0ensrv6", "cdfensrv6":
     get_stats(h, 5432)
-    make_plot_file(h)
-    make_plot(h)
+    should, not_done, done = make_plot_file(h)
+    make_plot(h,should, not_done, done)
