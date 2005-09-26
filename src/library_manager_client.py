@@ -498,7 +498,13 @@ def do_work(intf):
             status=mover['state']
             rq_id = mover.get('id', None)
             if rq_id:
-                r_host = socket.gethostbyname(rq_id.split('-')[0])
+                h = rq_id.split('-')[0].split('.')
+                if len(h) > 1:
+                    h = h[0]
+                if len(h) > 16:
+                    r_host = socket.gethostbyname(h)
+                else:
+                    r_host = h
             else:
                 r_host = '000.000.000.000'
             if status == "ACTIVE":
