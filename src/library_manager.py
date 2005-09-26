@@ -2606,6 +2606,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                      'updated' : mover['updated'],
                                      'total_time': time.time()-mover['time_started'],
                                      'time_in_state' : int(mover.get('time_in_state', 0)),
+                                     'id' : mover.get('unique_id', None),
                                      })
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
