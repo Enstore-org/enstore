@@ -488,22 +488,32 @@ def do_work(intf):
             print ticket
     elif intf.vols:
         ticket = lmc.get_active_volumes()
-        print "%-9s  %-17s %-06s %-21s %-19s %-19s %-18s %19s"%(
+        ## print "%-9s  %-17s %-06s %-21s %-19s %-19s %-18s %19s"%(
+        ##    "label","mover","tot.time", "status", "system_inhibit",
+        ##    "user_inhibit", "updated", "volume family")
+        print "%-9s  %-17s %-06s %-21s %-19s %-16s %-14s %16s"%(
             "label","mover","tot.time", "status", "system_inhibit",
-            "user_inhibit", "updated", "volume family")
+            "rq. host", "updated", "volume family")
         for mover in ticket['movers']:
             status=mover['state']
+            rq_id = mover.get('id', None)
+            if rq_id:
+                r_host = socket.gethostbyname(rq_id.split('-')[0])
+            else:
+                r_host = '000.000.000.000'
             if status == "ACTIVE":
                 status=status+"-"+mover['operation']
-            print "%-10s %-17s %-08s %-14s(%-05s) (%-08s %08s) (%-08s %08s) %-17s %-08s" %\
+            ## print "%-10s %-17s %-08s %-14s(%-05s) (%-08s %08s) (%-08s %08s) %-17s %-08s" %\
+            print "%-10s %-17s %-08s %-14s(%-05s) (%-08s %08s) %-016s %-17s %-08s" %\
             (mover['external_label'], mover['mover'],
              int(mover['total_time']),
              #mover['state'],
              status,
              mover['time_in_state'],
              mover['volume_status'][0][0], mover['volume_status'][0][1],
-             mover['volume_status'][1][0], mover['volume_status'][1][1],
-             time.ctime(mover['updated']),
+             ## mover['volume_status'][1][0], mover['volume_status'][1][1],
+             r_host,
+             time.strftime('%m-%d-%y %X', time.localtime(mover['updated'])),
              mover['volume_family'],
              )
     elif intf.storage_groups:
