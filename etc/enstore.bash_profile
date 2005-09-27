@@ -1,6 +1,7 @@
 if [ -n "${PS1-}" ] ; then
    if [ -r ~/.bashrc ] ; then
       source ~/.bashrc
+	PS1="[\u@\h \W]\\$" 
    fi
 elif [ -r /usr/local/etc/fermi.profile ] ; then 
    set +u
