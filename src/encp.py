@@ -5133,7 +5133,8 @@ def set_pnfs_settings(ticket, intf_encp):
         if pnfsid:
             try:
                 p = pnfs.Pnfs(pnfsid,
-                         get_directory_name(ticket['wrapper']['pnfsFilename']))
+                         get_directory_name(ticket['wrapper']['pnfsFilename']),
+                              shortcut = intf_encp.shortcut)
                 path = p.get_path()  #Find the new path.
                 Trace.log(e_errors.INFO,
                           "File %s was moved to %s." %
@@ -5406,6 +5407,10 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point,
                           shortcut = e.shortcut)
+            if getattr(p, "directory", None):
+                t = pnfs.Tag(p.directory)
+            else:
+                t = None
             if e.shortcut and e.override_path:
                 #If the user specified a pathname (with --override-path)
                 # on the command line use that name.  Otherwise if just
@@ -5419,6 +5424,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         else: #The output file was given as a normal filename.
             ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
+            t=pnfs.Tag(get_directory_name(ofullname))
 
         #Fundamentally this belongs in veriry_read_request_consistancy(),
         # but information needed about the input file requires this check.
@@ -5436,6 +5442,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         #Obtain the pnfs tag information.
         #If verbosity is turned on and the transfer is a write to enstore,
         # output the tag information.
+        """
         if e.put_cache:
             p = pnfs.Pnfs(e.put_cache, mount_point = e.pnfs_mount_point,
                           shortcut = e.shortcut)
@@ -5445,6 +5452,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 t = None
         else:
             t=pnfs.Tag(get_directory_name(ofullname))
+        """
 
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
@@ -9649,8 +9657,11 @@ def log_encp_start(tinfo, intf):
     #If verbosity is turned on and the transfer is a write to enstore,
     # output the tag information.
     try:
-        if intf.put_cache:
-            p = pnfs.Pnfs(intf.put_cache, intf.pnfs_mount_point)
+        if intf.get_cache:
+            t = None
+        elif intf.put_cache:
+            p = pnfs.Pnfs(intf.put_cache, intf.pnfs_mount_point,
+                          shortcut = 1)
             if getattr(p, "directory", None):
                 t = pnfs.Tag(p.directory)
             else:
