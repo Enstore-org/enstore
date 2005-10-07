@@ -766,9 +766,14 @@ def inventory(output_dir, cache_dir):
 
     n_vols = 0L
     n_files = 0L
-    n_rf_vols = 0L     # number of vols that should be write-protected
-    n_not_rp_vols = 0L # number of vols in n_rf_vols but are not write-protected
-    n_rp_vols = 0L     # number of vols that are write-protected
+    # n_rf_vols = 0L     # number of vols that should be write-protected
+    # n_not_rp_vols = 0L # number of vols in n_rf_vols but are not write-protected
+    # n_rp_vols = 0L     # number of vols that are write-protected
+
+    n_rf_vols = {}
+    n_not_rp_vols = {}
+    n_rp_vols = {}
+
     volume_sums = {}   #The summation of all of the file sizes on a volume.
     volumes_allocated = {} #Stats on usage of storage groups.
 
@@ -1118,13 +1123,18 @@ def inventory(output_dir, cache_dir):
             vv['media_type'] in wpa_media_types and \
             not vv['library'] in wpa_excluded_libraries and \
             vv['library'].find("shelf") == -1:
-            n_rf_vols = n_rf_vols + 1
+            if n_rf_vols.has_key(vv['library']):
+                n_rf_vols[vv['library']] = n_rf_vols[vv['library']] + 1
+            else:
+                n_rf_vols[vv['library']] = 1
+                n_not_rp_vols[vv['library']] = 0
+                n_rp_vols[vv['library']] = 0
             if wp != 'ON':
                 wpa_file.write(wpa_format%(vv['external_label'],
                     vv['system_inhibit'][1], vv['library'], vv['media_type'], wp))
-                n_not_rp_vols = n_not_rp_vols + 1
+                n_not_rp_vols[vv['library']] = n_not_rp_vols[vv['library']] + 1
             else:
-                n_rp_vols = n_rp_vols + 1
+                n_rp_vols[vv['library']] = n_rp_vols[vv['library']] + 1
 
         vd_file.write("%-10s %8.2f%2s (%-14s %8s) (%-8s  %8s) %-12s %-3s %6s %-40s\n" % \
                (vv['external_label'],
@@ -1150,7 +1160,8 @@ def inventory(output_dir, cache_dir):
     vd_file.write("</pre></html>\n")
     vd_file.close()
     wpa_file.write("\n\n")
-    wpa_file.write("  Total: %d\n Should: %d\n   Done: %d\nNot yet: %d\n  Ratio: %5.2f%%\n"%(n_vols, n_rf_vols, n_rp_vols, n_not_rp_vols, float(n_rp_vols)*100/n_rf_vols))
+    for i in n_rf_vols.keys():
+        wpa_file.write("%10s  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(i, n_vols[i], n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
     wpa_file.close()
 
     # log wpa info twice a day
@@ -1159,7 +1170,7 @@ def inventory(output_dir, cache_dir):
         accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
         acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
         q = "insert into write_protect_summary (date, total, should, not_yet, done) values(now(), %d, %d, %d, %d);"%(n_vols, n_rf_vols, n_not_rp_vols, n_rp_vols)
-        res = acs.db.query(q)
+        # res = acs.db.query(q)
         acs.db.close()
 
     tm_file.close()
