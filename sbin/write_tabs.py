@@ -118,7 +118,7 @@ def main():
 
             h2.set_time_axis(True)
             h2.set_profile(True)
-            h2.set_logy(True)
+#            h2.set_logy(True)
             h2.set_ylabel("# of tabs flipped per day")
             h2.set_xlabel("Date (year-month-day)")
             h2.set_marker_text("")
