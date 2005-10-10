@@ -9,7 +9,6 @@
 # 
 ###############################################################################
 import sys
-import popen2
 import os
 import string
 import time
@@ -68,7 +67,7 @@ def main():
 
     res=db.query(SELECT_STMT)
     should = 0
-    noy_yet   = 0
+    not_yet   = 0
     done  = 0 
     for row in res.getresult():
         if not row:
