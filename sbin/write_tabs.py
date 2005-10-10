@@ -17,7 +17,7 @@ import pg
 import enstore_constants
 import histogram
 
-SELECT_STMT="select  to_char(date, 'YY-MM-DD HH:MM:SS'), total, should, not_yet, done from write_protect_summary order by date"
+SELECT_STMT="select  to_char(date, 'YY-MM-DD HH:MM:SS'), total, should, not_yet, done from write_protect_summary order by date desc"
 SELECT_STMT1="select date,total, should, not_yet, done from write_protect_summary where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0 order by date desc"
 
 def showError(msg):
@@ -68,18 +68,20 @@ def main():
         db = pg.DB(host=db_server_name, dbname=db_name);
 
     res=db.query(SELECT_STMT)
-    should = 0
-    not_yet   = 0
-    done  = 0 
+    should  =  res.getresult()[0][2]
+    not_yet =  res.getresult()[0][3]
+    done    =  res.getresult()[0][4]
+    date=""
     for row in res.getresult():
         if not row:
             continue
-        h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
-        h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[3])
-        h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
-        should  = row[2]
-        not_yet = row[3]
-        done    = row[4]
+        tmp = row[0].split(' ')[0]
+        if ( date  != tmp ) :
+            date =  tmp
+            print row
+            h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
+            h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[3])
+            h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
     db.close()
 
     h.set_line_color(2)
@@ -120,7 +122,7 @@ def main():
 
 #    os.system("display %s.jpg&"%(h2.get_name()))
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:/fnal/ups/prd/www_pages/enstore/"%(inq_host,)
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:/fnal/ups/prd/www_pages/enstore/write_tabs"%(inq_host,)
     os.system(cmd)
 
     
