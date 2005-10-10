@@ -45,7 +45,7 @@ def main():
 
     h  = histogram.Histogram1D("write_tabs_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
     h1 = histogram.Histogram1D("write_tabs_not_done_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
-    h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Number of tapes flipped per day %s"%(name,),37,float(start_time),float(now_time))
+    h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Number of tabs flipped per day %s"%(name,),37,float(start_time),float(now_time))
 
     h.set_time_axis(True)
     h.set_profile(True)
@@ -113,7 +113,7 @@ def main():
     h2.set_time_axis(True)
     h2.set_profile(True)
     h2.set_logy(True)
-    h2.set_ylabel("# of tapes flipped per day")
+    h2.set_ylabel("# of tabs flipped per day")
     h2.set_xlabel("Date (year-month-day)")
     h2.set_marker_text("")
     h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
