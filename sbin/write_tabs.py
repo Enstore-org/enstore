@@ -106,7 +106,7 @@ def main():
     h2.set_marker_text("OFF")
     
 
-    h.plot2(h1)
+#    h.plot2(h1)
     
 #    os.system("display %s.jpg&"%(h.get_name()))
 

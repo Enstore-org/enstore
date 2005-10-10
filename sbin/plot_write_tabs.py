@@ -93,7 +93,7 @@ def make_plot(host, should, not_done, done):
            '/usr/X11R6/bin/convert -rotate 90 -modulate 80 write_tabs_%s.ps write_tabs_%s.jpg' % (host,host),\
            '/usr/X11R6/bin/convert -rotate 90 -geometry 120x120 -modulate 80 write_tabs_%s.ps write_tabs_%s_stamp.jpg' % (host,host):
     os.system(cmd)
-    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/'
+    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/write_tabs'
     os.system(cmd)
    
 
