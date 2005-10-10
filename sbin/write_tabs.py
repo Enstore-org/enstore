@@ -128,7 +128,7 @@ def main():
 
 #    os.system("display %s.jpg&"%(h2.get_name()))
 
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/write_tabs"
+            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore"
 #           cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:/fnal/ups/prd/www_pages/enstore/write_tabs"%(inq_host,)
             os.system(cmd)
 
