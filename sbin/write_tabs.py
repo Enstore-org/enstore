@@ -45,7 +45,7 @@ def main():
 
     h  = histogram.Histogram1D("write_tabs_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
     h1 = histogram.Histogram1D("write_tabs_not_done_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
-    h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
+    h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Number of tapes flipped per day %s"%(name,),37,float(start_time),float(now_time))
 
     h.set_time_axis(True)
     h.set_profile(True)
