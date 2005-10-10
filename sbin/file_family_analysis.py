@@ -71,11 +71,14 @@ def main():
         h1.set_logy(True)
         h1.set_ylabel("Number of Volumes / %s"%(h1.get_bin_width(0)))
         h1.set_xlabel("Fill Fraction")
+        h1.set_marker_type("impulses")
+        h1.set_opt_stat(True)
 
         h2 = histogram.Histogram1D("%s_active"%sg,"%s active volumes vs last access time"%(sg),120,float(start_time),float(now_time))
         h2.set_ylabel("Number of active volumes ")
         h2.set_xlabel("Date")
         h2.set_time_axis(True)
+        h2.set_marker_type("points")
 
         
         h3 = histogram.Histogram1D("%s_time"%sg,"%s tape occupancy  vs last access time"%(sg),120,float(start_time),float(now_time))
@@ -83,6 +86,7 @@ def main():
         h3.set_xlabel("Date")
         h3.set_time_axis(True)
         h3.set_profile(True)
+        h3.set_marker_type("points")
         
 #        select_stmt=SELECT_STMT%(sg,)
         select_stmt=SELECT_STMT+sg+"'"
