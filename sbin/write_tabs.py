@@ -105,7 +105,7 @@ def main():
 
     h.plot2(h1)
     
-    os.system("display %s.jpg&"%(h.get_name()))
+#    os.system("display %s.jpg&"%(h.get_name()))
 
     h2.set_time_axis(True)
     h2.set_profile(True)
@@ -117,8 +117,15 @@ def main():
 
     h2.plot_derivative()
 
-    os.system("display %s.jpg&"%(h2.get_name()))
+#    os.system("display %s.jpg&"%(h2.get_name()))
+
+    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/'
+    os.system(cmd)
+
+    
     sys.exit(0)
+
+    
     
 if __name__ == "__main__":
     main()
