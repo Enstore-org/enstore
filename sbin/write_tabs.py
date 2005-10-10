@@ -30,6 +30,8 @@ def main():
     csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 
     acc = csc.get(enstore_constants.ACCOUNTING_SERVER)
+    inq = csc.get('inquisitor')
+    inq_host=inq.get('www_host').split('/')[2]
 
     db_server_name = acc.get('dbhost')
     db_name        = acc.get('dbname')
@@ -118,7 +120,7 @@ def main():
 
 #    os.system("display %s.jpg&"%(h2.get_name()))
 
-    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/'
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:/fnal/ups/prd/www_pages/enstore/"%(inq_host,)
     os.system(cmd)
 
     
