@@ -40,7 +40,7 @@ def main():
     name=db_server_name.split('.')[0]
     now_time    = time.time()
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
-    now_time = time.mktime((Y, M, D, 0, 0, 0, wd, jd, dst))
+    now_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
     start_time  = now_time-30*3600*24-7*3600*24
 
     h  = histogram.Histogram1D("write_tabs_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
@@ -78,7 +78,6 @@ def main():
         tmp = row[0].split(' ')[0]
         if ( date  != tmp ) :
             date =  tmp
-            print row
             h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
             h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[3])
             h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
