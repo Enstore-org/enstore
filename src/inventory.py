@@ -1160,8 +1160,8 @@ def inventory(output_dir, cache_dir):
     vd_file.write("</pre></html>\n")
     vd_file.close()
     wpa_file.write("\n\n")
+    wpa_file.write("Total: %5d\n"%(n_vols))
     for i in n_rf_vols.keys():
-        wpa_file.write("Total: %5d\n"%(n_vols))
         wpa_file.write("\n%s:\n"%(i))
         wpa_file.write("  Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
     wpa_file.close()
