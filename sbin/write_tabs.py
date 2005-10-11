@@ -51,7 +51,7 @@ def main():
             start_time  = now_time-30*3600*24-7*3600*24
             
             h  = histogram.Histogram1D("write_tabs_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
-            h1 = histogram.Histogram1D("write_tabs_not_done_%s"%(name,),"Write tab states %s"%(name,),37,float(start_time),float(now_time))
+            h1 = histogram.Histogram1D("write_tabs_not_done_%s"%(name,),"Number of tabs to be flipped  %s"%(name,),37,float(start_time),float(now_time))
             h2 = histogram.Histogram1D("write_tabs_done_%s"%(name,),"Number of tabs flipped per day %s"%(name,),37,float(start_time),float(now_time))
 
             h.set_time_axis(True)
@@ -105,28 +105,34 @@ def main():
             h1.set_marker_type("impulses")
             h1.set_marker_text("OFF")
 
-
             h2.set_line_color(2)
             h2.set_line_width(20)
             h2.set_marker_type("impulses")
             h2.set_marker_text("OFF")
 
-
             h.plot2(h1)
 
-#    os.system("display %s.jpg&"%(h.get_name()))
+            derivative2=h2.derivative("write_tabs_done_%s"%(name,),"Number of tabs flipped/to be flipped per day %s"%(name,))
+            derivative1=h1.derivative("write_tabs_not_done_%s"%(name,),"Number of tabs to be flipped  %s"%(name,))
 
-            h2.set_time_axis(True)
-            h2.set_profile(True)
-#            h2.set_logy(True)
-            h2.set_ylabel("# of tabs flipped per day")
-            h2.set_xlabel("Date (year-month-day)")
-            h2.set_marker_text("")
-            h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
+            derivative2.set_ylabel("# of tabs flipped(green)/to be flipped(red) per day")
+            derivative2.set_xlabel("Date (year-month-day)")
+            derivative2.set_marker_text("flipped")
+            derivative2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
-            h2.plot_derivative()
+            derivative1.set_ylabel("# of tabs to be flipped per day")
+            derivative1.set_xlabel("Date (year-month-day)")
+            derivative1.set_marker_text("to be flipped")
+            derivative1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
-#    os.system("display %s.jpg&"%(h2.get_name()))
+            derivative2.plot2(derivative1, True)
+
+
+#            h2.set_ylabel("# of tabs flipped per day")
+#            h2.set_xlabel("Date (year-month-day)")
+#            h2.set_marker_text("")
+#            h2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
+#            h2.plot_derivative()
 
             cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s.jpg %s.ps %s_stamp.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore"%(h.get_name(),h.get_name(),h.get_name(),)
             os.system(cmd)
