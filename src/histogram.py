@@ -615,16 +615,16 @@ class Histogram1D:
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1 "
         if (  self.time_axis ) :
-            if (reflect == False ) : 
-                long_string=long_string+",  '"+full_file_name1+"' using 1:4 "
-            else :
+            if (reflect) : 
                 long_string=long_string+",  '"+full_file_name1+"' using 1:(-$4) "
+            else :
+                long_string=long_string+",  '"+full_file_name1+"' using 1:4 "
                 
         else:
-            if (reflect == False ) :
-                long_string=long_string+",  '"+full_file_name1+"' using 1:3 "
-            else :
+            if (reflect) :
                 long_string=long_string+",  '"+full_file_name1+"' using 1:(-$3)"
+            else :
+                long_string=long_string+",  '"+full_file_name1+"' using 1:3 "
                
         long_string=long_string+" t '"+h.get_marker_text()+"' with "\
                     +h.get_marker_type()+" lw "+str(h.get_line_width())+" "+str(h.get_line_color())+" 1\n "
