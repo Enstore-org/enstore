@@ -54,11 +54,52 @@ class Histogram1D:
         self.xlabel=""
         self.logy=False
         self.logx=False
-
         for i in range(self.nbins):
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
+    def copy(self) :
+        other = Histogram1D(self.name,
+                            self.title,
+                            self.nbins,
+                            self.low,
+                            self.high)
+
+        other.entries=self.entries
+        other.binarray = []
+        other.sumarray = []
+        other.underflow=self.underflow
+        other.overflow=self.overflow
+        other.mean=self.mean
+        other.mean_error=self.mean_error
+        other.rms=self.rms
+        other.rms_error=self.rms_error
+        other.sum=self.sum
+        other.sum2=self.sum2
+        other.data_file_name=self.data_file_name
+        other.bw=self.bw
+        other.maximum=self.maximum
+        other.minimum=self.minimum
+        other.time_axis=self.time_axis
+        other.opt_stat=self.opt_stat
+        other.profile=self.profile
+        other.marker_type=self.marker_type
+        other.marker_text=self.marker_text
+        other.additional_text=self.additional_text
+        other.line_width=self.line_width
+        other.line_color=self.line_color
+        for i in range(self.nbins):
+            other.binarray.append(self.binarray[i])
+            other.sumarray.append(self.sumarray[i])
+        
+        #
+        # atributes
+        #
+        other.ylabel=self.ylabel
+        other.xlabel=self.xlabel
+        other.logy=self.logy
+        other.logx=self.logx
+        return other
 
     def __eq__(self, other):
         return (other is self) or (
@@ -201,7 +242,51 @@ class Histogram1D:
     # non trivial methods 
     #
 
+    def reset(self) :
+        self.entries=0
+        self.underflow=0
+        self.overflow=0
+        self.mean=0
+        self.mean_error=0
+        self.rms=0
+        self.rms_error=0
+        self.sum=0
+        self.sum2=0
+        self.maximum=0
+        self.minimum=0
+        for i in range(self.nbins):
+            self.binarray.append(0.)
+            self.sumarray.append(0.)
 
+    def derivative(self,only_positive=True,name="",title="") :
+        h=self.copy()
+        h.reset()
+        if ( name == "" ) :
+            h.set_name(self.name+"_der")
+        else:
+            h.set_name(name)
+        if ( title == "" ) :
+            h.set_title(self.title+"derivative")
+        else:
+            h.set_title(title)
+        h.set_data_file_name("%s_data.pts"%(h.name,))
+        previous_bin=self.get_bin_content(0)
+        
+        for i in range(self.nbins):
+            x = self.get_bin_center(i)
+            y = self.get_bin_content(i)
+            if ( self.profile ) :
+                if ( self.sumarray[i] > 0 ) :
+                    y = y  / self.sumarray[i]
+            dy_dx = (  y - previous_bin  )
+            if ( only_positive == True and dy_dx<0 ):
+                dy_dx=0
+            h.binarray[i]=dy_dx
+            previous_bin=y
+            
+        return h
+            
+           
     def find_bin(self,x):
         if ( x < self.low ):
             self.underflow=self.underflow+1
@@ -643,13 +728,21 @@ if __name__ == "__main__":
     h1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h1.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
 
+    derivative = h1.derivative()
+    derivative.plot()
+    os.system("display %s.jpg&"%(derivative.get_name()))
+
+    h1.plot()
+    os.system("display %s.jpg&"%(h1.get_name()))
+
+
 
 
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")
     h2.set_marker_text("blah")
     h2.set_marker_type("impulses")
-    h2.set_logy(True)
+    h2.set_logy(False)
     h2.set_opt_stat(True)
     h2.set_line_width(10)
     h2.set_line_color(3)
@@ -658,8 +751,8 @@ if __name__ == "__main__":
     h2.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
 
 
-    h1.plot2(h2,True)
-    os.system("display %s.jpg&"%(h1.get_name()))
+    h2.plot2(h1,True)
+    os.system("display %s.jpg&"%(h2.get_name()))
 
     sum=h1+h3
     sum.plot()
