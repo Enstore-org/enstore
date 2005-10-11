@@ -273,13 +273,12 @@ class Histogram1D:
         previous_bin=self.get_bin_content(0)
         
         for i in range(self.nbins):
-            x = self.get_bin_center(i)
             y = self.get_bin_content(i)
             if ( self.profile ) :
                 if ( self.sumarray[i] > 0 ) :
                     y = y  / self.sumarray[i]
             dy_dx = (  y - previous_bin  )
-            if ( only_positive == True and dy_dx<0 ):
+            if ( only_positive and dy_dx<0 ):
                 dy_dx=0
             h.binarray[i]=dy_dx
             previous_bin=y
