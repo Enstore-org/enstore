@@ -12,6 +12,7 @@ import sys
 import os
 import string
 import time
+import math
 import configuration_client
 import pg
 import enstore_constants
@@ -115,17 +116,25 @@ def main():
             derivative2=h2.derivative("write_tabs_done_%s"%(name,),"Number of tabs flipped/to be flipped per day %s"%(name,))
             derivative1=h1.derivative("write_tabs_not_done_%s"%(name,),"Number of tabs to be flipped  %s"%(name,))
 
-            derivative2.set_ylabel("# of tabs flipped(green)/to be flipped(red) per day")
+            derivative2.set_ylabel("log10(N) of tabs flipped(green)/to be flipped(red) per day")
             derivative2.set_xlabel("Date (year-month-day)")
             derivative2.set_marker_text("done")
             derivative2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
             derivative1.set_ylabel("# of tabs to be flipped per day")
             derivative1.set_xlabel("Date (year-month-day)")
-            derivative1.set_marker_text("to be flipped")
+            derivative1.set_marker_text("added to done")
             derivative1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
-#            derivative2.plot2(derivative1, True)
+            for i in range (derivative1.n_bins()):
+                if ( derivative1.binarray[i] > 0 ):
+                    derivative1.binarray[i] = math.log10(derivative1.binarray[i])
+
+            for i in range (derivative2.n_bins()):
+                if ( derivative2.binarray[i] > 0 ):
+                    derivative2.binarray[i] = math.log10(derivative2.binarray[i])
+
+            derivative2.plot2(derivative1, True)
             derivative2.plot()
 
 
