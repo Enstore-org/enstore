@@ -118,12 +118,12 @@ def main():
 
             derivative2.set_ylabel("log10(N) of tabs flipped(green)/to be flipped(red) per day")
             derivative2.set_xlabel("Date (year-month-day)")
-            derivative2.set_marker_text("done")
+            derivative2.set_marker_text("added to done")
             derivative2.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
             derivative1.set_ylabel("# of tabs to be flipped per day")
             derivative1.set_xlabel("Date (year-month-day)")
-            derivative1.set_marker_text("added to done")
+            derivative1.set_marker_text("added to not yet")
             derivative1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
 
             for i in range (derivative1.n_bins()):
