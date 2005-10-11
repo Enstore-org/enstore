@@ -135,8 +135,6 @@ def main():
                     derivative2.binarray[i] = math.log10(derivative2.binarray[i])
 
             derivative2.plot2(derivative1, True)
-            derivative2.plot()
-
 
 #            h2.set_ylabel("# of tabs flipped per day")
 #            h2.set_xlabel("Date (year-month-day)")
