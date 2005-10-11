@@ -131,6 +131,10 @@ def main():
             cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore"
 #           cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:/fnal/ups/prd/www_pages/enstore/write_tabs"%(inq_host,)
             os.system(cmd)
+            cmd = "rm %s.jpg %s.ps %.jpg %.ps %s_stamp.jpg"%(h.get_name(),)
+            os.system(cmd)
+            cmd = "rm %s.jpg %s.ps %.jpg %.ps %s_stamp.jpg"%(h2.get_name(),)
+            os.system(cmd)
 
 
     sys.exit(0)
