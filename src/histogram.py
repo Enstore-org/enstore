@@ -485,7 +485,7 @@ class Histogram1D:
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
-    def plot2(self, h,dir="./"):
+    def plot2(self, h,reflect=False,dir="./"):
         full_file_name=dir+self.data_file_name
         full_file_name1=dir+h.get_data_file_name()
         
@@ -531,9 +531,17 @@ class Histogram1D:
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1 "
         if (  self.time_axis ) :
-            long_string=long_string+",  '"+full_file_name1+"' using 1:4 "
+            if (reflect == False ) : 
+                long_string=long_string+",  '"+full_file_name1+"' using 1:4 "
+            else :
+                long_string=long_string+",  '"+full_file_name1+"' using 1:(-$4) "
+                
         else:
-            long_string=long_string+",  '"+full_file_name1+"' using 1:3 "            
+            if (reflect == False ) :
+                long_string=long_string+",  '"+full_file_name1+"' using 1:3 "
+            else :
+                long_string=long_string+",  '"+full_file_name1+"' using 1:(-$3)"
+               
         long_string=long_string+" t '"+h.get_marker_text()+"' with "\
                     +h.get_marker_type()+" lw "+str(h.get_line_width())+" "+str(h.get_line_color())+" 1\n "
         gnu_cmd.write(long_string)
@@ -650,7 +658,7 @@ if __name__ == "__main__":
     h2.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
 
 
-    h1.plot2(h2)
+    h1.plot2(h2,True)
     os.system("display %s.jpg&"%(h1.get_name()))
 
     sum=h1+h3
