@@ -258,7 +258,7 @@ class Histogram1D:
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
-    def derivative(self,only_positive=True,name="",title="") :
+    def derivative(self,name="",title="",only_positive=True) :
         h=self.copy()
         h.reset()
         if ( name == "" ) :
