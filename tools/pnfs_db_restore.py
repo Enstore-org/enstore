@@ -70,7 +70,7 @@ def get_backup(backup_host, backup_dir,  backup_name):
 
 def recover():
     pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir = get_config(pnfs_host)
-    '''
+    
     cmd='umount /pnfs/fs'
     print 'Unmounting pnfs: %s'% (cmd,)
     os.system(cmd)
@@ -86,9 +86,9 @@ def recover():
     backup_file = get_backup(backup_host, backup_dir,  backup_name)
     # go to a proper directory
     os.chdir(os.path.dirname(pnfs_db))
-    '''
+    
     cwd=os.getcwd()
-    '''
+    
     # clean directories if exist
 
     print 'Cleaning %s'% (cwd,)
@@ -122,7 +122,7 @@ def recover():
     f=open('%s/recovery.conf'%(pgdb,), 'w')
     f.write('%s\n'%(cmd,))
     f.close()
-    '''
+    
     # disable archive_command
     print "CWD",cwd
     cmd = 'sed -e "s/archive_command/#archive_command/g w f.1" %s/postgresql.conf'% (pgdb,)
