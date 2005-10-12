@@ -163,7 +163,6 @@ baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-djholm@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `fagan@FNAL.GOV', `dnl')
 ifelse(index(HOSTNAME, `stkendca'), 0,
 fuhrmann@FNAL.GOV, `dnl')
@@ -171,21 +170,16 @@ ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `ifisk@FNAL.GOV', `dnl')
-ivm@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
 moibenko@FNAL.GOV
-neilsen@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
-ron@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `stiehr@FNAL.GOV', `dnl')
 timur@FNAL.GOV
-tlevshin@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `tmesser@FNAL.GOV', `dnl')
-vsergeev@FNAL.GOV
 zalokar@FNAL.GOV

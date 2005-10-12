@@ -35,21 +35,15 @@ baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-djholm@FNAL.GOV
 ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
-ivm@FNAL.GOV
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
 litvinse@FNAL.GOV
 moibenko@FNAL.GOV
-neilsen@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
-ron@FNAL.GOV
 timur@FNAL.GOV
-tlevshin@FNAL.GOV
-vsergeev@FNAL.GOV
 zalokar@FNAL.GOV
