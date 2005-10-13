@@ -29,6 +29,10 @@ def get_vq_format_file(output_dir):
 def tod():
     return time.strftime("%c",time.localtime(time.time()))
 
+# time2timestamp(t) -- convert time to "YYYY-MM-DD HH:MM:SS"
+def time2timestamp(t):
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+
 # return filenames
 def get_vol_filenames(output_dir):
     if string.find(output_dir, "/dev/stdout") != -1: 
@@ -726,6 +730,14 @@ def write_protect_status(vol, db):
 	except:
 		status = "---"
 	return status
+
+
+# sum(list) -- add up all element in the list
+def sum(l):
+	total = 0
+	for i in l:
+		total = total + i
+	return total
 		
 #Proccess the inventory of the files specified.  This is the main source
 # function where all of the magic starts.
@@ -770,6 +782,7 @@ def inventory(output_dir, cache_dir):
     # n_not_rp_vols = 0L # number of vols in n_rf_vols but are not write-protected
     # n_rp_vols = 0L     # number of vols that are write-protected
 
+    n_vols_lib = {}
     n_rf_vols = {}
     n_not_rp_vols = {}
     n_rp_vols = {}
@@ -1149,6 +1162,10 @@ def inventory(output_dir, cache_dir):
                 vv['volume_family']))
 
         n_vols = n_vols + 1
+	if n_vols_lib.has_key(vv['library']):
+            n_vols_lib[vv['library']] = n_vols_lib[vv['library']] + 1
+        else:
+            n_vols_lib[vv['library']] = 1
         print 'done', time.time()-tt0
 
     # dump vol_sum
@@ -1163,7 +1180,7 @@ def inventory(output_dir, cache_dir):
     wpa_file.write("Total: %5d\n"%(n_vols))
     for i in n_rf_vols.keys():
         wpa_file.write("\n%s:\n----------------\n"%(i))
-        wpa_file.write(" Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
+        wpa_file.write("  Total: %5\n  Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(n_vols_lib[i], n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
     wpa_file.close()
 
     # log wpa info twice a day
@@ -1171,8 +1188,11 @@ def inventory(output_dir, cache_dir):
     if hour == 7 or hour == 18:
         accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
         acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
-        q = "insert into write_protect_summary (date, total, should, not_yet, done) values(now(), %d, %d, %d, %d);"%(n_vols, n_rf_vols, n_not_rp_vols, n_rp_vols)
-        # res = acs.db.query(q)
+        q = "insert into write_protect_summary (date, total, should, not_yet, done) values('%s', %d, %d, %d, %d);"%(time2timestamp(t0), n_vols, sum(n_rf_vols.values()), sum(n_not_rp_vols.values()), sum(n_rp_vols.values()))
+        res = acs.db.query(q)
+        # log individual numbers according to library
+        for i in n_vols_lib.keys():
+            q = "insert into write_protect_summary_by_library (date, library, should, not_yet, done) values('%s', '%s', %d, %d, %d, %d);"%(time2timestamp(t0), i, n_vols_lib[i], n_rf_vols[i], n_not_rp_vols[i], n_rp_vols[i])
         acs.db.close()
 
     tm_file.close()
