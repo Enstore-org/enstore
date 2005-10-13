@@ -1191,7 +1191,7 @@ def inventory(output_dir, cache_dir):
         q = "insert into write_protect_summary (date, total, should, not_yet, done) values('%s', %d, %d, %d, %d);"%(time2timestamp(t0), n_vols, sum(n_rf_vols.values()), sum(n_not_rp_vols.values()), sum(n_rp_vols.values()))
         res = acs.db.query(q)
         # log individual numbers according to library
-        for i in n_vols_lib.keys():
+        for i in n_rf_vols.keys():
             q = "insert into write_protect_summary_by_library (date, library, should, not_yet, done) values('%s', '%s', %d, %d, %d, %d);"%(time2timestamp(t0), i, n_vols_lib[i], n_rf_vols[i], n_not_rp_vols[i], n_rp_vols[i])
             res = acs.db.query(q)
         acs.db.close()
