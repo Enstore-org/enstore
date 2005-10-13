@@ -93,6 +93,7 @@ import pg
 import time
 import pprint
 import types
+import sys
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
@@ -108,7 +109,8 @@ def timestamp2time(s):
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
-DATABASEHOST = 'stkensrv6.fnal.gov'
+# DATABASEHOST = 'stkensrv6.fnal.gov'
+DATABASEHOST = 'localhost'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
@@ -300,12 +302,61 @@ def create_write_protect_on_job(name, args, comment = ''):
 def create_write_protect_off_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_OFF', args, comment)
 
+# shell() -- interactive shell
+def shell():
+	print "interactive shell has not been implemented yet"
+	return
+
+# execute(args) -- execute args[0], args[1:]
+def execute(args):
+	n_args = len(args)
+	if n_args < 1:
+		return None
+
+	cmd = args[0]
+
+	if cmd == "list": # list all job
+		if n_args < 2 or args[1] == 'all':
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id \
+				order by job.id;"
+			return db.query(q)
+		else:
+			or_stmt = "job.name = '%s' "%(args[1])
+			for i in args[2:]:
+				or_stmt = or_stmt + "or job.name = '%s' "%(args[i])
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id \
+					and (%s) \
+				order by job.id;"%(or_stmt)
+			return db.query(q)
+	elif cmd == "show": # show a job
+		for i in args[1:]:
+			job = get_job_by_name(i)
+			for j in job:
+				pprint.pprint(j)
+	elif cmd == "create": # create job
+		if args[1] == "write_protect_on":
+			return create_write_protect_on_job(args[2], args[3:])
+		elif args[1] == "write_protect_off":
+			return create_write_protect_off_job(args[2], args[3:])
+		else:
+			return "don't know what to do"
+	else:
+		return "unknown command"
+
+
 if __name__ == '__main__':
-	# test
-	a = ['VO1000', 'VO1001', 'VO1002']
-	job_name = 'TEST01'
-	res = create_write_protect_on_job(job_name, a, 'tesing')
-	time.sleep(5)
-	res = create_write_protect_off_job(job_name, a, 'tesing')
-	job = get_job_by_name(job_name)
-	pprint.pprint(job)
+
+	if len(sys.argv) < 2:
+		shell()
+	else:
+		res = execute(sys.argv[1:])
+		if res:
+			print res
