@@ -108,7 +108,7 @@ def timestamp2time(s):
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
-DATABASEHOST = 'localhost'
+DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
@@ -214,6 +214,7 @@ def start_job_task(job_id, task_id, args=None, comment=None):
 			job_id, task_id, comment, args)
 	res = db.query(q)
 
+# finish_job_task(job_id, task_id) -- finish/close a task
 def finish_job_task(job_id, task_id, comment=None, result=None):
 	if result:
 		result = "'%s'"%(string(result))
@@ -232,7 +233,66 @@ def finish_job_task(job_id, task_id, comment=None, result=None):
 				result, job_id, task_id)
 	res = db.query(q)
 
+# get_current_task(job) -- get current task
+def get_current_task(job):
+	q = "select case \
+		when max(task) is null then 0 \
+		else max(task) \
+		end \
+		from progress \
+		where \
+			job = %d and \
+			start is not null;"%(job)
+	res = db.query(q).getresult()
+	return res[0][0]
 
+# get_next_task(job) -- get next task
+def get_next_task(job):
+	q = "select tasks from job, job_definition where \
+		job.id = %d and \
+		job.type = job_definition.id;"%(job)
+	tasks = db.query(q).getresult()[0][0]
+	ct = get_current_task(job)
+	if ct == tasks:
+		return 0
+	else:
+		return ct + 1
+
+# has_finished(job, task) -- has task (job, task) finished?
+def has_finished(job, task):
+	q = "select finish from progress where \
+		job = %d and task = %d and finish is not null;"%(
+		job, task)
+	res = db.query(q).getresult()
+	if not res:
+		return False
+	else:
+		return True
+
+# is_started(job, task) -- has task (job, task) started?
+def has_started(job, task):
+	q = "select start from progress where \
+		job = %d and task = %d and start is not null;"%(
+		job, task)
+	res = db.query(q).getresult()
+	if not res:
+		return False
+	else:
+		return True
+
+# start_next_task(job) -- start next task
+def start_next_task(job, args=None, comment=None):
+	ct = get_current_task(job)
+	if has_finished(job, ct):
+		nt = get_next_task(job)
+		if nt:
+			start_job_task(job, nt, args, comment)
+
+# finish_current_task(job) -- finish current task
+def finish_current_task(job, comment, result):
+	ct = get_current_task(job)
+	if ct:
+		finish_job_task(job, task, comment, result)
 
 def create_write_protect_on_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_ON', args, comment)
