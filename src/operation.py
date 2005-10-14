@@ -138,15 +138,14 @@ def create_job(name, type, args, comment = ''):
 		db.query(q)
 	return id
 
-# get_job_by_name() -- from a name to find the job; could be many
+# get_job_by_name() -- from a name to find the job; name is unique
 def get_job_by_name(name):
-	q = "select * from job where name = '%s' order by id;"%(name)
+	q = "select * from job where name = '%s';"%(name)
 	res = db.query(q).dictresult()
-	# it is possible for multiple results
-	job = []
-	for rec in res:
-		job.append(retrieve_job(rec))
-	return job 
+	if res:
+		return res[0]
+	else:
+		return None
 
 # get+job_by_id() -- get_job_using internal id
 def get_job_by_id(id):
@@ -327,7 +326,7 @@ def execute(args):
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
 			for i in args[2:]:
-				or_stmt = or_stmt + "or job.name = '%s' "%(args[i])
+				or_stmt = or_stmt + "or job.name = '%s' "%(i)
 			q = "select job.id, job.name, \
 				job_definition.name as job, start, \
 				finish, comment \
@@ -339,8 +338,7 @@ def execute(args):
 	elif cmd == "show": # show a job
 		for i in args[1:]:
 			job = get_job_by_name(i)
-			for j in job:
-				pprint.pprint(j)
+			pprint.pprint(job)
 	elif cmd == "create": # create job
 		if args[1] == "write_protect_on":
 			return create_write_protect_on_job(args[2], args[3:])
