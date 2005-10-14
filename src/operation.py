@@ -123,15 +123,38 @@ db = get_db()
 
 # create_job() -- generic job creation
 def create_job(name, type, args, comment = ''):
-	id2 = int(time.time())
-	q = "insert into job (name, type, comment, id2) \
+	# check if any of the args are in open job
+	problem_args = {}
+	for i in args:
+		q = "select job.id, job.name, job_definition.name as job_def, \
+			job.start from job, job_definition, object \
+			where \
+				object.object = '%s' and \
+				job.id = object.job and \
+				job.finish is null and \
+				job.type = job_definition.id;"%(i)
+		res = db.query(q).dictresult()
+		if res:
+			problem_args[i] = res[0]
+
+	if problem_args:
+		for i in problem_args.keys():
+			print "%s is already in unfinished job %d %s %s %s"%(
+				i,
+				problem_args[i]['id'],
+				problem_args[i]['name'],
+				problem_args[i]['job_def'],
+				problem_args[i]['start'])
+		return -1
+
+	q = "insert into job (name, type, comment) \
 		values ('%s', (select id from job_definition where \
-				name = '%s'), '%s', %d);"%(
-		name, type, comment, id2)
+				name = '%s'), '%s');"%(
+		name, type, comment)
 	db.query(q)
 	# get job id
-	q = "select id from job where name = '%s' and id2 = %d;"%(
-		name, id2)
+	q = "select id from job where name = '%s';"%(
+		name)
 	id = db.query(q).getresult()[0][0]
 	for i in args:
 		q = "insert into object values (%d, '%s');"%(id, i)
@@ -190,17 +213,29 @@ def retrieve_job(job):
 		where task.job_type = %d \
 			order by seq;"%(job['id'], job['type'])
 	job['task'] = db.query(q).dictresult()
+	job['current'] = get_current_task(job['name'])
+	job['next'] = get_next_task(job['name'])
+	if job['finish']:
+		job['status'] = 'finished'
+	else:
+		if job['current'] == 0:
+			job['status'] = 'not_started'
+		else:
+			job['status'] = 'in_progress'
 	return job
 
-# get_job_tasks(id) -- show the tasks related to this job
-def get_job_tasks(id):
+# get_job_tasks(name) -- show the tasks related to this job
+def get_job_tasks(name):
 	q = "select seq, dsc, action from task, job \
-		where job.id = %d and job.type = task.job_type \
+		where job.name = '%s' and job.type = task.job_type \
 		order by seq;"%(id)
 	return db.query(q).dictresult()
 
-# start_job_task(job_id, task_id) -- start a task
-def start_job_task(job_id, task_id, args=None, comment=None):
+# start_job_task(job_name, task_id) -- start a task
+def start_job_task(job_name, task_id, args=None, comment=None):
+	if has_started(job_name, task_id):
+		return "job %s task %d has already started"%(job_name, task_id)
+
 	if args:
 		args = "'%s'"%(args)
 	else:
@@ -210,12 +245,16 @@ def start_job_task(job_id, task_id, args=None, comment=None):
 	else:
 		comment = "null"
 	q = "insert into progress (job, task, comment, args) \
-		values (%d, %d, %s, %s);"%(
-			job_id, task_id, comment, args)
+		values ((select id from job where name = '%s'), %d, %s, %s);"%(
+			job_name, task_id, comment, args)
 	res = db.query(q)
 
-# finish_job_task(job_id, task_id) -- finish/close a task
-def finish_job_task(job_id, task_id, comment=None, result=None):
+# finish_job_task(job_name, task_id) -- finish/close a task
+def finish_job_task(job_name, task_id, comment=None, result=None):
+	if not has_started(job_name, task_id):
+		return "job %s task %d has not started"%(job_name, task_id)
+	if has_finished(job_name, task_id):
+		return "job %s task %d has lready finished"%(job_name, task_id)
 	if result:
 		result = "'%s'"%(string(result))
 	else:
@@ -224,35 +263,38 @@ def finish_job_task(job_id, task_id, comment=None, result=None):
 		q = "update progress \
 			set finish = now(), comment = '%s', \
 				result = %s \
-			where job = %d and task = %d"%(
-			comment, result, job_id, task_id)
+			where job = (select id from job where name = '%s') \
+			and task = %d;"%(
+			comment, result, job_name, task_id)
 	else:
 		q = "update progress \
 			set finish = now(), result = %s \
-			where job = %d and task = %d"%(
-				result, job_id, task_id)
+			where job = (select id from job where name = '%s') \
+			and task = %d"%(
+				result, job_name, task_id)
 	res = db.query(q)
 
-# get_current_task(job) -- get current task
-def get_current_task(job):
+# get_current_task(name) -- get current task
+def get_current_task(name):
 	q = "select case \
 		when max(task) is null then 0 \
 		else max(task) \
 		end \
-		from progress \
+		from progress, job \
 		where \
-			job = %d and \
-			start is not null;"%(job)
+			job.name = '%s' and \
+			progress.job = job.id and \
+			progress.start is not null;"%(name)
 	res = db.query(q).getresult()
 	return res[0][0]
 
-# get_next_task(job) -- get next task
-def get_next_task(job):
+# get_next_task(name) -- get next task
+def get_next_task(name):
 	q = "select tasks from job, job_definition where \
-		job.id = %d and \
-		job.type = job_definition.id;"%(job)
+		job.name = '%s' and \
+		job.type = job_definition.id;"%(name)
 	tasks = db.query(q).getresult()[0][0]
-	ct = get_current_task(job)
+	ct = get_current_task(name)
 	if ct == tasks:
 		return 0
 	else:
@@ -260,8 +302,9 @@ def get_next_task(job):
 
 # has_finished(job, task) -- has task (job, task) finished?
 def has_finished(job, task):
-	q = "select finish from progress where \
-		job = %d and task = %d and finish is not null;"%(
+	q = "select p.finish from progress p, job j where \
+		j.name = '%s' and \
+		p.job = j.id and p.task = %d and finish is not null;"%(
 		job, task)
 	res = db.query(q).getresult()
 	if not res:
@@ -271,8 +314,9 @@ def has_finished(job, task):
 
 # is_started(job, task) -- has task (job, task) started?
 def has_started(job, task):
-	q = "select start from progress where \
-		job = %d and task = %d and start is not null;"%(
+	q = "select p.start from progress p, job j where \
+		j.name = '%s' and \
+		p.job = j.id and p.task = %d and start is not null;"%(
 		job, task)
 	res = db.query(q).getresult()
 	if not res:
@@ -345,6 +389,33 @@ def execute(args):
 			return create_write_protect_off_job(args[2], args[3:])
 		else:
 			return "don't know what to do"
+	elif cmd == "current": # current task
+		if len(args) > 1:
+			for i in args[1:]:
+				job = get_job_by_name(i)
+				if not job:
+					print "%s does not exist"%(i)
+					continue
+				if job['status'] == "not_started":
+					print "%s has not started"%(i)
+					continue
+				q = "select d.name as desc, t.seq, \
+					p.start, p.finish \
+					from job j, job_definition d, \
+						task t, progress p \
+					where \
+						p.job = %d and \
+						p.task = %d and \
+						j.type = d.id and \
+						j.id = p.job;"%(
+						job['id'], job['current'])
+				ct = db.query(q).dictresult()[0]
+				if ct['finish'] == None:
+					ct['finish'] = ""
+				print "%s %d %s %s - %s"%(
+					i, ct['seq'], ct['desc'],
+					ct['start'], ct['finish'])
+						
 	else:
 		return "unknown command"
 
