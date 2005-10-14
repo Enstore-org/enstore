@@ -143,7 +143,7 @@ def get_job_by_name(name):
 	q = "select * from job where name = '%s';"%(name)
 	res = db.query(q).dictresult()
 	if res:
-		return res[0]
+		return retrieve_job(res[0])
 	else:
 		return None
 
@@ -167,11 +167,10 @@ def get_job_by_time(after, before = None):
 	q = "select * from job where start >= '%s' and start <= '%s' \
 		order by start;"%(after, before)
 	res = db.query(q).dictresult()
-	# it is possible for multiple results
-	job = []
-	for rec in res:
-		job.append(retrieve_job(rec))
-	return job 
+	if res:
+		return retrieve_job(res[0])
+	else:
+		return None
 
 # retrieve_job() -- get all related information of this job
 def retrieve_job(job):
