@@ -366,6 +366,24 @@ def execute(args):
 					job.type = job_definition.id \
 				order by job.id;"
 			return db.query(q)
+		elif args[1] == 'open':
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id and \
+					finish is null \
+				order by job.id;"
+			return db.query(q)
+		elif args[1] == 'closed' or args[1] == 'completed':
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id and \
+					not finish is null \
+				order by job.id;"
+			return db.query(q)
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
 			for i in args[2:]:
