@@ -170,7 +170,7 @@ def get_job_by_name(name):
 	else:
 		return None
 
-# get+job_by_id() -- get_job_using internal id
+# get_job_by_id() -- get_job_using internal id
 def get_job_by_id(id):
 	q = "select * from job where id = %d;"%(id)
 	res = db.query(q).dictresult()
@@ -179,7 +179,7 @@ def get_job_by_id(id):
 	else:
 		return None
 
-# get_job_by_time() --get job using time frame
+# get_job_by_time() -- get job using time frame
 def get_job_by_time(after, before = None):
 	if not before:	# default now()
 		before = time2timestamp(time.time())
@@ -456,6 +456,19 @@ def execute(args):
 					job.type = job_definition.id and \
 					not finish is null \
 				order by job.id;"
+			return db.query(q)
+		elif args[1] == 'has':
+			qq = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition, object where \
+					job.type = job_definition.id \
+					and object.job = job.id \
+					and object.object = '%s'"
+			q = qq%(args[2])
+			for i in args[2:]:
+				q =  q + " intersect (%s)"%(qq%(i))
+			q = q + " order by id;"
 			return db.query(q)
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
