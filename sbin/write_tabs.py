@@ -106,6 +106,23 @@ def main():
                 h_2 = histogram.Histogram1D("write_tabs_not_done_%s_%s"%(name,library,),"Number of tabs to be flipped  in %s library"%(library,),37,float(start_time),float(now_time))
                 h_3 = histogram.Histogram1D("write_tabs_done_%s_%s"%(name,library,),"Number of tabs flipped per day in %s library"%(library,),37,float(start_time),float(now_time))
 
+
+                
+                h_1.set_time_axis(True)
+                h_1.set_profile(True)
+                h_1.set_ylabel("# of tapes that should have write tabs ON")
+                h_1.set_xlabel("Date (year-month-day)")
+                
+                h_2.set_time_axis(True)
+                h_2.set_profile(True)
+                h_2.set_ylabel("# of tapes that  have write tabs OFF")
+                h_2.set_xlabel("Date (year-month-day)")
+                
+                h_3.set_time_axis(True)
+                h_3.set_profile(True)
+                h_3.set_ylabel("# of tapes that should have write tabs ON")
+                h_3.set_xlabel("Date (year-month-day)")
+
                 res=db.query(SELECT_STMT3%(library,))
                 should  =  res.getresult()[0][2]
                 not_yet =  res.getresult()[0][3]
