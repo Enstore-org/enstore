@@ -262,6 +262,7 @@ def main():
             cmd = "rm %s.jpg %s.ps %s_stamp.jpg"%(h2.get_name(),h2.get_name(),h2.get_name(),)
             os.system(cmd)
 
+    html_file.write("</body></html>")
     html_file.close()
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp write_tabs_by_library.html stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/write_tabs/"
     os.system(cmd)
