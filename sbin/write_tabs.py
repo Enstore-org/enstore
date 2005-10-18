@@ -97,7 +97,7 @@ def main():
 
             html_file.write("<p>&nbsp;<p><center><font size=5 color=\"#AA0000\"><b>%s</b></font></center>\n"%(server,));
             html_file.write("<TABLE align=\"CENTER\" cols=\"%s\" "%(ncols,))
-            html_file.write("cellpadding=\"0\" cellspacing=\"0\" width=\"100\%\">\n<TR>")
+            html_file.write("cellpadding=\"0\" cellspacing=\"0\" width=\"100%\">\n<TR>")
                 
             
             for library in libraries:
