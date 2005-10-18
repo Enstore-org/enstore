@@ -410,6 +410,31 @@ def show_next_task(j):
 	return "%s\t%s\t%3d %s\t(%s)"%(
 		j, ct['desc'], ct['seq'],
 		ct['dsc'], ct['action'])
+# show(job) -- display a job
+def show(job):
+	if not job:
+		return
+	print
+	print "   Name: %s"%(job['name'])
+	print "   Type: %s (%s)"%(job['job_definition']['name'],
+		job['job_definition']['remarks'])
+	print " Status: %s"%(job['status'])
+	print "  Start: %s"%(job['start'])
+	print " Finish: %s"%(job['finish'])
+	print " #tasks: %d"%(job['job_definition']['tasks'])
+	print "  Tasks:"
+	print "Current: %d"%(job['current'])
+	print "   Next: %d"%(job['next'])
+	for t in job['task']:
+		if t['action'] == None:
+			t['action'] = "default"
+		print "%3d %s %40s (%s) %s %s %s %s"%(
+			t['seq'], t['auto_start'], t['dsc'],
+			t['action'], t['start'], t['finish'], t['args'],
+			t['result'])
+	print "Objects:"
+	for i in job['object']:
+		print "\t", i
 
 def create_write_protect_on_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_ON', args, comment)
@@ -485,7 +510,8 @@ def execute(args):
 	elif cmd == "show": # show a job
 		for i in args[1:]:
 			job = get_job_by_name(i)
-			pprint.pprint(job)
+			# pprint.pprint(job)
+			show(job)
 	elif cmd == "create": # create job
 		if args[1] == "write_protect_on":
 			return create_write_protect_on_job(args[2], args[3:])
