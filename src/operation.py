@@ -442,9 +442,22 @@ def create_write_protect_on_job(name, args, comment = ''):
 def create_write_protect_off_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_OFF', args, comment)
 
+PROMPT = "operation> "
+
 # shell() -- interactive shell
 def shell():
-	print "interactive shell has not been implemented yet"
+	while True:
+		sys.stdout.write(PROMPT)
+		args = sys.stdin.readline().strip().split()
+		if args and (args[0] == 'quit' or args[0] == 'exit'):
+			break
+		res = execute(args)
+		if res:
+			if type(res) == type([]):
+				for i in res:
+					print i
+			else:
+				print res
 	return
 
 # execute(args) -- execute args[0], args[1:]
@@ -558,7 +571,7 @@ def execute(args):
 		res.append(show_current_task(args[1]))
 		return res
 	else:
-		return "unknown command"
+		return 'unknown command "%s"'%(cmd)
 
 
 if __name__ == '__main__':
