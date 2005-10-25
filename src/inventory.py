@@ -16,6 +16,7 @@ import alarm_client
 import e_errors
 import quota as equota
 import accounting
+import socket
 
 mount_limit = {}
 acc = None
@@ -1216,6 +1217,18 @@ def inventory(output_dir, cache_dir):
     print_volume_quota_sums(volumes_allocated, authorized_tapes,
                             volume_quotas_file, volume_quotas_format_file, fmt, tl)
     print_total_bytes_on_tape(volume_sums, total_bytes_file)
+
+    if True:
+        if socket.gethostname() == "stkensrv3.fnal.gov":
+            cms_volume_with_only_deleted_files = os.path.join(os.path.split(volumes_defined_file)[0], "CMS_VOLUMES_WITH_ONLY_DELETED_FILES")
+            # a cheap shot
+            os.system("date > %s"%(cms_volume_with_only_deleted_files))
+            os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
+            os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
+            q = "select * from volume_with_only_deleted_files where storage_group = 'cms';"
+            cmd = 'psql -p 8888 -h stkensrv0.fnal.gov enstoredb -c "%s" >> %s'%(q, cms_volume_with_only_deleted_files)
+            print cmd
+            os.system(cmd)
 
     return n_vols, n_files, n_unchanged, n_changed
 
