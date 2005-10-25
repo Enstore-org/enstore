@@ -28,6 +28,7 @@ elif cluster == "stken":
 	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('AML2-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
+	special.append('CMS_VOLUMES_WITH_ONLY_DELETED_FILES')
 elif cluster == "cdfen":
 	special.append('STK-VOLUMES.html')
 
