@@ -1225,7 +1225,7 @@ def inventory(output_dir, cache_dir):
             os.system("date > %s"%(cms_volume_with_only_deleted_files))
             os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
             os.system("echo >> %s"%(cms_volume_with_only_deleted_files))
-            q = "select * from volume_with_only_deleted_files where storage_group = 'cms';"
+            q = "select * from volume_with_only_deleted_files where storage_group = 'cms' order by label;"
             cmd = 'psql -p 8888 -h stkensrv0.fnal.gov enstoredb -c "%s" >> %s'%(q, cms_volume_with_only_deleted_files)
             print cmd
             os.system(cmd)
