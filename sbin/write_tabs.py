@@ -174,10 +174,16 @@ def main():
 
                 for i in range (derivative1.n_bins()):
                     if ( derivative1.binarray[i] > 0 ):
+                        derivative2.add_text("set label \"%5d \" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(derivative1.binarray[i],
+                                                                                                               time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(derivative1.get_bin_center(i))),
+                                                                                                               -math.log10(derivative1.binarray[i]),))
                         derivative1.binarray[i] = math.log10(derivative1.binarray[i])
 
                 for i in range (derivative2.n_bins()):
                     if ( derivative2.binarray[i] > 0 ):
+                        derivative2.add_text("set label \"%5d\" at \"%s\",%f left rotate font \"Helvetica,12\"\n"%(derivative2.binarray[i],
+                                                                                                               time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(derivative2.get_bin_center(i))),
+                                                                                                               math.log10(derivative2.binarray[i]),))
                         derivative2.binarray[i] = math.log10(derivative2.binarray[i])
 
                 derivative2.plot2(derivative1, True)
@@ -256,10 +262,16 @@ def main():
 
             for i in range (derivative1.n_bins()):
                 if ( derivative1.binarray[i] > 0 ):
+                    derivative2.add_text("set label \"%5d \" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(derivative1.binarray[i],
+                                                                                                                time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(derivative1.get_bin_center(i))),
+                                                                                                                -math.log10(derivative1.binarray[i]),))
                     derivative1.binarray[i] = math.log10(derivative1.binarray[i])
 
             for i in range (derivative2.n_bins()):
                 if ( derivative2.binarray[i] > 0 ):
+                    derivative2.add_text("set label \"%5d\" at \"%s\",%f left rotate font \"Helvetica,12\"\n"%(derivative2.binarray[i],
+                                                                                                               time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(derivative2.get_bin_center(i))),
+                                                                                                               math.log10(derivative2.binarray[i]),))
                     derivative2.binarray[i] = math.log10(derivative2.binarray[i])
 
             derivative2.plot2(derivative1, True)
