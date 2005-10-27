@@ -31,7 +31,7 @@ fi
 # if there is no enstorekt file, give error and exit
 ENSTOREKT=/local/ups/kt/enstorekt
 if [ -e $ENSTOREKT ]; then
-   /usr/krb5/bin/kinit -k -t /local/ups/kt/enstorekt enstore/cd/$thisHost
+   /usr/krb5/bin/kinit -k -t $ENSTOREKT enstore/cd/$thisHost
 else
    echo "ERROR: No such file - $ENSTOREKT"
 fi
