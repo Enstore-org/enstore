@@ -530,7 +530,6 @@ class Histogram1D:
                      "set xrange [ : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
-                     self.get_text() +\
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
@@ -550,6 +549,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
         else :
             #                     "set style fill solid 1.000000 \n" (not working:)
@@ -558,6 +558,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
@@ -583,7 +584,6 @@ class Histogram1D:
                      "set xrange [ : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
-                     self.get_text() +\
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
@@ -603,6 +603,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
         else :
             #                     "set style fill solid 1.000000 \n" (not working:)
@@ -611,6 +612,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                      +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1 "
@@ -649,7 +651,6 @@ class Histogram1D:
                      "set xrange [ : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
-                     self.get_text() +\
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
@@ -669,6 +670,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:6 "
         else :
             #                     "set style fill solid 1.000000 \n" (not working:)
@@ -677,6 +679,7 @@ class Histogram1D:
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
             if ( self.get_logx() ) :
                 long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:5 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
