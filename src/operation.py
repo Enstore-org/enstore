@@ -120,8 +120,8 @@ def is_time(t):
 	else:
 		return False
 
-# DATABASEHOST = 'stkensrv6.fnal.gov'
-DATABASEHOST = 'localhost'
+DATABASEHOST = 'stkensrv6.fnal.gov'
+# DATABASEHOST = 'localhost'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
