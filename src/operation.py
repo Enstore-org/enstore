@@ -247,7 +247,7 @@ def retrieve_job(job):
 	job_definition = db.query(q).dictresult()[0]
 	job['job_definition'] = job_definition
 	q = "select * from task left outer join progress \
-		on (progress.job = %d and task.id = progress.task) \
+		on (progress.job = %d and task.seq = progress.task) \
 		where task.job_type = %d \
 			order by seq;"%(job['id'], job['type'])
 	job['task'] = db.query(q).dictresult()
@@ -484,6 +484,12 @@ def show(job):
 	for i in job['object']:
 		print "\t", i
 
+# delete(job) -- delete a job
+def delete(job):
+	if job:
+		q = "delete from job where name = '%s';"%(job)
+		db.query(q)
+
 def create_write_protect_on_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_ON', args, comment)
 
@@ -631,6 +637,18 @@ def execute(args):
 		res = finish_current_task(args[1], result, comment, timestamp)
 		res.append(show_current_task(args[1]))
 		return res
+	elif cmd == "delete":
+		if args[-1] != "sincerely":
+			print "If you really want to delete the job(s), you have to say:"
+			print "delete",
+			for i in args:
+				print i,
+			print "sincerely"
+		else:
+			for i in args[1:-1]:
+				print "deleting job %s ..."%(i),
+				delete(i)
+				print "done"
 	else:
 		return 'unknown command "%s"'%(cmd)
 
