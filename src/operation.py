@@ -109,6 +109,17 @@ def timestamp2time(s):
 def time2timestamp(t):
 	return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
 
+# is_time(t) -- check if t is of time type "YYYY-MM-DD_hh:mm:ss"
+# 		got to handle space
+def is_time(t):
+	if len(t) != 19:
+		return False
+	if t[4] == '-' and t[7] == '-' and t[10] == '_' and \
+		t[13] == ':'and t[16] == ':':
+		return True
+	else:
+		return False
+
 # DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEHOST = 'localhost'
 DATABASEPORT = 5432;
@@ -123,6 +134,7 @@ db = get_db()
 
 # create_job() -- generic job creation
 def create_job(name, type, args, comment = ''):
+	association = None
 	# check if any of the args are in open job
 	problem_args = {}
 	for i in args:
@@ -147,17 +159,40 @@ def create_job(name, type, args, comment = ''):
 				problem_args[i]['start'])
 		return -1
 
-	q = "insert into job (name, type, comment) \
-		values ('%s', (select id from job_definition where \
+	# is there a time stamp specified?
+	if is_time(args[0]):
+		q = "insert into job (name, type, start, comment) \
+			values ('%s', \
+				(select id from job_definition where \
+				name = '%s'), '%s', '%s');"%(
+			name, type, args[0].replace('_', ' '), comment)
+		args = args[1:]
+	else:
+		q = "insert into job (name, type, comment) \
+			values ('%s', (select id from job_definition where \
 				name = '%s'), '%s');"%(
-		name, type, comment)
+			name, type, comment)
+
 	db.query(q)
 	# get job id
 	q = "select id from job where name = '%s';"%(
 		name)
 	id = db.query(q).getresult()[0][0]
 	for i in args:
-		q = "insert into object values (%d, '%s');"%(id, i)
+		# is it association setting?
+		if i[-1] == ':':
+			association = i[:-1]
+		else:
+			# does it have embedded association?
+			p = i.split(':')
+			if len(p) > 1:	# yes
+				q = "insert into object (job,object,association) values (%d, '%s', '%s');"%(id, p[1], p[0])
+			else:		# nope
+				if association:
+					q = "insert into object (job, object, association) values (%d, '%s', '%s');"%(id, i, association)
+				else:
+					q = "insert into object (job, object) values (%d, '%s');"%(id, i)
+		print q
 		db.query(q)
 	return id
 
@@ -198,11 +233,14 @@ def get_job_by_time(after, before = None):
 # retrieve_job() -- get all related information of this job
 def retrieve_job(job):
 	# assemble its related objects
-	q = "select * from object where job = %d order by object;"%(job['id'])
+	q = "select * from object where job = %d order by association, object;"%(job['id'])
 	object = []
 	res = db.query(q).getresult()
 	for j in res:
-		object.append(j[1])
+		if j[2]:
+			object.append(j[2]+':'+j[1])
+		else:
+			object.append(j[1])
 	job['object'] = object
 	# list its related tasks
 	q = "select * from job_definition where id = %d;"%(job['type'])
@@ -228,11 +266,11 @@ def retrieve_job(job):
 def get_job_tasks(name):
 	q = "select seq, dsc, action from task, job \
 		where job.name = '%s' and job.type = task.job_type \
-		order by seq;"%(id)
+		order by seq;"%(name)
 	return db.query(q).dictresult()
 
 # start_job_task(job_name, task_id) -- start a task
-def start_job_task(job_name, task_id, args=None, comment=None):
+def start_job_task(job_name, task_id, args=None, comment=None, timestamp=None):
 	if has_started(job_name, task_id):
 		return "job %s task %d has already started"%(job_name, task_id)
 
@@ -244,13 +282,18 @@ def start_job_task(job_name, task_id, args=None, comment=None):
 		comment = "'%s'"%(comment)
 	else:
 		comment = "null"
-	q = "insert into progress (job, task, comment, args) \
+	if timestamp:
+		q = "insert into progress (job, task, start, comment, args) \
+		values ((select id from job where name = '%s'), %d, '%s', %s, %s);"%(
+			job_name, task_id, timestamp, comment, args)
+	else:
+		q = "insert into progress (job, task, comment, args) \
 		values ((select id from job where name = '%s'), %d, %s, %s);"%(
 			job_name, task_id, comment, args)
 	res = db.query(q)
 
 # finish_job_task(job_name, task_id) -- finish/close a task
-def finish_job_task(job_name, task_id, comment=None, result=None):
+def finish_job_task(job_name, task_id, comment=None, result=None, timestamp=None):
 	if not has_started(job_name, task_id):
 		return "job %s task %d has not started"%(job_name, task_id)
 	if has_finished(job_name, task_id):
@@ -259,19 +302,24 @@ def finish_job_task(job_name, task_id, comment=None, result=None):
 		result = "'%s'"%(str(result))
 	else:
 		result = "null"
+
+	if not timestamp:
+		timestamp = "now()"
+	else:
+		timestamp = "'%s'"%(timestamp)
 	if comment:
 		q = "update progress \
-			set finish = now(), comment = '%s', \
+			set finish = %s, comment = '%s', \
 				result = %s \
 			where job = (select id from job where name = '%s') \
 			and task = %d;"%(
-			comment, result, job_name, task_id)
+			timestamp, comment, result, job_name, task_id)
 	else:
 		q = "update progress \
-			set finish = now(), result = %s \
+			set finish = %s, result = %s \
 			where job = (select id from job where name = '%s') \
 			and task = %d"%(
-				result, job_name, task_id)
+			timestamp, result, job_name, task_id)
 	res = db.query(q)
 
 # get_current_task(name) -- get current task
@@ -329,13 +377,13 @@ def has_started(job, task):
 		return True
 
 # start_next_task(job) -- start next task
-def start_next_task(job, args=None, comment=None):
+def start_next_task(job, args=None, comment=None, timestamp=None):
 	res = []
 	ct = get_current_task(job)
 	nt = get_next_task(job)
 	if nt:
 		if ct == 0 or has_finished(job, ct):
-			start_job_task(job, nt, args, comment)
+			start_job_task(job, nt, args, comment, timestamp)
 		else:
 			res.append('current task has not finished')
 	else:
@@ -343,14 +391,14 @@ def start_next_task(job, args=None, comment=None):
 	return res
 
 # finish_current_task(job) -- finish current task
-def finish_current_task(job, result = None, comment = None):
+def finish_current_task(job, result = None, comment = None, timestamp=None):
 	res = []
 	ct = get_current_task(job)
 	if ct:
 		if has_finished(job, ct):
 			res.append('current task has already finished')
 		else:
-			finish_job_task(job, ct, comment, result)
+			finish_job_task(job, ct, comment, result, timestamp)
 	else:
 		res.append('no current task')
 	return res
@@ -486,7 +534,7 @@ def execute(args):
 					finish is null \
 				order by job.id;"
 			return db.query(q)
-		elif args[1] == 'closed' or args[1] == 'completed':
+		elif args[1] == 'closed' or args[1] == 'completed' or args[1] == 'finished':
 			q = "select job.id, job.name, \
 				job_definition.name as job, start, \
 				finish, comment \
@@ -543,31 +591,44 @@ def execute(args):
 			result.append(show_next_task(i))
 		return result
 	elif cmd == "start":
+		timestamp = None
+		arg = None
+		comment = None
 		if n_args < 2:
 			return "which job?"
+		job = args[1]
 		if n_args > 2:
-			arg = args[2]
-		else:
-			arg = None
-		if n_args > 3:
-			comment = args[3]
-		else:
-			comment = None
-		res = start_next_task(args[1], arg, comment)
+			if is_time(args[2]):
+				timestamp = args[2].replace('_', ' ')
+				if n_args > 3:
+					arg = args[3]
+				if n_args > 4:
+					comment = args[4]
+			else:
+				arg = args[2]
+				if n_args > 3:
+					comment = args[3]
+		res = start_next_task(args[1], arg, comment, timestamp)
 		res.append(show_current_task(args[1]))
 		return res
 	elif cmd == "finish":
+		timestamp = None
+		result = None
+		comment = None
 		if n_args < 2:
 			return "which job?"
 		if n_args > 2:
-			result = args[2]
-		else:
-			result = None
-		if n_args > 3:
-			comment = args[3]
-		else:
-			comment = None
-		res = finish_current_task(args[1], result, comment)
+			if is_time(args[2]):
+				timestamp = args[2].replace('_', ' ')
+				if n_args > 3:
+					result = args[3]
+				if n_args > 4:
+					comment = args[4]
+			else:
+				result = args[2]
+				if n_args > 3:
+					comment = args[3]
+		res = finish_current_task(args[1], result, comment, timestamp)
 		res.append(show_current_task(args[1]))
 		return res
 	else:
