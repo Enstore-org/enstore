@@ -681,6 +681,38 @@ def execute(args):
 					object.object = '%s' \
 				order by job.start;"%(i)
 			print db.query(q)
+	elif cmd == "find+" or cmd == "locate+":	# with details
+		for i in args[1:]:
+			print "Jobs that %s is in:"%(i)
+			q = "select job.name, job.start \
+				from job, object \
+				where \
+					object.job = job.id and \
+					object.object = '%s' \
+				order by job.start;"%(i)
+			res =  db.query(q).getresult()
+			for j in res:
+				job = get_job_by_name(j[0])
+				show(job)
+	elif cmd == "relate":
+		for i in args[1:]:
+			print "Job(s) that is(are) related to %s"%(i)
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id and \
+					job.name in ( \
+						select distinct j2.name \
+						from job j1, job j2, object o1, object o2 \
+						where \
+							j1.id <= j2.id and \
+							j1.id = o1.job and \
+							j2.id = o2.job and \
+							o1.object = o2.object and \
+							j1.name = '%s') \
+				order by start;"%(i)
+			print db.query(q)
 	else:
 		return 'unknown command "%s"'%(cmd)
 
