@@ -62,8 +62,6 @@
 # CFLAGS = $(OPT) -I$(INCLUDEPY) -I$(EXECINCLUDEPY) $(DEFS)
 CFLAGS = $(OPT) -I$(INCLUDEPY) $(DEFS)
 
-EXFER_THREADED = IGNORE_ME_PLEASE
-
 POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
@@ -78,8 +76,6 @@ SYS_FS_UFS_QUOTA_H=`if [ -f /usr/include/sys/fs/ufs_quota.h ]; then echo "-DHAVE
 #Combine the quotas into one line.
 QUOTAS=$(SYS_QUOTA_H) $(XFS_XQM_H) $(SYS_FS_UFS_QUOTA_H)
 
-# EXfer EXfer.c  -D`uname` -DTHREADED adler32.a
-# EXfer EXfer.c  -D`uname` -D$(EXFER_THREADED) adler32.a
 # EXfer EXfer.c  -D`uname` adler32.a $(POSIX4) $(RT)
 EXfer EXfer.c  -D`uname` $(QUOTAS) adler32.a $(POSIX4) $(RT) $(GEN)
 
