@@ -33,6 +33,7 @@ char *errstr(int errno)
 	case SyntaxError: return("syntax error");
 	case NoEnroute2: return("no enroute2");
 	case FailedExecution: return("unable to run enroute2");
+	case FeatureNotSupported: return("feature not supported");
 	}
 	return("unknown error");
 }

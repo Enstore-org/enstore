@@ -7,3 +7,4 @@
 #define SyntaxError 4
 #define NoEnroute2 5
 #define FailedExecution 6
+#define FeatureNotSupported 7

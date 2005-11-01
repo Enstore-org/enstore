@@ -71,8 +71,15 @@ main(argc, argv)
 int argc;
 char **argv;
 {
+
   /* handle simple syntax and security check */
   if ((argc < 4) || (argc > 6))
+  {
+     (void) fprintf(stderr, "syntax error\n");
+     exit(SyntaxError);
+  }
+  
+  if (strcmp(argv[0], "phantom-encp"))
   {
      (void) fprintf(stderr, "syntax error\n");
      exit(SyntaxError);
@@ -103,14 +110,14 @@ char **argv;
      if(argc == 6)
 	return do_routing(argv[2], argv[3], argv[4], argv[5]);
 
-     return(SyntaxError);
+     return(FeatureNotSupported);
   }
   else if(!strcmp(argv[2], "arp"))
   {
      if(argc == 5)
 	return do_arping(argv[2], argv[3], argv[4]);
 
-     return(SyntaxError);
+     return(FeatureNotSupported);
   }
 
   return(FailedExecution);
@@ -235,6 +242,10 @@ static do_routing(char *cmd, char *dest, char *gw, char *if_name)
        }
     }
   }
+  else
+  {
+     return(FeatureNotSupported);
+  }
 
   close(rs);
   return(OK);
@@ -341,7 +352,7 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 	}
 	else
 	{
-	        exit(SyntaxError);
+	        exit(FeatureNotSupported);
 	}
 
 	/* can not check the error, if any */
@@ -367,7 +378,7 @@ static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
 
    if(strcmp(cmd, "arp"))
    {
-      exit(SyntaxError);
+      exit(FeatureNotSupported);
    }
    
    /*arping socket*/
