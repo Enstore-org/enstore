@@ -93,7 +93,7 @@ def _getFunction(module, stackValue) :
     # find the module this references
     i, maxLen = 0, len(identifier)
     while i < maxLen :
-        id = str(identifier[i])
+        id = utils.safestr(identifier[i])
         if module.classes.has_key(id) or module.functions.has_key(id) :
             break
         refModule = module.modules.get(id, None)
@@ -120,6 +120,16 @@ def _getFunction(module, stackValue) :
         return None, None, 0
     return c.methods.get(identifier[-1], None), c, 0
 
+def _validateKwArgs(code, info, func_name, kwArgs):
+    if len(info) < 4:
+        code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW % func_name)
+    elif not info[3]:
+        return
+
+    for arg in kwArgs:
+        if arg not in info[3]:
+            code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW_ARG % (func_name, arg))
+
 def _checkBuiltin(code, loadValue, argCount, kwArgs, check_arg_count = 1) :
     returnValue = Stack.makeFuncReturnValue(loadValue, argCount)
     func_name = loadValue.data
@@ -136,19 +146,14 @@ def _checkBuiltin(code, loadValue, argCount, kwArgs, check_arg_count = 1) :
                     code.addWarning(msgs.USES_CONST_ATTR % func_name)
 
             if kwArgs:
-                if len(info) < 4:
-                    code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW % func_name)
-                elif info[3]:
-                    for arg in kwArgs:
-                        if arg not in info[3]:
-                            code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW_ARG % (func_name, arg))
+                _validateKwArgs(code, info, func_name, kwArgs)
             elif check_arg_count :
                 _checkFunctionArgCount(code, func_name, argCount,
                                        info[1], info[2])
             returnValue = Stack.Item(returnValue.data, info[0])
             returnValue.setStringType(info[0])
     elif type(func_name) == types.TupleType and len(func_name) <= 2 :
-        objType = code.typeMap.get(str(func_name[0]), [])
+        objType = code.typeMap.get(utils.safestr(func_name[0]), [])
         if types.ListType in objType :
             try :
                 if func_name[1] == 'append' and argCount > 1 :
@@ -164,7 +169,7 @@ def _checkBuiltin(code, loadValue, argCount, kwArgs, check_arg_count = 1) :
                 methodInfo = builtinType.get(func_name[1])
                 # set func properly
                 if kwArgs :
-                    code.addWarning(msgs.FUNC_DOESNT_SUPPORT_KW % func_name[1])
+                    _validateKwArgs(code, methodInfo, func_name[1], kwArgs)
                 elif methodInfo :
                     returnValue = Stack.Item(func_name[1], methodInfo[0])
                     returnValue.setStringType(methodInfo[0])
@@ -197,6 +202,15 @@ def _checkModifyDefaultArg(code, objectName, methodName=None) :
 def _isexception(object) :
     # FIXME: i have no idea why this function is necessary
     # it seems that the issubclass() should work, but it doesn't always
+
+    if hasattr(object, 'type'):
+        if object.type == types.TupleType:
+        # if we have a tuple, we can't check the contents (not enough info)
+##            for item in object.value:
+##                if not _isexception(item):
+##                    return 0
+            return 1
+
     try:
         # try/except is necessary for globals like NotImplemented
         if issubclass(object, Exception) :
@@ -205,7 +219,7 @@ def _isexception(object) :
         return 0
 
     for c in object.__bases__ :
-        if utils.startswith(str(c), 'exceptions.') :
+        if utils.startswith(utils.safestr(c), 'exceptions.') :
             return 1
         if len(c.__bases__) > 0 and _isexception(c) :
             return 1
@@ -250,7 +264,7 @@ def _checkReturnValueUse(code, func):
                 return
 
         if not OP.POP_TOP(opInfo[0]):
-            err = msgs.USING_NONE_RETURN_VALUE % str(func)
+            err = msgs.USING_NONE_RETURN_VALUE % utils.safestr(func)
     elif OP.UNPACK_SEQUENCE(opInfo[0]):
         # verify unpacking into proper # of vars
         varCount = opInfo[1]
@@ -259,9 +273,9 @@ def _checkReturnValueUse(code, func):
         funcCount = stackRV.length
         if returnType in _SEQUENCE_TYPES:
             if varCount != funcCount and funcCount > 0:
-                err = msgs.WRONG_UNPACK_FUNCTION % (str(func), funcCount, varCount)
+                err = msgs.WRONG_UNPACK_FUNCTION % (utils.safestr(func), funcCount, varCount)
         elif returnType not in _UNCHECKABLE_STACK_TYPES:
-            err = msgs.UNPACK_NON_SEQUENCE % (str(func), _getTypeStr(returnType))
+            err = msgs.UNPACK_NON_SEQUENCE % (utils.safestr(func), _getTypeStr(returnType))
     if err:
         code.addWarning(err)
 
@@ -377,7 +391,7 @@ def _handleFunctionCall(codeSource, code, argCount, indexOffset = 0,
                                             check_arg_count)
                 if returnValue.type is types.NoneType and \
                    not OP.POP_TOP(code.nextOpInfo()[0]) :
-                    name = str(loadValue.data)
+                    name = utils.safestr(loadValue.data)
                     if type(loadValue.data) == types.TupleType :
                         name = string.join(loadValue.data, '.')
                     code.addWarning(msgs.USING_NONE_RETURN_VALUE % name)
@@ -458,10 +472,14 @@ def _checkGlobal(operand, module, func, code, err, main = 0) :
 
 
 def _handleComparison(stack, operand) :
-    si = min(len(stack), 2)
+    num_ops = 2
+    if operand == 'exception match':
+        num_ops = 1
+
+    si = min(len(stack), num_ops)
     compareValues = stack[-si:]
     for _ in range(si, 2) :
-        compareValues.append(None)
+        compareValues.append(Stack.Item(None, None))
     stack[-si:] = [ Stack.makeComparison(compareValues, operand) ]
     return compareValues
 
@@ -594,16 +612,8 @@ def _getFormatInfo(format, code) :
 
     return formatCount, vars
 
-try:
-    unicode, UnicodeError
-except NameError:
-    UnicodeError = None
-
 def _getConstant(code, module, data) :
-    try:
-        data = str(data.data)
-    except UnicodeError:
-        data = unicode(data.data)
+    data = utils.safestr(data.data)
     format = code.constants.get(data)
     if format is not None :
         return format
@@ -666,7 +676,7 @@ def _checkAttributeType(code, stackValue, attr) :
     if not cfg().checkObjectAttrs :
         return
 
-    varTypes = code.typeMap.get(str(stackValue.data), None)
+    varTypes = code.typeMap.get(utils.safestr(stackValue.data), None)
     if not varTypes :
         return
 
@@ -696,7 +706,7 @@ def _checkAttributeType(code, stackValue, attr) :
 
 
 def _getTypeStr(t):
-    returnStr = str(t)
+    returnStr = utils.safestr(t)
     strs = string.split(returnStr, "'")
     try:
         if len(strs) == 3:
@@ -757,6 +767,7 @@ class Code :
         self.func_code, self.bytes, self.index, self.maxCode, self.extended_arg = \
                         OP.initFuncCode(func.function)
         self.lastLineNum = self.func_code.co_firstlineno
+        self.returnValues = []
 
         # initialize the arguments to unused
         for arg in func.arguments() :
@@ -1033,8 +1044,6 @@ _LOAD_GLOBAL = _LOAD_NAME
 def _LOAD_DEREF(oparg, operand, codeSource, code) :
     if type(oparg) == types.IntType :
         func_code = code.func_code
-        if codeSource.calling_code :
-            func_code = codeSource.calling_code[-1].function.func_code
         try:
             argname = func_code.co_cellvars[oparg]
         except IndexError:
@@ -1052,8 +1061,13 @@ def _DELETE_NAME(oparg, operand, codeSource, code) :
     # FIXME: handle deleting global multiple times
 _DELETE_GLOBAL = _DELETE_NAME
 
+def _make_const(value):
+    if type(value) == types.TupleType:
+        return Stack.makeTuple(map(_make_const, value))
+    return Stack.Item(value, type(value), 1)
+
 def _LOAD_CONST(oparg, operand, codeSource, code) :
-    code.pushStack(Stack.Item(operand, type(operand), 1))
+    code.pushStack(_make_const(operand))
     if type(operand) == types.CodeType :
         name = operand.co_name
         obj = code.codeObjects.get(name, None)
@@ -1247,7 +1261,7 @@ def _getExceptionInfo(codeSource, item):
         else:
             v = codeSource.module.variables.get(item.data)
             if v is not None:
-                return v, 1
+                return v, (v.type == types.StringType)
     return e, 0
 
 _UNCHECKABLE_CATCH_TYPES = (Stack.TYPE_UNKNOWN, Stack.TYPE_ATTRIBUTE)
@@ -1296,10 +1310,10 @@ def _COMPARE_OP(oparg, operand, codeSource, code) :
     elif cfg().isLiteral:
         # X is Y   or   X is not Y   comparison
         second_arg = code.stack[-1].data[2]
-        # FIXME: how should booleans should e handled, need to think about it
+        # FIXME: how should booleans be handled, need to think about it
 ##        if second_arg.const or (second_arg.type == Stack.TYPE_GLOBAL and
 ##                                second_arg.data in ['True', 'False']):
-        if second_arg.const:
+        if second_arg.const and second_arg.data is not None:
             data = second_arg.data
             if second_arg.type is types.DictType:
                 data = {}
@@ -1427,7 +1441,7 @@ def _UNARY_CONVERT(oparg, operand, codeSource, code) :
            stackValue.const == 0 and codeSource.classObject is not None and \
            codeSource.func.function.func_name == '__repr__' :
             code.addWarning(msgs.USING_SELF_IN_REPR)
-        stackValue.data = str(stackValue.data)
+        stackValue.data = utils.safestr(stackValue.data)
         stackValue.type = types.StringType
     _modifyStackName(code, '-repr')
 
@@ -1472,9 +1486,11 @@ _BINARY_LSHIFT = _BINARY_RSHIFT = _popModified
 def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP, modifyStack=1):
     stack = code.stack
     if len(stack) >= 2:
-        name = stack[-1].getName()
-        if name != Stack.TYPE_UNKNOWN and name == stack[-2].getName():
-            code.addWarning(msg % (name, op, name))
+        if (stack[-1].type != Stack.TYPE_UNKNOWN and
+            stack[-2].type != Stack.TYPE_UNKNOWN):
+            name = stack[-1].getName()
+            if name != Stack.TYPE_UNKNOWN and name == stack[-2].getName():
+                code.addWarning(msg % (name, op, name))
 
         if modifyStack:
             code.popStack()
@@ -1536,7 +1552,7 @@ def _BINARY_SUBSCR(oparg, operand, codeSource, code) :
     _checkNoEffect(code)
     if len(code.stack) >= 2 :
         stack = code.stack
-        varType = code.typeMap.get(str(stack[-2].data), [])
+        varType = code.typeMap.get(utils.safestr(stack[-2].data), [])
         if types.ListType in varType and stack[-1].type == types.TupleType :
             code.addWarning(msgs.USING_TUPLE_ACCESS_TO_LIST % stack[-2].data)
     _popStackRef(code, operand)
@@ -1619,7 +1635,7 @@ def _UNPACK_SEQUENCE(oparg, operand, codeSource, code) :
             length = top.length
             # we don't know the length, maybe it's constant and we can find out
             if length == 0:
-                value = code.constants.get(str(top.data))
+                value = code.constants.get(utils.safestr(top.data))
                 if type(value) in _SEQUENCE_TYPES:
                     length = len(value)
             if length > 0 and length != oparg:
@@ -1741,7 +1757,7 @@ def _checkConstantCondition(code, topOfStack, if_false):
     if if_false or not OP.LOAD_CONST(code.nextOpInfo(1)[0]) or \
        not topOfStack.data or topOfStack.type is types.NoneType:
         if not _shouldIgnoreBogusJumps(code):
-            code.addWarning(msgs.CONSTANT_CONDITION % str(topOfStack))
+            code.addWarning(msgs.CONSTANT_CONDITION % utils.safestr(topOfStack))
     
 def _jump_conditional(oparg, operand, codeSource, code, if_false) :
     # FIXME: this doesn't work in 2.3+ since constant conditions
