@@ -34,6 +34,8 @@ def is_ip(ip):
 
 hostinfo = None
 def gethostinfo(verbose=0):
+    __pychecker__="unusednames=verbose"  #Some modules still pass verbose...
+    
     global hostinfo
     if not hostinfo:
         hostname = socket.gethostname()
@@ -44,6 +46,22 @@ def gethostinfo(verbose=0):
             sys.stderr.write(message)
             sys.stderr.flush()
         hostinfo=socket.gethostbyname_ex(hostname)
+        #The following if is necessary for nodes (probably laptops) that
+        # have 'problematic' /etc/hosts files.  This is because they contain
+        # lines in their /etc/hosts file that look like:
+        #  127.0.0.1  sleet.dhcp.fnal.gov sleet localhost.localdomain localhost
+        # The ip address of 127.0.0.1 is 'wrong' for the sleet.dhcp hostname
+        # and the sleet alias.
+        if hostinfo[2] == ["127.0.0.1",]:
+            del hostinfo[2][0]
+            import Interfaces
+            interfaces_dict = Interfaces.interfacesGet()
+            for item in interfaces_dict.values():
+                if item['ip'] == "127.0.0.1":
+                    continue  #Skip localhost.
+                else:
+                    hostinfo[2].append(item['ip'])
+
     return hostinfo
 
 #Return the domain name of the current network.

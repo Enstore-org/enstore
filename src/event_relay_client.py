@@ -123,7 +123,8 @@ class EventRelayClient:
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             set_max_recv_buffersize(self.sock)
-            self.sock.bind((self.hostname, 0))    # let the system pick a port
+            default_ip = host_config.get_default_interface_ip()
+            self.sock.bind((default_ip, 0))    # let the system pick a port
             self.addr = self.sock.getsockname()
             self.host = self.addr[0]
             self.port = self.addr[1]

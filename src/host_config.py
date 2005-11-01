@@ -129,6 +129,22 @@ def get_default_interface_ip():
             time.sleep(1)
             continue
 
+    #If the default ip address so far is determined to be 127.0.0.1, we should
+    # first check all of the interfaces for thier IPs and lookup what name
+    # DNS returns.  If DNS returns a match for the hostname we're done
+    # searching.
+    if default == "127.0.0.1":
+        import Interfaces
+        interfaces_list = Interfaces.interfacesGet()
+        for intf in interfaces_list.values():
+            if intf['ip'] == "127.0.0.1":
+                continue  #Skip loopback.
+
+            #Look for matching name lookups.
+            if socket.gethostbyaddr(intf['ip'])[0] == socket.gethostname():
+                default = socket.gethostbyname(intf['ip'])
+                break
+
     #If an error occured for the entire minute print to screen if specified.
     if msg and not hostip:    
         Trace.trace(10, str(msg))
