@@ -114,7 +114,7 @@ def time2timestamp(t):
 def is_time(t):
 	if len(t) != 19:
 		return False
-	if t[4] == '-' and t[7] == '-' and t[10] == '_' and \
+	if t[4] == '-' and t[7] == '-' and (t[10] == '_' or t[10] == ' ') and \
 		t[13] == ':'and t[16] == ':':
 		return True
 	else:
@@ -496,13 +496,31 @@ def create_write_protect_on_job(name, args, comment = ''):
 def create_write_protect_off_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_OFF', args, comment)
 
+# even(i) -- True is i is an even number
+def even(i):
+	return int(i/2)*2 == i
+
 PROMPT = "operation> "
 
 # shell() -- interactive shell
 def shell():
 	while True:
 		sys.stdout.write(PROMPT)
-		args = sys.stdin.readline().strip().split()
+		# handle "..."
+		line = sys.stdin.readline()
+		if line == '':
+			print "quit"
+			return
+		elif line == '\n':
+			continue
+		parts = line.strip().split('"')
+		args = []
+		for i in range(len(parts)):
+			if even(i):
+				for j in parts[i].split():
+					args.append(j)
+			else:
+				args.append(parts[i])
 		if args and (args[0] == 'quit' or args[0] == 'exit'):
 			break
 		res = execute(args)
