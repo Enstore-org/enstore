@@ -547,7 +547,7 @@ def execute(args):
 				finish, comment \
 				from job, job_definition where \
 					job.type = job_definition.id \
-				order by job.id;"
+				order by job.start;"
 			return db.query(q)
 		elif args[1] == 'open':
 			q = "select job.id, job.name, \
@@ -556,7 +556,7 @@ def execute(args):
 				from job, job_definition where \
 					job.type = job_definition.id and \
 					finish is null \
-				order by job.id;"
+				order by job.start;"
 			return db.query(q)
 		elif args[1] == 'closed' or args[1] == 'completed' or args[1] == 'finished':
 			q = "select job.id, job.name, \
@@ -565,7 +565,7 @@ def execute(args):
 				from job, job_definition where \
 					job.type = job_definition.id and \
 					not finish is null \
-				order by job.id;"
+				order by job.start;"
 			return db.query(q)
 		elif args[1] == 'has':
 			qq = "select job.id, job.name, \
@@ -578,7 +578,7 @@ def execute(args):
 			q = qq%(args[2])
 			for i in args[2:]:
 				q =  q + " intersect (%s)"%(qq%(i))
-			q = q + " order by id;"
+			q = q + " order by job.start;"
 			return db.query(q)
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
@@ -590,7 +590,7 @@ def execute(args):
 				from job, job_definition where \
 					job.type = job_definition.id \
 					and (%s) \
-				order by job.id;"%(or_stmt)
+				order by job.start;"%(or_stmt)
 			return db.query(q)
 	elif cmd == "show": # show a job
 		for i in args[1:]:
@@ -667,6 +667,20 @@ def execute(args):
 				print "deleting job %s ..."%(i),
 				delete(i)
 				print "done"
+	elif cmd == "find" or cmd == "locate":
+		for i in args[1:]:
+			print "Jobs that %s is in:"%(i)
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition, object \
+				where \
+					job.type = job_definition.id \
+					and \
+					object.job = job.id and \
+					object.object = '%s' \
+				order by job.start;"%(i)
+			print db.query(q)
 	else:
 		return 'unknown command "%s"'%(cmd)
 
