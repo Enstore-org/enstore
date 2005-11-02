@@ -192,7 +192,7 @@ def create_job(name, type, args, comment = ''):
 					q = "insert into object (job, object, association) values (%d, '%s', '%s');"%(id, i, association)
 				else:
 					q = "insert into object (job, object) values (%d, '%s');"%(id, i)
-		print q
+		# print q
 		db.query(q)
 	return id
 
