@@ -149,6 +149,7 @@ host/cdfenmvr26a.fnal.gov@FNAL.GOV
 host/cdfenmvr27a.fnal.gov@FNAL.GOV
 host/cdfenmvr28a.fnal.gov@FNAL.GOV)
 ifelse(HOSTNAME, cmspnfs1,
+enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
 host/cmsdcdr1.fnal.gov@FNAL.GOV
 host/cmsdcdr2.fnal.gov@FNAL.GOV
 host/cmsdcmon1.fnal.gov@FNAL.GOV, `dnl')
@@ -180,6 +181,7 @@ oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `stiehr@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `tmesser@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV
