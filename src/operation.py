@@ -521,6 +521,9 @@ def help(topic=None):
 		print "    -- find|locate with details"
 		print "operation.py relate <job>+"
 		print "    -- find jobs that have common objects" 
+		print
+		print "try:"
+		print "operation.py help <topic>"
 	elif topic == "create":
 		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
 		print
@@ -580,14 +583,18 @@ def help(topic=None):
 		print "delete <job> in the list"
 		print "this is a dangerous command, use with extra care"
 		print '<job>s will not be deleted unless "sincerely" is specified in the end'
-	elif topic == "find" or tpoic == "locate":
+	elif topic == "find" or topic == "locate":
 		print "operation.py find|locate <object>+"
 		print
 		print "list the jobs that have <object> as an argument"
-	elif topic == "find+" or tpoic == "locate+":
+	elif topic == "find+" or topic == "locate+":
 		print "operation.py find+|locate+ <object>+"
 		print
 		print "same as find|locate but show details of the jobs"
+	else:
+		print "don't know about %s"%(topic)
+		print
+		help()
 
 # even(i) -- True is i is an even number
 def even(i):
