@@ -150,6 +150,7 @@ host/cdfenmvr27a.fnal.gov@FNAL.GOV
 host/cdfenmvr28a.fnal.gov@FNAL.GOV)
 ifelse(HOSTNAME, cmspnfs1,
 enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
+host/cmssrv28.fnal.gov@FNAL.GOV
 host/cmsdcdr1.fnal.gov@FNAL.GOV
 host/cmsdcdr2.fnal.gov@FNAL.GOV
 host/cmsdcmon1.fnal.gov@FNAL.GOV, `dnl')
