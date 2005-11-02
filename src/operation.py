@@ -713,6 +713,31 @@ def execute(args):
 							j1.name = '%s') \
 				order by start;"%(i)
 			print db.query(q)
+	elif cmd == "help":
+		if len(args) == 1:
+			print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
+			print "    -- creating a job"
+			print "operation.py list [all|open|closed|completed|<job>+|has <object>]"
+			print "    -- list job(s)"
+			print "operation.py show <job>+"
+			print "    -- show details of job(s)"
+			print "operation.py current <job>+"
+			print "    -- show current task(s) of <job>(s)"
+			print "operation.py next <job>+"
+			print "    -- show next task(s) of <job>(s)"
+			print "operation.py start <job> [<arg>]"
+			print "    -- start the next task of <job>"
+			print "operation.py finish <job> [<result>]"
+			print "    -- finish the current task of <job>"
+			print "operation.py delete <job>+ [sincerely]"
+			print "    -- delete <job>(s)"
+			print "operation.py find|locate <object>+"
+			print "    -- find jobs that have <object>"
+			print "operation.py find+|locate+ <objects>+"
+			print "    -- find|locate with details"
+			print "operation.py relate <job>+"
+			print "    -- find jobs that have common objects" 
+			
 	else:
 		return 'unknown command "%s"'%(cmd)
 
