@@ -496,6 +496,99 @@ def create_write_protect_on_job(name, args, comment = ''):
 def create_write_protect_off_job(name, args, comment = ''):
 	return create_job(name, 'WRITE_PROTECTION_TAB_OFF', args, comment)
 
+# help(topic) -- help function
+def help(topic=None):
+	if not topic:
+		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
+		print "    -- creating a job"
+		print "operation.py list [all|open|finished|closed|completed|<job>+|has <object>]"
+		print "    -- list job(s)"
+		print "operation.py show <job>+"
+		print "    -- show details of job(s)"
+		print "operation.py current <job>+"
+		print "    -- show current task(s) of <job>(s)"
+		print "operation.py next <job>+"
+		print "    -- show next task(s) of <job>(s)"
+		print "operation.py start <job> [<arg>]"
+		print "    -- start the next task of <job>"
+		print "operation.py finish <job> [<result>]"
+		print "    -- finish the current task of <job>"
+		print "operation.py delete <job>+ [sincerely]"
+		print "    -- delete <job>(s)"
+		print "operation.py find|locate <object>+"
+		print "    -- find jobs that have <object>"
+		print "operation.py find+|locate+ <objects>+"
+		print "    -- find|locate with details"
+		print "operation.py relate <job>+"
+		print "    -- find jobs that have common objects" 
+	elif topic == "create":
+		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
+		print
+		print "<job> is a user defined unique name of the job"
+		print "<association> is a way to group objects. By default, there is no assoication"
+		print "<association>: change the association for the rest of the objects in list"
+		print "     It is allowed to have multiple <association>: in the command."
+		print "     Each <association>: changes the global association setting."
+		print "<association>:<object> temporarily override default association for <object>"
+		print
+		print "EXAMPLE:"
+		print "operation.py create write_protect_on WP3 CAP3:  VO2093 VO2094 VO2095 VO2096 VO2097 VO2098 VO2099 VO2152 VO2154 VO2195 VO2196 VO2197 VO2198 VO2199 VO2203 VO2206 VO2207 VO2208 VO2209 VO2211 VO2213 CAP4: VO2224 VO2225 VO2226 VO2227 VO2245 VO2246 VO2252 VO2253 VO2254 VO2256 VO2257 VO2258 VO2259 VO2501 VO2532 VO2533 VO2534 VO2540 VO2541 VO2542 VO2544"
+	elif topic == "list":
+		print "operation.py list [all|open|finished|closed|completed|<job>+|has <object>]"
+		print
+		print "all: list all jobs"
+		print "open: list all open (not closed) jobs"
+		print "finished|close|completed: list all completed jobs. finished|close|completed are the same thing"
+		print "<job>+ : list named jobs"
+		print "has <object>: list all jobs that have <object> as an argument"
+	elif topic == "show":
+		print "operation.py show <job>+"
+		print
+		print "show details of <job>s in the list. <job> is addressed by its unique name"
+	elif topic == "current":
+		print "operation.py current <job>+"
+		print
+		print "show the current task of <job>."
+		print "A current task is one that has stared but its next task has not started"
+		print "A job can have at most one such task at any time"
+		print "in case of a not yet started job, current task is task 0"
+		print "in case of a finished job, current task is the last task"
+	elif topic == "next":
+		print "operation.py next <job>+"
+		print
+		print "show next task of <job>"
+		print "next task is one that has not started and its previous task has finished."
+		print "in case of a have-not-started job, next task is the first task."
+		print "in case of a finished job, next task is task 0"
+	elif topic == "start":
+		print "operation.py start <job> [<arg>]"
+		print
+		print "start the next task of <job> with optional argument"
+		print "next task can start only if current task has finished"
+		print
+		print "EXAMPLE:"
+		print "operation.py start STKWP3 <help_desk_ticket_id>"
+	elif topic == "finish":
+		print "operation.py finish <job> [<result>]"
+		print
+		print "finish current task of <job> with optional <result>"
+		print "EXAMPLE:"
+		print "operation.py finish STKWP3 DONE"
+	elif topic == "delete":
+		print "operation.py delete <job>+ [sincerely]"
+		print
+		print "delete <job> in the list"
+		print "this is a dangerous command, use with extra care"
+		print '<job>s will not be deleted unless "sincerely" is specified in the end'
+	elif topic == "find" or tpoic == "locate":
+		print "operation.py find|locate <object>+"
+		print
+		print "list the jobs that have <object> as an argument"
+	elif topic == "find+" or tpoic == "locate+":
+		print "operation.py find+|locate+ <object>+"
+		print
+		print "same as find|locate but show details of the jobs"
+
 # even(i) -- True is i is an even number
 def even(i):
 	return int(i/2)*2 == i
@@ -578,7 +671,7 @@ def execute(args):
 			q = qq%(args[2])
 			for i in args[2:]:
 				q =  q + " intersect (%s)"%(qq%(i))
-			q = q + " order by job.start;"
+			q = q + ";"
 			return db.query(q)
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
@@ -715,29 +808,9 @@ def execute(args):
 			print db.query(q)
 	elif cmd == "help":
 		if len(args) == 1:
-			print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
-			print "    -- creating a job"
-			print "operation.py list [all|open|closed|completed|<job>+|has <object>]"
-			print "    -- list job(s)"
-			print "operation.py show <job>+"
-			print "    -- show details of job(s)"
-			print "operation.py current <job>+"
-			print "    -- show current task(s) of <job>(s)"
-			print "operation.py next <job>+"
-			print "    -- show next task(s) of <job>(s)"
-			print "operation.py start <job> [<arg>]"
-			print "    -- start the next task of <job>"
-			print "operation.py finish <job> [<result>]"
-			print "    -- finish the current task of <job>"
-			print "operation.py delete <job>+ [sincerely]"
-			print "    -- delete <job>(s)"
-			print "operation.py find|locate <object>+"
-			print "    -- find jobs that have <object>"
-			print "operation.py find+|locate+ <objects>+"
-			print "    -- find|locate with details"
-			print "operation.py relate <job>+"
-			print "    -- find jobs that have common objects" 
-			
+			help()
+		else:
+			help(args[1])
 	else:
 		return 'unknown command "%s"'%(cmd)
 
