@@ -15,7 +15,80 @@ import math
 import sys
 import os
 import time
+import types
 
+class Plotter:
+
+    def __init__(self, name,title):
+        self.histogram_list = []
+        self.name = name
+        self.title = title
+
+    def get_histogram_list(self):
+        return  self.histogram_list
+
+    def get_name(self):
+        return  self.name
+
+    def get_title(self):
+        return  self.title
+
+    def add(self,h):
+        self.histogram_list.append(h)
+
+    def plot(self,dir="./"):
+        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+        gnu_cmd = open(gnu_file_name,'w')
+        long_string="set output '"+self.name+".ps'\n"+ \
+                     "set terminal postscript color solid\n"\
+                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                     "set xrange [ : ]\n"+ \
+                     "set size 1.5,1\n"+ \
+                     "set grid\n"+ \
+                     "set ylabel '%s'\n"%(self.histogram_list[0].get_ylabel(),)+ \
+                     "set xlabel '%s'\n"%(self.histogram_list[0].get_xlabel(),)
+        if ( self.histogram_list[0].get_logy() ) :
+            long_string=long_string+"set logscale y\n"
+            long_string=long_string+"set yrange [ 0.99  : ]\n"
+        if ( self.histogram_list[0].get_logx() ) :
+            long_string=long_string+"set logscale x\n"
+        if (  self.histogram_list[0].get_time_axis()) : 
+            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
+                         "set xdata time\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+
+        for hist in self.histogram_list:
+            full_file_name=dir+hist.data_file_name
+            hist.save_data(full_file_name)
+            long_string=long_string+hist.get_text()
+
+        long_string=long_string+"plot "
+        comma = False
+
+        for hist in self.histogram_list:
+            full_file_name=dir+hist.data_file_name
+            if ( comma ) :
+                long_string=long_string+" , "
+            else:
+                comma = True
+            if (hist.get_time_axis()):
+                long_string=long_string+"'"+full_file_name+"' using 1:4 "
+            else :
+                long_string=long_string+"'"+full_file_name+"' using 1:3 "
+            long_string=long_string+" t '"+hist.get_marker_text()+"' with "\
+                     +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" "+str(hist.get_line_color())+" 1 "
+        gnu_cmd.write(long_string)
+        gnu_cmd.close()
+        os.system("gnuplot %s"%(gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        for hist in self.histogram_list:
+            full_file_name=dir+hist.data_file_name
+            os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+        
+    
 class Histogram1D:
 
     def __init__(self, name, title, nbins=10, xlow=0, xhigh=1):
@@ -639,7 +712,6 @@ class Histogram1D:
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
-
     def plot_derivative(self,dir="./"):
         full_file_name=dir+self.data_file_name
         self.save_data(full_file_name)
@@ -737,9 +809,6 @@ if __name__ == "__main__":
     h1.plot()
     os.system("display %s.jpg&"%(h1.get_name()))
 
-
-
-
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")
     h2.set_marker_text("blah")
@@ -756,9 +825,18 @@ if __name__ == "__main__":
     h2.plot2(h1,True)
     os.system("display %s.jpg&"%(h2.get_name()))
 
+    plotter = Plotter("plotter","test plotter")
+
+
     sum=h1+h3
     sum.plot()
     os.system("display %s.jpg&"%(sum.get_name()))
+
+    plotter.add(h1)
+    plotter.add(h2)
+    plotter.add(sum)
+    plotter.plot()
+    os.system("display %s.jpg&"%(plotter.get_name()))
     
     sys.exit(0)
 
