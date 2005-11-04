@@ -3310,7 +3310,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                 return
                 
-        Trace.trace(24, "remainigbytes info in DB %s estimated %s reported from drive %s" % (r0, r1, r2,))
+        Trace.log(e_errors.INFO,
+                  "remainigbytes info in DB %s estimated %s reported from drive %s position %s" % (r0, r1, r2,self.current_location))
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
