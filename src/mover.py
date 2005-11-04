@@ -3256,6 +3256,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.handle_error(exc, detail, tb)
 
         capacity = self.vol_info['capacity_bytes']
+        # check remaining bytes, it must be less than a previous
+        if (r2 > r1):
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=TAPE)
+            Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
+            # set volume read only and noaccess
+            self.vcc.set_system_readonly(self.current_volume)
+            self.set_volume_noaccess(self.current_volume)
+            return 0
+            
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
             remaining = min(r1, r2)
         else:                     #trust what the drive tells us, as long as we are under 90% full
