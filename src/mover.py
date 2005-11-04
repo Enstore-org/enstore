@@ -2868,6 +2868,43 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "requested write at location %s, eod=%s" %
                           (self.target_location, eod))
                 return 0 # Can only write at end of tape
+            # check consistency of bytes remained to not overwrite files
+            if self.driver_type == 'FTTDriver' and self.rem_stats and not label_tape:
+                r0 = self.vol_info['remaining_bytes']
+                stats = None
+                failed = 0
+                try:
+                    stats = self.tape_driver.ftt.get_stats()
+                    r1 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
+                    Trace.trace(24, "reported remainig %s" % (r1,))
+                except self.ftt.FTTError, detail:
+                    failed = 1
+                    return
+                except:
+                    exc, detail, tb = sys.exc_info()
+                    Trace.handle_error(exc, detail, tb)
+                    failed = 1
+                    try:
+                        Trace.log(e_errors.ERROR, "REMAIN_TAPE: type %s value %s"%
+                                  (type(stats[self.ftt.REMAIN_TAPE]), stats[self.ftt.REMAIN_TAPE]))
+                    except:
+                        exc, detail, tb = sys.exc_info()
+                        Trace.handle_error(exc, detail, tb)
+                if failed:
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume)
+                    self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
+                    return
+                # check remaining bytes, it must be not less than a previous. Idealyy it is the same
+                if (r0 > r1):
+                    # set volume read only and noaccess
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.set_volume_noaccess(self.current_volume)
+                    self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=DRIVE)
+                    Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: from DB %s current %s'%(r0, r1))
+                    return
+
+            
 
             if label_tape:
                 ## new tape, label it
@@ -3238,31 +3275,39 @@ class Mover(dispatching_worker.DispatchingWorker,
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
             stats = None
+            failed = 0
             try:
                 stats = self.tape_driver.ftt.get_stats()
                 r2 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
                 Trace.trace(24, "reported remainig %s" % (r2,))
             except self.ftt.FTTError, detail:
-                Trace.log(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%
-                          (detail,))
+                failed = 1
+                return
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
+                failed = 1
                 try:
                     Trace.log(e_errors.ERROR, "REMAIN_TAPE: type %s value %s"%
                               (type(stats[self.ftt.REMAIN_TAPE]), stats[self.ftt.REMAIN_TAPE]))
                 except:
                     exc, detail, tb = sys.exc_info()
                     Trace.handle_error(exc, detail, tb)
+            if failed:
+                self.vcc.set_system_readonly(self.current_volume)
+                self.set_volume_noaccess(self.current_volume)
+                self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
+                return
+                
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
         if (r2 > r1):
-            self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=TAPE)
-            Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
             # set volume read only and noaccess
             self.vcc.set_system_readonly(self.current_volume)
             self.set_volume_noaccess(self.current_volume)
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=DRIVE)
+            Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
             return 0
             
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
