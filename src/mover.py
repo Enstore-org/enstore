@@ -2895,7 +2895,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.set_volume_noaccess(self.current_volume)
                     self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                     return
-                Trace.trace(24, "remainigbytes info in DB %s reported from drive %s" % (r0, r2,))
+                Trace.trace(24, "remainigbytes info in DB %s reported from drive %s" % (r0, r1,))
                 # check remaining bytes, it must be not less than a previous. Idealyy it is the same
                 if (r0 > r1):
                     # set volume read only and noaccess
