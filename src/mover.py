@@ -2895,6 +2895,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.set_volume_noaccess(self.current_volume)
                     self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                     return
+                Trace.trace(24, "remainigbytes info in DB %s reported from drive %s" % (r0, r2,))
                 # check remaining bytes, it must be not less than a previous. Idealyy it is the same
                 if (r0 > r1):
                     # set volume read only and noaccess
@@ -3271,7 +3272,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         r2 = r1                                #value reported from drive, if possible
-        Trace.trace(24, "estimate remainig %s" % (r2,))
+        Trace.trace(24, "remainigbytes info in DB %s" % (r2,))
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
             stats = None
@@ -3299,6 +3300,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                 return
                 
+        Trace.trace(24, "remainigbytes info in DB %s estimated %s reported from drive %s" % (r0, r1, r2,))
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
