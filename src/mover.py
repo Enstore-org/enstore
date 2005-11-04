@@ -2875,7 +2875,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 check_rem_bytes = 1
                 if eod == None:
                     check_rem_bytes= 0
-                else
+                else:
                     if cookie_to_long(eod) == 1L:
                        check_rem_bytes= 0
                 if check_rem_bytes:
