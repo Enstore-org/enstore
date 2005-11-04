@@ -39,7 +39,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     def file_error_handler(self, exc, msg, tb):
-        if exc == edb.pg.error or msg == "no connection to the server":
+        if exc == edb.pg.Error or msg == "no connection to the server":
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg)} )
@@ -1102,7 +1102,7 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO, "File Clerk (re)starting")
             fc.serve_forever()
-        except edb.pg.error, exp:
+        except edb.pg.Error, exp:
             fc.reconnect(exp)
             continue
         except SystemExit, exit_code:
@@ -1110,5 +1110,6 @@ if __name__ == "__main__":
             sys.exit(exit_code)
         except:
             fc.serve_forever_error(fc.log_name)
+            fc.reconnect("paranoid")
             continue
     Trace.trace(e_errors.ERROR,"File Clerk finished (impossible)")

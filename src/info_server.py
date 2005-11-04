@@ -82,7 +82,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		return
 
 	def info_error_handler(self, exc, msg, tb):
-		if exc == edb.pg.error or msg == "no connection to the server":
+		if exc == edb.pg.Error or msg == "no connection to the server":
 			self.reconnect(msg)
 		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
 			'exc_type':str(exc), 'exc_value':str(msg)} )
@@ -1045,7 +1045,16 @@ if __name__ == '__main__':
 		try:
 			Trace.log(e_errors.INFO, "Info Server (re)starting")
 			infoServer.serve_forever()
-		except edb.pg.error, exp:
+		except edb.pg.Error, exp:	# does it work?
+			infoServer.reconnect(exp)
+			continue
+		except edb.pg.ProgrammingError, exp:
+			infoServer.reconnect(exp)
+			continue
+		except edb.pg.InternalError, exp:
+			infoServer.reconnect(exp)
+			continue
+		except ValueError, exp:
 			infoServer.reconnect(exp)
 			continue
 		except SystemExit, exit_code:
@@ -1053,5 +1062,6 @@ if __name__ == '__main__':
 			sys.exit(exit_code)
 		except:
 			infoServer.serve_forever_error(infoServer.log_name)
+			infoServer.reconnect("paranoid")
 			continue
 	

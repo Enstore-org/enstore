@@ -83,7 +83,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         return
 
     def vol_error_handler(self, exc, msg, tb):
-        if exc == edb.pg.error or msg == "no connection to the server":
+        if exc == edb.pg.Error or msg == "no connection to the server":
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
@@ -2602,7 +2602,7 @@ if __name__ == "__main__":
         try:
             Trace.log(e_errors.INFO,'Volume Clerk (re)starting')
             vc.serve_forever()
-        except edb.pg.error, exp:
+        except edb.pg.Error, exp:
             vc.reconnect(exp)
             continue
         except SystemExit, exit_code:
@@ -2610,5 +2610,6 @@ if __name__ == "__main__":
             sys.exit(exit_code)
         except:
             vc.serve_forever_error(vc.log_name)
+            vc.reconnect("paranoid")
             continue
     Trace.log(e_errors.ERROR,"Volume Clerk finished (impossible)")
