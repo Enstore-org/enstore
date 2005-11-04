@@ -2862,6 +2862,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             label_tape = 1
         
         if self.mode is WRITE:
+            Trace.trace(24, "target location %s EOD cookie %s"%(self.target_location, eod))
             if self.target_location is None:
                 self.target_location = eod
             if self.target_location != eod:
