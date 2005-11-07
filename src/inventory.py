@@ -1188,10 +1188,12 @@ def inventory(output_dir, cache_dir):
     accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
     acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
 
+    print "logging remaining_blanks to accounting db ...",
     res = file.db.query("select * from remaining_blanks;").getresult()
     for i in res:
         q = "insert into blanks values('%s', '%s', %d)"%(time2timestamp(t0), i[0], i[1])
         acs.db.query(q)
+    print 'done'
 
     # log wpa info once a day
     hour = time.localtime(t0)[3]
