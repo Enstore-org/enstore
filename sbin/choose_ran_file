@@ -4,6 +4,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
 
+if [ "${1:-}" = "-F" ] ; then force_try=1; shift; else force_try=0; fi
+
 # script to return a random file name(s) for tapes in the current inventory
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
@@ -170,8 +172,10 @@ while [ $done -gt 0 ]; do
     busy_movers=`expr $busy_movers - 1`
     #This test should compare this number to the number of drives in the
     # library.  I don't know of a good way from bash to get the number of
-    # drives in a library, so for now using the value 6.
-    if [ $busy_movers -gt 6 ]; then
+    # drives in a library, so for now using the value 6.  If -F was specified
+    # on the command line (force_try = 1), we will force choose_ran_file to 
+    # skip this test and force it to run the encp(s).
+    if [ $busy_movers -gt 6 -a $force_try -eq 0 ]; then
       echo
       echo "Aborting early from high mover usage."
       echo
