@@ -2886,7 +2886,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     try:
                         stats = self.tape_driver.ftt.get_stats()
                         r1 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
-                        Trace.trace(24, "reported remainig %s" % (r1,))
+                        Trace.trace(24, "reported remaining %s" % (r1,))
                     except self.ftt.FTTError, detail:
                         failed = 1
                         return
@@ -2905,14 +2905,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.set_volume_noaccess(self.current_volume)
                         self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
                         return
-                    Trace.trace(24, "remainigbytes info in DB %s reported from drive %s" % (r0, r1,))
+                    Trace.trace(24, "remainingbytes info in DB %s reported from drive %s" % (r0, r1,))
                     # check remaining bytes, it must be not less than a previous. Idealyy it is the same
                     if (r0 > r1):
                         # set volume read only and noaccess
                         self.vcc.set_system_readonly(self.current_volume)
                         self.set_volume_noaccess(self.current_volume)
-                        self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=DRIVE)
-                        Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: from DB %s current %s'%(r0, r1))
+                        self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remaining bytes count', error_source=DRIVE)
+                        Trace.alarm(e_errors.ALARM, 'Wrong remaining bytes count detected: from DB %s current %s'%(r0, r1))
                         return
 
             
@@ -3001,6 +3001,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         return 1
             
     def transfer_failed(self, exc=None, msg=None, error_source=None, dismount_allowed=1):
+        if self.state == OFFLINE:
+            # transfer failed should not get called in OFFLINE state
+            return
         self.timer('transfer_time')
         after_dismount_function = None
         volume_label = self.current_volume
@@ -3023,8 +3026,14 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         if type(msg) != type(""):
             msg = str(msg)
-        Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s" % (
-            exc, msg, error_source,self.current_volume, self.current_location))
+        thread = threading.currentThread()
+        if thread:
+            thread_name = thread.getName()
+        else:
+            thread_name = None
+        
+        Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s thread %s" % (
+            exc, msg, error_source,self.current_volume, self.current_location, thread_name))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR or exc == e_errors.POSITIONING_ERROR:
             if (msg.find("FTT_") != -1):
@@ -3282,7 +3291,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
         r2 = r1                                #value reported from drive, if possible
-        Trace.trace(24, "remainigbytes info in DB %s" % (r2,))
+        Trace.trace(24, "remainingbytes info in DB %s" % (r2,))
         ## XXX OO: this should be a driver method
         if self.driver_type == 'FTTDriver' and self.rem_stats:
             stats = None
@@ -3290,10 +3299,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             try:
                 stats = self.tape_driver.ftt.get_stats()
                 r2 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
-                Trace.trace(24, "reported remainig %s" % (r2,))
+                Trace.trace(24, "reported remaining %s" % (r2,))
             except self.ftt.FTTError, detail:
                 failed = 1
-                return
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.handle_error(exc, detail, tb)
@@ -3308,10 +3316,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.set_system_readonly(self.current_volume)
                 self.set_volume_noaccess(self.current_volume)
                 self.transfer_failed(e_errors.ERROR, "ftt.get_stats: FTT_ERROR %s"%(detail,), error_source=DRIVE)
-                return
+                return 0
                 
         Trace.log(e_errors.INFO,
-                  "remainigbytes info in DB %s estimated %s reported from drive %s position %s" % (r0, r1, r2,self.current_location))
+                  "remainingbytes info in DB %s estimated %s reported from drive %s position %s" % (r0, r1, r2,self.current_location))
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
@@ -3319,8 +3327,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             # set volume read only and noaccess
             self.vcc.set_system_readonly(self.current_volume)
             self.set_volume_noaccess(self.current_volume)
-            self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remainig bytes count', error_source=DRIVE)
-            Trace.alarm(e_errors.ALARM, 'Wrong remainig bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
+            self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remaining bytes count', error_source=DRIVE)
+            Trace.alarm(e_errors.ALARM, 'Wrong remaining bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
             return 0
             
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
