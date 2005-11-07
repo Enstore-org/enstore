@@ -3323,6 +3323,9 @@ class Mover(dispatching_worker.DispatchingWorker,
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
+        # this does not work for 9940B (it reports the same remaining bytes after write as it was before)
+        # for LTO-2 the spread in values is somewhat random
+        '''
         if (r2 > r1):
             # set volume read only and noaccess
             self.vcc.set_system_readonly(self.current_volume)
@@ -3330,7 +3333,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.transfer_failed(e_errors.WRITE_ERROR, 'Wrong remaining bytes count', error_source=DRIVE)
             Trace.alarm(e_errors.ALARM, 'Wrong remaining bytes count detected: prev %s current %s expected %s'%(r0, r2, r1))
             return 0
-            
+        '''    
         if r1 <= 0.1 * capacity:  #do not allow remaining capacity to decrease in the "near-EOT" regime
             remaining = min(r1, r2)
         else:                     #trust what the drive tells us, as long as we are under 90% full
