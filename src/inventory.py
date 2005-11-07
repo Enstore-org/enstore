@@ -1184,11 +1184,18 @@ def inventory(output_dir, cache_dir):
         wpa_file.write("  Total: %5d\n Should: %5d\n   Done: %5d\nNot yet: %5d\n  Ratio: %5.2f%%\n"%(n_vols_lib[i], n_rf_vols[i], n_rp_vols[i], n_not_rp_vols[i], float(n_rp_vols[i])*100/n_rf_vols[i]))
     wpa_file.close()
 
+    # log to accounting db
+    accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
+    acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
+
+    res = file.db.query("select * from remaining_blanks;").getresult()
+    for i in res:
+        q = "insert into blanks values('%s', '%s', %d)"%(time2timestamp(t0), i[0], i[1])
+        acs.db.query(q)
+
     # log wpa info once a day
     hour = time.localtime(t0)[3]
     if hour == 22 :
-        accinfo = csc.get(enstore_constants.ACCOUNTING_SERVER)
-        acs = accounting.accDB(accinfo['dbhost'], accinfo['dbname'], accinfo.get("dbport"))
         q = "insert into write_protect_summary (date, total, should, not_yet, done) values('%s', %d, %d, %d, %d);"%(time2timestamp(t0), n_vols, sum(n_rf_vols.values()), sum(n_not_rp_vols.values()), sum(n_rp_vols.values()))
         res = acs.db.query(q)
         # log individual numbers according to library
