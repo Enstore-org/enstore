@@ -650,49 +650,26 @@ def parse_mtab():
 
     fp.close()
 
-def __search_for_mount_point(p):
+def __search_for_mount_point(pnfs_path):
     for item in db_pnfsid_cache.values():
-        index = p.find(item)
+        index = pnfs_path.find(item)
         if index != -1:
             #Found it???
-            return item, p[index:]
+            return item, pnfs_path[index:]
 
         mp_first_pnfs_index = item.find("/pnfs")
-        p_find_index = p.find(item[mp_first_pnfs_index:])
+        p_find_index = pnfs_path.find(item[mp_first_pnfs_index:])
         if p_find_index != -1:
-            #print os.path.join(item,
-            #                   p[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
             #Found it???
             return item, os.path.join(item,
-                       p[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
+               pnfs_path[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
 
     return None, None
 
-
 # get_mount_point(p) -- get the first three component from a path
-def __get_mount_point(p):
-    """
-    d, f = os.path.split(p)
-    if not d or not f:
-        return None
-
-    if d == "/pnfs":
-        return os.path.join(d, f)  #isn't this p?
-    elif d[-5:] == "/pnfs" and d[:-5].find("/pnfs") == -1:
-        #If the current d in searching matches "/pnfs" (d[-5:] == "/pnfs")
-        # and there are no more "/pnfs" directories left in d
-        # (d[:-5].find("/pnfs") == -1) then start with this directory
-        # for the mountpoint.
-        #
-        #This is necessary for automounted pnfs areas that have paths like
-        # /tmp_mnt/pnfs/BDMS/tariq/p1_101/p1_101_struc007.jpg in the
-        # enstore metadata (file DB and layer 4) instead of begining with
-        # /pnfs.
-        return os.path.join(d[-5:], f)
-    else:
-        return mount_point(d)
-    """
-    mp, path = __search_for_mount_point(p)
+def __get_mount_point(pnfs_path):
+    #Search to see if the entry is already found.
+    mp, path = __search_for_mount_point(pnfs_path)
 
     if mp and path:
         return (mp, path)
@@ -700,18 +677,19 @@ def __get_mount_point(p):
     #If we get here, (re)process the mtab file.
     parse_mtab()
 
-    return __search_for_mount_point(p)
+    #Check the cache again to see if it is now found.
+    return __search_for_mount_point(pnfs_path)
 
-def get_mount_point(p):
-    return __get_mount_point(p)[0]
+def get_mount_point(pnfs_path):
+    return __get_mount_point(pnfs_path)[0]
 
-def get_file_path(p):
-    return __get_mount_point(p)[1]
+def get_file_path(pnfs_path):
+    return __get_mount_point(pnfs_path)[1]
     
 
-def get_mount_point2(pnfsid):
+def get_mount_point2(pnfs_id):
     #Strip off just the database id part of the pnfs id.
-    db_num = int(pnfsid[:4], 16)
+    db_num = int(pnfs_id[:4], 16)
 
     #Check the cache to see if the entry is already found.
     if db_pnfsid_cache.get(db_num, None):
@@ -807,10 +785,10 @@ def check_dir(d, dir_info):
     warn = []
     info = []
 
-    # skip volmap and .bad and .removed directory
+    # skip volmap and .bad and .removed and migration directory
     fname = os.path.basename(d)
     if fname == 'volmap' or fname[:3] == '.B_' or fname[:3] == '.A_' \
-           or fname[:8] == '.removed':
+           or fname[:8] == '.removed' or fname.lower().find("migration") != -1:
         return err, warn, info
         
     if check_permissions(d_stats, os.R_OK | os.X_OK):
