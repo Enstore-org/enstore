@@ -492,6 +492,13 @@ class FileClient(generic_client.GenericClient,
             return bit_file
         del bit_file['status']
 
+	# try its best to set uid and gid
+        try:
+            os.setregid(bit_file['gid'], bit_file['gid'])
+            os.setreuid(bit_file['uid'], bit_file['uid'])
+        except:
+            pass
+
         # check if the volume is deleted
         if bit_file["external_label"][-8:] == '.deleted':
             return {'status': (e_errors.FILE_CLERK_ERROR, "volume %s is deleted"%(bit_file["external_label"]))}
