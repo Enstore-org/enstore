@@ -3160,6 +3160,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(26,"cleaned")
                     self.state = IDLE
                     self.tr_failed = 0
+                    if self.mode == WRITE:
+                        ## this is a temporary solution for not overwritin files
+                        Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
+                        self.vcc.set_system_readonly(self.current_volume)
+                        self.dismount_volume(after_function=self.idle)
+                    
                     return
                 
         self.send_error_msg(error_info = (exc, msg),error_source=error_source)
