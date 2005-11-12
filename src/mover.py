@@ -3150,20 +3150,24 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
         Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
+            Trace.log(e_errorrs.INFO, "got here")
             self.current_location = self.tape_driver.tell()
             self.dismount_time = time.time() + self.delay
             if self.state == IDLE:
                 pass
             else:
                 self.state = HAVE_BOUND
+                #---------------
+                if self.mode == WRITE:
+                    ## this is a temporary solution for not overwritin files
+                    Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.dismount_volume(after_function=self.idle)
+                    return
+                #----------------
+                    
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
-                    if self.mode == WRITE:
-                        ## this is a temporary solution for not overwritin files
-                        Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
-                        self.vcc.set_system_readonly(self.current_volume)
-                        self.dismount_volume(after_function=self.idle)
-                    
                     self.state = IDLE
                     self.tr_failed = 0
                     return
