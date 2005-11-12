@@ -3150,7 +3150,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
         Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
-            Trace.log(e_errorrs.INFO, "got here")
             self.current_location = self.tape_driver.tell()
             self.dismount_time = time.time() + self.delay
             if self.state == IDLE:
