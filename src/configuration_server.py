@@ -14,6 +14,7 @@ import os
 import traceback
 import socket
 import time
+import copy
 
 # enstore imports
 #import setpath
@@ -157,7 +158,11 @@ class ConfigurationDict:
             domains = self.configdict.get('domains', {})
             if domains:
                 #Put the domains into the reply ticket.
-                out_ticket['domains'] = domains
+                out_ticket['domains'] = copy.deepcopy(domains)
+                #We need to insert the configuration servers domain into the
+                # list.  Otherwise, the client will not have the configuration
+                # server's domain in the valid_domains list.
+                out_ticket['domains']['valid_domains'].append(hostaddr.getdomainaddr())
                 out_ticket['domains']['system_name'] = self._get_system_name()
 
         self.reply_to_caller(out_ticket)
@@ -186,7 +191,11 @@ class ConfigurationDict:
         domains = self.configdict.get('domains', {})
         if domains:
             #Put the domains into the reply ticket.
-            ticket['domains'] = domains
+            ticket['domains'] = copy.deepcopy(domains)
+            #We need to insert the configuration servers domain into the
+            # list.  Otherwise, the client will not have the configuration
+            # server's domain in the valid_domains list.
+            ticket['domains']['valid_domains'].append(hostaddr.getdomainaddr())
             ticket['domains']['system_name'] = self._get_system_name()
             
         reply=ticket.copy()
