@@ -647,7 +647,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
         self.stream_w_flag = 0 # this flag is set when before stream_write is called
-        
+        self.dont_update_lm = 0 # if this flag is set do not update LM to avoid mover restart
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -1273,10 +1273,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        if self.dont_update_lm: return        
         self.need_lm_update = (0, None, 0, None)
         if state is None:
             state = self.state
-        
         Trace.trace(20,"update_lm: %s %s" % (state_name(state), self.unique_id))
         thread = threading.currentThread()
         if thread:
@@ -3211,11 +3211,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not after_dismount_function and broken:
             self.broken(broken, exc)
             self.tr_failed = 0
-            dont_update_lm = 0
+            self.dont_update_lm = 0
             return
 
         self.tr_failed = 0
-        dont_update_lm = 0
+        self.dont_update_lm = 0
         
     def transfer_completed(self):
         # simple synchonizatin between tape and network threads.
