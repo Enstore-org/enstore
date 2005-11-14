@@ -3137,8 +3137,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         dism_allowed = not encp_gone
         dism_allowed = dism_allowed & dismount_allowed
         Trace.trace(26,"current thread %s encp_gone %s"%(cur_thread_name, encp_gone))
+        # to avoid false mover restart in state have bound
+        # when transfer_failed is called from the net thread
+        # use dont_update_lm flag
+        self.dont_update_lm = 0
         if cur_thread_name:
             if cur_thread_name == 'net_thread':
+                self.dont_update_lm = 1
                 # check if tape_thread is active before allowing dismount
                 Trace.trace(26,"checking thread %s"%('tape_thread',))
                 thread = getattr(self, 'tape_thread', None)
@@ -3173,6 +3178,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(26,"cleaned")
                     self.state = IDLE
                     self.tr_failed = 0
+                    self.dont_update_lm = 0
                     return
                 
         self.send_error_msg(error_info = (exc, msg),error_source=error_source)
@@ -3205,9 +3211,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not after_dismount_function and broken:
             self.broken(broken, exc)
             self.tr_failed = 0
+            dont_update_lm = 0
             return
 
-        self.tr_failed = 0   
+        self.tr_failed = 0
+        dont_update_lm = 0
         
     def transfer_completed(self):
         # simple synchonizatin between tape and network threads.
