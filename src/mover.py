@@ -3159,10 +3159,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #---------------
                 if self.mode == WRITE:
                     ## this is a temporary solution for not overwritin files
-                    Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
-                    self.vcc.set_system_readonly(self.current_volume)
-                    self.dismount_volume(after_function=self.idle)
-                    return
+                    Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+                    self.tape_driver.rewind()
+                    self.current_location = 0L
+
+                    #Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
+                    #self.vcc.set_system_readonly(self.current_volume)
+                    #self.dismount_volume(after_function=self.idle)
+                    #return
                 #----------------
                     
                 if self.maybe_clean():
