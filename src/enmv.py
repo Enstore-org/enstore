@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
 import sys
 #import pprint
@@ -166,7 +173,7 @@ def move_file(input_filename, output_filename):
         sys.exit(1)
     elif p.origname != file_info['pnfs_name0']:
         print_error(e_errors.CONFLICT,
-                    "File family information does not match.")
+                    "File name information does not match.")
         sys.exit(1)
     #Mapfile is obsolete.
     elif p.pnfsid_file != file_info['pnfsid']:
@@ -317,6 +324,24 @@ def move_file(input_filename, output_filename):
                     "Pnfs layer 4 update failed: %s" % str(msg))
         sys.exit(1)
 
+    for i in [2, 3, 5, 6, 7]:
+        try:
+            #If rename() succeded this will not be necessary.
+            if not new_p.readlayer(i):
+                #Copy layer 2 metadata.
+                l2 = p.readlayer(i)
+                tmp_string = ""
+                for item in l2:  #Loop over the lines to build the string.
+                    tmp_string = tmp_string + item
+                new_p.writelayer(i, tmp_string)
+        except (OSError, IOError), msg:
+            #Ignore EACCESS errors.  That is the error given when a layer is
+            # turned off in the pnfs configuration file.
+            if msg.args[0] != errno.EACCES:
+                print_error(e_errors.OSERROR,
+                            "Pnfs layer %s update failed: %s" % (i, str(msg)))
+                sys.exit(1)
+                    
     if out_fd: #If the rename failed and we did it the hard way.
 
         #The file size, permissions, last access/modification time and
