@@ -1,10 +1,24 @@
 #!/usr/bin/env python
+"""
+weekly_summary_report.py [<log_file>]
+
+Generates weekly summary report and prints it through stdout.
+If <log_file> is specified:
+[1] a copy of the report is written to <log_file>, and
+[2] <log_file> will be "enrcp-ed" to
+    *srv2:/diska/tape-inventory/WEEKLY_SUMMARY, and
+[3] the content of <log_file> will be mailed to $ENSTORE_MAIL
+"""
+
 import pg
 import time
 import option
 import configuration_client
 import sys
 import os
+
+# mailing adress, if it is needed
+mail_address = os.environ.get("ENSTORE_MAIL", "hyp-enstore@hppc.fnal.gov")
 
 # get a configuration client
 intf = option.Interface()
@@ -69,8 +83,18 @@ eprint(f, accdb.query("select * from blanks_drawn_last_7days() order by media_ty
 # if there is a file, copy it to *srv2:/diska/tape_intventory
 if f:
 	f.close()
+	# copy it to *srv2
 	cmd = "enrcp %s %sensrv2:/diska/tape-inventory/WEEKLY_SUMMARY"%(
 		sys.argv[1], system.lower())
+	print cmd
+	try:
+		os.system(cmd)
+	except:
+		print "Error: Can not", cmd
+		sys.exit(1)
+	# mail it out to $ENSTORE_MAIL
+	cmd = 'mail -s "Weekly Summary Report for %s System" %s < %s'%(
+		system, mail_address, sys.argv[1])
 	print cmd
 	try:
 		os.system(cmd)
