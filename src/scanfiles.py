@@ -730,6 +730,14 @@ def check(f, f_stats = None):
     
     file_info = {"f_stats"       : f_stats}
 
+    #There is no usual reason for the link count to be greater than 1.
+    # There have been cases where a move was aborted early and two directory
+    # entries were left pointing to one i-node where the i-node only had a
+    # link count of 1 and not 2.  Since, there are legit reasons for multiple
+    # hard links, don't consider it an error or warning.
+    if f_stats[stat.ST_NLINK] > 1:
+        info.append("link count(%d)" % f_stats[stat.ST_NLINK])
+
     # if f is a file, check its metadata
     if stat.S_ISREG(f_stats[stat.ST_MODE]):
         err_f, warn_f, info_f = check_file(f, file_info)
@@ -746,7 +754,7 @@ def check(f, f_stats = None):
             ts_check[-1].start()
         else:
             err_d, warn_d, info_d = check_dir(f, file_info)
-            if err or warn:
+            if err_d or err or warn_d or warn or info_d or info:
                 errors_and_warnings(f, err + err_d,
                                     warn + warn_d, info + info_d)
 
@@ -800,7 +808,12 @@ def check_dir(d, dir_info):
         file_list = os.listdir(d)
 
         for i in range(0, len(file_list)):
-            
+
+            #This little check searches the files left in the list for
+            # duplicate entries in the directory.
+            if file_list[i] in file_list[i + 1:]:
+                err.append("duplicate entry(%s)" % file_list[i])
+                
             f = os.path.join(d, file_list[i])
 
             check(f)
@@ -1184,7 +1197,6 @@ def check_file(f, file_info):
             err.append('deleted(%s)' % (filedb['deleted']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no deleted field')
-
         
     return err, warn, info
 
