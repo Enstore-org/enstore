@@ -4,6 +4,7 @@ import time
 import option
 import configuration_client
 import sys
+import os
 
 # get a configuration client
 intf = option.Interface()
