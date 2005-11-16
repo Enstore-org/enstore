@@ -62,13 +62,14 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
                                                                   self.keys)
 
 		att = self.csc.get(MY_NAME)
+		dbInfo = self.csc.get("database")
 		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 
-		self.file = edb.FileDB(host=att['dbhost'], auto_journal=0)
+		self.file = edb.FileDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0)
 		self.db = self.file.db
-		self.volume = edb.VolumeDB(host=att['dbhost'], auto_journal=0, rdb=self.db)
+		self.volume = edb.VolumeDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
 
