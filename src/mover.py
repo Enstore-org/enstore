@@ -1054,10 +1054,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.ftt = __import__("ftt")
             self.tape_driver = ftt_driver.FTTDriver()
             have_tape = 0
-            if self.state ==OFFLINE:
-                # if started in offline state do nothing with tape to not interfere with
-                # admins
-                return
             if self.state == IDLE:
                 good_label = 1
                 try:
