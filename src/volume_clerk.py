@@ -915,7 +915,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['blocksize'] = ticket.get('blocksize', -1)
 	record['si_time'] = [0.0, 0.0]
 	record['comment'] = ""
-        record['write_protected'] = 'u'
+        record['write_protected'] = 'n'
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
