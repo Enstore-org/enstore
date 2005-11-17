@@ -208,6 +208,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         try:
             self.change_state(vol, 'write_protect', 'ON')
+            # for journaling
+            record = self.dict[vol]
+            record['write_protected'] = 'y'
+            self.dict[vol] = record
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -230,6 +234,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
         try:
             self.change_state(vol, 'write_protect', 'OFF')
+            # for journaling
+            record = self.dict[vol]
+            record['write_protected'] = 'n'
+            self.dict[vol] = record
             ticket['status'] = (e_errors.OK, None)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -250,20 +258,19 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        q = "select time, value from state, state_type, volume \
-             where \
-                 state.type = state_type.id and \
-                 state_type.name = 'write_protect' and \
-                 state.volume = volume.id and \
-                 volume.label = '%s' \
-             order by time desc limit 1;"%(vol)
+        q = "select write_protected from volume where label = '%s';"%(vol)
 
         try:
-            res = self.dict.db.query(q).dictresult()
+            res = self.dict.db.query(q).getresult()
             if not res:
                 status = "UNKNOWN"
             else:
-                status = res[0]['value']
+                if res[0][0] == 'y':
+                    status = "ON"
+                elif res[0][0] == 'n':
+                    status = "OFF"
+                else:
+                    status = "UNKNOWN" 
             ticket['status'] = (e_errors.OK, status)
         except:
             exc_type, exc_value = sys.exc_info()[:2]
@@ -908,6 +915,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         record['blocksize'] = ticket.get('blocksize', -1)
 	record['si_time'] = [0.0, 0.0]
 	record['comment'] = ""
+        record['write_protected'] = 'u'
         if record['blocksize'] == -1:
             sizes = self.csc.get("blocksizes")
             try:
@@ -1151,7 +1159,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     system_inhibit_0 = 'none' and \
                     system_inhibit_1 = 'none' and \
                     user_inhibit_0 = 'none' and \
-                    user_inhibit_1 = 'none' \
+                    user_inhibit_1 = 'none' and \
+                    write_protected = 'n' \
                     %s\
                 order by declared ;"%(mover_ip_map, library,
                     storage_group, file_family, wrapper, vito_q)
@@ -1165,7 +1174,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                     system_inhibit_0 = 'none' and \
                     system_inhibit_1 = 'none' and \
                     user_inhibit_0 = 'none' and \
-                    user_inhibit_1 = 'none' \
+                    user_inhibit_1 = 'none' and \
+                    write_protected = 'n' \
                     %s\
                 order by declared ;"%(library, storage_group,
                     file_family, wrapper, vito_q)
@@ -1241,6 +1251,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return 0
             
         if quotas['libraries'].has_key(library):
+            if not quotas['libraries'][library].has_key(storage_group):
+                return 1
             vol_count = self.sgdb.get_sg_counter(library, storage_group)
             quota = quotas['libraries'][library].get(storage_group, 0)
             Trace.log(e_errors.INFO, "storage group %s, vol counter %s, quota %s" % (storage_group, vol_count, quota)) 
@@ -1260,8 +1272,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                    Trace.alarm(e_errors.WARNING, 'APPROACHING QUOTA LIMIT', msg)
                 return 1
         else:
-            Trace.log(e_errors.ERROR, "no library %s defined in the quota configuration" % (library))
-            return 0
+            Trace.log(e_errors.INFO, "no library %s defined in the quota configuration" % (library))
+            return 1
         return 0
             
     
