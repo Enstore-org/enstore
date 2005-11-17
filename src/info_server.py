@@ -420,20 +420,19 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			self.reply_to_caller(ticket)
 			return
 
-		q = "select time, value from state, state_type, volume \
-			 where \
-				 state.type = state_type.id and \
-				 state_type.name = 'write_protect' and \
-				 state.volume = volume.id and \
-				 volume.label = '%s' \
-			 order by time desc limit 1;"%(vol)
+		q = "select write_protected from volume where label = '%s';"%(vol)
 
 		try:
-			res = self.db.query(q).dictresult()
+			res = self.db.query(q).getresult()
 			if not res:
 				status = "UNKNOWN"
 			else:
-				status = res[0]['value']
+				if res[0][0] == 'y':
+					status = "ON"
+				elif res[0][0] == 'n':
+					status = "OFF"
+				else:
+					status = "UNKNOWN" 
 			ticket['status'] = (e_errors.OK, status)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]

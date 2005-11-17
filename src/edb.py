@@ -363,7 +363,8 @@ class VolumeDB(DbTable):
 				storage_group, \
 				file_family, \
 				wrapper, \
-				comment \
+				comment, \
+				write_protected \
         		from volume \
 			where \
 				label = '%s';"
@@ -404,7 +405,8 @@ class VolumeDB(DbTable):
 			'storage_group': sts[0],
 			'file_family': sts[1],
 			'wrapper': sts[2],
-			'comment': s['comment']
+			'comment': s['comment'],
+			'write_protected': s['write_protected']
 			}
 
 	def export_format(self, s):
@@ -435,5 +437,6 @@ class VolumeDB(DbTable):
 					s['file_family']+'.'+ \
 					s['wrapper'],
 			'wrapper': s['wrapper'],
-			'comment': s['comment']
+			'comment': s['comment'],
+			'write_protected': s['write_protected']
 			}

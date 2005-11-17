@@ -1276,7 +1276,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             return 1
         return 0
             
-    
     # Get the next volume that satisfy criteria #### DONE
     def next_write_volume (self, ticket):
         Trace.trace(20, "next_write_volume %s" % (ticket,))
