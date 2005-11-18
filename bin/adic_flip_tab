@@ -4,8 +4,8 @@ if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
 script=`basename $0`
 
-usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
-	  echo "       enter $script"
+usage() { echo "Usage: login as enstore to d0ensrv4 or stkensrv4"
+	  echo "       enter $script [[un]lock]"
 	}
 
 check_work() { while read work1 action1
@@ -19,9 +19,9 @@ check_work() { while read work1 action1
 		    fi
 		 fi
 	       done << EOD
-/write_protect_work	  lock
-/write_permit_work	  unlock
-/purge_volumes_work	  remove
+/adic_write_protect_work	lock
+/adic_write_permit_work		unlock
+/adic_purge_volumes_work	remove
 EOD
 
 	       ns=`find $work -type f -name \*.done -mtime -1 -print | awk 'END {print NR}'`
@@ -38,19 +38,10 @@ EOD
 node=`hostname -s`
 case $node in
   stkensrv4)
-     clerk=stkensrv0
-     ocap="0,0,0"
-     sun=fntt
+     type=DECDLT
      ;;
   d0ensrv4)
-     clerk=d0ensrv0
-     ocap="1,0,0"
-     sun=fntt
-     ;;
-  cdfensrv4)
-     clerk=cdfensrv0
-     ocap="0,1,0"
-     sun=fntt2
+     type=3480
      ;;
   *) usage
      exit 1
@@ -59,15 +50,25 @@ esac
 
 output=/tmp/${script}.output
 
-action=remove
-work=/purge_volumes_work
+action=${1:-"lock"}
+case $action in
+  lock)
+     work=/adic_write_protect_work
+     prot=on
+     ;;
+  unlock)
+     work=/adic_write_permit_work
+     prot=off
+     ;;
+  *) usage
+     exit 1
+     ;;
+esac
 
 if [ ! -d $work ]; then
   echo "`date` ERROR. $work does not exist"
   exit 1
 fi
-
-. $HOME/gettkt
 
 cd $work
 
@@ -80,20 +81,14 @@ if expr $rem : 0 >/dev/null; then
 fi
 
 for i in `ls -vI \*.\*`; do
-  t0=`date  +'%s'`
+  t0=`date +'%s'`
+  pid=
+  stat=
+  # must wait for this box to finish any previous insert
+  ibox=`awk 'NR == 1 {sub("^E","I",$NF); print $NF}' $i`
+  eval `jobs -l | awk -v Ibox=$ibox '$0 ~ Ibox {printf "pid=%s;stat=%s",$2,$3}'`
+  [ "$stat" = Running ] && wait $pid 2>&1
   echo "`date` Group $i" >> $output
-  echo "Now deleting volumes to be ejected from enstore..."
-  # extract the volumes about to be ejected, and delete them
-  vols=`awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) printf "%s ",vols[v]}' $i`
-  if ! klist -s; then
-    echo "`date` ERROR. Check kerberos credentials."
-    exit 1
-  fi
-  if ! rsh $clerk ". /local/ups/etc/setups.sh; setup enstore; for vol in $vols; do enstore vol --delete \$vol; done" 2>/dev/null; then
-    echo "`date` ERROR. Failed to delete volumes!"
-    exit 1
-  fi
-  echo
   . $i |tee -a $output 2>&1
   echo
   echo
@@ -103,15 +98,27 @@ for i in `ls -vI \*.\*`; do
   deltam=`expr $delta / 60`
   deltas=`expr $delta % 60`
   echo That cycle took $deltam minutes $deltas seconds.
-  nvol=`awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | awk 'END {print NF}'`
-  /bin/echo -n "Have $nvol tapes been ${action}ed from cap $ocap [y/n]? "
+  nvol=`awk '{gsub(",","\n",$5); print $5}' $i | awk 'END {print NR}'`
+  /bin/echo -n "Have $nvol tapes been loaded in I/O box $ibox with tabs in ${action}ed position [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null; then
      echo "... success acknowledged"
+     echo
+     echo "Now updating write-protect status in enstore..."
+     # extract the volumes successfully entered, and set them as write-protected or write-permitted
+     awk '{gsub(",","\n",$5); print $5}' $i | sort | while read vol; do
+       enstore vol --write-protect-$prot $vol
+     done
      mv $i ${i}.done
+     secs=40
   else
      echo "... failure acknowledged"
      mv $i ${i}.fail
+     secs=80
   fi
+  echo
+  echo "Now inserting volumes from I/O box $ibox..."
+  # wait for successful insert in the background
+  until dasadmin insert $ibox 2>/dev/null 1>&2; do sleep $secs; [ $secs -gt 10 ] && secs=`expr $secs / 2`; done &
   echo
   echo
   rem=`ls -vI \*.\* | awk 'END {print NR}'`
@@ -131,3 +138,9 @@ for i in `ls -vI \*.\*`; do
      fi
   fi
 done
+
+check_work
+
+echo "`date` Waiting for I/O box(es) to be unloaded ..."
+jobs
+wait
