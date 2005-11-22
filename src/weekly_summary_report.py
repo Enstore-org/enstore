@@ -50,6 +50,12 @@ if volume_clerk['host'][:3] == "d0e":
 else:
 	system = volume_clerk['host'][:3].upper()
 
+# add cope@fnal.gov to CDF and D0 report
+# add oleynik@fnal.gov to all reports
+if system == 'D0' or system == 'CDF':
+	mail_address = mail_address + ' cope@fnal.gov'
+mail_address = mail_address + ' oleynik@fnal.gov'
+
 eprint(f, "This report is generated at %s for %s system"%(
 	time.ctime(time.time()), system))
 
