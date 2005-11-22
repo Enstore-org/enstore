@@ -27,6 +27,10 @@ enstore/cd/cdfenmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr26a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr28a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, cdfensrv1,
 enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV
 enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
