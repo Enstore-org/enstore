@@ -2,6 +2,15 @@
 set -u
 debug=0
 
+# do an rcp.  if this returns an error, try an scp.
+do_rcp () {
+   $1 "$@"
+   if [ "$?" == "1" ]; then
+      # there was an error, maybe rcp support is turned off
+      scp "$@";
+   fi
+}
+
 if [ "${1:-}" = "-x" ] ; 
 then 
     set -xv
@@ -42,7 +51,7 @@ if [ -d $krbdir ]; then
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
-      ${krbdir}/rcp "$@"
+      do_rcp $krbdir/rcp
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -52,7 +61,7 @@ if [ -d $krbdir ]; then
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-      ${krbdir}/rcp "$@"
+      do_rcp $krbdir/rcp
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -68,14 +77,14 @@ if [ -d $krbdir ]; then
 	KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
 	${krbdir}/kcron 2> /dev/null
       fi
-      ${krbdir}/rcp "$@"
+      do_rcp $krbdir/rcp
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
 
 else
    # we are not kerberized
-   rcp "$@"
+   do_rcp rcp
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi
