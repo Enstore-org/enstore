@@ -187,7 +187,10 @@ class CJFunc(Worker):
                     # this is not an ecron line
                     continue
                 try:
-                    self.fName = sline[7]
+                    # find the name of the cron. this will be the first
+                    # text string after the "-p" string
+                    p = sline.index("-p")
+                    self.fName = sline[p+1]
                 except:
                     now = time.time()
                     print time.ctime(now), line
