@@ -223,6 +223,20 @@ def move_file(input_filename, output_filename):
     Trace.message(5, ("%s\n" * len(file_information) % file_information))
     Trace.log(e_errors.INFO,
               ("%s  " * len(file_information) % file_information))
+
+    #Get the layer information that is NOT layer 1 or 4.
+    layer_info = {}
+    for i in [2, 3, 5, 6, 7]:
+        try:
+            #Copy layer N metadata.
+            layer_info[i] = p.readlayer(i)
+        except (OSError, IOError), msg:
+            #Ignore EACCESS errors.  That is the error given when a layer is
+            # turned off in the pnfs configuration file.
+            if msg.args[0] != errno.EACCES:
+                print_error(e_errors.OSERROR,
+                            "Pnfs layer %s update failed: %s" % (i, str(msg)))
+                sys.exit(1)
                         
     try:
         #Attempt to rename the file.  This can work if the input and
@@ -243,7 +257,7 @@ def move_file(input_filename, output_filename):
         # we see the error EPERM.  The following is not done atomically,
         # but there is no other way.  This involves creating a new file
         # entry writing all the metadata then removing the original file.
-        if getattr(msg, "errno", None) == errno.EPERM:
+        if getattr(msg, "errno", None) in [errno.EPERM, errno.EXDEV]:
             try:
                 #Create for reading and writing.  The default open mode
                 # is sufficent for making metadata changes.
@@ -324,16 +338,19 @@ def move_file(input_filename, output_filename):
                     "Pnfs layer 4 update failed: %s" % str(msg))
         sys.exit(1)
 
+    #Update the layer information that is NOT layer 1 and 4.
     for i in [2, 3, 5, 6, 7]:
         try:
             #If rename() succeded this will not be necessary.
-            if not new_p.readlayer(i):
-                #Copy layer 2 metadata.
-                l2 = p.readlayer(i)
+            if layer_info[i] and not new_p.readlayer(i):
                 tmp_string = ""
-                for item in l2:  #Loop over the lines to build the string.
+                for item in layer_info[i]:
+                    #Loop over the lines to build the string.
                     tmp_string = tmp_string + item
                 new_p.writelayer(i, tmp_string)
+        except KeyError:
+            #We didn't read in a layer before.  Just skip it.
+            pass
         except (OSError, IOError), msg:
             #Ignore EACCESS errors.  That is the error given when a layer is
             # turned off in the pnfs configuration file.
