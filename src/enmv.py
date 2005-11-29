@@ -237,6 +237,14 @@ def move_file(input_filename, output_filename):
                 print_error(e_errors.OSERROR,
                             "Pnfs layer %s update failed: %s" % (i, str(msg)))
                 sys.exit(1)
+
+    #Try to set euid and egid.  This is useful for using enmv on the
+    # /pnfs/xyz type paths (not /pnfs/fs/usr/xyz) while being user root.
+    try:
+        os.setregid(os.getgid(), p.pstat[stat.ST_GID])
+        os.setreuid(os.getuid(), p.pstat[stat.ST_UID])
+    except OSError:
+        pass
                         
     try:
         #Attempt to rename the file.  This can work if the input and
