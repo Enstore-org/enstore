@@ -690,7 +690,7 @@ def get_file_path(pnfs_path):
 def get_mount_point2(pnfs_id):
     #Strip off just the database id part of the pnfs id.
     try:
-        db_num = int(pnfsid[:4], 16)
+        db_num = int(pnfs_id[:4], 16)
     except ValueError:
         return None
 
