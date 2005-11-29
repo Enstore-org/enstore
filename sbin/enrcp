@@ -4,10 +4,12 @@ debug=0
 
 # do an rcp.  if this returns an error, try an scp.
 do_rcp () {
-   $1 $2 $3
+   cmd=$1
+   shift
+   $cmd $@
    if [ "$?" == "1" ]; then
       # there was an error, maybe rcp support is turned off
-      scp $2 $3
+      scp $@
    fi
 }
 
