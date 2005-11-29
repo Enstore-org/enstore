@@ -465,7 +465,7 @@ def get_filedb_info(bfid):
                 err.append('no filename in db')
             if not fr.get('pnfsid', None):
                 err.append('no pnfs id in db')
-            elif len(fr.get('pnfsid', "")) < 10:
+            elif not pnfs.is_pnfsid(fr.get('pnfsid', "")):
                 err.append('invalid pnfs id in db')
 
     return fr, (err, warn, info)
@@ -689,7 +689,10 @@ def get_file_path(pnfs_path):
 
 def get_mount_point2(pnfs_id):
     #Strip off just the database id part of the pnfs id.
-    db_num = int(pnfs_id[:4], 16)
+    try:
+        db_num = int(pnfsid[:4], 16)
+    except ValueError:
+        return None
 
     #Check the cache to see if the entry is already found.
     if db_pnfsid_cache.get(db_num, None):
@@ -869,7 +872,10 @@ def check_bit_file(bfid):
     if file_record['deleted'] == 'yes':
         info = info + ["deleted"]
         # check if pnfsid exist
-        if file_record['pnfsid']:
+        #Note: There are some files with the string 'None' set for the
+        # pnfs id and pnfs_name0.  This necessitates the pnfs.is_pnfsid()
+        # test to correctly handle it.
+        if pnfs.is_pnfsid(file_record['pnfsid']):
             # find mount point
             mp = get_mount_point2(file_record['pnfsid'])
             if not mp and file_record['pnfs_name0']:
