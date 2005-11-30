@@ -18,13 +18,21 @@ int scan_dir(const char* dirname) {
 	struct dirent** namelist;
 	int n;
 	int i;
+	int n_links=0;
+	int n_files=0;
+	int n_dirs=0;
+	char type[2];
+	int rc=0;
 	struct stat buf;
-	n = scandir(dirname, &namelist, selector, alphasort);
-	lstat(dirname, &buf);
-	if ( S_ISLNK(buf.st_mode) ) { 
-	  return 0;
+        rc=lstat(dirname, &buf);
+	if (rc!=0) {
+		fprintf(stdout,"Can't lstat %s\n",dirname);	
+		return 0;
 	}
-	fprintf(stdout,"%8d %s \n",n,dirname);
+        if ( S_ISLNK(buf.st_mode) ) {
+		return 0;
+        }
+	n = scandir(dirname, &namelist, selector, alphasort);
 	if (n < 0)
 		perror("scandir");
 	for (i=0; i<n; i++) {
@@ -32,22 +40,42 @@ int scan_dir(const char* dirname) {
 		strcat(fullpath,dirname);
 		strcat(fullpath,"/");
 		strcat(fullpath,namelist[i]->d_name);
+		rc=lstat(fullpath,&buf);
+		if (rc==0) { 
+			if ( S_ISLNK(buf.st_mode) ) { 
+				n_links++;
+			}
+			else if  (  S_ISDIR(buf.st_mode) ) {
+				n_dirs++;
+			}
+			else if ( S_ISREG(buf.st_mode) ) {
+				n_files++;
+			}
+		}
+	}
+	fprintf(stdout,"%8d %8d %6d %6d %s \n",n,n_files,n_dirs,n_links,dirname);
+	
+	for (i=0; i<n; i++) {
+		char fullpath[512]="";
+		strcat(fullpath,dirname);
+		strcat(fullpath,"/");
+		strcat(fullpath,namelist[i]->d_name);
 		free(namelist[i]);
-
+		
 		if ( (dp=opendir(fullpath)) == NULL) { 
-		  switch(errno) {
-		  case EACCES:
-		    fprintf(stdout,"Can't access %s\n",fullpath);
-		    continue;
+			switch(errno) {
+			case EACCES:
+				fprintf(stdout,"Can't access %s\n",fullpath);
+				continue;
 		  case EMFILE:
-		    fprintf(stdout,"Too many files in directory  %s\n",fullpath);
+			  fprintf(stdout,"Too many files in directory  %s\n",fullpath);
+			  continue;
+			case ENOTDIR:
 		    continue;
-		  case ENOTDIR:
-		    continue;
-		  default:
-		    fprintf(stdout,"Failed to open  %s\n",fullpath);
-		    continue;
-		  }			
+			default:
+				fprintf(stdout,"Failed to open  %s\n",fullpath);
+				continue;
+			}			
 		}
 		closedir(dp);
 		scan_dir(fullpath);
@@ -58,16 +86,14 @@ int scan_dir(const char* dirname) {
 
 
 int main(int argc, char* argv[]) {
-
-  char path[512];
-  if (argc < 2) {
-    int return_code = getcwd(path,512);
-  }
-  else { 
-    strcpy(path,argv[1]);
-  }
-  
-  scan_dir(path);
-  return 0;
+	char path[512];
+	if (argc < 2) {
+		int return_code = getcwd(path,512);
+	}
+	else { 
+		strcpy(path,argv[1]);
+	}
+	scan_dir(path);
+	return 0;
 }  
 
