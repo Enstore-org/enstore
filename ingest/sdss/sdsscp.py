@@ -17,20 +17,24 @@ def main():
         print "must use python 1.6 or greater"
         sys.exit(127)
 
-    opts_permitted = ['verbose=']
+    opts_permitted = ['verbose=', "dump"]
     options, args = getopt.getopt(sys.argv[1:], [], opts_permitted)
     #If the wrong number of arguments was supplied, print help and error out.
     if len(args) != 5:
         print "Usage:", sys.argv[0], \
-              " [--verbose n] <tapelabel> <mjd> <TarTape|TapeLog> <pfnsdir> <outputdir>"
+              " [--verbose n] [--dump] <tapelabel> <mjd> <TarTape|TapeLog> " \
+              "<pfnsdir> <outputdir>"
         sys.exit(126)
 
     verbose = None
+    dump = None
     if options:
         for option in options:
             if "--verbose" in option:
                 verbose = option[1]
-        
+            if "--dump" in option:
+                dump = True
+                
     #Create shortcuts for readability.
     tapeLabel = args[0]
     mjd = args[1]
@@ -79,6 +83,10 @@ def main():
 
     #Read in the metadata catalog file just copied over.
     files = parseTapeLog.parseFile(localMetaFilePath)
+
+    if dump:
+        callGet.writeGetFile(files, file_obj = sys.stdout)
+        sys.exit(0)
 
     #Shrink the list to remove files already copied.  If the output is
     # /dev/null, this step is unecessary.

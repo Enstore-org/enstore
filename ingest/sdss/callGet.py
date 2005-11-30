@@ -3,7 +3,26 @@ import sys
 import tempfile
 import popen2
 import string
-import types
+#import types
+
+def writeGetFile(files, file_obj = None):
+    if file_obj:
+        f = file_obj
+        fname = str(file_obj)
+    else:
+        fname = tempfile.mktemp()
+        f = open(fname, "w")
+
+    for fileentry in files:
+        #Add one to compensate for double filemark bug on sdss
+        #volumes.  File one in meta data is file two on tape
+        ###1-6-2004: MWZ something isn't correct here.  Comment and code
+        ### do not match.
+        f.write(str(fileentry[0]) + " " + fileentry[1] + "\n")
+
+    f.close()
+
+    return fname
 
 def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
     pnfsd_s = os.path.split(pnfsDir)
@@ -11,7 +30,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         pnfsDir = os.path.join(pnfsDir,tapeLabel)
     output_s = os.path.split(outputDir)
     out_is_null = 0
-    # aalow output to go to /dev/null
+    # allow output to go to /dev/null
     if len(output_s) == 2 and output_s[0].find("/dev") != -1 and output_s[1].find("null") != -1:
         out_is_null = 1
         pass
@@ -19,7 +38,8 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         if output_s[len(output_s)-1] != tapeLabel:
             outputDir = os.path.join(outputDir,tapeLabel)
     #print "pnfsd %s out_d %s"%(pnfsDir, outputDir)
-    
+
+    """
     fname = tempfile.mktemp()
     f = open(fname, "w")
 
@@ -31,6 +51,8 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         f.write(str(fileentry[0]) + " " + fileentry[1] + "\n")
 
     f.close()
+    """
+    fname = writeGetFile(files)
 
     #Must read ENSTORE_DIR first per mike Z's passionate opinion.
     #This should be changed to only look at SDSSCP_DIR at some point
