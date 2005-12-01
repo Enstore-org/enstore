@@ -36,6 +36,17 @@ class Plotter:
     def add(self,h):
         self.histogram_list.append(h)
 
+    def reshuffle(self):
+        n = len(self.histogram_list)
+        i = 0 
+        j = n - 1 - i
+        while ( i < j  ) :
+            tmp = self.histogram_list[i]
+            self.histogram_list[i]=self.histogram_list[j]
+            self.histogram_list[j]=tmp
+            i = i + 1 
+            j = j - 1 
+
     def plot(self,dir="./"):
         gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
         gnu_cmd = open(gnu_file_name,'w')
@@ -85,8 +96,8 @@ class Plotter:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         for hist in self.histogram_list:
             full_file_name=dir+hist.data_file_name
-            os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+            #os.system("rm -f %s"%full_file_name) # remove pts file
+        #os.system("rm -f %s"%gnu_file_name)  # remove gnu file
         
     
 class Histogram1D:
@@ -187,11 +198,19 @@ class Histogram1D:
             hist.sum=self.sum+other.sum
             hist.sum2=self.sum2+other.sum2
             hist.entries=self.entries+other.entries
-            hist.mean=hist.sum/float(hist.entries)
+            if ( hist.entries > 0 ) :
+                hist.mean=hist.sum/float(hist.entries)
+            else:
+                hist.mean = 0.
             rms2=hist.sum2-2.*hist.sum*hist.mean+float(hist.entries)*hist.mean*hist.mean
-            hist.rms=math.sqrt(rms2/float(hist.entries))
-            hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
-            hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
+            if ( hist.entries > 0 ) :
+                hist.rms=math.sqrt(rms2/float(hist.entries))
+                hist.mean_error=hist.rms/math.sqrt(float(hist.entries))
+                hist.rms_error=hist.rms/math.sqrt(2.*float(hist.entries))
+            else:
+                hist.mean_error=0.
+                hist.rms=0.
+                hist.rms_error=0.
             for i in range(hist.n_bins()):
                 hist.binarray[i]=self.binarray[i]+other.binarray[i]
                 hist.sumarray[i]=self.sumarray[i]+other.sumarray[i]
@@ -331,6 +350,27 @@ class Histogram1D:
             self.binarray.append(0.)
             self.sumarray.append(0.)
 
+    def integral(self,name="",title="",only_positive=True) :
+        h=self.copy()
+        h.reset()
+        if ( name == "" ) :
+            h.set_name(self.name+"_integral")
+        else:
+            h.set_name(name)
+        if ( title == "" ) :
+            h.set_title(self.title+"intergal")
+        else:
+            h.set_title(title)
+        h.set_data_file_name("%s_data.pts"%(h.name,))
+        r_sum = self.get_bin_content(0)
+        for i in range(self.nbins):
+            if (self.get_time_axis()) : 
+                if (self.get_bin_center(i) >  time.time()): continue
+            y      = self.get_bin_content(i)
+            r_sum  = r_sum + y
+            h.binarray[i]=r_sum
+        return h
+
     def derivative(self,name="",title="",only_positive=True) :
         h=self.copy()
         h.reset()
@@ -344,7 +384,6 @@ class Histogram1D:
             h.set_title(title)
         h.set_data_file_name("%s_data.pts"%(h.name,))
         previous_bin=self.get_bin_content(0)
-        
         for i in range(self.nbins):
             y = self.get_bin_content(i)
             if ( self.profile ) :
@@ -640,8 +679,8 @@ class Histogram1D:
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%full_file_name) # remove pts file
-        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+#        os.system("rm -f %s"%full_file_name) # remove pts file
+#        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
     def plot2(self, h,reflect=False,dir="./"):
         full_file_name=dir+self.data_file_name
