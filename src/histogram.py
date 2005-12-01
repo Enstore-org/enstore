@@ -96,8 +96,8 @@ class Plotter:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         for hist in self.histogram_list:
             full_file_name=dir+hist.data_file_name
-            #os.system("rm -f %s"%full_file_name) # remove pts file
-        #os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+            os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
         
     
 class Histogram1D:
@@ -679,8 +679,8 @@ class Histogram1D:
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-#        os.system("rm -f %s"%full_file_name) # remove pts file
-#        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+        os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
     def plot2(self, h,reflect=False,dir="./"):
         full_file_name=dir+self.data_file_name
