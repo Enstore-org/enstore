@@ -1131,7 +1131,12 @@ def inventory(output_dir, cache_dir):
                       vv['external_label'], vv['media_type'],
                       mount_limit[vv['media_type']][1])
                 acc.alarm(e_errors.ERROR, 'Too many mounts', msg)
-        wp = write_protect_status(vv['external_label'], vols.db)
+        if vv['write_protected'] == 'y':
+            wp = 'ON'
+        elif vv['write_protected'] == 'n':
+            wp = 'OFF'
+        else:
+            wp = '---'
 
         if vv['system_inhibit'][1] in wpa_states and \
             vv['media_type'] in wpa_media_types and \
