@@ -116,6 +116,7 @@ host/stkenmvr32a.fnal.gov@FNAL.GOV
 host/stkenmvr33a.fnal.gov@FNAL.GOV
 host/stkenmvr34a.fnal.gov@FNAL.GOV
 host/stkenmvr35a.fnal.gov@FNAL.GOV
+host/stkenmvr36a.fnal.gov@FNAL.GOV
 host/stkendm1a.fnal.gov@FNAL.GOV
 host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV

@@ -127,6 +127,7 @@
 131.225.13.98		stkenmvr33a.fnal.gov	stkenmvr33a
 131.225.13.48		stkenmvr34a.fnal.gov	stkenmvr34a
 131.225.13.87		stkenmvr35a.fnal.gov	stkenmvr35a
+131.225.13.46		stkenmvr36a.fnal.gov	stkenmvr36a
 131.225.13.93		stkendca2a.fnal.gov	stkendca2a
 131.225.13.49		stkendca3a.fnal.gov	stkendca3a
 131.225.13.27		stkendca6a.fnal.gov	stkendca6a
@@ -136,6 +137,9 @@
 131.225.13.94		stkendca10a.fnal.gov	stkendca10a
 131.225.13.91		stkendca11a.fnal.gov	stkendca11a
 131.225.13.92		stkendca12a.fnal.gov	stkendca12a
+131.225.13.95		stkendca13a.fnal.gov	stkendca13a
+131.225.13.70		stkendca14a.fnal.gov	stkendca14a
+131.225.13.42		stkendca15a.fnal.gov	stkendca15a
 131.225.13.35		stkendm1a.fnal.gov	stkendm1a
 131.225.13.36		stkendm2a.fnal.gov	stkendm2a
 131.225.13.84		stkendm3a.fnal.gov	stkendm3a
@@ -186,16 +190,11 @@
 #131.225.164.210	d0enmvr10b.fnal.gov	d0enmvr10b
 #131.225.164.54		d0enmvr11b.fnal.gov	d0enmvr11b
 #131.225.164.56		d0enmvr12b.fnal.gov	d0enmvr12b
-#131.225.164.214	d0enmvr14b.fnal.gov	d0enmvr14b
 #131.225.164.216	d0enmvr16b.fnal.gov	d0enmvr16b
 #131.225.164.217	d0enmvr17b.fnal.gov	d0enmvr17b
 #131.225.164.218	d0enmvr18b.fnal.gov	d0enmvr18b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
-#131.225.164.64		d0enmvr22b.fnal.gov	d0enmvr22b
-#131.225.164.123	d0enmvr60a.fnal.gov	d0enmvr60a
-#131.225.164.122	d0enmvr61a.fnal.gov	d0enmvr61a
-#131.225.164.9		ripcon.fnal.gov		ripcon
 #131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
 #131.225.13.21		rip9-ge.fnal.gov	rip9-ge
 #131.225.13.23		rip10-ge.fnal.gov	rip10-ge
@@ -221,7 +220,7 @@
 #131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
 #131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 
-# private subnet for d0/adic, d0/stk, and public/stk
+# private subnet for d0en and stken (STK and ADIC)
 192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
 #192.168.19.5		stkensrv1p.fnal.gov	stkensrv1p
 192.168.19.8		d0ensrv2p.fnal.gov	d0ensrv2p
@@ -235,7 +234,7 @@
 192.168.19.2		fntt.fnal.gov		fntt
 192.168.19.12		adic2.fnal.gov		adic2
 
-# private subnet for cdf/stk
+# private subnet for cdfen (STK)
 192.168.19.13		cdfensrv0p.fnal.gov	cdfensrv0p
 #192.168.19.18		cdfensrv1p.fnal.gov	cdfensrv1p
 192.168.19.14		cdfensrv2p.fnal.gov	cdfensrv2p
