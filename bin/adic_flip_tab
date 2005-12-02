@@ -26,7 +26,7 @@ EOD
 
 	       ns=`find $work -type f -name \*.done -mtime -1 -print | awk 'END {print NR}'`
 	       nf=`find $work -type f -name \*.fail -mtime -1 -print | awk 'END {print NR}'`
-	       msg="Today's $script work: $ns groups ${action}ed, $nf groups failed."
+	       msg="Today's $script work: $ns groups ${action%e}ed, $nf groups failed."
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ]; then
 		 enstore alarm --raise --severity "I" --root-error "$msg"
@@ -98,14 +98,15 @@ for i in `ls -vI \*.\*`; do
   deltam=`expr $delta / 60`
   deltas=`expr $delta % 60`
   echo That cycle took $deltam minutes $deltas seconds.
-  nvol=`awk '{gsub(",","\n",$5); print $5}' $i | awk 'END {print NR}'`
-  /bin/echo -n "Have $nvol tapes been loaded in I/O box $ibox with tabs in ${action}ed position [y/n]? "
+  # extract the volumes about to be entered
+  set `awk '{gsub(",","\n",$(NF-1)); print $(NF-1)}' $i`
+  /bin/echo -n "Have $# tapes been loaded in I/O box $ibox with tabs in ${action}ed position [y/n]? "
   if read ans && expr "$ans" : '[Yy]' >/dev/null; then
      echo "... success acknowledged"
      echo
      echo "Now updating write-protect status in enstore..."
-     # extract the volumes successfully entered, and set them as write-protected or write-permitted
-     awk '{gsub(",","\n",$5); print $5}' $i | sort | while read vol; do
+     # set the volumes successfully entered as write-protected or write-permitted
+     for vol; do
        enstore vol --write-protect-$prot $vol
      done
      mv $i ${i}.done
