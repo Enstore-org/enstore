@@ -99,7 +99,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
-        Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+msg)
+        Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
         self.dict.reconnect()
 
     # change_state(type, value) -- change a state

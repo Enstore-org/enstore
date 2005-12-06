@@ -91,7 +91,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# reconnect() -- re-establish connection to database
 	def reconnect(self, msg="unknown reason"):
-		Trace.alarm(e_errors.WARNING, "reconnect to database due to "+msg)
+		Trace.alarm(e_errors.WARNING, "reconnect to database due to "+str(msg))
 		self.file.reconnect()
 		self.db = self.file.db
 		self.volume.db = self.db
