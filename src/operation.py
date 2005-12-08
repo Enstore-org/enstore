@@ -95,6 +95,12 @@ import pprint
 import types
 import sys
 
+# enstore import
+import option
+import configuration_client
+
+csc = {}
+
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
 	if s == '1969-12-31 17:59:59':
@@ -125,12 +131,20 @@ DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
+intf = option.Interface()
+csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+enstoredb = csc.get('database')
+
 # get_db() -- initialize a database connection
 def get_db():
 	return pg.DB(dbname = DATABASENAME, port = DATABASEPORT, host = DATABASEHOST)
 
+def get_edb(enstoredb):
+	return pg.DB(host=enstoredb['db_host'], port=enstoredb['db_port'], dbname=enstoredb['dbname'])
+
 # global db connection
 db = get_db()
+edb = get_edb(enstoredb)
 
 # create_job() -- generic job creation
 def create_job(name, type, args, comment = ''):
@@ -599,6 +613,100 @@ def help(topic=None):
 # even(i) -- True is i is an even number
 def even(i):
 	return int(i/2)*2 == i
+
+# complex operations
+
+def recommend_write_protect_job(media_type, cap):
+	# how many?
+	n = len(cap)*21
+	# get exclusion list:
+	q = "select object from object, job \
+		where \
+			object.job = job.id and \
+			job.finish is null;"
+	excl = db.query(q).getresult()
+	if excl:
+		exclusion = "'%s'"%(excl[0][0])
+		for i in excl[1:]:
+			exclusion = exclusion+','+"'%s'"%(i[0])
+		q = "select label from volume where \
+			media_type = '%s' and \
+			system_inhibit_0 = 'none' and \
+			system_inhibit_1 = 'full' and \
+			write_protected = 'n' and \
+			not label in (%s) \
+			order by label \
+			limit %d;"%(media_type, exclusion, n)
+	else:
+		q = "select label from volume where \
+			media_type = '%s' and \
+			system_inhibit_0 = 'none' and \
+			system_inhibit_1 = 'full' and \
+			write_protected = 'n' and \
+			order by label \
+			limit %d;"%(media_type, n)
+	res = edb.query(q).getresult()
+	job = {}
+	for i in cap:
+		job[i] = []
+	cp = 0
+	for i in job.keys():
+		for j in range(21):
+			try:
+				job[i].append(res[cp][0])
+				cp = cp + 1
+			except:
+				break
+		if j < 21: # early quit
+			break
+	return job
+
+def recommend_write_permit_job(media_type, cap):
+	# how many?
+	n = len(cap)*21
+	# get exclusion list:
+	q = "select object from object, job \
+		where \
+			object.job = job.id and \
+			job.finish is null;"
+	excl = db.query(q).getresult()
+	if excl:
+		exclusion = "'%s'"%(excl[0][0])
+		for i in excl[1:]:
+			exclusion = exclusion+','+"'%s'"%(i[0])
+		q = "select label from volume where \
+			media_type = '%s' and \
+			system_inhibit_0 = 'none' and \
+			system_inhibit_1 = 'none' and \
+			write_protected = 'y' and \
+			not label in (%s) \
+			order by label \
+			limit %d;"%(media_type, exclusion, n)
+	else:
+		q = "select label from volume where \
+			media_type = '%s' and \
+			system_inhibit_0 = 'none' and \
+			system_inhibit_1 = 'none' and \
+			write_protected = 'y' and \
+			order by label \
+			limit %d;"%(media_type, n)
+	res = edb.query(q).getresult()
+	job = {}
+	for i in cap:
+		job[i] = []
+	cp = 0
+	for i in job.keys():
+		for j in range(21):
+			try:
+				job[i].append(res[cp][0])
+				cp = cp + 1
+			except:
+				break
+		if j < 21: # early quit
+			break
+	return job
+
+			
 
 PROMPT = "operation> "
 
