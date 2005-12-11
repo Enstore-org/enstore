@@ -3,7 +3,6 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # information specific to Fermilab
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 thisNode=${gang}srv2
 rdistNode=${gang}srv3.fnal.gov
@@ -14,18 +13,20 @@ ENSTORE=/home/enstore/enstore
 
 # script to backup enstore log files to the backup node
 
-#function to list command, execute it and list status
+# function to list command, execute it and list status
 doit() { echo "$1"
-         eval "nice -n 20 $1"
-         status=$?
+	 eval "nice -n 10 $1"
+	 status=$?
 	 echo "Status= $status"
 	 if [ $status -ne 0 ]; then exit $status; fi
-         echo "" 
+	 echo
        }
 
-if [ `uname -n | grep -c ${thisNode}` -ne 0 ]; then
+if uname -n | grep ${thisNode} > /dev/null; then
 
- cmd="/usr/bin/rsync -e $ENSTORE/sbin/enrsh -rlpgtx --delete --blocking-io \
+# cron is scheduled every 15 minutes, so time out after 10
+
+ cmd="/usr/bin/rsync -e $ENSTORE/sbin/enrsh -rlpgtx --delete --timeout=600 --blocking-io \
       ${filePath}/enstore-log/LOG-* enstore@${rdistNode}:${filePath}/enstore-log-backup"
  doit "$cmd"
 
