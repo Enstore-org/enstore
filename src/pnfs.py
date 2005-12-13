@@ -102,8 +102,10 @@ def is_pnfs_path(pathname, check_name_only = None):
         return 1
     
     #If check_name_only is python false then we can reach this check
-    # that checks to make sure that the filename exists.
-    if os.path.exists(filename):
+    # that checks to make sure that the filename exists.  Use os.stat()
+    # instead of os.path.exist(), since the later was found to be returning
+    # ENOENT errors that really should have been EACCES errors.
+    if os.stat(filename):
         return 1
     
     #If we get here, then the path contains a directory named 'pnfs' but does
