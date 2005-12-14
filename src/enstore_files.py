@@ -414,6 +414,11 @@ class HTMLEncpStatusFile(EnStatusFile):
                     encp_line.encp_ip))
             else:
                 node = encp_line.node
+            # if no error is listed use the type field
+            if encp_line.error:
+               error = encp_line.error
+            else:
+               error = encp_line.type
             if encp_line.success:
                 formatted_lines.append([encp_line.time, 
                                         node, user, encp_line.bytes, 
@@ -427,7 +432,7 @@ class HTMLEncpStatusFile(EnStatusFile):
                                         encp_line.disk_rate])
             else:
                 formatted_lines.append([encp_line.time, 
-                                        node, user, encp_line.error])
+                                        node, user, error])
 
     # output the encp info
     def write(self, lines):
