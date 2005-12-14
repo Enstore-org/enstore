@@ -916,9 +916,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         #self.encp_xfer_but_no_update = 0
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                       "starting search of accounting db for %s encp history lines"%(self.max_encp_lines,))
-        #encplines = enstore_functions.acc_encp_lines(self.csc, self.max_encp_lines)
-        import ttt
-        encplines = ttt.res_l
+        encplines = enstore_functions.acc_encp_lines(self.csc, self.max_encp_lines)
         encplines.sort()
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                    "update_encp - found %s lines"%(len(encplines,)))
