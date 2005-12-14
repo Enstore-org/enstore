@@ -1750,12 +1750,6 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	self.encp_files = []
 	for row in data_list:
 
-	    ## hack which can be removed when encp is recut (efb - aug, 02, 2000)
-	    if string.find(row[3], "impostor") != -1:
-		# found it, ignore this row
-		continue
-	    ## endof hack
-
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
 	    row[1] = enstore_functions2.strip_node(row[1])
