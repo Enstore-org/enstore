@@ -402,47 +402,39 @@ class HTMLEncpStatusFile(EnStatusFile):
         self.file_name = "%s.new"%(file,)
         self.refresh = refresh
 
-    def get_lines(self, day, lines, formatted_lines):
+    def get_lines(self, lines, formatted_lines):
         for line in lines:
             encp_line = enstore_status.EncpLine(line)
-            if encp_line.valid:
-		if encp_line.storage_group:
-		    user = "%s/%s"%(encp_line.user, encp_line.storage_group)
-		else:
-		    user = encp_line.user
-                if encp_line.encp_ip:
-                    node = enstore_functions2.strip_node(hostaddr.address_to_name(\
-                        encp_line.encp_ip))
-                else:
-                    node = encp_line.node
-                if encp_line.status == e_errors.sevdict[e_errors.INFO]:
-                    formatted_lines.append(["%s %s"%(day, encp_line.time), 
-                                            node, user, encp_line.bytes, 
-                                            "%s %s"%(encp_line.direction, 
-                                                     encp_line.volume), 
-                                            encp_line.network_rate, encp_line.transfer_rate,
-                                            encp_line.infile, encp_line.outfile,
-					    encp_line.interface,
-                                            encp_line.overall_rate,
-                                            encp_line.drive_rate,
-                                            encp_line.disk_rate])
-                elif encp_line.status == e_errors.sevdict[e_errors.ERROR]:
-                    formatted_lines.append(["%s %s"%(day, encp_line.time), 
-                                            node, user, encp_line.text])
+            if encp_line.storage_group:
+                user = "%s/%s"%(encp_line.user, encp_line.storage_group)
             else:
-                enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-                                      "update_encp - invalid encp line found - %s %s %s"%(encp_line.time,
-                                                                                          encp_line.node,
-                                                                                          encp_line.text,))
-                
+                user = encp_line.user
+            if encp_line.encp_ip:
+                node = enstore_functions2.strip_node(hostaddr.address_to_name(\
+                    encp_line.encp_ip))
+            else:
+                node = encp_line.node
+            if encp_line.success:
+                formatted_lines.append([encp_line.time, 
+                                        node, user, encp_line.bytes, 
+                                        "%s %s"%(encp_line.direction, 
+                                                 encp_line.volume), 
+                                        encp_line.network_rate, encp_line.transfer_rate,
+                                        encp_line.infile, encp_line.outfile,
+                                        encp_line.interface,
+                                        encp_line.overall_rate,
+                                        encp_line.drive_rate,
+                                        encp_line.disk_rate])
+            else:
+                formatted_lines.append([encp_line.time, 
+                                        node, user, encp_line.error])
 
     # output the encp info
-    def write(self, day1, lines1, day2, lines2):
+    def write(self, lines):
         if self.openfile:
             # break up each line into it's component parts and format it
             eline = []
-            self.get_lines(day1, lines1, eline)
-            self.get_lines(day2, lines2, eline)
+            self.get_lines(lines, eline)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
                                        "update_encp - parsed out %s lines"%(len(eline),))
 

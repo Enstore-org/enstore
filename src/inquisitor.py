@@ -397,6 +397,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    except:
 		# this is the write thread.  catch anything, report it and
 		# carry on.
+                self.do_dump()
 		self.server_status_file_event.clear()
 		Trace.handle_error()
 		self.serve_forever_error(self.log_name+"WT")
@@ -909,63 +910,21 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 	    self.er_thread.join()
         os._exit(exit_code)
 
-    # update any encp information from the log files
+    # get the encp transfer information from the accounting database
     def make_encp_html_file(self, now):
         self.last_encp_update = now
         #self.encp_xfer_but_no_update = 0
-        encplines = []
-        encplines2 = []
-        date = ''
-        date2 = ''
-        parsed_file = "%s%s"%(enstore_functions.get_enstore_tmp_dir(), "/parsed")
-        # look to see if the log server LOGs are accessible to us.  if so we
-        # will need to parse them to get encp information.
-        try:
-            t = self.logc.get_logfile_name(self.alive_rcv_timeout,
-                                                      self.alive_retries)
-        except errno.errorcode[errno.ETIMEDOUT]:
-            enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-		     "update_encp - ERROR, getting log file name timed out")
-            return
-        logfile = t.get('logfile_name', "")
-        # create the file which contains the encp lines from the most recent
-        # log file.
-        search_text = "-e %s -e \" E ENCP \""%(Trace.MSG_ENCP_XFER,)
-        if logfile and os.path.exists(logfile):
-            encpfile = enstore_files.EnDataFile(logfile, parsed_file+".encp", 
-                                                search_text, "", "|sort -r")
-            encpfile.open('r')
-            date, encplines = encpfile.read(self.max_encp_lines)
-            encpfile.close()
-        
-        i = len(encplines)
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-                                   "update_encp - found %s lines"%(i,))
+                      "starting search of accounting db for %s encp history lines"%(self.max_encp_lines,))
+        #encplines = enstore_functions.acc_encp_lines(self.csc, self.max_encp_lines)
+        import ttt
+        encplines = ttt.res_l
+        encplines.sort()
         enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-                                   "update_encp - max_encp_lines = %s"%(self.max_encp_lines,))
-        if i < self.max_encp_lines:
-            # we read in all the encps from the most recent log file. we
-            # did not read in self.max_encp_lines, so get the 2nd most recent
-            # log file and do the same.
-            try:
-                t = self.logc.get_last_logfile_name(self.alive_rcv_timeout,
-                                                    self.alive_retries)
-            except errno.errorcode[errno.ETIMEDOUT]:
-                enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-		   "update_encp - ERROR, getting last log file name timed out")
-                t = {}
-            logfile2 = t.get('last_logfile_name', "")
-            if (logfile2 != logfile) and logfile2 and os.path.exists(logfile2):
-                encpfile2 = enstore_files.EnDataFile(logfile2, parsed_file+".encp2",
-                                                     search_text, "", "|sort -r")
-                encpfile2.open('r')
-                date2, encplines2 = encpfile2.read(self.max_encp_lines-i)
-                encpfile2.close()
-                enstore_functions.inqTrace(enstore_constants.INQERRORDBG,
-                                           "update_encp - found %s more lines"%(len(encplines2),))
-        # now we have some info, output it
+                                   "update_encp - found %s lines"%(len(encplines,)))
+         # now we have some info, output it
         self.encpfile.open()
-        self.encpfile.write(date, encplines, date2, encplines2)
+        self.encpfile.write(encplines)
         self.encpfile.close()
         self.encpfile.install()
         enstore_functions.inqTrace(enstore_constants.INQFILEDBG, 

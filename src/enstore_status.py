@@ -85,143 +85,81 @@ def mc_in_list(msg, mcs):
 
 class EncpLine:
 
+    def bytes_to_mbytes(self, bytes):
+        return "%.2f"%(bytes/1024.0/1024.0,)
+
     def __init__(self, line):
         self.line = line
-        self.valid = 0
-        self.time = ""
-        self.node = ""
-        self.text = ""
-	# on linux, if there is some garbage in the log file, grep may decide the
-	# log file is a binary file. then it will produce a message -
-	# Binary file LOG-2001-02-08 matches
-	# so look for this and ignore it if you find it.  but output a log file
-	# message as the encp hitory page will not be correct and there is
-	# probably something else wrong that produced the garbage in the log file
-	# in the first place.
-        # here is an example message -
-        #
-        #  11:24:15 water.fnal.gov 002492 zalokar I ENCP
-        #  MSG_TYPE=ENCP_XFER
-        #  read_from_hsm /pnfs/mist/zaa/10MB_007 -> /dev/null:
-        #  10485760 bytes copied from STORM1 at 4.94 MB/S
-        #  (5.85 MB/S network) (5.6 MB/S drive) (34.7 MB/S disk)
-        #  mover=rain.mover drive_id=Mammoth2 drive_sn=0062025279
-        #  drive_vendor=EXABYTE elapsed=49.375
-        #  {'media_changer' : 'rain.media_changer',
-        #  'mover_interface' : 'rain', 'driver' : 'FTTDriver', 
-        #  'storage_group':'zee', 'encp_ip': '131.225.84.1',
-        #  'unique_id': 'water.fnal.gov-1030465406-2492-0'}
-        #
-	if line[0:12] == "Binary file ":
-	    return
-        [self.time, self.node, self.pid, self.user, self.status, self.server, 
-         self.text] = string.split(line, None, 6)
-        self.bytes = QUESTION
-        self.direction = QUESTION
-        self.volume = QUESTION
-        self.work = QUESTION
-        self.infile = QUESTION
-        self.outfile = QUESTION
-        self.msg_type = QUESTION
-        self.overall_rate = ""
-        self.network_rate = QUESTION   # was data transfer rate
-        self.disk_rate = ""
-        self.transfer_rate = QUESTION   # was user rate
-        self.drive_rate = ""
-	self.storage_group = None
-        self.mc = QUESTION
-	self.interface = QUESTION
-	self.mover = QUESTION
-	self.drive_id = QUESTION
-        self.encp_ip = None
-        # parse all success messages and pull out the interesting information
-        if self.status == e_errors.sevdict[e_errors.INFO]:
-            try:
-                # split out the message type from the rest of the message text
-                [self.msg_type, self.text] = string.splitfields(self.text, None, 1)
-                # make sure the msg_type really is one, else this might be a line with
-                # the wrong format. - make sure it is an encp message
-                if string.find(self.msg_type, Trace.MSG_ENCP_XFER[:-1]) == -1:
-                    # this is not the message we are looking for
-                    return
-                [tmp1, tmp2] = string.splitfields(self.text, ": ", 1)
-                # get the file names (tmp_list[2] = "->" so ignore it)
-                tmp_list = string.splitfields(tmp1, None)
-                if (len(tmp_list) >= 4):
-                    self.work = tmp_list[0]
-                    self.infile = tmp_list[1]
-                    self.outfile = tmp_list[3]
-                elif len(tmp_list) == 3:
-                    # support an old format
-                    self.infile = tmp_list[0]
-                    self.outfile = tmp_list[2]
-                    self.work = ""
-		else:
-		    # we don't support this format, things may be really 
-		    # screwed up.
-		    return
-                
-                # get the total data transfer rate
-                [tmp1, tmp2] = string.splitfields(tmp2, "(", 1)
-                [self.network_rate, tmp2] = string.splitfields(tmp2, " ",1)
-		# get the dictionary at the end
-		self.dict = get_dict(tmp2)
-                # pull out the name of the media changer and other things
-		for aDict in self.dict:
-		    if aDict.has_key(enstore_constants.MEDIA_CHANGER):
-			self.mc = aDict[enstore_constants.MEDIA_CHANGER]
-		    if aDict.has_key(enstore_constants.MOVER_INTERFACE):
-			self.interface = aDict[enstore_constants.MOVER_INTERFACE]
-			# get rid of .fnal.gov
-			self.interface = enstore_functions2.strip_node(self.interface)
-		    if aDict.has_key(enstore_constants.STORAGE_GROUP):
-			self.storage_group = aDict[enstore_constants.STORAGE_GROUP]
-                    if aDict.has_key(enstore_constants.ENCP_IP):
-                        self.encp_ip = aDict[enstore_constants.ENCP_IP]
-                    if aDict.has_key(enstore_constants.OVERALL_RATE):
-                        self.overall_rate = "%.3g"%(aDict[enstore_constants.OVERALL_RATE],)
-                    if aDict.has_key(enstore_constants.DRIVE_RATE):
-                        self.drive_rate = "%.3g"%(aDict[enstore_constants.DRIVE_RATE],)
-                    if aDict.has_key(enstore_constants.DISK_RATE):
-                        self.disk_rate = "%.3g"%(aDict[enstore_constants.DISK_RATE],)
-                tmp_list = string.splitfields(tmp1, " ")
-                self.bytes = tmp_list[0]
-                self.direction = tmp_list[3]
-                self.volume = tmp_list[4]
-                self.transfer_rate = tmp_list[6]
-		tmp_list = string.splitfields(tmp2, " ")
-                if "disk)" in tmp_list:
-                    # this is the new format with disk rate added
-                    mover_index = 8
-                    drive_id_index = 9
-                    self.disk_rate = tmp_list[5][1:]
-                else:
-                    # this is the old format (i hate this)
-                    mover_index = 5
-                    drive_id_index = 6
-                tmp_list2 = string.splitfields(tmp_list[mover_index], "=")
-		self.mover = tmp_list2[1]
-		# remove .mover
-		self.mover = string.replace(self.mover, ".%s"%(enstore_constants.MOVER,),
-					    "")
-		tmp_list = string.splitfields(tmp_list[drive_id_index], "=")
-		try:
-		    self.drive_id = tmp_list[1]
-		except:
-		    self.drive_id = ""
-                self.valid = 1
-            except ValueError:
-                # we do not handle this formatting
-                self.valid = 0
-        elif not self.status in [e_errors.sevdict[e_errors.MISC],
-                                 e_errors.sevdict[e_errors.ALARM]]:
-            # get rid of the MSG_TYPE=xxx information at the end of the line
-            aList = string.splitfields(self.text, Trace.MSG_TYPE)
-            # some of the lines  do not have MSG_TYPE in them (??? hmmm) so we cannot count on
-            # aList being any more than 1 element long.
-            self.text = aList[0]
-            self.valid = 1
 
+        # these fields are the same for a success message or a failure message
+        self.time = line[0]
+        self.node = line[1]
+        self.pid = line[2]
+        self.user = line[3]
+
+        # determine if this is an encp success message or an encp error message
+        if len(line) == 27:
+            # this is a success encp
+            self.success = 1
+            self.infile = line[4]
+            self.outfile = line[5]
+            self.bytes = line[6]
+            self.direction = line[7]  # either 'r' or 'w'
+            self.overall_rate = self.bytes_to_mbytes(line[8])
+            self.network_rate = self.bytes_to_mbytes(line[9])   # was data transfer rate
+            self.drive_rate = self.bytes_to_mbytes(line[10])
+            self.volume = line[11]
+            self.mover = line[12]
+            self.drive_id = line[13]
+            self.drive_sn = line[14]
+            self.elapsed = line[15]
+            self.mc = line[16]
+            self.interface = line[17]
+            self.driver = line[18]
+            self.storage_group = line[19]
+            self.encp_ip = line[20]
+            self.encp_id = line[21]
+            self.disk_rate = self.bytes_to_mbytes(line[22])
+            self.transfer_rate = self.bytes_to_mbytes(line[23])   # was user rate
+            self.encp_version = line[24]
+            self.file_family = line[25]
+            self.wrapper =  line[26]
+            self.type = None    # this is only valid for encp error lines
+            self.error = None   # this is only valid for encp error lines
+        else:
+            # this is an error encp
+            self.success = 0
+            self.encp_id = line[4]
+            self.encp_version = line[5]
+            self.type = line[6]
+            self.error = line[7]
+            self.infile = line[8]
+            self.outfile = line[9]
+            self.bytes = line[10]
+            self.storage_group = line[11]
+            self.wrapper =  line[12]
+            self.file_family = line[13]
+            self.mover = line[14]
+            self.drive_id = line[15]
+            self.drive_sn = line[16]
+            self.direction = line[17]  # either 'r' or 'w'
+            self.volume = line[18]
+            self.overall_rate = None     # this is only valid for success lines
+            self.network_rate = None     # this is only valid for success lines
+            self.drive_rate = None       # this is only valid for success lines
+            self.elapsed = None          # this is only valid for success lines
+            self.mc = None               # this is only valid for success lines
+            self.interface = None        # this is only valid for success lines
+            self.driver = None           # this is only valid for success lines
+            self.encp_ip = None          # this is only valid for success lines
+            self.disk_rate = None        # this is only valid for success lines
+            self.transfer_rate = None    # this is only valid for success lines
+
+        # direction should be 'from' or 'to'
+        if self.direction == 'r':
+            self.direction = 'from'
+        else:
+            self.direction = 'to'
 
 class SgLine:
 

@@ -18,14 +18,29 @@ import socket
 
 import configuration_server
 import configuration_client
-#import enstore_constants
+import enstore_constants
 import enstore_functions2
 import Trace
 import e_errors
 import www_server
 import option
+import pg
 
 DEFAULTHTMLDIR = "."
+
+def acc_encp_lines(csc, numEncps=100):
+    acc = csc.get(enstore_constants.ACCOUNTING_SERVER)
+    # connect to the db
+    db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'])
+    res = db.query("select * from encp_xfer order by date desc limit %s;"%(numEncps,))
+    res_err = db.query("select * from encp_error order by date desc limit %s;"%(numEncps,))
+    # combine the 2 lists and take the top numEncps entries to return
+    res_total = res.getresult() + res_err.getresult()
+    res_total.sort()
+    # close connection to the db
+    db.close()
+    # return the results as a list, returning only the last numEncps elements.
+    return res_total[-numEncps:]
 
 def get_config_dict():
     name = os.environ.get("ENSTORE_CONFIG_FILE", "")
