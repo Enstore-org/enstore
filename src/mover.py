@@ -3149,8 +3149,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if thread and thread.isAlive():
                         # do actual rewind in a tape thread
                         self.rewind_tape = 1
+                        Trace.log(e_errors.INFO, "Waiting for tape get rewound")
+                        for wait in range(180):
+                           if thread and thread.isAlive():
+                               time.sleep(1)
+                        if thread and thread.isAlive():
+                            Trace.log(e_errors.ERROR, "Tape was not rewound in 3 minutes will set mover OFFLINE")
+                            self.offline()
+                            return
+                            
                     else:
                         # tape thread is gone: rewind here
+                        Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape. Current thread: %s"%(cur_thread_name,));
                         self.tape_driver.rewind()
                         self.current_location = 0L
                     # do actual rewind in a tape thread
@@ -3164,6 +3174,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #return
                     pass
                 #----------------
+                if self.rewind_tape:
+                    if 
+                    # wait till tape gets rewound
+                    Trace.log(e_errors.INFO, "Waiting for tape get rewound")
                     
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
