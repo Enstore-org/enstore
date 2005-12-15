@@ -6,7 +6,14 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # $Id$
 
 job=${1:-"route"}
-netperf=/opt/netperf/netperf
+
+if [ -x /usr/local/bin/netperf ]; then
+   netperf=/usr/local/bin/netperf
+elif [ -x /opt/netperf/netperf ]; then
+   netperf=/opt/netperf/netperf
+else
+   echo routes - where is netperf\?
+fi
 
 host=`hostname -s`
 gang=`gang`
@@ -27,9 +34,9 @@ lsKnownDown() { enstore sched --show |
 		done
 	      }
 
-# function to select critical nodes (servers *srv[0-46], mainly)
+# function to select critical nodes (servers *srv[0-246], mainly)
 criticalNode() { echo "$1" |
-		 egrep '(d0|stk|cdf)ensrv[0-46]|cmspnfs1|stkendca3a' > /dev/null
+		 egrep '(d0|stk|cdf)ensrv[0-246]|cmspnfs1|stkendca3a' > /dev/null
 	       }
 
 case $job in
@@ -163,7 +170,7 @@ EOF
       echo "<td align=center><font color=\"$fcolor\">$rate</font></td>" >> $storit
       echo "<td align=center><font color=\"$fcolor\">$flag</font></td>" >> $storit
       if [ -r /rate-$node ]; then
-        # make history go right (oldest) to left (newest)
+	# make history go right (oldest) to left (newest)
 	tail -n 10 /rate-$node | tac | while read line; do
 	  r=`echo $line | awk '{print $NF}'`
 	  if [ `echo "$r" | cut -d. -f1` -lt $checkat ]; then
