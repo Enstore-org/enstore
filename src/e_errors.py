@@ -88,6 +88,8 @@ NO_SG = "NO SUCH STORAGE GROUP"
 VOLUME_EXISTS = "VOLUME EXISTS"
 WRONG_FORMAT = "WRONG FORMAT"
 
+FILESYSTEM_CORRUPT = "Filesystem is corrupt" #Encp finds pnfs corrupted.
+
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
 #       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
@@ -204,6 +206,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          )
 
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
+                       FILESYSTEM_CORRUPT, #PNFS metadata is not consistant.
                        )
 
 email_alarm_errors = ( CRC_ENCP_ERROR,   #Set by encp
