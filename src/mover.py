@@ -647,6 +647,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
         self.stream_w_flag = 0 # this flag is set when before stream_write is called
+
         self.dont_update_lm = 0 # if this flag is set do not update LM to avoid mover restart
         
     def __setattr__(self, attr, val):
@@ -1037,6 +1038,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
         self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
         Trace.log(e_errors.INFO, "Starting in state %s"%(state_name(self.state),))
+        self.rewind_tape = 0
+
         if self.driver_type == 'NullDriver':
             self.check_written_file_period = 0 # no file check for null mover
             self.device = None
@@ -1367,9 +1370,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return
                             
                 if not hasattr(self,'too_long_in_state_sent'):
-                    Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
-                                (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
-                    self.too_long_in_state_sent = 0 # send alarm just once
+                    if not self.state == ERROR:
+                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
+                                    (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
+                        self.too_long_in_state_sent = 0 # send alarm just once
                 if self.state == ERROR:
                     ## restart the mover
                     ## this will clean LM active mover list and let
@@ -1788,11 +1792,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 now = time.time()
                 if (int(now - buffer_empty_t) > self.max_time_in_state) and int(buffer_empty_t) > 0:
                     if not hasattr(self,'too_long_in_state_sent'):
-                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
-                                    (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
-                        #Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
-                        Trace.log(e_errors.INFO, "write:now %s t %s max %s empty %s defer %s br %s btr %s"%(now, buffer_empty_t,self.max_time_in_state, empty, defer_write,self.bytes_read, self.bytes_to_read)) #!!! REMOVE WHEN PROBLEM is fixed
-                        self.too_long_in_state_sent = 0 # send alarm just once
+                        if not self.state == ERROR:
+                            Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
+                                        (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
+                            #Trace.trace(9, "now %s t %s max %s"%(now, buffer_empty_t,self.max_time_in_state))
+                            Trace.log(e_errors.INFO, "write:now %s t %s max %s empty %s defer %s br %s btr %s"%(now, buffer_empty_t,self.max_time_in_state, empty, defer_write,self.bytes_read, self.bytes_to_read)) #!!! REMOVE WHEN PROBLEM is fixed
+                            self.too_long_in_state_sent = 0 # send alarm just once
+                        else:
+                            return
                     buffer_empty_t = now
                     Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
                     if buffer_empty_cnt >= self.max_in_state_cnt:
@@ -1875,6 +1882,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             Trace.trace(27,"write_tape: write interrupted transfer failed")
             self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            if self.rewind_tape:
+                Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+                self.tape_driver.rewind()
+                self.current_location = 0L
+                self.rewind_tape = 0
+
             return
 
         Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
@@ -1883,6 +1896,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             rc = self.tape_driver.flush() # to empty buffer and to release devivice from this thread
             if rc[0] == -1:
                self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(rc[1],), error_source=DRIVE) 
+            return
+
+        #
+        if self.tr_failed:
+            Trace.log(e_errors.ERROR,"Transfer failed just before writing file marks")
+            self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            if self.rewind_tape:
+                Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+                self.tape_driver.rewind()
+                self.current_location = 0L
+                self.rewind_tape = 0
             return
         
         if self.bytes_written == self.bytes_to_write:
@@ -2088,10 +2112,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 now = time.time()
                 if (int(now - buffer_full_t) > self.max_time_in_state) and int(buffer_full_t) > 0:
                     if not hasattr(self,'too_long_in_state_sent'):
-                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
-                                    (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
-                        Trace.log(e_errors.INFO, "read:now %s t %s max %s"%(now, buffer_full_t,self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
-                        self.too_long_in_state_sent = 0 # send alarm just once
+                        if not self.state == ERROR:
+                            Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
+                                        (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
+                            Trace.log(e_errors.INFO, "read:now %s t %s max %s"%(now, buffer_full_t,self.max_time_in_state)) #!!! REMOVE WHEN PROBLEM is fixed
+                            self.too_long_in_state_sent = 0 # send alarm just once
+                        else:
+                            return
                     buffer_full_t = now
                     if buffer_full_cnt >= self.max_in_state_cnt:
                         msg = "data transfer to client stuck. Client host %s. Breaking connection"%(self.current_work_ticket['wrapper']['machine'][1],)
@@ -3117,6 +3144,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 #---------------
                 if self.mode == WRITE:
                     ## this is a temporary solution for not overwritin files
+                    #check if tape thread is running
+                    thread = getattr(self, 'tape_thread', None)
+                    if thread and thread.isAlive():
+                        self.rewind_tape = 1
+                    # do actual rewind in a tape thread
                     ##Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
                     ##self.tape_driver.rewind()
                     ##self.current_location = 0L
