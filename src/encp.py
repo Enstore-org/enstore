@@ -2480,7 +2480,7 @@ def outputfile_check(inputlist, outputlist, e):
                     else:
                         error = errno['EIO']
                     raise EncpError(error, "Filesystem is corrupt.",
-                                    e_errors.OSERROR,
+                                    e_errors.FILESYSTEM_CORRUPT,
                                     {'outfile' : outputlist[i]})
                 else:
                     raise EncpError(errno.ENOENT, outputlist[i],
@@ -3544,6 +3544,18 @@ def submit_one_request(ticket):
         responce_ticket = lmc.write_to_hsm(ticket)
 
     if not e_errors.is_ok(responce_ticket['status']):
+        #If the error is that the tape is NOACCESS or NOTALLOWED then we
+        # should handle setting the status to be a little more useful.
+        # If we don't do this then we won't see the full test in the
+        # encpHistory web page.  The text for the message is used elsewhere
+        # in encp.py.
+        if not responce_ticket['status'][1]:
+            if responce_ticket['status'][0] == e_errors.NOACCESS or \
+                   responce_ticket['status'][0] == e_errors.NOTALLOWED:
+                responce_ticket['status'][1] = "Volume %s is marked %s." % \
+                                               (ticket['vc']['external_label'],
+                                                responce_ticket['status'][0])
+        
         if e_errors.is_non_retriable(responce_ticket['status']):
             Trace.log(e_errors.ERROR,
                       "submit_one_request: Ticket submit failed for %s: %s" %
@@ -6521,7 +6533,11 @@ def write_to_hsm(e, tinfo):
             if e_ticket.get('status', None) == None:
                 e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
-            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+            if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
+               or msg.args[0] == -1:
+                e_ticket = {'status' : (e_errors.FILESYSTEM_CORRUPT, str(msg))}
+            else:
+                e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
         else:
@@ -6565,7 +6581,13 @@ def write_to_hsm(e, tinfo):
                 if not request_list[i].get('copy', None):
                     create_zero_length_pnfs_files(request_list[i])
             except OSError, msg:
-                request_list[i]['status'] = (e_errors.OSERROR, msg.strerror)
+                if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
+                       or msg.args[0] == -1:
+                    request_list[i]['status'] = \
+                                   (e_errors.FILESYSTEM_CORRUPT, str(msg))
+                else:
+                    request_list[i]['status'] = \
+                                   (e_errors.OSERROR, msg.strerror)
                 return request_list[i], request_list
 
     work_ticket, index, copy = get_next_request(request_list)
@@ -8140,7 +8162,11 @@ def read_from_hsm(e, tinfo):
             e_ticket = msg.ticket
             e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
-            e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
+            if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
+               or msg.args[0] == -1:
+                e_ticket = {'status' : (e_errors.FILESYSTEM_CORRUPT, str(msg))}
+            else:
+                e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
         elif isinstance(msg, IOError):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
         else:
@@ -8184,13 +8210,15 @@ def read_from_hsm(e, tinfo):
             try:
                create_zero_length_local_files(requests_per_vol[vol][i])
             except OSError, msg:
-                requests_per_vol[vol][i]['status'] = (e_errors.OSERROR,
-                                                      str(msg))
-                #request['exit_status'] = 1
+                if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
+                       or msg.args[0] == -1:
+                    requests_per_vol[vol][i]['status'] = \
+                                 (e_errors.FILESYSTEM_CORRUPT, str(msg))
+                else:
+                    requests_per_vol[vol][i]['status'] = \
+                                 (e_errors.OSERROR, str(msg))
+                
                 return requests_per_vol[vol][i], requests_per_vol
-                #print_data_access_layer_format("", request['outfile'],
-                #                               0, request)
-                #delete_at_exit.quit()
     
     # loop over all volumes that are needed and submit all requests for
     # that volume. Read files from each volume before submitting requests
@@ -9750,6 +9778,12 @@ def final_say(intf, done_ticket):
         status = done_ticket.get('status', (e_errors.UNKNOWN,e_errors.UNKNOWN))
         exit_status = done_ticket.get('exit_status',
                                       not e_errors.is_ok(status))
+        #Determine the filename(s).
+        ifilename = done_ticket.get("infile", "")
+        ofilename = done_ticket.get("outfile", "")
+        if not ifilename and not ofilename:
+            ifilename = intf.input
+            ofilename = intf.output
 
         #Perform any necessary string formating.
         if status[1] == None:
@@ -9761,6 +9795,11 @@ def final_say(intf, done_ticket):
             msg_str = str(status[1])
             
         Trace.log(e_errors.INFO, msg_str)
+        
+        if e_errors.is_alarmable(status):
+            Trace.alarm(e_errors.ERROR, status[0],
+                        {'infile':ifilename, 'outfile':ofilename,
+                         'status':status[1]})
 
         ifilename = done_ticket.get("infile", "")
         ofilename = done_ticket.get("outfile", "")
