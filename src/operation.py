@@ -99,6 +99,8 @@ import sys
 import option
 import configuration_client
 
+debug = False
+# debug = True
 csc = {}
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
@@ -131,9 +133,26 @@ DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
+WRITE_PROTECT_SCRIPT_PATH = '/write_protect_work'
+WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
+
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 enstoredb = csc.get('database')
+
+# determine the cluster
+if enstoredb['db_host'][:2] == 'd0':
+	cluster = 'D0'
+	script_host = 'd0ensrv4.fnal.gov'
+elif enstoredb['db_host'][:3] == 'stk':
+	cluster = 'STK'
+	script_host = 'stkensrv4.fnal.gov'
+elif enstoredb['db_host'][:3] == 'cdf':
+	cluster = 'CDF'
+	script_host = 'cdfensrv4.fnal.gov'
+else:
+	cluster = 'UNK'
+	script_host = 'localhost'
 
 # get_db() -- initialize a database connection
 def get_db():
@@ -159,6 +178,8 @@ def create_job(name, type, args, comment = ''):
 				job.id = object.job and \
 				job.finish is null and \
 				job.type = job_definition.id;"%(i)
+		if debug:
+			print q
 		res = db.query(q).dictresult()
 		if res:
 			problem_args[i] = res[0]
@@ -186,11 +207,14 @@ def create_job(name, type, args, comment = ''):
 			values ('%s', (select id from job_definition where \
 				name = '%s'), '%s');"%(
 			name, type, comment)
-
+	if debug:
+		print q
 	db.query(q)
 	# get job id
 	q = "select id from job where name = '%s';"%(
 		name)
+	if debug:
+		print q
 	id = db.query(q).getresult()[0][0]
 	for i in args:
 		# is it association setting?
@@ -206,13 +230,16 @@ def create_job(name, type, args, comment = ''):
 					q = "insert into object (job, object, association) values (%d, '%s', '%s');"%(id, i, association)
 				else:
 					q = "insert into object (job, object) values (%d, '%s');"%(id, i)
-		# print q
+		if debug:
+			print q
 		db.query(q)
 	return id
 
 # get_job_by_name() -- from a name to find the job; name is unique
 def get_job_by_name(name):
 	q = "select * from job where name = '%s';"%(name)
+	if debug:
+		print q
 	res = db.query(q).dictresult()
 	if res:
 		return retrieve_job(res[0])
@@ -222,6 +249,8 @@ def get_job_by_name(name):
 # get_job_by_id() -- get_job_using internal id
 def get_job_by_id(id):
 	q = "select * from job where id = %d;"%(id)
+	if debug:
+		print q
 	res = db.query(q).dictresult()
 	if res:
 		return retrieve_job(res[0])
@@ -238,6 +267,8 @@ def get_job_by_time(after, before = None):
 		before = time2timestamp(before)
 	q = "select * from job where start >= '%s' and start <= '%s' \
 		order by start;"%(after, before)
+	if debug:
+		print q
 	res = db.query(q).dictresult()
 	if res:
 		return retrieve_job(res[0])
@@ -249,6 +280,8 @@ def retrieve_job(job):
 	# assemble its related objects
 	q = "select * from object where job = %d order by association, object;"%(job['id'])
 	object = []
+	if debug:
+		print q
 	res = db.query(q).getresult()
 	for j in res:
 		if j[2]:
@@ -258,12 +291,16 @@ def retrieve_job(job):
 	job['object'] = object
 	# list its related tasks
 	q = "select * from job_definition where id = %d;"%(job['type'])
+	if debug:
+		print q
 	job_definition = db.query(q).dictresult()[0]
 	job['job_definition'] = job_definition
 	q = "select * from task left outer join progress \
 		on (progress.job = %d and task.seq = progress.task) \
 		where task.job_type = %d \
 			order by seq;"%(job['id'], job['type'])
+	if debug:
+		print q
 	job['task'] = db.query(q).dictresult()
 	job['current'] = get_current_task(job['name'])
 	job['next'] = get_next_task(job['name'])
@@ -281,6 +318,8 @@ def get_job_tasks(name):
 	q = "select seq, dsc, action from task, job \
 		where job.name = '%s' and job.type = task.job_type \
 		order by seq;"%(name)
+	if debug:
+		print q
 	return db.query(q).dictresult()
 
 # start_job_task(job_name, task_id) -- start a task
@@ -304,6 +343,8 @@ def start_job_task(job_name, task_id, args=None, comment=None, timestamp=None):
 		q = "insert into progress (job, task, comment, args) \
 		values ((select id from job where name = '%s'), %d, %s, %s);"%(
 			job_name, task_id, comment, args)
+	if debug:
+		print q
 	res = db.query(q)
 
 # finish_job_task(job_name, task_id) -- finish/close a task
@@ -334,6 +375,8 @@ def finish_job_task(job_name, task_id, comment=None, result=None, timestamp=None
 			where job = (select id from job where name = '%s') \
 			and task = %d"%(
 			timestamp, result, job_name, task_id)
+	if debug:
+		print q
 	res = db.query(q)
 
 # get_current_task(name) -- get current task
@@ -347,6 +390,8 @@ def get_current_task(name):
 			job.name = '%s' and \
 			progress.job = job.id and \
 			progress.start is not null;"%(name)
+	if debug:
+		print q
 	res = db.query(q).getresult()
 	return res[0][0]
 
@@ -355,6 +400,8 @@ def get_next_task(name):
 	q = "select tasks, finish from job, job_definition where \
 		job.name = '%s' and \
 		job.type = job_definition.id;"%(name)
+	if debug:
+		print q
 	res = db.query(q).getresult()
 	tasks = res[0][0]
 	finish = res[0][1]
@@ -372,6 +419,8 @@ def has_finished(job, task):
 		j.name = '%s' and \
 		p.job = j.id and p.task = %d and p.finish is not null;"%(
 		job, task)
+	if debug:
+		print q
 	res = db.query(q).getresult()
 	if not res:
 		return False
@@ -384,6 +433,8 @@ def has_started(job, task):
 		j.name = '%s' and \
 		p.job = j.id and p.task = %d and p.start is not null;"%(
 		job, task)
+	if debug:
+		print q
 	res = db.query(q).getresult()
 	if not res:
 		return False
@@ -437,6 +488,8 @@ def show_current_task(j):
 			p.task = t.seq and \
 			j.type = d.id;"%(
 			job['id'], job['current'])
+	if debug:
+		print q
 	ct = db.query(q).dictresult()[0]
 	if ct['finish'] == None:
 		ct['finish'] = ""
@@ -466,6 +519,8 @@ def show_next_task(j):
 			t.job_type = d.id and \
 			j.type = d.id;"%(
 			job['id'], job['next'])
+	if debug:
+		print q
 	ct = db.query(q).dictresult()[0]
 	if ct['action'] == None:
 		ct['action'] = 'default'
@@ -502,6 +557,8 @@ def show(job):
 def delete(job):
 	if job:
 		q = "delete from job where name = '%s';"%(job)
+		if debug:
+			print q
 		db.query(q)
 
 def create_write_protect_on_job(name, args, comment = ''):
@@ -616,14 +673,19 @@ def even(i):
 
 # complex operations
 
-def recommend_write_protect_job(media_type, cap):
-	# how many?
-	n = len(cap)*21
+CAPS_PER_TICKET = 10
+VOLUMES_PER_CAP = 21
+
+def recommend_write_protect_job(media_type='9940B'):
+	# get max cap number
+	n = get_max_cap_number(cluster, 'WP') + 1
 	# get exclusion list:
 	q = "select object from object, job \
 		where \
 			object.job = job.id and \
 			job.finish is null;"
+	if debug:
+		print q
 	excl = db.query(q).getresult()
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
@@ -634,41 +696,49 @@ def recommend_write_protect_job(media_type, cap):
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
 			write_protected = 'n' and \
+			not label like '%%-MIGRATION' and \
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion, n)
+			limit %d;"%(media_type, exclusion,
+			VOLUMES_PER_CAP*CAPS_PER_TICKET)
 	else:
 		q = "select label from volume where \
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
 			write_protected = 'n' and \
+			not label like '%%-MIGRATION' \
 			order by label \
-			limit %d;"%(media_type, n)
+			limit %d;"%(media_type,
+			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+	if debug:
+		print q
 	res = edb.query(q).getresult()
 	job = {}
-	for i in cap:
-		job[i] = []
 	cp = 0
-	for i in job.keys():
+	for i in range(n, n + CAPS_PER_TICKET):
+		job[i] = []
 		for j in range(21):
 			try:
 				job[i].append(res[cp][0])
 				cp = cp + 1
 			except:
+				j = -1
 				break
-		if j < 21: # early quit
+		if j < 0: # early quit
 			break
 	return job
 
-def recommend_write_permit_job(media_type, cap):
-	# how many?
-	n = len(cap)*21
+def recommend_write_permit_job(media_type='9940B'):
+	# get max cap number
+	n = get_max_cap_number(cluster, 'WE') + 1
 	# get exclusion list:
 	q = "select object from object, job \
 		where \
 			object.job = job.id and \
 			job.finish is null;"
+	if debug:
+		print q
 	excl = db.query(q).getresult()
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
@@ -679,34 +749,68 @@ def recommend_write_permit_job(media_type, cap):
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
 			write_protected = 'y' and \
+			not label like '%%-MIGRATION' and \
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion, n)
+			limit %d;"%(media_type, exclusion,
+			VOLUMES_PER_CAP*CAPS_PER_TICKET)
 	else:
 		q = "select label from volume where \
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
 			write_protected = 'y' and \
+			not label like '%%-MIGRATION' \
 			order by label \
-			limit %d;"%(media_type, n)
+			limit %d;"%(media_type,
+			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+	if debug:
+		print q
 	res = edb.query(q).getresult()
 	job = {}
-	for i in cap:
-		job[i] = []
 	cp = 0
-	for i in job.keys():
+	for i in range(n, n + CAPS_PER_TICKET):
+		job[i] = []
 		for j in range(21):
 			try:
 				job[i].append(res[cp][0])
 				cp = cp + 1
 			except:
+				j = -1
 				break
-		if j < 21: # early quit
+		if j < 0: # early quit
 			break
 	return job
 
-			
+# make_args(d) -- make arguments from a dictionary
+def make_args(d):
+	res = []
+	for k in d.keys():
+		if d[k]:
+			res.append(k+':')
+			for i in d[k]:
+				res.append(i)
+	return res
+
+# make_cap(list)
+def make_cap(l):
+	cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
+	for i in l:
+		cap_script = cap_script + ' '+i
+	cap_script = cap_script + " \\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
+	return cap_script
+
+# get_max_cap_number(cluster)
+def get_max_cap_number(cluster, op_type=''):
+	q = "select max(to_number(substr(association, 4), 'FM999999')) \
+		from object, job \
+		where name like '%s%s%%' and object.job = job.id;"%(
+		cluster, op_type)
+	res = db.query(q).getresult()
+	if res:
+		return int(res[0][0])
+	else:
+		return 0
 
 PROMPT = "operation> "
 
@@ -740,6 +844,7 @@ def shell():
 				print res
 	return
 
+
 # execute(args) -- execute args[0], args[1:]
 def execute(args):
 	n_args = len(args)
@@ -756,6 +861,8 @@ def execute(args):
 				from job, job_definition where \
 					job.type = job_definition.id \
 				order by job.start;"
+			if debug:
+				print q
 			return db.query(q)
 		elif args[1] == 'open':
 			q = "select job.id, job.name, \
@@ -765,6 +872,8 @@ def execute(args):
 					job.type = job_definition.id and \
 					finish is null \
 				order by job.start;"
+			if debug:
+				print q
 			return db.query(q)
 		elif args[1] == 'closed' or args[1] == 'completed' or args[1] == 'finished':
 			q = "select job.id, job.name, \
@@ -774,6 +883,8 @@ def execute(args):
 					job.type = job_definition.id and \
 					not finish is null \
 				order by job.start;"
+			if debug:
+				print q
 			return db.query(q)
 		elif args[1] == 'has':
 			qq = "select job.id, job.name, \
@@ -787,6 +898,8 @@ def execute(args):
 			for i in args[2:]:
 				q =  q + " intersect (%s)"%(qq%(i))
 			q = q + ";"
+			if debug:
+				print q
 			return db.query(q)
 		else:
 			or_stmt = "job.name = '%s' "%(args[1])
@@ -799,6 +912,8 @@ def execute(args):
 					job.type = job_definition.id \
 					and (%s) \
 				order by job.start;"%(or_stmt)
+			if debug:
+				print q
 			return db.query(q)
 	elif cmd == "show": # show a job
 		for i in args[1:]:
@@ -812,6 +927,18 @@ def execute(args):
 			return create_write_protect_off_job(args[2], args[3:])
 		else:
 			return "don't know what to do"
+	elif cmd == "auto_write_protect_on":
+		if len(args) > 1:
+			res = recommend_write_protect_job(args[1])
+		else:
+			res = recommend_write_protect_job()
+		pprint.pprint(res)
+	elif cmd == "auto_write_protect_off":
+		if len(args) > 1:
+			res = recommend_write_permit_job(args[1])
+		else:
+			res = recommend_write_permit_job()
+		pprint.pprint(res)
 	elif cmd == "current": # current task
 		result = []
 		for i in args[1:]:
@@ -888,6 +1015,8 @@ def execute(args):
 					object.job = job.id and \
 					object.object = '%s' \
 				order by job.start;"%(i)
+			if debug:
+				print q
 			print db.query(q)
 	elif cmd == "find+" or cmd == "locate+":	# with details
 		for i in args[1:]:
@@ -898,6 +1027,8 @@ def execute(args):
 					object.job = job.id and \
 					object.object = '%s' \
 				order by job.start;"%(i)
+			if debug:
+				print q
 			res =  db.query(q).getresult()
 			for j in res:
 				job = get_job_by_name(j[0])
@@ -920,6 +1051,8 @@ def execute(args):
 							o1.object = o2.object and \
 							j1.name = '%s') \
 				order by start;"%(i)
+			if debug:
+				print q
 			print db.query(q)
 	elif cmd == "help":
 		if len(args) == 1:
@@ -928,6 +1061,8 @@ def execute(args):
 			help(args[1])
 	else:
 		return 'unknown command "%s"'%(cmd)
+
+
 
 
 if __name__ == '__main__':
