@@ -3174,10 +3174,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #return
                     pass
                 #----------------
-                if self.rewind_tape:
-                    if 
-                    # wait till tape gets rewound
-                    Trace.log(e_errors.INFO, "Waiting for tape get rewound")
                     
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
