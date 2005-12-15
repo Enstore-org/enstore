@@ -34,6 +34,7 @@ import enstore_functions2
 import enstore_mail
 import enstore_erc_functions
 import enstore_constants
+import enstore_pg
 import www_server
 import volume_family
 import option
