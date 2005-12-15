@@ -327,6 +327,19 @@ def move_file(input_filename, output_filename):
     fc_ticket['fc']['uid'] = p.pstat[stat.ST_UID]
     fc_ticket['fc']['gid'] = p.pstat[stat.ST_GID]
 
+    #If the original file is set read-only and the target file is within
+    # the same pnfs database area, then the outputfile at this point will
+    # also be read-only (because rename() would succed).  Thus, we need to
+    # turn on the write bits.
+    try:
+        if not p.pstat[stat.ST_MODE] & (stat.S_IWUSR | stat.S_IWGRP |
+                                        stat.S_IWOTH):
+            os.chmod(output_filename,
+                     stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    except OSError, msg:
+        print_error(e_errors.OSERROR,
+                    "Unable to set temporary permissions: %s" % str(msg))
+
     try:
         #Update file's layer 1 information.
         new_p.set_bit_file_id(new_bfid)
@@ -403,6 +416,17 @@ def move_file(input_filename, output_filename):
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File ownership update failed: %s" % str(msg))
+            sys.exit(1)
+    elif not out_fd:
+
+        # If the file was rename()ed we must set the permissions back.
+        # They would have been modified if the original file was read-only.
+        
+        try:
+            os.chmod(output_filename, p.pstat[stat.ST_MODE])
+        except OSError, msg:
+            print_error(e_errors.OSERROR,
+                        "File permissions update failed: %s" % str(msg))
             sys.exit(1)
 
     #Update the file clerk information.  This must be last.  If any of the
