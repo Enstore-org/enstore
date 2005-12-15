@@ -3147,7 +3147,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #check if tape thread is running
                     thread = getattr(self, 'tape_thread', None)
                     if thread and thread.isAlive():
+                        # do actual rewind in a tape thread
                         self.rewind_tape = 1
+                    else:
+                        # tape thread is gone: rewind here
+                        self.tape_driver.rewind()
+                        self.current_location = 0L
                     # do actual rewind in a tape thread
                     ##Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
                     ##self.tape_driver.rewind()
