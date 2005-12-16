@@ -1882,12 +1882,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             Trace.trace(27,"write_tape: write interrupted transfer failed")
             self.tape_driver.flush() # to empty buffer and to release devivice from this thread
-            if self.rewind_tape:
-                Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
-                self.tape_driver.rewind()
-                self.current_location = 0L
-                self.rewind_tape = 0
-
             return
 
         Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
@@ -1902,11 +1896,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             Trace.log(e_errors.ERROR,"Transfer failed just before writing file marks")
             self.tape_driver.flush() # to empty buffer and to release devivice from this thread
-            if self.rewind_tape:
-                Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
-                self.tape_driver.rewind()
-                self.current_location = 0L
-                self.rewind_tape = 0
             return
         
         if self.bytes_written == self.bytes_to_write:
@@ -2937,6 +2926,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     ##if self.config['product_id'] == 'T9940B':
                     ##    Trace.trace(42, "WAYNE DEBUG: rewinding")
                     ##    self.tape_driver.rewind()
+		    ##
                     ##    Trace.trace(42, "WAYNE DEBUG: rewriting label")
                     ##    self.tape_driver.write(vol1_label, 0, 80)
                     ##    self.tape_driver.writefm()
@@ -3145,24 +3135,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.mode == WRITE:
                     ## this is a temporary solution for not overwritin files
                     #check if tape thread is running
-                    thread = getattr(self, 'tape_thread', None)
-                    if thread and thread.isAlive():
-                        # do actual rewind in a tape thread
-                        self.rewind_tape = 1
-                        Trace.log(e_errors.INFO, "Waiting for tape get rewound")
-                        for wait in range(180):
-                           if thread and thread.isAlive():
-                               time.sleep(1)
-                        if thread and thread.isAlive():
-                            Trace.log(e_errors.ERROR, "Tape was not rewound in 3 minutes will set mover OFFLINE")
-                            self.offline()
-                            return
-                            
-                    else:
-                        # tape thread is gone: rewind here
-                        Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape. Current thread: %s"%(cur_thread_name,));
-                        self.tape_driver.rewind()
-                        self.current_location = 0L
                     # do actual rewind in a tape thread
                     ##Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
                     ##self.tape_driver.rewind()
