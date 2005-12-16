@@ -1645,7 +1645,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if ticket.has_key('copy'):
             if ticket['fc'].has_key('original_bfid'):
                 if ticket.has_key('vc') and ticket['vc'].has_key('original_file_family'):
-                    ticket['vc']['file_family'] = "%s_%s"%(ticket['vc']['original_file_family'],ticket['copy'])
+                    ticket['vc']['file_family'] = "%s_%s_%s"%(ticket['vc']['original_file_family'],'copy',int(ticket['copy']))
                 else:
                     ticket['status'] = (e_errors.MALFORMED,
                                         "ticket does not have a key for copy %s"%('original_file_family',))
@@ -2515,11 +2515,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         listen_socket.listen(4)
         ticket["library_manager_callback_addr"] = (library_manager_host, library_manager_port)
         self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print "CONNECT",ticket['callback_addr']
         i=self.control_socket.connect(ticket['callback_addr'])
-        print "CONNET RETURNED",i
         callback.write_tcp_obj_new(self.control_socket, ticket)
-        print "WRITE returned"
         r,w,x = select.select([listen_socket], [], [], 15)
         if not r:
             listen_socket.close()
