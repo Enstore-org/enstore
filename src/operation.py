@@ -725,18 +725,16 @@ def recommend_write_protect_job(media_type='9940B'):
 		print q
 	res = edb.query(q).getresult()
 	job = {}
-	cp = 0
-	for i in range(n, n + CAPS_PER_TICKET):
-		job[i] = []
-		for j in range(21):
-			try:
-				job[i].append(res[cp][0])
-				cp = cp + 1
-			except:
-				j = -1
-				break
-		if j < 0: # early quit
-			break
+	j = 0
+	cap_n = n
+	for i in range(len(res)):
+		if j == 0:
+			job[cap_n] = []
+		job[cap_n].append(res[i][0])
+		j = j + 1
+		if j >= VOLUMES_PER_CAP:
+			j = 0
+			cap_n = cap_n + 1
 	return job
 
 def recommend_write_permit_job(media_type='9940B'):
@@ -778,18 +776,16 @@ def recommend_write_permit_job(media_type='9940B'):
 		print q
 	res = edb.query(q).getresult()
 	job = {}
-	cp = 0
-	for i in range(n, n + CAPS_PER_TICKET):
-		job[i] = []
-		for j in range(21):
-			try:
-				job[i].append(res[cp][0])
-				cp = cp + 1
-			except:
-				j = -1
-				break
-		if j < 0: # early quit
-			break
+	j = 0
+	cap_n = n
+	for i in range(len(res)):
+		if j == 0:
+			job[cap_n] = []
+		job[cap_n].append(res[i][0])
+		j = j + 1
+		if j >= VOLUMES_PER_CAP:
+			j = 0
+			cap_n = cap_n + 1
 	return job
 
 # make_cap_args(d) -- make arguments from a dictionary
@@ -963,42 +959,55 @@ def execute(args):
 			res = recommend_write_protect_job(args[1])
 		else:
 			res = recommend_write_protect_job()
-		clean_up_temp_dir()
-		total = 0
-		for i in res.keys():
-			total = total + len(res[i])
-			f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-			f.write(make_cap(res[i]))
-			f.write('\n')
-			f.close()
-		cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
-			WRITE_PROTECT_SCRIPT_PATH)
-		print cc
-		# os.system(cc)
-		cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
-		# os.system(cc)
-		print cc
+		# create job
+		if res:
+			job_name = cluster+'WP'+`min(res.keys())`+'-'+`max(res.keys())`
+			create_write_protect_on_job(job_name, make_cap_args(res), 'AUTO-GENERATED')
+			# clean up temp directory
+			clean_up_temp_dir()
+			total = 0
+			for i in res.keys():
+				total = total + len(res[i])
+				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
+				f.write(make_cap(res[i]))
+				f.write('\n')
+				f.close()
+			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
+				WRITE_PROTECT_SCRIPT_PATH)
+			print cc
+			# os.system(cc)
+			cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
+			# os.system(cc)
+			print cc
+		else:
+			return "no more volumes to do"
 	elif cmd == "auto_write_protect_off":
 		if len(args) > 1:
 			res = recommend_write_permit_job(args[1])
 		else:
 			res = recommend_write_permit_job()
-		# clean up temp directory
-		clean_up_temp_dir()
-		total = 0
-		for i in res.keys():
-			total = total + len(res[i])
-			f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-			f.write(make_cap(res[i]))
-			f.write('\n')
-			f.close()
-		cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
-			WRITE_PROTECT_SCRIPT_PATH)
-		print cc
-		# os.system(cc)
-		cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
-		# os.system(cc)
-		print cc
+		if res:
+			# create job
+			job_name = cluster+'WE'+`min(res.keys())`+'-'+`max(res.keys())`
+			create_write_protect_off_job(job_name, make_cap_args(res), 'AUTO-GENERATED')
+			# clean up temp directory
+			clean_up_temp_dir()
+			total = 0
+			for i in res.keys():
+				total = total + len(res[i])
+				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
+				f.write(make_cap(res[i]))
+				f.write('\n')
+				f.close()
+			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
+				WRITE_PROTECT_SCRIPT_PATH)
+			print cc
+			# os.system(cc)
+			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
+			# os.system(cc)
+			print cc
+		else:
+			return "no more volumes to do"
 	elif cmd == "current": # current task
 		result = []
 		for i in args[1:]:
