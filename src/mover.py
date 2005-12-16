@@ -3354,7 +3354,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             index = int(self.current_work_ticket['copy'])
             # select new bfid
             while 1:
-                new_bfid = '%s_%s'%(self.file_info['original_bfid'], index)
+                new_bfid = '%s_%s_%s'%(self.file_info['original_bfid'], 'copy',index)
                 reply = self.fcc.bfid_info(new_bfid)
                 if reply['status'][0] != e_errors.OK:
                     break
