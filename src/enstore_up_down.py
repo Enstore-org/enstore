@@ -776,7 +776,7 @@ def do_work(intf):
     no_mail = intf.no_mail
 
     if do_output:
-	filename = 'ENSTORE_UP_DOWN-%s'%(time.time(),)
+	filename = '/tmp/ENSTORE_UP_DOWN-%s'%(time.time(),)
 	fd = open(filename, 'w')
     rtn, summary_d = do_real_work()
     if fd:
