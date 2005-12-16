@@ -31,6 +31,7 @@ mail_sent = 0
 prefix = ""
 do_output = 0
 no_mail = 0
+fd = None
 SYSTEM = 'system'
 ALLOWED_DOWN = 'allowed_down'
 TRIES = 1
@@ -42,7 +43,6 @@ ALIVE_INTERVAL = 10
 
 LOW_CAPACITY = 0
 SUFFICIENT_CAPACITY = 1
-fd = None
 
 REMEDY_TYPE_D = { 'st' : "STK Enstore",
                   'd0' : "D0 Enstore",
@@ -55,8 +55,12 @@ def sortit(adict):
 
 # print to a file  branded with the date and time
 def enprint(text):
+    global fd
     if do_output:
 	print prefix, timeofday.tod(), text
+        if not fd:
+            filename = '/tmp/ENSTORE_UP_DOWN-%s'%(time.time(),)
+            fd = open(filename, 'w')
 	if fd:
 	    fd.write("%s %s %s\n"%(prefix, timeofday.tod(), text))
 
@@ -775,12 +779,7 @@ def do_work(intf):
     do_output = intf.summary
     no_mail = intf.no_mail
 
-    if do_output:
-	filename = '/tmp/ENSTORE_UP_DOWN-%s'%(time.time(),)
-	fd = open(filename, 'w')
     rtn, summary_d = do_real_work()
-    if fd:
-	fd.close()
     return (rtn)
 
 if __name__ == "__main__" :
