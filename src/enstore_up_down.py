@@ -42,6 +42,7 @@ ALIVE_INTERVAL = 10
 
 LOW_CAPACITY = 0
 SUFFICIENT_CAPACITY = 1
+fd = None
 
 REMEDY_TYPE_D = { 'st' : "STK Enstore",
                   'd0' : "D0 Enstore",
@@ -52,9 +53,12 @@ def sortit(adict):
     keys.sort()
     return keys
 
+# print to a file  branded with the date and time
 def enprint(text):
     if do_output:
 	print prefix, timeofday.tod(), text
+	if fd:
+	    fd.write("%s %s %s\n"%(prefix, timeofday.tod(), text))
 
 def too_long(start):
     now = time.time()
@@ -771,7 +775,12 @@ def do_work(intf):
     do_output = intf.summary
     no_mail = intf.no_mail
 
+    if do_output:
+	filename = 'ENSTORE_UP_DOWN-%s'%(time.time(),)
+	fd = open(filename, 'w')
     rtn, summary_d = do_real_work()
+    if fd:
+	fd.close()
     return (rtn)
 
 if __name__ == "__main__" :
