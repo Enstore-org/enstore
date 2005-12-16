@@ -94,6 +94,7 @@ import time
 import pprint
 import types
 import sys
+import os
 
 # enstore import
 import option
@@ -127,6 +128,15 @@ def is_time(t):
 		return True
 	else:
 		return False
+
+TEMP_DIR = '/tmp/operation'
+# make it if it is not there
+if not os.access(TEMP_DIR, os.F_OK):
+	os.makedirs(TEMP_DIR)
+
+def clean_up_temp_dir():
+	for i in os.listdir(TEMP_DIR):
+		os.remove(os.path.join(TEMP_DIR, i))
 
 DATABASEHOST = 'stkensrv6.fnal.gov'
 # DATABASEHOST = 'localhost'
@@ -782,12 +792,12 @@ def recommend_write_permit_job(media_type='9940B'):
 			break
 	return job
 
-# make_args(d) -- make arguments from a dictionary
-def make_args(d):
+# make_cap_args(d) -- make arguments from a dictionary
+def make_cap_args(d):
 	res = []
 	for k in d.keys():
 		if d[k]:
-			res.append(k+':')
+			res.append('CAP'+str(k)+':')
 			for i in d[k]:
 				res.append(i)
 	return res
@@ -811,6 +821,27 @@ def get_max_cap_number(cluster, op_type=''):
 		return int(res[0][0])
 	else:
 		return 0
+
+def make_help_desk_ticket(n, cluster, script_host, job):
+	if job == "protect":
+		action = "flip"
+	elif job == "permit":
+		action = "unflip"
+	else:
+		action = "do not touch"
+	system_name = "UNKNOWN"
+	condition = "UNKNOWN"
+	short_message = "write protect %d tapes (%s tabs) in %s silos"%(n, action, cluster.lower()+'en')
+	long_message = 'Please run "flip_tab lock" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
+	submitter = "MSS"
+	user = "MSS"
+	password = "2p9u6c"
+	category = "MSS"
+	aType = None
+	item = "ALARM"
+	
+	cc = "$ENSTORE_DIR/sbin/generate_ticket %s '%s' '%s' '%s' %s %s %s %s '%s' %s"%(system_name, condition, short_message, long_message, submitter, user, password, category, aType, item)
+	return cc
 
 PROMPT = "operation> "
 
@@ -932,13 +963,42 @@ def execute(args):
 			res = recommend_write_protect_job(args[1])
 		else:
 			res = recommend_write_protect_job()
-		pprint.pprint(res)
+		clean_up_temp_dir()
+		total = 0
+		for i in res.keys():
+			total = total + len(res[i])
+			f = open(os.path.join(TEMP_DIR, str(i)), 'w')
+			f.write(make_cap(res[i]))
+			f.write('\n')
+			f.close()
+		cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
+			WRITE_PROTECT_SCRIPT_PATH)
+		print cc
+		# os.system(cc)
+		cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
+		# os.system(cc)
+		print cc
 	elif cmd == "auto_write_protect_off":
 		if len(args) > 1:
 			res = recommend_write_permit_job(args[1])
 		else:
 			res = recommend_write_permit_job()
-		pprint.pprint(res)
+		# clean up temp directory
+		clean_up_temp_dir()
+		total = 0
+		for i in res.keys():
+			total = total + len(res[i])
+			f = open(os.path.join(TEMP_DIR, str(i)), 'w')
+			f.write(make_cap(res[i]))
+			f.write('\n')
+			f.close()
+		cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
+			WRITE_PROTECT_SCRIPT_PATH)
+		print cc
+		# os.system(cc)
+		cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
+		# os.system(cc)
+		print cc
 	elif cmd == "current": # current task
 		result = []
 		for i in args[1:]:
