@@ -1087,7 +1087,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         servers = self.server_er_msg.keys()
         self.er_lock.release()
         for aServer in servers:
-            servers_just_done.append(aServer)
+            if aServer not in servers_just_done:
+                servers_just_done.append(aServer)
             if self.server_d.has_key(aServer):
                 self.er_lock.acquire()
                 server_time = self.server_er_msg[aServer]
