@@ -1095,7 +1095,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 server = self.server_is_alive(aServer, server_time)
                 # if server is a mover, we need to get some extra status
                 if enstore_functions2.is_mover(aServer):
-                    self.update_mover(server)
+                    rtn = self.update_mover(server)
                     self.check_for_bad_writes(server)
                     # mark the mover alive again as we just got info and it may
                     # have taken awhile to get it.  only mark it alive if there was
