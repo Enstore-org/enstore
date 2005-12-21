@@ -840,6 +840,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 
     # get the information from the library manager(s)
     def update_library_manager(self, lib_man):
+        rtn = 0      # assume will timeout on something
         # get a client and then check if the server is alive
         now = time.time()
         if self.lm_state(lib_man, now):
@@ -848,6 +849,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     if self.active_volumes(lib_man, now):
                         self.check_for_stalled_queue(lib_man)
                         self.new_server_status = 1
+                        rtn = 1         # success
                     else:
                         # there was an error, we do not have the active volumes  information,
                         # if we never did default it
@@ -872,10 +874,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.default_suspect_vols(lib_man)
             self.default_work_queue(lib_man)
             self.default_active_volumes(lib_man)
-        return
+        return rtn
 
     # get the information from the mover
     def update_mover(self, mover):
+        rtn = 1          # assume no timeouts
         enstore_functions.inqTrace(enstore_constants.INQSERVERDBG, 
 				   "get new state from %s"%(mover.name,))
         self.mover_state[mover.name] = mover.client.status(self.alive_rcv_timeout, 
@@ -884,12 +887,14 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.serverfile.output_moverstatus(self.mover_state[mover.name], mover.name)
 	mover.server_status = self.mover_state[mover.name][enstore_constants.STATE]
         if e_errors.is_timedout(self.mover_state[mover.name]):
+            rtn = 0
             self.serverfile.output_etimedout(mover.host, enstore_constants.NO_STATE,
 					     time.time(), mover.name,
 					     mover.output_last_alive)
             enstore_functions.inqTrace(enstore_constants.INQERRORDBG, 
 				       "mover_status - ERROR, timed out")
         self.new_server_status = 1
+        return rtn
 
     # only change the status of the inquisitor on the system status page to
     # timed out, then exit.
@@ -1076,6 +1081,38 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             server.did_restart_alarm = 0
         return server
 
+    def get_server_info(self, servers_just_done):
+        # return a list of servers that we have not processed this time around
+        self.er_lock.acquire()
+        servers = self.server_er_msg.keys()
+        self.er_lock.release()
+        for aServer in servers:
+            servers_just_done.append(aServer)
+            if self.server_d.has_key(aServer):
+                self.er_lock.acquire()
+                server_time = self.server_er_msg[aServer]
+                self.er_lock.release()
+                server = self.server_is_alive(aServer, server_time)
+                # if server is a mover, we need to get some extra status
+                if enstore_functions2.is_mover(aServer):
+                    self.update_mover(server)
+                    self.check_for_bad_writes(server)
+                    # mark the mover alive again as we just got info and it may
+                    # have taken awhile to get it.  only mark it alive if there was
+                    # no problem getting the status
+                    if rtn:
+                        server = self.server_is_alive(aServer)
+                # if server is a library_manager, we need to get some extra status
+                if enstore_functions2.is_library_manager(aServer):
+                    rtn = self.update_library_manager(server)
+                    self.check_for_bad_writes(server)
+                    # mark the lm alive again as we just got info and it may
+                    # have taken awhile to get it.  only mark it alive if there was
+                    # no problem getting the status
+                    if rtn:
+                        server = self.server_is_alive(aServer)
+        return servers_just_done
+
     # this is the routine that is called when a message arrives from the event
     # relay.  this is what this routine does:
     #     read and decode the message from the passed in descriptor
@@ -1107,25 +1144,28 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             self.er_alive_event.clear()
             enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
                   "processing event relay message type alive")
-            # check if this is one of the servers we are watching.
-            self.er_lock.acquire()
-            servers = self.server_er_msg.keys()
-            self.er_lock.release()
-            for aServer in servers:
-                if self.server_d.has_key(aServer):
-                    self.er_lock.acquire()
-                    server_time = self.server_er_msg[aServer]
-                    del self.server_er_msg[aServer]
-                    self.er_lock.release()
-                    server = self.server_is_alive(aServer, server_time)
-                    # if server is a mover, we need to get some extra status
-                    if enstore_functions2.is_mover(aServer):
-                        self.update_mover(server)
-                        self.check_for_bad_writes(server)
-                    # if server is a library_manager, we need to get some extra status
-                    if enstore_functions2.is_library_manager(aServer):
-                        self.update_library_manager(server)
-                        self.check_for_bad_writes(server)
+            # check if this is one of the servers we are watching. we need to process
+            # all of the messages that come in while we are getting other server
+            # information too.
+            start_time = 0.0
+            # process all the received messages that are received during processing of
+            # other messages.  we do not want to get stuck here forever.  do this at max
+            # 3 times .  it would be better to put all of the getting of mover and
+            # library manager information into a separate thread, but there are many
+            # places to make thread safe.  this may be an easier solution.
+            servers_just_done = []
+            iterations = 0
+            while (time.time() - start_time > 10) or iterations == 3: 
+                start_time = time.time()
+                servers_just_done = self.get_server_info(servers_just_done)
+                iterations = iterations + 1
+            else:
+                # delete the done servers from the list of requests
+                self.er_lock.acquire()
+                for server in servers_just_done:
+                    del self.server_er_msg[server]
+                self.er_lock.release()
+                   
         if self.er_config_event.isSet():
             self.serverfile.output_alive(self.erc.event_relay_addr[0], 
                                          ALIVE, now, enstore_constants.EVENT_RELAY)
