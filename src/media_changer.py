@@ -836,8 +836,10 @@ class STK_MediaLoader(MediaLoaderMethods):
                 except:
                     pass
             try:
-                #I know this is hard-coded and inflexible. That is what I want so as to
-                #prevent any possible security problem.
+                Trace.trace(71, "ACLS command: %s" % command)
+                
+                #I know this is hard-coded and inflexible. That is what I
+                # want so as to prevent any possible security problem.
 
                 os.execv('/usr/bin/rsh',[self.acls_host,'-l',self.acls_uname,command])
             finally:
@@ -968,6 +970,7 @@ class STK_MediaLoader(MediaLoaderMethods):
             rsp = [now,response[look:],rightnow]
             pprint.pprint(rsp)
 
+        Trace.trace(71, "ACLS responce: %s" % response[look:])
         return status,response[look:], self.delta_t(mark)[0]
 
     def query(self,volume, media_type=""):
