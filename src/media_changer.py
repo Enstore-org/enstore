@@ -836,10 +836,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 except:
                     pass
             try:
-                Trace.trace(71, "ACLS command: %s" % command)
-                
-                #I know this is hard-coded and inflexible. That is what I
-                # want so as to prevent any possible security problem.
+                #I know this is hard-coded and inflexible. That is what I want so as to
+                #prevent any possible security problem.
 
                 os.execv('/usr/bin/rsh',[self.acls_host,'-l',self.acls_uname,command])
             finally:
@@ -970,7 +968,6 @@ class STK_MediaLoader(MediaLoaderMethods):
             rsp = [now,response[look:],rightnow]
             pprint.pprint(rsp)
 
-        Trace.trace(71, "ACLS responce: %s" % response[look:])
         return status,response[look:], self.delta_t(mark)[0]
 
     def query(self,volume, media_type=""):
@@ -980,7 +977,9 @@ class STK_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "%s " % (volume,)
 
         # execute the command and read the response
-        status,response, delta = self.timed_command(command,4,10)
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=1
             msg = "QUERY %i: %s => %i,%s" % (E,command,status,response)
@@ -1020,7 +1019,9 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         # execute the command and read the response
         # FIXME - what if this hangs?
-        status,response, delta = self.timed_command(command,4,10)
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,4,60)
         if status != 0:
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
@@ -1174,7 +1175,9 @@ class STK_MediaLoader(MediaLoaderMethods):
         answer_lookfor = "run"
 
         # execute the command and read the response
-        status,response,delta = self.timed_command(command,5,10)
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response,delta = self.timed_command(command,5,10)
+        status,response,delta = self.timed_command(command,5,60)
         if status != 0:
             E=18
             msg = "query server %i: %s => %i,%s" % (E,command,status,response)
