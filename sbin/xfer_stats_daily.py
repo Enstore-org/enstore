@@ -38,7 +38,27 @@ def decorate(h,color,ylabel,marker):
     h.set_line_width(20)
     h.set_marker_text(marker)
     h.set_marker_type("impulses")
-            
+
+def get_min_max(h) :
+    y_max   =  0
+    i_max = 0
+    y_min   = 1.e+32
+    i_min = 0 
+    for i in range(h.n_bins()) :
+        if (  h.get_bin_content(i) > y_max ) : 
+            y_max = h.get_bin_content(i)
+            i_max = i
+        if ( h.get_bin_content(i) < y_min  and  h.get_bin_content(i) > 0 ) :
+            y_min     = h.get_bin_content(i)
+            i_min = i
+    return y_min,i_min,y_max,i_max
+
+def get_sum(h) :
+    sum=0.
+    for i in range(h.n_bins()) :
+        sum = sum + h.get_bin_content(i)
+    return sum
+              
 exitmutexes=[]
 
 def fill_histograms(i,server_name,server_port,hlist,s1,s2):
@@ -49,7 +69,7 @@ def fill_histograms(i,server_name,server_port,hlist,s1,s2):
     db_port        = acc.get('db_port')
     name           = db_server_name.split('.')[0]
     name=db_server_name.split('.')[0]
-    print "we are in thread ",i,db_server_name,db_name,db_port
+#    print "we are in thread ",i,db_server_name,db_name,db_port
     
     h   = hlist[2*i]
     h1  = hlist[2*i+1]
@@ -69,7 +89,7 @@ def fill_histograms(i,server_name,server_port,hlist,s1,s2):
             continue
         h.fill(float(row[0]),row[1]/TB)
     db.close()
-    print "we are done in thread ",i,db_server_name,db_name,db_port
+#    print "we are done in thread ",i,db_server_name,db_name,db_port
     exitmutexes[i]=1
 
 def plot_bpd():
@@ -172,25 +192,12 @@ def plot_bpd():
     plotter.reshuffle()
     tmp=plotter.get_histogram_list()[0]
 
-    t_day_max = 0.
-    i_day_max = 0
-
-    t_day_min = 1.e+32
-    i_day_min = 0
-
-    for i in range(tmp.n_bins()) :
-        t_day = t_day + tmp.get_bin_content(i)
-        if (  tmp.get_bin_content(i) > t_day_max ) :
-            t_day_max = tmp.get_bin_content(i)
-            i_day_max = i
-        if ( tmp.get_bin_content(i) < t_day_min and  tmp.get_bin_content(i) > 0 ) :
-            t_day_min = tmp.get_bin_content(i)
-            i_day_min = i
-            
+    t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+    t_day = get_sum(tmp)
+        
     tmp.set_line_color(1)
 
     delta =  tmp.binarray[i_day_max]*0.05
-    
     tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
         tmp.binarray[i_day_max]+delta,))
@@ -200,18 +207,20 @@ def plot_bpd():
         tmp.binarray[i_day_min]+delta,))
 
     tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
-    tmp.add_text("set label \"Max   :  %5d TB (on %5s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+    tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                  time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-    tmp.add_text("set label \"Min   :  %5d TB (on %5s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
                                                                                                  time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
     tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
-
-
 
     plotter.plot()
 
     iplotter.reshuffle()
     tmp=iplotter.get_histogram_list()[0]
+
+    t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+    tmp.add_text("set label \"Total Transferred (during 30 days):  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+    
     tmp.set_line_color(1)
     tmp.set_marker_type("impulses")
     iplotter.plot()
@@ -349,17 +358,58 @@ def plot_bytes():
     plotters=[]
     plotters.append(plotter)
     plotters.append(plotter1)
-    plotters.append(iplotter)
-    plotters.append(iplotter1)
+    
+    iplotters=[]
+    iplotters.append(iplotter)
+    iplotters.append(iplotter1)
+
 
     for p in plotters:
         p.reshuffle()
         tmp=p.get_histogram_list()[0]
         tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        t_day = get_sum(tmp)
+
+        delta =  tmp.binarray[i_day_max]*0.05
+        
+        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
+                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
+                                                                                             tmp.binarray[i_day_max]+delta,))
+        
+        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+                                                                                             tmp.binarray[i_day_min]+delta,))
+
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
+        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+       
         tmp.set_marker_type("impulses")
         p.plot()
+
+    for p in iplotters:
+        p.reshuffle()
+        tmp=p.get_histogram_list()[0]
+        tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        tmp.add_text("set label \"Total (during 30 days) :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        
+        tmp.set_marker_type("impulses")
+        p.plot()
+
 
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    os.system(cmd)
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    os.system(cmd)
+
     sys.exit(0)

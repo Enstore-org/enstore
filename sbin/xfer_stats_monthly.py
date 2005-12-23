@@ -24,7 +24,7 @@ GB=1024.*1024.*1024.
 MB=1024.*1024.
 KB=1024.
 
-SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day group by date order by date"
+SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date between %s and %s group by date order by date desc"
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_month group by date order by date"
 
 SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
@@ -44,6 +44,27 @@ def decorate(h,color,ylabel,marker):
     h.set_line_width(20)
     h.set_marker_text(marker)
     h.set_marker_type("impulses")
+
+def get_min_max(h) :
+    y_max   =  0
+    i_max = 0
+    y_min   = 1.e+32
+    i_min = 0 
+    for i in range(h.n_bins()) :
+        if (  h.get_bin_content(i) > y_max ) : 
+            y_max = h.get_bin_content(i)
+            i_max = i
+        if ( h.get_bin_content(i) < y_min  and  h.get_bin_content(i) > 0 ) :
+            y_min     = h.get_bin_content(i)
+            i_min = i
+    return y_min,i_min,y_max,i_max
+
+def get_sum(h) :
+    sum=0.
+    for i in range(h.n_bins()) :
+        sum = sum + h.get_bin_content(i)
+    return sum
+
             
 exitmutexes=[]
 
@@ -55,10 +76,9 @@ def fill_histograms(i,server_name,server_port,hlist):
     db_port        = acc.get('db_port')
     name           = db_server_name.split('.')[0]
     name=db_server_name.split('.')[0]
-    print "we are in thread ",i,db_server_name,db_name,db_port
+#    print "we are in thread ",i,db_server_name,db_name,db_port
     
-    h   = hlist[2*i]
-    h1  = hlist[2*i+1]
+    h   = hlist[i]
     
     if db_port:
         db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
@@ -68,14 +88,8 @@ def fill_histograms(i,server_name,server_port,hlist):
     for row in res.getresult():
         if not row:
             continue
-        h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[1]/TB)
-#    res=db.query(SELECT_WRITTEN_BYTES)
-#    for row in res.getresult():
-#        if not row:
-#            continue
-#        h.fill(float(row[0]),row[1]/TB)
-#    db.close()
-    print "we are done in thread ",i,db_server_name,db_name,db_port
+        h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[1]/TB)
+    db.close()
     exitmutexes[i]=1
 
 def plot_bpd():
@@ -98,7 +112,7 @@ def plot_bpd():
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
     
-    start_day   = time.mktime((2003, 12, 31, 23, 59, 59, 0, 0, 0))
+    start_day   = time.mktime((2002, 12, 31, 23, 59, 59, 0, 0, 0))
     now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
     nbins       = int((now_day-start_day)/(24.*3600.)+0.5)
 
@@ -110,6 +124,15 @@ def plot_bpd():
     s_i  = histogram.Histogram1D("integrated_xfers_total_by_month","Integarted total Bytes transferred per Month By Enstore",nbins,float(start_day),float(now_day))
     s_i.set_time_axis(True)
     iplotter=histogram.Plotter("integrated_xfers_total_by_month","Integarted total Bytes transferred per Month By Enstore")
+
+    s1  = histogram.Histogram1D("writes_total_by_month","Total bytes written per month to Enstore",nbins,float(start_day),float(now_day))
+    s1.set_time_axis(True)
+    plotter1=histogram.Plotter("writes_total_by_month","Total TBytes written per month by Enstore")
+    s1_i  = histogram.Histogram1D("writes_total_by_month","Integrated Total bytes written per month to Enstore",nbins,float(start_day),float(now_day))
+    s1_i.set_time_axis(True)
+
+    iplotter1=histogram.Plotter("integrated_writes_total_by_month","Integrated Total TBytes written per month by Enstore")
+
 
     w_month=0.
     r_month=0.
@@ -135,6 +158,12 @@ def plot_bpd():
             h.set_line_color(color)
             h.set_line_width(20)
 
+            h1   = histogram.Histogram1D("writes_by_month_%s"%(server,),"Total Bytes Written by Month By %s"%(server,),nbins,float(start_day),float(now_day))
+            decorate(h1,color,"TB/month",server)
+            histograms.append(h1)
+            
+            
+
             color=color+1
             if db_port:
                 db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
@@ -145,6 +174,7 @@ def plot_bpd():
                 if not row:
                     continue
                 h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d')),(row[1]+row[2])/TB)
+                h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d')),row[2]/TB)
             db.close()
 
             tmp=s+h
@@ -176,26 +206,43 @@ def plot_bpd():
             tmp.set_line_width(20)
             iplotter.add(tmp)
             s_i=tmp
+
+            tmp=s1+h1
+            tmp.set_name("deletes_monthly_%s"%(h1.get_marker_text(),))
+            tmp.set_data_file_name("deletes_monthly_%s"%(h1.get_marker_text(),))
+            tmp.set_marker_text(h1.get_marker_text())
+            tmp.set_time_axis(True)
+            tmp.set_ylabel(h1.get_ylabel())
+            tmp.set_marker_type(h1.get_marker_type())
+            tmp.set_line_color(color)
+            tmp.set_line_width(20)
+            plotter1.add(tmp)
+            s1=tmp
+
+
+            integral1 = h1.integral()
+            
+            integral1.set_marker_text(h1.get_marker_text())
+            integral1.set_marker_type("impulses")
+            integral1.set_ylabel("TB");
+            
+            tmp=s1_i+integral1
+            tmp.set_name("integrated_deletes_monthly_%s"%(h1.get_marker_text(),))
+            tmp.set_data_file_name("integrated_deletes_monthly_%s"%(h1.get_marker_text(),))
+            tmp.set_marker_text(h1.get_marker_text())
+            tmp.set_time_axis(True)
+            tmp.set_ylabel(h1.get_ylabel())
+            tmp.set_marker_type(h1.get_marker_type())
+            tmp.set_line_color(color)
+            tmp.set_line_width(20)
+            iplotter1.add(tmp)
+            s1_i=tmp
             
     plotter.reshuffle()
     tmp=plotter.get_histogram_list()[0]
 
-    t_month_max = 0.
-    i_month_max = 0
-
-    t_month_min = 1.e+32
-    i_month_min = 0
-
-    for i in range(tmp.n_bins()) :
-        if (  tmp.get_bin_content(i) > 0 ) : n_month = n_month + 1 
-        t_month = t_month + tmp.get_bin_content(i)
-        if (  tmp.get_bin_content(i) > t_month_max ) :
-            t_month_max = tmp.get_bin_content(i)
-            i_month_max = i
-        if ( tmp.get_bin_content(i) < t_month_min and  tmp.get_bin_content(i) > 0 ) :
-            t_month_min = tmp.get_bin_content(i)
-            i_month_min = i
-            
+    t_month_min,i_month_min,t_month_max,i_month_max = get_min_max(tmp)
+    t_month = get_sum(tmp)
     tmp.set_line_color(1)
 
     delta =  tmp.binarray[i_month_max]*0.05
@@ -209,19 +256,56 @@ def plot_bpd():
         tmp.binarray[i_month_min]+delta,))
 
     tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_month+0.5,))
-    tmp.add_text("set label \"Max   :  %5d TB (on %5s) \" at graph .05,.85  font \"Helvetica,13\"\n"%(t_month_max+0.5,
+    tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.85  font \"Helvetica,13\"\n"%(t_month_max+0.5,
                                                                                                  time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_max))),))
-    tmp.add_text("set label \"Min   :  %5d TB (on %5s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
+    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
                                                                                                  time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
-    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month / n_month+0.5,))
+    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month /(tmp.n_bins()-1)+0.5,))
 
     plotter.plot()
 
     iplotter.reshuffle()
     tmp=iplotter.get_histogram_list()[0]
+    t_month_min,i_month_min,t_month_max,i_month_max = get_min_max(tmp)
+    tmp.add_text("set label \"Total Transferred :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_month_max+0.5,))
     tmp.set_line_color(1)
     tmp.set_marker_type("impulses")
     iplotter.plot()
+
+
+    plotter1.reshuffle()
+    tmp=plotter1.get_histogram_list()[0]
+
+    t_month_min,i_month_min,t_month_max,i_month_max = get_min_max(tmp)
+    t_month = get_sum(tmp)
+    tmp.set_line_color(1)
+
+    delta =  tmp.binarray[i_month_max]*0.05
+    
+    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_max]+0.5,
+        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_max))),
+        tmp.binarray[i_month_max]+delta,))
+
+    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_min]+0.5,
+        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_min))),
+        tmp.binarray[i_month_min]+delta,))
+
+    tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_month+0.5,))
+    tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.85  font \"Helvetica,13\"\n"%(t_month_max+0.5,
+                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_max))),))
+    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
+                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
+    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month / (tmp.n_bins()-1)+0.5,))
+
+    plotter1.plot()
+
+    iplotter1.reshuffle()
+    tmp=iplotter1.get_histogram_list()[0]
+    t_month_min,i_month_min,t_month_max,i_month_max = get_min_max(tmp)
+    tmp.add_text("set label \"Total Written :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_month_max+0.5,))
+    tmp.set_line_color(1)
+    tmp.set_marker_type("impulses")
+    iplotter1.plot()
 
 
 def plot_bytes():
@@ -239,27 +323,17 @@ def plot_bytes():
     now_time    = time.time()
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
-    start_day   = time.mktime((2002, 12, 31, 23, 59, 59, 0, 0, 0))
+    start_day   = time.mktime((2001, 12, 31, 23, 59, 59, 0, 0, 0))
     now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
     nbins       = int((now_day-start_day)/(24.*3600.)+0.5)
+#    Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
 
 
-    s  = histogram.Histogram1D("writes_totals_by_month","Total bytes written per month to Enstore",nbins,float(start_day),float(now_day))
     s1 = histogram.Histogram1D("deletes_total_by_month","Total bytes deleted per month from Enstore",nbins,float(start_day),float(now_day))
-
-    s.set_time_axis(True)
     s1.set_time_axis(True)
-
-    plotter=histogram.Plotter("writes_total_by_month","Total TBytes written per month by Enstore")
     plotter1=histogram.Plotter("deletes_total_by_month","Total TBytes deleted per month from Enstore")
-
-    s_i  = histogram.Histogram1D("writes_total_by_month","Integrated Total bytes written per month to Enstore",nbins,float(start_day),float(now_day))
     s1_i = histogram.Histogram1D("deletes_total_by_month","Integrated Total bytes deleted per month from Enstore",nbins,float(start_day),float(now_day))
-
-    s_i.set_time_axis(True)
     s1_i.set_time_axis(True)
-
-    iplotter=histogram.Plotter("integrated_writes_total_by_month","Integrated Total TBytes written per month by Enstore")
     iplotter1=histogram.Plotter("integrated_deletes_total_by_month","Integrated Total TBytes deleted per month from Enstore")
 
     i = 0
@@ -269,10 +343,6 @@ def plot_bytes():
 #        if (server == "stken") : continue
         if ( server_port != None ):
 
-            h   = histogram.Histogram1D("writes_by_month_%s"%(server,),"Total Bytes Written by Month By %s"%(server,),nbins,float(start_day),float(now_day))
-            decorate(h,color,"TB/month",server)
-            histograms.append(h)
-            
             h   = histogram.Histogram1D("deletes_by_month_%s"%(server,),"Total Bytes Deleted by Month By %s"%(server,),nbins,float(start_day),float(now_day))
             decorate(h,color,"TB/month",server)
             histograms.append(h)
@@ -283,26 +353,12 @@ def plot_bytes():
             color=color+1
 
     while 0 in exitmutexes: pass
-#    for h in histograms: h.plot()
     
     i = 0
-    for i in range(len(histograms)/2):
-        h  = histograms[i*2]
-        h1 = histograms[2*i+1]
+    for i in range(len(histograms)):
+        h1  = histograms[i]
         color = i + 2
         
-        tmp=s+h
-        tmp.set_name("writes_monthly_%s"%(h.get_marker_text(),))
-        tmp.set_data_file_name("writes_monthly_%s"%(h.get_marker_text(),))
-        tmp.set_marker_text(h.get_marker_text())
-        tmp.set_time_axis(True)
-        tmp.set_ylabel(h.get_ylabel())
-        tmp.set_marker_type(h.get_marker_type())
-        tmp.set_line_color(color)
-        tmp.set_line_width(20)
-        plotter.add(tmp)
-        s=tmp
-
         tmp=s1+h1
         tmp.set_name("deletes_monthly_%s"%(h1.get_marker_text(),))
         tmp.set_data_file_name("deletes_monthly_%s"%(h1.get_marker_text(),))
@@ -316,28 +372,11 @@ def plot_bytes():
         s1=tmp
 
 
-        integral = h.integral()
         integral1 = h1.integral()
-
-        integral.set_marker_text(h.get_marker_text())
-        integral.set_marker_type("impulses")
-        integral.set_ylabel("TB");
 
         integral1.set_marker_text(h1.get_marker_text())
         integral1.set_marker_type("impulses")
         integral1.set_ylabel("TB");
-
-        tmp=s_i+integral
-        tmp.set_name("integrated_writes_monthly_%s"%(integral.get_marker_text(),))
-        tmp.set_data_file_name("integrated_writes_monthly_%s"%(integral.get_marker_text(),))
-        tmp.set_marker_text(integral.get_marker_text())
-        tmp.set_time_axis(True)
-        tmp.set_ylabel(integral.get_ylabel())
-        tmp.set_marker_type(integral.get_marker_type())
-        tmp.set_line_color(color)
-        tmp.set_line_width(20)
-        iplotter.add(tmp)
-        s_i=tmp
 
         tmp=s1_i+integral1
         tmp.set_name("integrated_deletes_monthly_%s"%(h1.get_marker_text(),))
@@ -354,19 +393,58 @@ def plot_bytes():
         i=i+1
 
     plotters=[]
-    plotters.append(plotter)
     plotters.append(plotter1)
-    plotters.append(iplotter)
-    plotters.append(iplotter1)
+    
+    iplotters=[]
+    iplotters.append(iplotter1)
+
 
     for p in plotters:
         p.reshuffle()
         tmp=p.get_histogram_list()[0]
         tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        t_day = get_sum(tmp)
+
+        delta =  tmp.binarray[i_day_max]*0.05
+        
+        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
+                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
+                                                                                             tmp.binarray[i_day_max]+delta,))
+        
+        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+                                                                                             tmp.binarray[i_day_min]+delta,))
+
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
+        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+       
+        tmp.set_marker_type("impulses")
+        p.plot()
+
+    for p in iplotters:
+        p.reshuffle()
+        tmp=p.get_histogram_list()[0]
+        tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        
         tmp.set_marker_type("impulses")
         p.plot()
 
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    os.system(cmd)
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
+    os.system(cmd)
+
+
     sys.exit(0)
