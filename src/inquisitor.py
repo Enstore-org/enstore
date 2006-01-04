@@ -1156,7 +1156,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # places to make thread safe.  this may be an easier solution.
             servers_just_done = []
             iterations = 0
-            while (time.time() - start_time > 10) or iterations == 3: 
+            while (time.time() - start_time > 10) or iterations == 3:
+                i = time.time() - start_time
+                enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
+                                           "periodic timeout iterations = %s, now-start= %s"%(iterations. i))
                 start_time = time.time()
                 servers_just_done = self.get_server_info(servers_just_done)
                 iterations = iterations + 1
