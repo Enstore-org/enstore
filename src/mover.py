@@ -884,7 +884,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 time.sleep(2)
                 sys.exit(-1)
             del(pipeObj)
-        
+
+        self.restart_unlock()
 
         Trace.log(e_errors.INFO, "starting mover %s" % (self.name,))
         
@@ -1149,7 +1150,78 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##end of __init__
 
     # restart itselfs
+
+
+
+    def restart_lockfile_name(self):
+        d=os.environ.get("ENSTORE_TMP","/tmp")
+        return os.path.join(d, "restart_lock%s"%(self.name,))
+    
+    def restart_check(self):
+        return os.path.exists(self.restart_lockfile_name())
+    
+    def restart_lock(self):
+        filename=self.restart_lockfile_name()
+        try:
+            f=open(filename,'w')
+            f.write('locked\n')
+            f.close()
+        except (OSError, IOError):
+            Trace.log(e_errors.ERROR, "Cannot write %s"%(filename,))
+        
+    def restart_unlock(self):
+        filename=self.restart_lockfile_name()
+        try:
+            os.unlink(filename)
+        except (OSError, IOError), detail:
+            Trace.log(e_errors.ERROR, "Cannot unlink %s %s"%(filename,detail))
+        
+        
+
     def restart(self):
+        # to avoid restart while restarting get lock from a file
+        restart_allowed = 1
+        if self.restart_check():
+            restart_allowed = 0
+            Trace.log(e_errors.INFO, "Waiting for a lock to restart mover")
+            for wait in range(60):
+               if self.restart_check():
+                   time.sleep(2)
+               else:
+                   restart_allowed = 1
+                   break
+        if restart_allowed == 0:
+            Trace.log(e_errors.ERROR, "Can not restart there is a lock file %s preventing restart"%(self.restart_lockfile_name(),))
+            sys.exit(-1)
+        
+        self.restart_lock()   
+        cur_thread = threading.currentThread()
+        if cur_thread:
+            cur_thread_name = cur_thread.getName()
+        else:
+            cur_thread_name = None
+        if cur_thread_name:
+            if cur_thread_name in ('net_thread', 'MainThread'):
+                # check if tape_thread is active before allowing dismount
+                thread = getattr(self, 'tape_thread', None)
+                if thread and thread.isAlive():
+                    Trace.log(e_errors.INFO,"waiting for tape thread to finish")
+                    
+                for wait in range(60):
+                    if thread and thread.isAlive():
+                        time.sleep(2)
+                    else:
+                        break
+            elif cur_thread_name == 'tape_thread':
+                Trace.log(e_errors.INFO,"restart was called from tape thread")
+
+        # release data buffer
+        if self.buffer:
+            self.buffer.clear()
+            del(self.buffer)
+            self.buffer = None
+
+        
         cmd = '/usr/bin/at now+1minute'
         ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name) 
         p=os.popen(cmd, 'w')
@@ -1371,8 +1443,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                             
                 if not hasattr(self,'too_long_in_state_sent'):
                     if not self.state == ERROR:
-                        Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
-                                    (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
+                        try:
+                            Trace.alarm(e_errors.WARNING, "Too long in state %s for %s. Client host %s" %
+                                        (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
+                        except TypeError:
+                            exc, msg, tb = sys.exc_info()
+                            Trace.log(e_errors.ERROR, "error sending alarm %s %s"%(exc, msg))
+                            Trace.log(e_errors.INFO, "state %s"%(self.state,))
+                            Trace.log(e_errors.INFO, "volume %s"%(self.current_volume,))
+                            Trace.log(e_errors.INFO, "host %s"%(self.current_work_ticket['wrapper']['machine'][1],))
+                                
                         self.too_long_in_state_sent = 0 # send alarm just once
                 if self.state == ERROR:
                     ## restart the mover
@@ -1804,8 +1884,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.trace(9, "buf empty cnt %s max %s"%(buffer_empty_cnt, self.max_in_state_cnt))
                     if buffer_empty_cnt >= self.max_in_state_cnt:
                         msg = "data transfer from client stuck. Client host %s. Breaking connection"%(self.current_work_ticket['wrapper']['machine'][1],)
+                        self.tape_driver.flush() # to empty buffer and to release device from this thread
+                        ## AM: DO NOT REWIND TAPE
+                        ## do not rewind tape 
+                        ##Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+                        ##self.tape_driver.rewind()
+                        ##self.current_location = 0L
+                        ##self.rewind_tape = 0
+                        ##------------------------------------
                         self.transfer_failed(e_errors.ENCP_STUCK, msg, error_source=NETWORK)
-                        self.tape_driver.flush() # to empty buffer and to release devivice from this thread
                         return
                     buffer_empty_cnt = buffer_empty_cnt + 1
                 
@@ -1882,12 +1969,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             Trace.trace(27,"write_tape: write interrupted transfer failed")
             self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            ## AM: DO NOT REWIND TAPE
+            ##if self.rewind_tape:
+            ##    Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+            ##    self.tape_driver.rewind()
+            ##    self.current_location = 0L
+            ##    self.rewind_tape = 0
+
             return
 
         Trace.log(e_errors.INFO, "written bytes %s/%s, blocks %s header %s trailer %s" %( self.bytes_written, self.bytes_to_write, nblocks, len(self.header), len(self.trailer)))
 
         if failed:
-            rc = self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            rc = self.tape_driver.flush() # to empty buffer and to release device from this thread
             if rc[0] == -1:
                self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(rc[1],), error_source=DRIVE) 
             return
@@ -1896,6 +1990,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.tr_failed:
             Trace.log(e_errors.ERROR,"Transfer failed just before writing file marks")
             self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+            ## AM: DO NOT REWIND TAPE
+            ##if self.rewind_tape:
+            ##    Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
+            ##    self.tape_driver.rewind()
+            ##    self.current_location = 0L
+            ##    self.rewind_tape = 0
             return
         
         if self.bytes_written == self.bytes_to_write:
@@ -3133,17 +3233,34 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.state = HAVE_BOUND
                 #---------------
                 if self.mode == WRITE:
-                    ## this is a temporary solution for not overwritin files
-                    #check if tape thread is running
-                    # do actual rewind in a tape thread
-                    ##Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape");
-                    ##self.tape_driver.rewind()
-                    ##self.current_location = 0L
+                    ## AM: DO NOT REWIND TAPE
+                    
+                
+                    ##if cur_thread_name != 'tape_thread':
+                    ##thread = getattr(self, 'tape_thread', None)
+                    ##    if thread and thread.isAlive():
+                    ##        # do actual rewind in a tape thread
+                    ##        self.rewind_tape = 1
+                    ##Trace.log(e_errors.INFO, "Waiting for tape get rewound")
+                    ##for wait in range(180):
+                    ##    if thread and thread.isAlive():
+                    ##               time.sleep(1)
+                    ##        if thread and thread.isAlive():
+                    ##            Trace.log(e_errors.ERROR, "Tape was not rewound in 3 minutes will set mover OFFLINE")
+                    ##            self.offline()
+                    ##            return
 
-                    #Trace.log(e_errors.ERROR, "possible ovewrite condition. Will set tape readonly");
-                    #self.vcc.set_system_readonly(self.current_volume)
-                    #self.dismount_volume(after_function=self.idle)
-                    #return
+                    ##    else:
+                    ##        # tape thread is gone: rewind here
+                    ##        Trace.log(e_errors.INFO, "To avoid potential data overwriting will rewind tape. Current thread: %s"%(cur_thread_name,));
+                    ##        self.tape_driver.rewind()
+                    ##        self.current_location = 0L
+                    ##    #return
+                    ##    pass
+                    pass
+                
+                else:
+                    ## tape was rewound in the tape thread
                     pass
                 #----------------
                     
