@@ -797,6 +797,15 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
+            if self.mode == WRITE:
+                self.tape_driver.close()
+                # swith to read so that ftt.get_stats does not write 2 filemarks
+                try:
+                    have_tape = self.tape_driver.open(self.device, mode=READ, retry_count=3)
+                except  self.ftt.FTTError, detail:
+                    Trace.alarm(e_errors.ERROR,"Can not reopen tape drive for stats: %s %s"%(self.ftt.FTTError, detail))
+                    return
+                
             stats = self.tape_driver.ftt.get_stats()
             Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
                                                                        stats[self.ftt.WRITE_PROT],
@@ -2026,6 +2035,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             location, block = self.tape_driver.tell()
+            # swith to read so that ftt.get_stats does not write 2 filemarks
+            self.tape_driver.close()
+            try:
+                have_tape = self.tape_driver.open(self.device, mode=READ, retry_count=3)
+            except  self.ftt.FTTError, detail:
+                self.transfer_failed(e_errors.WRITE_ERROR, "Can not reopen tape drive for stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                return
             stats = self.tape_driver.ftt.get_stats()
             try:
                 block_n = stats[self.ftt.BLOCK_NUMBER]
@@ -2037,7 +2053,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
                 
             
-            Trace.log(e_errors.INFO, 'filemarks written. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, tot_blocks, bot))
+            Trace.log(e_errors.INFO, 'filemarks written. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot))
             
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
