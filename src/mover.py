@@ -2026,6 +2026,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             location, block = self.tape_driver.tell()
+            block_n = tot_blocks = bloc_loc = block_size = bot = 0L
             stats = self.tape_driver.get_stats()
             try:
                 block_n = stats[self.ftt.BLOCK_NUMBER]
@@ -2362,6 +2363,20 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
         Trace.log(e_errors.INFO, "read bytes %s/%s, blocks %s header %s" %(self.bytes_read, self.bytes_to_read, nblocks, header_size))
+        location, block = self.tape_driver.tell()
+        block_n = tot_blocks = bloc_loc = block_size = bot = 0L
+        stats = self.tape_driver.get_stats()
+        try:
+            block_n = stats[self.ftt.BLOCK_NUMBER]
+            tot_blocks = stats[self.ftt.BLOCK_TOTAL]
+            bloc_loc = stats[self.ftt.BLOC_LOC]
+            block_size = stats[self.ftt.BLOCK_SIZE]
+            bot = stats[self.ftt.BOT]
+        except  self.ftt.FTTError, detail:
+            self.transfer_failed(e_errors.INFO, "error getting stats after read %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                
+            
+        Trace.log(e_errors.INFO, 'drive stats after read. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, bloc_loc, tot_blocks, bot))
         
         if break_here and self.method == 'read_next':
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
