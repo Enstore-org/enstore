@@ -516,22 +516,25 @@ class FTTDriver(generic_driver.Driver):
         clean = 0
         # to avoid writing filemark during get_stats operation
         # set last operation to 0
-        ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
-        stats = self.ftt and self.ftt.get_stats()
-        if stats:
-            try:
-                clean = int(stats[ftt.CLEANING_BIT])
-            except:
-                pass
+        if self.ftt:
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+            stats = self.ftt.get_stats()
+            if stats:
+                try:
+                    clean = int(stats[ftt.CLEANING_BIT])
+                except:
+                    pass
         return clean
 
     def get_stats(self):
+        stats = None
         # to avoid writing filemark during get_stats operation
         # set last operation to 0
         # to avoid writing filemark during get_stats operation
         # set last operation to 0
-        ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
-        stats = self.ftt.get_stats()
+        if self.ftt:
+            ftt._ftt.ftt_set_last_operation(self.ftt.d, 0)
+            stats = self.ftt.get_stats()
         return stats
     
 if __name__ == '__main__':
