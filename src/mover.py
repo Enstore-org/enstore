@@ -797,16 +797,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def update_stat(self):
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
-            if self.mode == WRITE:
-                self.tape_driver.close()
-                # swith to read so that ftt.get_stats does not write 2 filemarks
-                try:
-                    have_tape = self.tape_driver.open(self.device, mode=READ, retry_count=3)
-                except  self.ftt.FTTError, detail:
-                    Trace.alarm(e_errors.ERROR,"Can not reopen tape drive for stats: %s %s"%(self.ftt.FTTError, detail))
-                    return
-                
-            stats = self.tape_driver.ftt.get_stats()
+            stats = self.tape_driver.get_stats()
             Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
                                                                        stats[self.ftt.WRITE_PROT],
                                                                        self.override_ro_mount))
@@ -1076,7 +1067,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     time.sleep(5)
                     sys.exit(-1)
 
-                stats = self.tape_driver.ftt.get_stats()
+                stats = self.tape_driver.get_stats()
                 self.config['product_id'] = stats[self.ftt.PRODUCT_ID]
                 self.config['serial_num'] = stats[self.ftt.SERIAL_NUM]
                 self.config['vendor_id'] = stats[self.ftt.VENDOR_ID]
@@ -2035,14 +2026,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             location, block = self.tape_driver.tell()
-            # swith to read so that ftt.get_stats does not write 2 filemarks
-            self.tape_driver.close()
-            try:
-                have_tape = self.tape_driver.open(self.device, mode=READ, retry_count=3)
-            except  self.ftt.FTTError, detail:
-                self.transfer_failed(e_errors.WRITE_ERROR, "Can not reopen tape drive for stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
-                return
-            stats = self.tape_driver.ftt.get_stats()
+            stats = self.tape_driver.get_stats()
             try:
                 block_n = stats[self.ftt.BLOCK_NUMBER]
                 tot_blocks = stats[self.ftt.BLOCK_TOTAL]
@@ -2442,7 +2426,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.vol_info['eod_cookie'] = loc_to_cookie(self.current_location)
 
                         if self.driver_type == 'FTTDriver' and self.rem_stats:
-                            stats = self.tape_driver.ftt.get_stats()
+                            stats = self.tape_driver.get_stats()
                             remaining = stats[self.ftt.REMAIN_TAPE]
                             if remaining is not None:
                                 remaining = long(remaining)
@@ -3033,7 +3017,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.tape_driver.rewind()
                     if self.driver_type == 'FTTDriver':
                         time.sleep(3)
-                        stats = self.tape_driver.ftt.get_stats()
+                        stats = self.tape_driver.get_stats()
                         Trace.trace(10,"WRITE_PROT=%s"%(stats[self.ftt.WRITE_PROT],))
                         write_prot = stats[self.ftt.WRITE_PROT]
                         if type(write_prot) is type(''):
@@ -3073,7 +3057,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.target_location = eod
                 self.vol_info['eod_cookie'] = loc_to_cookie(eod)
                 if self.driver_type == 'FTTDriver' and self.rem_stats:
-                    stats = self.tape_driver.ftt.get_stats()
+                    stats = self.tape_driver.get_stats()
                     remaining = stats[self.ftt.REMAIN_TAPE]
                     if remaining is not None:
                         remaining = long(remaining)
@@ -3437,7 +3421,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             stats = None
             failed = 0
             try:
-                stats = self.tape_driver.ftt.get_stats()
+                stats = self.tape_driver.get_stats()
                 r2 = long(stats[self.ftt.REMAIN_TAPE]) * 1024L
                 Trace.trace(24, "reported remaining %s" % (r2,))
             except self.ftt.FTTError, detail:
