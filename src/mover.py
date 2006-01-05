@@ -2026,7 +2026,18 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
             location, block = self.tape_driver.tell()
-            Trace.log(e_errors.INFO, 'filemarks written. Tape %s position %s block %s'%(self.current_volume, location, block))
+            stats = self.tape_driver.ftt.get_stats()
+            try:
+                block_n = stats[self.ftt.BLOCK_NUMBER]
+                tot_blocks = stats[self.ftt.BLOCK_TOTAL]
+                bloc_loc = stats[self.ftt.BLOC_LOC]
+                block_size = stats[self.ftt.BLOCK_SIZE]
+                bot = stats[self.ftt.BOT]
+            except  self.ftt.FTTError, detail:
+                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats after write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+                
+            
+            Trace.log(e_errors.INFO, 'filemarks written. Tape %s position %s block %s block_size %s bloc_loc %s tot_blocks %s BOT %s'%(self.current_volume, location, block_n, block_size, tot_blocks, bot))
             
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
