@@ -158,7 +158,7 @@ class FTTDriver(generic_driver.Driver):
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
             raise ftt.FTTError, detail
             #return -1
-        return fil
+        return fil, block
     
     def seek(self, target, eot_ok=0): #XXX is eot_ok needed?
         if type(target)==type(""):
@@ -205,7 +205,7 @@ class FTTDriver(generic_driver.Driver):
             except ftt.FTTError, detail:
                 Trace.log(e_errors.ERROR, "ftt_driver:skip_fm: %s %s" % (detail, detail.value))
                 raise ftt.FTTError, detail
-        current = self.tell()
+        current, block = self.tell()
         Trace.trace(25,"seek2: current=%s target=%s" % (current, target))
         if current != target:
             Trace.log(e_errors.ERROR, "ftt_driver:seek: Positioning error %s %s" % (current, target))

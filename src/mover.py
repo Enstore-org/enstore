@@ -2025,6 +2025,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.vcc.set_system_readonly(self.current_volume)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
+            location, block = self.tape_driver.tell()
+            Trace.log(e_errors.INFO, 'filemarks written. Tape %s position %s block %s'%(self.current_volume, location, block))
             
             if self.check_written_file() and self.driver_type == 'FTTDriver':
                 Trace.log(e_errors.INFO, "selective CRC check after writing file")
@@ -2040,7 +2042,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
 
                     return
-                save_location = self.tape_driver.tell()
+                save_location, block = self.tape_driver.tell()
                 Trace.trace(22,"save location %s" % (save_location,))
                 if have_tape != 1:
                     Trace.alarm(e_errors.ERROR, "error positioning tape %s for selective CRC check. Position %s"%
@@ -2248,7 +2250,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     detail = str(detail)
                 if self.method == 'read_next':
                     prev_loc = self.current_location
-                    self.current_location = self.tape_driver.tell()
+                    self.current_location, block = self.tape_driver.tell()
                     if detail == 'FTT_SUCCESS':
                         if self.current_location - prev_loc == 1:
                             break_here = 1
@@ -2340,8 +2342,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             if bytes_read < nbytes and self.method == 'read_next':
                 # end of file?
                 if bytes_read == 0:
-                    location = self.tape_driver.tell()
-                    Trace.log(e_errors.INFO, "location %s cur_loc %s"%(location, self.current_location))
+                    location, block = self.tape_driver.tell()
+                    Trace.log(e_errors.INFO, "location %s block %s cur_loc %s"%(location, block, self.current_location))
                     break_here = 1
                     break
             if break_here:
@@ -3225,7 +3227,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         break
         Trace.trace(26,"dismount_allowed %s after_dismount %s"%(dism_allowed, after_dismount_function))
         if encp_gone:
-            self.current_location = self.tape_driver.tell()
+            self.current_location, block = self.tape_driver.tell()
             self.dismount_time = time.time() + self.delay
             if self.state == IDLE:
                 pass
@@ -3339,7 +3341,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.vcc.update_counts(self.current_volume, rd_access=1)
         self.transfers_completed = self.transfers_completed + 1
         self.net_driver.close()
-        self.current_location = self.tape_driver.tell()
+        self.current_location, block = self.tape_driver.tell()
         now = time.time()
         self.dismount_time = now + self.delay
         self.send_client_done(self.current_work_ticket, e_errors.OK)
@@ -3393,7 +3395,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.header_labels:
            eod_increment = eod_increment + 1
             
-        self.current_location = self.tape_driver.tell()
+        self.current_location, block = self.tape_driver.tell()
         if self.current_location <= previous_eod:
             Trace.log(e_errors.ERROR, " current location %s <= eod %s" %
                       (self.current_location, previous_eod))
@@ -3430,7 +3432,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return 0
                 
         Trace.log(e_errors.INFO,
-                  "remainingbytes info in DB %s estimated %s reported from drive %s position %s" % (r0, r1, r2,self.current_location))
+                  "remaining bytes info in DB %s estimated %s reported from drive %s position %s" % (r0, r1, r2,self.current_location))
 
         capacity = self.vol_info['capacity_bytes']
         # check remaining bytes, it must be less than a previous
@@ -4363,7 +4365,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if str(detail) == "FTT_EBLANK":
                 prev_loc = self.current_location
                 try:
-                    self.current_location = self.tape_driver.tell()
+                    self.current_location, tell = self.tape_driver.tell()
                 except self.ftt.FTTError, detail:
                     self.transfer_failed(e_errors.POSITIONING_ERROR, 'Positioning error, can not get drive info %s' % (detail,),
                                      error_source=DRIVE)
@@ -4383,7 +4385,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             ########## Zalokar: April 1, 2004 ##########################
             failed=1
         self.timer('seek_time')
-        self.current_location = self.tape_driver.tell()
+        self.current_location, block = self.tape_driver.tell()
         if self.mode is WRITE:
             previous_eod = cookie_to_long(self.vol_info['eod_cookie'])
             Trace.trace(10,"seek_to_location: current location %s, eod %s"%
