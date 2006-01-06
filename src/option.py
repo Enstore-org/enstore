@@ -231,6 +231,7 @@ GET_ASSERTS = "get-asserts"                  #library
 GET_BFID = "get-bfid"                        #encp
 GET_CACHE = "get-cache"                      #encp
 GET_CRCS = "get-crcs"                        #file
+GET_LAST_ALIVE = "get-last-alive"            #inquisitor
 GET_LAST_LOGFILE_NAME = "get-last-logfile-name"  #log
 GET_LOGFILE_NAME = "get-logfile-name"        #log
 GET_LOGFILES = "get-logfiles"                #log
@@ -435,7 +436,8 @@ valid_option_list = [
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GENERATE_MESSAGES_FILE,
-    GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_LOGFILE_NAME,
+    GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
+    GET_LAST_LOGFILE_NAME,
     GET_LOGFILE_NAME, GET_LOGFILES, GET_MAX_ENCP_LINES, GET_QUEUE,
     GET_REFRESH, GET_SUSPECT_VOLS, GET_UPDATE_INTERVAL, GET_WORK,
     GET_WORK_SORTED, GET_SG_COUNT,

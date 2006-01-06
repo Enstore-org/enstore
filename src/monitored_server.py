@@ -100,6 +100,18 @@ class MonitoredServer:
 	    if not status.has_key(key):
 		status[key] = self.STATUS_FIELDS[key]
 
+    def last_heartbeat(self):
+	if self.alive_interval == NO_HEARTBEAT:
+            # we are not watching this server
+	    rtn = None
+        elif self.last_alive == enstore_constants.NEVER_ALIVE:
+            # this server was never seen alive
+            rtn = None
+        else:
+            rtn = self.last_alive
+        return rtn
+        
+
     def check_recent_alive(self, event_relay):
 	if self.alive_interval == NO_HEARTBEAT:
 	    # fake that everything is ok as we are not checking this server anyway

@@ -62,6 +62,12 @@ class Inquisitor(generic_client.GenericClient):
 	# tell the inquisitor to get the select wake up timeout
 	return self.send(t)
 
+    def get_last_alive (self, server_list):
+	t = {"work"    : "get_last_alive",
+             "servers" : server_list}
+	# tell the inquisitor to get the last time the server[s] were alive
+	return self.send(t)
+
     def max_encp_lines (self, value):
 	# tell the inquisitor to set the value for the max num of displayed
 	# encp lines
@@ -199,6 +205,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
         self.output_dir = ""
         self.update_interval = -1
         self.get_update_interval = 0
+        self.get_last_alive = ""
 	self.subscribe = None
 	self.show = 0
 	self.up = ""
@@ -248,6 +255,14 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN,
                             },
+        option.GET_LAST_ALIVE:{option.HELP_STRING:
+                               "return the last time a heartbeat was received "
+                               "by the inquisitor for the listed servers",
+                               option.VALUE_TYPE:option.STRING,
+                               option.VALUE_USAGE:option.REQUIRED,
+                               option.VALUE_LABEL:"server[,server]",
+                               option.USER_LEVEL:option.ADMIN,
+                               },
         option.GET_UPDATE_INTERVAL:{option.HELP_STRING:
                                     "return the interval between updates of "
                                     "the server system status web pages",
@@ -391,6 +406,13 @@ def do_work(intf):
 
     elif not intf.update_interval == -1:
         ticket = iqc.set_update_interval(intf.update_interval)
+
+    elif intf.get_last_alive:
+        ticket = iqc.get_last_alive(intf.get_last_alive)
+        servers_l = ticket['servers'].keys()
+        servers_l.sort()
+        for server in servers_l:
+            print "%s   %s"%(server, time.ctime(ticket['servers'][server]))
 
     elif intf.get_update_interval:
         ticket = iqc.get_update_interval()

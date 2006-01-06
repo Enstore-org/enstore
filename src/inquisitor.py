@@ -1485,6 +1485,29 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		      "Could not read file %s/%s"%(self.html_dir, 
 						   enstore_constants.OUTAGEFILE))
 
+    # return a dict of the last alive time for all requested servers.  if we are not
+    # monitoring the server or have no last time, return nothing.
+    def get_last_heartbeat(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+	server_l = string.split(ticket["servers"], ',')
+        last_time = {}
+        for server in server_l:
+            if self.server_d.has_key(server):
+                heartbeat_time = self.server_d[server].last_heartbeat()
+                # we may not be watching this server, do not return a time if this is so
+                if heartbeat_time:
+                    last_time[server] = heartbeat_time
+        ticket['servers'] = last_time
+        return last_time
+        
+    # return the last time the server heartbeat was received
+    def get_last_alive(self, ticket):
+        last_time = self.get_last_heartbeat(ticket)
+        self.send_reply(ticket)
+        enstore_functions.inqTrace(enstore_constants.INQWORKDBG, 
+				   "return last time server was alive (%s)"%(last_time,))
+        
+
     def up(self, ticket):
 	self.update_schedule_file(ticket, UP)
         self.send_reply(ticket)
