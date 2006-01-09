@@ -1813,6 +1813,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.set_volume_noaccess(self.current_volume)
                 return    
         else:
+            Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
             if (bloc_loc <= self.initial_abslute_location) or (bloc_loc != self.last_absolute_location):
                 self.transfer_failed(e_errors.WRITE_ERROR,
                                      "Wrong position for %s: initial %s, last %s, current %s, last written blocks %s"%
@@ -2068,6 +2069,7 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
                 self.tape_driver.flush()
+                Trace.trace(31, "cur %s, initial %s, last %s, blocks %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written)) 
                 if new_bloc_loc != self.current_absolute_location+self.last_blocks_written+1:
                     self.transfer_failed(e_errors.WRITE_ERROR, "Wrong position on %s: before write % after write %s, blocks written+1 %s"%
                                          (self.current_volume,
