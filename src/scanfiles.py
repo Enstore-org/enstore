@@ -405,25 +405,44 @@ def get_layer_4(f):
 
         l4 = {}
         if layer4:
-            l4 = {'volume' : layer4[0].strip(),
-                  'location_cookie' : layer4[1].strip(),
-                  'size' : layer4[2].strip(),
-                  'file_family' : layer4[3].strip(),
-                  'original_name' : layer4[4].strip(),
-                  # map file no longer used
-                  'pnfsid' : layer4[6].strip(),
-                  # map pnfsid no longer used
-                  'bfid' : layer4[8].strip(),
-                  }
-
-        try:
-            l4['drive'] = layer4[9].strip()
-        except IndexError:
-            pass
-        try:
-            l4['crc'] = layer4[10].strip()
-        except IndexError:
-            pass
+            try:
+                l4['volume'] = layer4[0].strip()
+            except IndexError:
+                pass
+            try:
+                l4['location_cookie'] = layer4[1].strip()
+            except IndexError:
+                pass
+            try:
+                l4['size'] = layer4[2].strip()
+            except IndexError:
+                pass
+            try:
+                l4['file_family'] = layer4[3].strip()
+            except IndexError:
+                pass
+            try:
+                l4['original_name'] = layer4[4].strip()
+            except IndexError:
+                pass
+            # map file no longer used
+            try:
+                l4['pnfsid'] = layer4[6].strip()
+            except IndexError:
+                pass
+            # map pnfsid no longer used
+            try:
+                l4['bfid'] = layer4[8].strip()
+            except IndexError:
+                pass
+            try:
+                l4['drive'] = layer4[9].strip() #optionally present
+            except IndexError:
+                pass
+            try:
+                l4['crc'] = layer4[10].strip() #optionally present
+            except IndexError:
+                pass
 
     except (KeyboardInterrupt, SystemExit), msg:
         raise msg
@@ -783,6 +802,7 @@ def check_link(l, file_info):
         return err, warn, info
     
     if not os.path.exists(l):
+        
         warn.append("missing the original of link")
 
     return err, warn, info
