@@ -2070,10 +2070,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.tape_driver.flush()
                 Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels))) 
                 if new_bloc_loc != self.current_absolute_location+self.last_blocks_written+1:
-                    self.transfer_failed(e_errors.WRITE_ERROR, "Wrong position on %s: before write %s after write %s, blocks written+1 %s"%
+                    self.transfer_failed(e_errors.WRITE_ERROR, "Wrong position on %s: before write %s after write %s, blocks written+1 %s headers %s trailers %s"%
                                          (self.current_volume,
                                           self.current_absolute_location,
-                                          new_bloc_loc, self.last_blocks_written+1),
+                                          new_bloc_loc, self.last_blocks_written+1,
+                                          len(self.header_labels),
+                                          len(self.eof_labels)),
                                          error_source=TAPE)
                     self.set_volume_noaccess(self.current_volume)
                     return
