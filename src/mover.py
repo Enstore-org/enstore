@@ -2068,8 +2068,12 @@ class Mover(dispatching_worker.DispatchingWorker,
 
                 Trace.log(e_errors.INFO, 'filemarks written. Tape %s absolute location in blocks %s'%(self.current_volume, new_bloc_loc,))
                 self.tape_driver.flush()
-                Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels))) 
-                if new_bloc_loc != self.current_absolute_location+self.last_blocks_written+1:
+                Trace.trace(31, "cur %s, initial %s, last %s, blocks %s, headers %s trailers %s"%(new_bloc_loc, self.initial_abslute_location, self.current_absolute_location,self.last_blocks_written, len(self.header_labels), len(self.eof_labels)))
+                if self.header_labels and self.eof_labels:
+                    extra = 4
+                else:
+                    extra = 0
+                if new_bloc_loc != self.current_absolute_location+self.last_blocks_written+1+extra:
                     self.transfer_failed(e_errors.WRITE_ERROR, "Wrong position on %s: before write %s after write %s, blocks written+1 %s headers %s trailers %s"%
                                          (self.current_volume,
                                           self.current_absolute_location,
