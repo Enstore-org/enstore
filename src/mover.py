@@ -2083,6 +2083,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 self.vcc.set_system_readonly(self.current_volume)
+                Trace.handle_error(exc, detail, tb)
                 self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                 return
 
