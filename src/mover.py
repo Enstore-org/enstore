@@ -1801,7 +1801,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
 
         if self.first_write == 0: # this is a first write since tape has been mounted
-            self.first_write = 1
             self.initial_abslute_location = bloc_loc
             self.current_absolute_location = self.initial_abslute_location
             self.last_absolute_location = self.current_absolute_location
@@ -2213,6 +2212,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.files_written_cnt = self.files_written_cnt + 1
                 self.bytes_written_last = self.bytes_written
                 self.transfer_completed()
+                if self.first_write == 0: # this is a first write since tape has been mounted
+                    self.first_write = 1  # first successful write was done
+
             else:
                 self.transfer_failed(e_errors.EPROTO)
 
