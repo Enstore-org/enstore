@@ -1087,6 +1087,7 @@ class LibraryManagerMethods:
         # can be uncommented only for the test reason. Sprint takes a lot of cpu in case of a big queue
         #Trace.trace(14, "%s\n%s"%("PENDING QUEUE",self.pending_work.sprint())) 
         # first see if there are any HiPri requests
+        Trace.trace(22, "111")
         rq =self.pending_work.get_admin_request()
         while rq:
             # skip over tape read requests they are processed only in the idle state
@@ -1121,6 +1122,7 @@ class LibraryManagerMethods:
                                                              rq.ticket["vc"]["volume_family"],
                                                              rq.ticket["wrapper"]["uname"]))
                         rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                        Trace.trace(22, "222")
                         rq = self.pending_work.get_admin_request(next=1) # get next request
                         continue
             if rq.work == 'read_from_hsm':
@@ -1129,6 +1131,7 @@ class LibraryManagerMethods:
                     # before continuing check if it is a request
                     # for v['external_label']
                     if rq.ticket['fc']['external_label'] == external_label: break
+                    Trace.trace(22, "333")
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
                 break
@@ -1138,6 +1141,7 @@ class LibraryManagerMethods:
                     if rq:
                         rq, status = self.check_write_request(external_label, rq, requestor)
                         if rq and status[0] == e_errors.OK: break
+                    Trace.trace(22, "444")
                     rq = self.pending_work.get_admin_request(next=1) # get next request
                     continue
                 break
@@ -1179,17 +1183,21 @@ class LibraryManagerMethods:
                 # see if there is another work for this volume family
                 # disable retrival of HiPri requests as they were
                 # already treated above
+                Trace.trace(22, "555")
                 rq = self.pending_work.get(vol_family, use_admin_queue=0)
                 if not rq:
-                   rq = self.pending_work.get(external_label, current_location, use_admin_queue=0) 
+                    Trace.trace(22, "6")
+                    rq = self.pending_work.get(external_label, current_location, use_admin_queue=0) 
 
             else:
                 # see if there is another work for this volume
                 # disable retrival of HiPri requests as they were
                 # already treated above
+                Trace.trace(22, "777")
                 rq = self.pending_work.get(external_label, current_location, use_admin_queue=0)
                 if not rq:
-                   rq = self.pending_work.get(vol_family, use_admin_queue=0) 
+                    Trace.trace(22, "888")
+                    rq = self.pending_work.get(vol_family, use_admin_queue=0) 
 
             exc_limit_rq = None
             while rq:
@@ -1226,12 +1234,15 @@ class LibraryManagerMethods:
                             rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
                             Trace.trace(14,"last work %s"%(last_work,))
                             if last_work == 'WRITE':
+                                Trace.trace(22, "999")
                                 rq = self.pending_work.get(vol_family,  next=1, use_admin_queue=0)
                                 Trace.trace(14,"rq 1 %s"%(rq,))
                                 if not rq:
+                                    Trace.trace(22, "AAA")
                                     rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
                                     Trace.trace(14,"rq 2 %s"%(rq,))
                             else:
+                                Trace.trace(22, "BBB")
                                 rq = self.pending_work.get(external_label,  next=1, use_admin_queue=0)
                                 Trace.trace(14,"rq 3 %s"%(rq,))
                             continue
@@ -1301,6 +1312,7 @@ class LibraryManagerMethods:
                     if rq and status[0] == e_errors.OK:
                         return rq, status
                     if not rq: break
+                    Trace.trace(22, "CCC")
                     rq = self.pending_work.get(vol_family, next=1, use_admin_queue=0)
             # return read work
             if rq:
@@ -1311,6 +1323,7 @@ class LibraryManagerMethods:
         
         # try from the beginning
         Trace.trace(14,"try from the beginning")
+        Trace.trace(22, "DDD")
         rq = self.pending_work.get(external_label, use_admin_queue=0)
         if rq:
             rej_reason = None
