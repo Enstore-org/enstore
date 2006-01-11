@@ -724,6 +724,7 @@ class Request_Queue:
     # flag next indicates whether to get a first highest request
     # or keep getting requsts for specified label
     def get(self, label='',location='', next=0, use_admin_queue=1):
+        t = time.time()
         Trace.trace(21,'label %s location %s next %s use_admin_queue %s'%
                     (label, location, next,use_admin_queue))
         if label:
@@ -745,7 +746,7 @@ class Request_Queue:
                 # check admin request queu first
                 rq = self.admin_queue.get(label, location, next)
                 if rq:
-                    Trace.trace(21, "admin_queue=1 %s"% (rq.ticket['unique_id']))
+                    Trace.trace(22, "admin_queue=1 %s time %s"% (rq.ticket['unique_id']), time.time()-t)
                     self.admin_rq_returned = 1
                     return rq
                 else:
@@ -761,7 +762,7 @@ class Request_Queue:
             record = self.regular_queue.get(label, location)
 
         self.admin_rq_returned = 0
-        Trace.trace(21, "admin_queue=0")
+        Trace.trace(22, "admin_queue=0 time %s"%(time.time()-t,))
         return record
 
     def get_queue(self):
