@@ -348,6 +348,7 @@ class DispatchingWorker(udp_server.UDPServer):
         # look in the ticket and figure out what work user wants
         try:
             function_name = ticket["work"]
+            Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
         except (KeyError, AttributeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
@@ -359,7 +360,9 @@ class DispatchingWorker(udp_server.UDPServer):
             return
 
         # call the user function
+        t = time.time()
         apply(function, (ticket,))
+        Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
 
     def handle_error(self, request, client_address):
         exc, msg, tb = sys.exc_info()
