@@ -1489,7 +1489,11 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
     # monitoring the server or have no last time, return nothing.
     def get_last_heartbeat(self, ticket):
         ticket["status"] = (e_errors.OK, None)
-	server_l = string.split(ticket["servers"], ',')
+        # the list of servers may be a string or a list.
+        if type(ticket["servers"]) == types.StringType:
+            server_l = string.split(ticket["servers"], ',')
+        else:
+            server_l = ticket["servers"]
         last_time = {}
         for server in server_l:
             if self.server_d.has_key(server):
