@@ -988,7 +988,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Get the file size.
         try:
             if real_file:    #os.path.exists(self.filepath):
-                self.file_size = self.pstat[stat.ST_SIZE]
+                self.file_size = long(self.pstat[stat.ST_SIZE])
                 if self.file_size == 1L:
                     self.file_size = long(self.get_xreference()[2]) #[2] = size
             else:
