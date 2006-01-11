@@ -521,12 +521,14 @@ class LibraryManagerMethods:
     def flush_pending_jobs(self, status, external_label=None):
         Trace.trace(12,"flush_pending_jobs: %s"%(external_label,))
         if not external_label: return
+        Trace.trace(22,"PWZZZZ")
         w = self.pending_work.get(external_label)
         while w:
             w.ticket['status'] = (status, None)
             Trace.log(e_errors.INFO,"flush_pending_jobs:work %s"%(w.ticket,))
             self.send_regret(w.ticket)
             self.pending_work.delete(w)
+            Trace.trace(22,"PWYYY")
             w = self.pending_work.get(external_label)
         # this is just for test
 
@@ -642,7 +644,7 @@ class LibraryManagerMethods:
         Trace.trace(12,"process_read_request %s"%(rq.ticket,))
         # ok passed criteria. Get request by file location
         if rq.ticket['encp']['adminpri'] < 0: # not a HiPri request
-            Trace.trace(17,"PW2")
+            Trace.trace(22,"PW2")
             rq = self.pending_work.get(rq.ticket["fc"]["external_label"])
             if rq.ticket['encp']['adminpri'] >= 0: # got a HIPri request
                 self.continue_scan = 1
@@ -827,7 +829,7 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = bound
 
         # look in pending work queue for reading or writing work
-        Trace.trace(17,"PW3")
+        Trace.trace(22,"PW3")
         rq=self.pending_work.get()
         while rq:
             Trace.trace(17, "PWAA %s"%(rq,))
@@ -864,9 +866,11 @@ class LibraryManagerMethods:
                             label = rq.ticket["vc"]["volume_family"]
                         else:
                             label = rq.ticket["vc"]["external_label"]
+                        Trace.trace(22,"PWAAA")
                         rq = self.pending_work.get(label, next=1)
                         Trace.trace(17, "NEXT RQ1: %s"%(rq,))
                         if not rq:
+                            Trace.trace(22,"PWBBB")
                             rq = self.pending_work.get(next=1) # get next request
                             Trace.trace(17, "NEXT RQ2: %s"%(rq,))
                         continue
@@ -878,10 +882,10 @@ class LibraryManagerMethods:
                     
                 if self.continue_scan:
                     if key:
-                        Trace.trace(17,"PW5")
+                        Trace.trace(22,"PW5")
                         rq = self.pending_work.get(key)
                     else:
-                        Trace.trace(17,"PW6")
+                        Trace.trace(22,"PW6")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
@@ -892,10 +896,10 @@ class LibraryManagerMethods:
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        Trace.trace(17,"PW7")
+                        Trace.trace(22,"PW7")
                         rq = self.pending_work.get(key)
                     else:
-                        Trace.trace(17,"PW8")
+                        Trace.trace(22,"PW8")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
@@ -905,7 +909,7 @@ class LibraryManagerMethods:
                 Trace.log(e_errors.ERROR,
                           "next_work_any_volume assertion error in next_work_any_volume %s"%(rq.ticket,))
                 raise AssertionError
-            Trace.trace(17,"PW9")
+            Trace.trace(22,"PW9")
             rq = self.pending_work.get(next=1)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
