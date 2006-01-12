@@ -890,7 +890,9 @@ class LibraryManagerMethods:
                     continue
                 break
             elif rq.work == "write_to_hsm":
+                Trace.trace(22,"PW611")
                 rq, key = self.process_write_request(rq, requestor)
+                Trace.trace(22,"PW612")
                 if rq: t = rq.ticket
                 else: t = rq
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
