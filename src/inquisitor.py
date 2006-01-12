@@ -1171,9 +1171,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 self.er_lock.release()
                    
             # we may have taken awhile so mark the event relay as alive again
+            now_after = time.time()
             self.serverfile.output_alive(self.erc.event_relay_addr[0], 
-                                         ALIVE, now, enstore_constants.EVENT_RELAY)
-            self.event_relay.alive(now)
+                                         ALIVE, now_after, enstore_constants.EVENT_RELAY)
+            self.event_relay.alive(now_after)
             
         if self.er_config_event.isSet():
             self.serverfile.output_alive(self.erc.event_relay_addr[0], 
