@@ -14,8 +14,9 @@ def acc_encp_lines(csc, numEncps=100):
     # connect to the db
     try:
         db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'])
-    except pg.error, detail:
+    except pg.Error, detail:
         # could not connect to the db
+        print " %s  %s"%(pg.Error, detail)
         return []
     res = db.query("select * from encp_xfer order by date desc limit %s;"%(numEncps,))
     res_err = db.query("select * from encp_error order by date desc limit %s;"%(numEncps,))
@@ -26,4 +27,3 @@ def acc_encp_lines(csc, numEncps=100):
     db.close()
     # return the results as a list, returning only the last numEncps elements.
     return res_total[-numEncps:]
-
