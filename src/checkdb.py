@@ -185,6 +185,7 @@ def extract_backup(check_dir, container):
 	os.system("pg_restore -d backup -v -s -t media_capacity "+container)
 	os.system("pg_restore -d backup -v -s -t migration "+container)
 	os.system("pg_restore -d backup -v -s -t migration_history "+container)
+	os.system("pg_restore -d backup -v -s -t no_flipping_storage_group "+container)
 	os.system("pg_restore -d backup -v -s -t option "+container)
 	os.system("pg_restore -d backup -v -s -t qa "+container)
 	os.system("pg_restore -d backup -v -s -t quota "+container)
