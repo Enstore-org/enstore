@@ -711,7 +711,9 @@ class LibraryManagerMethods:
     def process_write_request(self, request, requestor):
         self.continue_scan = 0
         rq = request
+        Trace.trace(22, "PW_RQ1")
         key_to_check = self.fair_share(rq)
+        Trace.trace(22, "PW_RQ2")
         Trace.trace(16,"process_write_request: key %s"%(key_to_check,))
         if key_to_check:
             self.continue_scan = 1
@@ -725,7 +727,9 @@ class LibraryManagerMethods:
             else:
                self.processed_admin_requests.append(vol_family) 
         if not self.write_vf_list.has_key(vol_family):
+            Trace.trace(22, "PW_RQ3")
             vol_veto_list, wr_en = self.busy_volumes(vol_family)
+            Trace.trace(22, "PW_RQ4")
             Trace.trace(19,"process_write_request vol veto list:%s, width:%d"%\
                         (vol_veto_list, wr_en))
             self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
@@ -743,12 +747,14 @@ class LibraryManagerMethods:
         if self.process_for_bound_vol not in vol_veto_list:
             # width not exceeded, ask volume clerk for a new volume.
             Trace.trace(9,"process_write_request for %s" % (rq.ticket,))
+            Trace.trace(22, "PW_RQ5")
             v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                            vol_family, 
                                            vol_veto_list,
                                            first_found=0,
                                            mover=requestor)
+            Trace.trace(22, "PW_RQ6")
             # volume clerk returned error
             Trace.trace(9,"process_write_request: next write volume returned %s" % (v,))
             if v["status"][0] != e_errors.OK:
@@ -803,14 +809,19 @@ class LibraryManagerMethods:
 
         # in any case if request SG limit is 0 and temporarily stored rq. SG limit is not,
         # do not update temporarily stored rq.
+        Trace.trace(22, "PW_RQ7")
         rq_sg = volume_family.extract_storage_group(vol_family)
+        Trace.trace(22, "PW_RQ8")
         if (rq.ticket.get('ignore_fair_share', None)):
             # do not count this request against fair share
             # this is an automigration request
             sg_limit = 0
         else:
+            Trace.trace(22, "PW_RQ9")
             sg_limit = self.get_sg_limit(rq_sg)
+            Trace.trace(22, "PW_RQ10")
             self.postponed_requests.put(rq)
+            Trace.trace(22, "PW_RQ11")
         if self.tmp_rq:
             #tmp_rq_sg = volume_family.extract_storage_group(self.tmp_rq.ticket['vc']['volume_family'])
             #tmp_sg_limit = self.get_sg_limit(tmp_rq_sg)
@@ -819,7 +830,7 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
-        
+        Trace.trace(22, "PW_RQ12")
         return rq, key_to_check
 
     # is there any work for any volume?
