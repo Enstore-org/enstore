@@ -12,6 +12,7 @@ import timeofday
 import configuration_client
 import alarm_client
 import generic_client
+import inquisitor_client
 import enstore_constants
 import enstore_functions
 import enstore_functions2
@@ -38,8 +39,10 @@ TRIES = 1
 NOUPDOWN = "noupdown"
 TRUE = 1
 FALSE = 0
-WAIT_THIS_AMOUNT = 120
+#WAIT_THIS_AMOUNT = 120
+WAIT_THIS_AMOUNT = 30
 ALIVE_INTERVAL = 10
+UNKNOWN = -1
 
 LOW_CAPACITY = 0
 SUFFICIENT_CAPACITY = 1
@@ -259,6 +262,19 @@ class EnstoreServer:
         exc, msg = sys.exc_info()[:2]
 	EnstoreServer.check(self, {'status': (str(exc), str(msg))})
 	raise exc, msg
+
+    def get_real_status(self):
+        # return whether the server is up or down or unknown.  it is unknown if we
+        # are not checking it or it is overridden to anything
+        if self.override:
+            # it is overridden
+            rtn = UNKNOWN
+        elif self.noupdown:
+            # we are not monitoring this one
+            rtn = UNKNOWN
+        else:
+            rtn = self.status
+        return rtn
 
 
 class LogServer(EnstoreServer):
@@ -517,8 +533,8 @@ def do_real_work():
     cs = ConfigServer(offline_d, override_d, seen_down_d, allowed_down_d)
     log = LogServer(offline_d, override_d, seen_down_d, allowed_down_d)
     alarm = AlarmServer(offline_d, override_d, seen_down_d, allowed_down_d)
-    server_list = [cs, log, alarm,
-	    Inquisitor(offline_d, override_d, seen_down_d, allowed_down_d),
+    inquisitor = Inquisitor(offline_d, override_d, seen_down_d, allowed_down_d)
+    server_list = [cs, log, alarm, inquisitor,	    
 	    FileClerk(offline_d, override_d, seen_down_d, allowed_down_d),
 	    VolumeClerk(offline_d, override_d, seen_down_d, allowed_down_d),
 	    AccountingServer(offline_d, override_d, seen_down_d, allowed_down_d),
@@ -532,11 +548,10 @@ def do_real_work():
     total_servers_names = []
     # do not look for servers that have the noupdown keyword in the config file
     for server in server_list:
-	if server.noupdown == FALSE:
-	    if no_override(server, override_d_keys):
-		total_servers_names.append(server.name)
-	    total_other_servers.append(server)
-
+        if server.noupdown == FALSE:
+            if no_override(server, override_d_keys):
+                total_servers_names.append(server.name)
+            total_other_servers.append(server)
     total_lms = []
     total_movers = []
     for lm in library_managers:
@@ -664,6 +679,34 @@ def do_real_work():
 	    # server did not get back to us, assume it is dead
 	    server.is_dead()
 
+    # for any server/mover for which no heartbeat message was received, ask the
+    # inquisitor when the last heartbeat was recived.  if it was in the last 5
+    # minutes, mark that server/mover as up.  it may be too busy now to answer
+    # us and we cannot wait for it.  only do this if the config server and
+    # inquisitor are up.
+    servers_to_mark_up = []
+    if cs.get_real_status() == enstore_constants.UP and \
+       inquisitor.get_real_status() == enstore_constants.UP:
+        servers_to_check = []
+        servers_checked = {}
+        inq = inquisitor_client.Inquisitor((cs.config_host, cs.config_port))
+        # if the name is in the total_servers_names list, then no heartbeat was received
+        if len(total_servers_names) > 0:
+            enprint("Looking for heartbeat info from inq for %s"%(total_servers_names,))
+            rtn_ticket = inq.get_last_alive(total_servers_names)
+            enprint("Got heartbeat info from inq for %s"%(rtn_ticket['servers']))
+            # inq will return a hash of servers and their alive times. if a server
+            # is not present in the list, then there was no recorded alive time
+            servers_l = rtn_ticket['servers'].keys()
+            now_seconds = time.time()
+            seconds_in_5mins = 5 * 60
+            for server in servers_l:
+                if now_seconds - rtn_ticket['servers'][server] < seconds_in_5mins:
+                    # server was alive within the last 5 minutes.  mark it as needing
+                    # to be marked up.  we will mark it up in a few lines when we
+                    # walk through each server
+                    servers_to_mark_up.append(server)
+
     # keep tabs on the event relay too, if we received anyones alive, then the event relay
     # is alive.  otherwise mark it as dead
     if got_one:
@@ -675,6 +718,10 @@ def do_real_work():
     estate = enstore_constants.UP
     reason = []
     for server in total_servers:
+        # check if we need to mark this server up based on the inq receiving a
+        # recent heartbeat
+        if server.name in servers_to_mark_up:
+            server.is_alive()
 	estate = server.get_enstore_state(estate, reason)
 	summary_d[server.format_name] = server.status
     else:
