@@ -1086,9 +1086,20 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         self.er_lock.acquire()
         servers = self.server_er_msg.keys()
         self.er_lock.release()
+        # most times delays are introduced by library managers taking longer as
+        # they have alot to do.  so process any lms first so that the latest alive
+        # time can be set for the other servers/movers.
+        lms = []
         for aServer in servers:
+            if enstore_functions2.is_library_manager(aServer):
+                lms.append(aServer)
+                servers.remove(aServer)
+        for aServer in lms+servers:
             if aServer not in servers_just_done:
                 servers_just_done.append(aServer)
+            else:
+                # we did this one this time through already.  do not do it again
+                continue
             if self.server_d.has_key(aServer):
                 self.er_lock.acquire()
                 server_time = self.server_er_msg[aServer]
