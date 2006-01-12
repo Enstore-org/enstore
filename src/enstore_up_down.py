@@ -5,11 +5,9 @@ import sys
 import string
 import tempfile
 import time
-import errno
 import select
 import timeofday
 
-import configuration_client
 import alarm_client
 import generic_client
 import inquisitor_client
@@ -37,8 +35,6 @@ SYSTEM = 'system'
 ALLOWED_DOWN = 'allowed_down'
 TRIES = 1
 NOUPDOWN = "noupdown"
-TRUE = 1
-FALSE = 0
 WAIT_THIS_AMOUNT = 120
 ALIVE_INTERVAL = 10
 UNKNOWN = -1
@@ -150,15 +146,17 @@ class EnstoreServer:
 	self.real_status(enstore_constants.UP)
         self.mail_file = None
 	self.in_bad_state = 0
+        self.reason_down = ""
+        self.movers = None
 	# if self.status is not UP, then enstore is the following
 	self.en_status = en_status
 	# we need to see if this server should be monitored by up_down.  this 
 	# info is in the config file.
 	flag = enstore_functions.get_from_config_file(name, NOUPDOWN, None)
 	if flag:
-	    self.noupdown = TRUE
+	    self.noupdown = True
 	else:
-	    self.noupdown = FALSE
+	    self.noupdown = False
 
     def is_really_down(self):
         rc = 0
@@ -547,7 +545,7 @@ def do_real_work():
     total_servers_names = []
     # do not look for servers that have the noupdown keyword in the config file
     for server in server_list:
-        if server.noupdown == FALSE:
+        if server.noupdown == False:
             if no_override(server, override_d_keys):
                 total_servers_names.append(server.name)
             total_other_servers.append(server)
@@ -556,7 +554,7 @@ def do_real_work():
     for lm in library_managers:
         lmc = LibraryManager(lm, config_d[lm], offline_d, override_d, seen_down_d, 
 			     allowed_down_d)
-	if lmc.noupdown == FALSE:
+	if lmc.noupdown == False:
 	    total_lms.append(lmc) 
 	    if no_override(lmc, override_d_keys):
 		total_servers_names.append(lmc.name)
@@ -571,7 +569,7 @@ def do_real_work():
         mover_objects = []
         for mov in movers:
             mvc = Mover(mov, offline_d, override_d, seen_down_d, allowed_down_d)
-	    if mvc.noupdown == FALSE:
+	    if mvc.noupdown == False:
 		mover_objects.append(mvc)
 		if no_override(mvc, override_d_keys):
 		    total_servers_names.append(mvc.name)
@@ -584,7 +582,7 @@ def do_real_work():
     for med in media_changers:
 	if med:
 	    mc = MediaChanger(med, offline_d, override_d, seen_down_d, allowed_down_d)
-	    if mc.noupdown == FALSE:
+	    if mc.noupdown == False:
 		total_other_servers.append(mc)
 		# do not monitor the server if it has an override value
 		if no_override(mc, override_d_keys):
@@ -686,8 +684,6 @@ def do_real_work():
     servers_to_mark_up = []
     if cs.get_real_status() == enstore_constants.UP and \
        inquisitor.get_real_status() == enstore_constants.UP:
-        servers_to_check = []
-        servers_checked = {}
         inq = inquisitor_client.Inquisitor((cs.config_host, cs.config_port))
         # if the name is in the total_servers_names list, then no heartbeat was received
         if len(total_servers_names) > 0:
