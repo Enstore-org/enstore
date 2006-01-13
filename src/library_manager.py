@@ -753,7 +753,8 @@ class LibraryManagerMethods:
                                            vol_family, 
                                            vol_veto_list,
                                            first_found=0,
-                                           mover=requestor)
+                                           mover=requestor,
+                                           timeout=60, retry=5)
             Trace.trace(22, "PW_RQ6")
             # volume clerk returned error
             Trace.trace(9,"process_write_request: next write volume returned %s" % (v,))
