@@ -756,8 +756,13 @@ class VolumeClerkClient(generic_client.GenericClient,
                    'first_found'         : first_found,
                    'mover'               : mover,
                    'use_exact_match'     : exact_match}
+        Trace.trace(22, "next_write_volume:sending")
+        r=self.send(ticket,timeout,retry)
+        Trace.trace(22, "next_write_volume:rc=%s"%(r,))
+        
 
-        return self.send(ticket,timeout,retry)
+        #return self.send(ticket,timeout,retry)
+        return r
 
     # check if specific volume can be used for write
     def can_write_volume (self, library, min_remaining_bytes,
