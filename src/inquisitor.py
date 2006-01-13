@@ -935,16 +935,18 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 				   "make new html encp file")
 
     # examine each server we are monitoring to see if we have received an alive from
-    # it recently (via the event relay)
-    def check_last_alive(self):
+    # it recently (via the event relay).  if it was processed successfully during this
+    # time through it should be marked as up
+    def check_last_alive(self, msgs_rcvd):
         for skey in self.server_d.keys():
-            server = self.server_d[skey]
-            status = server.check_recent_alive(self.event_relay)
-            if status == monitored_server.TIMEDOUT:
-                self.mark_timed_out(server)
-            elif status == monitored_server.HUNG:
-                self.mark_dead(server)
-                self.attempt_restart(server)
+            if skey not in msgs_rcvd:
+                server = self.server_d[skey]
+                status = server.check_recent_alive(self.event_relay)
+                if status == monitored_server.TIMEDOUT:
+                    self.mark_timed_out(server)
+                elif status == monitored_server.HUNG:
+                    self.mark_dead(server)
+                    self.attempt_restart(server)
 
     def check_event_relay_last_alive(self):
         if self.event_relay.is_dead(time.time()):
@@ -1081,7 +1083,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             server.did_restart_alarm = 0
         return server
 
-    def get_server_info(self, servers_just_done):
+    def get_server_info(self, servers_just_done, success_servers):
         # return a list of servers that we have not processed this time around
         self.er_lock.acquire()
         servers = self.server_er_msg.keys()
@@ -1105,6 +1107,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 server_time = self.server_er_msg[aServer]
                 self.er_lock.release()
                 server = self.server_is_alive(aServer, server_time)
+                success_servers.append(aServer)
                 # if server is a mover, we need to get some extra status
                 if enstore_functions2.is_mover(aServer):
                     rtn = self.update_mover(server)
@@ -1114,6 +1117,9 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # no problem getting the status
                     if rtn:
                         server = self.server_is_alive(aServer)
+                    else:
+                        # do not report it as success
+                        success_servers.remove(aServer)
                 # if server is a library_manager, we need to get some extra status
                 if enstore_functions2.is_library_manager(aServer):
                     rtn = self.update_library_manager(server)
@@ -1123,7 +1129,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                     # no problem getting the status
                     if rtn:
                         server = self.server_is_alive(aServer)
-        return servers_just_done
+                    else:
+                        # do not report it as success
+                        success_servers.remove(aServer)
+        return servers_just_done, success_servers
 
     # this is the routine that is called when a message arrives from the event
     # relay.  this is what this routine does:
@@ -1146,8 +1155,15 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         #if not self.event_relay.is_alive():
         #    for server in self.server_d.keys():
         #        self.server_d[server].last_alive = now
-
+        #
+        # if many servers/movers time out here, this may take along time.  the first
+        # servers processed will have a heartbeat time that is too long and will be
+        # marked as connot update status.  return a list of server heartbeats rcvd
+        # that have no error if further status is obtained.  this can be used to not
+        # mark these down. so return success_servers
         self.sent_event_relay_alarm = 0  
+        servers_just_done = []
+        success_servers = []
         # ignore messages that originated with us
         if self.er_alive_event.isSet():
             self.serverfile.output_alive(self.erc.event_relay_addr[0], 
@@ -1165,14 +1181,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # 3 times .  it would be better to put all of the getting of mover and
             # library manager information into a separate thread, but there are many
             # places to make thread safe.  this may be an easier solution.
-            servers_just_done = []
             iterations = 0
             while (time.time() - start_time > 10) and iterations < 3:
                 i = time.time() - start_time
                 enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG,
                                            "periodic timeout iterations = %s, now-start= %s"%(iterations, i))
                 start_time = time.time()
-                servers_just_done = self.get_server_info(servers_just_done)
+                servers_just_done, success_servers = self.get_server_info(servers_just_done, success_servers)
                 iterations = iterations + 1
             else:
                 # delete the done servers from the list of requests
@@ -1196,13 +1211,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
             # a new config file was loaded into the config server, get it
             self.er_config_event.clear()
             self.make_config_html_file()
-        # we may be stuck getting lots of event relay messages if the rest of
-        # the system is backed up.  so, check if it has been more than 5
-        # minutes since we last wrote out the web pages
-        #now = time.time()
-        #if  now - self.last_time_for_periodic_tasks > 300:
-        #    self.periodic_tasks()
-
+        return success_servers
 
     # these are the things we do periodically, this routine is called when an
     # interval is up, from within dispatching_worker  -
@@ -1214,13 +1223,13 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout")
         # check for all received event messages
-        self.process_event_message(reason_called)
+        msgs_rcvd = self.process_event_message(reason_called)
         # just output the inquisitor alive info, if we are doing this, we are alive.
         self.server_is_alive(self.inquisitor.name)
         # see if there are any servers in cardiac arrest (no heartbeat)
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - check last alive")
-        self.check_last_alive()
+        self.check_last_alive(msgs_rcvd)
         # check if we have received an event relay message recently
         enstore_functions.inqTrace(enstore_constants.INQEVTMSGDBG, 
 				   "periodic timeout - check event relay alive")
