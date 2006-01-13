@@ -725,7 +725,7 @@ class Request_Queue:
     # or keep getting requsts for specified label
     def get(self, label='',location='', next=0, use_admin_queue=1):
         t = time.time()
-        Trace.trace(21,'label %s location %s next %s use_admin_queue %s'%
+        Trace.trace(22,'Request_Queue.get: label %s location %s next %s use_admin_queue %s'%
                     (label, location, next,use_admin_queue))
         if label:
             if use_admin_queue and self.process_admin_queue != 0:
@@ -746,7 +746,7 @@ class Request_Queue:
                 # check admin request queu first
                 rq = self.admin_queue.get(label, location, next)
                 if rq:
-                    Trace.trace(22, "admin_queue=1 %s time %s"% (rq.ticket['unique_id']), time.time()-t)
+                    Trace.trace(22, "admin_queue=1 %s time %s"% (rq.ticket['unique_id'], time.time()-t))
                     self.admin_rq_returned = 1
                     return rq
                 else:
