@@ -16,6 +16,7 @@ acc = csc.get('accounting_server')
 db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'])
 
 print db.query("select * from make_daily_xfer_size();")
+print db.query("select * from make_daily_xfer_size_by_mover();")
 
 day = time.localtime(time.time())[2]
 if day == 1:	# beginning of the month
