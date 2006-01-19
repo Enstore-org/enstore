@@ -1181,6 +1181,7 @@ class Mover(dispatching_worker.DispatchingWorker,
     def restart(self):
         # to avoid restart while restarting get lock from a file
         restart_allowed = 1
+        Trace.log(e_errors.INFO, "Checking restart lock")
         if self.restart_check():
             restart_allowed = 0
             Trace.log(e_errors.INFO, "Waiting for a lock to restart mover")
@@ -1193,13 +1194,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         if restart_allowed == 0:
             Trace.log(e_errors.ERROR, "Can not restart there is a lock file %s preventing restart"%(self.restart_lockfile_name(),))
             sys.exit(-1)
-        
+        Trace.log(e_errors.INFO, "Getting restart lock")
         self.restart_lock()   
         cur_thread = threading.currentThread()
         if cur_thread:
             cur_thread_name = cur_thread.getName()
         else:
             cur_thread_name = None
+        Trace.log(e_errors.INFO, "Current thread %s"%(cur_thread_name,))
         if cur_thread_name:
             if cur_thread_name in ('net_thread', 'MainThread'):
                 # check if tape_thread is active before allowing dismount
@@ -1216,12 +1218,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO,"restart was called from tape thread")
 
         # release data buffer
+        Trace.log(e_errors.INFO, "releasing data buffer")
         if self.buffer:
             self.buffer.clear()
             del(self.buffer)
             self.buffer = None
 
-        
+        Trace.log(e_errors.INFO, "sending restart command")
         cmd = '/usr/bin/at now+1minute'
         ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name) 
         p=os.popen(cmd, 'w')
@@ -1448,10 +1451,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                                         (state_name(self.state),self.current_volume, self.current_work_ticket['wrapper']['machine'][1]))
                         except TypeError:
                             exc, msg, tb = sys.exc_info()
-                            Trace.log(e_errors.ERROR, "error sending alarm %s %s"%(exc, msg))
-                            Trace.log(e_errors.INFO, "state %s"%(self.state,))
-                            Trace.log(e_errors.INFO, "volume %s"%(self.current_volume,))
-                            Trace.log(e_errors.INFO, "host %s"%(self.current_work_ticket['wrapper']['machine'][1],))
+                            try:
+                                Trace.log(e_errors.ERROR, "error sending alarm %s %s"%(exc, msg))
+                                Trace.log(e_errors.INFO, "state %s"%(self.state,))
+                                Trace.log(e_errors.INFO, "volume %s"%(self.current_volume,))
+                                Trace.log(e_errors.INFO, "host %s"%(self.current_work_ticket['wrapper']['machine'][1],))
+                            except TypeError:
+                                Trace.log(e_errors.ERROR,"wrong ticket format? %s"%(self.current_work_ticket)) 
+                                Trace.log(e_errors.INFO,"will restart")
+                                time.sleep(5)
+                                self.restart()
                                 
                         self.too_long_in_state_sent = 0 # send alarm just once
                 if self.state == ERROR:
