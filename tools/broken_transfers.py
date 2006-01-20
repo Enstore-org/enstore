@@ -23,7 +23,6 @@ while 1:
     if l:
        if l.find("ALARM") != -1 and l.find("ALMSRV") != -1: 
            la = l.split(' ')
-           print la
 
            while 1:
                la.pop(0)
@@ -43,7 +42,7 @@ while 1:
     else:
        break
 pprint.pprint(h)
-print len(h)
+
 
     
     
