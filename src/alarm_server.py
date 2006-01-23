@@ -199,17 +199,21 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             # don't know anything about this alarm
             return (e_errors.NOALARM, None)
 
+    def resolve_all(self):
+        self.alarms = {}
+        self.write_alarm_file()
+        self.write_html_file()
+        Trace.log(e_errors.INFO, "All Alarms have been resolved")
+        return (e_errors.OK, None)
+            
     def resolve_alarm(self, ticket):
         # get the unique identifier for this alarm
         this_id = ticket.get(enstore_constants.ALARM, 0)
 	ticket = {}
 	if this_id == enstore_html.RESOLVEALL:
-	    for an_id in self.alarms.keys():
-		status = self.resolve(an_id)
-		ticket[an_id] = status
+            ticket['ALL'] = self.resolve_all()
 	else:
-	    status = self.resolve(this_id)
-	    ticket[this_id] = status
+	    ticket[this_id] = self.resolve(this_id)
 
         # send the reply to the client
         self.send_reply(ticket)
