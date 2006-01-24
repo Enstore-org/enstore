@@ -111,14 +111,14 @@ def plot_bpd():
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
     now_time    = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
-    start_time  = now_time-31*3600*24
+    start_time  = now_time-32*3600*24
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
     start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
     color=1
-    s   = histogram.Histogram1D("xfers_total_by_day","Total Bytes Transferred per Day By Enstore",31,float(start_time),float(now_time))
+    s   = histogram.Histogram1D("xfers_total_by_day","Total Bytes Transferred per Day By Enstore",32,float(start_time),float(now_time))
     s.set_time_axis(True)
     plotter=histogram.Plotter("xfers_total_by_day","Total TBytes Transferred per Day By Enstore")
-    s_i   = histogram.Histogram1D("integrated_xfers_total_by_day","Integrated total Bytes transferred per Day By Enstore",31,float(start_time),float(now_time))
+    s_i   = histogram.Histogram1D("integrated_xfers_total_by_day","Integrated total Bytes transferred per Day By Enstore",32,float(start_time),float(now_time))
     s_i.set_time_axis(True)
     iplotter=histogram.Plotter("integrated_xfers_total_by_day","Integrated total Bytes transferred per Day By Enstore")
     w_day=0.
@@ -139,7 +139,7 @@ def plot_bpd():
             db_port        = acc.get('dbport')
             name           = db_server_name.split('.')[0]
             name=db_server_name.split('.')[0]
-            h   = histogram.Histogram1D("xfers_total_by_day_%s"%(name,),"Total Bytes Transferred per Day By  %s"%(server,),31,float(start_time),float(now_time))
+            h   = histogram.Histogram1D("xfers_total_by_day_%s"%(name,),"Total Bytes Transferred per Day By  %s"%(server,),32,float(start_time),float(now_time))
             h.set_time_axis(True)
             h.set_ylabel("Bytes")
             h.set_xlabel("Date (year-month-day)")
@@ -202,16 +202,16 @@ def plot_bpd():
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
         tmp.binarray[i_day_max]+delta,))
 
-    tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
-        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
-        tmp.binarray[i_day_min]+delta,))
+#    tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#        tmp.binarray[i_day_min]+delta,))
 
-    tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
+    tmp.add_text("set label \"Total :  %5d TB (in 30 days) \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
     tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                  time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
-                                                                                                 time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
-    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+#    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                 time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
 
     plotter.plot()
 
@@ -242,12 +242,12 @@ def plot_bytes():
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
     
     now_time    = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
-    start_time  = now_time-31*3600*24
+    start_time  = now_time-32*3600*24
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
     start_time = time.mktime((Y, M, D, 23, 59, 59, wd, jd, dst))
 
-    s = histogram.Histogram1D("writes_total_by_day","Total bytes written per day by Enstore",31,float(start_time),float(now_time))
-    s1 = histogram.Histogram1D("deletes_total_by_day","Total bytes deleted  per day from Enstore",31,float(start_time),float(now_time))
+    s = histogram.Histogram1D("writes_total_by_day","Total bytes written per day by Enstore",32,float(start_time),float(now_time))
+    s1 = histogram.Histogram1D("deletes_total_by_day","Total bytes deleted  per day from Enstore",32,float(start_time),float(now_time))
 
     s.set_time_axis(True)
     s1.set_time_axis(True)
@@ -255,8 +255,8 @@ def plot_bytes():
     plotter=histogram.Plotter("writes_total_by_day","Total TBytes written per day by Enstore")
     plotter1=histogram.Plotter("deletes_total_by_day","Total TBytes deleted per day from Enstore")
 
-    s_i = histogram.Histogram1D("writes_total_by_day","Integrated Total bytes written per day by Enstore",31,float(start_time),float(now_time))
-    s1_i = histogram.Histogram1D("deletes_total_by_day","Integrated Total bytes deleted  per day from Enstore",31,float(start_time),float(now_time))
+    s_i = histogram.Histogram1D("writes_total_by_day","Integrated Total bytes written per day by Enstore",32,float(start_time),float(now_time))
+    s1_i = histogram.Histogram1D("deletes_total_by_day","Integrated Total bytes deleted  per day from Enstore",32,float(start_time),float(now_time))
 
     s_i.set_time_axis(True)
     s1_i.set_time_axis(True)
@@ -275,11 +275,11 @@ def plot_bytes():
         server_name,server_port = servers.get(server)
 #        if (server == "stken") : continue
         if ( server_port != None ):
-            h   = histogram.Histogram1D("writes_by_day_%s"%(server,),"Total Bytes Written by Day By %s"%(server,),31,float(start_time),float(now_time))
+            h   = histogram.Histogram1D("writes_by_day_%s"%(server,),"Total Bytes Written by Day By %s"%(server,),32,float(start_time),float(now_time))
             decorate(h,color,"TB/day",server)
             histograms.append(h)
 
-            h   = histogram.Histogram1D("deletes_by_day_%s"%(server,),"Total Bytes Deleted by Day By %s"%(server,),31,float(start_time),float(now_time))
+            h   = histogram.Histogram1D("deletes_by_day_%s"%(server,),"Total Bytes Deleted by Day By %s"%(server,),32,float(start_time),float(now_time))
             decorate(h,color,"TB/day",server)
             histograms.append(h)
 
@@ -378,16 +378,16 @@ def plot_bytes():
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
         
-        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
-                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
-                                                                                             tmp.binarray[i_day_min]+delta,))
+#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#                                                                                             tmp.binarray[i_day_min]+delta,))
 
-        tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
+        tmp.add_text("set label \"Total :  %5d TB (in 30 days) \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
         tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
-                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
-        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
        
         tmp.set_marker_type("impulses")
         p.plot()
@@ -398,7 +398,7 @@ def plot_bytes():
         tmp.set_line_color(1)
 
         t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
-        tmp.add_text("set label \"Total (during 30 days) :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        tmp.add_text("set label \"Total (in 30 days) :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
         
         tmp.set_marker_type("impulses")
         p.plot()

@@ -25,7 +25,7 @@ MB=1024.*1024.
 KB=1024.
 
 SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date between %s and %s group by date order by date desc"
-SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_month group by date order by date"
+SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_day group by date order by date" # was xferby_month
 
 SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
 SELECT_WRITTEN_BYTES ="select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null'";
@@ -112,9 +112,9 @@ def plot_bpd():
     t           = time.ctime(time.time())
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
     
-    start_day   = time.mktime((2002, 12, 31, 23, 59, 59, 0, 0, 0))
+    start_day   = time.mktime((2000, 12, 31, 23, 59, 59, 0, 0, 0))
     now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
-    nbins       = int((now_day-start_day)/(24.*3600.)+0.5)
+    nbins       = int((now_day-start_day)/(30.*24.*3600.)+0.5)
 
     color=1
 
@@ -132,7 +132,6 @@ def plot_bpd():
     s1_i.set_time_axis(True)
 
     iplotter1=histogram.Plotter("integrated_writes_total_by_month","Integrated Total TBytes written per month by Enstore")
-
 
     w_month=0.
     r_month=0.
@@ -251,16 +250,16 @@ def plot_bpd():
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_max))),
         tmp.binarray[i_month_max]+delta,))
 
-    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_min]+0.5,
-        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_min))),
-        tmp.binarray[i_month_min]+delta,))
+#    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_min]+0.5,
+#        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_min))),
+#        tmp.binarray[i_month_min]+delta,))
 
     tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_month+0.5,))
     tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.85  font \"Helvetica,13\"\n"%(t_month_max+0.5,
                                                                                                  time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_max))),))
-    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
-                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
-    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month /(tmp.n_bins()-1)+0.5,))
+#     tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
+#                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
+#     tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month /(tmp.n_bins()-1)+0.5,))
 
     plotter.plot()
 
@@ -286,16 +285,16 @@ def plot_bpd():
         time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_max))),
         tmp.binarray[i_month_max]+delta,))
 
-    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_min]+0.5,
-        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_min))),
-        tmp.binarray[i_month_min]+delta,))
+#    tmp.add_text("set label \"%10d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_month_min]+0.5,
+#        time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_month_min))),
+#        tmp.binarray[i_month_min]+delta,))
 
     tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_month+0.5,))
     tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.85  font \"Helvetica,13\"\n"%(t_month_max+0.5,
                                                                                                  time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_max))),))
-    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
-                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
-    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month / (tmp.n_bins()-1)+0.5,))
+#    tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .05,.80  font \"Helvetica,13\"\n"%(t_month_min+0.5,
+#                                                                                                 time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_month_min))),))
+#    tmp.add_text("set label \"Mean  :  %5d TB \" at graph .05,.75  font \"Helvetica,13\"\n"%(t_month / (tmp.n_bins()-1)+0.5,))
 
     plotter1.plot()
 
@@ -325,7 +324,7 @@ def plot_bytes():
     Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
     start_day   = time.mktime((2001, 12, 31, 23, 59, 59, 0, 0, 0))
     now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
-    nbins       = int((now_day-start_day)/(24.*3600.)+0.5)
+    nbins       = int((now_day-start_day)/(30.*24.*3600.)+0.5)
 #    Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
 
 
@@ -413,16 +412,16 @@ def plot_bytes():
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
         
-        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
-                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
-                                                                                             tmp.binarray[i_day_min]+delta,))
+#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#                                                                                             tmp.binarray[i_day_min]+delta,))
 
         tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
         tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
-        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
-                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
-        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
        
         tmp.set_marker_type("impulses")
         p.plot()
