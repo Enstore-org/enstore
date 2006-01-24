@@ -63,7 +63,7 @@ def set_tcltk_library(tcltk_dir):
     if os.path.exists(temp_dir_lib):
         _TKINTER_SO = temp_dir_lib
         #Modify the search path for the _tkinter.so library.
-        sys.path.insert(0, temp_dir_lib)
+        sys.path.insert(0, _TKINTER_SO)
 
 #Determine the expected location of the local copy of Tcl/Tk.
 try:
@@ -501,7 +501,8 @@ class Mover:
             self.outline = self.display.create_rectangle(x, y, x+self.width,
                                                          y+self.height,
                                                          fill=self.mover_color,
-                                                    outline=self.library_color)
+                                                    outline=self.library_color,
+                                                         width=2.0)
         #Display the mover name label.
         if self.label:
             self.display.coords(self.label, x + self.label_offset.x,
@@ -2432,10 +2433,15 @@ class Display(Tkinter.Canvas):
         if not getattr(self, "client_colors", None):
             self.client_colors = {}
 
-        #If this mover's library is already remembered.
-        if self.client_colors.get(client, None):
-            return self.client_colors[client]
-
+        #If this client's color is already remembered.
+        for item in self.client_colors.items():
+            try:
+                client_search = re.compile(item[0])
+                if client_search.search(client).group():
+                    return item[1]
+            except AttributeError:
+                pass
+        
         self.client_colors[client] = colors('client_outline_color')
 
         return self.client_colors[client]
