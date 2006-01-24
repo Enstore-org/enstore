@@ -1811,31 +1811,32 @@ class Mover(dispatching_worker.DispatchingWorker,
                 return
         Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
 
-        if self.first_write == 0: # this is a first write since tape has been mounted
-            self.initial_abslute_location = bloc_loc
-            self.current_absolute_location = self.initial_abslute_location
-            self.last_absolute_location = self.current_absolute_location
-            self.last_blocks_written = 0L
-            if self.initial_abslute_location == 0L:
-                # tape is at BOT
-                # something wrong with positioning.
-                self.transfer_failed(e_errors.WRITE_ERROR, "Tape %s at BOT, can not write"%(self.current_volume,), error_source=TAPE)
-                self.set_volume_noaccess(self.current_volume)
-                return    
-        else:
-            Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
-            if (bloc_loc <= self.initial_abslute_location) or (bloc_loc != self.last_absolute_location):
-                self.transfer_failed(e_errors.WRITE_ERROR,
-                                     "Wrong position for %s: initial %s, last %s, current %s, last written blocks %s"%
-                                     (self.current_volume,
-                                      self.initial_abslute_location,
-                                      self.last_absolute_location,
-                                      bloc_loc,
-                                      self.last_blocks_written),error_source=TAPE)
-                self.set_volume_noaccess(self.current_volume)
-                return
-                
-            self.current_absolute_location = bloc_loc
+        if self.driver_type == 'FTTDriver':
+            if self.first_write == 0: # this is a first write since tape has been mounted
+                self.initial_abslute_location = bloc_loc
+                self.current_absolute_location = self.initial_abslute_location
+                self.last_absolute_location = self.current_absolute_location
+                self.last_blocks_written = 0L
+                if self.initial_abslute_location == 0L:
+                    # tape is at BOT
+                    # something wrong with positioning.
+                    self.transfer_failed(e_errors.WRITE_ERROR, "Tape %s at BOT, can not write"%(self.current_volume,), error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+                    return    
+            else:
+                Trace.trace(31, "cur %s, initial %s, last %s"%(bloc_loc, self.initial_abslute_location, self.last_absolute_location))
+                if (bloc_loc <= self.initial_abslute_location) or (bloc_loc != self.last_absolute_location):
+                    self.transfer_failed(e_errors.WRITE_ERROR,
+                                         "Wrong position for %s: initial %s, last %s, current %s, last written blocks %s"%
+                                         (self.current_volume,
+                                          self.initial_abslute_location,
+                                          self.last_absolute_location,
+                                          bloc_loc,
+                                          self.last_blocks_written),error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+                    return
+
+                self.current_absolute_location = bloc_loc
         
         
         buffer_empty_t = time.time()   #time when buffer empty has been detected
