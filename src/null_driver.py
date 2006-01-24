@@ -49,7 +49,7 @@ class NullDriver(generic_driver.Driver):
 
     def tell(self):
         Trace.trace(25, "tell %s" % (self.loc))
-        return self.loc
+        return self.loc, self.loc
     
     def seek(self, loc, eot_ok=None): #XXX is eot_ok needed?
         if type(loc) is type(""):
