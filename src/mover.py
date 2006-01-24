@@ -864,7 +864,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.logname = self.config.get('logname', name)
         Trace.init(self.logname)
         # do not restart if some mover processes are already running
-        cmd = "EPS | grep %s | grep %s"%(self.name,"mover.py")
+        cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
         pipeObj = popen2.Popen3(cmd, 0, 0)
         if pipeObj:
             stat = pipeObj.wait()
