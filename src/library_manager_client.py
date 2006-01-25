@@ -311,9 +311,8 @@ class LibraryManagerClient(generic_client.GenericClient) :
         return self.send(ticket, timeout, tries)
 
     #tell lm to print pending work queue
-    def printqueue(self, ticket, timeout=0, tries=0):
-        ticket['work'] = "print_queue"
-        return self.send(ticket, timeout, tries)
+    def printqueue(self, timeout=0, tries=0):
+        return self.send({"work":"print_queue"}, timeout, tries)
         
 
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
@@ -474,7 +473,7 @@ def do_work(intf):
             print ticket['pending_work']
             print ticket['at movers']
     elif  intf.print_queue:
-        ticket = lmc.printqueue(ticket)
+        ticket = lmc.printqueue()
         if e_errors.is_ok(ticket):
             print "OK"
     elif intf.get_asserts:
