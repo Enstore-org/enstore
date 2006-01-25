@@ -2463,6 +2463,17 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         os._exit(0)
     # what is going on
 
+    def print_queue(self, ticket):
+        ticket["status"] = (e_errors.OK, None)
+        self.reply_to_caller(ticket) # reply now to avoid deadlocks
+        if self.fork() != 0:
+            return
+        try:
+           self.pending_work.wprint()
+        except:
+            pass
+        os._exit(0)
+        
     # return sorted queus as they appear in the pendung queue +
     # work at movers
     def getworks_sorted(self,ticket):

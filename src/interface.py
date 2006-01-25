@@ -340,6 +340,8 @@ class Interface:
                 self.get_patrol_file = 1
             elif opt == "--get-queue":
                 self.get_queue=value
+            elif opt == "--print-queue":
+                self.print_queue=value
             elif opt == "--get-refresh":
                 self.get_refresh = 1
             elif opt == "--get-suspect-vols":

@@ -310,6 +310,12 @@ class LibraryManagerClient(generic_client.GenericClient) :
         ticket['work'] = "volume_assert"
         return self.send(ticket, timeout, tries)
 
+    #tell lm to print pending work queue
+    def printqueue(self, ticket, timeout=0, tries=0):
+        ticket['work'] = "print_queue"
+        return self.send(ticket, timeout, tries)
+        
+
 class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
     def __init__(self, args=sys.argv, user_mode=1) :
         # this flag if 1, means do everything, if 0, do no option parsing
@@ -334,6 +340,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.rm_suspect_vol = 0
         self.rm_active_vol = 0
         self.unique_id = ''
+        self.print_queue = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -389,6 +396,11 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                  option.USER_LEVEL:option.USER},
         option.GET_WORK_SORTED:{option.HELP_STRING:
                            "print sorted lists of pending and active requests",
+                                option.DEFAULT_TYPE:option.INTEGER,
+                                option.VALUE_USAGE:option.IGNORED,
+                                option.USER_LEVEL:option.USER},
+        option.PRINT_QUEUE:{option.HELP_STRING:
+                           "cause LM to output queue to stdio",
                                 option.DEFAULT_TYPE:option.INTEGER,
                                 option.VALUE_USAGE:option.IGNORED,
                                 option.USER_LEVEL:option.USER},
@@ -461,6 +473,10 @@ def do_work(intf):
         if e_errors.is_ok(ticket):
             print ticket['pending_work']
             print ticket['at movers']
+    elif  intf.print_queue:
+        ticket = lmc.printqueue()
+        if e_errors.is_ok(ticket):
+            print "OK"
     elif intf.get_asserts:
         ticket = lmc.get_asserts()
         if e_errors.is_ok(ticket):
