@@ -474,7 +474,7 @@ def do_work(intf):
             print ticket['pending_work']
             print ticket['at movers']
     elif  intf.print_queue:
-        ticket = lmc.printqueue()
+        ticket = lmc.printqueue(ticket)
         if e_errors.is_ok(ticket):
             print "OK"
     elif intf.get_asserts:
