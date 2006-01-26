@@ -894,7 +894,7 @@ class LibraryManagerMethods:
                     
                 if self.continue_scan:
                     if key:
-                        Trace.trace(222,"PW5",key)
+                        Trace.trace(222,"PW5 %s"%(key,))
                         rq = self.pending_work.get(key)
                     else:
                         Trace.trace(222,"PW6")
