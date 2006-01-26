@@ -999,6 +999,9 @@ class LibraryManagerMethods:
             rq, status = self.next_work_any_volume(mover, bound)
             if (status[0] == e_errors.OK or 
                 status[0] == e_errors.NOWORK):
+                if rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == "RESTRICTED_ACCESS":
+                    Trace.trace(30, "This request should not get here %s"%(rq,))
+                    rq = None
                 return rq, status
             # some sort of error, like write work and no volume available
             # so bounce. status is already bad...
