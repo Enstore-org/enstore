@@ -879,6 +879,12 @@ class LibraryManagerMethods:
                             label = rq.ticket["vc"]["volume_family"]
                         else:
                             label = rq.ticket["vc"]["external_label"]
+                            if self.is_vol_busy(label):
+                                # do not process requests fot this volume
+                                Trace.trace(222,"PWbbb")
+                                rq = self.pending_work.get(next=1) # get next request
+                                Trace.trace(222, "NEXT RQ21: %s"%(rq,))
+                                continue
                         Trace.trace(222,"PWAAA")
                         rq = self.pending_work.get(label, next=1)
                         Trace.trace(17, "NEXT RQ1: %s"%(rq,))
@@ -911,7 +917,7 @@ class LibraryManagerMethods:
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        Trace.trace(222,"PW7")
+                        Trace.trace(222,"PW7 %"%(key,))
                         rq = self.pending_work.get(key)
                     else:
                         Trace.trace(222,"PW8")
