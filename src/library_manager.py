@@ -706,6 +706,7 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
+        Trace.trace(222,'tmp_rq %s rq %s key %s'(tmp_rq, rq, key_to_check))
         return rq, key_to_check
 
     def process_write_request(self, request, requestor):
@@ -858,8 +859,10 @@ class LibraryManagerMethods:
                     callback = rq.ticket.get('callback_addr', None)
                     if callback:
                         host_from_ticket = hostaddr.address_to_name(callback[0])
+                        Trace.trace(30,'RHA01 %s'%(host_from_ticket,))
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                    Trace.trace(30,'RHA02 %s %s'%(host_from_ticket,rq.ticket['wrapper']['machine'][1]))
 
                     args.append(host_from_ticket)
                     Trace.trace(30,'RHA1')
@@ -888,7 +891,7 @@ class LibraryManagerMethods:
                                 continue
                         Trace.trace(222,"PWAAA")
                         rq = self.pending_work.get(label, next=1)
-                        Trace.trace(17, "NEXT RQ1: %s"%(rq,))
+                        Trace.trace(222, "NEXT RQ1: %s"%(rq,))
                         if not rq:
                             Trace.trace(222,"PWBBB")
                             rq = self.pending_work.get(next=1) # get next request
