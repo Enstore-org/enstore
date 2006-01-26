@@ -19,9 +19,7 @@ enstore/cd/d0enmvr10a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr11a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr12a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr14a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr16a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr17a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr18a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr19a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr20a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr21a.fnal.gov@FNAL.GOV
@@ -61,6 +59,8 @@ enstore/cd/d0enmvr56a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr57a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr58a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr59a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr60a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr61a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
