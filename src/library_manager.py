@@ -1642,6 +1642,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             else:
                 host_from_ticket = w['wrapper']['machine'][1]
             
+            Trace.trace(30,'host_from_ticket %s'%(host_from_ticket,))
             try:
                 if (w['vc']['storage_group'] == storage_group and
                     re.search(host, host_from_ticket)):
