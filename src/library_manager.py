@@ -706,7 +706,7 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
-        Trace.trace(222,'tmp_rq %s rq %s key %s'(tmp_rq, rq, key_to_check))
+        Trace.trace(222,'tmp_rq %s rq %s key %s'(self.tmp_rq, rq, key_to_check))
         return rq, key_to_check
 
     def process_write_request(self, request, requestor):
