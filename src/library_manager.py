@@ -967,7 +967,7 @@ class LibraryManagerMethods:
 
                                 rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
 
-                                rq = None
+                            rq = None
 
                             
             self.postponed_rq = 1 # request comes from postponed requests list
