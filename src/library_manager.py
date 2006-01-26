@@ -1001,7 +1001,7 @@ class LibraryManagerMethods:
                 status[0] == e_errors.NOWORK):
                 if rq and rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == "RESTRICTED_ACCESS":
                     Trace.trace(30, "This request should not get here %s"%(rq,))
-                    status[0] = e_errors.NOWORK
+                    status = (e_errors.NOWORK, None)
                     rq = None
                 return rq, status
             # some sort of error, like write work and no volume available
