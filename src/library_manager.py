@@ -1308,7 +1308,7 @@ class LibraryManagerMethods:
                     raise AssertionError
                 # check if it is the same request
                 # or request for the same volume
-                if exc_limit_rq is not rq:
+                if rq and (exc_limit_rq is not rq):
                     if (rq.ticket.has_key('reject_reason') and
                         rq.ticket['reject_reason'][0] == 'PURSUING'):
                         rq = exc_limit_rq
@@ -1329,7 +1329,7 @@ class LibraryManagerMethods:
                                 rq = exc_limit_rq
                 Trace.trace(14, "s3 rq %s" % (rq.ticket,))
             
-            if rq.work == 'write_to_hsm':
+            if rq and rq.work == 'write_to_hsm':
                 while rq:
                     Trace.trace(14,"LABEL %s RQQQQQQQ %s" % (external_label, rq))
                     # regular write request must have the same volume label
