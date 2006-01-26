@@ -841,9 +841,10 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = bound
 
         # look in pending work queue for reading or writing work
-        Trace.trace(22,"PW3")
+        Trace.trace(222,"PW3")
         rq=self.pending_work.get()
         while rq:
+             Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
