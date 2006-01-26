@@ -862,6 +862,7 @@ class LibraryManagerMethods:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
 
                     args.append(host_from_ticket)
+                    Trace.trace(30,'RHA1')
                     ret = apply(getattr(self,fun), args)
                     Trace.trace(17, "restrict_host_access returned %s"%(ret,))
 
@@ -1142,6 +1143,7 @@ class LibraryManagerMethods:
                     if host_from_ticket == requestor['unique_id'].split('-')[0]:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
+                    Trace.trace(30,'RHA2')
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
@@ -1252,6 +1254,7 @@ class LibraryManagerMethods:
                         if requestor['unique_id'] and host_from_ticket == requestor['unique_id'].split('-')[0]:
                             args[-1]=args[-1]+1
                         args.append(host_from_ticket)
+                        Trace.trace(30,'RHA3')
                         ret = apply(getattr(self,fun), args)
                         if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                             if not (rej_reason == "RESTRICTED_ACCESS"):
@@ -1370,6 +1373,7 @@ class LibraryManagerMethods:
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
                     args.append(host_from_ticket)
+                    Trace.trace(30,'RHA4')
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
