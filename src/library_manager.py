@@ -841,7 +841,7 @@ class LibraryManagerMethods:
         self.process_for_bound_vol = bound
 
         # look in pending work queue for reading or writing work
-        Trace.trace(222,"PW3")
+        Trace.trace(222,"Pw3")
         rq=self.pending_work.get()
         while rq:
             Trace.trace(222,"PW33")
