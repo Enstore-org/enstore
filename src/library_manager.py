@@ -873,47 +873,47 @@ class LibraryManagerMethods:
                                                              rq.ticket["wrapper"]["uname"]))
 
                             rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-                            Trace.trace(17,"PW4")
+                            Trace.trace(222,"PW4")
                         if rq.work == 'write_to_hsm':
                             label = rq.ticket["vc"]["volume_family"]
                         else:
                             label = rq.ticket["vc"]["external_label"]
-                        Trace.trace(22,"PWAAA")
+                        Trace.trace(222,"PWAAA")
                         rq = self.pending_work.get(label, next=1)
                         Trace.trace(17, "NEXT RQ1: %s"%(rq,))
                         if not rq:
-                            Trace.trace(22,"PWBBB")
+                            Trace.trace(222,"PWBBB")
                             rq = self.pending_work.get(next=1) # get next request
-                            Trace.trace(17, "NEXT RQ2: %s"%(rq,))
+                            Trace.trace(222, "NEXT RQ2: %s"%(rq,))
                         continue
             if rq.work == "read_from_hsm":
                 rq, key = self.process_read_request(rq, requestor)
                 if rq: t = rq.ticket
                 else: t = rq
-                Trace.trace(16,"process_read_request returned %s %s %s" % (t, key,self.continue_scan))
+                Trace.trace(222,"process_read_request returned %s %s %s" % (t, key,self.continue_scan))
                     
                 if self.continue_scan:
                     if key:
-                        Trace.trace(22,"PW5")
+                        Trace.trace(222,"PW5",key)
                         rq = self.pending_work.get(key)
                     else:
-                        Trace.trace(22,"PW6")
+                        Trace.trace(222,"PW6")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
             elif rq.work == "write_to_hsm":
-                Trace.trace(22,"PW611")
+                Trace.trace(222,"PW611")
                 rq, key = self.process_write_request(rq, requestor)
-                Trace.trace(22,"PW612")
+                Trace.trace(222,"PW612")
                 if rq: t = rq.ticket
                 else: t = rq
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        Trace.trace(22,"PW7")
+                        Trace.trace(222,"PW7")
                         rq = self.pending_work.get(key)
                     else:
-                        Trace.trace(22,"PW8")
+                        Trace.trace(222,"PW8")
                         rq = self.pending_work.get(next=1) # get next request
                     continue
                 break
@@ -923,7 +923,7 @@ class LibraryManagerMethods:
                 Trace.log(e_errors.ERROR,
                           "next_work_any_volume assertion error in next_work_any_volume %s"%(rq.ticket,))
                 raise AssertionError
-            Trace.trace(22,"PW9")
+            Trace.trace(222,"PW9")
             rq = self.pending_work.get(next=1)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
