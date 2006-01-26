@@ -918,7 +918,7 @@ class LibraryManagerMethods:
                 Trace.trace(16,"process_write_request returned %s %s %s" % (t, key,self.continue_scan))
                 if self.continue_scan:
                     if key:
-                        Trace.trace(222,"PW7 %"%(key,))
+                        Trace.trace(222,"PW7 %s"%(key,))
                         rq = self.pending_work.get(key)
                     else:
                         Trace.trace(222,"PW8")
