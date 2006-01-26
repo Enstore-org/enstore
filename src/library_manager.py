@@ -844,7 +844,7 @@ class LibraryManagerMethods:
         Trace.trace(222,"PW3")
         rq=self.pending_work.get()
         while rq:
-             Trace.trace(222,"PW33")
+            Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
