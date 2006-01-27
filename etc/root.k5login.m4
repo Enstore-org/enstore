@@ -1,5 +1,5 @@
-ifelse(index(HOSTNAME, `stkendca'), 0,
-enstore/cd/stkendca3a.fnal.gov@FNAL.GOV
+ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
+enstore/cd/fndca3a.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv3.fnal.gov@FNAL.GOV,
 host/rip1.fnal.gov@FNAL.GOV
 host/rip2.fnal.gov@FNAL.GOV
@@ -31,9 +31,7 @@ host/d0enmvr10a.fnal.gov@FNAL.GOV
 host/d0enmvr11a.fnal.gov@FNAL.GOV
 host/d0enmvr12a.fnal.gov@FNAL.GOV
 host/d0enmvr14a.fnal.gov@FNAL.GOV
-host/d0enmvr16a.fnal.gov@FNAL.GOV
 host/d0enmvr17a.fnal.gov@FNAL.GOV
-host/d0enmvr18a.fnal.gov@FNAL.GOV
 host/d0enmvr19a.fnal.gov@FNAL.GOV
 host/d0enmvr20a.fnal.gov@FNAL.GOV
 host/d0enmvr21a.fnal.gov@FNAL.GOV
@@ -73,8 +71,8 @@ host/d0enmvr56a.fnal.gov@FNAL.GOV
 host/d0enmvr57a.fnal.gov@FNAL.GOV
 host/d0enmvr58a.fnal.gov@FNAL.GOV
 host/d0enmvr59a.fnal.gov@FNAL.GOV
-host/d0enout1a.fnal.gov@FNAL.GOV
-host/d0enout2a.fnal.gov@FNAL.GOV
+host/d0enmvr60a.fnal.gov@FNAL.GOV
+host/d0enmvr61a.fnal.gov@FNAL.GOV
 host/cmspnfs1.fnal.gov@FNAL.GOV
 host/eagpnfs1.fnal.gov@FNAL.GOV
 host/stkensrv0.fnal.gov@FNAL.GOV
@@ -85,6 +83,20 @@ host/stkensrv4.fnal.gov@FNAL.GOV
 host/stkensrv5.fnal.gov@FNAL.GOV
 host/stkensrv6.fnal.gov@FNAL.GOV
 host/stkensrv7.fnal.gov@FNAL.GOV
+host/stkensrv8.fnal.gov@FNAL.GOV
+host/stkensrv9.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, stkensrv3,
+host/stkendca6a.fnal.gov@FNAL.GOV
+host/stkendca7a.fnal.gov@FNAL.GOV
+host/stkendca8a.fnal.gov@FNAL.GOV
+host/stkendca9a.fnal.gov@FNAL.GOV
+host/stkendca10a.fnal.gov@FNAL.GOV
+host/stkendca11a.fnal.gov@FNAL.GOV
+host/stkendca12a.fnal.gov@FNAL.GOV
+host/stkendca13a.fnal.gov@FNAL.GOV
+host/stkendca14a.fnal.gov@FNAL.GOV
+host/stkendca15a.fnal.gov@FNAL.GOV
+host/stkendca16a.fnal.gov@FNAL.GOV, `dnl')
 host/stkenmvr5a.fnal.gov@FNAL.GOV
 host/stkenmvr6a.fnal.gov@FNAL.GOV
 host/stkenmvr7a.fnal.gov@FNAL.GOV
@@ -156,8 +168,7 @@ host/cmsdcdr1.fnal.gov@FNAL.GOV
 host/cmsdcdr2.fnal.gov@FNAL.GOV
 host/cmsdcmon1.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, stkensrv1,
-host/stkendca2a.fnal.gov@FNAL.GOV
-host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
+host/fndca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cdfensrv1,
 host/fcdfdcache1.fnal.gov@FNAL.GOV
 host/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
@@ -167,7 +178,7 @@ bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `fagan@FNAL.GOV', `dnl')
-ifelse(index(HOSTNAME, `stkendca'), 0,
+ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 fuhrmann@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
