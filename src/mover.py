@@ -1510,7 +1510,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         send_rq = 1
         use_state = 1
         if ((self.state == self._last_state) and
-            (self.state == OFFLINE or self.state == ACTIVE or self.state == MOUNT_WAIT or self.state == DISMOUNT_WAIT or self.state == SEEK):
+            (self.state == OFFLINE or self.state == ACTIVE or self.state == MOUNT_WAIT or self.state == DISMOUNT_WAIT or self.state == SEEK)):
             send_rq = 0
             if self.send_update_cnt > 0:
                self.send_update_cnt = self.send_update_cnt - 1 
