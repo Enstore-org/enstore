@@ -706,7 +706,7 @@ class LibraryManagerMethods:
                 if rq.pri > self.tmp_rq.pri:
                     self.tmp_rq = rq
         else: self.tmp_rq = rq
-        Trace.trace(222,'tmp_rq %s rq %s key %s'(self.tmp_rq, rq, key_to_check))
+        Trace.trace(222,'tmp_rq %s rq %s key %s'%(self.tmp_rq, rq, key_to_check))
         return rq, key_to_check
 
     def process_write_request(self, request, requestor):
@@ -943,39 +943,38 @@ class LibraryManagerMethods:
             #rq = self.tmp_rq
             rq, self.postponed_sg = self.postponed_requests.get()
             Trace.trace(16,"next_work_any_volume: get from postponed %s"%(rq,)) 
-            ## check if there are any additional restrictions for postponed request
-            if rq:
-                rc, fun, args, action = self.restrictor.match_found(rq.ticket)
-                if rc and fun and action:
-                    rq.ticket["status"] = (e_errors.OK, None)
-                    if fun == 'restrict_host_access':
-                        callback = rq.ticket.get('callback_addr', None)
-                        if callback:
-                            host_from_ticket = hostaddr.address_to_name(callback[0])
-                        else:
-                            host_from_ticket = rq.ticket['wrapper']['machine'][1]
-
-                        args.append(host_from_ticket)
-                        Trace.trace(30,'RHA1')
-                        ret = apply(getattr(self,fun), args)
-                        Trace.trace(17, "restrict_host_access returned %s"%(ret,))
-
-                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
-                            if not (rej_reason == "RESTRICTED_ACCESS"):
-                                format = "access delayed for %s : library=%s family=%s requester:%s"
-                                Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                                 rq.ticket["vc"]["library"],
-                                                                 rq.ticket["vc"]["volume_family"],
-                                                                 rq.ticket["wrapper"]["uname"]))
-
-                                rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
-
-                            rq = None
 
                             
             self.postponed_rq = 1 # request comes from postponed requests list
         # check if this volume is ok to work with
         if rq:
+            ## check if there are any additional restrictions for postponed request
+            rc, fun, args, action = self.restrictor.match_found(rq.ticket)
+            if rc and fun and action:
+                rq.ticket["status"] = (e_errors.OK, None)
+                if fun == 'restrict_host_access':
+                    callback = rq.ticket.get('callback_addr', None)
+                    if callback:
+                        host_from_ticket = hostaddr.address_to_name(callback[0])
+                    else:
+                        host_from_ticket = rq.ticket['wrapper']['machine'][1]
+
+                    args.append(host_from_ticket)
+                    Trace.trace(30,'RHA1')
+                    ret = apply(getattr(self,fun), args)
+                    Trace.trace(17, "restrict_host_access returned %s"%(ret,))
+
+                    if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
+                        if not (rej_reason == "RESTRICTED_ACCESS"):
+                            format = "access delayed for %s : library=%s family=%s requester:%s"
+                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                             rq.ticket["vc"]["library"],
+                                                             rq.ticket["vc"]["volume_family"],
+                                                             rq.ticket["wrapper"]["uname"]))
+
+                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+
+                        return (None, (e_errors.NOWORK, None))
             ##if self.tmp_rq:
             ##    Trace.trace(16,"next_work_any_volume: rq.pri %s, tmp_rq.pri %s"%(rq.pri, self.tmp_rq.pri))
             ##    sg_limit = self.get_sg_limit(volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"]))
@@ -1017,7 +1016,7 @@ class LibraryManagerMethods:
                     Trace.log(e_errors.ERROR,
                               "next_work_any_volume: cannot do the work for %s status:%s" % 
                               (rq.ticket['fc']['external_label'], rq.ticket['status'][0]))
-                    return None, (e_errors.NOWORK, None)
+                    return (None, (e_errors.NOWORK, None))
             else:
                 if (w['work'] == 'write_to_hsm' and
                     (w['status'][0] == e_errors.VOL_SET_TO_FULL or
@@ -1382,6 +1381,32 @@ class LibraryManagerMethods:
             # return read work
             if rq:
                 Trace.trace(14, "s4 rq %s" % (rq.ticket,))
+
+                rc, fun, args, action = self.restrictor.match_found(rq.ticket)
+                if rc and fun and action:
+                    rq.ticket["status"] = (e_errors.OK, None)
+                    if fun == 'restrict_host_access':
+                        callback = rq.ticket.get('callback_addr', None)
+                        if callback:
+                            host_from_ticket = hostaddr.address_to_name(callback[0])
+                        else:
+                            host_from_ticket = rq.ticket['wrapper']['machine'][1]
+                        args.append(host_from_ticket)
+                        Trace.trace(30,'RHA44')
+                        ret = apply(getattr(self,fun), args)
+                        if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
+                            if not (rej_reason == "RESTRICTED_ACCESS"):
+                                format = "bound:access delayed for %s : library=%s family=%s requester:%s"
+                                Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                                 rq.ticket["vc"]["library"],
+                                                                 rq.ticket["vc"]["volume_family"],
+                                                                 rq.ticket["wrapper"]["uname"]))
+                            rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
+                            # !!!! May not return here but let it try from the beginning?
+                            return (None, (e_errors.NOWORK, None))
+
+
+
                 
                 rq, status = self.check_read_request(external_label, rq, requestor)
                 return rq, status
