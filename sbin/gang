@@ -9,21 +9,21 @@ node=`hostname -s`
 
 case $node in
 
-  stken*|cmspnfs1|rip9|rip10)
+  stken*|fndca*|cmspnfs1|eagpnfs1|rip9|rip10)
 	gang=stken
-        ;;
+	;;
   rip*|cachen*)
-        gang=rip
-        ;;
+	gang=rip
+	;;
   d0en*)
-        gang=d0en
-        ;;
+	gang=d0en
+	;;
   cdfen*)
 	gang=cdfen
-        ;;
+	;;
   *)
 	gang=UNKNOWN
-        ;;
+	;;
 esac
 
 echo $gang
