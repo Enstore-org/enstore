@@ -1505,12 +1505,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                             return
                         
         #ticket = self.format_lm_ticket(state=state, error_source=error_source)
-        # send offline less often
+        # if mover is offline or active send LM update less often
         Trace.trace(20, "BEFORE: STATE %s udp_sent %s"%(state_name(self.state), self.udp_cm_sent))
         send_rq = 1
         use_state = 1
         if ((self.state == self._last_state) and
-            self.state == OFFLINE):
+            (self.state == OFFLINE or self.state == ACTIVE or self.state == MOUNT_WAIT or self.state == DISMOUNT_WAIT or self.state == SEEK):
             send_rq = 0
             if self.send_update_cnt > 0:
                self.send_update_cnt = self.send_update_cnt - 1 
