@@ -1,5 +1,6 @@
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV
+enstore/cd/stkendca3a.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv3.fnal.gov@FNAL.GOV,
 host/rip1.fnal.gov@FNAL.GOV
 host/rip2.fnal.gov@FNAL.GOV
@@ -168,7 +169,8 @@ host/cmsdcdr1.fnal.gov@FNAL.GOV
 host/cmsdcdr2.fnal.gov@FNAL.GOV
 host/cmsdcmon1.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, stkensrv1,
-host/fndca3a.fnal.gov@FNAL.GOV, `dnl')
+host/fndca3a.fnal.gov@FNAL.GOV
+host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cdfensrv1,
 host/fcdfdcache1.fnal.gov@FNAL.GOV
 host/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
