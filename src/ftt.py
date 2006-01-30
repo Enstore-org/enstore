@@ -161,7 +161,12 @@ class FTT:
     def status(self, timeout=60):
         return _ftt.ftt_status(self.d, timeout)
     def get_position(self):
-        status, file, block = _ftt.ftt_get_position(self.d)
+        try:
+            status, file, block = _ftt.ftt_get_position(self.d)
+        except TypeError, detail:
+            # do not know how this might happen
+            raise TypeError, detail
+            
         if status:
             raise_ftt(value=status)
         else:
