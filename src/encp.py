@@ -1865,7 +1865,10 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
                           ticket.get('wrapper', {}).get('machine',
                                                      ("", "", "", "", "")))[1]
     if hostname:
-        hostname = socket.gethostbyname(hostname)
+        try:
+            hostname = socket.gethostbyname(hostname)
+        except (socket.error, socket.herror, socket.gaierror):
+            pass
 
     #Check status field.
     sts =  ticket.get('status', ('Unknown', None))
@@ -9602,7 +9605,19 @@ class EncpInterface(option.Interface):
 
         #We need to check to make sure that only one enstore system has
         # been specified.
-        this_host = socket.gethostbyname_ex(socket.getfqdn())
+
+        #Determine all aliases and ip addresses for this node name.
+        for i in [1, 2, 3]:
+            try:
+                this_host = socket.gethostbyname_ex(socket.getfqdn())
+            except (socket.error, socket.herror, socket.gaierror):
+                time.sleep()
+        else:
+            try:
+                this_host = [[socket.getfqdn()], [], []]
+            except (socket.error, socket.herror, socket.gaierror):
+                this_host = [["localhost"], [], []]  #Is this the best to do?
+        #Flatten node name info this into one list.
         this_host_list = [this_host[0]] + this_host[1] + this_host[2]
         #If we are writing to enstore and don't use the default destination.
         if m1[0] in this_host_list and m2[0] not in this_host_list:
@@ -9732,7 +9747,7 @@ def log_encp_start(tinfo, intf):
         cwd = "invalid_cwd"
     try:
         hostname = socket.getfqdn(socket.gethostname())
-    except (OSError, socket.error):
+    except (OSError, socket.error, socket.herror, socket.gaierror):
         hostname = "invalid_hostname"
         
     #Other strings for the log file.
