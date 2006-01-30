@@ -157,6 +157,16 @@ class FTTDriver(generic_driver.Driver):
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "tell: %s %s" % (detail, detail.value))
             raise ftt.FTTError, detail
+        except: 
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR,"Unexpected exception in ftt.tell %s %s"%(exc, detail))
+            try:
+                Trace.handle_error(exc, detail, tb)
+            except: 
+                exc, detail, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR,"Exception while handling error %s %s"%(exc, detail))
+            raise ftt.FTTError,detail
+            
             #return -1
         return fil, block
     
