@@ -4528,7 +4528,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                     if ret['status'][0] != e_errors.OK:
                         Trace.log(e_errors.ERROR,
                                   "failed to clear system inhibit for %s. Status %s"%(self.current_volume,ret['status']))
-            return        
+            return
+        elif self.state == OFFLINE:
+            # mover went offline while seeking
+            # the possible reason is a bad MIR causing a mover to seek for too long
+            return
             
         if after_function and not failed:
             Trace.trace(10, "seek calling after function %s" % (after_function,))
