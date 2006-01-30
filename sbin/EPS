@@ -22,7 +22,7 @@ fi
 
 case `uname` in
   Linux*)
-        x=`ps axuww   $p`
+        x=`ps axuwwm   $p`
         ;;
   OSF1*)
         x=`ps  axguww $p`
