@@ -9614,9 +9614,9 @@ class EncpInterface(option.Interface):
                 time.sleep()
         else:
             try:
-                this_host = [[socket.getfqdn()], [], []]
+                this_host = [socket.getfqdn(), [], []]
             except (socket.error, socket.herror, socket.gaierror):
-                this_host = [["localhost"], [], []]  #Is this the best to do?
+                this_host = ["localhost", [], []]  #Is this the best to do?
         #Flatten node name info this into one list.
         this_host_list = [this_host[0]] + this_host[1] + this_host[2]
         #If we are writing to enstore and don't use the default destination.
