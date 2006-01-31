@@ -4189,10 +4189,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.notify("unload %s %s" % (self.shortname, self.current_volume))
         Trace.log(e_errors.INFO, "dismounting %s" %(self.current_volume,))
         self.asc.log_start_dismount(self.current_volume,self.config['product_id'])
-        mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
+        while 1:
+            mcc_reply = self.mcc.unloadvol(vol_info, self.name, self.mc_device)
+            status = mcc_reply.get('status')
+            if status and status[0] == e_errors.MC_QUEUE_FULL:
+                # media changer responded but could not perform the operation
+                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                # to avoid false "too long in state.."
+                # reset self.time_in_state
+                self.time_in_state = time.time()
+                time.sleep(10)
+                continue
+            else:
+                break
 
-        status = mcc_reply.get('status')
-        if status and status[0]==e_errors.OK:
+        if status and status[0] == e_errors.OK:
             self.asc.log_finish_dismount(self.current_volume)
             tm = time.localtime(time.time())
             time_msg = "%.2d:%.2d:%.2d" %  (tm[3], tm[4], tm[5])
@@ -4219,12 +4230,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.idle()
         else:
 ##            self.error(status[-1], status[0])
-            
+
             self.asc.log_finish_dismount_err(self.current_volume)
             Trace.log(e_errors.ERROR, "dismount %s: %s" % (self.current_volume, status))
             self.last_error = status
             broken = None
-               
+
             if ((status[1] in (e_errors.MC_VOLNOTHOME, e_errors.MC_NONE,
                               e_errors.MC_FAILCHKVOL, e_errors.MC_VOLNOTFOUND,
                               e_errors.MC_DRVNOTEMPTY)) or
@@ -4364,9 +4375,21 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.override_ro_mount:
             vi['system_inhibit'][1] = 'none'
             vi['user_inhibit'][1] = 'none'
-        mcc_reply = self.mcc.loadvol(vi, self.name, self.mc_device)
-        self.timer('mount_time')
-        status = mcc_reply.get('status')
+        
+        while 1:
+            mcc_reply = self.mcc.loadvol(vi, self.name, self.mc_device)
+            status = mcc_reply.get('status')
+            if status and status[0] == e_errors.MC_QUEUE_FULL:
+                # media changer responded but could not perform the operation
+                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                # to avoid false "too long in state.."
+                # reset self.time_in_state
+                self.time_in_state = time.time()
+                time.sleep(10)
+                continue
+            else:
+                break
+
         Trace.trace(10, 'mc replies %s' % (status,))
 
         #Do another query volume, just to make sure its status has not changed
