@@ -1065,26 +1065,26 @@ class Histogram2D(Histogram1D):
         return other
 
     def find_bin_x(self,x):
-        if ( x < self.low ):
+        if ( float(x) < self.low ):
             self.underflow=self.underflow+1
             return None
-        elif ( x > self.high ):
+        elif ( float(x) > self.high ):
             self.overflow=self.overflow+1
             return None
-        bin = int (float(self.nbins_x)*(x-self.low)/(self.high-self.low));
+        bin = int (float(self.nbins_x)*(float(x)-self.low)/(self.high-self.low));
         if ( bin == self.nbins_x ) :
             bin = bin-1
         return bin
 
     
     def find_bin_y(self,y):
-        if ( y < self.ylow ):
+        if ( float(y) < self.ylow ):
             self.underflow=self.underflow+1
             return None
-        elif ( y > self.yhigh ):
+        elif ( float(y) > self.yhigh ):
             self.overflow=self.overflow+1
             return None
-        bin = int (float(self.nbins_y)*(y-self.ylow)/(self.yhigh-self.ylow));
+        bin = int (float(self.nbins_y)*(float(y)-self.ylow)/(self.yhigh-self.ylow));
         if ( bin == self.nbins_y ) :
             bin = bin-1
         return bin
@@ -1195,10 +1195,10 @@ class Histogram2D(Histogram1D):
             count=self.get_bin_content(bin)
             if (count>0):
                 if (  self.time_axis ) :
-                    self.add_text("set label \"%5d\" at \"%s\",%f center font \"Helvetica,12\"\n"%(count,time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),
+                    self.add_text("set label \"%5d\" at \"%s\",%f center font \"Helvetica,10\"\n"%(count,time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),
                                                                                                y),)
                 else:
-                    self.add_text("set label \"%5d\" at %f,%f center font \"Helvetica,12\"\n"%(count,x,y,))
+                    self.add_text("set label \"%5d\" at %f,%f center font \"Helvetica,10\"\n"%(count,x,y,))
         if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
