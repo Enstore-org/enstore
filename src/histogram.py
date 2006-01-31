@@ -17,6 +17,191 @@ import os
 import time
 import types
 
+class Ntuple:
+
+    def __init__(self, name, title):
+        self.name=name
+        self.title=title
+        self.data_file_name="%s_data.pts"%(self.name,)
+        self.time_axis=False # time axis assumes unix time stamp
+        self.opt_stat=False
+        self.profile=False
+        self.marker_type="points"
+        self.marker_text=""
+        self.additional_text=""
+        self.line_width=1
+        self.line_color=1
+        self.data_file=open(self.data_file_name,"w");
+        #
+        # atributes
+        #
+        self.ylabel=""
+        self.xlabel=""
+        self.logy=False
+        self.logx=False
+
+    #
+    # setters 
+    #
+                
+    def set_title(self,txt):
+        self.title=txt
+
+    def set_name(self,txt):
+        self.name=txt
+
+    def set_data_file_name(self,txt):   # name of the file with data points
+        self.data_file_name=txt
+
+    #
+    # Plotting features
+    #
+
+    def set_ylabel(self,txt):
+        self.ylabel=txt
+
+    def set_xlabel(self,txt):
+        self.xlabel=txt
+
+    def set_logy(self,yes=True):
+        self.logy=yes
+
+    def set_logx(self,yes=True):
+        self.logx=yes
+
+    def set_time_axis(self,yes=True):
+        self.time_axis=yes
+
+    def set_opt_stat(self,yes=True):
+        self.opt_stat=yes
+
+    def set_profile(self,yes=True):
+        self.profile=yes
+
+    def add_text(self,txt):
+        self.additional_text=self.additional_text+txt
+
+    def set_marker_type(self,txt):
+        self.marker_type=txt
+
+    def set_marker_text(self,txt):
+        self.marker_text=txt
+
+    def set_line_color(self,color=1):
+        self.line_color=color
+
+    def set_line_width(self,w=1):
+        self.line_width=w
+
+    #
+    # getters
+    #
+
+    def get_text(self):
+        return self.additional_text
+
+    def get_marker_type(self):
+        return self.marker_type
+
+    def get_marker_text(self):
+        return self.marker_text
+
+    def get_line_color(self):
+        return self.line_color
+
+    def get_line_width(self):
+        return self.line_width 
+
+    #
+    # Statistis
+    #
+
+
+    def get_logy(self):
+        return self.logy
+
+    def get_time_axis(self):
+        return self.time_axis
+
+    def get_opt_stat(self):
+        return self.opt_stat
+
+    def get_profile(self):
+        return self.profile
+
+    def get_logx(self):
+        return self.logx
+
+    def get_title(self):
+        return self.title
+
+    def get_name(self):
+        return self.name
+
+    def get_ylabel(self):
+        return self.ylabel
+
+    def get_xlabel(self):
+        return self.xlabel
+
+    def get_data_file_name(self):
+        return self.data_file_name;
+
+    def get_data_file(self):
+        return self.data_file;
+
+    #
+    # "plot" is the act of creating an image
+    #
+
+    def plot(self,command):
+        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+        gnu_cmd = open(gnu_file_name,'w')
+        long_string="set output '"+self.name+".ps'\n"+ \
+                     "set terminal postscript color solid\n"\
+                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                     "set xrange [ : ]\n"+ \
+                     "set size 1.5,1\n"+ \
+                     "set grid\n"+ \
+                     "set ylabel '%s'\n"%(self.ylabel)+ \
+                     "set xlabel '%s'\n"%(self.xlabel)
+        if (  self.time_axis ) : 
+            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
+                         "set xdata time\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"plot '"+self.data_file_name+"' using "+command+" "
+        else :
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"plot '"+self.data_file_name+"' using "+command+" "
+        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+        gnu_cmd.write(long_string)
+        gnu_cmd.close()
+        os.system("gnuplot %s"%(gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+
+
+    def __del__(self):
+        os.system("rm -rf %s"%(self.data_file_name,))
+
+       
+    def dump(self):
+        print repr(self.__dict__)
+
 class Plotter:
 
     def __init__(self, name,title):
@@ -69,11 +254,13 @@ class Plotter:
                          "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
 
+#            if ( isinstance(hist,histogram.Histogram1D)) : 
+
         for hist in self.histogram_list:
-            full_file_name=dir+hist.data_file_name
+            full_file_name=dir+hist.data_file_name            
             hist.save_data(full_file_name)
             long_string=long_string+hist.get_text()
-
+            
         long_string=long_string+"plot "
         comma = False
 
@@ -99,10 +286,9 @@ class Plotter:
             os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
         
-    
 class Histogram1D:
 
-    def __init__(self, name, title, nbins=10, xlow=0, xhigh=1):
+    def __init__(self, name, title, nbins, xlow, xhigh):
         self.name=name
         self.title=title
         self.nbins=int(nbins)
@@ -664,7 +850,6 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
         else :
-            #                     "set style fill solid 1.000000 \n" (not working:)
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
@@ -718,7 +903,6 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:4 "
         else :
-            #                     "set style fill solid 1.000000 \n" (not working:)
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
@@ -784,7 +968,6 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:6 "
         else :
-            #                     "set style fill solid 1.000000 \n" (not working:)
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
@@ -804,15 +987,268 @@ class Histogram1D:
        
     def dump(self):
         print repr(self.__dict__)
-        
-if __name__ == "__main__":
 
+class Histogram2D(Histogram1D):
+
+    def __init__(self, name, title, nbinsX, xlow, xhigh, nbinsY, ylow, yhigh):
+        Histogram1D.__init__(self,name,title,int(nbinsX*nbinsY),xlow,xhigh)
+        self.ylow=ylow
+        self.yhigh=yhigh
+        self.nbins_x=nbinsX
+        self.nbins_y=nbinsY
+        self.logz=False
+        self.zlabel=""
+        self.marker_type="points"
+
+    def set_zlabel(self,txt):
+        self.zlabel=txt
+
+    def set_logz(self,yes=True):
+        self.logz=yes
+
+    def get_logz(self):
+        return self.logz;
+
+    def get_zlabel(self):
+        return self.zlabel;
+
+    def copy(self) :
+        other = Histogram2D(self.name,
+                            self.title,
+                            self.nbins_x,
+                            self.low,
+                            self.high,
+                            self.nbins_y,
+                            self.ylow,
+                            self.yhigh)
+        other.ylow=self.ylow
+        other.yhigh=self.yhigh
+        other.nbins_y=self.nbins_y
+        other.nbins_x=self.nbins_x
+        
+
+        other.entries=self.entries
+        other.binarray = []
+        other.sumarray = []
+        other.underflow=self.underflow
+        other.overflow=self.overflow
+        other.mean=self.mean
+        other.mean_error=self.mean_error
+        other.rms=self.rms
+        other.rms_error=self.rms_error
+        other.sum=self.sum
+        other.sum2=self.sum2
+        other.data_file_name=self.data_file_name
+        other.bw=self.bw
+        other.maximum=self.maximum
+        other.minimum=self.minimum
+        other.time_axis=self.time_axis
+        other.opt_stat=self.opt_stat
+        other.profile=self.profile
+        other.marker_type=self.marker_type
+        other.marker_text=self.marker_text
+        other.additional_text=self.additional_text
+        other.line_width=self.line_width
+        other.line_color=self.line_color
+        for i in range(self.nbins):
+            other.binarray.append(self.binarray[i])
+            other.sumarray.append(self.sumarray[i])
+        
+        #
+        # atributes
+        #
+        other.ylabel=self.ylabel
+        other.xlabel=self.xlabel
+        other.logy=self.logy
+        other.logz=self.logz
+        other.logx=self.logx
+        return other
+
+    def find_bin_x(self,x):
+        if ( x < self.low ):
+            self.underflow=self.underflow+1
+            return None
+        elif ( x > self.high ):
+            self.overflow=self.overflow+1
+            return None
+        bin = int (float(self.nbins_x)*(x-self.low)/(self.high-self.low));
+        if ( bin == self.nbins_x ) :
+            bin = bin-1
+        return bin
+
+    
+    def find_bin_y(self,y):
+        if ( y < self.ylow ):
+            self.underflow=self.underflow+1
+            return None
+        elif ( y > self.yhigh ):
+            self.overflow=self.overflow+1
+            return None
+        bin = int (float(self.nbins_y)*(y-self.ylow)/(self.yhigh-self.ylow));
+        if ( bin == self.nbins_y ) :
+            bin = bin-1
+        return bin
+
+    def fill(self,x,y,w=1.):
+        binx = self.find_bin_x(x)
+        biny = self.find_bin_y(y)
+        if (binx and biny) :
+            bin = self.nbins_x*biny+binx
+            self.entries=self.entries+1
+            count=self.binarray[bin]
+            count=count+1.*w
+            self.binarray[bin]=count
+            if ( count > self.maximum ) :
+                self.maximum=count
+            if ( count < self.minimum ) :
+                self.minimum=count
+
+    def get_bin_center(self,bin):
+        ny = int(bin/self.nbins_x)
+        nx = bin%self.nbins_x
+        return self.low+(nx+0.5)*(self.high-self.low)/float(self.nbins_x), self.ylow+(ny+0.5)*(self.yhigh-self.ylow)/float(self.nbins_y),
+
+    def save_data(self,fname):
+        data_file=open(fname,'w')
+        for i in range(self.nbins):
+            x,y = self.get_bin_center(i)
+            z = float(self.get_bin_content(i));
+            dz = math.sqrt(self.get_bin_content(i))
+            if ( self.time_axis ) :
+                data_file.write("%s %f %f %f\n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),y,z,dz,))
+            else :
+                data_file.write("%f %f %f %f\n"%(x,y,z,dz,))
+        data_file.close()
+
+    #
+    # "plot" is the act of creating an image
+    #
+
+    def plot(self,dir="./"):
+        full_file_name=dir+self.data_file_name
+        self.save_data(full_file_name)
+        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+        gnu_cmd = open(gnu_file_name,'w')
+        long_string="set output '"+self.name+".ps'\n"+ \
+                     "set terminal postscript color solid\n"\
+                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                     "set xrange [ : ]\n"+ \
+                     "set size 1.5,1\n"+ \
+                     "set grid\n"+ \
+                     "set ylabel '%s'\n"%(self.ylabel)+ \
+                     "set zlabel '%s'\n"%(self.zlabel)+ \
+                     "set xlabel '%s'\n"%(self.xlabel)
+        if (  self.time_axis ) : 
+            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
+                         "set xdata time\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logz() ) :
+                long_string=long_string+"set logscale z\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"splot '"+full_file_name+"' using 1:3:4 "
+        else :
+            #                     "set style fill solid 1.000000 \n" (not working:)
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logz() ) :
+                long_string=long_string+"set logscale z\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"splot '"+full_file_name+"' using 1:2:3 "
+        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+        gnu_cmd.write(long_string)
+        gnu_cmd.close()
+        os.system("gnuplot %s"%(gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+
+
+    def plot_ascii(self,dir="./"):
+        full_file_name=dir+self.data_file_name
+        self.save_data(full_file_name)
+        gnu_file_name = "tmp_%s_gnuplot.cmd"%(self.name)
+        gnu_cmd = open(gnu_file_name,'w')
+        long_string="set output '"+self.name+".ps'\n"+ \
+                     "set terminal postscript color solid\n"\
+                     "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                     "set xrange [  :  ]\n"+\
+                     "set size 1.5,1\n"+ \
+                     "set grid\n"+ \
+                     "set ylabel '%s'\n"%(self.ylabel)+ \
+                     "set zlabel '%s'\n"%(self.zlabel)+ \
+                     "set xlabel '%s'\n"%(self.xlabel)
+        for bin in range(self.nbins) :
+            x,y=self.get_bin_center(bin)
+            count=self.get_bin_content(bin)
+            if (count>0):
+                if (  self.time_axis ) :
+                    self.add_text("set label \"%5d\" at \"%s\",%f center font \"Helvetica,12\"\n"%(count,time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),
+                                                                                               y),)
+                else:
+                    self.add_text("set label \"%5d\" at %f,%f center font \"Helvetica,12\"\n"%(count,x,y,))
+        if (  self.time_axis ) :
+            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
+                         "set xdata time\n"+ \
+                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set format x \"%y-%m-%d\"\n"
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logz() ) :
+                long_string=long_string+"set logscale z\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
+        else :
+            #                     "set style fill solid 1.000000 \n" (not working:)
+            if ( self.get_logy() ) :
+                long_string=long_string+"set logscale y\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logz() ) :
+                long_string=long_string+"set logscale z\n"
+                long_string=long_string+"set yrange [ 0.99  : ]\n"
+            if ( self.get_logx() ) :
+                long_string=long_string+"set logscale x\n"
+            long_string=long_string+self.get_text()
+            long_string=long_string+"plot '"+full_file_name+"' using 1:2 "
+        long_string=long_string+" t '"+self.get_marker_text()+"' with "\
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+        gnu_cmd.write(long_string)
+        gnu_cmd.close()
+        os.system("gnuplot %s"%(gnu_file_name))
+        os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
+        os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%gnu_file_name)  # remove gnu file
+
+
+if __name__ == "__main__":
+    ntuple = Ntuple("gauss2D","gauss2D")
     if (1) :
         h1=Histogram1D("try","try",100,0,10)
         h2=Histogram1D("try1","try1",100,0,10)
         h3=Histogram1D("try2","try2",1000,0,100)
+        hh=Histogram2D("2d","2d",10,0,5,10,0,5)
         while ( h1.n_entries() < 10000 ) :
             x=random.gauss(2,0.5)
+            y=random.gauss(2,0.5)
+            ntuple.get_data_file().write("%f %f\n"%(x,y));
+            hh.fill(x,y)
             h1.fill(x)
             x=random.gauss(7,0.5)
             h2.fill(x)
@@ -830,6 +1266,10 @@ if __name__ == "__main__":
             h1.fill(x)
         h1.set_time_axis(True)
 
+    ntuple.get_data_file().close()
+    ntuple.plot("1:2")
+    hh.plot_ascii()
+    sys.exit(0)
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
     h1.set_xlabel("x variable")
     h1.set_marker_text("blah")
