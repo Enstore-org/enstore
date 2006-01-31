@@ -308,6 +308,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         if ticket["function"] != "getVolState":
             if len(self.work_list) >= self.max_work:
                 Trace.log(e_errors.INFO, "MC Overflow: "+ repr(self.max_work) + " " + ticket['function'])
+                self.reply_to_caller({'status' : (e_errors.MC_QUEUE_FULL, 0, "retry later")})
                 return
               ##elif work queue is temporarily closed, assume client will resend
             elif  self.workQueueClosed and len(self.work_list)>0:
