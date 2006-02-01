@@ -23,6 +23,11 @@ fi
 case `uname` in
   Linux*)
         x=`ps axuwwm   $p`
+	case `cat /etc//redhat-release` in 
+	7.3*)
+	    x=`ps axuww   $p`
+	    ;;
+	esac
         ;;
   OSF1*)
         x=`ps  axguww $p`
