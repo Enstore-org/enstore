@@ -19,10 +19,15 @@ else
      lookfor=${2-:enstore}
    fi    
 fi
-
 case `uname` in
   Linux*)
-        x=`ps axuww   $p`
+	# check if tread display is implemented
+	ps m > /dev/null
+	if [ $? != 0 ]; then
+	    x=`ps axuww   $p`
+	else
+	    x=`ps axuwwm   $p`
+	fi
         ;;
   OSF1*)
         x=`ps  axguww $p`
