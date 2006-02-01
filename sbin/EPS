@@ -22,7 +22,7 @@ fi
 case `uname` in
   Linux*)
 	# check if tread display is implemented
-	ps m > /dev/null
+	ps m > /dev/null 2&>1
 	if [ $? != 0 ]; then
 	    x=`ps axuww   $p`
 	else
