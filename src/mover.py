@@ -1120,7 +1120,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                             status = mcc_reply.get('status')
                             if status and status[0] == e_errors.MC_QUEUE_FULL:
                                 # media changer responded but could not perform the operation
-                                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status[0],)) 
                                 # to avoid false "too long in state.."
                                 # reset self.time_in_state
                                 self.time_in_state = time.time()
@@ -4225,7 +4225,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = mcc_reply.get('status')
             if status and status[0] == e_errors.MC_QUEUE_FULL:
                 # media changer responded but could not perform the operation
-                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status[0],)) 
                 # to avoid false "too long in state.."
                 # reset self.time_in_state
                 self.time_in_state = time.time()
@@ -4412,7 +4412,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             status = mcc_reply.get('status')
             if status and status[0] == e_errors.MC_QUEUE_FULL:
                 # media changer responded but could not perform the operation
-                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status[0],)) 
                 # to avoid false "too long in state.."
                 # reset self.time_in_state
                 self.time_in_state = time.time()
