@@ -190,9 +190,11 @@ class InquisitorPlots:
         encpfile.close()
         encpfile.cleanup(self.keep, self.keep_dir)
 
+        encp_q = "select to_char(date,'YYYY-MM-DD:hh24:mi:ss'), size, rw, mover, drive_id, storage_group from encp_xfer where date between '%s' and '%s'"%(self.start_time,self.stop_time,)
+        res=self.acc_db.query(encp_q)
 
         # only do the plotting if we have some data
-        if encpfile.data:
+        if res:
 	    # overall bytes/per/day count
 	    bpdfile = enstore_plots.BpdDataFile(self.output_dir)
 	    bpdfile.open()
@@ -205,11 +207,11 @@ class InquisitorPlots:
 	    mbpdfile.plot(bpdfile.write_ctr)
 	    mbpdfile.close()
 	    mbpdfile.install(self.html_dir)
-            
+
             xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                   mbpdfile.ptsfile)
             xferfile.open()
-            xferfile.plot(encpfile.data)
+            xferfile.plot(res)
             xferfile.close()
             xferfile.install(self.html_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
@@ -224,7 +226,7 @@ class InquisitorPlots:
                     xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                           mbpdfile.ptsfile,sg)
                     xferfile.open()
-                    xferfile.plot(encpfile.data)
+                    xferfile.plot(res)
                     xferfile.close()
                     xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
                     xferfile.cleanup(self.keep, self.keep_dir)
