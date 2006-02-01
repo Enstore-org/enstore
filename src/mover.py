@@ -1114,8 +1114,21 @@ class Mover(dispatching_worker.DispatchingWorker,
                         Trace.alarm(e_errors.ERROR, "media changer is locked, going OFFLINE")
                         self.state = OFFLINE
                     else:
-                        mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
-                        status = mcc_reply.get('status')
+                        
+                        while 1:
+                            mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+                            status = mcc_reply.get('status')
+                            if status and status[0] == e_errors.MC_QUEUE_FULL:
+                                # media changer responded but could not perform the operation
+                                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status)) 
+                                # to avoid false "too long in state.."
+                                # reset self.time_in_state
+                                self.time_in_state = time.time()
+                                time.sleep(10)
+                                continue
+                            else:
+                                break
+                                
                         if status and status[0] != e_errors.OK:
                             self.offline()
                             #return Do not return here as this does not comlete
