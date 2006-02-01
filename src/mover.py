@@ -1391,7 +1391,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                             "Net thread is running in the state %s. Will restart the mover"%
                             (state_name(self.state),))
                 if self.state == HAVE_BOUND:
-                    self.dismount_volume(after_function=self.restart)
+                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+                    return
+                    #self.dismount_volume(after_function=self.restart)
                 else:
                     self.restart()
             elif t_thread and t_thread.isAlive():
@@ -3037,7 +3039,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.send_client_done(self.current_work_ticket, e_errors.WRITE_ERROR,
                                           "tape %s is write protected"%(self.current_volume,))
                     self.net_driver.close()
-                    self.dismount_volume(after_function=self.idle)
+                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+
+                    #self.dismount_volume(after_function=self.idle)
                     return
                     
                 err = None
@@ -3391,13 +3395,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.set_volume_noaccess(volume_label) 
         if dism_allowed:
             if save_state == DRAINING:
-                self.dismount_volume(after_function=self.offline)
+                self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
+
+                #self.dismount_volume(after_function=self.offline)
             else:
                 if not after_dismount_function:
                     if not self.maybe_clean():
-                        self.dismount_volume(after_function=self.idle)
+                        self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+
+                        #self.dismount_volume(after_function=self.idle)
                 else:
-                    self.dismount_volume(after_function=after_dismount_function)
+                    self.run_in_thread('media_thread', self.dismount_volume, after_function=after_dismount_function)
+
+                    #self.dismount_volume(after_function=after_dismount_function)
+            self.tr_failed = 0
+            self.dont_update_lm = 0
+            return
             
         if not after_dismount_function and broken:
             self.broken(broken, exc)
@@ -3448,7 +3461,12 @@ class Mover(dispatching_worker.DispatchingWorker,
             del(self.too_long_in_state_sent)
         
         if self.state == DRAINING or (self.state == FINISH_WRITE and self.draining):
-            self.dismount_volume(after_function=self.offline)
+            self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
+            #self.dismount_volume(after_function=self.offline)
+            self.log_state()
+            self.need_lm_update = (1, None, 1, None)
+            return
+            
         else:
             self.state = HAVE_BOUND
             if self.maybe_clean():
@@ -4527,8 +4545,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.current_volume:
                 vol = self.current_volume
                 vol_info = self.vol_info
+                self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
 
-                self.dismount_volume(after_function=self.idle)
+                #self.dismount_volume(after_function=self.idle)
                 #self.unload_volume(self.vol_info, after_function=self.idle)
             else:
                 vol = self.last_volume # current_volume does not exist, perhaps was unloaded already
@@ -4692,8 +4711,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
         if save_state is HAVE_BOUND and self.state is DRAINING:
-            self.dismount_volume()
-            self.state = OFFLINE
+            self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
+
+            #self.dismount_volume()
+            #self.state = OFFLINE
         return
 
     def stop_draining(self, ticket):        # put itself into draining state
