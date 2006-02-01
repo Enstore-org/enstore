@@ -22,12 +22,7 @@ fi
 
 case `uname` in
   Linux*)
-        x=`ps axuwwm   $p`
-	case `cat /etc//redhat-release` in 
-	7.3*)
-	    x=`ps axuww   $p`
-	    ;;
-	esac
+        x=`ps axuww   $p`
         ;;
   OSF1*)
         x=`ps  axguww $p`
