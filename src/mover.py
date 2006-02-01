@@ -1512,7 +1512,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         
                     else:
                         if transfer_stuck:
-                            msg = "data transfer to or from client stuck. Clent machine %s. Breaking connection."%(self.current_work_ticket['wrapper']['machine'][1],)
+                            msg = "data transfer to or from client stuck. Client machine %s. Breaking connection."%(self.current_work_ticket['wrapper']['machine'][1],)
                             if self.mode == READ:
                                 msg1 = "Stream write flag %s. Bytes %s/%s"%(self.stream_w_flag, self.bytes_written, self.bytes_to_write)
                                 msg = msg+msg1
@@ -2670,7 +2670,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
         
         Trace.log(e_errors.INFO, "write_client: wrote %s/%s bytes" % (self.bytes_written, self.bytes_to_write))
-        if failed: return
+        if failed or self.tr_failed: return
   
         if self.bytes_written == self.bytes_to_write:
             # check crc
@@ -3385,7 +3385,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 if self.maybe_clean():
                     Trace.trace(26,"cleaned")
                     self.state = IDLE
-                    self.tr_failed = 0
+                    #self.tr_failed = 0
                     self.dont_update_lm = 0
                     return
                 
@@ -3421,7 +3421,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.run_in_thread('media_thread', self.dismount_volume, after_function=after_dismount_function)
 
                     #self.dismount_volume(after_function=after_dismount_function)
-            self.tr_failed = 0
+            #self.tr_failed = 0
             self.dont_update_lm = 0
             return
             
@@ -3431,7 +3431,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.dont_update_lm = 0
             return
 
-        self.tr_failed = 0
+        #self.tr_failed = 0
         self.dont_update_lm = 0
         
     def transfer_completed(self):
