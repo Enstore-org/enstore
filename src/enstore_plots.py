@@ -18,7 +18,8 @@ import Trace
 
 YES = 1
 NO = 0
-WRITE = "to"
+WRITE = "w"
+#WRITE = "to"
 TOTAL = "total"
 READS = "reads"
 WRITES = "writes"
@@ -476,8 +477,7 @@ class XferDataFile(EnPlot):
 	# write out the data points
 	for [xpt, ypt, type, mover, drive_id, sg ] in data:
             if ( self.sg == None or self.sg == sg ) :
-#                if type == WRITE:
-                if type == "w":
+                if type == WRITE:
                     # this was a write request
                     self.openfile.write("%s %s %s\n"%(xpt, ypt, ypt))
                 else:
