@@ -186,7 +186,7 @@ class Ntuple:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+self.data_file_name+"' using "+command+" "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -275,7 +275,7 @@ class Plotter:
             else :
                 long_string=long_string+"'"+full_file_name+"' using 1:3 "
             long_string=long_string+" t '"+hist.get_marker_text()+"' with "\
-                     +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" "+str(hist.get_line_color())+" 1 "
+                     +hist.get_marker_type()+" lw "+str(hist.get_line_width())+" lt "+str(hist.get_line_color())+"  "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -858,7 +858,7 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -911,7 +911,7 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                     +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1 "
+                     +self.get_marker_type()+" lw "+str(self.get_line_width())+"  lt "+str(self.get_line_color())+"  "
         if (  self.time_axis ) :
             if (reflect) : 
                 long_string=long_string+",  '"+full_file_name1+"' using 1:(-$4) "
@@ -925,7 +925,7 @@ class Histogram1D:
                 long_string=long_string+",  '"+full_file_name1+"' using 1:3 "
                
         long_string=long_string+" t '"+h.get_marker_text()+"' with "\
-                    +h.get_marker_type()+" lw "+str(h.get_line_width())+" "+str(h.get_line_color())+" 1\n "
+                    +h.get_marker_type()+" lw "+str(h.get_line_width())+" lt "+str(h.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -976,7 +976,7 @@ class Histogram1D:
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:5 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -1114,6 +1114,9 @@ class Histogram2D(Histogram1D):
             x,y = self.get_bin_center(i)
             z = float(self.get_bin_content(i));
             dz = math.sqrt(self.get_bin_content(i))
+            if ( self.entries > 0 ) : 
+                z =  z / float(self.entries) * 100.
+                dz = dz / float(self.entries) * 100.
             if ( self.time_axis ) :
                 data_file.write("%s %f %f %f\n"%(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(x)),y,z,dz,))
             else :
@@ -1132,9 +1135,13 @@ class Histogram2D(Histogram1D):
         long_string="set output '"+self.name+".ps'\n"+ \
                      "set terminal postscript color solid\n"\
                      "set title '"+self.title+" %s'"%(time.strftime("%Y-%b-%d %H:%M:%S",time.localtime(time.time())))+"\n" \
+                     "set view map \n"+\
+                     "set palette defined ( 0 0.05 0.05 0.2, 0.1 0 0 1, 0.25 0.7 0.85 0.9, 0.4 0 0.75 0, 0.5 1 1 0, 0.7 1 0 0, 0.9 0.6 0.6 0.6, 1 0.95 0.95 0.95 )\n"+\
                      "set xrange [ : ]\n"+ \
+                     "set zrange [ 0.001 : ]\n"+ \
                      "set size 1.5,1\n"+ \
                      "set grid\n"+ \
+                     "set pm3d at b \n"+\
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set zlabel '%s'\n"%(self.zlabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
@@ -1166,7 +1173,9 @@ class Histogram2D(Histogram1D):
             long_string=long_string+self.get_text()
             long_string=long_string+"splot '"+full_file_name+"' using 1:2:3 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+                     +"points pt 5 ps 2  palette\n"
+
+#                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -1227,7 +1236,7 @@ class Histogram2D(Histogram1D):
             long_string=long_string+self.get_text()
             long_string=long_string+"plot '"+full_file_name+"' using 1:2 "
         long_string=long_string+" t '"+self.get_marker_text()+"' with "\
-                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" "+str(self.get_line_color())+" 1\n "
+                    +self.get_marker_type()+" lw "+str(self.get_line_width())+" lt  "+str(self.get_line_color())+" \n "
         gnu_cmd.write(long_string)
         gnu_cmd.close()
         os.system("gnuplot %s"%(gnu_file_name))
@@ -1243,7 +1252,7 @@ if __name__ == "__main__":
         h1=Histogram1D("try","try",100,0,10)
         h2=Histogram1D("try1","try1",100,0,10)
         h3=Histogram1D("try2","try2",1000,0,100)
-        hh=Histogram2D("2d","2d",10,0,5,10,0,5)
+        hh=Histogram2D("2d","2d",100,0,5,100,0,5)
         while ( h1.n_entries() < 10000 ) :
             x=random.gauss(2,0.5)
             y=random.gauss(2,0.5)
@@ -1267,9 +1276,12 @@ if __name__ == "__main__":
         h1.set_time_axis(True)
 
     ntuple.get_data_file().close()
+    ntuple.set_line_color(2)
+    ntuple.set_line_width(5)
+    ntuple.set_marker_type("points pt 5")
     ntuple.plot("1:2")
-    hh.plot_ascii()
-    sys.exit(0)
+    hh.plot()
+#    hh.plot_ascii()
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
     h1.set_xlabel("x variable")
     h1.set_marker_text("blah")
