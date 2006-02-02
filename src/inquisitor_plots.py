@@ -190,15 +190,27 @@ class InquisitorPlots:
         encpfile.close()
         encpfile.cleanup(self.keep, self.keep_dir)
 
-        encp_q = "select to_char(date,'YYYY-MM-DD:hh24:mi:ss'), size, rw, mover, drive_id, storage_group from encp_xfer where date between '%s' and '%s'"%(self.start_time,self.stop_time,)
+        #
+        # This is a test, this is a test. I am testing retrieval of data from DB. I replaces encpfile.data -> self.data 
+        #
+        self.data=[]
+        self.start_time = self.acc_db.days_ago(30)
+
+        encp_q = "select to_char(date,'YYYY-MM-DD:hh24:mi:ss'), size, rw, mover, drive_id, storage_group from encp_xfer where date > '%s' "%(self.start_time,)
+        print encp_q
         res=self.acc_db.query(encp_q)
+        for row in res.getresult():
+            if not row:
+                continue
+            self.data.append([row[0],row[1],row[2],row[3],row[4],row[5]])
+    
 
         # only do the plotting if we have some data
-        if res:
+        if self.data:
 	    # overall bytes/per/day count
 	    bpdfile = enstore_plots.BpdDataFile(self.output_dir)
 	    bpdfile.open()
-	    bpdfile.plot(encpfile.data)
+	    bpdfile.plot(self.data)
 	    bpdfile.close()
 	    bpdfile.install(self.html_dir)
 
@@ -211,7 +223,7 @@ class InquisitorPlots:
             xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                   mbpdfile.ptsfile)
             xferfile.open()
-            xferfile.plot(res)
+            xferfile.plot(self.data)
             xferfile.close()
             xferfile.install(self.html_dir)
             xferfile.cleanup(self.keep, self.keep_dir)
@@ -226,7 +238,7 @@ class InquisitorPlots:
                     xferfile = enstore_plots.XferDataFile(self.output_dir,
                                                           mbpdfile.ptsfile,sg)
                     xferfile.open()
-                    xferfile.plot(res)
+                    xferfile.plot(self.data)
                     xferfile.close()
                     xferfile.install(self.html_dir+"/"+XFER_SIZE) # Kludge (Dmitry)
                     xferfile.cleanup(self.keep, self.keep_dir)
