@@ -84,7 +84,7 @@ def make_plot(host, should, not_done, done):
 
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1 using 1:8 t "OFF" w impulses lw %s 1 1\n'%
    #        (host, 20, 20))
-   f.write('plot "write_tabs_%s" using 1:6 t "ON" w impulses lw %s 2 1, "write_tabs_%s" using 1:5 t "OFF" w impulses lw %s 1 1\n'%
+   f.write('plot "write_tabs_%s" using 1:6 t "ON" w impulses lw %s lt 2, "write_tabs_%s" using 1:5 t "OFF" w impulses lw %s lt 1\n'%
            (host, 20, host, 20))
    #f.write('plot "write_tabs_%s" using 1:10 t "ON" w impulses lw %s 3 1\n'%(host, 20))
    
