@@ -524,8 +524,8 @@ class BpdGnuFile(enstore_files.EnFile):
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
 			   "plot '"+ptsfile+\
-			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" 3 1, '"+ptsfile+\
-			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"+ \
+			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" lt 3 , '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" lt 1 \n"+ \
 			   #       "' using 1:4 t 'writes' w impulses lw 20 1 1\n"+
 			   # "set output '"+psfiler+"'\n"+ \
 			   # "set title 'Total Bytes Read Per Day (no null mvs) "+plot_time()+"'\n"+ \
@@ -541,7 +541,7 @@ class BpdGnuFile(enstore_files.EnFile):
 			         "%.2e"%(total_written,)+"\\n Number of Xfers : "+\
 			    repr(write_xfers)+"\"\n"+\
 			   "plot '"+ptsfile+\
-			    "' using 1:4  t '' w impulses lw "+repr(lw)+" 1 1\n"
+			    "' using 1:4  t '' w impulses lw "+repr(lw)+" lt 1 \n"
 			    )
 
 
@@ -566,8 +566,8 @@ class BpdMoverGnuFile(enstore_files.EnFile):
 			      "%.2e"%(meansize,)+"\\n Number of Xfers : "+
 			      repr(xfers)+"\"\n"+\
 	                   "plot '"+ptsfile+\
-			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" 3 1, '"+ptsfile+\
-			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" 1 1\n"
+			   "' using 1:2 t 'reads' w impulses lw "+repr(lw)+" lt 3 , '"+ptsfile+\
+			   "' using 1:4 t 'writes' w impulses lw "+repr(lw)+" lt 1 \n"
 			    )
 
 
@@ -969,13 +969,13 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 			      repr(xfers)+"\"\n")
 	len_max_nodes = len(max_nodes)
 	if len_max_nodes > 0:
-	    self.openfile.write("plot '%s' using 1:2 t '%s' w impulses lw %s 1 1"%(ptsfile,
+	    self.openfile.write("plot '%s' using 1:2 t '%s' w impulses lw %s lt 1 "%(ptsfile,
 									    max_nodes[0],
 									    lw))
 	    color = 3
 	    column = 3
 	    for node in max_nodes[1:]:
-		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s %s 1"%(ptsfile, 
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile, 
 										    column,
 										    node, lw,
 										    color))
@@ -987,13 +987,13 @@ class TotalBpdGnuFile(enstore_files.EnFile):
 				plot_time()+"'\n"+ \
 				"set key right top Right samplen 1 title \"Total Bytes : "+\
 				"%.2e"%(total_written,)+"\"\n")
-	    self.openfile.write("plot '%s' using 1:5 t '%s' w impulses lw %s 1 1"%(ptsfile,
+	    self.openfile.write("plot '%s' using 1:5 t '%s' w impulses lw %s lt 1 "%(ptsfile,
 									    max_nodes[0],
 									    lw))
 	    color = 3
 	    column = 6
 	    for node in max_nodes[1:]:
-		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s %s 1"%(ptsfile, 
+		self.openfile.write(", '%s' using 1:%s t '%s' w impulses lw %s lt %s "%(ptsfile, 
 										    column,
 										    node, lw,
 										    color))

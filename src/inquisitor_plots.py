@@ -197,7 +197,6 @@ class InquisitorPlots:
         self.start_time = self.acc_db.days_ago(30)
 
         encp_q = "select to_char(date,'YYYY-MM-DD:hh24:mi:ss'), size, rw, mover, drive_id, storage_group from encp_xfer where date > '%s' and driver != '%s'"%(self.start_time,enstore_constants.NULL_DRIVER,)
-        print encp_q
         res=self.acc_db.query(encp_q)
         for row in res.getresult():
             if not row:
