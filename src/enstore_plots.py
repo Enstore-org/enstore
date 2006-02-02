@@ -441,9 +441,9 @@ class XferGnuFile(enstore_files.EnFile):
                       "set format x \"%y-%m-%d\"\n"+ \
                       "set logscale y\n"+ \
                       "plot '"+ptsfile1+\
-                      "' using 1:4 t 'reads' with points 3 1, "+\
+                      "' using 1:4 t 'reads' with points pt 1 lw 1 lt 3, "+\
                       "'"+ptsfile1+\
-                      "' using 1:3 t 'writes' with points 1 1\n"+\
+                      "' using 1:3 t 'writes' with points pt 1 lw 1 lt 1\n"+\
                       "set output '"+outfile1+"'\n"+ \
                       "set pointsize 2\n"+ \
                       "set nologscale y\n"+ \
