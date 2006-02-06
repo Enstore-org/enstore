@@ -5,8 +5,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # bin/$RCSfile$  $Revision$
 # a file to do a ps on different OS's and check for Enstore-like programs
 
-if [ $# = 0 ]; 
-then 
+if [ $# = 0 ];
+then
    p=" "
    returnpid=0
 else
@@ -17,30 +17,30 @@ else
      p=" "
      returnpid=1
      lookfor=${2-:enstore}
-   fi    
+   fi
 fi
 case `uname` in
   Linux*)
 	# check if tread display is implemented
-	ps m > /dev/null 2&>1
+	ps m > /dev/null 2>&1
 	if [ $? != 0 ]; then
-	    x=`ps axuww   $p`
+	    x=`ps axuww  $p`
 	else
-	    x=`ps axuwwm   $p`
+	    x=`ps axuwwm $p`
 	fi
-        ;;
+	;;
   OSF1*)
-        x=`ps  axguww $p`
-        ;;
+	x=`ps axguww $p`
+	;;
   SunOS*)
-        x=`ps -ef     $p`
-        ;;
+	x=`ps -ef    $p`
+	;;
   IRIX*)
-        x=`ps -ef     $p`
-        ;;
+	x=`ps -ef    $p`
+	;;
       *)
-        x=`ps -ef     $p`
-        ;;
+	x=`ps -ef    $p`
+	;;
 esac
 
 if [ $returnpid -eq 0 ]; then
@@ -51,13 +51,13 @@ else
   IFS="
 "
   newIFS="$IFS"
-  for psl in $x; do 
+  for psl in $x; do
     IFS="$oldIFS"
     #echo "psline $psl x${lookfor}x"
     psline=`echo "$psl" | grep $lookfor | egrep -v 'grep|ngop|returnpid|pidkill' | grep \`whoami\``
     # is the pid always the 2nd field???????
     pid=`echo $psline | cut -f2 -d' '` # no quotes arounds $psline removes spaces
-    if [ "$pid" != "" ]; then 
+    if [ "$pid" != "" ]; then
       echo $pid
       echoed=1
     fi
