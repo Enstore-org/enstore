@@ -137,12 +137,32 @@ def get_default_interface_ip():
         import Interfaces
         interfaces_list = Interfaces.interfacesGet()
         for intf in interfaces_list.values():
-            if intf['ip'] == "127.0.0.1":
-                continue  #Skip loopback.
+
+            try:
+                if intf['ip'] == "127.0.0.1":
+                    continue  #Skip loopback.
+                if intf['ip'][:8] == "192.168.":
+                    continue
+            except KeyError:
+                print intf
+                continue
 
             #Look for matching name lookups.
-            if socket.gethostbyaddr(intf['ip'])[0] == socket.gethostname():
-                default = socket.gethostbyname(intf['ip'])
+            try:
+                if socket.gethostbyaddr(intf['ip'])[0] == socket.gethostname():
+                    default = socket.gethostbyname(intf['ip'])
+                    break
+            except socket.error:
+                pass
+            
+        else:
+            #If we get here, we still haven't made a match, just go with
+            # the first ip found by looking at the interface list.
+            for intf in interfaces_list.values():
+                if intf['ip'] == "127.0.0.1":
+                    continue  #Skip loopback.
+
+                default = intf['ip']
                 break
 
     #If an error occured for the entire minute print to screen if specified.

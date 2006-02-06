@@ -158,11 +158,16 @@ static struct ifconf * interfaces(void)
    struct ifconf *intf_confs;
 
    intf_confs = malloc(sizeof(struct ifconf));
+   if(intf_confs == NULL)
+   {
+      return NULL;
+   }
    
    guess = 100 * sizeof(struct ifreq);
 
    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
    {
+      free(intf_confs);
       return NULL;
    }
 
@@ -170,6 +175,8 @@ static struct ifconf * interfaces(void)
    {
       if((buf = malloc(guess)) == NULL)
       {
+	 free(intf_confs);
+	 (void) close(sock);
 	 return NULL;
       }
 
@@ -179,13 +186,18 @@ static struct ifconf * interfaces(void)
       {
 	 if(errno != EINVAL || lastlen != 0)
 	 {
+	    free(intf_confs);
+	    free(buf);
+	    (void) close(sock);
 	    return NULL;
 	 }
       }
       else
       {
 	 if(intf_confs->ifc_len == lastlen)
+	 {
 	    break;
+	 }
 	 else
 	    lastlen = intf_confs->ifc_len;
       }
@@ -193,6 +205,7 @@ static struct ifconf * interfaces(void)
       free(buf);
    }
 
+   (void) close(sock);
    return intf_confs;
 }
 
@@ -213,12 +226,14 @@ static int get_ip_addr(char *intf, char* ip)
    
    if(ioctl(sock, SIOCGIFADDR, &if_info) < 0)
    {
+      (void) close(sock);
       return -1;
    }
 
    memcpy(&ip_info, &(if_info.ifr_addr), INET_ADDRSTRLEN);
    memcpy(ip, inet_ntoa(ip_info.sin_addr), 16);  /* No defined errors? */
 
+   (void) close(sock);
    return 0;
    
 }
@@ -240,12 +255,14 @@ static int get_brd_addr(char *intf, char* brd_ip)
    
    if(ioctl(sock, SIOCGIFBRDADDR, &if_info) < 0)
    {
+      (void) close(sock);
       return -1;
    }
 
    memcpy(&brd_info, &(if_info.ifr_addr), INET_ADDRSTRLEN);
    memcpy(brd_ip, inet_ntoa(brd_info.sin_addr), 16);  /* No defined errors? */
 
+   (void) close(sock);
    return 0;
    
 }
@@ -267,12 +284,14 @@ static int get_netmask(char *intf, char* nm)
    
    if(ioctl(sock, SIOCGIFNETMASK, &if_info) < 0)
    {
+      (void) close(sock);
       return -1;
    }
 
    memcpy(&nm_info, &(if_info.ifr_broadaddr), INET_ADDRSTRLEN);
    memcpy(nm, inet_ntoa(nm_info.sin_addr), 16);  /* No defined errors? */
 
+   (void) close(sock);
    return 0;
    
 }
@@ -300,6 +319,7 @@ static int get_hw_addr(char *intf, char* hw)
    if(ioctl(sock, SIOCRPHYSADDR, &if_info) < 0) /* OSF1? */
 #endif
    {
+      (void) close(sock);
       return -1;
    }
 
@@ -313,6 +333,7 @@ static int get_hw_addr(char *intf, char* hw)
 	   ((char*)(&(hw_info.sa_data)))[5]
       );
 
+   (void) close(sock);
    return 0;
    
 }      
@@ -330,6 +351,9 @@ PyObject * interfacesGet(void)
    intf_confs = interfaces();
 
    interface_list = PyDict_New();
+
+   if(intf_confs == NULL)
+      return interface_list;
    
    number_of_items = intf_confs->ifc_len / sizeof(struct ifreq);
 
@@ -372,5 +396,8 @@ PyObject * interfacesGet(void)
       PyDict_SetItemString(interface_list, intf_confs->ifc_req[i].ifr_name,
 			   interface_dict);
    }
+
+   free(intf_confs->ifc_buf);
+   free(intf_confs);
    return interface_list;
 }

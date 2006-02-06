@@ -28,7 +28,7 @@ def _eval(stuff):
 import Trace
 import e_errors
 import checksum
-import hostaddr
+#import hostaddr
 import host_config
 
 def hex8(x):
@@ -93,8 +93,7 @@ def get_callback(ip=None):
         if config:
             ip = config.get('hostip')
         if not ip:
-            hostname, junk, ips = hostaddr.gethostinfo()
-            ip = ips[0]
+            ip = host_config.get_default_interface_ip()
     s.bind((ip, 0))
     host, port = s.getsockname()
     return host, port, s

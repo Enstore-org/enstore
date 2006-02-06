@@ -214,14 +214,17 @@ class ConfigurationClient(generic_client.GenericClient):
             return reply
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
-            raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for configuration server callback"
+            reply = {'status' : (e_errors.TIMEDOUT,
+                         "timeout waiting for configuration server callback")}
+            return reply
         control_socket, address = listen_socket.accept()
         hostaddr.update_domains(reply.get('domains', {})) #Hackish.
         if not hostaddr.allow(address):
             listen_socket.close()
             control_socket.close()
-            raise errno.errorcode[errno.EPROTO], \
-                  "address %s not allowed" % (address,)
+            reply = {'status' : (e_errors.EPROTO,
+                                 "address %s not allowed" % (address,))}
+            return reply
 
         try:
             d = callback.read_tcp_obj(control_socket)
@@ -368,7 +371,16 @@ def do_work(intf):
     if result:
         pass
     elif intf.show:
-        result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
+        try:
+            result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+            
        
         #If there is an error it is printed out at the end of the function
         # in csc.check_ticket().  On success, work as normal. 

@@ -17,6 +17,7 @@ import types
 
 #Enstore imports
 import Trace
+import Interfaces
 
 
 #Return true if the string is an ipv4 dotted-decimal address.
@@ -52,16 +53,11 @@ def gethostinfo(verbose=0):
         #  127.0.0.1  sleet.dhcp.fnal.gov sleet localhost.localdomain localhost
         # The ip address of 127.0.0.1 is 'wrong' for the sleet.dhcp hostname
         # and the sleet alias.
-        if hostinfo[2] == ["127.0.0.1",]:
-            del hostinfo[2][0]
-            import Interfaces
-            interfaces_dict = Interfaces.interfacesGet()
-            for item in interfaces_dict.values():
-                if item['ip'] == "127.0.0.1":
-                    continue  #Skip localhost.
-                else:
-                    hostinfo[2].append(item['ip'])
-
+        if hostinfo[2] == ["127.0.0.1"]:
+            intf_ips = []
+            for intf_dict in Interfaces.interfacesGet().values():
+                intf_ips.append(intf_dict['ip'])
+            hostinfo = (hostinfo[0], hostinfo[1], intf_ips)
     return hostinfo
 
 #Return the domain name of the current network.
@@ -157,12 +153,15 @@ def update_domains(csc_or_dict):
 #Return None if no matching rule is explicity found.  Return True if this
 # is a valid address and False if it is not.
 def _allow(addr):
-    
+
     valid_domains_dict = known_domains.get('valid_domains', {})
     invalid_domains_dict = known_domains.get('invalid_domains', {})
 
     #Get the address.
-    tok = string.split(addr, '.')
+    try:
+        tok = string.split(addr, '.')
+    except (AttributeError):
+        tok = ""
     if len(tok) != 4:
         Trace.trace(19, "allow: not allowing %s" % (addr,))
         return 0
@@ -170,7 +169,10 @@ def _allow(addr):
     #Return false if the ip is in a domain we are not allowed to reply to.
     for invalid_domains in invalid_domains_dict.values():
         for v in invalid_domains:
-            vtok = string.split(v, '.')
+            try:
+                vtok = string.split(v, '.')
+            except (AttributeError):
+                continue
             if tok[:len(vtok)] == vtok:
                 Trace.trace(19, "allow: not allowing %s" % (addr,))
                 return 0
@@ -178,7 +180,10 @@ def _allow(addr):
     #Return true if the ip is in a domain we are allowed to reply to.
     for valid_domains in valid_domains_dict.values():
         for v in valid_domains:
-            vtok = string.split(v, '.')
+            try:
+                vtok = string.split(v, '.')
+            except (AttributeError):
+                continue
             if tok[:len(vtok)] == vtok:
                 Trace.trace(19, "allow: allowing %s" % (addr,))
                 return 1

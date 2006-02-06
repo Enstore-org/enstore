@@ -163,7 +163,7 @@ class EventRelayClient:
 	if config and config.get("hostip", None):
 	    self.hostname = config['hostip']
 	else:
-	    self.hostname = os.uname()[1]
+            self.hostname = host_config.get_default_interface_ip()
         self.server = server
         self.function = function
         self.event_relay_host = event_relay_host
@@ -194,7 +194,9 @@ class EventRelayClient:
 
         # subscribe here for the first time, then let the interval timer
         # (which we set below) redo it automatically for us
-        self.subscribe()
+        retval = self.subscribe()
+        if retval == self.ERROR:
+            return self.ERROR
 
         # add this socket to the select sockets upon which we wait
 	if self.server is not None:
