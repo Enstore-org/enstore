@@ -139,6 +139,7 @@ SANITY_SIZE = 65536
 #used in the threshold calculation
 TRANSFER_THRESHOLD = 2*1024*1024
 
+
 def get_transfer_notify_threshold(bytes_to_transfer):
     if TRANSFER_THRESHOLD * 5 > bytes_to_transfer:
         threshold = bytes_to_transfer / 5
@@ -862,7 +863,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
         self.logname = self.config.get('logname', name)
-        Trace.init(self.logname)
+        Trace.init(self.logname, self.config.get('include_thread_name', ''))
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
         pipeObj = popen2.Popen3(cmd, 0, 0)
@@ -3489,6 +3490,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             
     def maybe_clean(self):
         Trace.log(e_errors.INFO, "maybe_clean")
+        cur_thread = threading.currentThread()
+        if cur_thread:
+            cur_thread_name = thread.getName()
+        else:
+             cur_thread_name = None
+        if cur_thread_name and cur_thread_name != "tape_thread":
+            # wait until tape thread finishes
+            th = getattr(self, 'tape_thread', None)
+            for wait in range(60):
+                if thread and thread.isAlive():
+                    Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
+                    time.sleep(2)
+                else:
+                    break
+        
         if self.force_clean:
              needs_cleaning = 1
              Trace.log(e_errors.INFO, "Force clean is set")
@@ -3517,6 +3533,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.mcc.doCleaningCycle(self.config)
             self.state = save_state
             Trace.log(e_errors.INFO, "cleaning complete")
+        Trace.log(e_errors.INFO, "returned from maybe_clean")
         return did_cleaning
         
     def update_after_writing(self):
