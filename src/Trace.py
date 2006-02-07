@@ -22,6 +22,7 @@ import pwd
 import time
 #import socket
 import types
+import threading
 
 # enstore modules
 #import enstore_constants
@@ -133,12 +134,13 @@ def dont_message(levels):
         if message_levels.has_key(level):
             del message_levels[level]
 
-def init(name):
-    global logname
+def init(name, include_thread_name=''):
+    global logname,thread_name 
     logname=name
+    thread_name = include_thread_name
 
 def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
-    global logname
+    global logname, thread_name
     msg = trunc(msg)
     if  log_func:
         try:
@@ -150,6 +152,17 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
 	    # check for no logname
 	    if logname == "":
 		logname = "UNKNOWN"
+            if thread_name:
+                thread = threading.currentThread()
+                if thread:
+                    th_name = thread.getName()
+                else:
+                    th_name = ''
+            else:
+                th_name = ''
+                    
+            if th_name:
+               new_msg = "%s Thread %s"%(new_msg, th_name) 
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except:
             exc, detail = sys.exc_info()[:2]
