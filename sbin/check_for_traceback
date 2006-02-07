@@ -3,7 +3,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 d=`date +"%Y-%m-%d"`
 LOGFILE="/diska/enstore-log/LOG-$d"
-MAILTO="berman@fnal.gov, huangch@fnal.gov, moibenko@fnal.gov, zalokar@fnal.gov"
+MAILTO="berman@fnal.gov, huangch@fnal.gov, moibenko@fnal.gov, zalokar@fnal.gov, litvinse@fnal.gov"
 MAILFILE="/tmp/Traceback-$d"
 grep Traceback $LOGFILE > $MAILFILE
 if [ $? -eq 0 ]; then
