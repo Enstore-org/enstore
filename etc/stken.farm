@@ -41,16 +41,22 @@ stkenmvr33a	stkenmvr-a	stken-alla	stken-all
 stkenmvr34a	stkenmvr-a	stken-alla	stken-all
 stkenmvr35a	stkenmvr-a	stken-alla	stken-all
 stkenmvr36a	stkenmvr-a	stken-alla	stken-all
-REMOVE		stkendca*
-stkendca2a	stkendca
-stkendca3a	stkendca
-stkendca6a	stkendca
-stkendca7a	stkendca
-stkendca8a	stkendca
-stkendca9a	stkendca
-stkendca10a	stkendca
-stkendca11a	stkendca
-stkendca12a	stkendca
+REMOVE		fndca*		stkendca*
+fndca2a		fndca
+fndca3a		fndca
+stkendca2a	fndca
+stkendca3a	fndca
+stkendca6a	fndca
+stkendca7a	fndca
+stkendca8a	fndca
+stkendca9a	fndca
+stkendca10a	fndca
+stkendca11a	fndca
+stkendca12a	fndca
+stkendca13a	fndca
+stkendca14a	fndca
+stkendca15a	fndca
+stkendca16a	fndca
 REMOVE		stkendm*
 stkendm1a	stkendm
 stkendm2a	stkendm
