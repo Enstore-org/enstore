@@ -3499,7 +3499,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             # wait until tape thread finishes
             th = getattr(self, 'tape_thread', None)
             for wait in range(60):
-                if thread and thread.isAlive():
+                if th and th.isAlive():
                     Trace.trace(26, "thread %s is already running, waiting %s" % ('tape_thread', wait))
                     time.sleep(2)
                 else:
