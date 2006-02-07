@@ -38,6 +38,8 @@ import generic_client
 import option
 import delete_at_exit
 import host_config
+import udp_client
+
 
 #4-30-2002: For reasons unknown to me the order of the imports matters a lot.
 # If the wrong order is done, then the dashed lines are not drawn.
@@ -690,12 +692,25 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
 
 #Takes the name of the mover and the status dictionary.
 def handle_status(mover, status):
+    if mover == "inquisitor":
+        offline_dict = status.get('offline', {})
+        outage_dict = status.get('outage', {})
+        send_error_list = {}  #Really a dictionary.
+        for mover_name, outage in outage_dict.items():
+            send_error_list[mover] = "error %s %s" % (mover_name.split(".")[0],
+                                                      outage)
+        for mover_name, reason in offline_dict.items():
+            send_error_list[mover] = "error %s %s" % (mover_name.split(".")[0],
+                                                      reason)
+        return send_error_list.values()
+    
     state = status.get('state','Unknown')
     time_in_state = status.get('time_in_state', '0')
     mover_state = "state %s %s %s" % (mover, state, time_in_state)
     volume = status.get('current_volume', None)
     client = status.get('client', "Unknown")
     connect = "connect %s %s" % (mover, client)
+    error_status = status.get('status', ('Unknown', None))[0]
     if not volume:
         return [mover_state]
     if state in ['ACTIVE', 'SEEK', 'SETUP']:
@@ -707,9 +722,11 @@ def handle_status(mover, status):
     if state in ['MOUNT_WAIT']:
         loading = "loading %s %s" %(mover, volume)
         return [loading, mover_state, connect]
+    if state in ['ERROR']:
+        error = "error %s %s" %(mover, error_status)
+        return [mover_state, error]
 
     return [mover_state]
-
 
 #########################################################################
 # The following functions run in their own thread.
@@ -826,6 +843,21 @@ def send_mover_request(csc, send_request_dict, mover_name, u, count = 0):
     send_request_dict[tx_id]['time']  = time.time()
     send_request_dict[tx_id]['count'] = count
 
+def send_sched_request(csc, send_request_dict, u, count = 0):
+
+    #Get the address for sending the scheduled down information request.
+    i_addr = csc.get('inquisitor', {}).get('hostip', None)
+    i_port = csc.get('inquisitor', {}).get('port', None)
+    if not i_addr or not i_port:
+        return
+
+    message = {'work' : 'show'}
+    tx_id = u.send_deferred(message, (i_addr, i_port))
+    send_request_dict[tx_id] = {}
+    send_request_dict[tx_id]['name']  = 'inquisitor'
+    send_request_dict[tx_id]['time']  = time.time()
+    send_request_dict[tx_id]['count'] = count
+
 #handle_messages() reads event relay messages from the specified event
 # relay.  It is called within a new thread (one for each event relay).
 #
@@ -843,6 +875,8 @@ def handle_messages(csc_addr, intf):
     #timeout_time = time.time() + intf.capture_timeout
 
     send_request_dict = {}
+
+    u = udp_client.UDPClient()
     
     # we will get all of the info from the event relay.
     if intf.messages_file:
@@ -896,10 +930,9 @@ def handle_messages(csc_addr, intf):
             er_addr = (er_dict.get('hostip', None), er_dict.get('port', None))
             erc = event_relay_client.EventRelayClient(
                 event_relay_host = er_addr[0], event_relay_port = er_addr[1])
-            erc.start([event_relay_messages.ALL])
-
-            import udp_client
-            u = udp_client.UDPClient()
+            retval = erc.start([event_relay_messages.ALL])
+            if retval == erc.ERROR:
+                Trace.trace(0, "Could not contact event relay.")
 
             #Get the list of movers that we need to send status requests to.
             movers = get_mover_list(intf, csc, 1)
@@ -924,7 +957,9 @@ def handle_messages(csc_addr, intf):
         #Send any requests to the mover.
         mover_name = enstore_display.request_queue.get_queue(enstore_system)
         #mover_name = display.get_request(enstore_system)
-        if mover_name:
+        if mover_name == 'inquisitor':
+            send_sched_request(csc, send_request_dict, u)
+        elif mover_name:
             send_mover_request(csc, send_request_dict, mover_name, u)
             
         # If commands are listed, use 'canned' version of entv.
@@ -980,8 +1015,13 @@ def handle_messages(csc_addr, intf):
                 for tx_id in send_request_dict.keys():
                     try:
                         mstatus = u.recv_deferred(tx_id, 0.0)
+                        if not e_errors.is_ok(mstatus):
+                            del send_request_dict[tx_id]
+                            continue
+
                         commands = commands + handle_status(
                             send_request_dict[tx_id]['name'], mstatus)
+
                         del send_request_dict[tx_id]
                     except errno.errorcode[errno.ETIMEDOUT]:
                         pass
@@ -1026,7 +1066,7 @@ def handle_messages(csc_addr, intf):
         for i in range(len(commands)):
             words = commands[i].split(" ")
             if words[0] in ("connect", "disconnect", "loaded", "loading",
-                            "state", "unload", "transfer"):
+                            "state", "unload", "transfer", "error"):
                 if len(words[1].split("@")) == 1:
                     #If the name already has the enstore_system appended to
                     # the end (from messages_file) then don't do this step.
@@ -1273,7 +1313,6 @@ def main(intf):
         #Get the short name for the enstore system specified.
         system_name = get_system_name(intf, cscs_info)
 
-        
         cscs = []
         for address in cscs_info.values():
             cscs.append(configuration_client.ConfigurationClient(address))
@@ -1285,7 +1324,6 @@ def main(intf):
                 cscs[-1].new_config_obj.enable_caching()
             except:
                 pass
-        
 
     #Get the main window.
     master = Tkinter.Tk()

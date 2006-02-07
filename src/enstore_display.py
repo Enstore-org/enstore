@@ -25,6 +25,7 @@ import mover_client
 import configuration_client
 import enstore_constants
 import e_errors
+import inquisitor_client
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -129,8 +130,14 @@ ANIMATE_TIME = 42      #in milliseconds (~1/42nd of second)
 UPDATE_TIME = 1000     #in milliseconds (1 second)
 MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
 JOIN_TIME = 10000      #in milliseconds (10 seconds)
+OFFLINE_REASON_TIME = 60000   #in milliseconds (1 minute)
 
 status_request_threads = []
+offline_reason_thread = None
+
+#To prevent instantiating a slew of Inquisitors.
+inqc_dict_cache = {}
+
 
 class Queue:
     def __init__(self):
@@ -447,6 +454,7 @@ class Mover:
         self.volume_display     = None
         self.volume_bg_display  = None
         self.rate_display       = None
+        self.offline_reason_display = None
         
         # Anything that deals with time
         self.b0                 = 0
@@ -458,6 +466,9 @@ class Mover:
         self.timer_started      = now
         self.timer_string       = '00:00:00'
         self.timer_id           = None
+
+        # Misc. variables.
+        self.offline_reason     = None
 
         #Find out information about the mover.
         try:
@@ -798,12 +809,40 @@ class Mover:
                 self.rate_display,
                 text=fit_string(self.font, self.rate_string, self.state_width))
         elif self.rate != None:
-            self.rate_display =  self.display.create_text(
+            self.rate_display = self.display.create_text(
                 self.x + self.rate_offset.x, self.y + self.rate_offset.y,
-                #Use the state with since this is displayed in that space.
+                #Use the state width since this is displayed in that space.
                 text=fit_string(self.font, self.rate_string, self.state_width),
                 fill = colors('percent_color'),
                 anchor = Tkinter.NE, font = self.font)
+
+    def draw_offline_reason(self):
+        if not self.offline_reason:
+            if self.offline_reason_display:
+                self.undraw_offline_reason()
+            return
+
+        #Prepare the text string.  Note: the reason for the "W" is to put in
+        # a characters width between the two pieces of text.  Also, protect
+        # against the window being so narrow that only the timer string
+        # will fit.
+        offline_reason_width = \
+                max(0, self.width - self.font.measure(self.timer_string + "W"))
+        text = fit_string(self.font, self.offline_reason, offline_reason_width)
+        
+        if self.offline_reason_display:
+            self.display.itemconfigure(
+                self.offline_reason_display,
+                text=text)
+        else:
+            self.offline_reason_display = self.display.create_text(
+                self.x + self.offline_reason_offset.x,
+                self.y + self.offline_reason_offset.y,
+                text=text,
+                fill = self.state_color,
+                anchor = Tkinter.SW, font = self.font)
+
+        
 
     def draw(self):
 
@@ -820,6 +859,8 @@ class Mover:
         self.draw_volume()
 
         self.draw_rate()
+
+        self.draw_offline_reason()
 
     #########################################################################
 
@@ -913,6 +954,13 @@ class Mover:
         except Tkinter.TclError:
             pass
 
+    def undraw_offline_reason(self):
+        try:
+            self.display.delete(self.offline_reason_display)
+            self.offline_reason_display = None
+        except Tkinter.TclError:
+            pass
+
     def undraw(self):
         self.undraw_timer()
         self.undraw_state()
@@ -921,12 +969,14 @@ class Mover:
         self.undraw_volume()
         self.undraw_mover()
         self.undraw_rate()
+        self.undraw_offline_reason()
 
     #########################################################################
         
     def update_state(self, state, time_in_state=0):
         if state == self.state:
             return
+        self.old_state = self.state  #Remember what state we currently are.
         self.state = state
 
         #different mover colors
@@ -1001,6 +1051,21 @@ class Mover:
             self.update_rate(None)
             self.update_progress(None, None)
             self.update_buffer(None)
+
+        #Query the inquisitor (or mover for 'ERROR') for the reason why
+        # the mover is down.
+        if state in ['OFFLINE', 'Unknown', 'ERROR']:
+            #The reason for the self.old_state test is to prevent looking up
+            # offline information when update_state() is called for the first
+            # time to set the state to "Unknown".  self.old_state will only
+            # be None in this one case.
+            if self.old_state != None:
+                #passing None forces a request to the inquistor for
+                # the scheduled up/down information.
+                self.update_offline_reason(None)
+        #We know the offline reason needs to be removed.
+        elif self.offline_reason_display:
+            self.undraw_offline_reason()
         
     def update_timer(self, now):
         seconds = int(now - self.timer_started)
@@ -1020,11 +1085,12 @@ class Mover:
             self.display.itemconfigure(self.timer_display,
                                        fill = self.timer_color)
 
-        if self.timer_string:
+        if self.timer_string and self.timer_display:
             self.display.itemconfigure(self.timer_display,
                                        text = self.timer_string)
         else:
-            print "Traceback avoided.  timer_string = %s" % self.timer_string
+            #print "Traceback avoided.  timer_string = %s" % self.timer_string
+            pass
 
     def update_rate(self, rate):
 
@@ -1084,6 +1150,23 @@ class Mover:
         if buffer_size != self.buffer_size:
             self.buffer_size = buffer_size
             self.draw_buffer()
+
+    def update_offline_reason(self, offline_reason):
+
+        if self.state in ['OFFLINE', 'Unknown', 'ERROR']:
+            if offline_reason:
+                self.offline_reason = offline_reason
+                self.draw_offline_reason()
+
+            else:
+                #To avoid issues when all the movers are restared at once;
+                # reschedule the next offline check for 2 seconds from now
+                # to help batch all of them at once.
+                self.display.after_cancel(self.display.after_offline_reason_id)
+                self.display.after_offline_reason_id = self.display.after(2000,
+                                          self.display.check_offline_reason)
+        else:
+            self.undraw_offline_reason()
 
     def load_tape(self, volume_name, load_state):
         self.volume = volume_name
@@ -1264,7 +1347,7 @@ class Mover:
         self.buffer_bar_offset2 = XY(4, self.height - 4 -
                                      self.bar_height)#magenta
         self.percent_disp_offset   = XY(self.bar_width + 6, self.height)#green
-
+        self.offline_reason_offset = XY(4, self.height - 2)
 
     def max_font_width(self):
         return (self.width - self.width/3.0) - 10
@@ -1310,27 +1393,11 @@ class Mover:
         return [mover_state]
 
     def get_mover_client(self):
-        name = self.name.split("@")[0]
+        name = self.name.split("@")[0] + ".mover"
         csc = self.display.csc_dict[self.name.split("@")[1]]
-        mov = mover_client.MoverClient(csc, name + ".mover",
+        mov = mover_client.MoverClient(csc, name,
                 flags=enstore_constants.NO_ALARM | enstore_constants.NO_LOG,)
         return mov
-        
-    def get_status(self):
-        mov = self.get_mover_client()
-        status = mov.status(rcv_timeout=3, tries=3)
-
-        if e_errors.is_ok(status):
-            commands = self.handle_status(self.name, status)
-            if not commands:
-                return
-            for command in commands:
-                #Queue the command.  Calling handle_command() directly here
-                # results in startup problems, since get_status is called
-                # before __init__ is finished (and the object is added to
-                # the list of movers).
-                self.display.queue_command(command)
-                #message_queue.put_message(command, mov.name.split("@")[-1])
 
 #########################################################################
 ##
@@ -2091,6 +2158,7 @@ class Display(Tkinter.Canvas):
             self.after_cancel(self.after_clients_id)
             self.after_cancel(self.after_reinitialize_id)
             self.after_cancel(self.after_process_messages_id)
+            self.after_cancel(self.after_offline_reason_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -2111,6 +2179,8 @@ class Display(Tkinter.Canvas):
                                                     self.reinitialize)
             self.after_process_messages_id = self.after(UPDATE_TIME,
                                                         self.process_messages)
+            self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
+                                                     self.check_offline_reason)
         except AttributeError:
             pass
 
@@ -2152,6 +2222,7 @@ class Display(Tkinter.Canvas):
         self.after_cancel(self.after_reinitialize_id)
         self.after_cancel(self.after_process_messages_id)
         self.after_cancel(self.after_join_id)
+        self.after_cancel(self.after_offline_reason_id)
 
         for mov in self.movers.values():
             self.after_cancel(mov.timer_id)
@@ -2246,6 +2317,7 @@ class Display(Tkinter.Canvas):
         return 1  #Up to date.
 
     #Called from join_thread().
+    # XXX Is this used for anything???
     def _join_thread(self, waitall = None):
         global status_request_threads
         
@@ -2371,6 +2443,34 @@ class Display(Tkinter.Canvas):
 
         display_lock.release()
 
+
+    def check_offline_reason(self):
+        global request_queue
+
+        display_lock.acquire()
+
+        already_requested = [] #For multiple inquisitors; one for each system.
+        
+        for mover in self.movers.values():
+            system_name = mover.name.split("@")[1]
+            
+            if mover.state in ['ERROR']:
+                if mover.offline_reason == None:
+                    request_queue.put_queue(mover.name, system_name)
+
+            elif mover.state in ['OFFLINE', 'Unknown']:
+                if system_name in already_requested:
+                    #We've already asked this Enstore system's inquisitor.
+                    pass
+                elif mover.offline_reason == None:
+                    request_queue.put_queue('inquisitor', system_name)
+                    already_requested.append(system_name)
+
+        self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
+                                                  self.check_offline_reason)
+
+        display_lock.release()
+        
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
     #
@@ -2799,6 +2899,13 @@ class Display(Tkinter.Canvas):
             time_in_state = 0
         mover.update_state(what_state, time_in_state)
 
+    def error_command(self, command_list):
+
+        mover = self.movers.get(command_list[1])
+
+        what_error = string.join(command_list[2:])
+        mover.update_offline_reason(what_error)
+
     def unload_command(self, command_list):
 
         mover = self.movers.get(command_list[1])
@@ -2891,6 +2998,7 @@ class Display(Tkinter.Canvas):
     #      #moveto MOVER_NAME VOLUME_NAME
     #      #remove MOVER_NAME VOLUME_NAME
     #      state MOVER_NAME STATE_NAME [TIME_IN_STATE]
+    #      error MOVER_NAME <error>
     #      unload MOVER_NAME VOLUME_NAME
     #      transfer MOVER_NAME BYTES_TRANSFERED BYTES_TO_TRANSFER \
     #               (media | network) [BUFFER_SIZE] [CURRENT_TIME]
@@ -2909,7 +3017,9 @@ class Display(Tkinter.Canvas):
                  'loading' : {'function':loaded_command, 'length':3,
                               'mover_check':1},                              
                  'state' : {'function':state_command, 'length':3,
-                              'mover_check':1},                            
+                              'mover_check':1},
+                 'error' : {'function':error_command, 'length':3,
+                            'mover_check': 1},
                  'unload': {'function':unload_command, 'length':3,
                               'mover_check':1},                            
                  'transfer' : {'function':transfer_command, 'length':3,
@@ -3076,6 +3186,8 @@ class Display(Tkinter.Canvas):
                   # then this error will occur.
 
     def mainloop(self, threshold = None):
+        global offline_reason_thread
+        
         #self.reposition_canvas(force = True)
         #self.pack(expand = 1, fill = Tkinter.BOTH)
         #If the window does not yet exist, draw it.  This should only
@@ -3101,6 +3213,8 @@ class Display(Tkinter.Canvas):
                                                     self.process_messages)
         self.after_join_id = self.after(JOIN_TIME,
                                         self.join_thread)
+        self.after_offline_reason_id = self.after(5000, #5 seconds
+                                                  self.check_offline_reason)
 
         #Since, the startup_lock is still held, we have nothing yet to do.
         # This would be a good time to cleanup before things get hairy.
@@ -3121,6 +3235,14 @@ class Display(Tkinter.Canvas):
             #Threshold is the number of "MainWindows" allowed.  Should be
             # an integer.
             self.master.mainloop(threshold)
+
+        #Grab last thread if necessary.
+        if offline_reason_thread:
+            thread_lock.acquire()
+            offline_reason_thread.join()
+            del offline_reason_thread
+            offline_reason_thread = None
+            thread_lock.release()
 
 #########################################################################
 
