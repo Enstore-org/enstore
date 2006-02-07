@@ -3492,7 +3492,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, "maybe_clean")
         cur_thread = threading.currentThread()
         if cur_thread:
-            cur_thread_name = thread.getName()
+            cur_thread_name = cur_thread.getName()
         else:
              cur_thread_name = None
         if cur_thread_name and cur_thread_name != "tape_thread":
