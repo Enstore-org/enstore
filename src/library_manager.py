@@ -2324,6 +2324,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
+        Trace.trace(223, 'mover_bound_volume: work ticket %s'%(w,))
         current_priority = None
         if w:
             # check if it is a backed up request
