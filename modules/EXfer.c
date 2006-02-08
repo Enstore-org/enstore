@@ -68,14 +68,18 @@
 
 
 #ifdef HAVE_XFS_XQM_H
-#include <xfs/xqm.h>
+   #include <xfs/xqm.h>
 #endif
 #if defined(HAVE_SYS_FS_UFS_QUOTA_H)
-/* Only SunOS can get here? */
-#include <sys/fs/ufs_quota.h>
+   /* Only SunOS can get here? */
+   #include <sys/fs/ufs_quota.h>
 #endif
 #if defined(HAVE_SYS_QUOTA_H)
-#include <sys/quota.h>
+   #include <sys/quota.h>
+   #if defined(_LINUX_QUOTA_VERSION) && _LINUX_QUOTA_VERSION-0 > 1
+      /* There is some incompatibility between Linux quota version 1 and 2. */
+      #define dqb_curblocks dqb_curspace
+   #endif
 #endif
 
 /***************************************************************************
