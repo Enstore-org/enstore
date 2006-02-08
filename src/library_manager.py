@@ -1141,7 +1141,7 @@ class LibraryManagerMethods:
     # last_work is a last work for this volume
     # corrent location is a current position of the volume
     def next_work_this_volume(self, external_label, vol_family, last_work, requestor, current_location, priority=None):
-        Trace.trace(11, "next_work_this_volume for %s" % (external_label,))
+        Trace.trace(11, "next_work_this_volume for %s %s %s %s %s %s" % (external_label,vol_family, last_work, requestor, current_location, priority))
         status = None
         self.init_request_selection()
         self.process_for_bound_vol = external_label
