@@ -2315,6 +2315,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                       (mticket['external_label'],))
             self.reply_to_caller({'work': 'no_work'})
             return
+        Trace.trace(11, "work_at_movers: %s" % (self.work_at_movers.list,))
         last_work = mticket['operation']
         if not mticket['volume_family']:
             # mover restarted with bound volume and it has not
