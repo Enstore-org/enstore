@@ -687,20 +687,7 @@ def migrating():
 				else:
 					res = "source file info missing"
 			else:
-				try:
-					res = swap_metadata(bfid, src, bfid2, dst)
-				except IOError, detail:
-					exc_type, exc_value = sys.exc_info()[:2]
-					error_log("A_M", "%s %s"%("IOError ", detail))
-					os.system("/usr/sbin/lsof")
-					sys.exit(1)
-					
-				except :
-					exc_type, exc_value = sys.exc_info()[:2]
-					error_log("A_M", str(exc_type), str(exc_value))
-					os.system("/usr/sbin/lsof")
-					sys.exit(1)
-					
+				res = swap_metadata(bfid, src, bfid2, dst)
 					
 			if not res:
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
