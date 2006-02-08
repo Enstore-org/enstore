@@ -542,7 +542,7 @@ class LibraryManagerMethods:
         if not external_label: return rc
         if not mover: return rc
         for w in self.work_at_movers.list:
-            Trace.trace(223,'get_work_at_movers. ticket info: %s %s'%(w["fc"]["external_label"],  w.get('mover',None))
+            Trace.trace(223,'get_work_at_movers. ticket info: %s %s'%(w["fc"]["external_label"],  w.get('mover',None)))
             if w["fc"]["external_label"] == external_label:
                 if w.has_key('mover') and w['mover'] == mover: 
                     rc = w
