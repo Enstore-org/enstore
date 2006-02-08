@@ -1237,7 +1237,7 @@ class LibraryManagerMethods:
         # no HIPri requests: look in pending work queue for reading or writing work
         # see what priority has completed request
         use_this_volume = 1
-        if priority and priority(0) and  priority(0) <= 0:
+        if priority and priority[0] and  priority[0] <= 0:
             self.init_request_selection()
             # this is a lower priority request (usually used for migration)
             # it can be preempted by any normal priority request
