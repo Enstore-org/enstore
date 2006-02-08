@@ -1158,6 +1158,18 @@ class LibraryManagerMethods:
             #    rq = self.pending_work.get_admin_request(next=1) # get next request
             #    continue
 
+            # if current rq for bound volume has adminpri process only admin requests for current
+            # volume or current file family
+            if priority and priority[1] and priority[1] > 0:
+                if last_work == 'WRITE':
+                    if rq.ticket['vc']['volume_family'] != vol_family:
+                        rq = self.pending_work.get_admin_request(next=1)
+                        continue
+                else:
+                    if rq.ticket["fc"]["external_label"] != external_label:
+                        rq = self.pending_work.get_admin_request(next=1)
+                        continue
+                
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
                 rej_reason = rq.ticket['reject_reason'][0]
@@ -1225,7 +1237,7 @@ class LibraryManagerMethods:
         # no HIPri requests: look in pending work queue for reading or writing work
         # see what priority has completed request
         use_this_volume = 1
-        if priority and priority <= 0:
+        if priority and priority(0) and  priority(0) <= 0:
             self.init_request_selection()
             # this is a lower priority request (usually used for migration)
             # it can be preempted by any normal priority request
@@ -2323,7 +2335,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mticket['external_label']:
                 w['vc']['volume_family'] = mticket['volume_family']
                 Trace.trace(18, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
-            current_priority = w['encp']['curpri']
+            current_priority = (w['encp'].get('curpri',None), w['encp'].get('adminpri', None))
             self.work_at_movers.remove(w)
 
         if self.lm_lock in ('pause', e_errors.BROKEN):
