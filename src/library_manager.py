@@ -847,6 +847,30 @@ class LibraryManagerMethods:
         Trace.trace(222,"Pw3")
         rq=self.pending_work.get()
         while rq:
+            
+            if rq.work == "write_to_hsm":
+                # check if there is a potentially available tape at bound movers
+                # and if yes skip request so that it will be picked by bound mover
+                # this is done to aviod a sinle stream bouncing between different tapes
+                # if FF width is more than 1
+                vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
+                if wr_en < rq.ticket["vc"]["file_family_width"]:
+                    movers = self.volumes_at_movers.get_active_movers()
+                    for vol in vol_veto_list:
+                        found_mover = 0
+                        for mover in movers:
+                            if vol == mover['external_label']:
+                                if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
+                                    found_mover = 1
+                                    break
+                        if found_mover:
+                            break
+                    if found_mover:    
+                        Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+                    
+                        rq = self.pending_work.get(next=1) # get next request
+                        continue
+                
             Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
             rej_reason = None
