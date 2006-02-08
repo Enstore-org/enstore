@@ -1162,10 +1162,12 @@ class LibraryManagerMethods:
             # volume or current file family
             if priority and priority[1] and priority[1] > 0:
                 if last_work == 'WRITE':
+                    Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
                     if rq.ticket['vc']['volume_family'] != vol_family:
                         rq = self.pending_work.get_admin_request(next=1)
                         continue
                 else:
+                    Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"]["external_label"])) 
                     if rq.ticket["fc"]["external_label"] != external_label:
                         rq = self.pending_work.get_admin_request(next=1)
                         continue
