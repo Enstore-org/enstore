@@ -2338,10 +2338,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                    self.reply_to_caller({'work': 'no_work'})
                    return
                            
-        # put volume information
-        # if this mover is already in volumes_at_movers
-        # it will not get updated
-        self.volumes_at_movers.put(mticket)
         transfer_deficiency = mticket.get('transfer_deficiency', 1)
         sg = volume_family.extract_storage_group(mticket['volume_family'])
         self.postponed_requests.update(sg, 1)
@@ -2368,8 +2364,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 w['vc']['volume_family'] = mticket['volume_family']
                 Trace.trace(18, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
             current_priority = (w['encp'].get('curpri',None), w['encp'].get('adminpri', None))
+            mticket['current_priority'] = current_priority
             self.work_at_movers.remove(w)
 
+        # put volume information
+        # if this mover is already in volumes_at_movers
+        # it will not get updated
+        self.volumes_at_movers.put(mticket)
+        current_priority = mticket.get('current_priority', None)
         if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller({'work': 'no_work'})
