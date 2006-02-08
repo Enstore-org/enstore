@@ -2745,7 +2745,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
 
-
     # get active volume known to LM
     def get_active_volumes(self, ticket):
         movers = self.volumes_at_movers.get_active_movers()
