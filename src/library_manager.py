@@ -856,6 +856,7 @@ class LibraryManagerMethods:
                 vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
                 if wr_en < rq.ticket["vc"]["file_family_width"]:
                     movers = self.volumes_at_movers.get_active_movers()
+                    found_mover = 0
                     for vol in vol_veto_list:
                         found_mover = 0
                         for mover in movers:
