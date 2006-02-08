@@ -2304,7 +2304,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         
     # we have a volume already bound - any more work??
     def mover_bound_volume(self, mticket):
-        Trace.trace(11, "mover_bound_volume: request: %s"%(mticket,))
+        Trace.trace(11, "mover_bound_volume for %s: request: %s"%(mticket['mover'],mticket))
         library = mticket.get('library', None)
         if library and library != self.name.split(".")[0]:
             self.reply_to_caller({'work': 'no_work'})
@@ -2315,8 +2315,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                       (mticket['external_label'],))
             self.reply_to_caller({'work': 'no_work'})
             return
-        for cwt in self.work_at_movers.list:
-            Trace.trace(11, "work_at_movers: %s" % (cwt,))
         last_work = mticket['operation']
         if not mticket['volume_family']:
             # mover restarted with bound volume and it has not
@@ -2370,7 +2368,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
-        self.volumes_at_movers.put(mticket)
+        #self.volumes_at_movers.put(mticket)
+
+        ## this is for debugging
+        movers = self.volumes_at_movers.get_active_movers()
+        for mover in movers:
+            Trace.trace(223, 'Mover %s'%(mover,))
+        
         current_priority = mticket.get('current_priority', None)
         if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
