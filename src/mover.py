@@ -4060,6 +4060,14 @@ class Mover(dispatching_worker.DispatchingWorker,
                 status = (status, None)
             else:
                 status = (status[0], status[1])
+        if self.current_work_ticket:
+            encp = self.current_work_ticket.get('encp', None)
+            if encp:
+                pri = (encp.get('curpri', None), encp.get('adminpri', None))
+            else:
+                pri = (None, None)
+        else:
+            pri = (None, None)
 
         now = time.time()
         if self.unique_id and state in (IDLE, HAVE_BOUND):
@@ -4099,6 +4107,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "time_in_state": now - self.state_change_time,
             "library": self.current_library,
             "library_list":self.libraries, # this is needed for the federation project
+            'current_priority': pri,
             }
         return ticket
 

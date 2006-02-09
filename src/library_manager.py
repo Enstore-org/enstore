@@ -2339,6 +2339,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         transfer_deficiency = mticket.get('transfer_deficiency', 1)
         sg = volume_family.extract_storage_group(mticket['volume_family'])
         self.postponed_requests.update(sg, 1)
+        
         if self.is_starting():
             # LM needs a certain startup delay before it
             # starts processing mover requests to update
@@ -2348,7 +2349,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
         Trace.trace(223, 'mover_bound_volume: work ticket %s'%(w,))
-        current_priority = None
+        
+        current_priority = mticket.get(current_priority, None)
         if w:
             # check if it is a backed up request
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
@@ -2361,8 +2363,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if mticket['external_label']:
                 w['vc']['volume_family'] = mticket['volume_family']
                 Trace.trace(18, "FILE_FAMILY=%s" % (w['vc']['volume_family'],))  # REMOVE
-            current_priority = (w['encp'].get('curpri',None), w['encp'].get('adminpri', None))
-            mticket['current_priority'] = current_priority
             self.work_at_movers.remove(w)
 
         # put volume information
@@ -2375,7 +2375,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         for mover in movers:
             Trace.trace(223, 'Mover %s'%(mover,))
         
-        current_priority = mticket.get('current_priority', None)
         if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
             self.reply_to_caller({'work': 'no_work'})
