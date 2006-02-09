@@ -1189,17 +1189,46 @@ class LibraryManagerMethods:
 
             # if current rq for bound volume has adminpri process only admin requests for current
             # volume or current file family
-            if priority and priority[1] and priority[1] > 0:
-                if last_work == 'WRITE':
-                    Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
-                    if rq.ticket['vc']['volume_family'] != vol_family:
-                        rq = self.pending_work.get_admin_request(next=1)
-                        continue
-                else:
-                    Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"]["external_label"])) 
-                    if rq.ticket["fc"]["external_label"] != external_label:
-                        rq = self.pending_work.get_admin_request(next=1)
-                        continue
+            if priority and priority[1]:
+                if priority[1] > 0:
+                    if last_work == 'WRITE':
+                        Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
+                        if rq.ticket['vc']['volume_family'] != vol_family:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
+                    else:
+                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"]["external_label"])) 
+                        if rq.ticket["fc"]["external_label"] != external_label:
+                            rq = self.pending_work.get_admin_request(next=1)
+                            continue
+                if priority[0] > 0:
+                    # for regular priority
+                    if rq.work == "write_to_hsm":
+                        # check if there is a potentially available tape at bound movers
+                        # and if yes skip request so that it will be picked by bound mover
+                        # this is done to aviod a sinle stream bouncing between different tapes
+                        # if FF width is more than 1
+                        vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
+                        Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
+                        if wr_en < rq.ticket["vc"]["file_family_width"]:
+                            movers = self.volumes_at_movers.get_active_movers()
+                            found_mover = 0
+                            for vol in vol_veto_list:
+                                found_mover = 0
+                                for mover in movers:
+                                    Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
+                                    if vol == mover['external_label']:
+                                        if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
+                                            found_mover = 1
+                                            break
+                                if found_mover:
+                                    break
+                            if found_mover:    
+                                Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+
+                                rq = self.pending_work.get_admin_request(next=1) # get next request
+                                continue
+                    
                 
             rej_reason = None
             if rq.ticket.has_key('reject_reason'):
