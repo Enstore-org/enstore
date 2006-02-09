@@ -854,12 +854,14 @@ class LibraryManagerMethods:
                 # this is done to aviod a sinle stream bouncing between different tapes
                 # if FF width is more than 1
                 vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
+                Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
                 if wr_en < rq.ticket["vc"]["file_family_width"]:
                     movers = self.volumes_at_movers.get_active_movers()
                     found_mover = 0
                     for vol in vol_veto_list:
                         found_mover = 0
                         for mover in movers:
+                            Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
                             if vol == mover['external_label']:
                                 if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
                                     found_mover = 1
@@ -2348,7 +2350,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         # just did some work, delete it from queue
         w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
-        Trace.trace(223, 'mover_bound_volume: work ticket %s'%(w,))
         
         current_priority = mticket.get('current_priority', None)
         if w:
@@ -2372,8 +2373,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         ## this is for debugging
         movers = self.volumes_at_movers.get_active_movers()
-        for mover in movers:
-            Trace.trace(223, 'Mover %s'%(mover,))
         
         if self.lm_lock in ('pause', e_errors.BROKEN):
             Trace.trace(18,"LM state is %s no mover request processing" % (self.lm_lock,))
