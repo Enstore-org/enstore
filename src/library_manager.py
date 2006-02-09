@@ -2398,7 +2398,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         # put volume information
         # if this mover is already in volumes_at_movers
         # it will not get updated
-        #self.volumes_at_movers.put(mticket)
+        self.volumes_at_movers.put(mticket)
 
         ## this is for debugging
         movers = self.volumes_at_movers.get_active_movers()
