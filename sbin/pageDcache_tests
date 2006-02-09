@@ -96,6 +96,22 @@ setup_products() {
 	elif [ -d "/usr/java/j2sdk1.4.2_01/bin/" ]; then
 	   export PATH=/usr/java/j2sdk1.4.2_01/bin/:$PATH
 	   setup_product srmcp
+	else
+	    top="/usr/java"
+	    # look for a java to use
+	    dirs=`ls -1 $top`
+	    for d in $dirs; do
+		topd="$top/$d"
+		if [ -d $topd ];
+		then
+		    if [ -e $topd/bin/java ]; 
+		    then
+			export PATH=$topd/bin/:$PATH
+			setup_product srmcp
+			break
+		    fi
+		fi
+	    done
 	fi
     fi
 
