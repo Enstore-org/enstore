@@ -2350,7 +2350,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         w = self.get_work_at_movers(mticket['external_label'], mticket['mover'])
         Trace.trace(223, 'mover_bound_volume: work ticket %s'%(w,))
         
-        current_priority = mticket.get(current_priority, None)
+        current_priority = mticket.get('current_priority', None)
         if w:
             # check if it is a backed up request
             if mticket['unique_id'] and mticket['unique_id'] != w['unique_id']:
