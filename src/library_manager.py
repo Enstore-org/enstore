@@ -1197,10 +1197,18 @@ class LibraryManagerMethods:
                             rq = self.pending_work.get_admin_request(next=1)
                             continue
                     else:
-                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None))) 
-                        if rq.ticket["fc"]["external_label"] != external_label:
-                            rq = self.pending_work.get_admin_request(next=1)
-                            continue
+                        if rq.ticket['work'] == 'read_from_hsm':
+                            Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None)))
+                        
+                            if rq.ticket["fc"]["external_label"] != external_label:
+                                rq = self.pending_work.get_admin_request(next=1)
+                                continue
+                        else:
+                            Trace.trace(223, 'HIPRI processing. cur label %s cur vf %s rq vf %s'%(external_label, vol_family, rq.ticket['vc']['volume_family'])) 
+                            if rq.ticket['vc']['volume_family'] != vol_family:
+                                rq = self.pending_work.get_admin_request(next=1)
+                                continue
+                        
                 if priority[0] > 0:
                     # for regular priority
                     if rq.work == "write_to_hsm":
