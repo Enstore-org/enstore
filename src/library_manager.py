@@ -1197,7 +1197,7 @@ class LibraryManagerMethods:
                             rq = self.pending_work.get_admin_request(next=1)
                             continue
                     else:
-                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"]["external_label"])) 
+                        Trace.trace(223, 'HIPRI processing. cur label %s rq label %s'%(external_label, rq.ticket["fc"].get("external_label", None))) 
                         if rq.ticket["fc"]["external_label"] != external_label:
                             rq = self.pending_work.get_admin_request(next=1)
                             continue
