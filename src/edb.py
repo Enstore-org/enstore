@@ -291,6 +291,8 @@ class FileDB(DbTable):
 			record['uid'] = s['uid']
 		if s.has_key('gid'):
 			record['gid'] = s['gid']
+		if s.has_key('update'):
+			record['update'] = s['update']
 
 		return record
 
