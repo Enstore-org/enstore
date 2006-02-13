@@ -863,7 +863,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
         self.logname = self.config.get('logname', name)
-        Trace.init(self.logname, self.config.get('include_thread_name', ''))
+        Trace.init(self.logname, self.config.get('include_thread_name', 'yes'))
         # do not restart if some mover processes are already running
         cmd = "EPS | grep %s | grep %s | grep -v grep"%(self.name,"mover.py")
         pipeObj = popen2.Popen3(cmd, 0, 0)
