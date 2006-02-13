@@ -2454,8 +2454,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         location, block = self.tape_driver.tell()
         block_n = tot_blocks = bloc_loc = block_size = bot = 0L
         if self.driver_type == 'FTTDriver':
-            stats = self.tape_driver.get_stats()
             try:
+                stats = self.tape_driver.get_stats()
                 block_n = stats[self.ftt.BLOCK_NUMBER]
                 tot_blocks = stats[self.ftt.BLOCK_TOTAL]
                 bloc_loc = stats[self.ftt.BLOC_LOC]
