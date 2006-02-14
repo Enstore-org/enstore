@@ -3053,7 +3053,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     self.send_client_done(self.current_work_ticket, e_errors.WRITE_ERROR,
                                           "tape %s is write protected"%(self.current_volume,))
                     self.net_driver.close()
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+                    
+                    thread = threading.currentThread()
+                    if thread:
+                        thread_name = thread.getName()
+                    else:
+                        thread_name = None
+                    if thread_name and thread_name == 'media_thread':
+                        self.dismount_volume(after_function=self.idle)
+                    else:
+                        self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
 
                     #self.dismount_volume(after_function=self.idle)
                     return
