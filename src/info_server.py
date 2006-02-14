@@ -164,7 +164,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			bfid, crc, deleted, drive, \
 			volume.label, location_cookie, pnfs_path, \
 			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid \
+			uid, gid, update \
 			from file, volume \
 			where \
 				file.volume = volume.id and \
@@ -202,7 +202,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			bfid, crc, deleted, drive, \
 			volume.label, location_cookie, pnfs_path, \
 			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid \
+			uid, gid, update \
 			from file, volume \
 			where \
 				file.volume = volume.id and \
@@ -241,7 +241,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			bfid, crc, deleted, drive, \
 			volume.label, location_cookie, pnfs_path, \
 			pnfs_id, sanity_size, sanity_crc, size, \
-			uid, gid \
+			uid, gid, update \
 			from file, volume \
 			where \
 				file.volume = volume.id and \
