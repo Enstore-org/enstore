@@ -182,7 +182,7 @@ case $gang in
 		   wac=$strip_dir/dcache-tests/$N.dcache_page_ac_$$
 		   ws=/pnfs/fnal.gov/usr/eagle/dcache-tests/$N.dcache_page_s_$$
 		   wg=dcache-tests/$N.dcache_page_g_$$
-		   dcache=fndca
+		   dcache=fndca1
 		   dcache_saag="dcache_stk"
 		   get_ports
 		   get_ticket
