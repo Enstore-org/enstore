@@ -709,8 +709,8 @@ class Request_Queue:
             queue = self.regular_queue
         queue.delete(record)
 
-    def get_admin_request(self, next=0):
-        rq = self.admin_queue.get(next=next)
+    def get_admin_request(self, label='',location='', next=0):
+        rq = self.admin_queue.get(label=label, location= location, next=next)
         if not rq:
             self.process_admin_queue = 0 # all admin queue is processed
         return rq
