@@ -1238,11 +1238,12 @@ class LibraryManagerMethods:
                                             break
                                 if found_mover:
                                     break
-                            if found_mover:    
-                                Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+                            if found_mover:
+                                if mover != requestor['mover']:
+                                    Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
 
-                                rq = self.pending_work.get_admin_request(next=1) # get next request
-                                continue
+                                    rq = self.pending_work.get_admin_request(next=1) # get next request
+                                    continue
                     
                 
             rej_reason = None
