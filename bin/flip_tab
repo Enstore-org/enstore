@@ -8,10 +8,11 @@ usage() { echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
 	  echo "       enter $script [[un]lock]"
 	}
 
-check_work() { while read work1 action1
+check_work() { local work1 action1
+	       while read work1 action1
 	       do
-		 if [ $work1 != $work ]; then
-		    rem=`ls -vI \*.\* $work1 | awk 'END {print NR}'`
+		 if [ $work1 != $(basename $work) -a -d $(dirname $work)/$work1 ]; then
+		    rem=`ls -vI \*.\* $(dirname $work)/$work1 | awk 'END {print NR}'`
 		    if [ $rem -gt 1 ]; then
 		       echo "`date` There are $rem groups to $action1."
 		    elif [ $rem -eq 1 ]; then
@@ -19,9 +20,10 @@ check_work() { while read work1 action1
 		    fi
 		 fi
 	       done << EOD
-/write_protect_work	  lock
-/write_permit_work	  unlock
-/purge_volumes_work	  remove
+write_protect_work	lock
+write_permit_work	unlock
+shelf_volumes_work	shelve
+purge_volumes_work	remove
 EOD
 
 	       ns=`find $work -type f -name \*.done -mtime -1 -print | awk 'END {print NR}'`
@@ -57,22 +59,23 @@ case $node in
      ;;
 esac
 
-output=/tmp/${script}.output
-
 action=${1:-"lock"}
 case $action in
   lock)
-     work=/write_protect_work
+     work=$HOME/isa-tools/write_protect_work
      prot=on
      ;;
   unlock)
-     work=/write_permit_work
+     work=$HOME/isa-tools/write_permit_work
      prot=off
      ;;
   *) usage
      exit 1
      ;;
 esac
+
+# look for work at home first, then under /
+[ -d $work ] || work=/$(basename $work)
 
 if [ ! -d $work ]; then
   echo "`date` ERROR. $work does not exist"
@@ -83,11 +86,23 @@ cd $work
 
 rem=`ls -vI \*.\* | awk 'END {print NR}'`
 if expr $rem : 0 >/dev/null; then
-   echo "`date` There are no volumes to $action."
+   echo "`date` There are no groups to $action. Good bye."
    check_work
-   echo "`date` Good bye."
    exit
+else
+   if [ $rem -gt 1 ]; then
+      /bin/echo -n "There are $rem groups to $action. Proceed [y/n]? "
+   else
+      /bin/echo -n "There is one group to $action. Proceed [y/n]? "
+   fi
+   if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+      :
+   else
+      exit
+   fi
 fi
+
+output=/tmp/${script}.${action}.output
 
 if [ "$icap" != "$ocap" ]; then
   /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
@@ -142,7 +157,7 @@ for i in `ls -vI \*.\*`; do
   echo
   rem=`ls -vI \*.\* | awk 'END {print NR}'`
   if expr $rem : 0 >/dev/null; then
-     echo "`date` There are no more volumes to $action. Thank you."
+     echo "`date` There are no more groups to $action. Thank you."
      break
   else
      if [ $rem -gt 1 ]; then
