@@ -702,7 +702,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.VALUE_USAGE:option.IGNORED,
                           option.USER_LEVEL:option.ADMIN},
-        option.RESTORE:{option.HELP_STRING:"restore a deleted file",
+        option.RESTORE:{option.HELP_STRING:"restore a deleted file with optional uid:gid",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"bfid",
