@@ -486,16 +486,22 @@ class FileClient(generic_client.GenericClient,
 		       "external_label" : vol } )
 	return r
 
-    def restore(self, bfid, file_family = None):
+    def restore(self, bfid, uid = None, gid = None):
         bit_file = self.bfid_info(bfid)
         if bit_file['status'][0] != e_errors.OK:
             return bit_file
         del bit_file['status']
 
+        # take care of uid and gid
+        if not uid:
+            uid = bit_file['uid']
+        if not gid:
+            gid = bit_file['gid']
+
 	# try its best to set uid and gid
         try:
-            os.setregid(bit_file['gid'], bit_file['gid'])
-            os.setreuid(bit_file['uid'], bit_file['uid'])
+            os.setregid(gid, gid)
+            os.setreuid(uid, uid)
         except:
             pass
 
@@ -520,14 +526,13 @@ class FileClient(generic_client.GenericClient,
         if not os.access(pp, os.W_OK):
             return {'status': (e_errors.FILE_CLERK_ERROR, "can not write in directory %s"%(pp))}
 
-        if not file_family:
-            # has to find it out
-            vcc = volume_clerk_client.VolumeClerkClient(self.csc)
-            vol = vcc.inquire_vol(bit_file['external_label'])
-            if vol['status'][0] != e_errors.OK:
-                return vol
-            file_family = volume_family.extract_file_family(vol['volume_family'])
-            del vcc
+        # find out file_family
+        vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        vol = vcc.inquire_vol(bit_file['external_label'])
+        if vol['status'][0] != e_errors.OK:
+            return vol
+        file_family = volume_family.extract_file_family(vol['volume_family'])
+        del vcc
 
         bit_file['file_family'] = file_family
         pf = pnfs.File(bit_file)
@@ -703,7 +708,8 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_LABEL:"bfid",
                      option.USER_LEVEL:option.ADMIN,
                      option.EXTRA_VALUES:[{
-                         option.VALUE_NAME:"file_family",
+                         option.VALUE_NAME:"owner",
+                         option.VALUE_LABEL:"uid[:gid]",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.OPTIONAL,
                          option.DEFAULT_TYPE:None,
@@ -806,10 +812,15 @@ def do_work(intf):
 	    pprint.pprint(ticket)
             ticket['status'] = status
     elif intf.restore:
-        if intf.file_family:
-            ticket = fcc.restore(intf.restore, intf.file_family)
-        else:
-            ticket = fcc.restore(intf.restore)
+        uid = None
+        gid = None
+        if intf.owner:
+            owner = string.split(intf.owner, ':')
+            uid = int(owner[0])
+            if len(owner) > 1:
+                gid = int(owner[1])
+        ticket = fcc.restore(intf.restore, uid=uid, gid=gid)
+
     elif intf.add:
         d={}
         for s in intf.args:
