@@ -5777,6 +5777,30 @@ class DiskMover(Mover):
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
                        'complete_crc': complete_crc}
+        #fc_ticket['gid'] = self.gid
+        #fc_ticket['uid'] = self.uid
+        # if this is a copy then mangle bfid
+        if self.current_work_ticket.has_key('copy'):
+            index = int(self.current_work_ticket['copy'])
+            # select new bfid
+            while 1:
+                new_bfid = '%s_%s_%s'%(self.file_info['original_bfid'], 'copy',index)
+                reply = self.fcc.bfid_info(new_bfid)
+                if reply['status'][0] != e_errors.OK:
+                    break
+                else:
+                    # file exists, try another bfid
+                    index = index + 1
+            if reply['status'][0] == e_errors.NO_FILE:
+                # this is our bfid
+                fc_ticket['bfid'] = new_bfid
+            else:
+                self.transfer_failed(e_errors.ERROR,
+                                     'file clerk error: %s'%(reply['status'],))
+                return 0
+                
+        Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
+
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
                                             'fc'  : fc_ticket
                                             })
