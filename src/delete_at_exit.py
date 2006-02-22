@@ -92,6 +92,8 @@ def signal_handler(sig, frame):
     except IOError:
         pass
 
+    Trace.log(e_errors.ERROR, "Caught signal %s, exiting.\n" % (sig,))
+
     quit(1)
 
 def setup_signal_handling():
