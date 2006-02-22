@@ -145,7 +145,17 @@ def stats(interfaces):
         for d in data:
             tok = string.split(d)
             for interface in interfaces:
-                if tok and tok[0] == interface:
+                #Sometimes we use aliases (eg. eth0:0) get the stats for
+                # the real interface.  We get the following "netstat -i"
+                # output on SLF 3.0.5 (for the alias interfaces):
+                #    eth0:0     1500   0      - no statistics available -  BMRU
+                # The "no statistics available" don't parse as the integers
+                # expected.  Thus, we split on ":" and only look at the
+                # real interface name for statistics.  We continue to use
+                # the alias name elsewhere.
+                real_interface = interface.split(":")[0]
+                
+                if tok and tok[0] == real_interface:
                     ret[interface] = _parse(tok)
                 elif tok and tok[0][-1] == "*" and tok[0][:-1] == interface:
                     sys.stderr.write("Interface %s is down\n" % tok[0][:-1])
