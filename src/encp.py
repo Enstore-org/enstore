@@ -329,10 +329,23 @@ def is_bfid(bfid):
         if result != None:
             return 1
 
+        #Allow for bfids of file copies.
+        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
+        if result != None:
+            return 1
+
         #Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
         # database and layers one & four.  So, return true in these cases.
         result = re.search("^[0-9]{13,15}L{1}$", bfid)
+        if result != None:
+            return 1
+
+    return 0
+
+def is_copy_bfid(bfid):
+    if type(bfid) == types.StringType:
+        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
         if result != None:
             return 1
 
@@ -4442,11 +4455,34 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                       "To many retries for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RETRIES, status)
 
+    #For reads only when a media error occurs.
+    retry_non_retriable_media_error = False
+    if is_read(request_dictionary) and e_errors.is_media(status):
+        #This munging should really be a common function somewhere.
+        try:
+            num = int(request_dictionary['fc']['bfid'].split("_")[-1])
+        except ValueError:
+            num = 0
+        next_bfid = "%s_copy_%s" % (request_dictionary['bfid'], num + 1)
+        fcc = get_fcc()
+        if fcc:
+            fc_info = fcc.get_bfid(next_bfid, 5, 20)
+        else:
+            fc_info = (e_errors.SERVERDIED, None) #Just something to fail is_ok
+        if e_errors.is_ok(fc_info):
+            #If there exists another copy to try with this media error,
+            # ignore any non-retirable errors.  
+            retry_non_retriable_media_error = True
+            
     #If the error is not retriable, remove it from the request queue.  There
     # are two types of non retriable errors.  Those that cause the transfer
     # to be aborted, and those that in addition to abborting the transfer
     # tell the operator that someone needs to investigate what happend.
-    if e_errors.is_non_retriable(status[0]):
+    #
+    #If the error is a media error AND there is another copy of the file
+    # then perform the retry for the next copy.
+    if e_errors.is_non_retriable(status[0]) and \
+           not retry_non_retriable_media_error:
         #Print error to stdout in data_access_layer format. However, only
         # do so if the dictionary is full (aka. the error occured after
         # the control socket was successfully opened).  Control socket
@@ -4616,6 +4652,34 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #Get a new unique id for the transfer request since the last attempt
         # ended in error.
         request_dictionary['unique_id'] = generate_unique_id()
+
+        #For reads only when a media error occurs.
+        if is_read(request_dictionary) and e_errors.is_media(status):
+            #Note: request_dictionary['bfid'] should always carry the
+            # original bfid string while (request_dictionary['fc']['bfid']
+            # should contain the bfid of the copy (original included) that
+            # was just tried.
+
+            fcc = get_fcc()
+            vcc = get_vcc()
+
+            if is_copy_bfid(request_dictionary['fc']['bfid']):
+                try:
+                    num = int(request_dictionary['fc']['bfid'].split("_")[-1])
+                except ValueError:
+                    num = 0
+            else:
+                num = 0
+
+            #This munging should really be a common function somewhere.
+            next_bfid = "%s_copy_%s" % (request_dictionary['bfid'],
+                                        num + 1)
+            fc_info = fcc.get_bfid(next_bfid, 5, 20)
+            if e_errors.is_ok(fc_info):
+                vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
+                if e_errors.is_ok(vc_info):
+                    request_dictionary['fc'] = fc_info
+                    request_dictionary['vc'] = vc_info
 
         #Keep retrying this file.
         try:
