@@ -154,7 +154,7 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
             time_left = max(timeout_time - time.time(), 0.0)
             fds, junk, junk = select.select([sock], [], [], time_left)
         except select.error, msg:
-            if getattr(msg, "errno", None) == errno.EINTR:
+            if msg.args[0] == errno.EINTR:
                 #time_left = max(total_start_time + timeout - time.time(), 0.0)
                 continue
             #fds = []
