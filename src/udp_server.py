@@ -75,7 +75,7 @@ class UDPServer:
                 cc = host_config.read_config_file(cf)
                 for i in cc.get('interface', {}).keys():
                     self.ipaddrlist.append(cc['interface'][i]['ip'])
-        except socket.error:
+        except (socket.error, socket.herror, socket.gaierror):
             self.node_name, self.aliaslist, self.ipaddrlist = \
                 self.server_address[0], [], [self.server_address[0]]
 
