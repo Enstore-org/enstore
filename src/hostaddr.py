@@ -14,6 +14,8 @@ import os, sys
 import socket
 import string, re
 import types
+import errno
+import time
 
 #Enstore imports
 import Trace
@@ -90,16 +92,68 @@ def getdomainaddr():
                 return string.join(words[0:3], ".")
 
     return None
+
+def __my_gethostbyaddr(addr):
+    try_count = 0
+    while try_count < 60:
+        try:
+            return socket.gethostbyaddr(addr)
+        except socket.error, msg:
+            #One known way to get here is to run out of file
+            # descriptors.  I'm sure there are others.
+            this_errno = msg.args[0]
+            if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                return None
+        except (socket.gaierror, socket.herror), msg:
+            this_herrno = msg.args[0]
+            if this_herrno == socket.EAI_AGAIN:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                return None
+
+    return None
+
+def __my_gethostbyname(name):
+    try_count = 0
+    while try_count < 60:
+        try:
+            return socket.gethostbyname(name)
+        except socket.error, msg:
+            #One known way to get here is to run out of file
+            # descriptors.  I'm sure there are others.
+            this_errno = msg.args[0]
+            if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                return None
+        except (socket.gaierror, socket.herror), msg:
+            this_herrno = msg.args[0]
+            if this_herrno == socket.EAI_AGAIN:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                return None
+
+    return None
+
     
 known_ips = {}
 def address_to_name(addr):
     ## this will return the address if it can't be resolved into a hostname
     if addr in known_ips.keys():
         return known_ips[addr]
-    try:
-        name = socket.gethostbyaddr(addr)[0]
-    except socket.error:
+
+    host_info = __my_gethostbyaddr(addr)
+    if host_info != None:
+        name = host_info[0]
+    else:
         name = addr
+
     known_ips[addr] = name
     return name
     
@@ -109,10 +163,11 @@ def name_to_address(name):
     ## this will return the hostname if it can't be resolved into an address
     if name in known_names.keys():
         return known_names[name]
-    try:
-        addr = socket.gethostbyname(name)
-    except socket.error:
+
+    addr = __my_gethostbyname(name)
+    if addr == None:
         addr = name
+
     known_names[name] = addr
     return addr
 

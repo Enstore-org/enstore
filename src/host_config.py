@@ -126,8 +126,17 @@ def get_default_interface_ip():
             default=socket.gethostbyname(socket.getfqdn(socket.gethostname()))
             break
         except socket.error, msg:
-            time.sleep(1)
-            continue
+            if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
+                time.sleep(1)
+                continue
+            else:
+                break
+        except (socket.herror, socket.gaierror), msg:
+            if msg.args[0] == socket.EAI_AGAIN:
+                time.sleep(1)
+                continue
+            else:
+                break
 
     #If the default ip address so far is determined to be 127.0.0.1, we should
     # first check all of the interfaces for thier IPs and lookup what name
@@ -322,12 +331,27 @@ def clear_cached_routes():
 #Rerturns true if the destination is already in the routing table.  False,
 # otherwise.
 def is_route_in_table(dest):
+    __pychecker__ = "unusednames=i"
     
     #if no routing is required, return true.
     if not get_config():
 	return 1
 
-    ip = socket.gethostbyname(dest)
+    for i in range(0, 60):
+        try:
+            ip = socket.gethostbyname(dest)
+            break
+        except socket.error, msg:
+            if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
+                continue
+            else:
+                raise socket.error, msg, sys.exc_info()[2]
+        except (socket.herror, socket.gaierror), msg:
+            if msg.args[0] == socket.EAI_AGAIN:
+                continue
+            else:
+                raise sys.exc_info()[0], msg, sys.exc_info()[2]
+        
     route_table = get_routes()
     for route in route_table:
         #Since netstat -rn gives the numerical address, coversions are not
@@ -456,7 +480,9 @@ def set_route(dest, interface_ip):
         pass
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
-
+    elif err == 7:  #Feature not supported by enroute2. (ignore)
+        sys.stderr.write("enroute2 does not support route addition\n")
+    
 def update_route(dest, interface_ip):
     config = get_config()
     if not config:
@@ -496,7 +522,9 @@ def update_route(dest, interface_ip):
         pass
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
-
+    elif err == 7:  #Feature not supported by enroute2. (ignore)
+        sys.stderr.write("enroute2 does not support route modification\n")
+    
 def unset_route(dest):
     config = get_config()
     if not config:
@@ -528,6 +556,8 @@ def unset_route(dest):
         pass
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
+    elif err == 7:  #Feature not supported by enroute2. (ignore)
+        sys.stderr.write("enroute2 does not support route deletion\n")
 
 ##############################################################################
 # The following three functions select an interface based on various criteria.
@@ -614,16 +644,59 @@ def check_load_balance(mode = None):
 ##############################################################################
 
 def setup_interface(dest, interface_ip):
+    __pychecker__ = "unusednames=i"
+    
     config = get_config()
     if not config:
         return
     interface_dict = config.get('interface')
     if not interface_dict:
         return
+
+    #Obtain the ip for this host.
+    for i in range(0, 60):
+        try:
+            this_host_addr = socket.gethostbyaddr(socket.gethostname())[0]
+            break
+        except socket.error, msg:
+            if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
+                continue
+            else:
+                #raise socket.error, msg, sys.exc_info()[2]
+                return
+        except (socket.herror, socket.gaierror), msg:
+            if msg.args[0] == socket.EAI_AGAIN:
+                continue
+            else:
+                #raise sys.exc_info(), msg, sys.exc_info()[2]
+                return
+    else:
+        #raise socket.error(errno.ENETUNREACH, os.strerror(errno.ENETUNREACH))
+        return
+
+    #Obtain the ip for the other host.
+    for i in range(0, 60):
+        try:
+            the_other_addr = socket.gethostbyaddr(dest)[0]
+            break
+        except socket.error, msg:
+            if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
+                continue
+            else:
+                #raise socket.error, msg, sys.exc_info()[2]
+                return
+        except (socket.herror, socket.gaierror), msg:
+            if msg.args[0] == socket.EAI_AGAIN:
+                continue
+            else:
+                #raise sys.exc_info(), msg, sys.exc_info()[2]
+                return
+    else:
+        #raise socket.error(errno.ENETUNREACH, os.strerror(errno.ENETUNREACH))
+        return
     
     #If we are already on the machine, we don't need to do set routes.
-    if socket.gethostbyaddr(socket.gethostname())[0] == \
-       socket.gethostbyaddr(dest)[0]:
+    if this_host_addr == the_other_addr:
         return
 
     #Some architecures (like IRIX) attach a network card to a processor.
