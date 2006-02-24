@@ -5,7 +5,6 @@ import sys
 import string
 import stat
 import time
-import shutil
 import traceback
 import socket
 import signal
@@ -256,6 +255,14 @@ def check_db(check_dir):
 		out[i].write("-- %d files\n"%(count[i]))
 		out[i].close()
 
+	# generate pnfs dictionary
+	print timeofday.tod(), "Generating PNFS.XREF ..."
+	pnfs_dict_file = os.path.join(check_dir, 'PNFS.XREF')
+	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select pnfs_id, bfid, size, pnfs_path from file where deleted = 'n' and not pnfs_path is null"+'"'+" -o %s"%(pnfs_dict_file)
+
+	print cmd
+	os.system(cmd)
+
 if __name__ == "__main__":
 	if "--help" in sys.argv:
 		print_usage()
@@ -269,5 +276,8 @@ if __name__ == "__main__":
 	stop_postmaster()
 	# moving COMPLETE_FILE_LISTING to dest_path
 	cmd = "enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING*"), dest_path)
+	print timeofday.tod(), cmd
+	os.system(cmd)
+	cmd = "enrcp %s %s"%(os.path.join(check_dir, "PNFS.XREF"), dest_path)
 	print timeofday.tod(), cmd
 	os.system(cmd)
