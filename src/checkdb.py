@@ -194,7 +194,6 @@ def extract_backup(check_dir, container):
 	os.system("pg_restore -d backup -v -s -t tc "+container)
 	os.system("pg_restore -d backup -v -s -t volume "+container)
 	os.system("pg_restore -d backup -v -s -t no_flipping_file_family "+container)
-	os.system("pg_restore -d backup -v -s -t no_flipping_storage_group "+container)
 	os.system("pg_restore -d backup -v -a "+container)
         os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
 
