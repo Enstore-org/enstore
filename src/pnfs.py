@@ -30,6 +30,7 @@ import enstore_constants
 import hostaddr
 import enstore_functions2
 import charset
+import atomic
 
 #ENABLED = "enabled"
 #DISABLED = "disabled"
@@ -384,6 +385,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         self.pstatinfo()
 
+    # create a new file
+    def creat(self, filename=None):
+        if not filename:
+            filename = self.pnfsFilename
+            
+        fd = atomic.open(filename, mode=0666)
+
+        self.pstatinfo()
+
+        os.close(fd)
+
     # update the access and mod time of a file
     def utime(self, filename=None):
         if not filename:
@@ -558,7 +570,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         return parent
 
     # get the total path of the id
-    def get_path(self, id=None, directory=""):
+    def get_path(self, id=None, directory="", shortcut=None):
         if directory:
             use_dir = fullpath(directory)[1]
         else:
@@ -594,6 +606,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             raise OSError(errno.ENODEV, "%s: %s"%(os.strerror(errno.ENODEV),
                                             "Unable to determine mount point"))
+
+        #If the user doesn't want the pain of going through a full name
+        # lookup, return this alternate name.
+        if shortcut:
+            return os.path.join(search_path, ".(access)(%s)" % use_id)
 
         #Obtain the root file path.  This is done by obtaining a directory
         # component id, its name and parents id.  Then with the parents id
@@ -909,6 +926,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 pstat = os.stat(get_directory_name(fname))
             except OSError:
                 raise msg
+
+        pstat = tuple(pstat)
 
         if not filepath:
             self.pstat = pstat
@@ -1929,7 +1948,7 @@ class PnfsInterface(option.Interface):
 # This is a cleaner interface to access the tags in /pnfs
 
 class Tag:
-    def __init__(self, directory):
+    def __init__(self, directory = None):
         self.dir = directory
     
     # write a new value to the specified tag
