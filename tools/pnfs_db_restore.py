@@ -5,6 +5,7 @@ import sys
 import popen2
 import string
 import pwd
+import getopt
 
 sys2host={'cdf': ('cdfensrv1','data'),
           'cms': ('cmspnfs', 'data'),
@@ -12,13 +13,20 @@ sys2host={'cdf': ('cdfensrv1','data'),
           'stk':('stkensrv1','psql-data'),
           'sdss': ('?????', '?????'),
           }
+version2version={'v8_0_7' : '8.0',
+                 'v8_1_3' : '8.1'
+                 }
 
 def usage(cmd):
-    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
-    print "specify timestamp YYYY-MM-DD to get backup up to certain date" 
-    sys.exit(1)
+#    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
+    print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
+    print "\t allowed systems: cms, cdf, d0m stk"
+    print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
+    print "\t allowed pnfs versions v8_0_7, v8_1_3"
+#    sys.exit(1)
     
 def get_config(host):
+    print "get_config PNFS HOST ",host
     cmd = "rcp %s:/usr/etc/pnfsSetup pnfsSetup.%s"%(host, host)
     pipeObj = popen2.Popen3(cmd, 0, 0)
     if pipeObj is None:
@@ -52,6 +60,16 @@ def get_config(host):
     os.system("mv pnfsSetup.%s.tmp pnfsSetup.%s"%(host, host))
     # get local pnfs directory
     pnfs_dir=os.popen('. /usr/local/etc/setups.sh; setup pnfs; echo $PNFS_DIR').readlines()[0][:-1]
+    #
+    # kludge
+    #
+    # cmd = "rsh %s:/usr/etc/pnfsSetup pnfsSetup.%s"%(host, host)
+    os.system('. /usr/local/etc/setups.sh; unsetup postgres')
+    cmd = ". /usr/local/etc/setups.sh; setup postgres %s"%(postgres_version,)
+    print "setting postgres ",postgres_version
+    if ( os.system(cmd) ):
+        print "failed to ",cmd
+        sys.exit(1)
     return pnfs_db, pgdb, trash, backup_host, backup_dir,pnfs_dir
 
 # get last backup
@@ -185,18 +203,46 @@ def recover(backup_time=None):
     
 if __name__ == "__main__" :
     uname = pwd.getpwuid(os.getuid())[0]
-    backup_time=None
+    backup_time      = None
+    sysname          = None
+    postgres_version = 'v8_1_3'
     if uname != 'root':
         print "Must be 'root' to run this program"
         sys.exit(1)
-    if len(sys.argv) < 2 or len(sys.argv) > 3 :
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hs:p:t:", ["help","system=","postgres_version=","backup_time="])
+    except getopt.GetoptError:
+        print "Failed to process arguments"
         usage(sys.argv[0])
-    if sys2host.has_key(sys.argv[1]):
-        pnfs_host = sys2host[sys.argv[1]][0]
-        backup_name = sys2host[sys.argv[1]][1]
-        if (len(sys.argv)>2) : backup_time = sys.argv[2] 
+        sys.exit(2)
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage(sys.argv[0])
+            sys.exit(1)
+        if o in ("-s", "--system"):
+            sysname = a
+        if o in ("-p", "--postgres_version"):
+            postgres_version = a
+        if o in ("-t", "--backup_time"):
+            backup_time = a
+    if (sysname == None or sysname=="") :
+        print "Error: Must specify enstore system name"
+        usage(sys.argv[0])
+        sys.exit(1)
+    if (backup_time == None or backup_time=="" ) :
+        backup_time=None
+    if sys2host.has_key(sysname):
+        pnfs_host   = sys2host[sysname][0]
+        backup_name = sys2host[sysname][1]
     else:
+        print "Error: no such system ",sysname
         usage(sys.argv[0])
+        sys.exit(1)
+    if not version2version.has_key(postgres_version):
+        print "Error: no such postgres version", postgres_version
+        usage(sys.argv[0])
+        sys.exit(1)
+    print sysname, postgres_version, backup_time
     rc = recover(backup_time)
     sys.exit(rc)
 
