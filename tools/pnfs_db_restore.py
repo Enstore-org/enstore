@@ -14,7 +14,8 @@ sys2host={'cdf': ('cdfensrv1','data'),
           }
 
 def usage(cmd):
-    print "Usage: %s {cdf|cms|d0|stk|sdss}"%(cmd,)
+    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
+    print "specify timestamp YYYY-MM-DD to get backup up to certain date" 
     sys.exit(1)
     
 def get_config(host):
@@ -68,7 +69,7 @@ def get_backup(backup_host, backup_dir,  backup_name):
     a = result[len(result)-1].split(' ')
     return a[len(a)-1][:-1]
 
-def recover():
+def recover(backup_time=None):
     pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir = get_config(pnfs_host)
     
     cmd='umount /pnfs/fs'
@@ -121,7 +122,11 @@ def recover():
     print 'Creating recovery.conf: %s'% (cmd, )
     f=open('%s/recovery.conf'%(pgdb,), 'w')
     f.write('%s\n'%(cmd,))
+    if (backup_time != None) :
+        f.write("recovery_target_time='%s'\n"%(backup_time,))
+        f.write("recovery_target_inclusive='true'\n")        
     f.close()
+    os.system("cat %s/recovery.conf"%(pgdb))
     
     # disable archive_command
     print "CWD",cwd
@@ -180,17 +185,19 @@ def recover():
     
 if __name__ == "__main__" :
     uname = pwd.getpwuid(os.getuid())[0]
+    backup_time=None
     if uname != 'root':
         print "Must be 'root' to run this program"
         sys.exit(1)
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2 or len(sys.argv) > 3 :
         usage(sys.argv[0])
     if sys2host.has_key(sys.argv[1]):
         pnfs_host = sys2host[sys.argv[1]][0]
         backup_name = sys2host[sys.argv[1]][1]
+        if (len(sys.argv)>2) : backup_time = sys.argv[2] 
     else:
         usage(sys.argv[0])
-    rc = recover()
+    rc = recover(backup_time)
     sys.exit(rc)
 
 
