@@ -386,11 +386,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         self.pstatinfo()
 
     # create a new file
-    def creat(self, filename=None):
+    def creat(self, filename=None, mode = None):
         if not filename:
             filename = self.pnfsFilename
-            
-        fd = atomic.open(filename, mode=0666)
+
+        if mode:
+            fd = atomic.open(filename, mode=mode)
+        else:
+            fd = atomic.open(filename)
 
         self.pstatinfo()
 
