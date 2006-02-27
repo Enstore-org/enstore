@@ -24,7 +24,7 @@ raise_alarm() {
     msg=$1
     item_to_override=$2
     error_code=$3
-    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail -s "pageDcache error on $item_to_override" enstore-admin@fnal.gov
+    echo enstore alarm --raise --severity "A" --root-error "$msg" | Mail -s "pageDcache error on $item_to_override" dcache-auto@fnal.gov
     (setup enstore;enstore alarm --raise --severity "A" --root-error "$msg")
     (setup enstore;enstore sched --override $item_to_override --saagstatus red --time="$msg")
     # do not turn the ball red any more ...
