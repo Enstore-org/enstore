@@ -64,11 +64,12 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.keys       = self.csc.get(self.name)
         dispatching_worker.DispatchingWorker.__init__(self, (self.keys['hostip'], self.keys['port']))
         self.dict       = None
-        self.set_error_handler(self.handle_error)
+        #self.set_error_handler(self.handle_error)
         Trace.init(self.log_name)
 	self.alive_interval = monitored_server.get_alive_interval(self.csc,
 								  MY_NAME,
 								  self.keys)
+    """
     def handle_error(self, exc, msg, tb):
         x = tb 
         Trace.log(e_errors.ERROR, "handle pnfs agent error %s %s"%(exc, msg))
@@ -79,6 +80,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                 self.transfer_failed(exc, msg)
             except:
                 pass
+    """
 
     # show_state -- show internal configuration values
     def show_state(self, ticket):
@@ -88,6 +90,60 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
+
+    def get_pnfsstat(self, ticket):
+        filename = ticket['filename']
+        p=pnfs.Pnfs(filename)
+        try:
+            ticket['statinfo']=p.get_stat()
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['statinfo'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['statinfo'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    def get_stat(self, ticket):
+        filename = ticket['filename']
+        #p=pnfs.Pnfs(filename)
+        try:
+            ticket['statinfo']=tuple(os.stat(filename))
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['statinfo'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['statinfo'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    def creat(self, ticket):
+        filename = ticket['filename']
+        mode = ticket.get('mode', None)
+        p=pnfs.Pnfs(filename)
+        try:
+            if mode:
+                p.creat(filename, mode)
+            else:
+                p.creat(filename)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
 
     def get_file_stat(self, ticket):
         filename = ticket['filename']
@@ -327,11 +383,20 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
 
     def get_id(self,ticket) :
         fname = ticket['fname']
-        p=pnfs.Pnfs(fname)
-        ticket['file_id']=p.get_id()
-        ticket['status']   = (e_errors.OK, None)
-        Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
+        try:
+            p=pnfs.Pnfs(fname)
+            ticket['file_id']=p.get_id()
+            ticket['status']   = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['file_id']=None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['file_id']=None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
+        Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
         return
 
     def set_xreference(self,ticket) :
@@ -395,6 +460,77 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
+    def chmod(self,ticket) :
+        fname = ticket['fname']
+        mode = ticket['mode']
+        p=pnfs.Pnfs(fname)
+        try:
+            p.chmod(mode)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    #Delete the file while clobbering layers.
+    def utime(self,ticket):
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        try:
+            p.utime()
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    #Delete the file while clobbering layers.
+    def rm(self,ticket):
+        fname = ticket['fname']
+        p=pnfs.Pnfs(fname)
+        try:
+            p.rm()
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+        
+    #Delete the file.
+    def remove(self,ticket):
+        fname = ticket['fname']
+        try:
+            os.remove(fname)
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    def is_pnfs_path(self, ticket):
+        fname = ticket['fname']
+        ticket['rc'] = pnfs.is_pnfs_path(fname)
+        ticket['status'] = (e_errors.OK, None)
+        self.reply_to_caller(ticket)
+        return
+        
+        
 
 class PnfsAgentInterface(generic_server.GenericServerInterface):
         pass
