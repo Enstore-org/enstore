@@ -579,9 +579,18 @@ def get_directory_name(filepath):
         parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
 
         #Read the parent id.
-        f = open(parent_id_name)
-        parent_id = f.readlines()[0].strip()
-        f.close()
+        try:
+            f = open(parent_id_name)
+            parent_id = f.readlines()[0].strip()
+            f.close()
+        except OSError, msg:
+            if msg.args[0] == errno.ENOENT:
+                pac = get_pac()
+                parent_id = pac.get_parent_id(pnfsid)
+                if not parent_id: #Does this work to catch errors?
+                    raise OSError, msg
+            else:
+                raise OSError, msg
 
         #Build the .(access)() filename of the parent directory.
         directory_name = os.path.join(dirname, ".(access)(%s)" % parent_id)
@@ -5547,16 +5556,24 @@ def set_pnfs_settings(ticket, intf_encp):
     #Note: There is a possible race condition here if the file is
     #      (re)moved after it is determined to remain in the original
     #      location, but before the metadata is set.
+    
     if access_check(ticket['wrapper']['pnfsFilename'], os.F_OK) == 0:
         #With the remembered pnfsid, try to find out where it was moved to
         # if it was in fact moved.
         pnfsid = ticket['fc'].get('pnfsid', None)
         if pnfsid:
             try:
-                p = pnfs.Pnfs(pnfsid,
-                         get_directory_name(ticket['wrapper']['pnfsFilename']),
-                              shortcut = intf_encp.shortcut)
-                path = p.get_path()  #Find the new path.
+                if intf_encp.outtype == RHSMFILE \
+                       or intf_encp.intype == RHSMFILE: #intype for "get".
+                    p = get_pac()
+                    path = p.get_path(pnfsid,
+                     get_directory_name(ticket['wrapper']['pnfsFilename']),
+                                      shortcut = intf_encp.shortcut)
+                else:   # HSMFILE
+                    p = pnfs.Pnfs(pnfsid,
+                     get_directory_name(ticket['wrapper']['pnfsFilename']),
+                                  shortcut = intf_encp.shortcut)
+                    path = p.get_path()  #Find the new path.
                 Trace.log(e_errors.INFO,
                           "File %s was moved to %s." %
                           (ticket['wrapper']['pnfsFilename'], path))
