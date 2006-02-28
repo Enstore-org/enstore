@@ -157,6 +157,10 @@ not_enough_parameters() {
 #######################################################################
 
 dccp_test() {
+
+    setup dcap -q unsecured
+    unset DCACHE_IO_TUNNEL
+
     read_back=/tmp/dcache_page_read_back_$$
     rm -f $read_back
 
