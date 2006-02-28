@@ -134,7 +134,7 @@ case $gang in
 		   get_ports
 		   get_ticket
 		   case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag "unsecured" $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp) dcache=cmsdcdr3 
 				# there appears to no longer be a gridftp door on this node
@@ -162,7 +162,7 @@ case $gang in
 		   get_ports
 		   get_ticket
 		   case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag "" $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;
@@ -188,7 +188,7 @@ case $gang in
 		   get_ports
 		   get_ticket
 		   case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag "unsecured" $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;
@@ -219,7 +219,7 @@ case $gang in
 		     get_ports
 		     get_ticket
 		     case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w $door_list $wd > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag "" $w $door_list $wd > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp|gridftp1) 
                                   dcache=cdfdca-ftp1;`pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
@@ -253,7 +253,7 @@ case $gang in
 		    get_ports
 		    get_ticket
 		    case $testToDo in
-			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
+			dccp) `pageDcache_tests $- dccp $test_file $dcache $dcache_saag "" $w "" "" > $output_dccp 2>&1; echo $? > $exit_code_dccp`&
 			      ;;
 			gridftp) `pageDcache_tests $- gridftp $test_file $dcache $dcache_saag $wg > $output_gridftp 2>&1; echo $? > $exit_code_gridftp`&
 			         ;;

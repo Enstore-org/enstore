@@ -158,9 +158,6 @@ not_enough_parameters() {
 
 dccp_test() {
 
-    setup dcap -q unsecured
-    unset DCACHE_IO_TUNNEL
-
     read_back=/tmp/dcache_page_read_back_$$
     rm -f $read_back
 
@@ -446,13 +443,19 @@ shift
 
 case $test_to_do in
     dccp) # get the specific parameters first
-	  if [ $# -ne 3 ];
+	  if [ $# -ne 4 ];
 	  then
 	      not_enough_parameters dccp
 	  fi
-	  w=$1
-	  door_list=$2
-	  wd=$3
+          # we may need to setup a special version of dcap.
+	  if [ "$1" = "unsecured" ];
+	  then
+	      setup dcap -q unsecured
+	      unset DCACHE_IO_TUNNEL
+	  fi
+	  w=$2
+	  door_list=$3
+	  wd=$4
 	  dccp_test
 	  ;;
     kftp) # get the specific parameters first
