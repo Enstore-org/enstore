@@ -391,12 +391,31 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['file_id']=None
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['file_id']=None
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
         Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
+        return
+
+    def get_parent_id(self,ticket) :
+        pnfsid = ticket['pnfsid']
+        try:
+            p=pnfs.Pnfs(pnfsid, shorcut=True)
+            ticket['parent_id']=p.get_parent_id()
+            ticket['status']   = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['parent_id']=None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['parent_id']=None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        Trace.log(e_errors.INFO,
+                  'get_parent_id %s %s'%(fname,ticket['parent_id'],))
         return
 
     def set_xreference(self,ticket) :
@@ -470,7 +489,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
@@ -486,7 +505,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
@@ -502,7 +521,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
@@ -517,7 +536,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         except OSError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
-        except OSError, msg:
+        except IOError, msg:
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)

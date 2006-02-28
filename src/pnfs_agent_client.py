@@ -241,6 +241,14 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket=self.send(ticket)
         return ticket['file_id']
 
+    def get_parent_id(self,pnfsid):
+        ticket = {'work'  : 'get_parent_id',
+                  'pnfsid' : pnfsid,
+                  'parent_id'  : None
+                  }
+        ticket=self.send(ticket)
+        return ticket['parent_id']
+
     def get_file_size(self, fname):
         ticket = {'work'  : 'get_file_size',
                   'fname' : fname,
