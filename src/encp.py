@@ -3007,9 +3007,11 @@ def create_zero_length_pnfs_files(filenames, e = None):
             try:
                 pac.creat(fname, mode=0666)
 
+                delete_at_exit.register(fname)
+
                 if type(f) == types.DictType:
                     f['wrapper']['inode'] = None
-                    f['fc']['pnfsid'] = pac.get_id(f)
+                    f['fc']['pnfsid'] = pac.get_id(fname)
             except OSError, msg:
                 raise OSError, msg
 

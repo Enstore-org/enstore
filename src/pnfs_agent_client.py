@@ -409,7 +409,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     # update the access and mod time of a file
     def utime(self, filename):
         ticket = {'work'          : 'utime',
-                  'filename'      : filename,
+                  'fname'         : filename,
                   }
         ticket=self.send(ticket)
         if ticket['status'][0] == e_errors.OK:
@@ -422,7 +422,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     # delete a pnfs file including its metadata
     def rm(self, filename):
         ticket = {'work'          : 'rm',
-                  'filename'      : filename,
+                  'fname'         : filename,
                   }
         ticket=self.send(ticket)
         if ticket['status'][0] == e_errors.OK:
@@ -435,7 +435,7 @@ class PnfsAgentClient(generic_client.GenericClient,
     # delete a pnfs file (leaving the metadata do be put in the trashcan)
     def remove(self, filename):
         ticket = {'work'          : 'remove',
-                  'filename'      : filename,
+                  'fname'         : filename,
                   }
         ticket=self.send(ticket)
         if ticket['status'][0] == e_errors.OK:
