@@ -256,10 +256,12 @@ class Buffer:
         self._lock.acquire()
         l = len(self._buf)
         for i in range(l):
-            self._buf.pop(0)
+            d = self._buf.pop(0)
+            del(d)
         l = len(self._freelist)
         for i in range(l):
-            self._freelist.pop(0)
+            d = self._freelist.pop(0)
+            del(d)
         self._lock.release()
         
         self.write_ok.clear()
