@@ -1232,11 +1232,11 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.INFO,"restart was called from tape thread")
 
         # release data buffer
-        Trace.log(e_errors.INFO, "releasing data buffer")
-        if self.buffer:
-            self.buffer.clear()
-            del(self.buffer)
-            self.buffer = None
+        #Trace.log(e_errors.INFO, "releasing data buffer")
+        #if self.buffer:
+        #    self.buffer.clear()
+        #    del(self.buffer)
+        #    self.buffer = None
 
         Trace.log(e_errors.INFO, "sending restart command")
         cmd = '/usr/bin/at now+1minute'
