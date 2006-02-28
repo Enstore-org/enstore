@@ -103,7 +103,7 @@ def _open2(pathname,mode=0666):
             # will (now) fail.  To test for this case get the full directory
             # listing and check to see if it is there.  If so, corrupted
             # directory.  If not, some other error occured.
-            rtn_errno = getattr(errno, str("EFSCORRUPTED"), -1)
+            rtn_errno = getattr(errno, str("EFSCORRUPTED"), errno.EIO)
             msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt."
         elif s and s[stat.ST_NLINK] > 2:
             #If there happen to be more than 2 hard links to the same file.
