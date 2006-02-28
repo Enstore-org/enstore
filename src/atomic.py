@@ -82,6 +82,10 @@ def _open2(pathname,mode=0666):
                     ok = 1
                     break
                 time.sleep(1)
+            else:
+                #We now know it is case one.
+                if detail.args[0] == errno.EEXIST:
+                    raise OSError, detail
         except OSError:
             #ok = 0
             os.close(fd_tmp)
