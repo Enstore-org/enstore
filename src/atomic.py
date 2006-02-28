@@ -56,6 +56,7 @@ def _open2(pathname,mode=0666):
         if hasattr(msg, "errno") and msg.errno == errno.EEXIST:
             fd_tmp = os.open(tmpname, os.O_RDWR)
         else:
+            delete_at_exit.delete()
             raise OSError, msg
 
     ok = 0
@@ -85,6 +86,7 @@ def _open2(pathname,mode=0666):
             #ok = 0
             os.close(fd_tmp)
             delete_at_exit.unregister(pathname)
+            delete_at_exit.delete()
             raise OSError, detail
 
     if ok:
@@ -127,6 +129,7 @@ def _open2(pathname,mode=0666):
 
         os.close(fd_tmp)
         #return -(detail.errno) #return errno values as negative.
+        delete_at_exit.delete()
         raise OSError(rtn_errno, msg)
 
 #Since the point of this modules is to override the default open function,
