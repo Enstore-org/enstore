@@ -773,10 +773,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             size = 1
         else:
             size = filesize
-
-        #Don't report the hidden file to the user if there is a problem,
-        # report the original file.
-        self.verify_existance()
         
         #xref = self.get_xreference()
         #formated_size = str(filesize)
@@ -791,28 +787,52 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             use_filepath = self.filepath
 
+        #Don't report the hidden file to the user if there is a problem,
+        # report the original file.
+        self.verify_existance(use_filepath)
         fname = self.fset_file(use_filepath, size)
 
         f = open(fname,'w')
         f.close()
 
         #Update the times.
-        self.utime()
-        self.pstatinfo()
+        if filepath:
+            self.utime(filepath)
+        else:
+            self.utime()
+            self.pstatinfo()
 
     ##########################################################################
 
     # set a new mode for the existing file
-    def chmod(self,mode):
-        os.chmod(self.pnfsFilename,mode)
-        self.utime()
-        self.pstatinfo()
+    def chmod(self, mode, filepath=None):
+        if filepath:
+            use_filepath = filepath
+        else:
+            use_filepath = self.pnfsFilename
+            
+        os.chmod(use_filepath, mode)
+
+        if filepath:
+            self.utime(filepath)
+        else:
+            self.utime()
+            self.pstatinfo()
 
     # change the ownership of the existing file
-    def chown(self,uid,gid):
-        os.chown(self.pnfsFilename,uid,gid)
-        self.utime()
-        self.pstatinfo()
+    def chown(self, uid, gid, filepath=None):
+        if filepath:
+            use_filepath = filepath
+        else:
+            use_filepath = self.pnfsFilename
+        
+        os.chown(use_filepath, uid, gid)
+
+        if filepath:
+            self.utime(filepath)
+        else:
+            self.utime()
+            self.pstatinfo()
 
     ##########################################################################
 

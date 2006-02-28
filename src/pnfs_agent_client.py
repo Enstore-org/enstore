@@ -83,6 +83,32 @@ class PnfsAgentClient(generic_client.GenericClient,
             else:
                 return None, None, None
 
+    def get_pnfsstat(self, filename):
+        ticket = {'work'          : 'get_pnfsstat',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if e_errors.is_ok(ticket):
+            return ticket['statinfo']
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
+                            ticket['status'][1])
+
+    def get_stat(self, filename):
+        ticket = {'work'          : 'get_stat',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if e_errors.is_ok(ticket):
+            return ticket['statinfo']
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
+                            ticket['status'][1])
+
     def get_pinfo(self,filename) :
         ticket = {'work'          : 'get_pinfo',
                   'filename'      : filename,
@@ -156,7 +182,7 @@ class PnfsAgentClient(generic_client.GenericClient,
                    }
         ticket=self.send(ticket)
         if ( ticket['status'][0] != e_errors.OK ):
-            raise OSError, "can't create files"
+            raise OSError, ticket['status'][1]
         else:
             filenames = ticket['filenames']
             return filenames[0]
@@ -170,11 +196,12 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket=self.send(ticket)
         return ticket['inputfile'],ticket['outputfile']
 
-    def get_path(self,pnfs_id,dirname):
+    def get_path(self,pnfs_id,mount_point,shortcut=None):
         ticket = { 'work'    : 'get_path',
                    'pnfs_id' : pnfs_id,
-                   'dirname' : dirname,
-                   'path'    : None
+                   'dirname' : mount_point,
+                   'shortcut' : shortcut,
+                   'path' : None
                    }
         ticket=self.send(ticket)
         return ticket['path']
@@ -186,9 +213,11 @@ class PnfsAgentClient(generic_client.GenericClient,
                    'rc'   : 1
                    }
         ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return False
         return ticket['rc']
 
-    def set_bit_file_id(self,fname,bfid):
+    def set_bit_file_id(self,bfid,fname):
         ticket = {'work'  : 'set_bit_file_id',
                   'fname' : fname,
                   'bfid'  : bfid
@@ -212,7 +241,16 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket=self.send(ticket)
         return ticket['file_id']
 
-    def set_file_size(self,fname,size):
+    def get_file_size(self, fname):
+        ticket = {'work'  : 'get_file_size',
+                  'fname' : fname,
+                  }
+        ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return None  #This is what pnfs.get_file_size() does on error.
+        return ticket['size']
+
+    def set_file_size(self,size,fname):
         ticket = {'work'  : 'set_file_size',
                   'fname' : fname,
                   'size'  : size
@@ -222,7 +260,7 @@ class PnfsAgentClient(generic_client.GenericClient,
 
     def set_xreference(self, volume, location_cookie, size, file_family,
                        pnfsFilename, volume_filepath, id, volume_fileP,
-                       bit_file_id, drive, crc, filepath=None):
+                       bit_file_id, drive, crc, filepath):
         
         ticket = {'work'             : 'set_xreference',
                   'volume'           : volume,
@@ -241,12 +279,172 @@ class PnfsAgentClient(generic_client.GenericClient,
         ticket=self.send(ticket)
         return
 
+    def get_xreference(self, fname):
+        ticket = {'work' : 'get_xreference',
+                  'fname' : fname,
+                  }
+        ticket = self.send(ticket)
+        if e_errors.is_ok(ticket):
+            return ticket['xref']
+        raise OSError, ticket['status'][1]
+
+    def readlayer(self, fname, layer):
+        ticket = {'work' : 'readlayer',
+                  'fname' : fname,
+                  'layer' : layer
+                  }
+        ticket = self.send(ticket)
+        if e_errors.is_ok(ticket):
+            return ticket['contents']
+        return [] #What sould happen here?
+
+    def writelayer(self, layer, value, fname):
+        ticket = {'work' : 'writelayer',
+                  'fname' : fname,
+                  'layer' : layer,
+                  'value' : value
+                  }
+        ticket = self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            raise OSError, ticket['status'][1]
+
     def set_outfile_permissions(self,work_ticket):
         ticket = { 'work' : 'set_outfile_permissions',
                    'ticket' : work_ticket
                    }
         ticket=self.send(ticket)
         return ticket['ticket']
+
+    def chmod(self,mode,filename):
+        ticket = { 'work' : 'chmod',
+                   'fname' : filename,
+                   'mode' : mode
+                   }
+        ticket=self.send(ticket)
+        if e_errors.is_ok(ticket):
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket.get('errno', e_errors.UNKNOWN),
+                            ticket['status'][1])
+
+    def is_pnfs_path(self, filename, check_name_only = None):
+        ticket = { 'work' : 'is_pnfs_path',
+                   'fname' : filename,
+                   'check_name_only' : check_name_only
+                   }
+        ticket = self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return False   #Should this raise an exception instead?
+        return ticket['rc']
+
+    def get_directory_name(self, filename):
+        ticket = { 'work' : 'is_pnfs_path',
+                   'fname' : filename,
+                   }
+        ticket = self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return None   #Should this raise an exception instead?
+        return ticket['rc']
+
+    def isdir(self, filename):
+        ticket = {'work'          : 'get_stat',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return None
+        else:
+            return stat.S_ISDIR(ticket['statinfo'][stat.ST_MODE])
+
+    def isfile(self, filename):
+        ticket = {'work'          : 'get_stat',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return None
+        else:
+            return stat.S_ISREG(ticket['statinfo'][stat.ST_MODE])
+
+    def islink(self, filename):
+        ticket = {'work'          : 'get_stat',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if not e_errors.is_ok(ticket):
+            return None
+        else:
+            return stat.S_ISLNK(ticket['statinfo'][stat.ST_MODE])
+
+    # create a new file or update its times
+    def touch(self, filename):
+        ticket = {'work'          : 'touch',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket['errno'], ticket['status'][1])
+
+    # create a new file
+    def creat(self, filename, mode = None):
+        ticket = {'work'          : 'creat',
+                  'filename'      : filename,
+                  }
+        if mode:
+            ticket['mode'] = mode
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket['errno'], ticket['status'][1])
+
+    # update the access and mod time of a file
+    def utime(self, filename):
+        ticket = {'work'          : 'utime',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket['errno'], ticket['status'][1])
+        
+    # delete a pnfs file including its metadata
+    def rm(self, filename):
+        ticket = {'work'          : 'rm',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket['errno'], ticket['status'][1])
+        
+    # delete a pnfs file (leaving the metadata do be put in the trashcan)
+    def remove(self, filename):
+        ticket = {'work'          : 'remove',
+                  'filename'      : filename,
+                  }
+        ticket=self.send(ticket)
+        if ticket['status'][0] == e_errors.OK:
+            return
+        elif ticket['status'][0] == e_errors.IOERROR:
+            raise IOError, (ticket['errno'], ticket['status'][1])
+        else:
+            raise OSError, (ticket['errno'], ticket['status'][1])
+        
 
 class PnfsAgentClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):

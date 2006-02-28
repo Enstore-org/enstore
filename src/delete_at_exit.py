@@ -17,6 +17,7 @@ import configuration_client
 import file_clerk_client
 import enstore_functions2
 import e_errors
+import pnfs_agent_client
 
 _deletion_list = []
 _deletion_list_bfids = []
@@ -42,6 +43,15 @@ def unregister_bfid(bfid):
         _deletion_list_bfids.remove(bfid)
 
 def delete():
+
+    if not _deletion_list and not _deletion_list_bfids:
+        return
+
+    # get a configuration server
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host, config_port))
+    
     # Delete registered files.
     for f in _deletion_list:
         Trace.log(e_errors.INFO, "Performing file cleanup for file: %s" % (f,))
@@ -51,14 +61,14 @@ def delete():
             except:
                 Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
                 sys.stderr.write("Can not delete file %s.\n" % (f,))
-
-    if _deletion_list_bfids:
-        # get a configuration server and file clerk
-        config_host = enstore_functions2.default_host()
-        config_port = enstore_functions2.default_port()
-        csc = configuration_client.ConfigurationClient((config_host,
-                                                        config_port))
-
+        else:
+            pac = pnfs_agent_client.PnfsAgentClient(csc)
+            #If pac.remove() had the protections on the pnfs agent side
+            # to make sure only pnfs files were deleted this is_pnfs_path()
+            # check would not be necessary.
+            if pac.is_pnfs_path(f):
+                pac.remove(f)
+            
     # Delete registered bfids.
     for b in _deletion_list_bfids:
         Trace.log(e_errors.INFO, "Performing bfid cleanup for: %s" % (b,))
