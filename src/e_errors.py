@@ -435,3 +435,28 @@ def is_resendable(e):
     elif error == RESUBMITTING:
         return 1
     return 0
+
+#If the value is a media error return 1 otherwise 0.
+def is_media(e):
+    error = _get_error(e)
+
+    if is_ok(error):
+        return 0
+    #Write errors.
+    elif error in [WRITE_NOTAPE, WRITE_TAPEBUSY, WRITE_BADMOUNT,
+                   WRITE_BADSWMOUNT, WRITE_BADSPACE, WRITE_ERROR, WRITE_EOT]:
+        return 1
+    #Read errors.
+    elif error in [READ_NOTAPE, READ_TAPEBUSY, READ_BADMOUNT,
+                   READ_BADSWMOUNT, READ_BADLOCATE, READ_ERROR, READ_EOT,
+                   READ_EOD, READ_NODATA]:
+        return 1
+    #Label read/write errors.
+    elif error in [READ_VOL1_READ_ERR, WRITE_VOL1_READ_ERR, READ_VOL1_MISSING,
+                   WRITE_VOL1_MISSING, READ_VOL1_WRONG, WRITE_VOL1_WRONG,
+                   EOV1_ERROR]:
+        return 1
+    #Misc. errors.
+    elif error in [NOACCESS, NOTALLOWED, CRC_ERROR, MEDIAERROR]:
+        return 1
+    return 0
