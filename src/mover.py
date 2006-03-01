@@ -2113,8 +2113,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               new_bloc_loc, self.last_blocks_written+1,
                                               len(self.header_labels),
                                               len(self.eof_labels)),
-                                             error_source=TAPE)
+                                             error_source=TAPE,
+                                             dismount_allowed=0)
+                        Trace.alarm(e_errors.ALARM, "Wrong position on %s: before write %s after write %s, blocks written+1 %s headers %s trailers %s. Mover will be set to OFFLINE and tape to NOACCESS for the investigation"%
+                                    (self.current_volume,
+                                     self.current_absolute_location,
+                                     new_bloc_loc, self.last_blocks_written+1,
+                                     len(self.header_labels),
+                                     len(self.eof_labels)))
                         self.set_volume_noaccess(self.current_volume)
+                        self.offline()
                         return
                     self.last_absolute_location = new_bloc_loc
                     
