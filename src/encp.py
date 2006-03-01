@@ -3199,7 +3199,11 @@ def get_minfo(statinfo):
     st_dec_dict = stat_decode(statinfo)
 
     rtn = {}
-
+    
+    rtn['uid'] = st_dec_dict['uid']
+    rtn['uname'] = st_dec_dict['uname']
+    rtn['gid'] = st_dec_dict['gid']
+    rtn['gname'] = st_dec_dict['gname']
     rtn['major'] = st_dec_dict['major']
     rtn['minor'] = st_dec_dict['minor']
     rtn['rmajor'] = st_dec_dict['rmajor']
@@ -3211,10 +3215,17 @@ def get_minfo(statinfo):
 
     return rtn
 
-def get_uinfo():
+def get_uinfo(e = None):
     uinfo = {}
-    uinfo['uid'] = os.getuid()
-    uinfo['gid'] = os.getgid()
+    uinfo['uid'] = os.geteuid()
+    uinfo['gid'] = os.getegid()
+
+    if uinfo['uid'] == 0 and uinfo['gid'] == 0 \
+       and e != None and e.put_cache:
+        # For the case of dcache writes into enstore; we should use the
+        # ownership of the zero length pnfs file created by dCache.
+        return {}
+    
     try:
         uinfo['gname'] = grp.getgrgid(uinfo['gid'])[0]
     except (ValueError, AttributeError, TypeError, IndexError, KeyError):
@@ -4939,7 +4950,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                              req.get('unique_id', None)))
 
                 #Since a retriable error occured, resubmit the ticket.
-                lm_responce = submit_one_request(req)
+                lm_responce = submit_one_request(req, encp_intf)
 
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5057,7 +5068,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                          request_dictionary['unique_id']))
 
             #Since a retriable error occured, resubmit the ticket.
-            lm_responce = submit_one_request(request_dictionary)
+            lm_responce = submit_one_request(request_dictionary, encp_intf)
 
         except KeyError, msg:
             lm_responce = {'status':(e_errors.NET_ERROR,
@@ -8006,7 +8017,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #Check to make sure that this file is not marked
             # as deleted.  If so, print error and exit.
-            if fc_reply.get('deleted', None) != "no":
+            deleted_status = fc_reply.get('deleted', None)
+            if deleted_status != None and deleted_status != "no":
                 #If the user has specified the --skip-deleted-files switch
                 # then ignore this file and move onto the next.
                 if e.skip_deleted_files:
@@ -9632,36 +9644,36 @@ def log_encp_start(tinfo, intf):
         t = None
         
     try:
-        if getattr(intf, "library", None):
-            library = intf.library
+        if intf.output_library:
+            library = intf.output_library
         else:
             library = t.get_library(shortcut_dname)
     except (OSError, IOError, KeyError, TypeError, AttributeError):
         library = "Unknown"
     try:
-        if getattr(intf, "storage_group", None):
-            storage_group = intf.storage_group
+        if intf.output_storage_group:
+            storage_group = intf.output_storage_group
         else:
             storage_group = t.get_storage_group(shortcut_dname)
     except (OSError, IOError, KeyError, TypeError, AttributeError):
         storage_group = "Unknown"
     try:
-        if getattr(intf, "file_family", None):
-            file_family = intf.file_family
+        if intf.output_file_family:
+            file_family = intf.output_file_family
         else:
             file_family = t.get_file_family(shortcut_dname)
     except (OSError, IOError, KeyError, TypeError, AttributeError):
         file_family = "Unknown"
     try:
-        if getattr(intf, "file_family_wrapper", None):
-            file_family_wrapper = intf.file_family_wrapper
+        if intf.output_file_family_wrapper:
+            file_family_wrapper = intf.output_file_family_wrapper
         else:
             file_family_wrapper = t.get_file_family_wrapper(shortcut_dname)
     except (OSError, IOError, KeyError, TypeError, AttributeError):
         file_family_wrapper = "Unknown"
     try:
-        if getattr(intf, "file_family_width", None):
-            file_family_width = intf.file_family_width
+        if intf.output_file_family_width:
+            file_family_width = intf.output_file_family_width
         else:
             file_family_width = t.get_file_family_width(shortcut_dname)
     except (OSError, IOError, KeyError, TypeError, AttributeError):
