@@ -776,8 +776,6 @@ def is_read(ticket_or_interface):
         else:
             infile = getattr(ticket_or_interface, 'infile', "")
             outfile = getattr(ticket_or_interface, 'outfile', "")
-            import traceback
-            traceback.print_stack()
             Trace.log(e_errors.ERROR,
                       "Inconsistent file types:" + str({'infile' : infile,
                                                         'outfile' : outfile}))
@@ -799,8 +797,6 @@ def is_read(ticket_or_interface):
 
         #If that failed attempt to look at the file names.
         if not infile or not outfile:
-            import traceback
-            traceback.print_stack()
             Trace.log(e_errors.ERROR,
                       "Inconsistent file types:" + str(ticket_or_interface))
             raise EncpError(errno.EINVAL, "Inconsistent file types.",
@@ -810,16 +806,12 @@ def is_read(ticket_or_interface):
         elif not pnfs.is_pnfs_path(infile) and pnfs.is_pnfs_path(outfile):
             return 0
         else:
-            import traceback
-            traceback.print_stack()
             Trace.log(e_errors.ERROR,
                       "Inconsistent file types:" + str(ticket_or_interface))
             raise EncpError(errno.EINVAL, "Inconsistent file types.",
                             e_errors.BROKEN, ticket_or_interface)
     #Have no idea what was passed in.
     else:
-        import traceback
-        traceback.print_stack()
         raise EncpError(errno.EINVAL, "Expected ticket or interface.",
                         e_errors.WRONGPARAMETER,
                         {'is_read() argument' : ticket_or_interface})
@@ -3814,7 +3806,7 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
 ############################################################################
 ############################################################################
 
-def submit_one_request(ticket):
+def submit_one_request(ticket, encp_intf):
 
     submit_one_request_start_time = time.time()
 
@@ -3841,6 +3833,20 @@ def submit_one_request(ticket):
     resubmits = ticket.get('resend', {}).get('resubmits', 0)
     if resubmits:
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(resubmits))
+
+    if is_write(encp_intf): # and (retries or resubmits):
+        #We need to recheck the file family width.
+
+        #First check if the user specified the value on the command line.
+        # If so, skip getting a new value.
+        if not encp_intf.output_file_family_width:
+            dname = get_directory_name(ticket['wrapper']['pnfsFilename'])
+            if encp_intf.outtype == RHSMFILE:
+                t = get_pac()
+            else:
+                t = pnfs.Tag()
+            file_family_width = t.get_file_family_width(dname)
+            ticket['vc']['file_family_width'] = file_family_width
 
     #Determine the type of transfer.
     try:
@@ -6119,7 +6125,7 @@ def submit_write_request(work_ticket, encp_intf):
         ##start of resubmit block
         Trace.trace(17,"write_to_hsm q'ing: %s"%(work_ticket,))
 
-        ticket = submit_one_request(work_ticket)
+        ticket = submit_one_request(work_ticket, encp_intf)
 
         Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
         Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
@@ -8339,7 +8345,7 @@ def submit_read_requests(requests, encp_intf):
 
             Trace.trace(18, "submit_read_requests queueing:%s"%(req,))
             
-            ticket = submit_one_request(req)
+            ticket = submit_one_request(req, encp_intf)
             
             Trace.message(TICKET_LEVEL, "LIBRARY MANAGER")
             Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
