@@ -78,7 +78,7 @@ def __get_socket_state(fd):
                 line = ""
                 state = ""
 
-            return tcp_states.get(int(state), "UNKNOWN")
+            return tcp_states.get(int(state, 16), "UNKNOWN")
         except socket.error, msg:
             Trace.log(e_errors.ERROR,
                       "timeout_recv(): /proc/net/tcp: %s" % str(msg))
