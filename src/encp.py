@@ -3834,7 +3834,7 @@ def submit_one_request(ticket, encp_intf):
     if resubmits:
         Trace.message(TO_GO_LEVEL, "RESUBMITS COUNT:"+str(resubmits))
 
-    if is_write(encp_intf): # and (retries or resubmits):
+    if is_write(encp_intf) and (retries or resubmits):
         #We need to recheck the file family width.
 
         #First check if the user specified the value on the command line.
