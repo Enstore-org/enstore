@@ -1,7 +1,7 @@
 import string
 import sys
 
-def makeTapelogFilename(run, frame, ccd):
+def makeTapeLogFilename(run, frame, ccd):
     #return "idTapeLog-%06d-%02d-%04d.fit"%(int(run), int(ccd), int(frame))
     #return "idTapeLog-00" + run + "-" + ccd + "-000" + frame + ".fit"
 
@@ -38,8 +38,11 @@ def makeTapelogFilename(run, frame, ccd):
     return "idR-%06d-%1s%1d-%04d.fit" % (int(run), converted_filter,
                                          int(ccd_camcol), int(field))
     
-def makeTarlogFilename(contents, id):
+def makeTarTapeFilename(contents, id):
     return string.lower(contents) + "." + id + ".tar"
+
+def makePtTapeFilename(mjd):
+    return mjd + ".tar"
 
 def parseFile(filename):
     filelist = []
@@ -47,26 +50,37 @@ def parseFile(filename):
     line = f.readline()
     while line:
         if (line.lower().find("tarfile") >= 0):
-            #Split TARFILE lines contain tuples of the following:
+            #Split "tarfile" lines containing tuples of the following:
             # (tape, filemark, contents, tar_id)
             try:
                 (unused, filemark, contents, tar_id) = line.split()
                 filelist.append((int(filemark) + 1,
-                                 makeTarlogFilename(contents, tar_id)))
+                                 makeTarTapeFilename(contents, tar_id)))
             except ValueError:
                 pass
             
         elif line.lower().find("tapelog") >= 0:
-            #Split tapelog lines contain tuples of the following:
+            #Split "tapelog" lines containing tuples of the following:
             # (tape, filemark, run, frame, ccd)
             try:
                 (unused, filemark, run, frame, ccd) = line.split()
                 filelist.append((filemark,
-                                 makeTapelogFilename(run, frame, ccd)))
+                                 makeTapeLogFilename(run, frame, ccd)))
             except ValueError:
                 pass
             
-            
+        elif line.lower().find("data =") >= 0:
+            #Split "Data =" lines containing tuples of the following:
+            # (mjd,)
+            # Note: PtTape tapes have two filemarks, hence the multiply
+            #       the filemark number by 2.
+            try:
+                (unused, unused, mjd) = line.split()
+                filelist.append(((len(filelist) + 1) * 2,
+                                 makePtTapeFilename(mjd)))
+            except ValueError:
+                pass
+        
         line = f.readline()
 
     f.close()  #Cleanup

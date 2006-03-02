@@ -4,8 +4,14 @@ import string
 
 
 def getFilename(username, nodename, dirname, mjd, tapeStyle, tapeLabel):
-    #Build the TarTape "par" filename.
-    metaFileName = "id" + tapeStyle + "-" + tapeLabel + ".par"
+
+    if tapeStyle == "PtTape":
+        #Build the PtTape tapelog filename.
+        metaFileName = tapeLabel + ".tapelog"
+    else:
+        #Build the TarTape or TapeLog "par" filename.
+        metaFileName = "id" + tapeStyle + "-" + tapeLabel + ".par"
+
     #Set the fullpath of this file.
     remoteMetaFilePath = os.path.join(dirname, mjd, metaFileName)
     #Create the full remote file path to the sdss catalog metadata.
@@ -34,14 +40,17 @@ def findFile(username, nodename, dirname, tapeLabel):
         metaTarTapeFileName = "id" + "TarTape" + "-" + tapeLabel + ".par"
         #Build the TapeLog "par" filename.
         metaTapeLogFileName = "id" + "TapeLog" + "-" + tapeLabel + ".par"
+        #Build the PtTape "tapelog" filename.
+        metaPtTapeFileName = tapeLabel + ".tapelog"
 
         #Create the strings for finding the par file.
         # The find_command string is the command to search all of SDSS's
         # par files for the one describing the current tape.
         find_command = "find %s -follow -maxdepth 2 " \
-                       "-name %s -o -name %s" % \
+                       "-name %s -o -name %s -o -name %s" % \
                        (dirname, metaTarTapeFileName,
-                        metaTapeLogFileName)
+                        metaTapeLogFileName,
+                        metaPtTapeFileName)
         # The rsh_command string needs the -n option to redirect stdin
         # correctly to keep the job from being stopped in some cases.  The
         # -l <username> options tell the process to rsh as the specified user.

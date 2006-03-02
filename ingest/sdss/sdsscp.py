@@ -4,9 +4,10 @@ import os
 import getopt
 import errno
 import re
+import string
+import sys
 
 import callGet
-import string, sys
 import parseTapeLog
 import getNames
 
@@ -14,16 +15,16 @@ def main():
     #Make sure that a new enough version of python is used.
     version = string.split(string.split(sys.version)[0], ".")
     if map(int, version) < [1, 6, 0]:
-        print "must use python 1.6 or greater"
+        sys.stderr.write("must use python 1.6 or greater\n")
         sys.exit(127)
 
     opts_permitted = ['verbose=', "dump"]
     options, args = getopt.getopt(sys.argv[1:], [], opts_permitted)
     #If the wrong number of arguments was supplied, print help and error out.
     if len(args) != 5:
-        print "Usage:", sys.argv[0], \
-              " [--verbose n] [--dump] <tapelabel> <mjd> <TarTape|TapeLog> " \
-              "<pfnsdir> <outputdir>"
+        sys.stderr.write("Usage:", sys.argv[0], \
+              " [--verbose n] [--dump] <tapelabel> <mjd|ts_dir> <TarTape|TapeLog> " \
+              "<pfnsdir> <outputdir>\n")
         sys.exit(126)
 
     verbose = None
@@ -45,24 +46,33 @@ def main():
     USERNAME = "sdssdp"
     NODENAME = "sdssdp30"
     DIRNAME = "/sdss/data/golden/"
+    PTNODENAME = "sdssdp40"
+    PTDIRNAME = "/data/dp40.c/data/mt/tapelogs"
 
     #Detect tape type errors from the command line.
-    if tapeStyle != "TarTape" and tapeStyle != "TapeLog":
-        print "Tape style must be TapeLog or TarTape."
+    if tapeStyle != "TarTape" and tapeStyle != "TapeLog" \
+           and tapeStyle != "PtTape":
+        sys.stderr.write("Tape style must be TapeLog, PtTape or TarTape.\n")
         sys.exit(125)
     #Detect tape name errors from the command line.
     if re.match("J[GL][A-Z0-9]{2}[0-9]{2}", tapeLabel) == None:
-        print "%s is not a valid tape name." % tapeLabel
+        sys.stderr.write("%s is not a valid tape name.\n" % tapeLabel)
         sys.exit(124)
 
     #Check credentials.
     if os.system("klist -s"):
-        print "Failed to find valid credentails."
+        sys.stderr.write("Failed to find valid credentails.\n")
         sys.exit(123)
 
     #Determine the par filepath.
-    par_filepath = getNames.getFilename(USERNAME, NODENAME, DIRNAME,
-                                        mjd, tapeStyle, tapeLabel)
+    if tapeStyle == "TarTape" or tapeStyle == "TapeLog":
+        par_filepath = getNames.getFilename(USERNAME, NODENAME, DIRNAME,
+                                            mjd, tapeStyle, tapeLabel)
+    else:  #PtTape
+        #Note: in this case mjd really means the telescope directory.
+        # Either: apo20, apo24 or usno
+        par_filepath = getNames.getFilename(USERNAME, PTNODENAME, PTDIRNAME,
+                                            mjd, tapeStyle, tapeLabel)
     #Determine the local file to copy the .par file to.
     localMetaFilePath = os.path.join("/tmp", os.path.basename(par_filepath))
 
@@ -73,12 +83,18 @@ def main():
         par_file = getNames.findFile(USERNAME, NODENAME, DIRNAME, tapeLabel)
 
         if par_file == None:
+            #Before giving up, check the PT directories.
+            par_file = getNames.findFile(USERNAME, PTNODENAME,
+                                         PTDIRNAME, tapeLabel)
+
+        if par_file == None:
             #getNames.findFile has printed the error message.
             sys.exit(122)
 
         #Get the par file with the name from find(1).
         if getNames.getFile(par_file, localMetaFilePath):
-            print "Unable to get .par file for volume %s." % tapeLabel
+            sys.stderr.write("Unable to get .par file for volume %s.\n"
+                             % tapeLabel)
             sys.exit(121)
 
     #Read in the metadata catalog file just copied over.
@@ -115,11 +131,15 @@ def main():
             #The file is already gone.
             pass
         else:
-            print "Unable to remove temporary file %s: %s" % \
-                  (localMetaFilePath, str(msg))
+            sys.stderr.write("Unable to remove temporary file %s: %s\n" % \
+                             (localMetaFilePath, str(msg)))
 
     print "Exit status = %s." % exit_status
     sys.exit(exit_status)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (SystemExit, KeyboardInterrupt), msg:
+        sys.stderr.write("\nUser aborted sdsscp.\n")
+        sys.exit(1)
