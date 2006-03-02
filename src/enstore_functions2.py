@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+import sys
 import time
 import string
 import os
@@ -418,11 +419,30 @@ def fullpath(filename):
     if host_and_port != None:
         filename = filename[len(host_and_port.group()):]
 
-    try:
-        machine = socket.gethostbyaddr(socket.gethostname())[0]
-    except (socket.herror, socket.gaierror):
-        #One known way to get here is to run out of file
-        # descriptors.  I'm sure there are others.
+    try_count = 0
+    while try_count < 60:
+        try:
+            machine = socket.gethostbyaddr(socket.gethostname())[0]
+            break
+        except (socket.error), msg:
+            #One known way to get here is to run out of file
+            # descriptors.  I'm sure there are others.
+            this_errno = msg.args[0]
+            if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                machine = None
+                break
+        except (socket.gaierror, socket.herror), msg:
+            this_herrno = msg.args[0]
+            if this_herrno == socket.EAI_AGAIN:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                machine = None
+                break
+    else:
         machine = None
 
     #Expand the path to the complete absolute path.
@@ -473,8 +493,30 @@ def fullpath2(filename):
     if not portnumber:
         portnumber = None
 
-    hostinfo = socket.gethostbyaddr(hostname)
-    machine = hostinfo[0]
+    try_count = 0
+    while try_count < 60:
+        try:
+            hostinfo = socket.gethostbyaddr(hostname)
+            machine = hostinfo[0]
+            break
+        except (socket.error), msg:
+            this_errno = msg.args[0]
+            if this_errno == errno.EAGAIN or this_errno == errno.EINTR:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                raise socket.error, msg, sys.exc_info()[2]
+        except (socket.gaierror, socket.herror): #, msg:
+            msg = sys.exc_info()[1] #msg set here to appease pychecker.
+            this_herrno = msg.args[0]
+            if this_herrno == socket.EAI_AGAIN:
+                try_count = try_count + 1
+                time.sleep(1)
+            else:
+                raise sys.exc_info()[0], msg, sys.exc_info()[2]
+    else:
+        #If finding the full name fails, go with what we know.
+        machine = hostname
 
     #Expand the path to the complete absolute path.
     filepath = expand_path(filename)
