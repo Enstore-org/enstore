@@ -172,12 +172,12 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	    except (socket.error, select.error, encp.EncpError), msg:
 		#If a select (or other call) was interupted,
 		# this is not an error, but should continue.
-		if getattr(msg, "errno", None) == errno.EINTR:
+		if msg.args[0] == errno.EINTR:
 		    continue
 		#If the error was timeout, resend the reply
 		# Since, there was an exception, "uticket" is still
 		# the ticket returned from the routing call.
-		elif getattr(msg, "errno", None) == errno.ETIMEDOUT:
+		elif msg.args[0] == errno.ETIMEDOUT:
 		    #udp_socket.reply_to_caller_using_interface_ip(
                     #rticket, listen_socket.getsockname()[0])
                     udp_socket.reply_to_caller(uticket)
@@ -246,7 +246,7 @@ def transfer_file(in_fd, out_fd):
         try:
             r, unused, unused = select.select([in_fd], [], [], 15 * 60)
         except select.error, msg:
-            if getattr(msg, "errno", None) == errno.EINTR:
+            if msg.args[0] == errno.EINTR:
                 continue
             else:
                 r = []
