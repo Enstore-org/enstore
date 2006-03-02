@@ -4722,11 +4722,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     skip_layer_cleanup = False
     if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
            and pnfs_filename and not encp_intf.copies:
-        #If the user wants use to specifically check if another encp has
+        #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
             if do_layers_exist(pnfs_filename):
-                #The do_layers_exist() function should never give na
+                #The do_layers_exist() function should never give an
                 # exist error for the 'real' file.  Any EEXIST errors
                 # from this section should only occur if layer 1 or 4 is
                 # already set.
@@ -4789,13 +4789,17 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             pass
     #If the transfer is a write from dcache, we need to clear any information
     # that resides in layer 1 and/or layer 4.
-    elif is_write(encp_intf) and encp_intf.put_cache:
+    elif is_write(encp_intf) and encp_intf.put_cache and not encp_intf.copies:
         #If another encp set layer 1 and/or 4 while this encp was waiting
         # in the queue, the layer test above will set skip_layer_cleanup
         # to true and thus at this point be skipping the deletion of the
         # metadata set by the other encp process.
         if not skip_layer_cleanup:
             try:
+                Trace.log(e_errors.INFO,
+                          "Clearing layers 1 and 4 for file %s (%s): %s % "
+                          (outfile, request_dictionary.get('unique_id', None),
+                           str(pf_status)))
                 p = Pnfs(outfile)
                 p.writelayer(1, "", outfile)
                 p.writelayer(4, "", outfile)
