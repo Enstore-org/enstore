@@ -140,6 +140,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except (SystemExit, KeyboardInterrupt), msg:
+    except (KeyboardInterrupt), msg:
         sys.stderr.write("\nUser aborted sdsscp.\n")
         sys.exit(1)
