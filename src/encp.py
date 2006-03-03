@@ -3677,6 +3677,13 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
 		    use_listen_socket, duration)
         except (socket.error, select.error, EncpError), msg:
             #exc, msg = sys.exc_info()[:2]
+            try:
+                msg.args[0]
+            except IndexError, msg:
+                exc, msg, tb = sys.exc_info()[:2]
+                Trace.handle_error(exc, msg, tb)
+                Trace.log(e_errors.INFO, "Encp crash about to occur...")
+            
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If a select (or other call) was interupted,
                 # this is not an error, but should continue.
