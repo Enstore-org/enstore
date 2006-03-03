@@ -4441,7 +4441,7 @@ def verify_file_size(ticket, encp_intf = None):
         # sure we are using the correct file_size for the pnfs side.
         try:
             p = Pnfs(ticket['wrapper']['pnfsFilename'])
-            pnfs_real_size = p.get_file_size()
+            pnfs_real_size = p.get_file_size(ticket['wrapper']['pnfsFilename'])
         except (OSError, IOError), detail:
             ticket['status'] = (e_errors.OSERROR, str(detail))
             return
