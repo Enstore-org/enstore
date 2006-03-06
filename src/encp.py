@@ -3680,7 +3680,7 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
             try:
                 msg.args[0]
             except IndexError, msg:
-                exc, msg, tb = sys.exc_info()[:2]
+                exc, msg, tb = sys.exc_info()
                 Trace.handle_error(exc, msg, tb)
                 Trace.log(e_errors.INFO, "Encp crash about to occur...")
             
