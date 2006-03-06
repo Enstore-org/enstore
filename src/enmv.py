@@ -267,6 +267,7 @@ def move_file(input_filename, output_filename):
         # entry writing all the metadata then removing the original file.
         if getattr(msg, "errno", None) in [errno.EPERM, errno.EXDEV]:
             try:
+                delete_at_exit.register(output_filename)
                 #Create for reading and writing.  The default open mode
                 # is sufficent for making metadata changes.
                 out_fd = atomic.open(output_filename)

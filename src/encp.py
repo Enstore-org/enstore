@@ -3004,14 +3004,13 @@ def create_zero_length_pnfs_files(filenames, e = None):
         else:
             fname = f
 
+        delete_at_exit.register(fname)
         if remote_create: # Use pnfs_agent to access pnfs file.
             try:
                 pac.creat(fname, mode=0666)
 
-                delete_at_exit.register(fname)
-
                 if type(f) == types.DictType:
-                    f['wrapper']['inode'] = None
+                    f['wrapper']['inode'] = pac.get_stat(fname)[stat.ST_INO]
                     f['fc']['pnfsid'] = pac.get_id(fname)
             except OSError, msg:
                 raise OSError, msg
@@ -3052,6 +3051,7 @@ def create_zero_length_local_files(filenames):
                 fname = f
             
         #try:
+        delete_at_exit.register(fname)
         fd = atomic.open(fname, mode=0666) #raises OSError on error.
         
         if type(f) == types.DictType:
@@ -4804,7 +4804,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         if not skip_layer_cleanup:
             try:
                 Trace.log(e_errors.INFO,
-                          "Clearing layers 1 and 4 for file %s (%s): %s % "
+                          "Clearing layers 1 and 4 for file %s (%s): %s" %
                           (outfile, request_dictionary.get('unique_id', None),
                            str(pf_status)))
                 p = Pnfs(outfile)
