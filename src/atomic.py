@@ -7,12 +7,12 @@ import os
 #import sys
 import stat
 import errno
-import delete_at_exit
+#import delete_at_exit
 #import exceptions
 import time
 
 def _open1(pathname,mode=0666):
-    delete_at_exit.register(pathname)
+    #delete_at_exit.register(pathname)
     fd = os.open(pathname, os.O_CREAT|os.O_EXCL|os.O_RDWR, mode)
     return fd
 
@@ -41,7 +41,7 @@ def _open2(pathname,mode=0666):
     tmpname = os.path.join(os.path.dirname(pathname), tmpname)
 
     #Record encp to delete this temporary file on (failed) exit.
-    delete_at_exit.register(tmpname)
+    #delete_at_exit.register(tmpname)
 
     #Create and open the temporary file.
     try:
@@ -53,15 +53,15 @@ def _open2(pathname,mode=0666):
         # two encps can not be attempting to create the temporary file
         # simultaniously.  Thus, this error should be ignored; though any
         # errors from this os.open() are real.
-        if hasattr(msg, "errno") and msg.errno == errno.EEXIST:
+        if getattr(msg, "errno", None) == errno.EEXIST:
             fd_tmp = os.open(tmpname, os.O_RDWR)
         else:
-            delete_at_exit.delete()
+            #delete_at_exit.delete()
             raise OSError, msg
 
     ok = 0
     s = None #initalize
-    delete_at_exit.register(pathname)
+    #delete_at_exit.register(pathname)
     try:
         os.link(tmpname, pathname)
         ok = 1
@@ -89,18 +89,19 @@ def _open2(pathname,mode=0666):
         except OSError:
             #ok = 0
             os.close(fd_tmp)
-            delete_at_exit.unregister(pathname)
-            delete_at_exit.delete()
+            os.unlink(tmpname)
+            #delete_at_exit.unregister(pathname)
+            #delete_at_exit.delete()
             raise OSError, detail
 
     if ok:
         fd=os.open(pathname, os.O_RDWR, mode)
         os.unlink(tmpname)
         os.close(fd_tmp)
-        delete_at_exit.unregister(tmpname)
+        #delete_at_exit.unregister(tmpname)
         return fd
     else:
-        delete_at_exit.unregister(pathname)
+        #delete_at_exit.unregister(pathname)
         if os.path.basename(pathname) in os.listdir(os.path.dirname(pathname)):
             #Check if the filesystem is corrupted.  If there is a file
             # listed in a directory that does not point to a valid inode the
@@ -132,8 +133,9 @@ def _open2(pathname,mode=0666):
             msg = os.strerror(rtn_errno) + ": " + "Unknown"
 
         os.close(fd_tmp)
+        os.unlink(tmpname)
         #return -(detail.errno) #return errno values as negative.
-        delete_at_exit.delete()
+        #delete_at_exit.delete()
         raise OSError(rtn_errno, msg)
 
 #Since the point of this modules is to override the default open function,
