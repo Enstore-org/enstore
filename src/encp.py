@@ -1572,7 +1572,7 @@ def __get_fcc(parameter = None):
     else:
         file_info = None
 
-    #In theory the only spot that an error responce can be returned
+    #In theory the only spot that an error response can be returned
     # from this function is at the very end.
     if file_info and not e_errors.is_ok(file_info):
         #Stuff this back in.  Some message building code looks for this.
@@ -1732,7 +1732,7 @@ def __get_vcc(parameter = None):
     else:
         volume_info = None
 
-    #In theory the only spot that an error responce can be returned
+    #In theory the only spot that an error response can be returned
     # from this function is at the very end.
     if volume_info and not e_errors.is_ok(volume_info):
         #Stuff this back in.  Some message building code looks for this.
@@ -1920,7 +1920,7 @@ def check_library(library, e):
         #On error the library manager client calls sys.exit().  This
         # should catch that so we can handle it.
         status = (e_errors.TIMEDOUT,
-                  "No responce from configuration server for location"
+                  "No response from configuration server for location"
                   " of %s." % lib)
         if e.check:
             status_ticket = {'status' : status, 'exit_status' : 2}
@@ -2481,7 +2481,7 @@ def stat_decode(statinfo):
         # this was done in python.  It turns out to be slower to wait
         # for another stat() call in the C implimentation of Devcodes
         # than using the existing stat info implemented in python.
-        # This is largly due to pnfs responce delays.
+        # This is largly due to pnfs response delays.
         major = int(((statinfo[stat.ST_DEV]) >> 8) & 0xff)
         minor = int((statinfo[stat.ST_DEV]) & 0xff)
     except (KeyboardInterrupt, SystemExit):
@@ -3379,7 +3379,7 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
         #If udp_server.process_request() returns correct value.
         elif udp_ticket.has_key('unique_id') and \
                  udp_ticket['unique_id'] in unique_id_list:
-            break   #Return the responce.
+            break   #Return the response.
         #It is not what we were looking for.
         else:
             continue
@@ -3517,7 +3517,7 @@ def open_control_socket(listen_socket, mover_timeout):
     try:
         ticket = callback.read_tcp_obj(control_socket)
     except e_errors.TCP_EXCEPTION:
-        raise EncpError(errno.EPROTO, "Unable to obtain mover responce",
+        raise EncpError(errno.EPROTO, "Unable to obtain mover response",
                         e_errors.TCP_EXCEPTION)
 
     if not e_errors.is_ok(ticket):
@@ -3918,39 +3918,39 @@ def submit_one_request(ticket, encp_intf):
         return ticket
 
     if is_read(ticket):
-        responce_ticket = lmc.read_from_hsm(ticket)
+        response_ticket = lmc.read_from_hsm(ticket)
     else:
-        responce_ticket = lmc.write_to_hsm(ticket)
+        response_ticket = lmc.write_to_hsm(ticket)
 
-    if not e_errors.is_ok(responce_ticket['status']):
+    if not e_errors.is_ok(response_ticket['status']):
         #If the error is that the tape is NOACCESS or NOTALLOWED then we
         # should handle setting the status to be a little more useful.
         # If we don't do this then we won't see the full test in the
         # encpHistory web page.  The text for the message is used elsewhere
         # in encp.py.
-        if not responce_ticket['status'][1]:
-            if responce_ticket['status'][0] == e_errors.NOACCESS or \
-                   responce_ticket['status'][0] == e_errors.NOTALLOWED:
-                responce_ticket['status'][1] = "Volume %s is marked %s." % \
+        if not response_ticket['status'][1]:
+            if response_ticket['status'][0] == e_errors.NOACCESS or \
+                   response_ticket['status'][0] == e_errors.NOTALLOWED:
+                response_ticket['status'][1] = "Volume %s is marked %s." % \
                                                (ticket['vc']['external_label'],
-                                                responce_ticket['status'][0])
+                                                response_ticket['status'][0])
         
-        if e_errors.is_non_retriable(responce_ticket['status']):
+        if e_errors.is_non_retriable(response_ticket['status']):
             Trace.log(e_errors.ERROR,
                       "submit_one_request: Ticket submit failed for %s: %s" %
-                      (ticket['infile'], responce_ticket['status']))
+                      (ticket['infile'], response_ticket['status']))
             Trace.message(ERROR_LEVEL, "Submission to LM failed: " \
-                          + str(responce_ticket['status']))
+                          + str(response_ticket['status']))
         else:
             Trace.log(e_errors.ERROR,
                       "submit_one_request: Ticket submit failed for %s"
                       " - retrying" % ticket['infile'])
             Trace.message(ERROR_LEVEL, "Submission to LM failed: - retrying" \
-                          + str(responce_ticket['status']))
+                          + str(response_ticket['status']))
 
         #If the ticket was malformed, then we want to see what was sent
         # to the LM.
-        if responce_ticket['status'][0] == e_errors.MALFORMED:
+        if response_ticket['status'][0] == e_errors.MALFORMED:
             Trace.log(e_errors.ERROR,
                       "submit_one_request: %s: %s" % (e_errors.MALFORMED,
                                                       str(ticket)))
@@ -3962,7 +3962,7 @@ def submit_one_request(ticket, encp_intf):
     # perform this maintenance.
     collect_garbage()
     
-    return responce_ticket
+    return response_ticket
 
 ############################################################################
 
@@ -4961,7 +4961,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                                              req.get('unique_id', None)))
 
                 #Since a retriable error occured, resubmit the ticket.
-                lm_responce = submit_one_request(req, encp_intf)
+                lm_response = submit_one_request(req, encp_intf)
 
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -4971,14 +4971,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 Trace.log(e_errors.ERROR,
                           "Resubmission error: %s: %s" % (str(exc), str(msg)))
 
-                #I'm not sure what should happen with lm_responce here.
+                #I'm not sure what should happen with lm_response here.
                 # Currently set it to all clear with the assumption that
                 # it will RESUMBIT again in 15 (by default) minutes.  MWZ
-                lm_responce = {'status' : (e_errors.OK, None)}
+                lm_response = {'status' : (e_errors.OK, None)}
 
             #Now it get checked.  But watch out for the recursion!!!
             internal_result_dict = internal_handle_retries([req], req,
-                                                           lm_responce,
+                                                           lm_response,
                                                            encp_intf)
 
             #If an unrecoverable error occured while resubmitting to LM.
@@ -5077,13 +5077,22 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #Send this to log file.
             Trace.log(e_errors.WARNING, (e_errors.RETRY,
                                          request_dictionary['unique_id']))
+        except KeyError:
+            Trace.log(e_errors.ERROR, (e_errors.BROKEN,
+                                "Unable to update LM request while retrying."))
+            Trace.log(e_errors.ERROR,
+                      "request_dictionary: " + str(request_dictionary))
+            exc, msg, tb = sys.exc_info()
+            Trace.handle_error(exc, msg, tb)
+            del tb
 
+        try:
             #Since a retriable error occured, resubmit the ticket.
-            lm_responce = submit_one_request(request_dictionary, encp_intf)
+            lm_response = submit_one_request(request_dictionary, encp_intf)
 
         except KeyError, msg:
-            lm_responce = {'status':(e_errors.NET_ERROR,
-                            "Unable to obtain responce from library manager.")}
+            lm_response = {'status':(e_errors.NET_ERROR,
+                            "Unable to obtain response from library manager.")}
             sys.stderr.write("Error processing retry of %s.\n" %
                              (request_dictionary['unique_id']))
             sys.stderr.write(pprint.pformat(request_dictionary)+"\n")
@@ -5091,7 +5100,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #Now it get checked.  But watch out for the recursion!!!
         internal_result_dict = internal_handle_retries([request_dictionary],
                                                        request_dictionary,
-                                                       lm_responce, encp_intf)
+                                                       lm_response, encp_intf)
 
         
         #If an unrecoverable error occured while retrying to LM.
@@ -6244,7 +6253,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
     #Send the request to write the file to the library manager.
     done_ticket = submit_write_request(work_ticket, e)
 
-    Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
+    Trace.message(TICKET_LEVEL, "LM RESPONSE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
     
     work_ticket = combine_dict(done_ticket, work_ticket)
@@ -6500,7 +6509,7 @@ def write_rhsm_file(listen_socket, work_ticket, tinfo, e, pac=None):
     #Send the request to write the file to the library manager.
     done_ticket = submit_write_request(work_ticket, e)
 
-    Trace.message(TICKET_LEVEL, "LM RESPONCE TICKET")
+    Trace.message(TICKET_LEVEL, "LM RESPONSE TICKET")
     Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
     
     work_ticket = combine_dict(done_ticket, work_ticket)
