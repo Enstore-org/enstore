@@ -1046,11 +1046,12 @@ def check_file(f, file_info):
             #If the size from stat(1) and layer 2 are both zero, then the
             # file really is zero length and the dCache did not forward
             # the file to tape/Enstore.
-            if f_stats[stat.ST_SIZE] == 0L and layer2.get('size', None) == 0L:
-                info.append("zero length dCache file not on tape")
-                return err, warn, info
-            elif f_stats[stat.ST_SIZE] == 0 and not layer2:
-                err.append('missing file')
+            if f_stats[stat.ST_SIZE] == 0L:
+                if layer2.get('size', None) == 0L:
+                    info.append("zero length dCache file not on tape")
+                    return err, warn, info
+                else:
+                    err.append('missing file')
             else:
                 if len(bfid) < 8:
                     err.append('missing layer 1')
