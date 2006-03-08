@@ -274,6 +274,18 @@ def get_enstore_pnfs_path(filename):
         return absolute_path
     else:
         return absolute_path
+
+def get_dcache_pnfs_path(filename):
+
+    absolute_path = os.path.abspath(filename)
+
+    #This is not automount safe.
+    if absolute_path[:13] == "/pnfs/fs/usr/":
+        return absolute_path
+    elif absolute_path[:6] == "/pnfs/":
+        return os.path.join("/pnfs/fs/usr/", absolute_path[6:])
+    else:
+        return absolute_path
     
 def is_new_database(d):
 
@@ -1061,6 +1073,66 @@ def check_file(f, file_info):
 
                 if layer2.get('pools', None):
                     info.append("pools(%s)" % (layer2['pools'],))
+
+        #Use this information to determine if the filename
+        # did correspond to a valid file.
+        for fname in [f, get_enstore_pnfs_path(f),
+                      get_dcache_pnfs_path(f)]:
+            ffbp = infc.find_file_by_path(fname)
+            if e_errors.is_ok(ffbp):
+                try:
+                    p = pnfs.Pnfs(f)
+                    cur_pnfsid = p.get_id(f) #pnfs of current searched file
+                    unused = p.get_path(ffbp['pnfsid'],
+                                        os.path.dirname(f))
+                    rm_pnfs = False
+                except (OSError, IOError), msg:
+                    if msg.args[0] == errno.ENOENT:
+                        rm_pnfs = True
+                    else:
+                        rm_pnfs = None  #Unknown
+
+                if ffbp['deleted'] == "yes":
+                    marked_deleted = True
+                elif ffbp['deleted'] == "no":
+                    marked_deleted = False
+                else:
+                    marked_deleted = None
+
+                if marked_deleted and rm_pnfs:
+                    description = "deleted file"
+                elif marked_deleted != None and not marked_deleted \
+                         and rm_pnfs != None and not rm_pnfs:
+                    description = "active file"
+                else:
+                    description = "file"
+                    
+                #This block of code will modifiy the description
+                # to confirm that the "file" found in the enstore
+                # db is an older file.  Give a 1 hour buffer.
+                try:
+                    use_bfid = ffbp['bfid'].split("_")[0]
+                    rmatch = re.compile("[0-9]*$")
+                    match_result = rmatch.search(use_bfid)
+                    found_time = long(match_result.group(0)[:-5])
+                    found_time_string = time.ctime(found_time)
+                except:
+                    found_time = None
+                    found_time_string = ""
+                if found_time and \
+                       found_time + 600 < f_stats[stat.ST_MTIME]:
+                    description = "older " + description
+                    
+                #Include this additional information in the error.
+                info.append("found %s with same name (%s)" % \
+                            (description, ffbp['bfid'],))
+                info.append("this file (%s, %s)  found file (%s, %s)" % 
+                            (time.ctime(f_stats[stat.ST_MTIME]),
+                             ffbp['pnfsid'],
+                             found_time_string,
+                             cur_pnfsid))
+                
+                break
                 
     if err or warn:
         return err, warn, info
