@@ -707,6 +707,9 @@ def recommend_write_protect_job(media_type='9940B'):
 			system_inhibit_1 = 'full' and \
 			write_protected = 'n' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
+			not storage_group||'.'||file_family in \
+			(select storage_group||'.'||file_family \
+				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION' and \
 			not label in (%s) \
 			order by label \
@@ -719,7 +722,10 @@ def recommend_write_protect_job(media_type='9940B'):
 			system_inhibit_1 = 'full' and \
 			write_protected = 'n' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
-			not file_family like '%%-MIGRATION' \
+			not storage_group||'.'||file_family in \
+			(select storage_group||'.'||file_family \
+				from no_flipping_file_family) and\
+			not file_family like '%%-MIGRATION' and \
 			order by label \
 			limit %d;"%(media_type,
 			VOLUMES_PER_CAP*CAPS_PER_TICKET)
@@ -761,6 +767,9 @@ def recommend_write_permit_job(media_type='9940B'):
 			write_protected = 'y' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
 			not file_family like '%%-MIGRATION' and \
+			not storage_group||'.'||file_family in \
+			(select storage_group||'.'||file_family \
+				from no_flipping_file_family) and\
 			not label in (%s) \
 			order by label \
 			limit %d;"%(media_type, exclusion,
@@ -772,6 +781,9 @@ def recommend_write_permit_job(media_type='9940B'):
 			system_inhibit_1 = 'none' and \
 			write_protected = 'y' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
+			not storage_group||'.'||file_family in \
+			(select storage_group||'.'||file_family \
+				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION' \
 			order by label \
 			limit %d;"%(media_type,
