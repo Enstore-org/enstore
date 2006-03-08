@@ -705,7 +705,7 @@ def recommend_write_protect_job(media_type='9940B'):
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
-			write_protected = 'n' and \
+			write_protected != 'y' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
@@ -720,7 +720,7 @@ def recommend_write_protect_job(media_type='9940B'):
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
-			write_protected = 'n' and \
+			write_protected != 'y' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
@@ -764,7 +764,7 @@ def recommend_write_permit_job(media_type='9940B'):
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
-			write_protected = 'y' and \
+			write_protected != 'n' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
 			not file_family like '%%-MIGRATION' and \
 			not storage_group||'.'||file_family in \
@@ -779,7 +779,7 @@ def recommend_write_permit_job(media_type='9940B'):
 			media_type = '%s' and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
-			write_protected = 'y' and \
+			write_protected != 'n' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
@@ -836,14 +836,17 @@ def get_max_cap_number(cluster, op_type=''):
 
 def make_help_desk_ticket(n, cluster, script_host, job):
 	if job == "protect":
-		action = "flip"
+		action = "lock"
+		action2 = "flip"
 	elif job == "permit":
-		action = "unflip"
+		action = "unlock"
+		action2 = "unflip"
 	else:
 		action = "do not touch"
+		action2 = "don't touch"
 	system_name = "UNKNOWN"
 	condition = "UNKNOWN"
-	short_message = "write protect %d tapes (%s tabs) in %s silos"%(n, action, cluster.lower()+'en')
+	short_message = "write %s %d tapes (%s tabs) in %s silos"%(job, n, action2, cluster.lower()+'en')
 	long_message = 'Please run "flip_tab lock" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
 	submitter = "MSS"
 	user = "MSS"
@@ -1016,7 +1019,7 @@ def execute(args):
 				f.write('\n')
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
-				WRITE_PROTECT_SCRIPT_PATH)
+				WRITE_PERMIT_SCRIPT_PATH)
 			print cc
 			# os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
