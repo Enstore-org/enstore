@@ -1081,7 +1081,6 @@ def execute(args):
 	elif cmd == "delete":
 		if args[-1] != "sincerely":
 			print "If you really want to delete the job(s), you have to say:"
-			print "delete",
 			for i in args:
 				print i,
 			print "sincerely"
