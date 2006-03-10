@@ -108,6 +108,15 @@ class FileClient(generic_client.GenericClient,
         else:
             return None
 
+    def find_copies(self, bfid, timeout=0, retry=0):
+        ticket = {'work': 'find_copies',
+                  'bfid': bfid}
+        r = self.send(ticket, timeout, retry)
+        if r['status'][0] == e_errors.OK:
+            return r['bfids']
+        else:
+            return None
+
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?
     #     ticket['work'] = "set_deleted"

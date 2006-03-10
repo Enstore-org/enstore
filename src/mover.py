@@ -3633,6 +3633,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         fc_ticket['gid'] = self.gid
         fc_ticket['uid'] = self.uid
+        """ This code is not in use
         # if this is a copy then mangle bfid
         if self.current_work_ticket.has_key('copy'):
             index = int(self.current_work_ticket['copy'])
@@ -3651,6 +3652,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 self.transfer_failed(e_errors.ERROR,'file clerk error: %s'%(reply['status'],))
                 return 0
+        """
+        # if it is a copy, make sure that original_bfid is passed along
+        if self.current_work_ticket.has_key('copy'):
+            original_bfid = self.file_info.get('original_bfid')
+            if not original_bfid:
+                self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
+                return 0
+            fc_ticket['original_bfid'] = original_bfid
                 
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
             
@@ -5788,6 +5797,7 @@ class DiskMover(Mover):
                        'complete_crc': complete_crc}
         #fc_ticket['gid'] = self.gid
         #fc_ticket['uid'] = self.uid
+        """ This code is not in use
         # if this is a copy then mangle bfid
         if self.current_work_ticket.has_key('copy'):
             index = int(self.current_work_ticket['copy'])
@@ -5807,6 +5817,14 @@ class DiskMover(Mover):
                 self.transfer_failed(e_errors.ERROR,
                                      'file clerk error: %s'%(reply['status'],))
                 return 0
+        """
+        # if it is a copy, make sure that original_bfid is passed along
+        if self.current_work_ticket.has_key('copy'):
+            original_bfid = self.file_info.get('original_bfid')
+            if not original_bfid:
+                self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
+                return 0
+            fc_ticket['original_bfid'] = original_bfid
                 
         Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
 

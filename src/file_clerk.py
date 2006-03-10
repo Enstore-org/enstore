@@ -102,9 +102,30 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             # get a new bit file id
             bfid = self.unique_bit_file_id()
 
+        # check for copy
+        original_bfid = None
+        if ticket["fc"].has_key("original_bfid"):
+            # check if it is valid
+            original_bfid = ticket["fc"].has_key("original_bfid")
+            if not self.dict[original_bfid]:
+                msg = "new_bit_file(): original bfid %s does not exist"%(original_bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.NO_FILES, msg)
+                self.reply_to_caller(ticket)
+                return
+
         record["bfid"] = bfid
         # record it to the database
-        self.dict[bfid] = record 
+        self.dict[bfid] = record
+
+        # if it is a copy, register it
+        if original_bfid:
+            if self.register_copy(original_bfid, bfid):
+                msg = "new_bit_file(): failed to register copy %s, %s"%(original_bfid, bfid)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.NO_FILES, msg)
+                self.reply_to_caller(ticket)
+                return
         
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = (e_errors.OK, None)
@@ -267,6 +288,17 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             self.dict[bfid] = record
+
+        # take care of the copies
+        copies = self.__find_copies(bfid)
+        for i in copies:
+            record = self.dict[i]
+            # skip non existing copies
+            if record:
+                if record["deleted"] != deleted:
+                    record["deleted"] = deleted
+                    self.dict[bfid] = record
+
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
@@ -460,6 +492,47 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
+    # register_copy(original, copy) -- register copy of original
+    def register_copy(self, original, copy):
+        Trace.log(e_errors.INFO, 'register copy %s, %s'%(original, copy))
+	q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(original, copy)
+        try:
+            res = self.dict.db.query(q)
+        except:
+            return 1
+        return
+
+    # __find_copies(bfid) -- find all copies
+    def __find_copies(self, bfid):
+        q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+        bfids = []
+        try:
+            for i in self.dict.db.query(q).getresult():
+                bfids.append(i[0])
+        except:
+            pass
+        return bfids
+
+    # find_copies(self, ticket) -- find all copies of bfid
+    # this might need recurrsion in the future!
+    def file_copies(self, ticket):
+        try:
+            bfid = ticket["bfid"]
+        except KeyError, detail:
+            msg = "File Clerk: key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            bfids = self.__find_copies(bfid)
+            ticket["status"] = (e_errors.OK, bfids)
+        except:
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
+        self.reply_to_caller(ticket)
+        return
+
     #### DONE
     # __has_undeleted_file(self, vol) -- check if all files are deleted
 
@@ -491,7 +564,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             result = self.__has_undeleted_file(vol)
             ticket["status"] = (e_errors.OK, result)
         except:
-            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquire failed")
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
