@@ -1407,11 +1407,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             "Net thread is running in the state %s. Will restart the mover"%
                             (state_name(self.state),))
                 if self.state == HAVE_BOUND:
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
-                    return
+                    self.run_in_thread('media_thread', self.dismount_volume)
                     #self.dismount_volume(after_function=self.restart)
-                else:
-                    self.restart()
+                self.restart()
+                return
             elif t_thread and t_thread.isAlive():
                 if t_in_state <= 1:
                     ## skip sending lm _update
