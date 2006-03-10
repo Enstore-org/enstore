@@ -143,8 +143,10 @@ DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
-WRITE_PROTECT_SCRIPT_PATH = '/write_protect_work'
-WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
+#WRITE_PROTECT_SCRIPT_PATH = '/write_protect_work'
+#WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
+WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/write_protect_work'
+WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/write_permit_work'
 
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -840,20 +842,18 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 		action2 = "flip"
 	elif job == "permit":
 		action = "unlock"
-		action2 = "unflip"
 	else:
 		action = "do not touch"
-		action2 = "don't touch"
-	system_name = "UNKNOWN"
+	system_name = script_host
 	condition = "UNKNOWN"
-	short_message = "write %s %d tapes (%s tabs) in %s silos"%(job, n, action2, cluster.lower()+'en')
-	long_message = 'Please run "flip_tab lock" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
+	short_message = "write %s %d tapes (flip tabs) in %s silos"%(job, n, cluster.lower()+'en')
+	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
 	submitter = "MSS"
 	user = "MSS"
 	password = "2p9u6c"
-	category = "MSS"
-	aType = None
-	item = "ALARM"
+	category = "other"
+	aType = "LoadTapes"
+	item = "other"
 	
 	cc = "$ENSTORE_DIR/sbin/generate_ticket %s '%s' '%s' '%s' %s %s %s %s '%s' %s"%(system_name, condition, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
