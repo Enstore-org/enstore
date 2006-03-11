@@ -14,6 +14,8 @@ import timeofday
 import hostaddr
 import configuration_client
 
+import pg
+
 # path to database
 db_path = "/diskc/check-database"
 
@@ -207,55 +209,28 @@ def check_db(check_dir):
 	time_stamp = time.ctime(time.time())
 	f.write("Listed at %s\n\n"%(time_stamp))
 	f.close()
+
 	print timeofday.tod(), "Listing all files ... (old style)"
-	cmd = "psql -d backup -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" | sed -e 's/|/ /g' >> "+out_file
+	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" >> "+out_file
 	print cmd
 	os.system(cmd)
 
-	out_file = out_file+"_ALL"
-	f = open(out_file, 'w')
-	f.write("Listed at %s\n\n"%(time_stamp))
-	f.close()
-	print timeofday.tod(), "Listing all files ... "
+	db = pg.DB(dbname='backup')
+	# get all storage groups
+        q = "select distinct storage_group from volume where not storage_group like '%CLN%';"
+	res = db.query(q).getresult()
+	del db
+	for i in res:
+		sg = i[0]
+		out_file = out_file+'_'+sg
+		f = open(out_file, 'w')
+		f.write("Listed at %s\n\n"%(time_stamp))
+		f.close()
+		print timeofday.tod(), "Listing %s files ... "%(sg)
 	
-	cmd = "psql -d backup -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"+'"'+" | sed -e 's/|/ /g' >> "+out_file
-	print cmd
-	os.system(cmd)
-
-	# parse this ...
-
-	print timeofday.tod(), "Parsing on storage group ... "
-	out = {}
-	count = {}
-	f = open(out_file)
-	# skip first 4 lines
-	l = f.readline()
-	l = f.readline()
-	heading = '\t'.join(f.readline().split())+'\n'
-	heading2 = f.readline()
-	l = f.readline()
-	while l:
-		e =l.split()
-		if not e:
-			# end of data, skip the rest
-			break
-		sg = e[0]
-		if sg[0] == "(":
-			break
-		if not out.has_key(sg):
-			out[sg] = open(LISTING_FILE+"_"+sg, "w")
-			out[sg].write("-- Listed at %s\n--\n"%(time_stamp))
-			out[sg].write("-- STORAGE GROUP: %s\n--\n"%(sg))
-			out[sg].write(heading)
-			count[sg] = 0
-		out[sg].write('\t'.join(e)+'\n')
-		count[sg] = count[sg]+1
-		l = f.readline()
-
-	# close the files
-	for i in out.keys():
-		out[i].write("-- %d files\n"%(count[i]))
-		out[i].close()
+		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
+		print cmd
+		os.system(cmd)
 
 	# generate pnfs dictionary
 	print timeofday.tod(), "Generating PNFS.XREF ..."
