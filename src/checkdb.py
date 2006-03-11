@@ -222,13 +222,13 @@ def check_db(check_dir):
 	del db
 	for i in res:
 		sg = i[0]
-		out_file = out_file+'_'+sg
+		out_file = LISTING_FILE+'_'+sg
 		f = open(out_file, 'w')
 		f.write("Listed at %s\n\n"%(time_stamp))
 		f.close()
 		print timeofday.tod(), "Listing %s files ... "%(sg)
 	
-		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
+		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and not volume.label like '%%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
 		print cmd
 		os.system(cmd)
 
