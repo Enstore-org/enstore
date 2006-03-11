@@ -224,7 +224,8 @@ def check_db(check_dir):
 		sg = i[0]
 		out_file = LISTING_FILE+'_'+sg
 		f = open(out_file, 'w')
-		f.write("Listed at %s\n\n"%(time_stamp))
+		f.write("-- Listed at %s\n--\n"%(time_stamp))
+		f.write("-- STORAGE GROUP: %s\n--\n"%(sg))
 		f.close()
 		print timeofday.tod(), "Listing %s files ... "%(sg)
 	
