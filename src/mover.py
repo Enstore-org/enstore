@@ -3633,26 +3633,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         fc_ticket['gid'] = self.gid
         fc_ticket['uid'] = self.uid
-        """ This code is not in use
-        # if this is a copy then mangle bfid
-        if self.current_work_ticket.has_key('copy'):
-            index = int(self.current_work_ticket['copy'])
-            # select new bfid
-            while 1:
-                new_bfid = '%s_%s_%s'%(self.file_info['original_bfid'], 'copy',index)
-                reply = self.fcc.bfid_info(new_bfid)
-                if reply['status'][0] != e_errors.OK:
-                    break
-                else:
-                    # file exists, try another bfid
-                    index = index + 1
-            if reply['status'][0] == e_errors.NO_FILE:
-                # this is our bfid
-                fc_ticket['bfid'] = new_bfid
-            else:
-                self.transfer_failed(e_errors.ERROR,'file clerk error: %s'%(reply['status'],))
-                return 0
-        """
         # if it is a copy, make sure that original_bfid is passed along
         if self.current_work_ticket.has_key('copy'):
             original_bfid = self.file_info.get('original_bfid')
@@ -5795,29 +5775,6 @@ class DiskMover(Mover):
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
                        'complete_crc': complete_crc}
-        #fc_ticket['gid'] = self.gid
-        #fc_ticket['uid'] = self.uid
-        """ This code is not in use
-        # if this is a copy then mangle bfid
-        if self.current_work_ticket.has_key('copy'):
-            index = int(self.current_work_ticket['copy'])
-            # select new bfid
-            while 1:
-                new_bfid = '%s_%s_%s'%(self.file_info['original_bfid'], 'copy',index)
-                reply = self.fcc.bfid_info(new_bfid)
-                if reply['status'][0] != e_errors.OK:
-                    break
-                else:
-                    # file exists, try another bfid
-                    index = index + 1
-            if reply['status'][0] == e_errors.NO_FILE:
-                # this is our bfid
-                fc_ticket['bfid'] = new_bfid
-            else:
-                self.transfer_failed(e_errors.ERROR,
-                                     'file clerk error: %s'%(reply['status'],))
-                return 0
-        """
         # if it is a copy, make sure that original_bfid is passed along
         if self.current_work_ticket.has_key('copy'):
             original_bfid = self.file_info.get('original_bfid')
