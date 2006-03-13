@@ -113,7 +113,7 @@ class FileClient(generic_client.GenericClient,
                   'bfid': bfid}
         r = self.send(ticket, timeout, retry)
         if r['status'][0] == e_errors.OK:
-            return r['bfids']
+            return r['status'][1]
         else:
             return None
 

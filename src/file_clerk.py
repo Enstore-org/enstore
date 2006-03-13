@@ -539,7 +539,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # find_copies(self, ticket) -- find all copies of bfid
     # this might need recurrsion in the future!
-    def file_copies(self, ticket):
+    def find_copies(self, ticket):
         try:
             bfid = ticket["bfid"]
         except KeyError, detail:
