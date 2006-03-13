@@ -288,7 +288,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["sanity_cookie"]=record["sanity_cookie"]
         self.reply_to_caller(ticket)
 
-
     #### DONE        
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
