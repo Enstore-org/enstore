@@ -106,11 +106,36 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         original_bfid = None
         if ticket["fc"].has_key("original_bfid"):
             # check if it is valid
-            original_bfid = ticket["fc"].has_key("original_bfid")
-            if not self.dict[original_bfid]:
-                msg = "new_bit_file(): original bfid %s does not exist"%(original_bfid)
+            original_bfid = ticket["fc"].get("original_bfid")
+            original_file = self.dict[original_bfid]
+            if not original_file:
+                msg = "new_bit_file(copy): original bfid %s does not exist"%(original_bfid)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.NO_FILES, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check size
+            if original_file['size'] != record['size']:
+                msg = "new_bit_file(copy): wrong size %d, (%s, %d)"%(
+                    record['size'], original_bfid, original_file['size'])
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check crc
+            if original_file['complete_crc'] != record["complete_crc"]:
+                msg = "new_bit_file(copy): wrong crc %d, (%s, %d)"%(
+                     record["complete_crc"], original_bfid, original_file['complete_crc'])
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+            # check sanity_cookie
+            if original_file['sanity_cookie'] != record["sanity_cookie"]:
+                msg = "new_bit_file(copy): wrong sanity_cookie %s, (%s, %s)"%(
+                     `record["sanity_cookie"]`, original_bfid, `original_file['sanity_cookie']`)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
 
@@ -121,9 +146,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         # if it is a copy, register it
         if original_bfid:
             if self.register_copy(original_bfid, bfid):
-                msg = "new_bit_file(): failed to register copy %s, %s"%(original_bfid, bfid)
+                msg = "new_bit_file(copy): failed to register copy %s, %s"%(original_bfid, bfid)
                 Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.NO_FILES, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
         
@@ -297,7 +322,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             if record:
                 if record["deleted"] != deleted:
                     record["deleted"] = deleted
-                    self.dict[bfid] = record
+                    self.dict[i] = record
 
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
