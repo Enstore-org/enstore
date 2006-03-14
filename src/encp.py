@@ -53,6 +53,7 @@ import statvfs
 import types
 import gc
 import copy
+import random
 
 # enstore modules
 import Trace
@@ -429,9 +430,9 @@ def is_bfid(bfid):
             return 1
 
         #Allow for bfids of file copies.
-        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
-        if result != None:
-            return 1
+        #result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
+        #if result != None:
+        #    return 1
 
         #Some older files (year 2000) have a long() "L" appended to
         # the bfid.  This seems to be consistant between the file
@@ -442,13 +443,13 @@ def is_bfid(bfid):
 
     return 0
 
-def is_copy_bfid(bfid):
-    if type(bfid) == types.StringType:
-        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
-        if result != None:
-            return 1
-
-    return 0
+#def is_copy_bfid(bfid):
+#    if type(bfid) == types.StringType:
+#        result = re.search("^[a-zA-Z0-9]*[0-9]{13,15}_copy_[0-9]+$", bfid)
+#        if result != None:
+#            return 1
+#
+#    return 0
 
 def is_volume(volume):
     #The format for ANSI labeled volumes should be 6 characters long:
@@ -3220,6 +3221,13 @@ def get_uinfo(e = None):
     uinfo['uid'] = os.geteuid()
     uinfo['gid'] = os.getegid()
 
+    if uinfo['uid'] == 0 and uinfo['gid'] == 0 and \
+       e != None and e.put_cache:
+        # For the case of dcache writes into enstore; we should use the
+        # ownership of the zero length pnfs file (obtained from get_pinfo())
+        # created by dCache.
+        return {}
+    
     if uinfo['uid'] == 0 and uinfo['gid'] == 0 \
        and e != None and e.put_cache:
         # For the case of dcache writes into enstore; we should use the
@@ -5042,23 +5050,20 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             fcc = get_fcc()
             vcc = get_vcc()
 
-            if is_copy_bfid(request_dictionary['fc']['bfid']):
-                try:
-                    num = int(request_dictionary['fc']['bfid'].split("_")[-1])
-                except ValueError:
-                    num = 0
-            else:
-                num = 0
+            copy_list = fcc.find_copies(request_dictionary['bfid'])
 
-            #This munging should really be a common function somewhere.
-            next_bfid = "%s_copy_%s" % (request_dictionary['bfid'],
-                                        num + 1)
-            fc_info = fcc.get_bfid(next_bfid, 5, 20)
-            if e_errors.is_ok(fc_info):
-                vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
-                if e_errors.is_ok(vc_info):
-                    request_dictionary['fc'] = fc_info
-                    request_dictionary['vc'] = vc_info
+            while copy_list:
+                copy_index = random(len(copy_list))
+                next_bfid = copy_list[copy_index]
+            
+                fc_info = fcc.get_bfid(next_bfid, 5, 20)
+                if e_errors.is_ok(fc_info):
+                    vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
+                    if e_errors.is_ok(vc_info):
+                        request_dictionary['fc'] = fc_info
+                        request_dictionary['vc'] = vc_info
+
+                del copy_list[copy_index]
 
         #Keep retrying this file.
         try:
@@ -6099,9 +6104,11 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         
         request_list.append(work_ticket)
 
-        #Make dictionaries for the copies of the data.
-        if e.copies > 0:
-            for n_copy in range(1, e.copies + 1):
+    #Make dictionaries for the copies of the data.
+    request_copy_list = []
+    if e.copies > 0:
+        for n_copy in range(1, e.copies + 1):
+            for work_ticket in request_list:
                 copy_ticket = copy.deepcopy(work_ticket)
                 #Specify the copy number; this is the copy number relative to
                 # this encp.
@@ -6136,9 +6143,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                                         e_errors.USERERROR, copy_ticket)
 
                 #Store the copy ticket.
-                request_list.append(copy_ticket)
+                request_copy_list.append(copy_ticket)
 
-    return request_list
+    return request_list + request_copy_list
 
 ############################################################################
 
