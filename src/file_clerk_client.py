@@ -40,6 +40,15 @@ MY_SERVER = enstore_constants.FILE_CLERK        #"file_clerk"
 RCV_TIMEOUT = 10
 RCV_TRIES = 5
 
+# union(list_of_sets)
+def union(s):
+    res = []
+    for i in s:
+        for j in i:
+            if not j in res:
+                res.append(j)
+    return res
+
 class FileClient(generic_client.GenericClient, 
                       backup_client.BackupClient):
 
@@ -108,6 +117,7 @@ class FileClient(generic_client.GenericClient,
         else:
             return None
 
+    # find_copies(bfid) -- find the first generation of copies
     def find_copies(self, bfid, timeout=0, retry=0):
         ticket = {'work': 'find_copies',
                   'bfid': bfid}
@@ -116,6 +126,39 @@ class FileClient(generic_client.GenericClient,
             return r['status'][1]
         else:
             return None
+
+    # find_all_copies(bfid) -- find all copies from this file
+    # This is done on the client side
+    def find_all_copies(self, bfid):
+        copies = self.find_copies(bfid)
+        res = [[bfid], copies]
+        for i in copies:
+            res.append(self.find_all_copies(i))
+        return union(res)
+
+    # find_original(bfid) -- find the immidiate original
+    def find_original(self, bfid, timeout=0, retry=0):
+        ticket = {'work': 'find_original',
+                  'bfid': bfid}
+        r = self.send(ticket, timeout, retry)
+        if r['status'][0] == e_errors.OK:
+            return r['status'][1]
+        else:
+            return None
+
+    # find_the_original(bfid) -- find the altimate original of this file
+    # This is done on the client side
+    def find_the_original(self, bfid):
+        res = self.find_original(bfid)
+        if res:
+            return self.find_the_original(res)
+        else:
+            return bfid
+
+    # find_duplicates(bfid) -- find all original/copies of this file
+    # This is done on the client side
+    def find_duplicates(self, bfid):
+        return self.find_all_copies(self.find_the_original(bfid))
 
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?

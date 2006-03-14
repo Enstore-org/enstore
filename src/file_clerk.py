@@ -543,7 +543,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         try:
             bfid = ticket["bfid"]
         except KeyError, detail:
-            msg = "File Clerk: key %s is missing" % (detail,)
+            msg = "find_copies(): key %s is missing" % (detail,)
             ticket["status"] = (e_errors.KEYERROR, msg)
             Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
@@ -551,6 +551,37 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         try:
             bfids = self.__find_copies(bfid)
+            ticket["status"] = (e_errors.OK, bfids)
+        except:
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
+        self.reply_to_caller(ticket)
+        return
+
+    # __find_original(bfid) -- find its original
+    # there should eb at most one original!
+    def __find_original(self, bfid):
+        q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
+        try:
+            res = self.dict.db.query(q).getresult()
+            if len(res):
+                return res[0][0]
+        except:
+            pass
+        return None
+
+    # find_original(bfid) -- server version
+    def find_original(self, ticket):
+        try:
+            bfid = ticket["bfid"]
+        except KeyError, detail:
+            msg = "find_original(): key %s is missing" % (detail,)
+            ticket["status"] = (e_errors.KEYERROR, msg)
+            Trace.log(e_errors.ERROR, msg)
+            self.reply_to_caller(ticket)
+            return
+
+        try:
+            bfids = self.__find_original(bfid)
             ticket["status"] = (e_errors.OK, bfids)
         except:
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
