@@ -22,9 +22,9 @@ def main():
     options, args = getopt.getopt(sys.argv[1:], [], opts_permitted)
     #If the wrong number of arguments was supplied, print help and error out.
     if len(args) != 5:
-        sys.stderr.write("Usage:", sys.argv[0], \
-              " [--verbose n] [--dump] <tapelabel> <mjd|ts_dir> <TarTape|TapeLog> " \
-              "<pfnsdir> <outputdir>\n")
+        sys.stderr.write("Usage: %s [--verbose n] [--dump] "
+                         "<tapelabel> <mjd|ts_dir> <TarTape|TapeLog> " \
+                         "<pfnsdir> <outputdir>\n" % sys.argv[0])
         sys.exit(126)
 
     verbose = None
