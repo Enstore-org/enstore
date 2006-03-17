@@ -551,8 +551,10 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
         try:
             bfids = self.__find_copies(bfid)
-            ticket["status"] = (e_errors.OK, bfids)
+            ticket["copies"] = bfids
+            ticket["status"] = (e_errors.OK, None)
         except:
+            ticket["copies"] = []
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
         self.reply_to_caller(ticket)
         return
@@ -581,9 +583,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
 
         try:
-            bfids = self.__find_original(bfid)
-            ticket["status"] = (e_errors.OK, bfids)
+            original = self.__find_original(bfid)
+            ticket["original"] = original
+            ticket["status"] = (e_errors.OK, None)
         except:
+            ticket["original"] = None
             ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
         self.reply_to_caller(ticket)
         return

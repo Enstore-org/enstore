@@ -121,44 +121,52 @@ class FileClient(generic_client.GenericClient,
     def find_copies(self, bfid, timeout=0, retry=0):
         ticket = {'work': 'find_copies',
                   'bfid': bfid}
-        r = self.send(ticket, timeout, retry)
-        if r['status'][0] == e_errors.OK:
-            return r['status'][1]
-        else:
-            return None
+        return self.send(ticket, timeout, retry)
 
     # find_all_copies(bfid) -- find all copies from this file
     # This is done on the client side
     def find_all_copies(self, bfid):
-        copies = self.find_copies(bfid)
-        res = [[bfid], copies]
-        for i in copies:
-            res.append(self.find_all_copies(i))
-        return union(res)
+        res = self.find_copies(bfid)
+        if res["status"][0] == e_errors.OK:
+            copies = union([[bfid], res["copies"]])
+            for i in res["copies"]:
+                res2 = self.find_all_copies(i)
+                if res2["status"][0] == e_errors.OK:
+                    copies = union([copies, res2["copies"]])
+                else:
+                    return res2
+            res["copies"] = copies
+        return res 
 
     # find_original(bfid) -- find the immidiate original
     def find_original(self, bfid, timeout=0, retry=0):
         ticket = {'work': 'find_original',
                   'bfid': bfid}
-        r = self.send(ticket, timeout, retry)
-        if r['status'][0] == e_errors.OK:
-            return r['status'][1]
+        if bfid:
+            ticket = self.send(ticket, timeout, retry)
         else:
-            return None
+            ticket['status'] = (e_errors.OK, None)
+        return ticket
 
     # find_the_original(bfid) -- find the altimate original of this file
     # This is done on the client side
     def find_the_original(self, bfid):
         res = self.find_original(bfid)
-        if res:
-            return self.find_the_original(res)
-        else:
-            return bfid
+        if res['status'][0] == e_errors.OK:
+            if res['original']:
+                res2 = self.find_the_original(res['original'])
+                return res2
+            # this is actually the else part
+            res['original'] = bfid
+        return res
 
     # find_duplicates(bfid) -- find all original/copies of this file
     # This is done on the client side
     def find_duplicates(self, bfid):
-        return self.find_all_copies(self.find_the_original(bfid))
+        res = self.find_the_original(bfid)
+        if res['status'][0] == e_errors.OK:
+            return self.find_all_copies(res['original'])
+        return res
 
     # def set_delete(self, ticket):
     #     #Is this really set_deleted or set_delete?
@@ -671,6 +679,12 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.modify = None
         self.show_state = None
         self.dont_try_this_at_home_erase = None
+        self.find_copies = None
+        self.find_all_copies = None
+        self.find_original = None
+        self.find_the_original = None
+        self.find_duplicates = None
+
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -711,6 +725,31 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                          option.VALUE_USAGE:option.REQUIRED,
                          option.VALUE_LABEL:"bfid",
                          option.USER_LEVEL:option.ADMIN},
+        option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"file",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_ALL_COPIES:{option.HELP_STRING:"find all copies of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"file",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_ORIGINAL:{option.HELP_STRING:"find the immediate original of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"file",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_THE_ORIGINAL:{option.HELP_STRING:"find the very first original of this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"file",
+                     option.USER_LEVEL:option.ADMIN},
+        option.FIND_DUPLICATES:{option.HELP_STRING:"find all duplicates related to this file",
+                     option.VALUE_TYPE:option.STRING,
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_LABEL:"file",
+                     option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -899,6 +938,29 @@ def do_work(intf):
         d['bfid']=intf.modify
         ticket = fcc.modify(d)
         print "bfid =", ticket['bfid']
+    elif intf.find_copies:
+        ticket = fcc.find_copies(intf.find_copies)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
+    elif intf.find_all_copies:
+        ticket = fcc.find_all_copies(intf.find_all_copies)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
+    elif intf.find_original:
+        ticket = fcc.find_original(intf.find_original)
+        if ticket['status'][0] == e_errors.OK:
+            print ticket['original']
+    elif intf.find_the_original:
+        ticket = fcc.find_the_original(intf.find_the_original)
+        if ticket['status'][0] == e_errors.OK:
+            print ticket['original']
+    elif intf.find_duplicates:
+        ticket = fcc.find_duplicates(intf.find_duplicates)
+        if ticket['status'][0] == e_errors.OK:
+            for i in ticket['copies']:
+                print i
     elif intf.dont_try_this_at_home_erase:
         # Comment out -- this is too dangerous
         # ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)

@@ -222,6 +222,11 @@ FILE_FAMILY_WIDTH = "file-family-width"      #pnfs, encp
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs, encp
 FILESIZE = "filesize"                        #pnfs
 FILE_THREADS = "file-threads"                #scanfiles
+FIND_COPIES = "find-copies"                  #file
+FIND_ALL_COPIES = "find-all-copies"          #file
+FIND_ORIGINAL = "find-original"              #file
+FIND_THE_ORIGINAL = "find-the-original"      #file
+FIND_DUPLICATES = "find-duplicates"          #file
 FORCE = "force"                              #volume
 FORGET_ALL_IGNORED_STORAGE_GROUPS = "forget-all-ignored-storage-groups" #volume
 FORGET_IGNORED_STORAGE_GROUP = "forget-ignored-storage-group"   #volume
@@ -435,6 +440,8 @@ valid_option_list = [
     FILE,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
+    FIND_COPIES, FIND_ALL_COPIES, FIND_ORIGINAL, FIND_THE_ORIGINAL,
+    FIND_DUPLICATES,
     FORGET_ALL_IGNORED_STORAGE_GROUPS, FORGET_IGNORED_STORAGE_GROUP,
     GENERATE_MESSAGES_FILE,
     GET_ASSERTS, GET_BFID, GET_CACHE, GET_CRCS, GET_LAST_ALIVE,
