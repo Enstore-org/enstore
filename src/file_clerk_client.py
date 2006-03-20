@@ -937,7 +937,8 @@ def do_work(intf):
                 d[k]=v
         d['bfid']=intf.modify
         ticket = fcc.modify(d)
-        print "bfid =", ticket['bfid']
+        if ticket['status'][0] == e_errors.OK:
+            print "bfid =", ticket['bfid']
     elif intf.find_copies:
         ticket = fcc.find_copies(intf.find_copies)
         if ticket['status'][0] == e_errors.OK:
