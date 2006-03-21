@@ -263,6 +263,8 @@ class EncpError(Exception):
         else:
             self.type = e_type
 
+        self.args = (self.errno, self.message, self.type)
+
         #If no usefull information was passed in (overriding the default
         # empty dictionary) then set the ticket to being {}.
         if e_ticket == None:
@@ -3684,13 +3686,16 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, duration)
         except (socket.error, select.error, EncpError), msg:
-            #exc, msg = sys.exc_info()[:2]
+            exc, msg, tb = sys.exc_info()
             try:
+                #3_21_2006: In theory this should never occur due to a
+                # fix in EncpError.__init__() to create self.args.
                 msg.args[0]
-            except IndexError, msg:
-                exc, msg, tb = sys.exc_info()
+            except IndexError:
+                Trace.log(e_errors.INFO,"Covering IndexError from real error.")
                 Trace.handle_error(exc, msg, tb)
                 Trace.log(e_errors.INFO, "Encp crash about to occur...")
+            del tb
             
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If a select (or other call) was interupted,
@@ -5032,8 +5037,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #    pass
         
         #Log the intermidiate error as a warning instead as a full error.
-        import traceback
-        traceback.print_stack()
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
 
         #Get a new unique id for the transfer request since the last attempt
@@ -7300,7 +7303,21 @@ def verify_read_request_consistancy(requests_per_vol, e):
             #quit() #Harsh, but necessary.
             
         for request in request_list:
-            
+
+            #If the file was requested by BFID, then check if it is an
+            # original or copy.
+            is_copy = False
+            if e.get_bfid:
+                fcc = get_fcc()
+                #Reminder: request['fc']['bfid'] would contains the copy bfid
+                # if this is a copy, request['bfid'] always contain
+                # the original bfid requested (which maybe original or copy).
+                fcc_response = fcc.find_original(request['fc']['bfid'],
+                                                 timeout=5, retry=2)
+                if e_errors.is_ok(fcc_response):
+                    if fcc_response['original'] != None:
+                        is_copy = True
+                                
             if request['outfile'] != "/dev/null":
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
@@ -7341,6 +7358,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
             if not (e.override_deleted
                     and request['fc']['deleted'] != 'no'):
 
+                
                 #If no layer 4 is present, then report the error, raise an
                 # alarm, but continue with the transfer.
                 try:
@@ -7524,18 +7542,20 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 raise EncpError(None,
                            "Missing metadata information: %s" % str(rest),
                                 e_errors.CONFLICT, request)
-            
+
             #First check if the file is deleted and the override deleted
             # switch/flag has been specified by the user.
+            #Not all fields get compared when reading a copy.
             if not (e.override_deleted
                     and request['fc']['deleted'] != 'no'):
                 #For only those conflicting items, include them in
                 # the dictionary.
-                if db_volume != pnfs_volume:
+                if db_volume != pnfs_volume and not is_copy:
                     rest['db_volume'] = db_volume
                     rest['pnfs_volume'] = pnfs_volume
                     rest['volume'] = "db_volume differs from pnfs_volume"
-                if not same_cookie(db_location_cookie, pnfs_location_cookie):
+                if not same_cookie(db_location_cookie, pnfs_location_cookie) \
+                       and not is_copy:
                     rest['db_location_cookie'] = db_location_cookie
                     rest['pnfs_location_cookie'] = pnfs_location_cookie
                     rest['location_cookie'] = "db_location_cookie differs " \
@@ -7545,7 +7565,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     rest['pnfs_size'] = pnfs_size
                     rest['size'] = "db_size differs from pnfs_size"
                 ##The file family check was removed for the migration project.
-                #if db_file_family != pnfs_origff:
+                #if db_file_family != pnfs_origff and not is_copy:
                 #    rest['db_file_family'] = db_file_family
                 #    rest['pnfs_origff'] = pnfs_origff
                 #    rest['file_family'] = "db_file_family differs from " \
@@ -7561,7 +7581,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     rest['pnfsid_file'] = pnfsid_file
                     rest['pnfsid'] = "db_pnfsid differs from pnfsid_file"
                 #Volume map file id no longer used.
-                if db_bfid != pnfs_bfid:
+                if db_bfid != pnfs_bfid and not is_copy:
                     rest['db_bfid'] = db_bfid
                     rest['pnfs_bfid'] = pnfs_bfid
                     rest['bfid'] = "db_bfid differs from pnfs_bfid"
@@ -8166,7 +8186,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 #Handle reading deleted files differently.
                 ifullname = fc_reply['pnfs_name0']
             else:
-                ifullname = p.get_path(pnfsid, e.pnfs_mount_point,
+                if e.pnfs_mount_point:
+                    use_mount_point = e.pnfs_mount_point
+                else:
+                    use_mount_point = os.path.dirname(fc_reply['pnfs_name0'])
+                ifullname = p.get_path(pnfsid, use_mount_point,
                                        shortcut = e.shortcut)
 
             if e.output[0] == "/dev/null":
@@ -8496,7 +8520,8 @@ def read_hsm_file(listen_socket, request_list, tinfo, e):
 
     #Be paranoid.  Check this the ticket again.
     #Dmitry is not paranoid
-    r_encp = os.environ.get('REMOTE_ENCP')
+    #r_encp = os.environ.get('REMOTE_ENCP')
+    r_encp = None #Dmitry should know better than to not be paranoid.
     if r_encp == None:
         try:
             if not e.volume: #Skip this test for volume transfers.
