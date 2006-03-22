@@ -149,7 +149,8 @@ COMMON:
                 envSet(GADFLY_GRAMMAR,`${UPS_PROD_DIR}/ups/what_is gadfly`)
                 addAlias(pylint, 'python ${GADFLY_GRAMMAR}/kjpylint.py %s')
                 # ftt is Fermi tape tools
-	        setupRequired("ftt v2_18")
+	        #setupRequired("ftt v2_22")
+	        setupOptional("ftt v2_22")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
                 # drivestat_client is now a local module in enstore
@@ -159,7 +160,9 @@ COMMON:
 
                 # aci is the EMASS tape library and admin tool product
                 # the media changer is the only server that interfaces to it
-                setupOptional("aci v3_1_0")
+                #setupOptional("aci v3_1_0")
+		# setup whatever is current
+                setupOptional("aci")
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up and use it
