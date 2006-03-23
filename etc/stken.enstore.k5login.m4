@@ -74,7 +74,7 @@ ifelse(HOSTNAME, cmspnfs1, `ifisk@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
-ifelse(eval(HOSTNAME == fndca3a || HOSTNAME == stkendca3a), 1,
+ifelse(eval(index(HOSTNAME, `stkendca3a') == 0 || index(HOSTNAME, `fndca3a') == 0), 1,
 kurt@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
