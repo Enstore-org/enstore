@@ -90,6 +90,7 @@ Devcodes Devcodes.c
 # The EMASS/aci_shadow modules are not built unless ACI_DIR is defined ; see Makefile
 #aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
 aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $(ACI_DIR)/lib/libaci.a
+aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic 
 derrno derrno_wrap.c -I$(ACI_DIR)/inc
 
 checksum checksum_wrap_thread.c adler32.a
