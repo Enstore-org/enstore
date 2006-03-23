@@ -1420,7 +1420,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ALARM,
                                 "Tape thread is running in the state %s. Will offline the mover"%
                                 (state_name(self.state),))
-                    self.offline()
+                    self.watch_syslog()
+                    self.log_state(logit=1)
+                    Trace.log(e_errors.INFO, "Trying to dismount volume %s"%(self.current_volume,))
+                    self.dismount_volume(after_function=self.offline)
                     return
                 else:
                     Trace.alarm(e_errors.WARNING,"Tape thread is running in the state %s."%
