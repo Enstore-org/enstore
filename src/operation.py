@@ -845,7 +845,6 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	else:
 		action = "do not touch"
 	system_name = script_host
-	condition = "UNKNOWN"
 	short_message = "write %s %d tapes (flip tabs) in %s silos"%(job, n, cluster.lower()+'en')
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
 	submitter = "MSS"
@@ -855,7 +854,7 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	aType = "LoadTapes"
 	item = "other"
 	
-	cc = "$ENSTORE_DIR/sbin/generate_ticket %s '%s' '%s' '%s' %s %s %s %s '%s' %s"%(system_name, condition, short_message, long_message, submitter, user, password, category, aType, item)
+	cc = "$ENSTORE_DIR/isa-tools/bin/genMediaTicket %s '%s' '%s' %s %s %s %s '%s' %s"%(system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
 
 PROMPT = "operation> "
