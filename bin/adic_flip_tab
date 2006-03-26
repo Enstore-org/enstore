@@ -32,6 +32,7 @@ EOD
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ]; then
 		 enstore alarm --raise --severity "I" --root-error "$msg"
+		 echo "$msg" | mail -s "`gang` tape aid work" isa-group@fnal.gov berman@fnal.gov
 	       fi
 	     }
 
@@ -87,7 +88,7 @@ else
       /bin/echo -n "There is one group to $action. Proceed [y/n]? "
    fi
    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-      :
+      echo "Starting $script $action on $node." | mail -s "`gang` tape aid work" isa-group@fnal.gov
    else
       exit
    fi
