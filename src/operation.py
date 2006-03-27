@@ -821,7 +821,7 @@ def make_cap(l):
 	cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
 	for i in l:
 		cap_script = cap_script + ' '+i
-	cap_script = cap_script + " \\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
+	cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
 	return cap_script
 
 # get_max_cap_number(cluster)
@@ -850,11 +850,11 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	submitter = "MSS"
 	user = "MSS"
 	password = "2p9u6c"
-	category = "other"
+	category = "Other"
 	aType = "LoadTapes"
-	item = "other"
+	item = "Other"
 	
-	cc = "$ENSTORE_DIR/isa-tools/bin/genMediaTicket %s '%s' '%s' %s %s %s %s '%s' %s"%(system_name, short_message, long_message, submitter, user, password, category, aType, item)
+	cc = "$ENSTORE_DIR/sbin/genMediaTicket %s '%s' '%s' %s %s %s %s '%s' %s"%(system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
 
 PROMPT = "operation> "
