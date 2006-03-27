@@ -31,7 +31,7 @@ ENSTORE_MAIL=enstore-auto@fnal.gov
 
 case $node in
 
-  stken*|cmspnfs1*)
+  stken*|cmspnfs1*|eagpnfs1*)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             complain=0
