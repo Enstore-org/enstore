@@ -4270,7 +4270,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if not vol_info: vol_info = self.vol_info
 
         self.unload_volume(vol_info, after_function=after_function)
-        self.nowork({})
+        #self.nowork({})
         
     def unload_volume(self, vol_info,after_function=None):
         broken= ''
