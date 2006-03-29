@@ -3690,6 +3690,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, msg)
 
     def send_client_done(self, ticket, status, error_info=None):
+        Trace.trace(13, "send_client_done %s"%(self.control_socket))
         if self.control_socket == None:
             return
         ticket['status'] = (status, error_info)
