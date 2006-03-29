@@ -4239,10 +4239,20 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                       (request['infile'],
                        time.time()-tinfo['encp_start_time']))
 
+        Trace.log(e_errors.INFO, "File %s transfered for %s in %s seconds." %
+                  (request['infile'], request['unique_id'],
+                   time.time() - transfer_start_time))
+
         # Print an additional timming value.
         Trace.message(TIME_LEVEL, "Time to transfer file: %s sec." %
                       (transfer_stop_time - transfer_start_time,))
-    
+
+    else:
+        Trace.log(e_errors.WARNING,
+                  "File %s transfer attempt done for %s after %s seconds." %
+                  (request['infile'], request['unique_id'],
+                   time.time() - transfer_start_time))
+
     #Even though the functionality is there for this to be done in
     # handle requests, this should be received outside since there must
     # be one... not only receiving one on error.
