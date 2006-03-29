@@ -3944,9 +3944,10 @@ def submit_one_request(ticket, encp_intf):
         if not response_ticket['status'][1]:
             if response_ticket['status'][0] == e_errors.NOACCESS or \
                    response_ticket['status'][0] == e_errors.NOTALLOWED:
-                response_ticket['status'][1] = "Volume %s is marked %s." % \
-                                               (ticket['vc']['external_label'],
-                                                response_ticket['status'][0])
+                response_ticket['status'] = (response_ticket['status'][0],
+                                             "Volume %s is marked %s." %
+                                             (ticket['vc']['external_label'],
+                                              response_ticket['status'][0]))
         
         if e_errors.is_non_retriable(response_ticket['status']):
             Trace.log(e_errors.ERROR,
