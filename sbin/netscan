@@ -3,9 +3,10 @@ set -u  # force better programming and ability to use check for not set
 
 if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
-# this is cheap argument processing. Must be in this order when checking.
+# this is cheap option processing. Must be in this order when checking.
 if [ "${1:-}" = "-a" ]; then ALARM=1; shift; else ALARM=0; fi
 if [ "${1:-}" = "-c" ]; then CROND=1; shift; else CROND=0; fi
+if [ "${1:-}" = "-i" ]; then INTER=1; shift; else INTER=0; fi
 if [ "${1:-}" = "-q" ]; then QUIET=1; shift; else QUIET=0; fi
 
 set +u
@@ -17,15 +18,16 @@ set -u
 # Things checked:
 # . Correct configuration files
 # . Correct authorization files
+# . Check ups and product support
 # . Check that ngop is installed and running
 # . Check enstore scripts in /etc/rc.d/init.d
 # . Check that rc.local contains boot_cleanup
 # . Check that rc.local contains ipmi_startup
 # . Check that eth1 is working (if present)
-# . Correct ntp time sync (allow * and ~ on 1st line)
+# . Check that ntp is working, fix if not
 ## . Check that two processors are active
 ## . Check that mounted disks are less than 90% full
-# . Check that root crontab includes reset of watchdog, netscan, and ntpset
+# . Check that root crontab includes netscan, reset of watchdog
 # . Check that enstore and root .forward files contain enstore-admin@fnal.gov
 # . Check that hyperthreading is enabled on dual Xeon platforms
 # . Check all pnfs database sizes on srv1 nodes
@@ -35,12 +37,12 @@ set -u
 # . Check that lock status of library managers is consistent with config
 # . Check for reasonable number of processes running on the node
 # . Check for correct number of pnfs daemons running on servers
-## . If file or volume clerk are running, then db_{checkpoint,deadlock} are running, too
 # . Generate informational alarm if we detect server has just rebooted
-# . Verify hosts, k5login, and farmlets files contain this host's name
+# . Verify hosts, k5login, and /etc/sysconfig/network files contain this host's fqdn
+# . Verify farmlets files contain this host's name
 # . Check that web servers are running on right nodes and not elsewhere
 # . Check cgi scripts on web server nodes
-# . Check the /etc/krb5.keytab and /local/ups/kt/enstorekt files for legal values
+# . Check the /etc/krb5.keytab and /fnal/ups/kt/enstorekt files for legal values
 # . Look for "lost" files in mounted local file systems
 # . Look for local files hidden behind nfs mount points
 # . Check that ipmisrv is running and has NO_DOG option
@@ -109,6 +111,8 @@ then
 else
     LSOF="/usr/sbin/lsof"
 fi
+SERVICE="/sbin/service"
+NTPDATE="/usr/sbin/ntpdate"
 IFUP="/etc/sysconfig/network-scripts/ifup"
 IFDOWN="/etc/sysconfig/network-scripts/ifdown"
 
@@ -121,6 +125,7 @@ LOG=/tmp/netscan.log
 ACTIVE=/root/CRON/netscanACTIVE
 
 node=`$HOSTNAME -s`
+fqdn=`$HOSTNAME -f`
 gang=`$ENSTORE_DIR/sbin/gang`
 
 
@@ -135,12 +140,12 @@ else
   REBOOT=1
 fi
 
-# are we an enstore server?
-if $ECHO $node | $EGREP '^(d0|stk|cdf)ensrv[0-7]$' >/dev/null
+# are we an enstore server? (accept srv0-9 or pnfs1)
+if $ECHO $node | $EGREP '^(d0|stk|cdf)ensrv[0-9]$' >/dev/null
 then
   SERVER=1
   nodetype=srv
-elif [ $node = cmspnfs1 ]
+elif $ECHO $node | $EGREP '^(cms|eag)pnfs[1]$' >/dev/null
 then
   SERVER=1
   nodetype=srv
@@ -148,7 +153,7 @@ else
   SERVER=0
 fi
 
-# are we an enstore mover?
+# are we an enstore mover? (accept mvr1a-99a)
 if $ECHO $node | $EGREP '^(d0|stk|cdf)enmvr[1-9][0-9]?a$' >/dev/null
 then
   MOVER=1
@@ -157,8 +162,8 @@ else
   MOVER=0
 fi
 
-# are we a dcache server?
-if $ECHO $node | $EGREP '^stkendca([2-9]|1[0-2])a$' >/dev/null
+# are we a dcache server? (accept dca2a-19a)
+if $ECHO $node | $EGREP '^stkendca([2-9]|1[0-9])a$' >/dev/null
 then
   DCACHE=1
   nodetype=dca
@@ -166,8 +171,12 @@ else
   DCACHE=0
 fi
 
-# once a day, or after reboot, override quiet mode and log verbose information
-(( ! (uptime % 97) )) && QUIET=0
+# force alarms off if we are not a production node
+[ -e /PRODUCTION ] || ALARM=0
+
+# when invoked by cron, once a day, or after reboot,
+# override quiet mode and log verbose information
+(( ! (uptime % 97) && CROND )) && QUIET=0
 
 # function to log messages, optionally print the ps state
 
@@ -271,7 +280,7 @@ check_mode() { if [ ! -r $1 ]; then
 #
 # If no file is specified, check within the root crontab.
 #
-# Otherwise, check file mode against 3rd argument, if present.
+# Also, check file mode against 3rd argument, if present.
 # Note that the 3rd argument, if specified, must be in octal,
 # with a leading 0 (for example, 0755).
 
@@ -424,7 +433,8 @@ right_file() { local src=$1; local dst=$2
 
 allow() { tt=${1:-UNKNOWN}
 	  local psline=""
-	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {print "a=\"" $2 "\";b=\"" $3 "\";c=\"" $4 "\";p=\"" $5 "\""}'`
+	  for i in `$ECHO -e -n $ALLOW | $AWK -F, -v TT=$tt -v CMD=$command -v REST="$rest" \
+	    '$1 ~ TT && $2 == CMD && REST ~ $3 && REST ~ $4 {printf "a=\"%s\";b=\"%s\";c=\"%s\";p=\"%s\"", $2, $3, $4, $5}'`
 	  do
 	    eval $i
 	    if [ $p != x ]; then
@@ -469,59 +479,64 @@ fi
 
 # We allow these everywhere
 ALLOW_BASE="
-	LISTEN,$INETD,:(ftp|kshell|klogin|telnet|eklogin|netperf),TCP,x\n
+	LISTEN,$INETD,:(kshell|klogin|eklogin|telnet|netperf),TCP,x\n
 	LISTEN,python,:,TCP,$ENSTORE_DIR/(bin|src)|/home/petravic/Zope|ftpcp.py\n
+	LISTEN,sendmail,localhost:smtp,TCP,sendmail:#accepting#connections\n
 	LISTEN,dccp,:,TCP,x\n
 	LISTEN,netserver,:,TCP,x\n
 	LISTEN,portmap,:sunrpc,TCP,x\n
+	LISTEN,xinetd,localhost:,TCP,x\n
 	LISTEN,rsh,:,TCP,/usr/krb5/bin/rsh\n
-	LISTEN,xinetd,localhost:32768,TCP,x\n
 	LISTEN,sh,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,mv,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,grep,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,sort,inet,TCP,MSG_TYPE|enstore\n
 	LISTEN,ALARM_CLIENT,inet,TCP,x\n
-	TCP,xemacs,:x11,TCP,x\n
-	TCP,rsh,:kshell,TCP,x\n
-	TCP,rsh,:,TCP,/usr/krb5/bin/rsh\n
-	TCP,kshd,:kshell,TCP,x\n
-	TCP,kshd,:,TCP,kshd#kshd#-5c\n
-	TCP,klogind,:eklogin,TCP,x\n
-	TCP,telnetd,:telnet,TCP,telnetd#-Pa#valid\n
-	TCP,netserver,TCP,:netperf,x\n
-	TCP,python,:,TCP,$ENSTORE_DIR/(bin/encp|src/(encp|monitor_server).py)\n
-	UDP,python,:,UDP,$ENSTORE_DIR/(bin/encp|src/(encp|monitor_server|volume_assert).py|ngop/cronjobAgent.py)\n
-	UDP,python,:7499,UDP,$ENSTORE_DIR/src/monitor_server.py\n
-	UDP,xntpd,:ntp,UDP,x\n
-	UDP,portmap,:sunrpc,UDP,x\n
-	UDP,tee,:,UDP,tee#/dev/tty\n
 "
+#	TCP,xemacs,:x11,TCP,x\n
+#	TCP,rsh,:kshell,TCP,x\n
+#	TCP,rsh,:,TCP,/usr/krb5/bin/rsh\n
+#	TCP,kshd,:kshell,TCP,x\n
+#	TCP,kshd,:,TCP,kshd#kshd#-5c\n
+#	TCP,klogind,:eklogin,TCP,x\n
+#	TCP,telnetd,:telnet,TCP,telnetd#-Pa#valid\n
+#	TCP,netserver,TCP,:netperf,x\n
+#	TCP,python,:,TCP,$ENSTORE_DIR/(bin/encp|src/(encp|monitor_server).py)\n
+#	UDP,python,:,UDP,$ENSTORE_DIR/(bin/encp|src/(encp|monitor_server|volume_assert).py|ngop/cronjobAgent.py)\n
+#	UDP,python,:7499,UDP,$ENSTORE_DIR/src/monitor_server.py\n
+#	UDP,portmap,:sunrpc,UDP,x\n
+#	UDP,ntpd,:ntp,UDP,x\n
+#	UDP,tee,:,UDP,tee#/dev/tty\n
 
 # Extra for console servers
 ALLOW_CONS="$ALLOW_BASE
 	LISTEN,conserver,:console,TCP,x\n
 	LISTEN,conserver,:,TCP,conserver#-d\n
-	LISTEN,X,:x11,TCP,x\n
-	TCP,console,:console,TCP,x\n
 "
+#	TCP,console,:console,TCP,x\n
+#	LISTEN,X,:x11,TCP,x\n
 
-# Extra for postgres db servers
+# Extra for enstore postgres db servers
 ALLOW_PGDB="$ALLOW_BASE
-	LISTEN,postmaste,:(postgres|5432|8076|8888),TCP,x\n
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,postmaste,:(postgres|5432|8076|8888|9999),TCP,x\n
 "
 
-# Extra for srv3 - console + nfs server + pagedcache
+# Extra for srv3 - console + ftp + nfs server + pagedcache
 ALLOW_SRV3="$ALLOW_CONS
+	LISTEN,$INETD,:ftp,TCP,x\n
 	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
 	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
 	LISTEN,java,:,TCP,java#-cp\n
-	UDP,rpc.mount,:mount,UDP,x\n
-	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
+	LISTEN,python,(d0|stk|cdf)ensrv3.fnal.gov:,TCP,python\n
 "
+#	UDP,rpc.mount,:mount,UDP,x\n
+#	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
 
 # Extra for srv2 - web server
 ALLOW_SRV2="$ALLOW_BASE
-	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,httpd,:http,TCP,/(fnal|local)/ups/prd/apache/\n
 	LISTEN,mv,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,mv\n
 	LISTEN,sh,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,sh\n
 	LISTEN,grep,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,grep\n
@@ -529,9 +544,11 @@ ALLOW_SRV2="$ALLOW_BASE
 	LISTEN,python,(d0|stk|cdf)ensrv2.fnal.gov:,TCP,$ENSTORE_DIR/src/inquisitor.py\n
 "
 
-# Extra for srv1 - pnfs server
+# Extra for srv1 - pnfs server, local postgres db server
 ALLOW_SRV1="$ALLOW_BASE
+	LISTEN,postmaste,localhost:postgres,TCP,x\n
 	LISTEN,java,:,TCP,/home/enstore/dcache/run|[java]\n
+	LISTEN,python,(cms|eag)pnfs1.fnal.gov:,TCP,migrate.py\n
 	LISTEN,python,(d0|stk|cdf)ensrv1.fnal.gov:,TCP,migrate.py\n
 "
 
@@ -543,26 +560,35 @@ ALLOW_ADIC="$ALLOW_BASE
 
 # Extra for d0ensrv4 - makes stk and adic calls
 ALLOW_DSRV4="$ALLOW_ADIC
-	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
-	LISTEN,rsh,:,TCP,-l#acsss#fntt#echo\n
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,rsh,:,TCP,fntt#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt\n
 "
 
 # Extra for stkensrv4 - makes stk and adic calls
 ALLOW_SSRV4="$ALLOW_ADIC
-	LISTEN,rsh,:,TCP,fntt#-l#acsss#echo\n
-	LISTEN,rsh,:,TCP,-l#acsss#fntt#echo\n
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,rsh,:,TCP,fntt#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt\n
 "
 
 # Extra for cdfensrv4 - makes stk calls
 ALLOW_CSRV4="$ALLOW_BASE
-	LISTEN,rsh,:,TCP,fntt2#-l#acsss#echo\n
-	LISTEN,rsh,:,TCP,-l#acsss#fntt2#echo\n
+	LISTEN,$INETD,:ftp,TCP,x\n
+	LISTEN,rsh,:,TCP,fntt2#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt2\n
 "
 
 # Extra for d0ensrv3
 ALLOW_DSRV3="$ALLOW_SRV3
 	LISTEN,perl,d0ensrv3p.fnal.gov:,TCP,mirror#everything:adic2.fnal.gov\n
 "
+
+# Extra for stkensrv3 - 3dm web server
+ALLOW_SSRV3="$ALLOW_SRV3
+	LISTEN,3dmd,:,TCP,3dmd\n
+"
+#	LISTEN,3dmd,:(webcache|8080),TCP,3dmd\n
 
 # Extra for d0ensrv2
 ALLOW_DSRV2="$ALLOW_SRV2
@@ -573,32 +599,37 @@ ALLOW_DSRV2="$ALLOW_SRV2
 ALLOW_SSRV2="$ALLOW_SRV2
 	LISTEN,rpc.mount,:,TCP,rpc.mountd\n
 	LISTEN,rpc.nfsd,:(nfs|2049),TCP,x\n
-	UDP,rpc.mount,:mount,UDP,x\n
-	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
 "
+#	UDP,rpc.mount,:mount,UDP,x\n
+#	UDP,rpc.nfsd,:(nfs|2049),UDP,x\n
 
 # Extra for cmspnfs1 - pnfs server
 ALLOW_CMS1="$ALLOW_SRV1
-	LISTEN,sendmail,:smtp,TCP,x\n
+	LISTEN,xinetd,:terad,TCP,x\n
 	LISTEN,sshd,:,TCP,/usr/sbin/sshd\n
-	LISTEN,postmaste,:(postgres|5432),TCP,x\n
 	LISTEN,iperf,:5001,TCP,/opt/iperf/bin/iperf\n
 	LISTEN,gmond,:8649,TCP,/usr/sbin/gmond\n
-	LISTEN,python,cmspnfs1.fnal.gov:,TCP,migrate.py\n
+"
+
+# Extra for eagpnfs1 - pnfs server
+ALLOW_EAG1="$ALLOW_SRV1
+	LISTEN,sshd,:,TCP,/usr/sbin/sshd\n
+	LISTEN,iperf,:5001,TCP,/opt/iperf/bin/iperf\n
 "
 #	LISTEN,sshd,(:ssh|localhost:x11-ssh-offset),TCP,/usr/sbin/sshd\n
 
 # Extra for movers
 ALLOW_MVR="$ALLOW_BASE
 	LISTEN,python,:,TCP,$ENSTORE_DIR/src/mover.py\n
-	TCP,python,:,TCP,$ENSTORE_DIR/src/mover.py\n
-	UDP,python,:,UDP,$ENSTORE_DIR/src/mover.py\n
 "
+#	TCP,python,:,TCP,$ENSTORE_DIR/src/mover.py\n
+#	UDP,python,:,UDP,$ENSTORE_DIR/src/mover.py\n
 
 # Extra for dcache
 # Allowing swapped out java's is not good, but I don't know what else to do right now.
 ALLOW_DCA="$ALLOW_BASE
-	LISTEN,httpd,:http,TCP,/local/ups/prd/apache/\n
+	LISTEN,3dmd,:(webcache|8080),TCP,3dmd\n
+	LISTEN,httpd,:http,TCP,/(fnal|local)/ups/prd/apache/\n
 	LISTEN,java,:,TCP,/home/enstore/dcache/run/diskCache|[java]|dmg.cells.services.Domain\n
 "
 
@@ -607,15 +638,17 @@ case $node in
        *srv0|rip1) ALLOW=$ALLOW_PGDB;  logit "Comparing to srv0";;
        *srv1|rip6) ALLOW=$ALLOW_SRV1;  logit "Comparing to srv1";;
     cmspnfs1)      ALLOW=$ALLOW_CMS1;  logit "Comparing to $node";;
+    eagpnfs1)      ALLOW=$ALLOW_EAG1;  logit "Comparing to $node";;
     d0ensrv2)      ALLOW=$ALLOW_DSRV2; logit "Comparing to $node";;
    stkensrv2)      ALLOW=$ALLOW_SSRV2; logit "Comparing to $node";;
        *srv2|rip7) ALLOW=$ALLOW_SRV2;  logit "Comparing to srv2";;
     d0ensrv3)      ALLOW=$ALLOW_DSRV3; logit "Comparing to $node";;
+   stkensrv3)      ALLOW=$ALLOW_SSRV3; logit "Comparing to $node";;
        *srv3)      ALLOW=$ALLOW_SRV3;  logit "Comparing to srv3";;
     d0ensrv4)      ALLOW=$ALLOW_DSRV4; logit "Comparing to $node";;
    stkensrv4)      ALLOW=$ALLOW_SSRV4; logit "Comparing to $node";;
    cdfensrv4)      ALLOW=$ALLOW_CSRV4; logit "Comparing to $node";;
-    *srv[57])      ALLOW=$ALLOW_CONS;  logit "Comparing to srv5";;
+   *srv[579])      ALLOW=$ALLOW_CONS;  logit "Comparing to cons";;
        *srv6)      ALLOW=$ALLOW_PGDB;  logit "Comparing to srv6";;
        *mvr*|rip*) ALLOW=$ALLOW_MVR;   logit "Comparing to mvr";;
        *dca*)      ALLOW=$ALLOW_DCA;   logit "Comparing to dca";;
@@ -644,7 +677,7 @@ if ! $MKDIR $ACTIVE 1>/dev/null 2>/dev/null; then
    done
    $SLEEP 30
    if ! $MKDIR $ACTIVE 1>/dev/null 2>/dev/null; then
-      msg="ERROR: netscan on $node already ACTIVE... exiting"
+      msg="netscan on $node already ACTIVE... exiting"
       logit "$msg"
       if (( ALARM )); then
 	 enstore alarm --raise --severity "A" --root-error "$msg"
@@ -660,7 +693,6 @@ fi
 # make this a dry run if we are not a production node
 [ -e /PRODUCTION ] || logit "Dry Run - bad file attributes will not be corrected"
 
-
 # generate an informational alarm if we detect a server has rebooted
 if (( REBOOT && SERVER )); then
    msg="Server $node has rebooted"
@@ -674,7 +706,7 @@ fi
 right_file $ENSTORE_DIR/sbin/routes			/root/routes
 right_file $ENSTORE_DIR/sbin/gettkt			/home/enstore/gettkt
 right_file $ENSTORE_DIR/etc/root.k5login		/root/.k5login
-right_file $ENSTORE_DIR/etc/products.k5login		/local/ups/.k5login
+right_file $ENSTORE_DIR/etc/products.k5login		/fnal/ups/.k5login
 right_file $ENSTORE_DIR/etc/$gang.enstore.k5login	/home/enstore/.k5login
 right_file $ENSTORE_DIR/etc/$gang.hosts.allow		/etc/hosts.allow
 right_file $ENSTORE_DIR/etc/hosts.deny			/etc/hosts.deny
@@ -685,7 +717,7 @@ right_file $ENSTORE_DIR/etc/xserverrc			/etc/X11/xinit		0755
 right_file $ENSTORE_DIR/bin/enstore-boot		/etc/rc.d/init.d	0755
 right_file $ENSTORE_DIR/bin/monitor_server-boot		/etc/rc.d/init.d	0755
 
-# check these files only on db server nodes
+# check these files only on db or configuration server nodes
 (( SERVER )) && case $node in
   d0ensrv6|stkensrv6|cdfensrv6)
     right_file $ENSTORE_DIR/sbin/enstore-drivestat	/etc/rc.d/init.d	0755
@@ -694,43 +726,76 @@ right_file $ENSTORE_DIR/bin/monitor_server-boot		/etc/rc.d/init.d	0755
   d0ensrv0|stkensrv0|cdfensrv0)
     right_file $ENSTORE_DIR/sbin/enstore-db		/etc/rc.d/init.d	0755
     ;;
-  d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1)
-    check_mode /etc/rc.d/init.d/pnfs			0755
+  d0ensrv2)
+    check_mode $ENSTORE_DIR/etc/sam.conf		0664	enstore
+    ;;
+  stkensrv2)
+    check_mode $ENSTORE_DIR/etc/stk.conf		0664	enstore
+    ;;
+  cdfensrv2)
+    check_mode $ENSTORE_DIR/etc/cdf.conf		0664	enstore
+    ;;
+  d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1|eagpnfs1)
+    check_mode /etc/rc.d/init.d/pnfs			0755	root
     ;;
 esac
 
 for x in /etc/rc.d/rc.{sysinit,local} /var/log/sa
 do
-  check_mode	$x				0755
+  check_mode	$x					0755	root
 done
 
 if [ -e /PRODUCTION ]
 then
-   check_mode	/PRODUCTION			0644
+  check_mode	/PRODUCTION				0644
 fi
 
 if (( MOVER || SERVER ))
 then
 
-  # verify hosts, k5login, and farmlets files contain this host's name
-  check_file	/etc/hosts			"${node}.fnal.gov"
-  check_file	/root/.k5login			"host/${node}.fnal.gov@FNAL.GOV"
-  check_file	/home/enstore/.k5login		"enstore/cd/${node}.fnal.gov@FNAL.GOV"
+  # verify hosts, k5login, and network files contain this host's fqdn
+  check_file	/etc/hosts			"${fqdn}"
+  check_file	/etc/sysconfig/network		"${fqdn}"
+  check_file	/root/.k5login			"host/${fqdn}@FNAL.GOV"
+  check_file	/home/enstore/.k5login		"enstore/cd/${fqdn}@FNAL.GOV"
+  # verify farmlets files contain this host's name
   for f in /usr/local/etc/farmlets/{$gang$nodetype,${gang}-all,$gang,$node,enstore}
   do
     check_file	$f				"$node"
   done
 
   # check ups and product support
-  check_file	/local/ups/etc/upsdb_list	"/local/ups/db"
-  check_mode	/local/ups/etc/upsdb_list	0664	products
-  check_mode	/local/ups/.k5login		0664	products
-  for f in $PRODUCTS/.upsfiles/{startup,shutdown}/${node}.products
+  check_mode	/fnal/ups			0755	products
+  check_mode	/fnal/ups/.k5login		0664	products
+  check_mode	/fnal/ups/db			0775	products
+  check_mode	/fnal/ups/prd			0775	products
+  check_mode	/fnal/ups/etc			0755	products
+  check_mode	/fnal/ups/etc/upsdb_list	0664	products
+  check_file	/fnal/ups/etc/upsdb_list	"/(fnal|local)/ups/db"
+  # the ups PRODUCTS variable should contain /local/ups/db or /fnal/ups/db, but not both
+  let nupsdb=0
+  for db in `$ECHO "${PRODUCTS:-}" | $TR ':' ' '`
+  do
+    if $ECHO $db | $EGREP '/(fnal|local)/ups/db' >/dev/null
+    then
+       let nupsdb+=1
+    fi
+  done
+  if (( nupsdb != 1 )); then
+     msg="problem with ups PRODUCTS variable: '${PRODUCTS:-}'"
+     logit "$msg"
+     if (( ALARM )); then
+	enstore alarm --raise --severity "A" --root-error "$msg"
+     fi
+  elif (( ! QUIET )); then
+     logit "ups PRODUCTS variable correctly defined, ok"
+  fi
+  for f in /fnal/ups/db/.upsfiles/{startup,shutdown}/${node}.products
   do
     check_file	$f				"ups[[:space:]]+(start|stop)[[:space:]]+ngop"
-    check_mode	$f				0755	products
+    check_mode	$f				0775	products
   done
-  right_file	$ENSTORE_DIR/etc/ups		/etc/rc.d/init.d	0755
+  right_file	$ENSTORE_DIR/etc/ups		/etc/rc.d/init.d		0755
 
   # check ngop configuration directories
   for x in /var/ngop{,/include,/cron_agent,/plugins_agent}
@@ -806,11 +871,18 @@ if [ "$INETD" = unknown ]; then
 else
   right_file	$ENSTORE_DIR/etc/${INETD}.conf		/etc/${INETD}.conf
   if [ "$INETD" = xinetd ]; then
-    right_file	$ENSTORE_DIR/etc/ftp			/etc/xinetd.d/ftp
-    right_file	$ENSTORE_DIR/etc/klogin			/etc/xinetd.d/klogin
-    right_file	$ENSTORE_DIR/etc/kshell			/etc/xinetd.d/kshell
-    right_file	$ENSTORE_DIR/etc/telnet			/etc/xinetd.d/telnet
-    right_file	$ENSTORE_DIR/etc/eklogin		/etc/xinetd.d/eklogin
+# ftp is special - it is enabled on most servers, disabled elsewhere
+    if echo $node | egrep '^(d0|stk|cdf)ensrv[02346]$' >/dev/null; then
+      sed -e '/disable/s/yes/no/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
+    else
+      sed -e '/disable/s/no/yes/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
+    fi
+    right_file	/tmp/ftp.xinetd				/etc/xinetd.d/ftp
+# check the other services
+    for s in kshell klogin eklogin telnet
+    do
+      right_file $ENSTORE_DIR/etc/$s			/etc/xinetd.d
+    done
   fi
 fi
 
@@ -818,7 +890,7 @@ right_file	$ENSTORE_DIR/etc/enstore.bashrc		/home/enstore/.bashrc
 right_file	$ENSTORE_DIR/etc/enstore.bash_profile	/home/enstore/.bash_profile
 right_file	$ENSTORE_DIR/etc/$gang.step-tickers	/etc/ntp/step-tickers
 right_file	$ENSTORE_DIR/etc/ntp.conf		/etc/ntp.conf
-if [ $FLAVOR = 'Linux+2.4' ]; then
+if [ "$FLAVOR" = 'Linux+2.4' -o "$FLAVOR" = 'Linux+2.6' ]; then
   right_file	$ENSTORE_DIR/etc/services		/etc/services
   check_mode	/var/lib/ntp		0755	ntp
   check_mode	/var/lib/ntp/drift	0644	ntp
@@ -829,23 +901,28 @@ fi
 #$RPM -Va | $GREP bin | $EGREP -v '/usr/bin/X11|/usr/local/bin|/bin/bash|/usr/bin/bashbug|/usr/bin/db_|/usr/bin/run-parts|\.h$|\.h$|/bin/login'
 
 # check that eth1 is working, fix if not
-eth1_err="eth1: card reports no RX buffers"
-if $TAIL -n 10 /var/log/messages | $EGREP "$eth1_err" >/dev/null; then
-   logit "ERROR: $eth1_err"
-   if (( ALARM )); then
-      enstore alarm --raise --severity "A" --root-error "$eth1_err"
-   fi
-   [ -e /PRODUCTION ] && $IFDOWN eth1 >>$LOG 2>&1
-   [ -e /PRODUCTION ] && $IFUP   eth1 >>$LOG 2>&1
-elif (( ! QUIET )); then
-   logit "No eth1 errors found in messages, ok"
-fi
+#eth1_err="eth1: card reports no RX buffers"
+#if $TAIL -n 10 /var/log/messages | $EGREP "$eth1_err" >/dev/null; then
+#   logit "ERROR: $eth1_err"
+#   if (( ALARM )); then
+#      enstore alarm --raise --severity "A" --root-error "$eth1_err"
+#   fi
+#   [ -e /PRODUCTION ] && $IFDOWN eth1 >>$LOG 2>&1
+#   [ -e /PRODUCTION ] && $IFUP   eth1 >>$LOG 2>&1
+#elif (( ! QUIET )); then
+#   logit "No eth1 errors found in messages, ok"
+#fi
 
-# check that ntp is working, fix if not, complain if down more than once
-# check only in this job.  Separate cronjob sets time if needed.
-msg=`$ENSTORE_DIR/sbin/ntpset -a -c 2>&1`
-if (( ! QUIET )); then
+# check that ntpd is working, fix if not, schedule at script to check time
+if [ `$PS --no-headers -C ntpd | $WC -l` -ne 1 ]; then
+   msg="problem with ntpd process"
    logit "$msg"
+   if (( ALARM )); then
+      enstore alarm --raise --severity "W" --root-error "$msg"
+   fi
+   $SERVICE ntpd restart
+elif (( ! QUIET )); then
+   logit "ntpd process found, ok"
 fi
 
 # check that we have two processors running
@@ -881,18 +958,19 @@ fi
 
 OEMline=`$GREP '^OEM' /var/log/dmesg`
 if [ -n "${OEMline:-}" ]; then
-   for motherboard in SDS2 Lancewood SE7505VB2 N440BX S7501HG0 Unknown
+   for motherboard in SDS2 Lancewood SE7505VB2 SE7320SP20 SE7525GP2 S7501HG0 N440BX Unknown
    do
      if $ECHO $OEMline | $GREP $motherboard >/dev/null; then break; fi
    done
 fi
 if [ "${motherboard:-Unknown}" = Unknown ]; then
-   model=`$AWK -F: '$1 ~ "model" && $2 !~ /[[:alpha:]]/ {print $2}' /proc/cpuinfo | $SORT -u`
+   model=`$AWK -F: '$1 ~ "model" && $2 !~ /[a-zA-Z().]/ {print $2}' /proc/cpuinfo | $SORT -u`
    case `$EXPR $model` in
      11)	motherboard=SDS2	;;
       7|8)	motherboard=Lancewood	;;
-      2)	motherboard=SE7505VB2	;;
       5)	motherboard=N440BX	;;
+      4)	motherboard=SE7320SP20	;;	# or Lindenhurst
+      2)	motherboard=SE7505VB2	;;	# or S7501HG0
       *)	motherboard=Unknown	;;
    esac
 fi
@@ -903,7 +981,7 @@ fi
 if [ -e /PRODUCTION ]; then
    if [ $motherboard = Unknown ]; then
       msg="Unknown or undetermined motherboard"
-      logit "msg"
+      logit "$msg"
       if (( ALARM )); then
 	 enstore alarm --raise --severity "I" --root-error "$msg"
       fi
@@ -920,12 +998,24 @@ if [ -e /PRODUCTION ]; then
    elif (( ! QUIET )); then
       logit "Current ups version of ipmi is $ipmiVersion"
    fi
-   case ${motherboard}_${ipmiVersion} in
-     N440BX_devel | Lancewood_devel)
-	IPMISRV=1
+   case ${ipmiVersion} in
+     devel)
+	case ${motherboard} in
+	  N440BX | Lancewood)
+	    IPMISRV=1
+	    ;;
+	esac
 	;;
-     SDS2_v1.5 | SE7505VB2_v1.5 | S7501HG0_v1.5)
-	IPMISRV=0
+     v1.5)
+	case ${motherboard} in
+	  SDS2 | S7501HG0)
+	    IPMISRV=0
+	    ;;
+	  SE7320SP20 | SE7505VB2 | SE7525GP2)
+	    IPMISRV=0
+	    NOIPMI=1		# for now, ipmi seg faults on some Xeon boards
+	    ;;
+	esac
 	;;
    esac
    if [ -z "${IPMISRV:-}" ]; then
@@ -938,13 +1028,10 @@ if [ -e /PRODUCTION ]; then
    elif (( ! QUIET )); then
       logit "Current ups version of ipmi is compatible with this motherboard"
    fi
-   # for now, ipmi seg faults on SE7505VB2 boards
-   [ $motherboard = SE7505VB2 ] && NOIPMI=1
 fi
 
 # check that special jobs are listed in root crontab
 if [ -r /var/spool/cron/root ]; then
-   check_cron		"ntpset"
    if [ -e /PRODUCTION ]; then
       if [ ${IPMISRV:-0} -eq 1 ]; then
 	 check_cron	"/home/enstore/ipmi/check_watchdog_reset.py"
@@ -970,6 +1057,12 @@ case `$AWK -F: '$1 ~ "model name" {print $2}' /proc/cpuinfo | $GREP -c "Xeon"` i
 	enstore alarm --raise --severity "A" --root-error "$msg"
      fi
      ;;
+  3) msg="BAD CONFIGURATION: Hyperthreading on one processor disabled"
+     logit "$msg"
+     if (( ALARM )); then
+	enstore alarm --raise --severity "A" --root-error "$msg"
+     fi
+     ;;
   4) if (( ! QUIET )); then
 	logit "Hyperthreading, both processors enabled, ok"
      fi
@@ -978,11 +1071,23 @@ esac
 
 check_file	/etc/rc.d/rc.local	"boot_cleanup"
 check_file	/etc/rc.d/rc.local	"ipmi_startup"
-if [ $FLAVOR = 'Linux+2.4' ]; then
+if [ "$FLAVOR" = 'Linux+2.4' -o "$FLAVOR" = 'Linux+2.6' ]; then
    check_cron	/etc/cron.d/sysstat	"/usr/lib/sa/sa1"		# system accounting
 fi
 # not so dumb, because we can run netscan manually, too
 check_cron	/etc/cron.d/netscan	"netscan -a -c -q"		0644
+
+# is srv3:/diskc mountable as /backup and in the right gang
+DISKC=`$GREP -v '^#' /etc/fstab | $AWK '$1~/(d0|stk|cdf)ensrv3:\/diskc/ && $2=="/backup" && $3=="nfs" && $4~/noauto/ {print $1}'`
+if [ `$ECHO "$DISKC" | wc -l` -ne 1 -o "$DISKC" != "${gang}srv3:/diskc" ]; then
+   msg="BAD CONFIGURATION: Check \"${gang}srv3:/diskc /backup nfs\" entry in /etc/fstab"
+   logit "$msg"
+   if (( ALARM )); then
+      enstore alarm --raise --severity "W" --root-error "$msg"
+   fi
+elif (( ! QUIET )); then
+   logit "Valid \"${gang}srv3:/diskc /backup nfs\" entry in /etc/fstab, ok"
+fi
 
 for f in /{root,home/enstore}/.forward
 do
@@ -990,8 +1095,8 @@ do
 done
 
 # verify ownership of enstore keytab directory and file
-check_owner /local/ups/kt
-check_owner /local/ups/kt/enstorekt
+check_owner /fnal/ups/kt
+check_owner /fnal/ups/kt/enstorekt
 
 # in Fermi Linux 7.3.x, $HOME is not yet defined when monitor_server starts,
 # so the .output file goes in / instead of /root.
@@ -1001,16 +1106,19 @@ check_owner /local/ups/kt/enstorekt
        monRoot="/root"
     fi
 # verify ownership of log files (but no alarms right after a reboot)
+# usually the node name is fully qualified by the domain name, but
+# sometimes it is just a short name, so we use the raw hostname
 if [ -e /PRODUCTION ]; then
+   fqdn=`$HOSTNAME`
    if (( REBOOT )); then
     (
      ALARM=0
-     check_owner ~enstore/`$HOSTNAME`.startup
-     check_owner $monRoot/`$HOSTNAME`.monitor_server.output	root
+     check_owner ~enstore/${fqdn}.startup
+     check_owner $monRoot/${fqdn}.monitor_server.output	root
     )
    else
-     check_owner ~enstore/`$HOSTNAME`.startup
-     check_owner $monRoot/`$HOSTNAME`.monitor_server.output	root
+     check_owner ~enstore/${fqdn}.startup
+     check_owner $monRoot/${fqdn}.monitor_server.output  root
    fi
 fi
 
@@ -1042,7 +1150,7 @@ today=`$DATE -I`
 
 (( SERVER )) && case $node in
 
-  d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1)
+  d0ensrv1|stkensrv1|cdfensrv1|cmspnfs1|eagpnfs1)
     # check all pnfs database sizes on srv1 nodes
     #  - but don't make too much noise about it
     # also count the number of gdbm and postgres sql databases
@@ -1091,14 +1199,14 @@ today=`$DATE -I`
 	       dbszMB=$(( (dbszKB+512)>>10 ))
 	    fi
 	    if [ -r $dbfile ]; then
-	       if (( dbszKB > 2097152 && dbszKB > $(<$dbfile) )); then
-		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 2048 MB and is growing"
+	       if (( dbszKB > 8388608 && dbszKB > $(<$dbfile) )); then
+		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 8 GB and is growing"
 		  logit "$msg"
 		  if (( ALARM )); then
 		     enstore alarm --raise --severity "E" --root-error "$msg"
 		  fi
-	       elif (( dbszKB > 1740800 && $dbszKB > $(<$dbfile) )); then
-		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 1700 MB and is growing"
+	       elif (( dbszKB > 5242880 && $dbszKB > $(<$dbfile) )); then
+		  msg="DATABASE TOO BIG: $dbname - $dbszMB MB, exceeds 5 GB and is growing"
 		  logit "$msg"
 		  if (( ALARM )); then
 		     enstore alarm --raise --severity "W" --root-error "$msg"
@@ -1135,8 +1243,8 @@ today=`$DATE -I`
     #	    dbserver		1 per gdbm or psql database
     #	    postgres		1 per psql database, plus 2
     #	    postgres		6 per psql database addt'l with slon
+    #	    slon pnfs_replica	1 per psql database addt'l with slon
     #	    java pnfs.batch	many for FL 7.3.x, 1 for LTS or SL 3+
-    #	    slon pnfs_replica	1 per psql database
     let reproc+=$((ngdbm+2+2*npsql))
     # if present, slon adds 7 processes per psql database
     if [ -x /etc/rc.d/init.d/slon-boot ]; then
@@ -1149,7 +1257,7 @@ today=`$DATE -I`
     # skip pnfs manager check for non-production nodes, and immediately after a reboot
     if (( ! REBOOT )) && [ -e /PRODUCTION ]; then
        if [ `$PS --no-headers -C pnfs | $WC -l` -ne 1 ]; then
-	  msg="ERROR: problem with pnfs manager process"
+	  msg="problem with pnfs manager process"
 	  logit "$msg"
 	  if (( ALARM )); then
 	     enstore alarm --raise --severity "W" --root-error "$msg"
@@ -1286,7 +1394,7 @@ fi
 # count the number of pnfsd processes running on server nodes
 if (( SERVER )); then
    NPROC=`$PS --no-headers -C pnfsd | $WC -l`
-   if (( NPROC > 0 && NPROC != npnfsd )); then
+   if (( NPROC > 0 )) && (( NPROC != npnfsd )); then
       msg="$NPROC pnfsd processes running. Should be $npnfsd"
       logit "$msg"
       if (( ALARM )); then
@@ -1296,24 +1404,6 @@ if (( SERVER )); then
       logit "$NPROC pnfsd processes, ok"
    fi
 fi
-
-# check that db_deadlock and db_checkpoint are running if file or vol clerk running:
-#if $PS axuwww|$GREP python|$GREP -v 'grep'|$EGREP '(file|volume)_clerk.py' >/dev/null; then
-#   for need in db_checkpoint db_deadlock
-#   do
-#     if [ `$PS axuwww|$GREP -v 'grep'|$GREP -c $need` -ne 1 ]; then
-#	msg="$need not running (or more than 1 running) and file/volume clerk are running."
-#	logit "$msg"
-#	if (( ALARM )); then
-#	   enstore alarm --raise --severity "A" --root-error "$msg"
-#	fi
-#     elif (( ! QUIET )); then
-#	logit "$need running, ok"
-#     fi
-#   done
-#elif (( ! QUIET )); then
-#  logit "file/volume clerk not running, no db_deadlock or db_checkpoint check, ok"
-#fi
 
 # check for web servers
 case $node in
@@ -1332,7 +1422,7 @@ case $node in
     fi
     for i in $ENSTORE_DIR/src/*_cgi.py
     do
-       right_file $i /local/ups/prd/httpd/cgi-bin/enstore 0755
+       right_file $i /fnal/ups/prd/httpd/cgi-bin/enstore 0755
     done
     ;;
   # web servers may be running on these nodes, but don't need to be
