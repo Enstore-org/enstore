@@ -3700,9 +3700,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         except:
             exc, detail, tb = sys.exc_info()
             Trace.log(e_errors.ERROR, "error in send_client_done: %s" % (detail,))
-        # do not close sockets here
-        # move closing sockets to connect_client
-        '''
+
         if ((self.method and self.method != 'read_next') or
             (self.method == None)):
             # close sockets only for general case
@@ -3715,7 +3713,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR, "error closing control and listen sockets: %s" % (detail,))
             self.control_socket = None
             self.listen_socket = None
-        '''
+
         Trace.log(e_errors.INFO, "Done is sent")
         return
 
@@ -3737,21 +3735,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass
 
     def connect_client(self):
-        if ((self.method and self.method != 'read_next') or
-            (self.method == None)):
-            # close sockets only for general case
-            # in case of tape reads do not close them
-            try:
-                if self.control_socket:
-                    self.control_socket.close()
-                if self.listen_socket:
-                    self.listen_socket.close()
-            except:
-                exc, detail, tb = sys.exc_info()
-                Trace.log(e_errors.ERROR, "error closing control and listen sockets: %s" % (detail,))
-            self.control_socket = None
-            self.listen_socket = None
-        
         self.client_socket = None
         # run this in a thread
         try:
