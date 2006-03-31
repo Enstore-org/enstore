@@ -177,6 +177,21 @@ def get_edb(enstoredb):
 db = get_db()
 edb = get_edb(enstoredb)
 
+# get_rem_ticket_number(rem_res)
+#	get ticket number from remidy API
+#	rem_res is the result (array of lines) from remidy API
+def get_rem_ticket_number(rem_res):
+	for i in rem_res:
+		t = i.split()
+		if t[0] == 'Entry' and \
+			t[1] == 'created' and \
+			t[2] == 'with' and \
+			t[3] == 'id' and \
+			t[4] == '=':
+			return "HELPDESK_TICKET_"+t[5]
+	return 'UNKNOWN_TICKET'
+
+
 # create_job() -- generic job creation
 def create_job(name, type, args, comment = ''):
 	association = None
@@ -688,7 +703,7 @@ def even(i):
 CAPS_PER_TICKET = 10
 VOLUMES_PER_CAP = 21
 
-def recommend_write_protect_job(media_type='9940B'):
+def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WP') + 1
 	# get exclusion list:
@@ -715,8 +730,7 @@ def recommend_write_protect_job(media_type='9940B'):
 			not file_family like '%%-MIGRATION' and \
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion,
-			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+			limit %d;"%(media_type, exclusion, limit)
 	else:
 		q = "select label from volume where \
 			media_type = '%s' and \
@@ -729,8 +743,7 @@ def recommend_write_protect_job(media_type='9940B'):
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION' and \
 			order by label \
-			limit %d;"%(media_type,
-			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+			limit %d;"%(media_type, limit)
 	if debug:
 		print q
 	res = edb.query(q).getresult()
@@ -747,7 +760,7 @@ def recommend_write_protect_job(media_type='9940B'):
 			cap_n = cap_n + 1
 	return job
 
-def recommend_write_permit_job(media_type='9940B'):
+def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WE') + 1
 	# get exclusion list:
@@ -774,8 +787,7 @@ def recommend_write_permit_job(media_type='9940B'):
 				from no_flipping_file_family) and\
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion,
-			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+			limit %d;"%(media_type, exclusion, limit)
 	else:
 		q = "select label from volume where \
 			media_type = '%s' and \
@@ -788,8 +800,7 @@ def recommend_write_permit_job(media_type='9940B'):
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION' \
 			order by label \
-			limit %d;"%(media_type,
-			VOLUMES_PER_CAP*CAPS_PER_TICKET)
+			limit %d;"%(media_type, limit)
 	if debug:
 		print q
 	res = edb.query(q).getresult()
@@ -995,8 +1006,13 @@ def execute(args):
 			print cc
 			# os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
-			# os.system(cc)
 			print cc
+			# use popen to get the ticket number
+			# rem_res = op.popen(cc, 'r').readlines()
+			# ticket = get_rem_ticket_number(rem_res)
+			# res2 = start_next_task(job_name, ticket)
+			# res2.appen(show_current_task(job_name))
+			# return res2
 		else:
 			return "no more volumes to do"
 	elif cmd == "auto_write_protect_off":
@@ -1024,8 +1040,38 @@ def execute(args):
 			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
 			# os.system(cc)
 			print cc
+			# use popen to get the ticket number
+			# rem_res = op.popen(cc, 'r').readlines()
+			# ticket = get_rem_ticket_number(rem_res)
+			# res2 = start_next_task(job_name, ticket)
+			# res2.appen(show_current_task(job_name))
+			# return res2
 		else:
 			return "no more volumes to do"
+	elif cmd == "recommend_write_protect_on":
+		if len(args) > 1:
+			res = recommend_write_protect_job(media_type = args[1], limit=1000000)
+		else:
+			res = recommend_write_protect_job(limit=1000000)
+		pprint.pprint(res)
+		total = 0
+		caps = len(res)
+		for i in res.keys():
+			total = total + len(res[i])
+		print "%d tapes in %d caps"%(total, caps)
+		return []
+	elif cmd == "recommend_write_protect_off":
+		if len(args) > 1:
+			res = recommend_write_permit_job(media_type = args[1], limit=1000000)
+		else:
+			res = recommend_write_permit_job(limit=1000000)
+		pprint.pprint(res)
+		total = 0
+		caps = len(res)
+		for i in res.keys():
+			total = total + len(res[i])
+		print "%d tapes in %d caps"%(total, caps)
+		return []
 	elif cmd == "current": # current task
 		result = []
 		for i in args[1:]:
