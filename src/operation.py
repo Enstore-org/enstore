@@ -727,7 +727,7 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
-			not file_family like '%%-MIGRATION' and \
+			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
 			order by label \
 			limit %d;"%(media_type, exclusion, limit)
@@ -741,7 +741,7 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
-			not file_family like '%%-MIGRATION' and \
+			not file_family like '%%-MIGRATION%%' and \
 			order by label \
 			limit %d;"%(media_type, limit)
 	if debug:
@@ -781,7 +781,7 @@ def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_
 			system_inhibit_1 = 'none' and \
 			write_protected != 'n' and \
 			not storage_group in (select * from no_flipping_storage_group) and \
-			not file_family like '%%-MIGRATION' and \
+			not file_family like '%%-MIGRATION%%' and \
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
@@ -798,7 +798,7 @@ def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
-			not file_family like '%%-MIGRATION' \
+			not file_family like '%%-MIGRATION%%' \
 			order by label \
 			limit %d;"%(media_type, limit)
 	if debug:
