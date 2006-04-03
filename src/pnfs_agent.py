@@ -415,7 +415,7 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
         Trace.log(e_errors.INFO,
-                  'get_parent_id %s %s'%(fname,ticket['parent_id'],))
+                  'get_parent_id pnfs %s'%(ticket['parent_id'],))
         return
 
     def set_xreference(self,ticket) :
