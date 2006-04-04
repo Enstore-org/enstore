@@ -128,6 +128,7 @@ node=`$HOSTNAME -s`
 fqdn=`$HOSTNAME -f`
 gang=`$ENSTORE_DIR/sbin/gang`
 
+umask 022
 
 # convert uptime to units of our scheduling interval (15 minutes)
 let uptime=`$CUT -d. -f1 /proc/uptime`/900
@@ -872,14 +873,14 @@ else
   right_file	$ENSTORE_DIR/etc/${INETD}.conf		/etc/${INETD}.conf
   if [ "$INETD" = xinetd ]; then
 # ftp is special - it is enabled on most servers, disabled elsewhere
-    if echo $node | egrep '^(d0|stk|cdf)ensrv[02346]$' >/dev/null; then
-      sed -e '/disable/s/yes/no/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
-    else
-      sed -e '/disable/s/no/yes/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
-    fi
-    right_file	/tmp/ftp.xinetd				/etc/xinetd.d/ftp
+#   if echo $node | egrep '^(d0|stk|cdf)ensrv[02346]$' >/dev/null; then
+#     sed -e '/disable/s/yes/no/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
+#   else
+#     sed -e '/disable/s/no/yes/' $ENSTORE_DIR/etc/ftp > /tmp/ftp.xinetd
+#   fi
+#   right_file	/tmp/ftp.xinetd				/etc/xinetd.d/ftp
 # check the other services
-    for s in kshell klogin eklogin telnet
+    for s in kshell klogin eklogin telnet ftp
     do
       right_file $ENSTORE_DIR/etc/$s			/etc/xinetd.d
     done
@@ -1255,7 +1256,8 @@ today=`$DATE -I`
     fi
     let maxproc+=reproc
     # skip pnfs manager check for non-production nodes, and immediately after a reboot
-    if (( ! REBOOT )) && [ -e /PRODUCTION ]; then
+    # also, there is no dcache on d0en, hence no pnfs manager process
+    if (( ! REBOOT )) && [ -e /PRODUCTION ] && [ $gang != d0en ]; then
        if [ `$PS --no-headers -C pnfs | $WC -l` -ne 1 ]; then
 	  msg="problem with pnfs manager process"
 	  logit "$msg"
@@ -1601,10 +1603,10 @@ done
 
 # tasks that go over network. Can hang sometimes. Do this last.
 
-# reduce load on base nodes by doing this less frequently.
-
+# reduce load on base nodes by doing this less frequently
+# when invoked by cron, 4x a day, or after reboot,
 # check that farmlets match
-if (( ! (uptime % 11) )) && [ $gang != "rip" ]; then
+if (( ! (uptime % 25) )) && [ $gang != rip ]; then
    if (( ALARM )); then
      msg="`$FARMLETS -a 2>&1`"
    else
@@ -1617,9 +1619,9 @@ if (( ! (uptime % 11) )) && [ $gang != "rip" ]; then
    fi
 fi
 
-# if we're not in /etc/cron.d, create us there
+# if we're not in /etc/cron.d, and invoked by cron, create us there
 if [ -e /PRODUCTION -a ! -r /etc/cron.d/netscan ]; then
-   $ECHO "7,22,37,52 * * * * root /home/enstore/enstore/sbin/netscan -a -c -q >/dev/null 2>/dev/null" > /etc/cron.d/netscan
+   (( CROND )) && $ECHO "7,22,37,52 * * * * root /home/enstore/enstore/sbin/netscan -a -c -q >/dev/null 2>/dev/null" > /etc/cron.d/netscan
 fi
 
 # if we're still in the root crontab, remove us
