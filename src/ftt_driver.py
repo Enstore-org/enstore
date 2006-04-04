@@ -149,7 +149,7 @@ class FTTDriver(generic_driver.Driver):
     def tell(self):
         if not self.ftt:
             Trace.log(e_errors.ERROR, "tell: no ftt descriptor")
-            return None
+            return None, None
         try:
             #Trace.trace(42, "ftt.get_position()")
             fil, block = self.ftt.get_position()
