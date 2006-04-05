@@ -1300,7 +1300,11 @@ def main(intf):
         default_config_port = enstore_functions2.default_port()
         csc = configuration_client.ConfigurationClient((default_config_host,
                                                         default_config_port))
-        csc.dump_and_save()
+        rtn_tkt = csc.dump_and_save(timeout = 2, retry = 2)
+        if not e_errors.is_ok(rtn_tkt):
+            sys.stderr.write("Unable to contact configuration server: %s\n" %
+                             str(rtn_tkt['status']))
+            sys.exit(1)
         csc.new_config_obj.enable_caching()
 
         #cscs_info contains the known_config_servers section of the
