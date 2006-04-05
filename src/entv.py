@@ -1298,8 +1298,13 @@ def main(intf):
         # get a configuration server
         default_config_host = enstore_functions2.default_host()
         default_config_port = enstore_functions2.default_port()
-        csc = configuration_client.ConfigurationClient((default_config_host,
-                                                        default_config_port))
+        try:
+            csc = configuration_client.ConfigurationClient(
+                (default_config_host, default_config_port))
+        except (socket.error,), msg:
+            sys.stderr.write("Error contacting configuration server: %s\n" %
+                             msg.args[1])
+            sys.exit(1)
         rtn_tkt = csc.dump_and_save(timeout = 2, retry = 2)
         if not e_errors.is_ok(rtn_tkt):
             sys.stderr.write("Unable to contact configuration server: %s\n" %
