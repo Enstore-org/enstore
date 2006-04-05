@@ -122,7 +122,7 @@ def state_name(state):
 READ, WRITE, ASSERT = range(3)
 
 #error sources
-TAPE, ROBOT, NETWORK, DRIVE = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE']
+TAPE, ROBOT, NETWORK, DRIVE, USER = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER']
 
 def mode_name(mode):
     if mode is None:
@@ -2993,7 +2993,10 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.bytes_to_read = self.bytes_to_transfer
         self.real_transfer_time  = 0.
         self.transfer_deficiency = 1.
-
+        if (self.bytes_to_transfer == None) or (self.bytes_to_transfer < 0L) :
+            self.transfer_failed(e_errors.BAD_FILE_SIZE, "bad file size is %s"%(self.bytes_to_transfer,), error_source=USER, dismount_allowed=0)
+            
+            return
         ##NB: encp v2_5 supplies this information for writes but not reads. Somebody fix this!
         try:
             client_hostname = self.current_work_ticket['wrapper']['machine'][1]

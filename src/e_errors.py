@@ -90,6 +90,7 @@ WRONG_FORMAT = "WRONG FORMAT"
 
 FILESYSTEM_CORRUPT = "Filesystem is corrupt" #Encp finds pnfs corrupted.
 MC_QUEUE_FULL = "MEDIA_CHANGER_QUEUE_FULL" # media changer queue is full
+BAD_FILE_SIZE = "BAD_FILE_SIZE" # file size is bad. For instance < 0
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
 #       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
@@ -203,6 +204,7 @@ non_retriable_errors = ( NOACCESS, # set by enstore
                          NO_FILES, #encp has no files to transfer???
                          NO_FILE,   #FC does not know about requested bfid
                          NO_VOLUME, #VC does not know about requested volume
+                         BAD_FILE_SIZE, # file size is bad. For instance < 0
                          )
 
 raise_alarm_errors = ( CONFLICT, #Metadata is not consistant.
