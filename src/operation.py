@@ -829,7 +829,10 @@ def make_cap_args(d):
 
 # make_cap(list)
 def make_cap(l):
-	cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
+	if cluster == "CDF":
+		cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,0,0 "
+	else:
+		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
 	for i in l:
 		cap_script = cap_script + ' '+i
 	cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
