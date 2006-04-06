@@ -42,11 +42,11 @@ import time
 import pnfs
 import os
 import re
+import thread
+import popen2
 
-#class PnfsFile 
-#def __init__(self, pnfsid):
-#    self.id=pnfsid
-#    se
+
+exitmutexes=[]
 
 def check_layer_1(l):
     if (len(l) == 0 ) : return False
@@ -82,7 +82,7 @@ def check_volatile_files(db_name):
         pnfsid_string=row[0]
 
 
-#        f=open(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
+#        f=ope[n(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
 #        is_file=0
 #        for line in f.readlines():
 #            data = string.split(line[:-1],":")
@@ -99,7 +99,7 @@ def check_volatile_files(db_name):
             l1=p.readlayer(1)
             l2=p.readlayer(2)
             l4=p.readlayer(4)
-            if (check_layer_1(l1) == True and check_layer_2(l2) == True and check_layer_4(l4) == True ) :
+            if (check_layer_1(l1) == True and check_layer_4(l4) == True ) :
                 sql_txt = "delete from volatile_files where pnfsid_string='%s'"%(pnfsid,)
                 r=db.query(sql_txt)
             else:
@@ -170,7 +170,7 @@ def insert_into_volatile_files(db_name):
                 l1=p.readlayer(1)
                 l2=p.readlayer(2)
                 l4=p.readlayer(4)
-                if (check_layer_1(l1) == False or check_layer_2(l2) == False or check_layer_4(l4) == False ) :
+                if (check_layer_1(l1) == False or check_layer_4(l4) == False ) :
                     l1_str="y";
                     l2_str="y";
                     l4_str="y";
@@ -199,11 +199,32 @@ def prepare_html(db_name):
     os.system(cmd)
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
     os.system(cmd)
- 
+
+def do_work(i,db_name) :
+    check_volatile_files(db_name)
+    insert_into_volatile_files(db_name)
+    prepare_html(db_name)
+    exitmutexes[i]=1
 
 if __name__ == '__main__':
-    check_volatile_files("exp-db")
-    insert_into_volatile_files("exp-db");
-    prepare_html("exp-db")
+    i=0
+    cmd="mdb status | awk '{print $2}' | egrep -v 'Name|admin|NULL'"
+    inp,out = os.popen2 (cmd, 'r')
+    inp.write (cmd)
+    inp.close ()
+    dbs=[]
+    for line in out.readlines() :
+        if line.isspace():
+            continue
+        dbs.append(line[:-1])
+    out.close()
+
+#    for db_name in dbs:
+#        print db_name
+    for db_name in ['eagle', 'exp-db']:
+        thread.start_new(do_work, (i,db_name))
+        exitmutexes.append(0)
+        i=i+1
+    while 0 in exitmutexes: pass
 
 
