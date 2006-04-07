@@ -193,13 +193,36 @@ def insert_into_volatile_files(db_name):
     db.close()
 
 def prepare_html(db_name):
-    fname="%s.txt"%(db_name,)
-    sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files order by date asc"
-    cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
-    os.system(cmd)
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
-    os.system(cmd)
-
+    db = pg.DB(db_name);
+    res=db.query("select count(*) from volatile_files")
+    count=0
+    for row in res.getresult():
+        if not row:
+            continue
+        count=int(row[0])
+    if ( count != 0 ) :
+        count1=0
+        res=db.query("select count(*) from volatile_files where layer1='n' and layer2='n' and layer4='n'")
+        for row in res.getresult():
+            if not row:
+                continue
+            count1=int(row[0])
+        if ( count1!=0 ) : 
+            fname="%s_bad.txt"%(db_name,)
+            sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer1='n' and layer2='n' and layer4='n' order by date asc"
+            cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+            os.system(cmd)
+            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+            os.system(cmd)
+        if ( count1 != count )  :
+            fname="%s.txt"%(db_name,)
+            sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' order by date asc"
+            cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+            os.system(cmd)
+            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+            os.system(cmd)
+    db.close()
+            
 def do_work(i,db_name) :
     try:
         check_volatile_files(db_name)
@@ -223,10 +246,12 @@ if __name__ == '__main__':
     out.close()
 
     for db_name in dbs:
-        thread.start_new(do_work, (i,db_name))
         exitmutexes.append(0)
+        do_work(i,db_name)
+#       thread.start_new(do_work, (i,db_name))
+#       exitmutexes.append(0)
         i=i+1
-    while 0 in exitmutexes: pass
+#    while 0 in exitmutexes: pass
 
 
 #    for db_name in ['eagle', 'exp-db']:
