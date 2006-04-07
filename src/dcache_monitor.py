@@ -201,9 +201,12 @@ def prepare_html(db_name):
     os.system(cmd)
 
 def do_work(i,db_name) :
-    check_volatile_files(db_name)
-    insert_into_volatile_files(db_name)
-    prepare_html(db_name)
+    try:
+        check_volatile_files(db_name)
+        insert_into_volatile_files(db_name)
+        prepare_html(db_name)
+    except (pg.ProgrammingError,OSError, IOError):
+        pass
     exitmutexes[i]=1
 
 if __name__ == '__main__':
