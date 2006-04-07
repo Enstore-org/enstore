@@ -822,19 +822,23 @@ def make_cap_args(d):
 	res = []
 	for k in d.keys():
 		if d[k]:
-			res.append('CAP'+str(k)+':')
+			res.append('CAP' + str(k) + ':')
 			for i in d[k]:
 				res.append(i)
 	return res
 
 # make_cap(list)
 def make_cap(l):
-	if cluster == "CDF":
-		cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,0,0 "
-	else:
+	if cluster == "D0":
+		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 1,0,0 "
+	elif cluster == "STK":
 		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
+	elif cluster == "CDF":
+		cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,1,0 "
+	else:
+		return None
 	for i in l:
-		cap_script = cap_script + ' '+i
+		cap_script = cap_script + ' ' + i
 	cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
 	return cap_script
 
@@ -853,7 +857,6 @@ def get_max_cap_number(cluster, op_type=''):
 def make_help_desk_ticket(n, cluster, script_host, job):
 	if job == "protect":
 		action = "lock"
-		action2 = "flip"
 	elif job == "permit":
 		action = "unlock"
 	else:
@@ -867,7 +870,7 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	category = "Other"
 	aType = "LoadTapes"
 	item = "Other"
-	
+
 	cc = "$ENSTORE_DIR/sbin/genMediaTicket %s '%s' '%s' %s %s %s %s '%s' %s"%(system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
 
