@@ -219,12 +219,13 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-#    for db_name in dbs:
-#        print db_name
-    for db_name in ['eagle', 'exp-db']:
+    for db_name in dbs:
         thread.start_new(do_work, (i,db_name))
         exitmutexes.append(0)
         i=i+1
     while 0 in exitmutexes: pass
+
+
+#    for db_name in ['eagle', 'exp-db']:
 
 
