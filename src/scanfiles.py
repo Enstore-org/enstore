@@ -682,18 +682,61 @@ def parse_mtab():
     fp.close()
 
 def __search_for_mount_point(pnfs_path):
-    for item in db_pnfsid_cache.values():
-        index = pnfs_path.find(item)
+
+    #Determine if the path is a traditional path or an admin/dCache path.
+    pp_index = pnfs_path.find("/pnfs/fs/usr/")
+    if pp_index != -1:
+        is_admin_path = True
+    else:
+        is_admin_path = False
+
+    #Obtain the pnfs mount points with the /pnfs/fs mount point seperated
+    # out (if present).
+    traditional_paths = db_pnfsid_cache.items()
+    admin_paths = []
+    for i in range(len(traditional_paths)):
+        if traditional_paths[i][0] == 0:
+            #found /pnfs/fs path
+            admin_paths.append(traditional_paths[i])
+            del traditional_paths[i]
+            break
+
+    #Put the type of path we were searching for first.
+    if is_admin_path:
+        search_order = admin_paths + traditional_paths
+    else:
+        search_order = traditional_paths + admin_paths
+
+    for (dbnum, m_p) in search_order:
+        if dbnum == 0:
+            if not is_admin_path:
+                use_pnfs_path = os.path.join(pnfs_path[:pp_index + 7],
+                                             "fs/usr",
+                                             pnfs_path[pp_index + 7:])
+            else:
+                use_pnfs_path = pnfs_path
+
+        else:
+            if is_admin_path:
+                use_pnfs_path = os.path.join(pnfs_path[:pp_index + 7],
+                                             pnfs_path[pp_index + 8])
+            else:
+                use_pnfs_path = pnfs_path
+
+        index = use_pnfs_path.find(m_p)
         if index != -1:
             #Found it???
-            return item, pnfs_path[index:]
+            return m_p, pnfs_path[index:]
 
-        mp_first_pnfs_index = item.find("/pnfs")
-        p_find_index = pnfs_path.find(item[mp_first_pnfs_index:])
+        """
+        mp_first_pnfs_index = m_p.find("/pnfs")
+        print "mp_first_pnfs_index", mp_first_pnfs_index
+        p_find_index = use_pnfs_path.find(m_p[mp_first_pnfs_index:])
         if p_find_index != -1:
             #Found it???
-            return item, os.path.join(item,
+            return m_p, os.path.join(m_p,
                pnfs_path[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
+        """
 
     return None, None
 
