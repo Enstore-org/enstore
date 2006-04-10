@@ -1346,10 +1346,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print str(detail)
             return 1
         
-    def pdatabase(self):  #, intf):
+    def pdatabase(self, intf):
         try:
-            self.get_database()
-            print_results(self.database)
+            print_results(self.get_database(intf.file))
             return 0
         except (OSError, IOError), detail:
             print str(detail)
