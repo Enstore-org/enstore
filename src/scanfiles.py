@@ -768,9 +768,61 @@ def get_mount_point2(pnfs_id):
     except ValueError:
         return None
 
+    if not db_pnfsid_cache:
+        parse_mtab() #Process the mtab file.
+
     #Check the cache to see if the entry is already found.
     if db_pnfsid_cache.get(db_num, None):
         return db_pnfsid_cache[db_num]
+
+    #Obtain the pnfs mount points with the /pnfs/fs mount point seperated
+    # out (if present).
+    traditional_paths = db_pnfsid_cache.items()
+    admin_paths = []
+    for i in range(len(traditional_paths)):
+        if traditional_paths[i][0] == 0:
+            #found /pnfs/fs path
+            admin_paths.append(traditional_paths[i])
+            del traditional_paths[i]
+            break
+
+    #If the /pnfs/fs path is found, find all directories in /pnfs/fs/usr/
+    # and add them to the search path.  We only need one pnfs area that
+    # is conected (does not need to be the correct one) to the proper
+    # pnfs database.  This is messy, but it gets the job done.
+    dbnum, mount_path = admin_paths[0]  #there should only be one...
+    mount_path = os.path.join(mount_path, "usr")
+    dir_list = os.listdir(mount_path)
+    for fname in dir_list:
+        f_path = os.path.join(mount_path, fname)
+        f_stat = os.lstat(f_path)
+        if stat.S_ISDIR(f_stat[stat.ST_MODE]):
+            p = pnfs.Pnfs(f_path)
+            db_num = p.get_database(f_path).split(":")[1]
+            admin_paths.append((db_num, f_path))
+
+    search_order = traditional_paths + admin_paths
+
+    #Search all of the paths looking for one that can tell us where
+    # the current pnfs location is.
+    for (dbnum, mount_path) in search_order:
+        if mount_path.find("/pnfs/fs") != -1:
+            use_mount_path = os.path.join(mount_path, "usr")
+        else:
+            use_mount_path = mount_path
+        try:
+            p = pnfs.Pnfs()
+            my_path = p.get_path(pnfs_id, use_mount_path)
+            this_path = p.get_mount_point(my_path)
+            this_database = p.get_database(this_path).split(":")[1]
+
+            #Before exiting we should put this back into the db_pnfsid_cache
+            # global cache to speed up future bfids that can reuse all
+            # of this lookup work.
+            db_pnfsid_cache[this_database] = this_path
+            return use_mount_path
+        except (OSError):
+            pass
 
     #If we get here, (re)process the mtab file.
     parse_mtab()
@@ -781,7 +833,6 @@ def get_mount_point2(pnfs_id):
 
     #Failed to find the mount point.
     return None
-
 
 
 def check(f, f_stats = None):
