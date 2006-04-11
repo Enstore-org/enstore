@@ -624,7 +624,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # directory (pnfs_id=000000000000000000001020).
         try:
             filepath = self.get_nameof(use_id, use_dir) # starting point.
-        except (OSError, IOError), msg:
+        except (OSError, IOError):
             raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
                                                     "Not a valid pnfs id"))
         #Loop through the pnfs ids to find each ids parent until the "root"
@@ -664,6 +664,26 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.path = filepath
 
         return filepath
+
+    #Return just the mount point section of a pnfs path.
+    def get_mount_point(self, filepath = None):
+
+        if filepath:
+            fname = filepath
+        else:
+            fname = self.filepath
+
+        initial_pnfs_db = self.get_id(fname)[:4]
+        current_path = old_path = fname
+
+        while 1:
+            current_path = os.path.dirname(current_path)
+            current_pnfs_db = self.get_id(current_path)[:4]
+            if initial_pnfs_db != current_pnfs_db:
+                return old_path
+            old_path = current_path
+            
+        return None
         
     # get the cursor information
     def get_cursor(self, directory=None):
