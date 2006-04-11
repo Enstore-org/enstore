@@ -386,6 +386,12 @@ def get_layer_2(f):
             line2 = ""
 
         try:
+            hsm_match = re.compile("h=(no|yes)")
+            l2['hsm'] = hsm_match.search(line2).group().split("=")[1]
+        except AttributeError:
+            l2['hsm'] = None
+
+        try:
             crc_match = re.compile("c=[1-9]+:[a-zA-Z0-9]{8}")
             l2['crc'] = long(crc_match.search(line2).group().split(":")[1], 16)
         except AttributeError:
@@ -1127,6 +1133,32 @@ def check_file(f, file_info):
         info.append("marked bad")
         return err, warn, info #Non-lists skips any output.
 
+    #Get the info from layer 2.
+    layer2 = get_layer_2(f)[0]
+
+    #If this file is not supposed to be forwarded to tape by dCache,
+    # check the parent id and compare the file size from the os
+    # and layer 2.
+    if layer2.get('hsm', None) == "no":
+        err_p, warn_p, info_p = check_parent(f)
+        err = err + err_p
+        warn = warn + warn
+        info = info + info_p
+
+        real_size = long(f_stats[stat.ST_SIZE])
+        layer2_size = layer2.get('size', None)
+        if layer2_size != None:
+            layer2_size = long(layer2_size) #Don't cast a None.
+            TWO_GIG_MINUS_ONE = 2147483648L - 1
+            if real_size == 1L and layer2_size > TWO_GIG_MINUS_ONE:
+                pass
+            elif real_size == layer2_size:
+                pass
+            else:
+                err.append("size(%s, %s)" % (layer2_size, real_size))
+
+        return err, warn, info
+                
     #Get information from the layer 1 and layer 4.
     bfid, (err1, warn1, info1) = get_layer_1(f)
     layer4, (err4, warn4, info4) = get_layer_4(f)
@@ -1145,10 +1177,7 @@ def check_file(f, file_info):
     	age = time.time() - f_stats[stat.ST_MTIME]
         if age < ONE_DAY:
             warn.append('younger than 1 day (%d)' % (age))
-        else:
-            #Get the info from layer 2.
-            layer2 = get_layer_2(f)[0]
-
+        else:            
             #If the size from stat(1) and layer 2 are both zero, then the
             # file really is zero length and the dCache did not forward
             # the file to tape/Enstore.
