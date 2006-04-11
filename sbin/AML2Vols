@@ -82,13 +82,13 @@ EOF
   now=`date +"%Y-%m-%d:%H:%M:%S"`
   # capacity of a full tower for each media type
   case $media in
-    DECDLT) type=DLT
+    DECDLT) type=DLT  # tower 1
 	    cap=4320  # 32x15x9
 	    ;;
-      3480) type=LTO
-	    cap=4800  # 32x15x10
+      3480) type=LTO  # towers 2 & 3
+	    cap=9600  # 32x15x10x2
 	    ;;
-       8MM) type=8MM
+       8MM) type=8MM  # all gone
 	    cap=7168  # 32x16x14
 	    ;;
   esac
