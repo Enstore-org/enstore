@@ -124,7 +124,7 @@ def insert_into_volatile_files(db_name):
     #
     # establish time boundaries
     #
-    now_time       = time.time()
+    now_time       = time.time()-30*60
     start_time     = now_time-3600*25 # one hour is for safety
     str_now_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
@@ -244,6 +244,9 @@ if __name__ == '__main__':
             continue
         dbs.append(line[:-1])
     out.close()
+
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
+    os.system(cmd)
 
     for db_name in dbs:
         exitmutexes.append(0)
