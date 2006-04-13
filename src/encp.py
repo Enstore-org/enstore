@@ -5956,7 +5956,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         ostatinfo = p.get_stat(odirname)
         
         #Get these two pieces of information about the local input file.
-        file_size = istatinfo[stat.ST_SIZE]
+        file_size = long(istatinfo[stat.ST_SIZE])
         file_inode = istatinfo[stat.ST_INO]
         
         #There is no sense to get these values every time.  Only get them
@@ -8293,6 +8293,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         #Get these two pieces of information about the local input file.
         file_size = fc_reply.get('size', None)
+        if type(file_size) != types.NoneType:
+            file_size = long(file_size)
 
         #Print out the replies from the cerks.
         Trace.message(TICKET_LEVEL, "FILE CLERK:")
