@@ -17,6 +17,18 @@
 #include <errno.h>
 
 /***************************************************************************
+ * globals and constants
+ **************************************************************************/
+
+/* Not all systems define these constants. */
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
+#endif
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
+/***************************************************************************
  * prototypes
  **************************************************************************/
 
@@ -300,6 +312,9 @@ static int get_hw_addr(char *intf, char* hw)
 {
    int sock;
    struct ifreq if_info;
+#ifdef SIOCRPHYSADDR
+   struct ifdevea pa_info;  /* OSF1? */
+#endif
    struct sockaddr hw_info;
 
    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -316,14 +331,18 @@ static int get_hw_addr(char *intf, char* hw)
 #elif defined(SIOCGENADDR) /* SunOS, IRIX */
    if(ioctl(sock, SIOCGENADDR, &if_info) < 0)
 #elif defined(SIOCRPHYSADDR)
-   if(ioctl(sock, SIOCRPHYSADDR, &if_info) < 0) /* OSF1? */
+   if(ioctl(sock, SIOCRPHYSADDR, &pa_info) < 0) /* OSF1? */
 #endif
    {
       (void) close(sock);
       return -1;
    }
 
+#ifdef SIOCRPHYSADDR
+   memcpy(&hw_info, &(pa_info.current_pa), INET_ADDRSTRLEN); /* OSF1? */
+#else 
    memcpy(&hw_info, &(if_info.ifr_hwaddr), INET_ADDRSTRLEN);
+#endif
    sprintf(hw, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX",
 	   ((char*)(&(hw_info.sa_data)))[0],
 	   ((char*)(&(hw_info.sa_data)))[1],
