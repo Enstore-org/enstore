@@ -39,8 +39,6 @@
 131.225.164.68		d0enmvr26a.fnal.gov	d0enmvr26a
 131.225.164.78		d0enmvr27a.fnal.gov	d0enmvr27a
 131.225.164.72		d0enmvr28a.fnal.gov	d0enmvr28a
-131.225.164.73		d0enmvr29a.fnal.gov	d0enmvr29a
-131.225.164.74		d0enmvr30a.fnal.gov	d0enmvr30a
 131.225.164.71		d0enmvr33a.fnal.gov	d0enmvr33a
 131.225.164.69		d0enmvr34a.fnal.gov	d0enmvr34a
 131.225.164.77		d0enmvr35a.fnal.gov	d0enmvr35a
@@ -128,6 +126,10 @@
 131.225.13.48		stkenmvr34a.fnal.gov	stkenmvr34a
 131.225.13.87		stkenmvr35a.fnal.gov	stkenmvr35a
 131.225.13.46		stkenmvr36a.fnal.gov	stkenmvr36a
+131.225.13.104		stkenmvr38a.fnal.gov	stkenmvr38a
+131.225.13.105		stkenmvr39a.fnal.gov	stkenmvr39a
+131.225.13.103		stkenmvr40a.fnal.gov	stkenmvr40a
+131.225.13.109		stkenmvr41a.fnal.gov	stkenmvr41a
 131.225.13.97		fndca2a.fnal.gov	fndca2a
 131.225.13.64		fndca3a.fnal.gov	fndca3a
 131.225.13.93		stkendca2a.fnal.gov	stkendca2a
@@ -200,6 +202,8 @@
 #131.225.164.218	d0enmvr18b.fnal.gov	d0enmvr18b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
+#131.225.164.73		d0enmvr29a.fnal.gov	d0enmvr29a
+#131.225.164.74		d0enmvr30a.fnal.gov	d0enmvr30a
 #131.225.164.66		d0enout1a.fnal.gov	d0enout1a
 #131.225.164.67		d0enout2a.fnal.gov	d0enout2a
 #131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
@@ -216,6 +220,7 @@
 #131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
+#131.225.13.100		stkenmvr37a.fnal.gov	stkenmvr37a
 #131.225.13.50		stkendca4a.fnal.gov	stkendca4a
 #131.225.13.51		stkendca5a.fnal.gov	stkendca5a
 #131.225.13.47		cachen1a.fnal.gov	cachen1a
