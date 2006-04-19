@@ -291,7 +291,7 @@ MMAP_IO = "mmap-io"                          #encp
 MMAP_SIZE = "mmap-size"                      #encp
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
-MOVER_TIMEOUT = "mover-timeout"              #assert
+MOVER_TIMEOUT = "mover-timeout"              #assert, encp
 MOVERS_FILE = "movers-file"                  #entv
 NAMEOF = "nameof"                            #pnfs
 NEW_LIBRARY = "new-library"                  #volume
@@ -343,6 +343,7 @@ RESET_LIB = "reset-lib"                      #volume
 RESOLVE = "resolve"                          #alarm
 RESTORE = "restore"                          #volume, file
 RESTORE_ALL = "restore-all"                  #dbs
+RESUBMIT_TIMEOUT = "resubmit-timeout"        #encp
 RETRIES ="retries"
 RM = "rm"                                    #pnfs
 RM_ACTIVE_VOL = "rm-active-vol"              #library
@@ -473,7 +474,7 @@ valid_option_list = [
     QUERY,
     RAISE, READ_ONLY, REASON, RECURSIVE, RECYCLE, REFRESH,
     REMEDY_TYPE, RESET_LIB, RESOLVE,
-    RESTORE, RESTORE_ALL, RETRIES, REBUILD_SG_COUNT,
+    RESTORE, RESTORE_ALL, RESUBMIT_TIMEOUT, RETRIES, REBUILD_SG_COUNT,
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
