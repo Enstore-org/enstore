@@ -2295,16 +2295,16 @@ def get_udp_callback_addr(encp_intf, udps=None):
     # get a port to talk on and listen for connections
     if udps == None:
         udps = udp_server.UDPServer(None,
-                                    receive_timeout=encp_intf.mover_timeout)
+                                    receive_timeout=encp_intf.resubmit_timeout)
     else:
 	addr = udps.server_address
 	udps.__del__()  #Close file descriptors and such.
-        udps.__init__(addr, receive_timeout=encp_intf.mover_timeout)
+        udps.__init__(addr, receive_timeout=encp_intf.resubmit_timeout)
         #In the unlikely event that the port is taken by some other process
         # between the two functions above, obtain a new port.  This can
         # cause some timeout errors, but that is life.
         if udps.server_socket == None:
-            udps.__init__(None, receive_timeout=encp_intf.mover_timeout)
+            udps.__init__(None, receive_timeout=encp_intf.resubmit_timeout)
 
     if udps.server_socket:
         #This servers two purposes.  First, should the route change
@@ -3371,7 +3371,7 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
 
     start_time = time.time()
 
-    while(time.time() - start_time < encp_intf.mover_timeout):
+    while(time.time() - start_time < encp_intf.resubmit_timeout):
         try:
             #Get the udp ticket.
             udp_ticket = udp_server.process_request()
@@ -3679,9 +3679,9 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
         unique_id_list.append(work_ticket['unique_id'])
 
     start_time = time.time()
-    while time.time() < start_time + encp_intf.mover_timeout:
+    while time.time() < start_time + encp_intf.resubmit_timeout:
         #Attempt to get the control socket connected with the mover.
-        duration = max(start_time + encp_intf.mover_timeout - time.time(), 0)
+        duration = max(start_time + encp_intf.resubmit_timeout - time.time(),0)
         try:
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, duration)
@@ -4858,7 +4858,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
 
     #For reads only when a media error occurs.
     retry_non_retriable_media_error = False
-    if is_read(request_dictionary) and e_errors.is_media(status):
+    #Make sure that it is a media error first.  If the error is a media
+    # error, then the request_dictionary will have a full request
+    # dictionary to pass to is_read().  If request_dictionary is not a
+    # full request dictionary is_read() will through an EncpError that
+    # becomes an 'UNCAUGHT EXCEPTION'.  One know case of a non-full
+    # request dictionary is for a (RESUBMITTING, None) 'error'.
+    if e_errors.is_media(status) and is_read(request_dictionary):
         #This munging should really be a common function somewhere.
         try:
             num = int(request_dictionary['fc']['bfid'].split("_")[-1])
@@ -9002,6 +9008,9 @@ class EncpInterface(option.Interface):
         self.mover_timeout = 15*60 # seconds to wait for mover to call back,
                                    # before resubmitting req. to lib. mgr.
                                    # 15 minutes
+        self.resubmit_timeout = 15*60 # seconds to wait for the transfer
+                                   # before giving up on it.
+                                   # 15 minutes
 
         #Options for overriding the pnfs tags.
         self.output_file_family = "" # initial set for use with --ephemeral or
@@ -9252,6 +9261,15 @@ class EncpInterface(option.Interface):
                           option.VALUE_USAGE:option.REQUIRED,
                           option.VALUE_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.USER,},
+        option.MOVER_TIMEOUT:{option.HELP_STRING:
+                              "Number of seconds to wait for the mover "
+                              "before giving up on the transfer. "
+                              "(default = 15min).",
+                              option.VALUE_NAME:'mover_timeout',
+                              option.VALUE_TYPE:option.INTEGER,
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.USER_LEVEL:option.ADMIN,
+                              },
         option.NO_CRC:{option.HELP_STRING:"Do not perform CRC check.",
                        option.DEFAULT_NAME:'chk_crc',
                        option.DEFAULT_TYPE:option.INTEGER,
@@ -9304,6 +9322,15 @@ class EncpInterface(option.Interface):
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
                           option.USER_LEVEL:option.ADMIN,},
+        option.RESUBMIT_TIMEOUT:{option.HELP_STRING:
+                                 "Number of seconds to wait for the mover "
+                                 "before resubmiting the request "
+                                 "(default = 15min).",
+                                 option.VALUE_NAME:'resubmit_timeout',
+                                 option.VALUE_TYPE:option.INTEGER,
+                                 option.VALUE_USAGE:option.REQUIRED,
+                                 option.USER_LEVEL:option.ADMIN,
+                                 },
         option.SHORTCUT:{option.HELP_STRING:
                          "Used with dcache transfers to avoid pathname "
                          "lookups of pnfs ids.",
