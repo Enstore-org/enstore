@@ -124,7 +124,8 @@ def insert_into_volatile_files(db_name):
     #
     # establish time boundaries
     #
-    now_time       = time.time()-30*60
+    delta_time     = 12*3600
+    now_time       = time.time()-60*30
     start_time     = now_time-3600*25 # one hour is for safety
     str_now_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
@@ -187,7 +188,10 @@ def insert_into_volatile_files(db_name):
                                       "'"+pnfsid_string+"',"+\
                                       "decode('"+row[1]+"','hex')"+\
                                       ",'"+p.pnfsFilename+"','"+l1_str+"','"+l2_str+"','"+l4_str+"')"
-                    r=db.query(insert_query_txt)
+                    if ( l2_str == "n" )  :
+                        r=db.query(insert_query_txt)
+                    else if ( l2_str == "y" and int(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S'))) < now_time - delta_time) :
+                        r=db.query(insert_query_txt)
             except (OSError, IOError, AttributeError, ValueError):
                 continue
     db.close()
