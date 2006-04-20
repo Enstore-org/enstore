@@ -190,7 +190,7 @@ def insert_into_volatile_files(db_name):
                                       ",'"+p.pnfsFilename+"','"+l1_str+"','"+l2_str+"','"+l4_str+"')"
                     if ( l2_str == "n" )  :
                         r=db.query(insert_query_txt)
-                    else if ( l2_str == "y" and int(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S'))) < now_time - delta_time) :
+                    elif ( l2_str == "y" and time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')) < now_time - delta_time) :
                         r=db.query(insert_query_txt)
             except (OSError, IOError, AttributeError, ValueError):
                 continue
