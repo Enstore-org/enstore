@@ -124,7 +124,6 @@ def insert_into_volatile_files(db_name):
     #
     # establish time boundaries
     #
-    delta_time     = 12*3600
     now_time       = time.time()-60*30
     start_time     = now_time-3600*25 # one hour is for safety
     str_now_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
@@ -134,8 +133,9 @@ def insert_into_volatile_files(db_name):
               " where "+\
               " (date>'%s' "%(str_start_time,)+\
               " and date<'%s') "%(str_now_time)+\
-              " and pnfsid not in (select pnfsid from volatile_files where date>'%s' and date<'%s') "%(str_start_time,str_now_time,)+\
+              " and pnfsid not in (select pnfsid from volatile_files) "+\
               "  order by date "
+#              " and pnfsid not in (select pnfsid from volatile_files where date>'%s' and date<'%s') "%(str_start_time,str_now_time,)+\
     res=db.query(sql_txt)
     for row in res.getresult():
         if not row:
@@ -188,43 +188,44 @@ def insert_into_volatile_files(db_name):
                                       "'"+pnfsid_string+"',"+\
                                       "decode('"+row[1]+"','hex')"+\
                                       ",'"+p.pnfsFilename+"','"+l1_str+"','"+l2_str+"','"+l4_str+"')"
-                    if ( l2_str == "n" )  :
-                        r=db.query(insert_query_txt)
-                    elif ( l2_str == "y" and time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')) < now_time - delta_time) :
-                        r=db.query(insert_query_txt)
+                    r=db.query(insert_query_txt)
             except (OSError, IOError, AttributeError, ValueError):
                 continue
     db.close()
 
 def prepare_html(db_name):
     db = pg.DB(db_name);
-    res=db.query("select count(*) from volatile_files")
+    #
+    # check for any bad files 
+    #
+    res=db.query("select count(*) from volatile_files where layer2='n'")
     count=0
     for row in res.getresult():
         if not row:
             continue
         count=int(row[0])
     if ( count != 0 ) :
-        count1=0
-        res=db.query("select count(*) from volatile_files where layer1='n' and layer2='n' and layer4='n'")
-        for row in res.getresult():
-            if not row:
-                continue
-            count1=int(row[0])
-        if ( count1!=0 ) : 
-            fname="%s_bad.txt"%(db_name,)
-            sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer1='n' and layer2='n' and layer4='n' order by date asc"
-            cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
-            os.system(cmd)
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
-            os.system(cmd)
-        if ( count1 != count )  :
-            fname="%s.txt"%(db_name,)
-            sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' order by date asc"
-            cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
-            os.system(cmd)
-            cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
-            os.system(cmd)
+        fname="%s_bad.txt"%(db_name,)
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' order by date asc"
+        cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        os.system(cmd)
+        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        os.system(cmd)
+    delta_time     = 12*3600
+    now_time       = time.time()
+    res=db.query("select count(*) from volatile_files where layer2='y' and unix_date<%d"%(int(now_time-delta_time),))
+    count1=0
+    for row in res.getresult():
+        if not row:
+            continue
+        count1=int(row[0])
+    if ( count1!=0 ) : 
+        fname="%s.txt"%(db_name,)
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' order by date asc"
+        cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        os.system(cmd)
+        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        os.system(cmd)
     db.close()
             
 def do_work(i,db_name) :
