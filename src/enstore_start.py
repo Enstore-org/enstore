@@ -345,7 +345,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     else:
         print "Checking %s." % name
         # see if EPS returns config_server"
-        cmd = 'EPS | egrep "%s|%s" | grep -v %s'%(name,"configuration_server.py", "grep")
+        cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
         pipeObj = popen2.Popen3(cmd, 0, 0)
         if pipeObj:
             #stat = pipeObj.wait()
