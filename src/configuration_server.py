@@ -204,9 +204,14 @@ class ConfigurationDict:
         self.reply_to_caller(ticket)
         addr = ticket['callback_addr']
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(addr)
-        callback.write_tcp_obj(sock,reply)
-        sock.close()
+        try:
+            sock.connect(addr)
+            callback.write_tcp_obj(sock,reply)
+            sock.close()
+        except:
+            exc, msg, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "Error sending message %s %s"%(exc, msg))
+            
 
 
     # reload the configuration dictionary, possibly from a new file
