@@ -209,8 +209,7 @@ class ConfigurationDict:
             callback.write_tcp_obj(sock,reply)
             sock.close()
         except:
-            exc, msg, tb = sys.exc_info()
-            Trace.log(e_errors.ERROR, "Error sending message %s %s"%(exc, msg))
+            Trace.handle_error()
             
 
 
