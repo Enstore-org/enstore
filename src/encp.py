@@ -9544,9 +9544,13 @@ class EncpInterface(option.Interface):
 
             try:
                 #Pnfs Agent.
-                pac = get_pac()
-                result = pac.is_pnfs_path(fullname,
-                                          check_name_only = 1)
+                r_encp = os.environ.get('REMOTE_ENCP')
+                if r_encp != None:
+                    pac = get_pac()
+                    result = pac.is_pnfs_path(fullname,
+                                              check_name_only = 1)
+                else:
+                    result = 0
             except EncpError:
                 result = 0
 
