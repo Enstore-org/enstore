@@ -117,7 +117,11 @@ class DbTable:
 		if rdb:
 			self.db = rdb
 		else:
-			self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
+			try:
+				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
+			except:	# wait for 30 seconds and retry
+				time.sleep(30)
+				self.db = pg.DB(host=self.host, port=self.port, dbname=self.database)
 
 	# translate database output to external format
 	def export_format(self, s):
