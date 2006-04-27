@@ -267,6 +267,7 @@ JUST = "just"                                #start, stop
 KEEP = "keep"                                #plotter
 KEEP_DIR = "keep-dir"                        #plotter
 KEEP_VOL = "keep-vol"                        #super-remove
+KEEP_DECLARATION_TIME = "keep-declaration-time"	#volume
 LABEL = "label"                              #plotter
 LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
@@ -455,7 +456,7 @@ valid_option_list = [
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
     IMPORT, INFILE, INFO, INPUT_DIR, IO,
     JOUHOME, JUST,
-    KEEP, KEEP_DIR, KEEP_VOL,
+    KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
     LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MARK_BAD,

@@ -428,7 +428,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
     #
     # if recycle flag is set, vol will be redeclared as a new volume
 
-    def __delete_volume(self, vol, recycle = 0, check_state = 1, clear_sg = False):
+    def __delete_volume(self, vol, recycle = 0, check_state = 1, clear_sg = False, reset_declared = True):
         # check existence of the volume
         record = self.dict[vol]
         if not record:
@@ -493,7 +493,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if recycle:
             record['external_label'] = vol
             record['remaining_bytes'] = record['capacity_bytes']
-            record['declared'] = time.time()
+            if reset_declared:
+                record['declared'] = time.time()
             if record['eod_cookie']  != "none":
                 record['eod_cookie'] = '0000_000000000_0000001'
             record['last_access'] = -1
@@ -620,7 +621,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             clear_sg = True 
         else:
             clear_sg = False
-        ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg)
+        if ticket.has_key('reset_declared'):
+            ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg, reset_delcared = ticket['reset_delcared'])
+        else:
+            ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg)
         self.reply_to_caller(ticket)
         return
 

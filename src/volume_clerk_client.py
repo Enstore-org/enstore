@@ -805,9 +805,10 @@ class VolumeClerkClient(generic_client.GenericClient,
                   'external_label': vol}
         return self.send(ticket,timeout,retry)
 
-    def recycle_volume(self, vol, clear_sg = False, timeout=300, retry=1):
+    def recycle_volume(self, vol, clear_sg = False, reset_declared = True, timeout=300, retry=1):
         ticket = {'work': 'recycle_volume',
-                  'external_label': vol}
+                  'external_label': vol,
+                  'reset_declared': reset_declared}
         if clear_sg:
             ticket['clear_sg'] = True
         return self.send(ticket,timeout,retry)
@@ -904,6 +905,7 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
         self.write_protect_on = None
         self.write_protect_off = None
         self.write_protect_status = None
+        self.keep_declaration_time = False
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -1161,6 +1163,11 @@ class VolumeClerkClientInterface(generic_client.GenericClientInterface):
                       option.VALUE_TYPE:option.STRING,
                       option.VALUE_USAGE:option.REQUIRED,
                       option.VALUE_LABEL:"volume_name",
+                      option.USER_LEVEL:option.ADMIN},
+        option.KEEP_DECLARATION_TIME:{option.HELP_STRING:
+                      "keep declared time when recycling",
+                      option.VALUE_TYPE:option.INTEGER,
+                      option.VALUE_USAGE:option.IGNORED,
                       option.USER_LEVEL:option.ADMIN},
         option.RESET_LIB:{option.HELP_STRING:"reset library manager",
                           option.VALUE_NAME:"lm_to_clear",
@@ -1638,10 +1645,11 @@ def do_work(intf):
         # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
         ticket = vcc.restore_volume(intf.restore)  # name of volume
     elif intf.recycle:
+        reset_declared = not keep_declaration_time
         if intf.clear_sg:
-            ticket = vcc.recycle_volume(intf.recycle, clear_sg = True)
+            ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_declared, clear_sg = True)
         else:
-            ticket = vcc.recycle_volume(intf.recycle)
+            ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_Declared)
     elif intf.clear_sg:    # This is wrong
         print "Error: --clear-sg must be used with --recycle"
     elif intf.clear:
