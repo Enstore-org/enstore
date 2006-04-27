@@ -1649,7 +1649,7 @@ def do_work(intf):
         if intf.clear_sg:
             ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_declared, clear_sg = True)
         else:
-            ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_Declared)
+            ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_declared)
     elif intf.clear_sg:    # This is wrong
         print "Error: --clear-sg must be used with --recycle"
     elif intf.clear:
