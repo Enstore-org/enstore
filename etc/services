@@ -229,8 +229,6 @@ acap		674/tcp
 acap		674/udp
 ha-cluster	694/tcp				# Heartbeat HA-cluster
 ha-cluster	694/udp				# Heartbeat HA-cluster
-kerberos-adm	749/tcp				# Kerberos `kadmin' (v5)
-kerberos-iv	750/tcp		kerberos4 kerberos-sec kdc
 webster		765/tcp				# Network dictionary
 webster		765/udp
 phonebook	767/tcp				# Network phonebook
@@ -273,6 +271,8 @@ conference	531/tcp		chat
 netnews		532/tcp
 netwall		533/udp				# -for emergency broadcasts
 uucp		540/tcp		uucpd		# uucp daemon
+klogin		543/tcp				# Kerberized `rlogin' (v5)
+kshell		544/tcp		cmd		# Kerberized `rsh' (v5)
 afpovertcp	548/tcp				# AFP over TCP
 afpovertcp	548/udp				# AFP over TCP
 remotefs	556/tcp		rfs_server rfs	# Brunhoff remote filesystem
@@ -343,7 +343,6 @@ radius-acct	1813/tcp	radacct		# Radius Accounting
 radius-acct	1813/udp	radacct		# Radius Accounting
 mtp		1911/tcp			#
 mtp		1911/udp			#
-terad		1967/tcp			# TiBS client
 hsrp		1985/tcp			# Cisco Hot Standby Router Protocol
 hsrp		1985/udp			# Cisco Hot Standby Router Protocol
 licensedaemon	1986/tcp
@@ -392,8 +391,8 @@ icpv2		3130/tcp			# Internet Cache Protocol V2 (Squid)
 icpv2		3130/udp			# Internet Cache Protocol V2 (Squid)
 mysql		3306/tcp			# MySQL
 mysql		3306/udp			# MySQL
-trnsprntproxy	3346/tcp			# Trnsprnt Proxy
-trnsprntproxy	3346/udp			# Trnsprnt Proxy
+trnsprntproxy   3346/tcp			# Trnsprnt Proxy
+trnsprntproxy   3346/udp			# Trnsprnt Proxy
 pxe		4011/udp			# PXE server
 rwhois		4321/tcp			# Remote Who Is
 rwhois		4321/udp			# Remote Who Is
@@ -563,14 +562,10 @@ fido		60179/udp			# Ifmail
 
 # Local services
 
-netperf		12865/tcp
-console		782/tcp		conserver	# console server
-
-## ADDED by kerberos v1_7 install 2003-03-31:
-kerberos	88/tcp		kdc	# Kerberos V5 key server
-kerberos	88/udp		kdc	# Kerberos V5 key server
-klogin		543/tcp
-kshell		544/tcp		cmd
+kerberos	88/udp		kdc		# Kerberos V5 key server
+kerberos	88/tcp		kdc		# Kerberos V5 key server
 kerberos-adm	749/udp
-kerberos-iv	750/udp			# Kerberos V4
-## END of kerberos v1_7 additions 2003-03-31
+kerberos-iv	750/udp				# Kerberos V4
+console		782/tcp		conserver	# console server
+terad		1967/tcp			# TiBS client
+netperf		12865/tcp
