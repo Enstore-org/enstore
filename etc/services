@@ -17,7 +17,7 @@
 #
 # Each line describes one service, and is of the form:
 #
-# service-name  port/protocol  [aliases ...]   [# comment]
+# service-name	port/protocol  [aliases ...]   [# comment]
 
 tcpmux		1/tcp				# TCP port service multiplexer
 tcpmux		1/udp				# TCP port service multiplexer
@@ -47,6 +47,8 @@ ssh		22/udp				# SSH Remote Login Protocol
 telnet		23/tcp
 telnet		23/udp
 # 24 - private mail system
+lmtp		24/tcp				# LMTP Mail Delivery
+lmtp		24/udp				# LMTP Mail Delivery
 smtp		25/tcp		mail
 smtp		25/udp		mail
 time		37/tcp		timserver
@@ -167,6 +169,8 @@ fatserv		347/tcp				# Fatmen Server
 fatserv		347/udp				# Fatmen Server
 rsvp_tunnel	363/tcp
 rsvp_tunnel	363/udp
+odmr		366/tcp				# odmr required by fetchmail
+odmr		366/udp				# odmr required by fetchmail
 rpc2portmap	369/tcp
 rpc2portmap	369/udp				# Coda portmapper
 codaauth2	370/tcp
@@ -175,8 +179,8 @@ ulistproc	372/tcp		ulistserv	# UNIX Listserv
 ulistproc	372/udp		ulistserv
 ldap		389/tcp
 ldap		389/udp
-svrloc          427/tcp				# Server Location Protocl
-svrloc          427/udp				# Server Location Protocl
+svrloc		427/tcp				# Server Location Protocl
+svrloc		427/udp				# Server Location Protocl
 mobileip-agent	434/tcp
 mobileip-agent	434/udp
 mobilip-mn	435/tcp
@@ -237,8 +241,8 @@ rsync		873/tcp				# rsync
 rsync		873/udp				# rsync
 telnets		992/tcp
 telnets		992/udp
-imaps	 	993/tcp				# IMAP over SSL
-imaps	 	993/udp				# IMAP over SSL
+imaps		993/tcp				# IMAP over SSL
+imaps		993/udp				# IMAP over SSL
 ircs		994/tcp
 ircs		994/udp
 pop3s		995/tcp				# POP-3 over SSL
@@ -349,6 +353,8 @@ licensedaemon	1986/tcp
 licensedaemon	1986/udp
 gdp-port	1997/tcp			# Cisco Gateway Discovery Protocol
 gdp-port	1997/udp			# Cisco Gateway Discovery Protocol
+sieve		2000/tcp			# Sieve Mail Filter Daemon
+sieve		2000/udp			# Sieve Mail Filter Daemon
 nfs		2049/tcp	nfsd
 nfs		2049/udp	nfsd
 zephyr-srv	2102/tcp			# Zephyr server
@@ -385,15 +391,17 @@ nsc-posa	2605/tcp	bgpd		# NSC POSA
 nsc-posa	2605/udp			# NSC POSA
 netmon		2606/tcp	ospf6d		# Dell Netmon
 netmon		2606/udp			# Dell Netmon
-
+dict		2628/tcp			# RFC 2229
+dict		2628/udp			# RFC 2229
 corbaloc	2809/tcp			# CORBA naming service locator
 icpv2		3130/tcp			# Internet Cache Protocol V2 (Squid)
 icpv2		3130/udp			# Internet Cache Protocol V2 (Squid)
 mysql		3306/tcp			# MySQL
 mysql		3306/udp			# MySQL
-trnsprntproxy   3346/tcp			# Trnsprnt Proxy
-trnsprntproxy   3346/udp			# Trnsprnt Proxy
+trnsprntproxy	3346/tcp			# Trnsprnt Proxy
+trnsprntproxy	3346/udp			# Trnsprnt Proxy
 pxe		4011/udp			# PXE server
+fud		4201/udp			# Cyrus IMAP FUD Daemon
 rwhois		4321/tcp			# Remote Who Is
 rwhois		4321/udp			# Remote Who Is
 krb524		4444/tcp			# Kerberos 5 to 4 ticket xlator
@@ -402,31 +410,31 @@ rfe		5002/tcp			# Radio Free Ethernet
 rfe		5002/udp			# Actually uses UDP only
 cfengine	5308/tcp			# CFengine
 cfengine	5308/udp			# CFengine
-cvsup           5999/tcp	CVSup		# CVSup file transfer/John Polstra/FreeBSD
-cvsup           5999/udp	CVSup		# CVSup file transfer/John Polstra/FreeBSD
+cvsup		5999/tcp	CVSup		# CVSup file transfer/John Polstra/FreeBSD
+cvsup		5999/udp	CVSup		# CVSup file transfer/John Polstra/FreeBSD
 x11		6000/tcp	X		# the X Window System
 afs3-fileserver 7000/tcp			# file server itself
 afs3-fileserver 7000/udp			# file server itself
-afs3-callback   7001/tcp			# callbacks to cache managers
-afs3-callback   7001/udp			# callbacks to cache managers
-afs3-prserver   7002/tcp			# users & groups database
-afs3-prserver   7002/udp			# users & groups database
-afs3-vlserver   7003/tcp			# volume location database
-afs3-vlserver   7003/udp			# volume location database
-afs3-kaserver   7004/tcp			# AFS/Kerberos authentication service
-afs3-kaserver   7004/udp			# AFS/Kerberos authentication service
-afs3-volser     7005/tcp			# volume managment server
-afs3-volser     7005/udp			# volume managment server
-afs3-errors     7006/tcp			# error interpretation service
-afs3-errors     7006/udp			# error interpretation service
-afs3-bos        7007/tcp			# basic overseer process
-afs3-bos        7007/udp			# basic overseer process
-afs3-update     7008/tcp			# server-to-server updater
-afs3-update     7008/udp			# server-to-server updater
-afs3-rmtsys     7009/tcp			# remote cache manager service
-afs3-rmtsys     7009/udp			# remote cache manager service
-sd		9876/tcp   			# Session Director
-sd		9876/udp   			# Session Director
+afs3-callback	7001/tcp			# callbacks to cache managers
+afs3-callback	7001/udp			# callbacks to cache managers
+afs3-prserver	7002/tcp			# users & groups database
+afs3-prserver	7002/udp			# users & groups database
+afs3-vlserver	7003/tcp			# volume location database
+afs3-vlserver	7003/udp			# volume location database
+afs3-kaserver	7004/tcp			# AFS/Kerberos authentication service
+afs3-kaserver	7004/udp			# AFS/Kerberos authentication service
+afs3-volser	7005/tcp			# volume managment server
+afs3-volser	7005/udp			# volume managment server
+afs3-errors	7006/tcp			# error interpretation service
+afs3-errors	7006/udp			# error interpretation service
+afs3-bos	7007/tcp			# basic overseer process
+afs3-bos	7007/udp			# basic overseer process
+afs3-update	7008/tcp			# server-to-server updater
+afs3-update	7008/udp			# server-to-server updater
+afs3-rmtsys	7009/tcp			# remote cache manager service
+afs3-rmtsys	7009/udp			# remote cache manager service
+sd		9876/tcp			# Session Director
+sd		9876/udp			# Session Director
 amanda		10080/tcp			# amanda backup services
 amanda		10080/udp			# amanda backup services
 pgpkeyserver	11371/tcp			# PGP/GPG public keyserver
@@ -469,11 +477,11 @@ zip		6/ddp				# Zone Information Protocol
 
 #
 # Kerberos (Project Athena/MIT) services
-# Note that these are for Kerberos v4, and are unregistered/unofficial.  Sites
+# Note that these are for Kerberos v4, and are unregistered/unofficial.	 Sites
 # running v4 should uncomment these and comment out the v5 entries above.
 #
-kerberos_master	751/udp				# Kerberos authentication
-kerberos_master	751/tcp				# Kerberos authentication
+kerberos_master 751/udp				# Kerberos authentication
+kerberos_master 751/tcp				# Kerberos authentication
 passwd_server	752/udp				# Kerberos passwd server
 krbupdate	760/tcp		kreg		# Kerberos registration
 kpop		1109/tcp			# Pop with Kerberos
@@ -516,9 +524,12 @@ afbackup	2988/udp			# Afbackup system
 squid		3128/tcp			# squid web proxy
 prsvp		3455/tcp			# RSVP Port
 prsvp		3455/udp			# RSVP Port
+distcc		3632/tcp			# distcc
+svn		3690/tcp			# Subversion
+svn		3690/udp			# Subversion
 postgres	5432/tcp			# POSTGRES
 postgres	5432/udp			# POSTGRES
-fax		4557/tcp			# FAX transmission service        (old)
+fax		4557/tcp			# FAX transmission service	  (old)
 hylafax		4559/tcp			# HylaFAX client-server protocol  (new)
 sgi-dgl		5232/tcp			# SGI Distributed Graphics
 sgi-dgl		5232/udp
