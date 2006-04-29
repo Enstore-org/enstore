@@ -221,7 +221,7 @@ def prepare_html(db_name):
         count1=int(row[0])
     if ( count1!=0 ) : 
         fname="%s.txt"%(db_name,)
-        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' order by date asc"
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' and unix_date<%d  order by date asc"%(int(now_time-delta_time),)
         cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
