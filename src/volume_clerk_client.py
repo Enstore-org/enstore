@@ -1645,7 +1645,7 @@ def do_work(intf):
         # ticket = vcc.restore(intf.restore, intf.all)  # name of volume
         ticket = vcc.restore_volume(intf.restore)  # name of volume
     elif intf.recycle:
-        reset_declared = not keep_declaration_time
+        reset_declared = not self.keep_declaration_time
         if intf.clear_sg:
             ticket = vcc.recycle_volume(intf.recycle, reset_declared = reset_declared, clear_sg = True)
         else:
