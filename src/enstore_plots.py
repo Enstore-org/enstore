@@ -8,6 +8,7 @@ import os
 import time
 import calendar
 import stat
+import sys
 
 # enstore imports
 import enstore_functions2
@@ -667,7 +668,11 @@ class BpdDataFile(EnPlot):
 	for [xpt, ypt, type, mover, drive_id, sg] in data:
 	    adate = xpt[0:10]
             fypt = string.atof(ypt)
-	    day = self.ndata[adate]
+            try:
+                day = self.ndata[adate]
+            except(KeyError):
+                continue
+            
 	    day[CTR] = day[CTR] + 1
 	    if fypt > day[LARGEST]:
 		day[LARGEST] = fypt
