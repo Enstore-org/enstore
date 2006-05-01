@@ -67,7 +67,17 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 
-		self.file = edb.FileDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0)
+		# get database connection
+		try:
+			self.file = edb.FileDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0)
+		except:
+			exc_type, exc_value = sys.exc_info()[:2]
+			msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+			Trace.log(e_errors.ERROR,msg)
+			Trace.alarm(e_errors.ERROR,msg, {})
+			Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+			sys.exit(1)
+
 		self.db = self.file.db
 		self.volume = edb.VolumeDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
