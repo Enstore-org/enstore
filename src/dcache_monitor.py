@@ -212,6 +212,8 @@ def prepare_html(db_name):
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     delta_time     = 12*3600
+    if ( db_name == "minos" ) :
+        delta_time  = 24*3600
     now_time       = time.time()
     res=db.query("select count(*) from volatile_files where layer2='y' and unix_date<%d"%(int(now_time-delta_time),))
     count1=0
