@@ -622,7 +622,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         else:
             clear_sg = False
         if ticket.has_key('reset_declared'):
-            ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg, reset_delcared = ticket['reset_declared'])
+            ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg, reset_declared = ticket['reset_declared'])
         else:
             ticket['status'] = self.__delete_volume(vol, 1, check_state = check_state, clear_sg = clear_sg)
         self.reply_to_caller(ticket)
