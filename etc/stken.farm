@@ -7,7 +7,8 @@ stkensrv4	stkensrv	stken-alla	stken-all
 stkensrv5	stkensrv	stken-alla	stken-all
 stkensrv6	stkensrv	stken-alla	stken-all
 stkensrv7	stkensrv	stken-alla	stken-all
-cmspnfs1	stkensrv	stken-alla	stken-all
+REMOVE		*pnfs1
+eagpnfs1	stkensrv	stken-alla	stken-all
 REMOVE		stkenmvr*[ab]
 stkenmvr5a	stkenmvr-a	stken-alla	stken-all
 stkenmvr6a	stkenmvr-a	stken-alla	stken-all
