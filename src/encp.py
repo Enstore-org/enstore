@@ -4865,22 +4865,35 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # becomes an 'UNCAUGHT EXCEPTION'.  One know case of a non-full
     # request dictionary is for a (RESUBMITTING, None) 'error'.
     if e_errors.is_media(status) and is_read(request_dictionary):
-        #This munging should really be a common function somewhere.
-        try:
-            num = int(request_dictionary['fc']['bfid'].split("_")[-1])
-        except ValueError:
-            num = 0
-        next_bfid = "%s_copy_%s" % (request_dictionary['bfid'], num + 1)
+        #Note: request_dictionary['bfid'] should always carry the
+        # original bfid string while (request_dictionary['fc']['bfid']
+        # should contain the bfid of the copy (original included) that
+        # was just tried.
+        
         fcc = get_fcc()
-        if fcc:
-            fc_info = fcc.get_bfid(next_bfid, 5, 20)
+        vcc = get_vcc()
+
+        copy_list_dict = fcc.find_copies(request_dictionary['bfid'])
+        if e_errors.is_ok(copy_list_dict):
+            copy_list = copy_list_dict['copies']
         else:
-            fc_info = (e_errors.SERVERDIED, None) #Just something to fail is_ok
-        if e_errors.is_ok(fc_info):
-            #If there exists another copy to try with this media error,
-            # ignore any non-retirable errors.  
-            retry_non_retriable_media_error = True
-            
+            copy_list = []
+
+        while copy_list:
+            copy_index = random.randint(0, len(copy_list) - 1)
+            next_bfid = copy_list[copy_index]
+
+            fc_info = fcc.get_bfid(next_bfid, 5, 20)
+            if e_errors.is_ok(fc_info):
+                vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
+                if e_errors.is_ok(vc_info):
+                    request_dictionary['fc'] = fc_info
+                    request_dictionary['vc'] = vc_info
+                    retry_non_retriable_media_error = True
+                    break
+
+            del copy_list[copy_index]
+        
     #If the error is not retriable, remove it from the request queue.  There
     # are two types of non retriable errors.  Those that cause the transfer
     # to be aborted, and those that in addition to abborting the transfer
@@ -5060,8 +5073,9 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         # ended in error.
         request_dictionary['unique_id'] = generate_unique_id()
 
+        """
         #For reads only when a media error occurs.
-        if is_read(request_dictionary) and e_errors.is_media(status):
+        if e_errors.is_media(status) and is_read(request_dictionary):
             #Note: request_dictionary['bfid'] should always carry the
             # original bfid string while (request_dictionary['fc']['bfid']
             # should contain the bfid of the copy (original included) that
@@ -5070,10 +5084,14 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             fcc = get_fcc()
             vcc = get_vcc()
 
-            copy_list = fcc.find_copies(request_dictionary['bfid'])
+            copy_list_dict = fcc.find_copies(request_dictionary['bfid'])
+            if e_errors.is_ok(copy_list_dict):
+                copy_list = copy_list_dict['copies']
+            else:
+                copy_list = []
 
             while copy_list:
-                copy_index = random(len(copy_list))
+                copy_index = random.randint(0, len(copy_list) - 1)
                 next_bfid = copy_list[copy_index]
             
                 fc_info = fcc.get_bfid(next_bfid, 5, 20)
@@ -5084,6 +5102,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                         request_dictionary['vc'] = vc_info
 
                 del copy_list[copy_index]
+        """
 
         #Keep retrying this file.
         try:
@@ -6120,8 +6139,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['work'] = "write_to_hsm"
         work_ticket['wrapper'] = wrapper
 
-        pprint.pprint(work_ticket)
-        
         request_list.append(work_ticket)
 
     #Make dictionaries for the copies of the data.
@@ -7799,7 +7816,7 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
 
         raise EncpError(None,
             "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
-                        vc_error_ticket)
+                        inhibit, vc_error_ticket)
 
     inhibit = vc_ticket['user_inhibit'][0]
     if inhibit in (e_errors.NOACCESS, e_errors.NOTALLOWED):
@@ -7810,7 +7827,7 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
 
         raise EncpError(None,
             "Volume %s is marked %s." % (vc_ticket['external_label'], inhibit),
-                        vc_error_ticket)
+                        inhibit, vc_error_ticket)
 
     return vc_ticket
 
