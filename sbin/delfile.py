@@ -9,6 +9,7 @@ import volume_clerk_client
 import os
 import string
 import e_errors
+import sys
 
 vols = []
 
@@ -35,6 +36,7 @@ def get_bfid(mf):
         return None, None
 
 if __name__ == '__main__':
+    success = True
     intf = option.Interface()
     fcc = file_clerk_client.FileClient((intf.config_host, intf.config_port))
     vcc = volume_clerk_client.VolumeClerkClient(fcc.csc)
@@ -53,12 +55,14 @@ if __name__ == '__main__':
             result = fcc.set_deleted('yes')
             if result['status'][0] != e_errors.OK:
                 print bfid, result['status'][1]
+                success = False
             else:
                 print 'done'
-            try:
-                os.unlink(fp)
-            except:
-                print 'can not delete', fp
+                try:
+                    os.unlink(fp)
+                except:
+                    print 'can not delete', fp
+                    success = False
 
     for i in vols:
         print 'touching', i, '...',
@@ -67,3 +71,8 @@ if __name__ == '__main__':
             print 'done'
         else:
             print 'failed'
+            success = False
+
+    if not success:
+        # this will keep *-output file
+        sys.exit(1)
