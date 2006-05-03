@@ -44,7 +44,7 @@ def makeTarTapeFilename(contents, id):
 def makePtTapeFilename(mjd):
     return mjd + ".tar"
 
-def parseFile(filename):
+def parseTarTapeParFile(filename):
     filelist = []
     f = open(filename)
     line = f.readline()
@@ -58,8 +58,18 @@ def parseFile(filename):
                                  makeTarTapeFilename(contents, tar_id)))
             except ValueError:
                 pass
-            
-        elif line.lower().find("tapelog") >= 0:
+
+        line = f.readline()
+
+    f.close()  #Cleanup
+    return filelist
+    
+def parseTapeLogParFile(filename):
+    filelist = []
+    f = open(filename)
+    line = f.readline()
+    while line:
+        if line.lower().find("tapelog") >= 0:
             #Split "tapelog" lines containing tuples of the following:
             # (tape, filemark, run, frame, ccd)
             try:
@@ -68,23 +78,83 @@ def parseFile(filename):
                                  makeTapeLogFilename(run, frame, ccd)))
             except ValueError:
                 pass
-            
-        elif line.lower().find("data =") >= 0:
-            #Split "Data =" lines containing tuples of the following:
-            # (mjd,)
-            # Note: PtTape tapes have two filemarks, hence the multiply
-            #       the filemark number by 2.
-            try:
-                (unused, unused, mjd) = line.split()
-                filelist.append(((len(filelist) + 1) * 2,
-                                 makePtTapeFilename(mjd)))
-            except ValueError:
-                pass
-        
+
         line = f.readline()
 
     f.close()  #Cleanup
     return filelist
+
+def parsePtTapeTapelogFile(filename):
+    tapelabel = None
+    fma = 0  #File Mark Adjustment (0 or -1)
+    sfm = 2 #Skip file marks (1 or 2)
     
+    filelist = []
+    f = open(filename)
+    line = f.readline()
+    while line:
 
+        words = line.split()
 
+        if words[:3] == ["Tape", "Label", "="]:
+            tapelabel = words[3]
+
+            #Determine if this is an older tape that needs a file mark
+            # adjustment to read the correct location.
+            # Note: PtTape tapes after JL0133 have two filemarks between
+            #       every file.  Hence the need to skip 2 filemarks.
+            # Note2: PtTape tapes after JL0133 have the actual files
+            #        on the odd or even locations, depending where the
+            #        tape falls in the range.
+            #        * 133 through 139 and starting with 1897 are evens.
+            #        + 136 and 160 through 1887 are odds.
+            if tapelabel[:2] == "JL":
+                tape_number = int(tapelabel[2:])
+                if 61 <= tape_number and tape_number <= 133:
+                    sfm = 1
+                    fma = 0
+                elif 133 < tape_number and tape_number < 139:
+                    sfm = 2
+                    fma = -1
+                elif 139 <= tape_number and tape_number <= 159:
+                    sfm = 2
+                    fma = 0
+                elif 160 <= tape_number and tape_number <= 1887:
+                    sfm = 2
+                    fma = -1
+                elif 1897 <= tape_number:
+                    sfm = 2
+                    fma = 0
+                else:
+                    sys.stderr.write("%s tape layout unknown\n" % tapelabel)
+                    sys.exit(1)
+
+        elif words[:2] == ["Data", "="]:
+            #Split "Data =" lines containing tuples of the following:
+            # (mjd,)
+            try:
+                mjd = words[2]
+                file_location = ((len(filelist) + 1) * sfm) + fma
+                filelist.append((file_location, makePtTapeFilename(mjd)))
+            except ValueError:
+                pass
+
+        line = f.readline()
+
+    f.close()  #Cleanup
+    return filelist
+
+def parseFile(filename, tapeStyle):
+
+    if tapeStyle == "TarTape":
+        return parseTarTapeParFile(filename)
+    elif tapeStyle == "TapeLog":
+        return parseTapeLogParFile(filename)
+    elif tapeStyle == "PtTape":
+        return parsePtTapeTapelogFile(filename)
+    
+    sys.stderr.write("%s tape style unknown\n" % tapeStyle)
+    sys.exit(1)
+
+    #Never reach here.  Just shuts pychecker up.
+    return [] 

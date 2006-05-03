@@ -98,7 +98,7 @@ def main():
             sys.exit(121)
 
     #Read in the metadata catalog file just copied over.
-    files = parseTapeLog.parseFile(localMetaFilePath)
+    files = parseTapeLog.parseFile(localMetaFilePath, tapeStyle)
 
     if dump:
         callGet.writeGetFile(files, file_obj = sys.stdout)
