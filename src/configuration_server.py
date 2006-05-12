@@ -192,7 +192,7 @@ class ConfigurationDict:
         #Trace.log(e_errors.INFO, "create thread: target %s name %s args %s" % (function, thread_name, args))
         thread = threading.Thread(group=None, target=function,
                                   name=thread_name, args=args, kwargs={})
-        setattr(self, thread_name, thread)
+        #setattr(self, thread_name, thread)
         #Trace.log(e_errors.INFO, "starting thread %s"%(dir(thread,)))
         try:
             thread.start()
