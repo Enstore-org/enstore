@@ -15,6 +15,7 @@ import traceback
 import socket
 import time
 import copy
+import threading
 
 # enstore imports
 #import setpath
@@ -176,9 +177,37 @@ class ConfigurationDict:
         out_ticket = {"status" : (e_errors.OK, None), "get_keys" : (skeys)}
         self.reply_to_caller(out_ticket)
 
+    # run in thread
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        ##threads = threading.enumerate()
+        ##for th in threads:
+        ##    if th.isAlive():
+        ##        thread_name = th.getName()
+        ##        Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
+        ##    else:
+        ##        Trace.log(e_errors.INFO,"LOG: Thread %s is dead" % (thread_name,))
+
+        if after_function:
+            args = args + (after_function,)
+        #Trace.log(e_errors.INFO, "create thread: target %s name %s args %s" % (function, thread_name, args))
+        thread = threading.Thread(group=None, target=function,
+                                  name=thread_name, args=args, kwargs={})
+        setattr(self, thread_name, thread)
+        #Trace.log(e_errors.INFO, "starting thread %s"%(dir(thread,)))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
+        return 0
+
+    def dump(self, ticket):
+        self.run_in_thread('dump', self.make_dump,  args=(ticket,))
+        return
+        
 
     # return a dump of the dictionary back to the user
-    def dump(self, ticket):
+    def make_dump(self, ticket):
         Trace.trace(15, 'DUMP: \n' + str(ticket))
 
         if not hostaddr.allow(ticket['callback_addr']):
@@ -210,6 +239,8 @@ class ConfigurationDict:
             sock.close()
         except:
             Trace.handle_error()
+        
+        return
             
 
 
@@ -358,10 +389,12 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
             server_address[1])
 	self.new_config_message.encode()
 
-	# start our heartbeat to the event relay process
+	# start our heartbeat to the event reyeslay process
 	self.erc = event_relay_client.EventRelayClient(self)
 	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
 				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
+
+        
 
 class ConfigurationServerInterface(generic_server.GenericServerInterface):
 
