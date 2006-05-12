@@ -4,6 +4,7 @@
 # system imports
 import errno
 import string
+import e_errors
 import Trace
 
 """
