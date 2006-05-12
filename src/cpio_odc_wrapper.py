@@ -4,7 +4,7 @@
 # system imports
 import errno
 import string
-
+import Trace
 
 """
 
@@ -87,6 +87,9 @@ def create_header(inode, mode, uid, gid, nlink, mtime, filesize,
 def headers(ticket):
 
     inode = ticket.get('inode', 0)
+    if inode == None:
+        Trace.log(e_errors.ERROR,"wrong inode in wrapper: %s. Will set to 0"%(inode,))
+        inode = 0
     mode = ticket.get('mode', 0)
     uid = ticket.get('uid', 0)
     gid = ticket.get('gid', 0)
