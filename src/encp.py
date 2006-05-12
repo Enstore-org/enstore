@@ -3871,13 +3871,20 @@ def submit_one_request(ticket, encp_intf):
         #First check if the user specified the value on the command line.
         # If so, skip getting a new value.
         if not encp_intf.output_file_family_width:
-            dname = get_directory_name(ticket['wrapper']['pnfsFilename'])
-            if encp_intf.outtype == RHSMFILE:
-                t = get_pac()
-            else:
-                t = pnfs.Tag()
-            file_family_width = t.get_file_family_width(dname)
-            ticket['vc']['file_family_width'] = file_family_width
+            try:
+                dname = get_directory_name(ticket['wrapper']['pnfsFilename'])
+                if encp_intf.outtype == RHSMFILE:
+                    t = get_pac()
+                else:
+                    t = pnfs.Tag()
+                file_family_width = t.get_file_family_width(dname)
+                ticket['vc']['file_family_width'] = file_family_width
+            except (OSError, IOError), msg:
+                if msg.args[0] in [errno.ENOENT]:
+                    ticket['status'] = (e_errors.USERERROR, str(msg))
+                else:
+                    ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
+                return ticket
 
     #Determine the type of transfer.
     try:
