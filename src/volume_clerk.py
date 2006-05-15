@@ -1947,6 +1947,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if len(library) < 16 or library[-16:] != '.library_manager':
             library = library + '.library_manager'
         m_changer = self.csc.get_media_changer(library)
+        # guard against configuration server timeout
+        # Here, we rely on csc to return a string.
+        # Hoever, if the request timed out, csc will return a dict
+        # with error code ...
+        if type(m_changer) != type(''):
+            return 0
         if m_changer:
             if (self.paused_lms.has_key(m_changer) and
                 self.paused_lms[m_changer]['paused'] != 0):
