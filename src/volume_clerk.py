@@ -1952,6 +1952,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         # Hoever, if the request timed out, csc will return a dict
         # with error code ...
         if type(m_changer) != type(''):
+            # log this locally
+            print time.ctime(time.time()), 'm_changer =', `m_changer`
             return 0
         if m_changer:
             if (self.paused_lms.has_key(m_changer) and
