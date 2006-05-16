@@ -196,6 +196,7 @@ DESTROY = "destroy"                          #volume
 DIRECT_IO = "direct-io"                      #encp
 DISABLE = "disable"                          #quota
 DISMOUNT = "dismount"                        #media
+DISPLAY = "display"                          #entv
 DO_ALARM = "do-alarm"
 DO_LOG = "do-log"
 DO_PRINT = "do-print"
@@ -434,7 +435,7 @@ valid_option_list = [
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
     DESCRIPTION, DESTROY,
-    DIRECT_IO, DISMOUNT, DISABLE,
+    DIRECT_IO, DISABLE, DISMOUNT, DISPLAY,
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE,

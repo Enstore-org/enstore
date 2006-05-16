@@ -1242,6 +1242,11 @@ class EntvClientInterface(generic_client.GenericClientInterface):
                                 option.VALUE_USAGE:option.REQUIRED,
                                 option.VALUE_TYPE:option.INTEGER,
                                 option.USER_LEVEL:option.USER,},
+        option.DISPLAY:{option.HELP_STRING:"Specify the screen entv should"
+                                           " display to.",
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_TYPE:option.STRING,
+                        option.USER_LEVEL:option.USER,},
         option.DONT_SHOW:{option.HELP_STRING:"Don't display the movers that"
                           " belong to the specified library manager(s).",
                           option.VALUE_USAGE:option.REQUIRED,
