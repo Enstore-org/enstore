@@ -41,7 +41,10 @@ def makeTapeLogFilename(run, frame, ccd):
 def makeTarTapeFilename(contents, id):
     return string.lower(contents) + "." + id + ".tar"
 
-def makePtTapeFilename(mjd):
+def makePtTapeFilename(mjd, mjd_count):
+    if mjd_count:
+        return mjd + "_c" + str(mjd_count) + ".tar"
+    
     return mjd + ".tar"
 
 def parseTarTapeParFile(filename):
@@ -88,6 +91,7 @@ def parsePtTapeTapelogFile(filename):
     tapelabel = None
     fma = 0  #File Mark Adjustment (0 or -1)
     sfm = 2 #Skip file marks (1 or 2)
+    mjd_list = []
     
     filelist = []
     f = open(filename)
@@ -134,8 +138,17 @@ def parsePtTapeTapelogFile(filename):
             # (mjd,)
             try:
                 mjd = words[2]
+
+                #The mjd_list code is necessary to determine if the same
+                # tarfile (at least in name) is written to the tape more
+                # than once.
+                mjd_count = mjd_list.count(mjd)
+                mjd_list.append(mjd)
+
                 file_location = ((len(filelist) + 1) * sfm) + fma
-                filelist.append((file_location, makePtTapeFilename(mjd)))
+                
+                filelist.append( (file_location,
+                                  makePtTapeFilename(mjd, mjd_count)) )
             except ValueError:
                 pass
 
