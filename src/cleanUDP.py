@@ -29,6 +29,7 @@ import Trace
 import errno
 import time
 import select
+import sys
 
 # enstore imports
 import e_errors
@@ -79,7 +80,14 @@ class cleanUDP :
                 return
 
 	def __del__(self):
-	        self.socket.close()
+		if self.socket:
+			#self.socket.close()
+			
+			try:
+				self.socket.close()
+			except TypeError:
+				return
+
         
         def scrub(self) :
                 self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
