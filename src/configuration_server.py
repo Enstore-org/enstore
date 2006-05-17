@@ -202,7 +202,8 @@ class ConfigurationDict:
         return 0
 
     def dump(self, ticket):
-        self.run_in_thread('dump', self.make_dump,  args=(ticket,))
+        t = copy.deepcopy(ticket)
+        self.run_in_thread('dump', self.make_dump,  args=(t,))
         return
         
 
