@@ -177,6 +177,20 @@ def get_edb(enstoredb):
 db = get_db()
 edb = get_edb(enstoredb)
 
+npl = 10 # number of items per line
+
+def show_cap(header, list):
+	label = "CAP %d:"%(header)
+	print label,
+	nl = 1
+	for i in list:
+		print i,
+		if nl % npl == 0:
+			print
+			print " "*len(label),
+		nl = nl + 1
+	print
+
 # get_rem_ticket_number(rem_res)
 #	get ticket number from remidy API
 #	rem_res is the result (array of lines) from remidy API
@@ -1076,7 +1090,9 @@ def execute(args):
 			res = recommend_write_protect_job(media_type = args[1], limit=1000000)
 		else:
 			res = recommend_write_protect_job(limit=1000000)
-		pprint.pprint(res)
+		# pprint.pprint(res)
+		for i in res:
+			show_cap(i, res[i])
 		total = 0
 		caps = len(res)
 		for i in res.keys():
@@ -1088,7 +1104,9 @@ def execute(args):
 			res = recommend_write_permit_job(media_type = args[1], limit=1000000)
 		else:
 			res = recommend_write_permit_job(limit=1000000)
-		pprint.pprint(res)
+		# pprint.pprint(res)
+		for i in res:
+			show_cap(i, res[i])
 		total = 0
 		caps = len(res)
 		for i in res.keys():
