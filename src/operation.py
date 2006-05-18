@@ -703,7 +703,7 @@ def even(i):
 CAPS_PER_TICKET = 10
 VOLUMES_PER_CAP = 21
 
-def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WP') + 1
 	# get exclusion list:
@@ -711,15 +711,24 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 		where \
 			object.job = job.id and \
 			job.finish is null;"
+
 	if debug:
 		print q
 	excl = db.query(q).getresult()
+
+	# take care of media_type
+	mt = media_type.split(",")
+	mts = "(media_type = '%s'"%(mt[0])
+	for i in mt[1:]:
+		mts = mts+ " or media_type = '%s'"%(i)
+	mts = mts+")"
+
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
 		for i in excl[1:]:
 			exclusion = exclusion+','+"'%s'"%(i[0])
 		q = "select label from volume where \
-			media_type = '%s' and \
+			%s and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
 			write_protected != 'y' and \
@@ -730,10 +739,10 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion, limit)
+			limit %d;"%(mts, exclusion, limit)
 	else:
 		q = "select label from volume where \
-			media_type = '%s' and \
+			%s and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'full' and \
 			write_protected != 'y' and \
@@ -743,7 +752,7 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' and \
 			order by label \
-			limit %d;"%(media_type, limit)
+			limit %d;"%(mts, limit)
 	if debug:
 		print q
 	res = edb.query(q).getresult()
@@ -760,7 +769,7 @@ def recommend_write_protect_job(media_type='9940B', limit=VOLUMES_PER_CAP*CAPS_P
 			cap_n = cap_n + 1
 	return job
 
-def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WE') + 1
 	# get exclusion list:
@@ -771,12 +780,20 @@ def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_
 	if debug:
 		print q
 	excl = db.query(q).getresult()
+
+	# take care of media_type
+	mt = media_type.split(",")
+	mts = "(media_type = '%s'"%(mt[0])
+	for i in mt[1:]:
+		mts = mts+ " or media_type = '%s'"%(i)
+	mts = mts+")"
+
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
 		for i in excl[1:]:
 			exclusion = exclusion+','+"'%s'"%(i[0])
 		q = "select label from volume where \
-			media_type = '%s' and \
+			%s and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
 			write_protected != 'n' and \
@@ -787,10 +804,10 @@ def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_
 				from no_flipping_file_family) and\
 			not label in (%s) \
 			order by label \
-			limit %d;"%(media_type, exclusion, limit)
+			limit %d;"%(mts, exclusion, limit)
 	else:
 		q = "select label from volume where \
-			media_type = '%s' and \
+			%s and \
 			system_inhibit_0 = 'none' and \
 			system_inhibit_1 = 'none' and \
 			write_protected != 'n' and \
@@ -800,7 +817,7 @@ def recommend_write_permit_job(media_type='9940B', limit = VOLUMES_PER_CAP*CAPS_
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
 			order by label \
-			limit %d;"%(media_type, limit)
+			limit %d;"%(mts, limit)
 	if debug:
 		print q
 	res = edb.query(q).getresult()
