@@ -12,7 +12,6 @@ import string
 import types
 import traceback
 import imp
-import re
 
 from pychecker import OP
 from pychecker import Stack
@@ -88,12 +87,8 @@ def _checkReturnWarnings(code) :
 
     # if the last return is implicit, check if there are non None returns
     lastReturn = code.returnValues[-1]
-
-    # Python 2.4 optimizes the dead implicit return out, so we can't
-    # distinguish implicit and explicit "return None"
-    if utils.pythonVersion() < utils.PYTHON_2_4 and \
-           not code.starts_and_ends_with_finally and \
-           cfg().checkImplicitReturns and lastReturn[1].isImplicitNone():
+    if not code.starts_and_ends_with_finally and \
+       cfg().checkImplicitReturns and lastReturn[1].isImplicitNone() :
         for line, retval, dummy in code.returnValues[:-1] :
             if not retval.isNone() :
                 code.addWarning(msgs.IMPLICIT_AND_EXPLICIT_RETURNS,
@@ -170,12 +165,9 @@ def _handleNestedCode(func_code, code, codeSource):
         if nested and func_code.co_name != utils.LAMBDA:
             varnames = func_code.co_varnames + \
                      codeSource.calling_code[-1].function.func_code.co_varnames
-        # save the original return value and restore after checking
-        returnValues = code.returnValues
         code.init(function.create_fake(func_code.co_name, func_code, {},
                                        varnames))
         _checkCode(code, codeSource)
-        code.returnValues = returnValues
 
 def _findUnreachableCode(code) :
     # code after RETURN or RAISE is unreachable unless there's a branch to it
@@ -187,17 +179,14 @@ def _findUnreachableCode(code) :
             unreachable[i] = line
 
     # find the index of the last return
-    lastLine = lastItem = lastIndex = None
-    if code.returnValues:
-        lastLine, lastItem, lastIndex = code.returnValues[-1]
+    lastLine, lastItem, lastIndex = code.returnValues[-1]
     if len(code.returnValues) >= 2 :
         lastIndex = code.returnValues[-2][2]
     if code.raiseValues :
         lastIndex = max(lastIndex, code.raiseValues[-1][2])
 
     # remove last return if it's unreachable AND implicit
-    if unreachable.get(lastIndex) == lastLine and lastItem and \
-           lastItem.isImplicitNone():
+    if unreachable.get(lastIndex) == lastLine and lastItem.isImplicitNone() :
         del code.returnValues[-1]
         del unreachable[lastIndex]
 
@@ -224,14 +213,15 @@ def _checkFunction(module, func, c = None, main = 0, in_class = 0) :
     codeSource = CodeChecks.CodeSource(module, func, c, main, in_class, code)
     try :
         _checkCode(code, codeSource)
-        if not in_class :
-            _findUnreachableCode(code)
 
-        # handle lambdas and nested functions
+        # handle lambdas
         codeSource.calling_code.append(func)
         for func_code in code.codeObjects.values() :
             _handleNestedCode(func_code, code, codeSource)
         del codeSource.calling_code[-1]
+
+        if not in_class :
+            _findUnreachableCode(code)
 
     except (SystemExit, KeyboardInterrupt) :
         exc_type, exc_value, exc_tb = sys.exc_info()
@@ -312,7 +302,7 @@ def _baseInitCalled(classInitInfo, base, functionsCalled) :
     if baseInit is None or _get_func_info(baseInit) == classInitInfo :
         return 1
 
-    initName = utils.safestr(base) + _DOT_INIT
+    initName = str(base) + _DOT_INIT
     if functionsCalled.has_key(initName) :
         return 1
 
@@ -350,7 +340,7 @@ def _checkBaseClassInit(moduleFilename, c, func_code, funcInfo) :
         for base in c.classObject.__bases__ :
             if not _baseInitCalled(classInitInfo, base, functionsCalled) :
                 warn = Warning(moduleFilename, func_code,
-                               msgs.BASE_CLASS_NOT_INIT % utils.safestr(base))
+                               msgs.BASE_CLASS_NOT_INIT % str(base))
                 warnings.append(warn)
     return warnings
 
@@ -359,7 +349,7 @@ def _checkOverridenMethods(func, baseClasses, warnings) :
     for baseClass in baseClasses :
         if func.func_name != utils.INIT and \
            not function.same_signature(func, baseClass) :
-            err = msgs.METHOD_SIGNATURE_MISMATCH % (func.func_name, utils.safestr(baseClass))
+            err = msgs.METHOD_SIGNATURE_MISMATCH % (func.func_name, str(baseClass))
             warnings.append(Warning(func.func_code, func.func_code, err))
             break
 
@@ -385,7 +375,7 @@ def getBlackList(moduleList) :
             file, path, flags = imp.find_module(badBoy)
             if file :
                 file.close()
-                blacklist.append(normalize_path(path))
+                blacklist.append(path)
         except ImportError :
             pass
     return blacklist
@@ -426,20 +416,9 @@ def _updateSuppressions(suppress, warnings) :
         utils.popConfig()
         raise _SuppressionError
 
-_CLASS_NAME_RE = re.compile("<class '([A-Za-z0-9.]+)'>(\\..+)?")
-
 def getSuppression(name, suppressions, warnings) :
     try :
         utils.pushConfig()
-
-        # cheesy hack to deal with new-style classes.  i don't see a
-        # better way to get the name, '<' is an invalid identifier, so
-        # we can reliably check it and extract name from:
-        # <class 'class-name'>[.identifier[.identifier]...]
-        matches = _CLASS_NAME_RE.match(name)
-        if matches:
-            # pull out the names and make a complete identifier (ignore None)
-            name = string.join(filter(None, matches.groups()), '')
 
         suppress = suppressions[0].get(name, None)
         if suppress is not None :
@@ -498,14 +477,14 @@ except NameError:
 def _findClassWarnings(module, c, class_code,
                        globalRefs, warnings, suppressions) :
     try:
-        className = utils.safestr(c.classObject)
+        className = str(c.classObject)
     except TypeError:
         # goofy __getattr__
         return
     classSuppress = getSuppression(className, suppressions, warnings)
     baseClasses = c.allBaseClasses()
     for base in baseClasses :
-        baseModule = utils.safestr(base)
+        baseModule = str(base)
         if '.' in baseModule :
             # make sure we handle import x.y.z
             packages = string.split(baseModule, '.')
@@ -526,7 +505,7 @@ def _findClassWarnings(module, c, class_code,
         utils.debug("method:", func_code)
 
         try:
-            name = utils.safestr(c.classObject) + '.' + method.function.func_name
+            name = str(c.classObject) + '.' + method.function.func_name
         except AttributeError:
             # func_name may not exist
             continue
@@ -588,14 +567,9 @@ def _findClassWarnings(module, c, class_code,
         if not newStyleClass:
             err = msgs.USING_SLOTS_IN_CLASSIC_CLASS % c.name
             warnings.append(Warning(filename, lineNum, err))
-        elif cfg().emptySlots:
-            try:
-                if len(slots.data) == 0:
-                    err = msgs.EMPTY_SLOTS % c.name
-                    warnings.append(Warning(filename, lineNum, err))
-            except AttributeError:
-                # happens when slots is an instance of a class w/o __len__
-                pass
+        elif len(slots.data) == 0 and cfg().emptySlots:
+            err = msgs.EMPTY_SLOTS % c.name
+            warnings.append(Warning(filename, lineNum, err))
 
     if not newStyleClass and property is not None and cfg().classicProperties:
         for static in c.statics.keys():

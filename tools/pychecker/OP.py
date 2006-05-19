@@ -14,7 +14,6 @@ def LOAD_GLOBAL(op):           return op == 116
 def LOAD_CONST(op):            return op == 100
 def LOAD_FAST(op):             return op == 124
 def LOAD_ATTR(op):             return op == 105
-def LOAD_DEREF(op):            return op == 136
 def STORE_ATTR(op):            return op == 95
 def POP_TOP(op):               return op == 1
 def IMPORT_FROM(op):           return op == 108
@@ -122,6 +121,5 @@ except ImportError :
     class Name:
         'Turn name[x] into x'
         def __getitem__(self, x):
-            from pychecker import utils
-            return utils.safestr(x)
+            return str(x)
     name = Name()
