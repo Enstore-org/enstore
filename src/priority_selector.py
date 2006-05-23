@@ -10,7 +10,7 @@ import stat
 import errno
 import string
 import re
-import pcre
+#import pcre has been deprecated
 import copy
 import traceback
 import e_errors
@@ -53,9 +53,14 @@ class PriSelector:
         try:
             if re.search(pattern, item): return 1
             else: return 0
-        except pcre.error, detail:
-            Trace.log(e_errors.ERROR,"parse errorr %s" % (detail, ))
+        except:
+            Trace.log(e_errors.ERROR,"parse errorr")
+            Trace.handle_error()
             return 0
+        #pcre is deprecated
+        #except pcre.error, detail:
+        #    Trace.log(e_errors.ERROR,"parse errorr %s" % (detail, ))
+        #    return 0
         
 
     def priority(self, ticket):
