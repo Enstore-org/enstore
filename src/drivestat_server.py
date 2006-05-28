@@ -53,8 +53,11 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
-		self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
-
+		try:
+			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
+		except: # wait for 30 seconds and retry
+			time.sleep(30)
+			self.dsDB = drivestat2.dsDB(att['dbhost'], att['dbname'], att['dbport'])
 		# setup the communications with the event relay task
 		self.resubscribe_rate = 300
 		self.erc.start([event_relay_messages.NEWCONFIGFILE],

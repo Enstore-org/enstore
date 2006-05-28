@@ -62,8 +62,14 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 		dbport = att.get('dbport')
-		self.accDB = accounting.accDB(att['dbhost'],
+		try:
+			self.accDB = accounting.accDB(att['dbhost'],
 						att['dbname'], dbport)
+		except: # wait for 30 seconds and retry
+			time.sleep(30)
+			self.accDB = accounting.accDB(att['dbhost'],
+						att['dbname'], dbport)
+
 		# setup the communications with the event relay task
 		self.resubscribe_rate = 300
 		self.erc.start([event_relay_messages.NEWCONFIGFILE],
