@@ -3338,6 +3338,9 @@ def get_oninfo(inputfile, outputfile, e):
     elif (len(e.input) == 1 and e.outtype == HSMFILE and \
           os.path.isdir(ofullname)):
         munge_name = True
+    elif (len(e.input) == 1 and e.outtype == UNIXFILE and \
+          os.path.isdir(ofullname)):
+        munge_name = True
     elif (len(e.input) == 1 and e.outtype == RHSMFILE and \
           get_pac().isdir(ofullname)):
         munge_name = True
