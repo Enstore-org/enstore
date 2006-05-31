@@ -38,6 +38,7 @@ class ConfigurationDict:
         #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
+        self.use_thread = 0
 
     def read_config(self, configfile):
         self.configdict={}
@@ -202,8 +203,11 @@ class ConfigurationDict:
         return 0
 
     def dump(self, ticket):
-        t = copy.deepcopy(ticket)
-        self.run_in_thread('dump', self.make_dump,  args=(t,))
+        if self.use_thread:
+            t = copy.deepcopy(ticket)
+            self.run_in_thread('dump', self.make_dump,  args=(t,))
+        else:
+            self.make_dump(ticket)
         return
         
 
