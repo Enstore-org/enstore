@@ -38,7 +38,7 @@ class ConfigurationDict:
         #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
-        self.use_thread = 0
+        #self.use_thread = 0
 
     def read_config(self, configfile):
         self.configdict={}
@@ -378,7 +378,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         
         # make a configuration dictionary
         cd = ConfigurationDict()
-
+        self.use_thread = 0
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, server_address)
         self.request_dict_ttl = 10 # Config server is stateless,
