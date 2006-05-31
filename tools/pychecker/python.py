@@ -96,24 +96,15 @@ if utils.pythonVersion() >= utils.PYTHON_2_2 :
 
     GLOBAL_FUNC_INFO['bool'] = (BOOL, 1, 1, ['x'])
 
-if utils.pythonVersion() >= utils.PYTHON_2_3:
-    GLOBAL_FUNC_INFO['dict'] = (types.DictType, 0, 1, [])
-
 def tryAddGlobal(name, *args):
     if globals().has_key(name):
         GLOBAL_FUNC_INFO[name] = args
 
-zipMinArgs = 1
-if utils.pythonVersion() >= utils.PYTHON_2_4:
-    zipMinArgs = 0
-    
-tryAddGlobal('zip', types.ListType, zipMinArgs, None)
-
+tryAddGlobal('zip', types.ListType, 1, None)
 tryAddGlobal('enumerate', types.TupleType, 1, 1, ['sequence'])
 # sum() could also return float/long
 tryAddGlobal('sum', types.IntType, 1, 2, ['start'])
-# sorted() and reversed() always return an iterator  (FIXME: support iterator)
-tryAddGlobal('sorted', Stack.TYPE_UNKNOWN, 1, 1)
+# reversed() always returns an iterator  (FIXME: support iterator)
 tryAddGlobal('reversed', Stack.TYPE_UNKNOWN, 1, 1)
 
 _STRING_METHODS = { 'capitalize': (types.StringType, 0, 0),
@@ -152,12 +143,6 @@ _STRING_METHODS = { 'capitalize': (types.StringType, 0, 0),
 
 if utils.pythonVersion() >= utils.PYTHON_2_2 :
     _STRING_METHODS['decode'] = (types.UnicodeType, 0, 2)
-
-if utils.pythonVersion() >= utils.PYTHON_2_4:
-    _STRING_METHODS['rsplit'] = (types.StringType, 0, 2)
-    _STRING_METHODS['center'] = (types.StringType, 1, 2),
-    _STRING_METHODS['ljust'] = (types.StringType, 1, 2),
-    _STRING_METHODS['rjust'] = (types.StringType, 1, 2),
 
 BUILTIN_METHODS = { types.DictType :
                     { 'clear': (types.NoneType, 0, 0),
@@ -200,12 +185,8 @@ BUILTIN_METHODS = { types.DictType :
                     },
                   }
 
-if utils.pythonVersion() >= utils.PYTHON_2_4:
-    kwargs = ['cmp', 'key', 'reverse']
-    BUILTIN_METHODS[types.ListType]['sort'] =(types.NoneType, 0, 3, kwargs)
-
 if hasattr({}, 'pop'):
-    BUILTIN_METHODS[types.DictType]['pop'] = (Stack.TYPE_UNKNOWN, 1, 2)
+    BUILTIN_METHODS[types.DictType]['pop'] = (Stack.TYPE_UNKNOWN, 1, 1)
 
 def _setupBuiltinMethods() :
     if utils.pythonVersion() >= utils.PYTHON_2_2 :
@@ -304,7 +285,7 @@ _setupBuiltinAttrs()
 
 PENDING_DEPRECATED_MODULES = { 'string': None, 'types': None,
                              }
-DEPRECATED_MODULES = { 'FCNTL': 'fcntl', 'gopherlib': None,
+DEPRECATED_MODULES = { 'audioop': None, 'FCNTL': 'fcntl', 'gopherlib': None,
                        'macfs': 'Carbon.File or Carbon.Folder',
                        'posixfile': 'fcntl', 'pre': None, 'regsub': 're',
                        'statcache': 'os.stat()',
@@ -376,9 +357,8 @@ SPECIAL_METHODS = {
     '__add__': 2,	'__radd__': 2,		'__iadd__': 2,    
     '__sub__': 2,	'__rsub__': 2,		'__isub__': 2,
     '__mul__': 2,	'__rmul__': 2,		'__imul__': 2,    
-    '__div__': 2,	'__rdiv__': 2,		'__idiv__': 2,
-    #  __pow__: 2 or 3                           __ipow__: 2 or 3
-    '__pow__': 3,	'__rpow__': 2,		'__ipow__': 3,
+    '__div__': 2,	'__rdiv__': 2,		'__idiv__': 2,    
+    '__pow__': 2,	'__rpow__': 2,		'__ipow__': 2,    # 2 or 3
     '__truediv__': 2,	'__rtruediv__': 2,	'__itruediv__': 2,	
     '__floordiv__': 2,	'__rfloordiv__': 2,	'__ifloordiv__': 2,	
     '__mod__': 2,	'__rmod__': 2,		'__imod__': 2,    

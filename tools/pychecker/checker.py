@@ -20,7 +20,7 @@ import traceback
 import re
 
 # see __init__.py for meaning, this must match the version there
-LOCAL_MAIN_VERSION = 2
+LOCAL_MAIN_VERSION = 1
 
 
 def setupNamespace(path) :
@@ -332,14 +332,7 @@ class Class :
             op, oparg, i, extended_arg = OP.getInfo(code, i, extended_arg)
             if op >= OP.HAVE_ARGUMENT :
                 operand = OP.getOperand(op, func_code, oparg)
-                if OP.LOAD_CONST(op) or OP.LOAD_FAST(op) or OP.LOAD_GLOBAL(op):
-                    stack.append(operand)
-                elif OP.LOAD_DEREF(op):
-                    try:
-                        operand = func_code.co_cellvars[oparg]
-                    except IndexError:
-                        index = oparg - len(func_code.co_cellvars)
-                        operand = func_code.co_freevars[index]
+                if OP.LOAD_CONST(op) or OP.LOAD_FAST(op) :
                     stack.append(operand)
                 elif OP.STORE_ATTR(op) :
                     if len(stack) > 0 :
@@ -367,17 +360,11 @@ class Class :
             return None
         func_code, bytes, i, maxCode, extended_arg = \
                    OP.initFuncCode(self.methods[m].function)
-        # abstract if the first opcode is RAISE_VARARGS and it raises
-        # NotImplementedError
-        arg = ""
+        # abstract if the first conditional is RAISE_VARARGS
         while i < maxCode:
             op, oparg, i, extended_arg = OP.getInfo(bytes, i, extended_arg)
-            if OP.LOAD_GLOBAL(op):
-                arg = func_code.co_names[oparg]
-            elif OP.RAISE_VARARGS(op):
-                # if we saw NotImplementedError sometime before the raise
-                # assume it's related to this raise stmt
-                return arg == "NotImplementedError"
+            if OP.RAISE_VARARGS(op):
+                return 1
             if OP.conditional(op):
                 break
         return None
@@ -410,7 +397,7 @@ def importError(moduleName):
     if not exc_name:
         # either it's a string exception or a user-defined exception class
         # show string or fully-qualified class name
-        exc_name = utils.safestr(exc_type)
+        exc_name = str(exc_type)
         
     # Print a traceback, unless this is an ImportError.  ImportError is
     # presumably the most common import-time exception, so this saves
@@ -448,7 +435,7 @@ def importError(moduleName):
     # Careful formatting exc_value -- can fail for some user exceptions
     sys.stderr.write("  %s: " % exc_name)
     try:
-        sys.stderr.write(utils.safestr(exc_value) + '\n')
+        sys.stderr.write(str(exc_value) + '\n')
     except:
         sys.stderr.write('**error formatting exception value**\n')
 
@@ -497,7 +484,7 @@ class Module :
     def addClass(self, name) :
         self.classes[name] = c = Class(name, self.module)
         try:
-            objName = utils.safestr(c.classObject)
+            objName = str(c.classObject)
         except TypeError:
             # this can happen if there is a goofy __getattr__
             c.ignoreAttrs = 1
@@ -774,7 +761,7 @@ else :
                 else :
                     print 'Unable to load module', pymodule.__name__
             except Exception:
-                name = getattr(pymodule, '__name__', utils.safestr(pymodule))
+                name = getattr(pymodule, '__name__', str(pymodule))
                 importError(name)
 
         return pymodule

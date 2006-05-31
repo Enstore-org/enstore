@@ -346,7 +346,7 @@ __pychecker__ = ""  #Reset __pychecker__ after class Pnfs.
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_5c  CVS $Revision$ "
+    version_string = "v3_5d  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -3336,6 +3336,9 @@ def get_oninfo(inputfile, outputfile, e):
     if (len(e.input) > 1):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == HSMFILE and \
+          os.path.isdir(ofullname)):
+        munge_name = True
+    elif (len(e.input) == 1 and e.outtype == UNIXFILE and \
           os.path.isdir(ofullname)):
         munge_name = True
     elif (len(e.input) == 1 and e.outtype == RHSMFILE and \
@@ -8823,11 +8826,6 @@ def read_from_hsm(e, tinfo):
             e_ticket = {'status' : (e_errors.IOERROR, str(msg))}
         else:
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
-
-        import traceback
-        exc, msg, tb = sys.exc_info()
-        traceback.print_tb(tb)
-        print exc, msg
 
         return e_ticket, None
 
