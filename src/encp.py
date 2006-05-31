@@ -8824,11 +8824,6 @@ def read_from_hsm(e, tinfo):
         else:
             e_ticket = {'status' : (e_errors.WRONGPARAMETER, str(msg))}
 
-        import traceback
-        exc, msg, tb = sys.exc_info()
-        traceback.print_tb(tb)
-        print exc, msg
-
         return e_ticket, None
 
     #If this is the case, don't worry about anything.
