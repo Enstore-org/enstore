@@ -1047,6 +1047,30 @@ def do_layers_exist(pnfs_filename):
     # any layer information.
     return False
 
+#As the name implies remove layers 1 and 4 for the indicated file.
+def clear_layers_1_and_4(work_ticket):
+
+    pnfs_filename = work_ticket.get('wrapper', {}).get('pnfsFilename', "")
+    
+    if not pnfs_filename:
+        return False
+
+    if not is_pnfs_path(pnfs_filename):
+        return False
+
+    try:
+        p = Pnfs(pnfs_filename)
+
+        Trace.log(e_errors.INFO,
+                  "Clearing layers 1 and 4 for file %s (%s)." %
+                  (pnfs_filename, work_ticket.get('unique_id', None)))
+        
+        p.writelayer(1, " ", pnfs_filename)
+        p.writelayer(4, " ", pnfs_filename)
+    except (IOError, OSError):
+        return False
+
+    return True
 
 ############################################################################
 
@@ -4794,6 +4818,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #We don't want to do this because this will clobber what
                 # the previous encp has already set.
                 skip_layer_cleanup = True
+
+        #Add this for debugging.
+        Trace.log(e_errors.INFO,
+                  "pf_status = %s  skip_layer_cleanup = %s" %
+                  (pf_status, skip_layer_cleanup))
                                 
     #The volume clerk set the volume NOACCESS.
     if not e_errors.is_ok(vc_status):
@@ -4830,6 +4859,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             pass
     #If the transfer is a write from dcache, we need to clear any information
     # that resides in layer 1 and/or layer 4.
+    """
     elif is_write(encp_intf) and encp_intf.put_cache and not encp_intf.copies:
         #If another encp set layer 1 and/or 4 while this encp was waiting
         # in the queue, the layer test above will set skip_layer_cleanup
@@ -4847,6 +4877,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             except (IOError, OSError):
                 #Something is very wrong, deal with it later.
                 pass
+    """
 
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
@@ -4893,7 +4924,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             copy_index = random.randint(0, len(copy_list) - 1)
             next_bfid = copy_list[copy_index]
 
-            fc_info = fcc.get_bfid(next_bfid, 5, 20)
+            fc_info = fcc.bfid_info(next_bfid, 5, 20)
             if e_errors.is_ok(fc_info):
                 vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
                 if e_errors.is_ok(vc_info):
@@ -6492,8 +6523,10 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
                                      done_ticket, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
+            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
+            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
