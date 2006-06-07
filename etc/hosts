@@ -189,21 +189,12 @@
 # Assigned addresses currently not in use
 #131.225.164.29		d0enmvr4b.fnal.gov	d0enmvr4b
 #131.225.164.205	d0enmvr5b.fnal.gov	d0enmvr5b
-#131.225.164.206	d0enmvr6b.fnal.gov	d0enmvr6b
-#131.225.164.58		d0enmvr7b.fnal.gov	d0enmvr7b
 #131.225.164.51		d0enmvr9b.fnal.gov	d0enmvr9b
-#131.225.164.210	d0enmvr10b.fnal.gov	d0enmvr10b
 #131.225.164.54		d0enmvr11b.fnal.gov	d0enmvr11b
 #131.225.164.56		d0enmvr12b.fnal.gov	d0enmvr12b
-#131.225.164.116	d0enmvr16a.fnal.gov	d0enmvr16a
-#131.225.164.216	d0enmvr16b.fnal.gov	d0enmvr16b
 #131.225.164.217	d0enmvr17b.fnal.gov	d0enmvr17b
-#131.225.164.118	d0enmvr18a.fnal.gov	d0enmvr18a
-#131.225.164.218	d0enmvr18b.fnal.gov	d0enmvr18b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
-#131.225.164.73		d0enmvr29a.fnal.gov	d0enmvr29a
-#131.225.164.74		d0enmvr30a.fnal.gov	d0enmvr30a
 #131.225.164.66		d0enout1a.fnal.gov	d0enout1a
 #131.225.164.67		d0enout2a.fnal.gov	d0enout2a
 #131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
@@ -216,11 +207,9 @@
 #131.225.13.11		stkenmvr4a.fnal.gov	stkenmvr4a
 #131.225.13.12		stkenmvr4b.fnal.gov	stkenmvr4b
 #131.225.13.14		stkenmvr5b.fnal.gov	stkenmvr5b
-#131.225.13.58		stkenmvr6b.fnal.gov	stkenmvr6b
 #131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
-#131.225.13.100		stkenmvr37a.fnal.gov	stkenmvr37a
 #131.225.13.50		stkendca4a.fnal.gov	stkendca4a
 #131.225.13.51		stkendca5a.fnal.gov	stkendca5a
 #131.225.13.47		cachen1a.fnal.gov	cachen1a
@@ -230,27 +219,25 @@
 #131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
 #131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 
-# private subnet for d0en and stken (STK and ADIC)
-192.168.19.7		d0ensrv0p.fnal.gov	d0ensrv0p
-#192.168.19.x		d0ensrv1p.fnal.gov	d0ensrv1p
-192.168.19.8		d0ensrv2p.fnal.gov	d0ensrv2p
-192.168.19.9		d0ensrv3p.fnal.gov	d0ensrv3p
-192.168.19.10		d0ensrv4p.fnal.gov	d0ensrv4p
-#192.168.19.11		d0ensrv5p.fnal.gov	d0ensrv5p
-#192.168.19.19		d0ensrv7p.fnal.gov	d0ensrv7p
-#192.168.19.x		stkensrv0p.fnal.gov	stkensrv0p
-#192.168.19.5		stkensrv1p.fnal.gov	stkensrv1p
-#192.168.19.4		stkensrv2p.fnal.gov	stkensrv2p
-#192.168.19.3		stkensrv3p.fnal.gov	stkensrv3p
-192.168.19.1		stkensrv4p.fnal.gov	stkensrv4p
-192.168.19.2		fntt.fnal.gov		fntt
-192.168.19.12		adic2.fnal.gov		adic2
+# control subnet for d0en and stken (STK and ADIC)
+192.168.89.56		adic2.fnal.gov		adic2
+192.168.89.3		d0ensrv2p
+192.168.89.4		d0ensrv3p
+192.168.89.5		d0ensrv4p
 
-# private subnet for cdfen (STK)
-192.168.19.13		cdfensrv0p.fnal.gov	cdfensrv0p
-#192.168.19.18		cdfensrv1p.fnal.gov	cdfensrv1p
-192.168.19.14		cdfensrv2p.fnal.gov	cdfensrv2p
-#192.168.19.15		cdfensrv3p.fnal.gov	cdfensrv3p
-192.168.19.16		cdfensrv4p.fnal.gov	cdfensrv4p
-192.168.19.17		fntt2.fnal.gov		fntt2
-#192.168.19.6		adic4.fnal.gov		adic4
+192.168.89.184		fntt
+192.168.89.131		stkensrv2p
+192.168.89.132		stkensrv3p
+192.168.89.133		stkensrv4p
+
+# control subnet for cdfen (STK)
+192.168.89.120		fntt2
+192.168.89.67		cdfensrv2p
+192.168.89.68		cdfensrv3p
+192.168.89.69		cdfensrv4p
+
+# control subnet for gccen (SL8500)
+192.168.89.248		fntt_gcc
+192.168.89.250		gccsla
+192.168.89.194		gccensrv1p
+192.168.89.195		gccensrv2p
