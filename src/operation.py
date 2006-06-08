@@ -197,12 +197,13 @@ def show_cap(header, list):
 def get_rem_ticket_number(rem_res):
 	for i in rem_res:
 		t = i.split()
-		if t[0] == 'Entry' and \
-			t[1] == 'created' and \
-			t[2] == 'with' and \
-			t[3] == 'id' and \
-			t[4] == '=':
-			return "HELPDESK_TICKET_"+t[5]
+		if len(t) > 5:
+			if t[0] == 'Entry' and \
+				t[1] == 'created' and \
+				t[2] == 'with' and \
+				t[3] == 'id' and \
+				t[4] == '=':
+				return "HELPDESK_TICKET_"+t[5]
 	return 'UNKNOWN_TICKET'
 
 
