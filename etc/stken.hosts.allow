@@ -15,5 +15,8 @@ ALL: 131.225.0.0/255.255.0.0: banners /etc/banners
 ALL: 198.124.212.0/255.255.255.0: banners /etc/banners
 ALL: 198.124.213.0/255.255.255.0: banners /etc/banners
 
+# Enstore Control Network
+ALL: 192.168.89.0/255.255.255.0: banners /etc/banners
+
 # Enstore Private Network
 ALL: 192.168.19.0/255.255.255.0: banners /etc/banners
