@@ -1047,7 +1047,7 @@ def execute(args):
 			cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
 			print cc
 			# use popen to get the ticket number
-			rem_res = op.popen(cc, 'r').readlines()
+			rem_res = os.popen(cc, 'r').readlines()
 			print rem_res
 			ticket = get_rem_ticket_number(rem_res)
 			print "ticket =", ticket
@@ -1081,7 +1081,7 @@ def execute(args):
 			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
 			print cc
 			# use popen to get the ticket number
-			rem_res = op.popen(cc, 'r').readlines()
+			rem_res = os.popen(cc, 'r').readlines()
 			print rem_res
 			ticket = get_rem_ticket_number(rem_res)
 			print "ticket =", ticket
