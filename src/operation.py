@@ -902,7 +902,7 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	aType = "LoadTapes"
 	item = "Other"
 
-	cmd = os.path.join(os.environ['ENSTORE_DIR'], 'helpDesk', 'fliptabTicket')
+	cmd = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'genMediaTicket')
 
 	cc = "%s %s '%s' '%s' %s %s %s %s '%s' %s"%(cmd, system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
