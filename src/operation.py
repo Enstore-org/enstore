@@ -770,7 +770,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 			not storage_group||'.'||file_family in \
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
-			not file_family like '%%-MIGRATION%%' and \
+			not file_family like '%%-MIGRATION%%' \
 			order by label \
 			limit %d;"%(mts, limit)
 	if debug:
