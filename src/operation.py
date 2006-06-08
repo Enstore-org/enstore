@@ -387,6 +387,7 @@ def start_job_task(job_name, task_id, args=None, comment=None, timestamp=None):
 	if debug:
 		print q
 	res = db.query(q)
+	return `res`
 
 # finish_job_task(job_name, task_id) -- finish/close a task
 def finish_job_task(job_name, task_id, comment=None, result=None, timestamp=None):
@@ -419,6 +420,7 @@ def finish_job_task(job_name, task_id, comment=None, result=None, timestamp=None
 	if debug:
 		print q
 	res = db.query(q)
+	return `res`
 
 # get_current_task(name) -- get current task
 def get_current_task(name):
@@ -489,7 +491,9 @@ def start_next_task(job, args=None, comment=None, timestamp=None):
 	nt = get_next_task(job)
 	if nt:
 		if ct == 0 or has_finished(job, ct):
-			start_job_task(job, nt, args, comment, timestamp)
+			res2 = start_job_task(job, nt, args, comment, timestamp)
+			if res2:
+				res.append(res2)
 		else:
 			res.append('current task has not finished')
 	else:
@@ -504,7 +508,9 @@ def finish_current_task(job, result = None, comment = None, timestamp=None):
 		if has_finished(job, ct):
 			res.append('current task has already finished')
 		else:
-			finish_job_task(job, ct, comment, result, timestamp)
+			res2 = finish_job_task(job, ct, comment, result, timestamp)
+			if res2:
+				res.append(res2)
 	else:
 		res.append('no current task')
 	return res
@@ -1103,7 +1109,7 @@ def execute(args):
 		for i in res.keys():
 			total = total + len(res[i])
 		print "%d tapes in %d caps"%(total, caps)
-		return []
+		return ""
 	elif cmd == "recommend_write_protect_off":
 		if len(args) > 1:
 			res = recommend_write_permit_job(media_type = args[1], limit=1000000)
@@ -1117,7 +1123,7 @@ def execute(args):
 		for i in res.keys():
 			total = total + len(res[i])
 		print "%d tapes in %d caps"%(total, caps)
-		return []
+		return ""
 	elif cmd == "current": # current task
 		result = []
 		for i in args[1:]:
