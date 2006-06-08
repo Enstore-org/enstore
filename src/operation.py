@@ -1043,15 +1043,17 @@ def execute(args):
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				WRITE_PROTECT_SCRIPT_PATH)
 			print cc
-			# os.system(cc)
+			os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
 			print cc
 			# use popen to get the ticket number
-			# rem_res = op.popen(cc, 'r').readlines()
-			# ticket = get_rem_ticket_number(rem_res)
-			# res2 = start_next_task(job_name, ticket)
-			# res2.appen(show_current_task(job_name))
-			# return res2
+			rem_res = op.popen(cc, 'r').readlines()
+			print rem_res
+			ticket = get_rem_ticket_number(rem_res)
+			print "ticket =", ticket
+			res2 = start_next_task(job_name, ticket)
+			res2.append(show_current_task(job_name))
+			return res2
 		else:
 			return "no more volumes to do"
 	elif cmd == "auto_write_protect_off":
@@ -1075,16 +1077,17 @@ def execute(args):
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				WRITE_PERMIT_SCRIPT_PATH)
 			print cc
-			# os.system(cc)
+			os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
-			# os.system(cc)
 			print cc
 			# use popen to get the ticket number
-			# rem_res = op.popen(cc, 'r').readlines()
-			# ticket = get_rem_ticket_number(rem_res)
-			# res2 = start_next_task(job_name, ticket)
-			# res2.appen(show_current_task(job_name))
-			# return res2
+			rem_res = op.popen(cc, 'r').readlines()
+			print rem_res
+			ticket = get_rem_ticket_number(rem_res)
+			print "ticket =", ticket
+			res2 = start_next_task(job_name, ticket)
+			res2.append(show_current_task(job_name))
+			return res2
 		else:
 			return "no more volumes to do"
 	elif cmd == "recommend_write_protect_on":
