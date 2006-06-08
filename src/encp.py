@@ -3223,9 +3223,19 @@ def get_dinfo():
 #Some stat fields need to be extracted and modified.
 def get_minfo(statinfo):
 
-    st_dec_dict = stat_decode(statinfo)
-
+    
     rtn = {}
+
+    if not statinfo:
+        #We should only get here only if reading a deleted file using
+        # --get-bfid and --override-deleted.
+        rtn['inode'] = 0L
+        rtn['major'] = 0
+        rtn['minor'] = 0
+        rtn['mode'] = 0
+        return rtn
+
+    st_dec_dict = stat_decode(statinfo)
     
     rtn['uid'] = st_dec_dict['uid']
     rtn['uname'] = st_dec_dict['uname']
@@ -3921,6 +3931,9 @@ def submit_one_request(ticket, encp_intf):
         else:
             transfer_type = "read"
             filename = ticket['infile']
+
+        if filename == "":
+            filename = "unknown filename"
     except EncpError, msg:
         transfer_type = "unknown"
         filename = "unknown filename"
@@ -8277,7 +8290,13 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #file_size = long(fc_reply['size'])
             #Grab the stat info.
-            istatinfo = p.get_stat(ifullname)
+            if e.override_deleted and fc_reply['deleted'] != 'no' \
+                   and not ifullname:
+                #This if protects us in the case where we are reading
+                # a deleted file using the bfid.
+                istatinfo = None
+            else:
+                istatinfo = p.get_stat(ifullname)
 
             bfid = e.get_bfid
 
