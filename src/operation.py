@@ -321,15 +321,15 @@ def get_job_by_time(after, before = None):
 def retrieve_job(job):
 	# assemble its related objects
 	q = "select * from object where job = %d order by association, object;"%(job['id'])
-	object = []
+	object = {}
 	if debug:
 		print q
 	res = db.query(q).getresult()
 	for j in res:
-		if j[2]:
-			object.append(j[2]+':'+j[1])
+		if object.has_key(j[2]):
+			object[j[2]].append(j[1])
 		else:
-			object.append(j[1])
+			object[j[2]] = [j[1]]
 	job['object'] = object
 	# list its related tasks
 	q = "select * from job_definition where id = %d;"%(job['type'])
@@ -598,8 +598,11 @@ def show(job):
 			t['action'], t['start'], t['finish'], t['args'],
 			t['result'])
 	print "Objects:"
-	for i in job['object']:
-		print "\t", i
+	for i in job['object'].keys():
+		print i+':',
+		for j in job['object'][i]:
+			print j,
+		print
 
 # delete(job) -- delete a job
 def delete(job):
@@ -1086,6 +1089,7 @@ def execute(args):
 			print "ticket =", ticket
 			res2 = start_next_task(job_name, ticket)
 			res2.append(show_current_task(job_name))
+			res2.append("ticket = "+ticket)
 			return res2
 		else:
 			return "no more volumes to do"
@@ -1120,6 +1124,7 @@ def execute(args):
 			print "ticket =", ticket
 			res2 = start_next_task(job_name, ticket)
 			res2.append(show_current_task(job_name))
+			res2.append("ticket = "+ticket)
 			return res2
 		else:
 			return "no more volumes to do"
