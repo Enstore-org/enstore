@@ -914,6 +914,32 @@ def make_help_desk_ticket(n, cluster, script_host, job):
 	cc = "%s %s '%s' '%s' %s %s %s %s '%s' %s"%(cmd, system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
 
+# get_last_job_time(cluster, job_type)
+
+def get_last_job_time(cluster, job_type):
+	q = "select max(start) from job, job_definition \
+		where job_definition.name = '%s' and \
+			job.type = job_definition.id and \
+			job.name like '%s%%';"%(job_type, cluster)
+	if debug:
+		print q
+	res = db.query(q).getresult()[0][0]
+	if res:
+		return timestamp2time(res.split('.')[0])
+	return 0
+
+def get_last_write_protect_on_job_time(c=None):
+	if c:
+		return get_last_job_time(c, 'WRITE_PROTECTION_TAB_ON')
+	else:
+		return get_last_job_time(cluster, 'WRITE_PROTECTION_TAB_ON')
+		
+def get_last_write_protect_off_job_time(c=None):
+	if c:
+		return get_last_job_time(c, 'WRITE_PROTECTION_TAB_OFF')
+	else:
+		return get_last_job_time(cluster, 'WRITE_PROTECTION_TAB_OFF')
+
 PROMPT = "operation> "
 
 # shell() -- interactive shell
