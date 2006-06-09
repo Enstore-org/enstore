@@ -117,16 +117,61 @@ def parsePtTapeTapelogFile(filename):
                 if 61 <= tape_number and tape_number <= 133:
                     sfm = 1
                     fma = 0
-                elif 133 < tape_number and tape_number < 139:
+                elif 136 <= tape_number and tape_number <= 136:
                     sfm = 2
                     fma = -1
                 elif 139 <= tape_number and tape_number <= 159:
                     sfm = 2
                     fma = 0
-                elif 160 <= tape_number and tape_number <= 1887:
+                elif 160 <= tape_number and tape_number <= 349:
                     sfm = 2
                     fma = -1
-                elif 1897 <= tape_number:
+                elif 902 <= tape_number and tape_number <= 1887:
+                    sfm = 2
+                    fma = -1
+                elif 1897 <= tape_number and tape_number <= 2153:
+                    sfm = 2
+                    fma = 0
+                elif 2245 <= tape_number and tape_number <= 2335:
+                    sfm = 2
+                    fma = -1
+                elif 2349 <= tape_number and tape_number <= 2376:
+                    sfm = 2
+                    fma = 0
+                elif 2413 <= tape_number and tape_number <= 3379:
+                    sfm = 2
+                    fma = -1
+                elif 3413 <= tape_number and tape_number <= 3635:
+                    sfm = 2
+                    fma = 0
+                elif 3659 <= tape_number and tape_number <= 3661:
+                    sfm = 2
+                    fma = -1
+                elif 3690 <= tape_number and tape_number <= 3908:
+                    sfm = 2
+                    fma = 0
+                elif 3953 <= tape_number and tape_number <= 3966:
+                    sfm = 2
+                    fma = -1
+                elif 4021 <= tape_number and tape_number <= 4906:
+                    sfm = 2
+                    fma = 0
+                elif 4935 <= tape_number and tape_number <= 4935:
+                    sfm = 2
+                    fma = -1
+                elif 4950 <= tape_number and tape_number <= 6240:
+                    sfm = 2
+                    fma = 0
+                elif 6247 <= tape_number and tape_number <= 6255:
+                    sfm = 2
+                    fma = -1
+                elif 6290 <= tape_number and tape_number <= 7367:
+                    sfm = 2
+                    fma = 0
+                elif 7446 <= tape_number and tape_number <= 7446:
+                    sfm = 2
+                    fma = -1
+                elif 7449 <= tape_number and tape_number <= 8768:
                     sfm = 2
                     fma = 0
                 else:
