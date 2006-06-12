@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	# should we generate the ticket?
 	if len(sys.argv) > 1 and oncaps and (
 		oncaps >= LIMIT or time.time() - onltt > seven_days):
-		res = operation.execute('auto_write_protect_on')
+		res = operation.execute(['auto_write_protect_on'])
 		f = open(TMP_FILE, 'w')
 		f.write("A write_protection_on ticket is generated for %s at %s\n\n"%(operation.cluster, time.ctime(time.time())))
 		for i in res:
