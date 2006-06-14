@@ -38,7 +38,7 @@ class ConfigurationDict:
         #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
-        #self.use_thread = 0
+        self.use_thread = 0
 
     def read_config(self, configfile):
         self.configdict={}
@@ -368,6 +368,19 @@ class ConfigurationDict:
         
         return socket.getfqdn(server_address).split(".")[0]
 
+    # turn on / off threaded implementation
+    def thread_on(self, ticket):
+        key = ticket.get('on', 0)
+        if key:
+            key=int(key)
+            if key != 0:
+                key = 1
+        self.use_thread = key
+        ret = {"status" : (e_errors.OK, "thread is set to %s"%(self.use_thread))}
+        self.reply_to_caller(ret)
+        
+        
+
 class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
 			  generic_server.GenericServer):
 
@@ -377,8 +390,8 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 	#self.print_id = MY_NAME
         
         # make a configuration dictionary
-        cd = ConfigurationDict()
-        self.use_thread = 0
+        #cd = ConfigurationDict()
+        ConfigurationDict.__init__(self)
         # default socket initialization - ConfigurationDict handles requests
         dispatching_worker.DispatchingWorker.__init__(self, server_address)
         self.request_dict_ttl = 10 # Config server is stateless,

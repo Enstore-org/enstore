@@ -504,6 +504,8 @@ class Interface:
                 self.summary = 1
             elif opt == "--threaded":
                 self.threaded_exfer = 1
+            elif opt == "--threaded-impl":
+                self.threaded_impl = value
             elif opt == "--time":
                 self.time = value
             elif opt == "--timeout":

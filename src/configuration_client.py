@@ -211,6 +211,7 @@ class ConfigurationClient(generic_client.GenericClient):
                    }
         reply = self.send(request, timeout, retry)
         if not e_errors.is_ok(reply):
+            print "ERROR",reply
             return reply
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
@@ -272,6 +273,12 @@ class ConfigurationClient(generic_client.GenericClient):
         x = self.send(request, timeout, retry)
         return x
 
+    # multithreaded on / off
+    def threaded(self, on = 0, timeout=0, retry=0):
+        request = {'work' : 'thread_on' , 'on':on }
+        x = self.send(request, timeout, retry)
+        return x
+
     #def alive(self, server, rcv_timeout=0, tries=0):
     #    return self.send({'work':'alive'}, rcv_timeout, tries)
 
@@ -317,7 +324,8 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.alive_retries = 0
         self.summary = 0
         self.timestamp = 0
-
+        self.threaded_impl = None
+        
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -359,6 +367,11 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                           "last time configfile was reloaded",
                           option.DEFAULT_TYPE:option.INTEGER,
                           option.USER_LEVEL:option.ADMIN},
+        option.THREADED_IMPL:{option.HELP_STRING:
+                              "Turn on / off threaded implementation",
+                              option.VALUE_USAGE:option.REQUIRED,
+                              option.DEFAULT_TYPE:option.INTEGER,
+                              option.USER_LEVEL:option.ADMIN},
          }
 
 def do_work(intf):
@@ -422,6 +435,10 @@ def do_work(intf):
                                       intf.alive_retries)
         if e_errors.is_ok(result):
             print time.ctime(result['config_load_timestamp'])
+    elif intf.threaded_impl != None:
+        result = csc.threaded(intf.threaded_impl, intf.alive_rcv_timeout,
+                                      intf.alive_retries)
+        print result
     
     else:
 	intf.print_help()

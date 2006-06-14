@@ -388,6 +388,7 @@ TAGECHO = "tagecho"                          #pnfs
 TAGRM = "tagrm"                              #pnfs
 TAGS = "tags"                                #pnfs
 THREADED = "threaded"                        #encp
+THREADED_IMPL = "threaded-impl"              # config server
 TIME = "time"                                #inquisitor
 TIMEOUT = "timeout"
 TIMESTAMP = "timestamp"                      #configuration
@@ -488,7 +489,7 @@ valid_option_list = [
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
     STORAGE_GROUP, SUBSCRIBE, SUMMARY,
     TAG, TAGCHMOD, TAGCHOWN, TAGECHO, TAGRM, TAGS,
-    TEST, THREADED, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
+    TEST, THREADED, THREADED_IMPL, TIME, TIMEOUT, TIMESTAMP, TITLE, TITLE_GIF,
     TOTAL_BYTES, TOUCH, TRIM_OBSOLETE,
     UNMARK_BAD, UP, UPDATE, UPDATE_AND_EXIT, UPDATE_INTERVAL, URL, USAGE,
     VERBOSE, VERSION, VOL, VOLS, VOLUME, VOL1OK,
