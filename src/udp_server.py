@@ -233,15 +233,17 @@ class UDPServer:
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list):
+        current_id = copy.deepcopy(list)
+        reply_address = self.reply_address
         self.request_dict[self.current_id] = copy.deepcopy(list)
+        
         try:
             Trace.trace(16, "udp_server (reply): to %s: request_dict %s" %
-                        (self.reply_address, self.request_dict[self.current_id],))
+                        (reply_address, current_id))
+            self.server_socket.sendto(repr(current_id),reply_address)
         except:
             Trace.handle_error()
-            print self.request_dict, self.reply_address, list
-        self.server_socket.sendto(repr(self.request_dict[self.current_id]),
-				  self.reply_address)
+            print request_dict, reply_address, list
         
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
