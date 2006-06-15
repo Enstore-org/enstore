@@ -243,7 +243,7 @@ class UDPServer:
             self.server_socket.sendto(repr(current_id),reply_address)
         except:
             Trace.handle_error()
-            print request_dict, reply_address, list
+            print self.request_dict, reply_address, list
         
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
