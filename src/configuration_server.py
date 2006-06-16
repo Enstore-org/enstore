@@ -38,7 +38,7 @@ class ConfigurationDict:
         #self.print_id="CONFIG_DICT"
         self.serverlist = {}
         self.config_load_timestamp = None
-        self.use_thread = 0
+        self.use_thread = 1
 
     def read_config(self, configfile):
         self.configdict={}
