@@ -1826,8 +1826,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.driver_type == 'FTTDriver':
             try:
                 bloc_loc = long(stats[self.ftt.BLOC_LOC])
-            except  self.ftt.FTTError, detail:
-                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(self.ftt.FTTError, detail), error_source=DRIVE)
+            except  (self.ftt.FTTError, TypeError), detail:
+                self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
                 return
         Trace.log(e_errors.INFO, 'Write starting. Tape %s absolute location in blocks %s'%(self.current_volume, bloc_loc))
 
