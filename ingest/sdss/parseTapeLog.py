@@ -135,10 +135,10 @@ def parsePtTapeTapelogFile(filename):
                 elif 2245 <= tape_number and tape_number <= 2335:
                     sfm = 2
                     fma = -1
-                elif 2349 <= tape_number and tape_number <= 2376:
+                elif 2349 <= tape_number and tape_number <= 2380:
                     sfm = 2
                     fma = 0
-                elif 2413 <= tape_number and tape_number <= 3379:
+                elif 2411 <= tape_number and tape_number <= 3379:
                     sfm = 2
                     fma = -1
                 elif 3413 <= tape_number and tape_number <= 3635:
