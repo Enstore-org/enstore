@@ -93,8 +93,9 @@ CMS_MIGRATION_DB = 'cms/MIGRATION-9940A-TO-9940B'
 
 DELETED_TMP = 'DELETED'
 
-MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
+MIGRATION_FILE_FAMILY_SUFFIX = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
+lomffs = len(MIGRATION_FILE_FAMILY_SUFFIX)
 
 ENCP_PRIORITY = 0
 csc = None
@@ -465,17 +466,21 @@ def copy_files(files):
 def migration_file_family(ff, deleted = 'n'):
 	global use_file_family
 	if deleted == 'y':
-		return DELETED_FILE_FAMILY+MIGRATION_FILE_FAMILY_KEY
+		return DELETED_FILE_FAMILY+MIGRATION_FILE_FAMILY_SUFFIX
 	else:
 		if use_file_family:
-			return use_file_family+MIGRATION_FILE_FAMILY_KEY
+			return use_file_family+MIGRATION_FILE_FAMILY_SUFFIX
 		else:
-			return ff+MIGRATION_FILE_FAMILY_KEY
+			return ff+MIGRATION_FILE_FAMILY_SUFFIX
 
 # normal_file_family(ff) -- making up a normal file family from a
 #				migration file family
 def normal_file_family(ff):
-	return ff.replace(MIGRATION_FILE_FAMILY_KEY, '')
+	n = len(MIGRATION_FILE_FAMILY_SUFFIX)
+	if len(ff) > n and ff[-n:] == MIGRATION_FILE_FAMILY_SUFFIX:
+		return ff[:-10]
+	else:
+		return ff
 
 # compare_metadata(p, f) -- compare metadata in pnfs (p) and filedb (f)
 def compare_metadata(p, f, pnfsid = None):
@@ -683,7 +688,6 @@ def migrating():
 					res = "source file info missing"
 			else:
 				res = swap_metadata(bfid, src, bfid2, dst)
-					
 			if not res:
 				ok_log("SWAPPING_METADATA", "%s %s %s %s have been swapped"%(bfid, src, bfid2, dst))
 				log_swapped(bfid, bfid2, db)
@@ -794,7 +798,7 @@ def final_scan_volume(vol):
 
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
-	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_KEY:
+	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_SUFFIX:
 		error_log(MY_TASK, "%s is not a migration volume"%(vol))
 		return 1
 
