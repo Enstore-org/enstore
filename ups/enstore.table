@@ -101,6 +101,12 @@ QUALIFIERS=lancs
                 envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/lancs.conf)
                 exeActionRequired(COMMON_SETUP)
 FLAVOR=ANY
+QUALIFIERS=gccen
+	ACTION=SETUP
+		envSet(ENSTORE_CONFIG_HOST, 131.225.13.129)
+		envSet(ENSTORE_CONFIG_FILE, ${UPS_PROD_DIR}/etc/gccen.conf)
+		exeActionRequired(COMMON_SETUP)
+FLAVOR=ANY
 QUALIFIERS=""
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/ups/chooseConfig`)
