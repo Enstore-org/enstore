@@ -156,7 +156,7 @@ COMMON:
                 addAlias(pylint, 'python ${GADFLY_GRAMMAR}/kjpylint.py %s')
                 # ftt is Fermi tape tools
 	        #setupRequired("ftt v2_22")
-	        setupOptional("ftt v2_22")
+	        setupOptional("ftt")
 
 		# drivestat_client is the Fermi product that will allow us to monitor drive usage
                 # drivestat_client is now a local module in enstore
