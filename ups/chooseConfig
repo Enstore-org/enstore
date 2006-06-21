@@ -22,7 +22,7 @@ airedale=airedale.fnal.gov
 #odyssey=odyssey,fnal,gov
 #sirius=sirius
 #lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
-
+gccen=gccensrv1.fnal.gov
 complain=1
 
 # default for environment variables with a default
@@ -104,9 +104,16 @@ case $node in
 #	    ENSTORE_MAIL=enstore
 #	    complain=0
 #	    ;;
+  gccen*)
+	    ENSTORE_CONFIG_HOST=$gccen
+	    ENSTORE_CONFIG_FILE=gccen.conf
+	    complain=0
+	    ;;
+	    
   *)        ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
             ;;
+  
 esac
 
 # ENSTORE_USER_DEFINED_CONFIG_FILE allows user to override default
