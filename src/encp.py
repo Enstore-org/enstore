@@ -6199,6 +6199,28 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     request_copy_list = []
     if e.copies > 0:
         for n_copy in range(1, e.copies + 1):
+
+            #Determine the library manager to use.  First, try to see if
+            # the command line has the information.  Otherwise, check
+            # the library tag.  In both cases, the library should be a
+            # comma seperated list of library manager short names.
+            try:
+                current_library = e.output_library.split(",")[n_copy]
+            except IndexError:
+                try:
+                    current_library = \
+                                t.get_library(odirname).split(",")[n_copy]
+                except IndexError:
+                    #We get here if n copies were requested, but less than
+                    # that number of libraries were found.
+                    e.copies = n_copy - 1
+                    break
+                    #raise EncpError(None,
+                    #                "Too many copies requested for the "
+                    #                "number of configured copy libraries.",
+                    #                e_errors.USERERROR, copy_ticket)
+
+            
             for work_ticket in request_list:
                 copy_ticket = copy.deepcopy(work_ticket)
                 #Specify the copy number; this is the copy number relative to
@@ -6213,25 +6235,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 copy_ticket['vc']['original_file_family'] = \
                                              copy_ticket['vc']['file_family']
                 del copy_ticket['vc']['file_family']
-                #Determine the library manager to use.  First, try to see if
-                # the command line has the information.  Otherwise, check
-                # the library tag.  In both cases, the library should be a
-                # comma seperated list of library manager short names.
-                try:
-                    copy_ticket['vc']['library'] = \
-                                          e.output_library.split(",")[n_copy]
-                except IndexError:
-                    try:
-                        copy_ticket['vc']['library'] = \
-                                          t.get_library().split(",")[n_copy]
-                    except IndexError:
-                        #We get here if n copies were requested, but less than
-                        # that number of libraries were found.
-                        copy_ticket['vc']['library'] = None
-                        raise EncpError(None,
-                                        "Too many copies requested for the "
-                                        "number of configured copy libraries.",
-                                        e_errors.USERERROR, copy_ticket)
+                #Set the new library.
+                copy_ticket['vc']['library'] = current_library
+
 
                 #Store the copy ticket.
                 request_copy_list.append(copy_ticket)
@@ -9208,7 +9214,7 @@ class EncpInterface(option.Interface):
         option.COPIES:{option.HELP_STRING:"Write N copies of the file.",
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
-                       option.USER_LEVEL:option.ADMIN,},
+                       option.USER_LEVEL:option.USER,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
                                   option.DEFAULT_TYPE:option.INTEGER,
