@@ -8,13 +8,19 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <errno.h>
+
+/* A little hack for SunOS to use the BSD SIOC* ioctl(). */
+#if defined(__sun) && !defined(BSD_COMP)
+#  define BSD_COMP
+#endif
 
 #include <sys/socket.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
-#include <errno.h>
+
 
 /***************************************************************************
  * globals and constants
@@ -340,6 +346,8 @@ static int get_hw_addr(char *intf, char* hw)
 
 #ifdef SIOCRPHYSADDR
    memcpy(&hw_info, &(pa_info.current_pa), INET_ADDRSTRLEN); /* OSF1? */
+#elif defined(SIOCGENADDR)
+   memcpy(&hw_info, &(if_info.ifr_enaddr), INET_ADDRSTRLEN);/* SunOS, IRIX */
 #else 
    memcpy(&hw_info, &(if_info.ifr_hwaddr), INET_ADDRSTRLEN);
 #endif
