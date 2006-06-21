@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
+# Portions Copyright (c) 2005, Google, Inc.  All rights reserved.
 
 """
 Configuration information for checker.
@@ -13,25 +14,43 @@ import string
 import re
 import time
 
+def get_warning_levels():
+    import types
+    from pychecker import msgs
+    WarningClass = msgs.WarningClass
+
+    result = {}
+    for name in vars(msgs).keys():
+        obj = getattr(msgs, name)
+        if (obj is not WarningClass and
+            isinstance(obj, types.ClassType) and
+            issubclass(obj, WarningClass)):
+            result[name.capitalize()] = obj
+    return result
+
+_WARNING_LEVELS = get_warning_levels()
+
 _RC_FILE = ".pycheckrc"
 CHECKER_VAR = '__pychecker__'
-_VERSION = '0.8.16'
+_VERSION = '0.8.17'
 
 _DEFAULT_BLACK_LIST = [ "Tkinter", "wxPython", "gtk", "GTK", "GDK", ]
 _DEFAULT_VARIABLE_IGNORE_LIST = [ '__version__', '__warningregistry__', 
                                   '__all__', '__credits__', '__test__',
-                                  '__author__', '__email__', '__revision__', ]
+                                  '__author__', '__email__', '__revision__',
+                                  '__id__', '__copyright__', '__license__',
+                                  '__date__',
+                                ]
 _DEFAULT_UNUSED_LIST = [ '_', 'empty', 'unused', 'dummy', ]
-
-# All these options are on even if -e/--errors is used
-_ERRORS = { 'noEffect': 1, }
 
 _OPTIONS = (
     ('Major Options', [
- ('e', 0, 'errors', None, 'turn off all warnings which are not likely errors'),
- ( '', 0, 'complexity', None, 'turn off all warnings which are related to complexity'),
+ ('',  0, 'only', 'only', 'only warn about files passed on the command line'),
+ ('e', 1, 'level', None, 'the maximum error level of warnings to be displayed'),
+ ('#', 1, 'limit', 'limit', 'the maximum number of warnings to be displayed'),
  ('F', 1, 'config', None, 'specify .pycheckrc file to use'),
  ('',  0, 'quixote', None, 'support Quixote\'s PTL modules'),
+ ('',  1, 'evil', 'evil', 'list of evil C extensions that crash the interpreter'),
      ]),
     ('Error Control', [
  ('i', 0, 'import', 'importUsed', 'unused imports'),
@@ -113,7 +132,7 @@ _OPTIONS = (
  ( '', 0, 'rcfile', None, 'print a .pycheckrc file generated from command line args'),
  ('P', 0, 'printparse', 'printParse', 'print internal checker parse structures'),
  ('d', 0, 'debug', 'debug', 'turn on debugging for checker'),
- ('Q', 0, 'quiet', None, 'turn off all output except warnings'),
+ ('Q', 0, 'quiet', 'quiet', 'turn off all output except warnings'),
  ('V', 0, 'version', None, 'print the version of PyChecker and exit'),
      ])
 )
@@ -199,11 +218,19 @@ class Config :
     def __init__(self) :
         "Initialize configuration with default values."
 
+        # files to process (typically from cmd line)
+        self.files = {}
+
         self.debug = 0
         self.quiet = 0
+        self.only = 0
+        self.level = 0
+        self.limit = 10
+
         self.onlyCheckInitForMembers = 0
         self.printParse = 0
         self.quixote = 0
+        self.evil = []
 
         self.noDocModule = 0
         self.noDocClass = 0
@@ -318,7 +345,10 @@ class Config :
         except getopt.error, detail :
             raise UsageError, detail
 
-        quiet = self.quiet
+        # setup files from cmd line
+        for f in files:
+            self.files[os.path.abspath(f)] = 1
+
         if otherConfigFiles is None:
             otherConfigFiles = []
         for arg, value in args :
@@ -327,9 +357,6 @@ class Config :
                 # FIXME: this whole block is a hack
                 if longArg == 'rcfile' :
                     sys.stdout.write(outputRc(self))
-                    continue
-                elif longArg == 'quiet' :
-                    quiet = 1
                     continue
                 elif longArg == 'quixote' :
                     import quixote
@@ -343,14 +370,16 @@ class Config :
                     # FIXME: it would be nice to define this in only one place
                     print _VERSION
                     sys.exit(0)
+                elif longArg == 'level':
+                    normalizedValue = value.capitalize()
+                    if not _WARNING_LEVELS.has_key(normalizedValue):
+                        sys.stderr.write('Invalid warning level (%s).  '
+                                         'Must be one of: %s\n' %
+                                         (value, _WARNING_LEVELS.keys()))
+                        sys.exit(1)
 
-                self.noDocModule = 0
-                self.noDocClass = 0
-                self.noDocFunc = 0
-                if longArg == 'errors' :
-                    self.__dict__.update(errors_only())
-                elif longArg == 'complexity' :
-                    self.__dict__.update(errors_only(2))
+                    self.level = _WARNING_LEVELS[normalizedValue].level
+                    continue
             elif value  :
                 newValue = value
                 memberType = type(getattr(self, member))
@@ -373,20 +402,10 @@ class Config :
                 # for shortArgs we only toggle
                 setattr(self, member, not getattr(self, member))
 
-        self.quiet = quiet
         if self.variablesToIgnore.count(CHECKER_VAR) <= 0 :
             self.variablesToIgnore.append(CHECKER_VAR)
 
         return files
-
-def errors_only(complexity = 0) :
-    "Return {} of Config with all warnings turned off"
-    dict = Config().__dict__
-    for k, v in dict.items() :
-        if type(v) == type(0) and v >= complexity and not _ERRORS.has_key(k):
-            dict[k] = 0
-    return dict
-
 
 def printArg(shortArg, longArg, description, defaultValue, useValue) :
     defStr = ''
@@ -439,4 +458,3 @@ def setupFromArgs(argList) :
     except UsageError :
         usage(cfg)
         raise
-

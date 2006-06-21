@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
+# Copyright (c) 2001-2006, MetaSlash Inc.  All rights reserved.
+# Portions Copyright (c) 2005, Google, Inc.  All rights reserved.
 
 """
 Find warnings in byte code from Python source files.
@@ -499,7 +500,7 @@ def _handleImport(code, operand, module, main, fromName) :
         else:
             msg = msgs.USING_DEPRECATED_MODULE % tmpFromName
             if undeprecated:
-                msg = msg + msgs.USE_INSTEAD % undeprecated
+                msg.data = msg.data + msgs.USE_INSTEAD % undeprecated
             code.addWarning(msg)
 
     if cfg().reimportSelf and tmpOperand == module.module.__name__ :
@@ -571,8 +572,9 @@ def _getFormatInfo(format, code) :
     for section in sections[1:] :
         orig_section = section
         if not section:
-            code.addWarning(msgs.INVALID_FORMAT % orig_section +
-                            ' (end of format string)')
+            w = msgs.INVALID_FORMAT % orig_section
+            w.data = w.data + ' (end of format string)'
+            code.addWarning(w)
             continue
 
         # handle dictionary formats
@@ -1181,7 +1183,7 @@ def _checkDeprecated(code, identifierTuple):
     else:
         msg = msgs.USING_DEPRECATED_ATTR % name
         if undeprecated:
-            msg = msg + msgs.USE_INSTEAD % undeprecated
+            msg.data = msg.data + msgs.USE_INSTEAD % undeprecated
         code.addWarning(msg)
 
 def _LOAD_ATTR(oparg, operand, codeSource, code) :
@@ -1481,7 +1483,11 @@ _POP_TOP = _PRINT_ITEM = _pop
 
 def _popModified(oparg, operand, codeSource, code):
     _popModifiedStack(code)
-_BINARY_LSHIFT = _BINARY_RSHIFT = _popModified
+
+def _BINARY_RSHIFT(oparg, operand, codeSource, code):
+    _coerce_type(code)
+    _popModified(oparg, operand, codeSource, code)
+_BINARY_LSHIFT = _BINARY_RSHIFT
 
 def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP, modifyStack=1):
     stack = code.stack
@@ -1499,12 +1505,15 @@ def _checkModifyNoOp(code, op, msg=msgs.MODIFY_VAR_NOOP, modifyStack=1):
 
 def _BINARY_AND(oparg, operand, codeSource, code):
     _checkModifyNoOp(code, '&')
+    _coerce_type(code)
 
 def _BINARY_OR(oparg, operand, codeSource, code):
     _checkModifyNoOp(code, '|')
+    _coerce_type(code)
 
 def _BINARY_XOR(oparg, operand, codeSource, code):
     _checkModifyNoOp(code, '^', msgs.XOR_VAR_WITH_ITSELF)
+    _coerce_type(code)
 
 def _PRINT_ITEM_TO(oparg, operand, codeSource, code) :
     code.popStackItems(2)
@@ -1570,7 +1579,11 @@ def _BINARY_DIVIDE(oparg, operand, codeSource, code) :
     _checkModifyNoOp(code, '/', msgs.DIVIDE_VAR_BY_ITSELF, 0)
     if cfg().intDivide and len(code.stack) >= 2 :
         if _isint(code.stack[-1], code) and _isint(code.stack[-2], code) :
-            code.addWarning(msgs.INTEGER_DIVISION % tuple(code.stack[-2:]))
+            # don't warn if we are going to convert the result to an int
+            if not (len(code.stack) >= 3 and
+                    code.stack[-3].data == 'int' and
+                    OP.CALL_FUNCTION(code.nextOpInfo()[0])):
+                code.addWarning(msgs.INTEGER_DIVISION % tuple(code.stack[-2:]))
 
     _popModifiedStack(code, '/')
 
@@ -1607,6 +1620,28 @@ def _ROT_TWO(oparg, operand, codeSource, code) :
         tmp = code.stack[-2]
         code.stack[-2] = code.stack[-1]
         code.stack[-1] = tmp
+
+def _ROT_THREE(oparg, operand, codeSource, code) :
+    """Lifts second and third stack item one position up,
+       moves top down to position three."""
+    if len(code.stack) >= 3 :
+        second = code.stack[-2]
+        third = code.stack[-3]
+        code.stack[-3] = code.stack[-1]
+        code.stack[-2] = third
+        code.stack[-1] = second
+
+def _ROT_FOUR(oparg, operand, codeSource, code) :
+    """Lifts second, third and forth stack item one position up,
+       moves top down to position four."""
+    if len(code.stack) >= 4 :
+        second = code.stack[-2]
+        third = code.stack[-3]
+        fourth = code.stack[-4]
+        code.stack[-4] = code.stack[-1]
+        code.stack[-3] = fourth
+        code.stack[-2] = third
+        code.stack[-1] = second
 
 def _SETUP_EXCEPT(oparg, operand, codeSource, code) :
     code.has_except = 1
@@ -1820,7 +1855,9 @@ def _RAISE_VARARGS(oparg, operand, codeSource, code) :
 DISPATCH = [ None ] * 256
 DISPATCH[  1] = _POP_TOP
 DISPATCH[  2] = _ROT_TWO
+DISPATCH[  3] = _ROT_THREE
 DISPATCH[  4] = _DUP_TOP
+DISPATCH[  5] = _ROT_FOUR
 DISPATCH[ 10] = _UNARY_POSITIVE
 DISPATCH[ 11] = _UNARY_NEGATIVE
 DISPATCH[ 12] = _UNARY_NOT

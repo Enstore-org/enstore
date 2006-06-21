@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2001-2004, MetaSlash Inc.  All rights reserved.
+# Portions Copyright (c) 2005, Google, Inc.  All rights reserved.
 
 """
 Check python source code files for possible errors and print warnings
@@ -20,7 +21,7 @@ import traceback
 import re
 
 # see __init__.py for meaning, this must match the version there
-LOCAL_MAIN_VERSION = 2
+LOCAL_MAIN_VERSION = 3
 
 
 def setupNamespace(path) :
@@ -42,6 +43,7 @@ from pychecker import warn
 from pychecker import OP
 from pychecker import Config
 from pychecker import function
+from pychecker import msgs
 from pychecker.Warning import Warning
 
 # Globals for storing a dictionary of info about modules and classes
@@ -52,6 +54,26 @@ _cfg = None
 _DEFAULT_MODULE_TOKENS = ('__builtins__', '__doc__', '__file__', '__name__',
                           '__path__')
 _DEFAULT_CLASS_TOKENS = ('__doc__', '__name__', '__module__')
+
+# When using introspection on objects from some C extension modules,
+# the interpreter will crash.  Since pychecker exercises these bugs we
+# need to blacklist the objects and ignore them.  For more info on how
+# to determine what object is causing the crash, search for this
+# comment below (ie, it is also several hundred lines down):
+#
+#     README if interpreter is crashing:
+
+# FIXME: the values should indicate the versions of these modules
+# that are broken.  We shouldn't ignore good modules.
+
+_EVIL_C_OBJECTS = {
+    'matplotlib.axes.BinOpType': None,  # broken on versions <= 0.83.2
+
+    # broken on versions at least 2.5.5 up to 2.6
+    'wx.TheClipboard': None,
+    'wx._core.TheClipboard': None,
+    'wx._misc.TheClipboard': None,
+  }
 
 _VERSION_MISMATCH_ERROR = '''
 There seem to be two versions of PyChecker being used.
@@ -229,8 +251,8 @@ class Class :
         self.module = sys.modules.get(modname)
         if not self.module:
             self.module = module
-            sys.stderr.write("warning: couldn't find real module for class %s "
-                             "(module name: %s)\n"
+            sys.stderr.write("warning: couldn't find real module "
+                             "for class %s (module name: %s)\n"
                              % (self.classObject, modname))
         self.ignoreAttrs = 0
         self.methods = {}
@@ -461,7 +483,7 @@ def _getPyFile(filename):
         return filename[:-1]
     return filename
 
-class Module :
+class PyCheckerModule :
     "Class to hold all information for a module"
 
     def __init__(self, moduleName, check = 1) :
@@ -510,8 +532,8 @@ class Module :
     def addModule(self, name) :
         module = _allModules.get(name, None)
         if module is None :
-            self.modules[name] = module = Module(name, 0)
-            if imp.is_builtin(name) == 0 :
+            self.modules[name] = module = PyCheckerModule(name, 0)
+            if imp.is_builtin(name) == 0:
                 module.load()
             else :
                 globalModule = globals().get(name)
@@ -567,6 +589,16 @@ class Module :
             utils.updateCheckerArgs(pychecker_attr, 'suppressions', 0, [])
 
         for tokenName in _filterDir(self.module, _DEFAULT_MODULE_TOKENS) :
+            if _EVIL_C_OBJECTS.has_key('%s.%s' % (self.moduleName, tokenName)):
+                continue
+
+            # README if interpreter is crashing:
+            # Change 0 to 1 if the interpretter is crashing and re-run.
+            # Follow the instructions from the last line printed.
+            if 0:
+                print "Add the following line to _EVIL_C_OBJECTS:\n" \
+                      "    '%s.%s': None, " % (self.moduleName, tokenName)
+
             token = getattr(self.module, tokenName)
             if isinstance(token, types.ModuleType) :
                 # get the real module name, tokenName could be an alias
@@ -615,7 +647,7 @@ _BUILTIN_MODULE_ATTRS = { 'sys': [ 'ps1', 'ps2', 'tracebacklimit',
 def fixupBuiltinModules(needs_init=0):
     for moduleName in sys.builtin_module_names :
         if needs_init:
-            _ = Module(moduleName, 0)
+            _ = PyCheckerModule(moduleName, 0)
         module = _allModules.get(moduleName, None)
         if module is not None :
             try :
@@ -634,12 +666,12 @@ def _printWarnings(warnings, stream=None):
     warnings.sort()
     lastWarning = None
     for warning in warnings :
-        if lastWarning != None :
+        if lastWarning is not None:
             # ignore duplicate warnings
-            if cmp(lastWarning, warning) == 0 :
+            if cmp(lastWarning, warning) == 0:
                 continue
             # print blank line between files
-            if lastWarning.file != warning.file :
+            if lastWarning.file != warning.file:
                 stream.write("\n")
 
         lastWarning = warning
@@ -663,9 +695,10 @@ def processFiles(files, cfg = None, pre_process_cb = None) :
     for moduleName in getModules(files) :
         if callable(pre_process_cb) :
             pre_process_cb(moduleName)
-        module = Module(moduleName)
+        module = PyCheckerModule(moduleName)
         if not module.load() :
-            w = Warning(module.filename(), 1, "NOT PROCESSED UNABLE TO IMPORT")
+            w = Warning(module.filename(), 1,
+                        msgs.Internal("NOT PROCESSED UNABLE TO IMPORT"))
             warnings.append(w)
     utils.popConfig()
     return warnings
@@ -713,6 +746,10 @@ def main(argv) :
     _cfg, files, suppressions = Config.setupFromArgs(argv[1:])
     if not files :
         return 0
+
+    # Now that we've got the args, update the list of evil C objects
+    for evil_doer in _cfg.evil:
+        _EVIL_C_OBJECTS[evil_doer] = None
 
     # insert this here, so we find files in the local dir before std library
     sys.path.insert(0, '')
@@ -767,7 +804,7 @@ else :
         pymodule = _orig__import__(name, globals, locals, fromlist)
         if check :
             try :
-                module = Module(pymodule.__name__)
+                module = PyCheckerModule(pymodule.__name__)
                 if module.initModule(pymodule):
                     warnings = warn.find([module], _cfg, _suppressions)
                     _printWarnings(_get_unique_warnings(warnings))

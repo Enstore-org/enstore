@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2001-2002, MetaSlash Inc.  All rights reserved.
+# Portions Copyright (c) 2005, Google, Inc. All rights reserved.
 
 """
 Print out warnings from Python source files.
@@ -341,7 +342,7 @@ def _checkBaseClassInit(moduleFilename, c, func_code, funcInfo) :
     for line, stackItem, dummy in returnValues :
         if stackItem.data != None :
             if not stackItem.isNone() or cfg().returnNoneFromInit :
-                warn = Warning(moduleFilename, line, msgs.RETURN_FROM_INIT)
+                warn = Warning(func_code, line, msgs.RETURN_FROM_INIT)
                 warnings.append(warn)
 
     classInit = getattr(c.classObject, utils.INIT, None)
@@ -406,7 +407,7 @@ def getStandardLibrary() :
 def normalize_path(path):
     return os.path.normpath(os.path.normcase(path))
 
-def removeWarnings(warnings, blacklist, std_lib) :
+def removeWarnings(warnings, blacklist, std_lib, cfg):
     if std_lib is not None:
         std_lib = normalize_path(std_lib)
     for index in range(len(warnings)-1, -1, -1) :
@@ -414,6 +415,35 @@ def removeWarnings(warnings, blacklist, std_lib) :
         if filename in blacklist or (std_lib is not None and
                                      utils.startswith(filename, std_lib)) :
             del warnings[index]
+        elif cfg.only:
+            # ignore files not specified on the cmd line if requested
+            if os.path.abspath(filename) not in cfg.files:
+                del warnings[index]
+
+        # filter by warning/error level if requested
+        if cfg.level and warnings[index].level < cfg.level:
+            del warnings[index]
+
+    if cfg.limit:
+        # sort by severity first, then normal sort (by file/line)
+        warnings.sort(lambda a, b: cmp(a.level, b.level) or cmp(a, b))
+
+        # strip duplicates
+        lastWarning = None
+        for index in range(len(warnings)-1, -1, -1):
+            warning = warnings[index]
+
+            # remove duplicate warnings
+            if lastWarning is not None and cmp(lastWarning, warning) == 0:
+                del warnings[index]
+            else:
+                lastWarning = warning
+
+        num_ignored = len(warnings) - cfg.limit
+        if num_ignored > 0:
+            del warnings[:-cfg.limit]
+            msg = msgs.TOO_MANY_WARNINGS % num_ignored
+            warnings.append(Warning('', 0, msg))
 
     return warnings
 
@@ -692,7 +722,8 @@ def find(moduleList, initialCfg, suppressions = None) :
     std_lib = None
     if cfg().ignoreStandardLibrary :
         std_lib = getStandardLibrary()
-    return removeWarnings(warnings, getBlackList(cfg().blacklist), std_lib)
+    return removeWarnings(warnings, getBlackList(cfg().blacklist), std_lib,
+                          cfg())
 
 if 0:
     # if you want to test w/psyco, include this
