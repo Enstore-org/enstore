@@ -787,9 +787,6 @@ def set_metadata(ticket, intf):
                                                      ticket['status'])
         Trace.message(5, msg)
         Trace.log(e_errors.ERROR, msg)
-
-        #Be sure to cleanup after the metadata error.
-        encp.clear_layers_1_and_4(ticket)
     else:
         delete_at_exit.unregister(ticket['infile']) #Don't delete good file.
         msg = "Successfully updated %s metadata." % ticket['infile']

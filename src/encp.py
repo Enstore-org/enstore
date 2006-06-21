@@ -346,7 +346,7 @@ __pychecker__ = ""  #Reset __pychecker__ after class Pnfs.
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_5e  CVS $Revision$ "
+    version_string = "v3_5d  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
@@ -1047,30 +1047,6 @@ def do_layers_exist(pnfs_filename):
     # any layer information.
     return False
 
-#As the name implies remove layers 1 and 4 for the indicated file.
-def clear_layers_1_and_4(work_ticket):
-
-    pnfs_filename = work_ticket.get('wrapper', {}).get('pnfsFilename', "")
-    
-    if not pnfs_filename:
-        return False
-
-    if not is_pnfs_path(pnfs_filename):
-        return False
-
-    try:
-        p = Pnfs(pnfs_filename)
-
-        Trace.log(e_errors.INFO,
-                  "Clearing layers 1 and 4 for file %s (%s)." %
-                  (pnfs_filename, work_ticket.get('unique_id', None)))
-        
-        p.writelayer(1, " ", pnfs_filename)
-        p.writelayer(4, " ", pnfs_filename)
-    except (IOError, OSError):
-        return False
-
-    return True
 
 ############################################################################
 
@@ -3223,19 +3199,9 @@ def get_dinfo():
 #Some stat fields need to be extracted and modified.
 def get_minfo(statinfo):
 
-    
-    rtn = {}
-
-    if not statinfo:
-        #We should only get here only if reading a deleted file using
-        # --get-bfid and --override-deleted.
-        rtn['inode'] = 0L
-        rtn['major'] = 0
-        rtn['minor'] = 0
-        rtn['mode'] = 0
-        return rtn
-
     st_dec_dict = stat_decode(statinfo)
+
+    rtn = {}
     
     rtn['uid'] = st_dec_dict['uid']
     rtn['uname'] = st_dec_dict['uname']
@@ -3931,9 +3897,6 @@ def submit_one_request(ticket, encp_intf):
         else:
             transfer_type = "read"
             filename = ticket['infile']
-
-        if filename == "":
-            filename = "unknown filename"
     except EncpError, msg:
         transfer_type = "unknown"
         filename = "unknown filename"
@@ -4831,11 +4794,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 #We don't want to do this because this will clobber what
                 # the previous encp has already set.
                 skip_layer_cleanup = True
-
-        #Add this for debugging.
-        Trace.log(e_errors.INFO,
-                  "pf_status = %s  skip_layer_cleanup = %s" %
-                  (pf_status, skip_layer_cleanup))
                                 
     #The volume clerk set the volume NOACCESS.
     if not e_errors.is_ok(vc_status):
@@ -4872,7 +4830,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             pass
     #If the transfer is a write from dcache, we need to clear any information
     # that resides in layer 1 and/or layer 4.
-    """
     elif is_write(encp_intf) and encp_intf.put_cache and not encp_intf.copies:
         #If another encp set layer 1 and/or 4 while this encp was waiting
         # in the queue, the layer test above will set skip_layer_cleanup
@@ -4890,7 +4847,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             except (IOError, OSError):
                 #Something is very wrong, deal with it later.
                 pass
-    """
 
     #If the mover doesn't call back after max_submits number of times, give up.
     # If the error is already non-retriable, skip this step.
@@ -4937,7 +4893,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             copy_index = random.randint(0, len(copy_list) - 1)
             next_bfid = copy_list[copy_index]
 
-            fc_info = fcc.bfid_info(next_bfid, 5, 20)
+            fc_info = fcc.get_bfid(next_bfid, 5, 20)
             if e_errors.is_ok(fc_info):
                 vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
                 if e_errors.is_ok(vc_info):
@@ -6199,28 +6155,6 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     request_copy_list = []
     if e.copies > 0:
         for n_copy in range(1, e.copies + 1):
-
-            #Determine the library manager to use.  First, try to see if
-            # the command line has the information.  Otherwise, check
-            # the library tag.  In both cases, the library should be a
-            # comma seperated list of library manager short names.
-            try:
-                current_library = e.output_library.split(",")[n_copy]
-            except IndexError:
-                try:
-                    current_library = \
-                                t.get_library(odirname).split(",")[n_copy]
-                except IndexError:
-                    #We get here if n copies were requested, but less than
-                    # that number of libraries were found.
-                    e.copies = n_copy - 1
-                    break
-                    #raise EncpError(None,
-                    #                "Too many copies requested for the "
-                    #                "number of configured copy libraries.",
-                    #                e_errors.USERERROR, copy_ticket)
-
-            
             for work_ticket in request_list:
                 copy_ticket = copy.deepcopy(work_ticket)
                 #Specify the copy number; this is the copy number relative to
@@ -6235,9 +6169,25 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 copy_ticket['vc']['original_file_family'] = \
                                              copy_ticket['vc']['file_family']
                 del copy_ticket['vc']['file_family']
-                #Set the new library.
-                copy_ticket['vc']['library'] = current_library
-
+                #Determine the library manager to use.  First, try to see if
+                # the command line has the information.  Otherwise, check
+                # the library tag.  In both cases, the library should be a
+                # comma seperated list of library manager short names.
+                try:
+                    copy_ticket['vc']['library'] = \
+                                          e.output_library.split(",")[n_copy]
+                except IndexError:
+                    try:
+                        copy_ticket['vc']['library'] = \
+                                          t.get_library().split(",")[n_copy]
+                    except IndexError:
+                        #We get here if n copies were requested, but less than
+                        # that number of libraries were found.
+                        copy_ticket['vc']['library'] = None
+                        raise EncpError(None,
+                                        "Too many copies requested for the "
+                                        "number of configured copy libraries.",
+                                        e_errors.USERERROR, copy_ticket)
 
                 #Store the copy ticket.
                 request_copy_list.append(copy_ticket)
@@ -6542,10 +6492,8 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
                                      done_ticket, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
@@ -8296,13 +8244,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #file_size = long(fc_reply['size'])
             #Grab the stat info.
-            if e.override_deleted and fc_reply['deleted'] != 'no' \
-                   and not ifullname:
-                #This if protects us in the case where we are reading
-                # a deleted file using the bfid.
-                istatinfo = None
-            else:
-                istatinfo = p.get_stat(ifullname)
+            istatinfo = p.get_stat(ifullname)
 
             bfid = e.get_bfid
 
@@ -9214,7 +9156,7 @@ class EncpInterface(option.Interface):
         option.COPIES:{option.HELP_STRING:"Write N copies of the file.",
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
-                       option.USER_LEVEL:option.USER,},
+                       option.USER_LEVEL:option.ADMIN,},
         option.DATA_ACCESS_LAYER:{option.HELP_STRING:
                                   "Format all final output for SAM.",
                                   option.DEFAULT_TYPE:option.INTEGER,
