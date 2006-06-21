@@ -147,6 +147,8 @@ case ${FLAVOR} in
 			FLAVOR=`$UPS_DIR/bin/ups flavor -4`
                 fi
 		;;
+	Linux+2.6)
+		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
 esac
