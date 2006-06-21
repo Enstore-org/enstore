@@ -177,7 +177,11 @@ def parsePtTapeTapelogFile(filename):
                 else:
                     sys.stderr.write("%s tape layout unknown\n" % tapelabel)
                     sys.exit(1)
-
+            else:
+                #We don't have a JL tape.  Perhapse a JG tape?
+                sys.stderr.write("%s tape layout unknown\n" % tapelabel)
+                sys.exit(1)
+                
         elif words[:2] == ["Data", "="]:
             #Split "Data =" lines containing tuples of the following:
             # (mjd,)
