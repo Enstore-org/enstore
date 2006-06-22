@@ -125,8 +125,10 @@ def write_tcp_raw(sock,msg,timeout=15*60):
             ptr = ptr+nwritten
         #sock.send(hex8(checksum.adler32(salt,msg,l)))
         timeout_send(sock, hex8(checksum.adler32(salt,msg,l)), timeout)
+        return 0
     except socket.error, detail:
         Trace.log(e_errors.ERROR,"write_tcp_raw: socket.error %s"%(detail,))
+        return 1
         ##XXX Further sends will fail, our peer will notice incomplete message
 
 
