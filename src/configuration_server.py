@@ -247,7 +247,7 @@ class ConfigurationDict:
             
         except:
             Trace.handle_error()
-            Trace.log(e_errors.ERROR,"Callback address %s"%(addr)) 
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
             
 
