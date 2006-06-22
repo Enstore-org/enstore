@@ -240,11 +240,14 @@ class ConfigurationDict:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             sock.connect(addr)
-            callback.write_tcp_obj(sock,reply)
+            r = callback.write_tcp_obj(sock,reply)
             sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,"Error calling write_tcp_obj. Callback addr. %s"%(addr,))
+            
         except:
             Trace.handle_error()
-        
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr)) 
         return
             
 
