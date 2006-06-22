@@ -26,6 +26,10 @@
 #                              Another example would be nodes in a different
 #                              domain/site all together (i.e. sudan.org).
 # $ENSTORE_CONF (host_config.py): Override default enstore.conf file name.
+# $ENSTORE_RANDOM_LB = Lower limit on the randomly choosen size when reading
+#                      from /dev/zero, /dev/random or /dev/urandon.
+# $ENSTORE_RANDOM_UB = Upper limit on the randomly choosen size when reading
+#                      from /dev/zero, /dev/random or /dev/urandon.
 ############################################################################
 
 # system imports
@@ -2606,6 +2610,10 @@ def filesystem_check(work_ticket):
 
     #Get the target from the ticket.
     target_file = work_ticket['outfile']
+    if target_file in ["/dev/null", "/dev/zero",
+                       "/dev/random", "/dev/urandom"]:
+        #These are special cases.
+        return
     target_filesystem = os.path.split(target_file)[0]
 
     #Get the file size from the ticket.
@@ -2847,7 +2855,8 @@ def outputfile_check(inputlist, outputlist, e):
     for i in range(len(inputlist)):
 
             #If output location is /dev/null, skip the checks.
-            if outputlist[i] == "/dev/null":
+            if outputlist[i] in ["/dev/null", "/dev/zero",
+                                 "/dev/random", "/dev/urandom"]:
                 continue
 
         #try:
@@ -3065,14 +3074,16 @@ def create_zero_length_local_files(filenames):
     #now try to atomically create each file
     for f in filenames:
         if type(f) == types.DictType:
-            if f['wrapper']['fullname'] == "/dev/null":
+            fname = f['wrapper']['fullname']
+
+            if fname in ["/dev/null", "/dev/zero",
+                         "/dev/random", "/dev/urandom"]:
                 #If this raises an error, there are massive problems going on.
-                f['local_inode'] = os.stat("/dev/null")[stat.ST_INO]
+                f['local_inode'] = os.stat(fname)[stat.ST_INO]
                 return
-            else:
-                fname = f['wrapper']['fullname']
         else:
-            if f == "/dev/null":
+            if f in ["/dev/null", "/dev/zero",
+                     "/dev/random", "/dev/urandom"]:
                 return
             else:
                 fname = f
@@ -3340,7 +3351,7 @@ def get_einfo(e):
 def get_ininfo(inputfile):
 
     # Add the name if necessary.
-    if inputfile == "/dev/zero":
+    if inputfile in ["/dev/zero", "/dev/random", "/dev/urandom"]:
         return inputfile
     
     if access_check(inputfile, os.F_OK):
@@ -3363,7 +3374,9 @@ def get_ininfo(inputfile):
 def get_oninfo(inputfile, outputfile, e):
     unused, ofullname, unused, unused = fullpath(outputfile) #e.output[0])
 
-    if ofullname == "/dev/null": #if /dev/null is target, skip elifs.
+    if ofullname in ["/dev/null", "/dev/zero",
+                     "/dev/random", "/dev/urandom"]:
+        #if /dev/null is target, skip elifs.
         return ofullname
 
     munge_name = False
@@ -4067,15 +4080,21 @@ def open_local_file(work_ticket, e):
             done_ticket = {'status':(e_errors.OSERROR, str(detail))}
         return done_ticket
 
+    if filename in ["/dev/zero", "/dev/random", "/dev/urandom"]:
+        #Handle these character devices a little differently.
+        current_size = work_ticket['file_size']
+    else:
+        current_size = stats[stat.ST_SIZE]
+
     #Compare the file sizes.
-    if is_read(e) and stats[stat.ST_SIZE] != 0L:
+    if is_read(e) and current_size != 0L:
         #When reading from enstore the local file being written to should
         # be zero at this point; even if this is a retry the file should have
         # been clobbered thereby setting the size back to zero.
         done_ticket = {'status':(e_errors.FILE_MODIFIED,
                                  "Local file size has changed.")}
         return done_ticket
-    if is_write(e) and stats[stat.ST_SIZE] != work_ticket['file_size']:
+    if is_write(e) and current_size != work_ticket['file_size']:
         #When writing to enstore the local file being read from should
         # be the real file size.
         done_ticket = {'status':(e_errors.FILE_MODIFIED,
@@ -4435,14 +4454,18 @@ def verify_file_size(ticket, encp_intf = None):
     verify_file_size_start_time = time.time()
     
     #Don't worry about checking when outfile is /dev/null.
-    if ticket['outfile'] == '/dev/null':
+    if ticket['outfile'] in ['/dev/null', "/dev/zero",
+                             "/dev/random", "/dev/urandom"]:
         return
 
     #Get the stat info for each file.
     try:
         full_stat = os.stat(ticket['wrapper'].get('fullname', None))
-        full_filesize = full_stat[stat.ST_SIZE]
         full_inode = full_stat[stat.ST_INO]
+        if ticket['infile'] in [ "/dev/zero", "/dev/random", "/dev/urandom"]:
+            full_filesize = ticket['file_size']
+        else:
+            full_filesize = full_stat[stat.ST_SIZE]
     except (OSError, IOError), detail:
         ticket['status'] = (e_errors.OSERROR, str(detail))
         return
@@ -4593,7 +4616,8 @@ def set_outfile_permissions(ticket):
 
         #Attempt to get the input files permissions and set the output file to
         # match them.
-        if ticket['outfile'] != "/dev/null":
+        if ticket['outfile'] not in ["/dev/null", "/dev/zero",
+                                     "/dev/random", "/dev/urandom"]:
             try:
                 #handle remote file case
                 perms = None
@@ -4776,7 +4800,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 current_size = stats[stat.ST_SIZE]
             else:  #write
                 original_size = request_dictionary.get('file_size', None)
-                current_size = stats[stat.ST_SIZE]
+                if infile in ["/dev/zero", "/dev/random", "/dev/urandom"]:
+                    #With these special files, do with the original
+                    current_size = original_size
+                else:
+                    current_size = stats[stat.ST_SIZE]
             if long(current_size) != long(original_size):
                 lf_status = (e_errors.FILE_MODIFIED,
                              "Noticed the local file size changed from "
@@ -5423,27 +5451,42 @@ def calculate_rate(done_ticket, tinfo):
 	else:
 		rw = 'w'
 
-        # Avoid division by zero problems.
-        if network_time == 0.0:
-            acc_network_rate = int(0.0);
-        else:
-            acc_network_rate = int(done_ticket['file_size'] / network_time)
-        if drive_time == 0.0:
-            acc_drive_rate = int(0.0)
-        else:
-            acc_drive_rate = int(done_ticket['file_size'] / drive_time)
-        if disk_time == 0.0:
-            acc_disk_rate = int(0.0)
-        else:
-            acc_disk_rate = int(done_ticket['file_size'] / disk_time)
-        if overall_time == 0.0:
-            acc_overall_rate = int(0.0)
-        else:
-            acc_overall_rate = int(done_ticket['file_size'] / overall_time)
-        if transfer_time == 0.0:
-            acc_transfer_rate = int(0.0)
-        else:
-            acc_transfer_rate = int(done_ticket['file_size'] / transfer_time)
+        # Avoid overflow and division by zero problems.
+        try:
+            if network_time == 0.0:
+                acc_network_rate = int(0.0);
+            else:
+                acc_network_rate = int(done_ticket['file_size'] / network_time)
+        except OverflowError:
+            acc_network_rate = -1
+        try:
+            if drive_time == 0.0:
+                acc_drive_rate = int(0.0)
+            else:
+                acc_drive_rate = int(done_ticket['file_size'] / drive_time)
+        except OverflowError:
+            acc_drive_rate = -1
+        try:
+            if disk_time == 0.0:
+                acc_disk_rate = int(0.0)
+            else:
+                acc_disk_rate = int(done_ticket['file_size'] / disk_time)
+        except OverflowError:
+            acc_disk_rate = -1
+        try:
+            if overall_time == 0.0:
+                acc_overall_rate = int(0.0)
+            else:
+                acc_overall_rate = int(done_ticket['file_size'] / overall_time)
+        except OverflowError:
+            acc_overall_rate = -1
+        try:
+            if transfer_time == 0.0:
+                acc_transfer_rate = int(0.0)
+            else:
+                acc_transfer_rate = int(done_ticket['file_size'] / transfer_time)
+        except OverflowError:
+            acc_transfer_rate = -1
 
         acc = get_acc()
 	acc.log_encp_xfer(None,
@@ -6035,7 +6078,14 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         ostatinfo = p.get_stat(odirname)
         
         #Get these two pieces of information about the local input file.
-        file_size = long(istatinfo[stat.ST_SIZE])
+        if ifullname in ["/dev/zero", "/dev/random", "/dev/urandom"]:
+            bound_limits = [long(os.environ.get('ENSTORE_RANDOM_LB', 0L)),
+                            long(os.environ.get('ENSTORE_RANDOM_UB',
+                                                2147483648L))]
+            bound_limits.sort()
+            file_size = long(random.uniform(bound_limits[0], bound_limits[1]))
+        else:
+            file_size = long(istatinfo[stat.ST_SIZE])
         file_inode = istatinfo[stat.ST_INO]
         
         #There is no sense to get these values every time.  Only get them
@@ -7414,7 +7464,8 @@ def verify_read_request_consistancy(requests_per_vol, e):
                     if fcc_response['original'] != None:
                         is_copy = True
                                 
-            if request['outfile'] != "/dev/null":
+            if request['outfile'] not in ["/dev/null", "/dev/zero",
+                                          "/dev/random", "/dev/urandom"]:
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
                 # into the same destination directory.
@@ -7719,7 +7770,8 @@ def verify_read_request_consistancy(requests_per_vol, e):
             #sum up the file count to verify there is sufficent disk space.
             sum_files = sum_files + 1L
 
-        if request['outfile'] != "/dev/null":
+        if request['outfile'] not in ["/dev/null", "/dev/zero",
+                                      "/dev/random", "/dev/urandom"]:
             fs_stats = os.statvfs(get_directory_name(request['outfile']))
 
             #Make sure we won't exeed the maximum size of the filesystem.
@@ -7961,7 +8013,9 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             raise EncpError(errno.ENOENT, e.output[0],
                             e_errors.USERERROR, rest)
 
-        elif e.output[0] != "/dev/null" and not os.path.isdir(e.output[0]):
+        elif e.output[0] not in ["/dev/null", "/dev/zero",
+                                 "/dev/random", "/dev/urandom"] \
+                                 and not os.path.isdir(e.output[0]):
             rest = {'volume':e.volume}
             raise EncpError(errno.ENOTDIR, e.output[0],
                             e_errors.USERERROR, rest)                          
@@ -8242,7 +8296,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             """
 
             #Determine the output filename.
-            if e.output[0] == "/dev/null":
+            if e.output[0] in ["/dev/null", "/dev/null",
+                               "/dev/random", "/dev/urandom"]:
                 ofullname = e.output[0]
             elif getattr(e, "sequential_filenames", None):
                 #The user overrode "get" to use numbered filenames.
@@ -8289,7 +8344,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 ifullname = p.get_path(pnfsid, use_mount_point,
                                        shortcut = e.shortcut)
 
-            if e.output[0] == "/dev/null":
+            if e.output[0] in ["/dev/null", "/dev/zero",
+                               "/dev/random", "/dev/urandom"]:
                 ofullname = e.output[0]
             else:
                 unused, ofullname, unused, unused = fullpath(e.output[0])
@@ -8329,7 +8385,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
-            if e.output[0] == "/dev/null":
+            if e.output[0] in ["/dev/null", "/dev/zero",
+                               "/dev/random", "/dev/urandom"]:
                 ofullname = e.output[0]
             else:
                 unused, ofullname, unused, unused = fullpath(e.output[0])
@@ -8353,7 +8410,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 #inputfile_check(ifullname, e)
 
             ofullname = get_oninfo(e.input[i], e.output[0], e)
-            if ofullname != "/dev/null":
+            if ofullname not in ["/dev/null", "/dev/zero",
+                                 "/dev/random", "/dev/urandom"]:
                 #The existence rules behind the output file are more
                 # complicated than those of the input file.  We always need
                 # to call outputfile_check.  It still should go in
