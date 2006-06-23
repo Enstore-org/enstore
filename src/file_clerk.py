@@ -518,7 +518,8 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # register_copy(original, copy) -- register copy of original
     def register_copy(self, original, copy):
-        Trace.log(e_errors.INFO, 'register copy %s, %s'%(original, copy))
+        Trace.log(e_errors.INFO,
+                  'register copy %s of original %s' % (copy, original))
 	q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(original, copy)
         try:
             res = self.dict.db.query(q)
