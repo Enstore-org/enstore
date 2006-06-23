@@ -5785,23 +5785,59 @@ class DiskMover(Mover):
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
                        'complete_crc': complete_crc}
+
         # if it is a copy, make sure that original_bfid is passed along
         if self.current_work_ticket.has_key('copy'):
             original_bfid = self.file_info.get('original_bfid')
             if not original_bfid:
-                self.transfer_failed(e_errors.ERROR,'file clerk error: missing original bfid for copy')
+                self.transfer_failed(e_errors.ERROR,
+                          'file clerk error: missing original bfid for copy')
                 return 0
             fc_ticket['original_bfid'] = original_bfid
-                
-        Trace.log(e_errors.INFO,"new bitfile request %s"%(fc_ticket))
+
+        #Get the volume information. If necessary create a new one.
+        Trace.trace(15,"inquire volume %s"%(self.current_volume,))
+        v = self.vcc.inquire_vol(self.current_volume)
+        import statvfs
+        stats = os.statvfs(self.config['device'])
+        r2 = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
+        if v['status'][0] == e_errors.NO_VOLUME:
+            # volume does not exist, create it!
+            Trace.log(e_errors.INFO, "new disk volume request")
+            
+            r = self.vcc.add(self.vol_info['library'],
+                             volume_family.extract_file_family(self.vol_info['volume_family']),
+                             volume_family.extract_storage_group(self.vol_info['volume_family']),
+                             'disk',
+                             self.current_volume,
+                             r2,
+                             eod_cookie = '0000_000000000_0000001',
+                             wrapper = 'null',
+                             blocksize = self.buffer.blocksize)
+            Trace.log(e_errors.INFO,"Add volume returned %s"%(r,))
+            if r['status'][0] != e_errors.OK:
+                Trace.log(e_errors.ERROR,
+                          "cannot assign new bfid")
+                self.transfer_failed(e_errors.ERROR, "Cannot add new volume")
+                return 0
+            self.vol_info['remaining_bytes'] = r2
+        elif v['status'][0] != e_errors.OK:
+            Trace.log(e_errors.ERROR,
+                      "cannot assign new bfid")
+            self.transfer_failed(e_errors.ERROR, "Cannot obtain volume info")
+            return 0
+
+        #Request the new bit file.
+        Trace.log(e_errors.INFO, "new bitfile request %s" % (fc_ticket,))
 
         fcc_reply = self.fcc.new_bit_file({'work':"new_bit_file",
-                                            'fc'  : fc_ticket
-                                            })
+                                           'fc'  : fc_ticket
+                                           })
+        Trace.log(e_errors.INFO,"New bit file returned %s" % (fcc_reply,))
         if fcc_reply['status'][0] != e_errors.OK:
-            Trace.log(e_errors.ERROR,
-                       "cannot assign new bfid")
-            self.transfer_failed(e_errors.ERROR,"Cannot assign new bit file ID")
+            Trace.log(e_errors.ERROR, "cannot assign new bfid")
+            self.transfer_failed(e_errors.ERROR,
+                                 "Cannot assign new bit file ID")
             #XXX exception?
             return 0
         ## HACK: restore crc's before replying to caller
@@ -5810,28 +5846,6 @@ class DiskMover(Mover):
         fc_ticket['complete_crc'] = complete_crc 
         bfid = fc_ticket['bfid']
         self.current_work_ticket['fc'] = fc_ticket
-        Trace.trace(15,"inquire volume %s"%(self.current_volume,))
-        v = self.vcc.inquire_vol(self.current_volume)
-        import statvfs
-        stats = os.statvfs(self.config['device'])
-        r2 = long(stats[statvfs.F_BAVAIL])*stats[statvfs.F_BSIZE]
-        if v['status'][0] != e_errors.OK: # volume does not exist, create it!
-            r = self.vcc.add(self.vol_info['library'],
-                             volume_family.extract_file_family(self.vol_info['volume_family']),
-                             volume_family.extract_storage_group(self.vol_info['volume_family']),
-                             'disk',
-                             self.current_volume,
-                             r2,
-                             eod_cookie  = '0000_000000000_0000001',
-                             wrapper='null',
-                             blocksize = self.buffer.blocksize)
-            Trace.log(e_errors.INFO,"Add volume returned %s"%(r,))
-            if r['status'][0] != e_errors.OK:
-                Trace.log(e_errors.ERROR,
-                          "cannot assign new bfid")
-                self.transfer_failed(e_errors.ERROR,"Cannot add new volume")
-                return 0
-            self.vol_info['remaining_bytes'] = r2
                 
         r0 = self.vol_info['remaining_bytes']  #value prior to this write
         r1 = r0 - self.bytes_written           #value derived from simple subtraction
