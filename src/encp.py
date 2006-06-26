@@ -6592,10 +6592,10 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
                                      done_ticket, e)
         
         if e_errors.is_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
+            clear_layers_1_and_4(done_ticket) #Reset this.
             continue
         elif e_errors.is_non_retriable(result_dict['status'][0]):
-            clear_layers_1_and_4(done_ticket['outfile']) #Reset this.
+            clear_layers_1_and_4(done_ticket) #Reset this.
             return combine_dict(result_dict, work_ticket)
 
         #Set the UNIX file permissions.
