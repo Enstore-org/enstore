@@ -6650,531 +6650,6 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
     done_ticket = {'status':(e_errors.TOO_MANY_RETRIES, msg)}
     return done_ticket
 
-###############################################################################
-# Added by Dmitry (litvinse@fnal.gov) to handle rmote hsm writes, temporary
-##############################################################################
-def write_rhsm_file(listen_socket, work_ticket, tinfo, e, pac=None):
-
-    Trace.message(TICKET_LEVEL, "WORK_TICKET")
-    Trace.message(TICKET_LEVEL, pprint.pformat(work_ticket))
-
-    #Trace.message(TRANSFER_LEVEL,
-    #              "Sending ticket to library manager,  elapsed=%s" %
-    #              (time.time() - tinfo['encp_start_time'],))
-        
-    #Send the request to write the file to the library manager.
-    done_ticket = submit_write_request(work_ticket, e)
-
-    Trace.message(TICKET_LEVEL, "LM RESPONSE TICKET")
-    Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-    
-    work_ticket = combine_dict(done_ticket, work_ticket)
-
-    #handle_retries() is not required here since submit_write_request()
-    # handles its own retrying when an error occurs.
-    if not e_errors.is_ok(work_ticket):
-        return work_ticket
-
-    Trace.message(TRANSFER_LEVEL,
-               "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
-                  (work_ticket['infile'], work_ticket['vc']['library'],
-                   work_ticket['vc']['file_family'],
-                   long(work_ticket['file_size']),
-                   time.time() - tinfo['encp_start_time']))
-    
-    #Loop around in case the file transfer needs to be retried.
-    while e.max_retry == None or \
-              work_ticket['resend'].get('retry', 0) <= e.max_retry:
-
-        #Wait for the mover to establish the control socket.  See if the
-        # id matches one the the tickets we submitted.  Establish data socket
-        # connection with the mover.
-        control_socket, data_path_socket, ticket = mover_handshake(
-            listen_socket, [work_ticket], e)
-
-        overall_start = time.time() #----------------------------Overall Start
-
-        #Handle any possible errors that occured so far.
-        local_filename = work_ticket.get('wrapper', {}).get('fullname', None)
-        external_label = work_ticket.get('fc', {}).get('external_label', None)
-        result_dict = handle_retries([work_ticket], work_ticket, ticket, e,
-                                     listen_socket = listen_socket,
-                                     local_filename = local_filename,
-                                     external_label = external_label)
-
-        if e_errors.is_resendable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            ticket = combine_dict(result_dict, ticket, work_ticket)
-            return ticket
-
-        #Be paranoid.  Check this the ticket again.
-        try:
-            verify_write_request_consistancy([ticket])
-        except EncpError, msg:
-            msg.ticket['status'] = (msg.type, msg.strerror)
-            return msg.ticket
-
-        #This should be redundant error check.
-        if not control_socket or not data_path_socket:
-	    ticket = combine_dict({'status':(e_errors.NET_ERROR, "No socket")},
-				   work_ticket)
-            return ticket #This file failed.
-
-        Trace.message(TRANSFER_LEVEL, "Mover called back.  elapsed=%s" %
-                      (time.time() - tinfo['encp_start_time'],))
-        
-        Trace.message(TICKET_LEVEL, "WORK TICKET:")
-        Trace.message(TICKET_LEVEL, pprint.pformat(ticket))
-
-        #maybe this isn't a good idea...
-        work_ticket = combine_dict(ticket, work_ticket)
-
-        done_ticket = open_local_file(work_ticket, e)
-
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     pnfs_filename = work_ticket['outfile'])
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
-            close_descriptors(control_socket, data_path_socket)
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            close_descriptors(control_socket, data_path_socket)
-            return combine_dict(result_dict, work_ticket)
-        else:
-            in_fd = done_ticket['fd']
-
-        Trace.message(TRANSFER_LEVEL, "Input file %s opened.   elapsed=%s" % 
-                      (work_ticket['infile'],
-                       time.time()-tinfo['encp_start_time']))
-
-        #We need to stall the transfer until the mover is ready.
-        done_ticket = stall_write_transfer(data_path_socket, e)
-        
-        if not e_errors.is_ok(done_ticket):
-            #Make one last check of everything before entering transfer_file().
-            # Only test control_socket if a known problem exists.  Otherwise,
-            # for small files it is possible that a successful final dialog
-            # message gets 'eaten' up.
-            external_label = work_ticket.get('fc',{}).get('external_label',
-                                                          None)
-            result_dict = handle_retries([work_ticket], work_ticket,
-                                         done_ticket, e,
-                                         listen_socket = listen_socket,
-                                         control_socket = control_socket,
-                                         external_label = external_label)
-
-            if e_errors.is_retriable(result_dict['status'][0]):
-                close_descriptors(control_socket, data_path_socket, in_fd)
-                continue
-            elif e_errors.is_non_retriable(result_dict['status'][0]):
-                close_descriptors(control_socket, data_path_socket, in_fd)
-                return combine_dict(result_dict, work_ticket)
-
-        lap_time = time.time() #------------------------------------------Start
-
-        done_ticket = transfer_file(in_fd, data_path_socket,
-                                    control_socket, work_ticket,
-                                    tinfo, e)
-        
-        tstring = '%s_transfer_time' % work_ticket['unique_id']
-        tinfo[tstring] = time.time() - lap_time #--------------------------End
-
-        try:
-            delete_at_exit.register_bfid(done_ticket['fc']['bfid'])
-        except (IndexError, KeyError):
-            pass
-            #Trace.log(e_errors.WARNING, "unable to register bfid")
-        
-        Trace.message(TRANSFER_LEVEL, "Verifying %s transfer.  elapsed=%s" %
-                      (work_ticket['outfile'],
-                       time.time()-tinfo['encp_start_time']))
-
-        #Don't need these anymore.
-        close_descriptors(control_socket, data_path_socket, in_fd)
-
-        #Verify that everything is ok on the mover side of the transfer.
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e)
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            return done_ticket
-
-        #Trace.message(TRANSFER_LEVEL, "File %s transfered.  elapsed=%s" %
-        #              (done_ticket['outfile'],
-        #               time.time()-tinfo['encp_start_time']))
-
-        #Trace.message(TICKET_LEVEL, "FINAL DIALOG")
-        #Trace.message(TICKET_LEVEL, pprint.pformat(done_ticket))
-
-        #This function writes errors/warnings to the log file and puts an
-        # error status in the ticket.
-        check_crc(done_ticket, e) #Check the CRC.
-
-        #Verify that the file transfered in tacted.
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e)
-        
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            return combine_dict(result_dict, work_ticket)
-
-        #Update the last access and modification times respecively.
-        update_times(done_ticket['infile'], done_ticket['outfile'])
-
-        #Verify that setting times has been done successfully.
-        #
-        #Also verify, before calling set_pnfs_settings(), that another
-        # encp has not yet set layer 1 or 4 (very small chance of race
-        # condition that another encp would set them between this check
-        # and them being set).
-        result_dict = handle_retries([work_ticket], work_ticket,
-                                     done_ticket, e,
-                                     pnfs_filename = done_ticket['outfile'])
-
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            return combine_dict(result_dict, work_ticket)
-        
-        #We know the file has hit some sort of media. When this occurs
-        # create a file in pnfs namespace with information about transfer.
-
-        # set_pnfs_settings(done_ticket, e, pac)  Dmitry!!!!
-
-        # create a new pnfs object pointing to current output file
-        Trace.message(INFO_LEVEL,
-                      "Updating %s file metadata." % done_ticket['wrapper']['pnfsFilename'])
-
-        location_start_time = time.time() # Start time of verifying pnfs file.
-
-        #Make sure the file is still there.  This check is done with
-        # access_check() because it will loop incase pnfs is automounted.
-        # If the return is zero, then it wasn't found.
-        #Note: There is a possible race condition here if the file is
-        #      (re)moved after it is determined to remain in the original
-        #      location, but before the metadata is set.
-        if pac.e_access(done_ticket['wrapper']['pnfsFilename'], os.F_OK) == 0:
-            #With the remembered pnfsid, try to find out where it was moved to
-            # if it was in fact moved.
-            pnfsid = done_ticket['fc'].get('pnfsid', None)
-            if pnfsid:
-                try:
-                    path = pac.get_path(pnfsid,
-                             get_directory_name(done_ticket['wrapper']['pnfsFilename']))
-                    Trace.log(e_errors.INFO,
-                              "File %s was moved to %s." %
-                              (done_ticket['wrapper']['pnfsFilename'], path))
-                    done_ticket['wrapper']['pnfsFilename'] = path  #Remember new path.
-                    if is_write(done_ticket):
-                        done_ticket['outfile'] = path
-                    else:  #is_read() for "get".
-                        done_ticket['infile'] = path
-                except (OSError, IOError, AttributeError, ValueError):
-                    done_ticket['status'] = (e_errors.USERERROR,
-                                        "PNFS file %s has been removed." %
-                                        done_ticket['wrapper']['pnfsFilename'])
-                    Trace.log(e_errors.ERROR,
-                              "Trouble with pnfs: %s %s." % done_ticket['status'])
-            else:
-                done_ticket['status'] = (e_errors.USERERROR,
-                                    "PNFS file %s has been removed." %
-                                    done_ticket['wrapper']['pnfsFilename'])
-                Trace.log(e_errors.ERROR,
-                          "Trouble with pnfs: %s %s." % done_ticket['status'])
-#        else:
-#            commented out by Dmitry
-#            #Check to make sure that the inodes are still the same.
-#            verify_inode(done_ticket)
-#            if not e_errors.is_ok(done_ticket):
-#                #Ticket is already set.
-#                return
-#            try:
-#                p = pnfs.Pnfs(done_ticket['wrapper']['pnfsFilename'])
-#            except (KeyboardInterrupt, SystemExit):
-#                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-#            except:
-#                #Get the exception.
-#                msg = sys.exc_info()[1]
-#                #If it is a user access/permitted problem handle accordingly.
-#                if hasattr(msg, "errno") and \
-#                       (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
-#                    done_ticket['status'] = (e_errors.USERERROR, str(msg))
-#                #Handle all other errors.
-#                else:
-#                    done_ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-#                #Log the problem.
-#                Trace.log(e_errors.INFO,
-#                          "Trouble with pnfs: %s %s." % done_ticket['status'])
-#                return
-
-        Trace.message(TIME_LEVEL, "Time to veify pnfs file location: %s sec." %
-                      (time.time() - location_start_time,))
-
-        if not done_ticket.get('copy', None):  #Don't set layer 1 if copy.
-            layer1_start_time = time.time() # Start time of setting pnfs layer 1.
-
-            #The first piece of metadata to set is the bit file id which is placed
-            # into layer 1.
-            Trace.message(INFO_LEVEL, "Setting layer 1: %s" %
-                          done_ticket["fc"]["bfid"])
-            try:
-                # save the bfid
-                pac.set_bit_file_id(done_ticket['wrapper']['pnfsFilename'],
-                                    done_ticket["fc"]["bfid"])
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                #Get the exception.
-                msg = sys.exc_info()[1]
-                #If it is a user access/permitted problem handle accordingly.
-                if hasattr(msg, "errno") and \
-                   (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
-                    done_ticket['status'] = (e_errors.USERERROR, str(msg))
-                #Handle all other errors.
-                else:
-                    done_ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-                #Log the problem.
-                Trace.log(e_errors.INFO,
-                          "Trouble with pnfs: %s %s." % done_ticket['status'])
-                return
-
-            Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
-                          (time.time() - layer1_start_time,))
-
-        #Format some tape drive output.
-        mover_ticket = done_ticket.get('mover', {})
-        drive = "%s:%s" % (mover_ticket.get('device', 'Unknown'),
-                           mover_ticket.get('serial_num','Unknown'))
-
-        #For writes to null movers, make the crc zero.
-        if mover_ticket['driver'] == "NullDriver":
-            crc = 0
-        else:
-            crc = done_ticket['fc']['complete_crc']
-        try:
-            #Perform the following get functions; even if it is a copy.  These,
-            # calls set values in the object that are used to also update
-            # file db entires for copies.
-            bfid=pac.get_bit_file_id(done_ticket['wrapper']['pnfsFilename'])
-            fid=pac.get_id(done_ticket['wrapper']['pnfsFilename'])
-            fname=done_ticket['wrapper']['pnfsFilename']
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            #Get the exception.
-            msg = sys.exc_info()[1]
-            #If it is a user access/permitted problem handle accordingly.
-            if hasattr(msg, "errno") and \
-                   (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
-                done_ticket['status'] = (e_errors.USERERROR, str(msg))
-            #Handle all other errors.
-            else:
-                done_ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-            #Log the problem.
-            Trace.log(e_errors.INFO,
-                      "Trouble with pnfs: %s %s." % done_ticket['status'])
-
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
-                      % (str(exc), str(msg)))
-            done_ticket['status'] = (str(exc), str(msg))
-            return
-
-        if not done_ticket.get('copy', None):  #Don't set layer 4 if copy.
-            layer4_start_time = time.time() # Start time of setting pnfs layer 4.
-
-            #Store the cross reference data into layer 4.
-
-            #Write to the metadata layer 4 "file".
-            Trace.message(INFO_LEVEL, "Setting layer 4.")
-            try:
-                pac.set_xreference(
-                    done_ticket["fc"]["external_label"],
-                    done_ticket["fc"]["location_cookie"],
-                    done_ticket["fc"]["size"],
-                    volume_family.extract_file_family(done_ticket["vc"]["volume_family"]),
-                    fname,
-                    "", #p.volume_filepath,
-                    fid,
-                    "", #p.volume_fileP.id,
-                    bfid,
-                    drive,
-                    crc)
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                #Get the exception.
-                msg = sys.exc_info()[1]
-                #If it is a user access/permitted problem handle accordingly.
-                if hasattr(msg, "errno") and \
-                   (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
-                    done_ticket['status'] = (e_errors.USERERROR, str(msg))
-                #Handle all other errors.
-                else:
-                    done_ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-                #Log the problem.
-                Trace.log(e_errors.INFO,
-                          "Trouble with pnfs: %s %s." % done_ticket['status'])
-
-                exc, msg = sys.exc_info()[:2]
-                Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
-                          % (str(exc), str(msg)))
-                done_ticket['status'] = (str(exc), str(msg))
-                return
-
-            Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
-                          (time.time() - layer4_start_time,))
-
-        filedb_start_time = time.time() # Start time of updating file database.
-
-        #Update the file database with the transfer info.
-        Trace.message(INFO_LEVEL, "Setting file db pnfs fields.")
-        try:
-            # add the pnfs ids and filenames to the file clerk ticket and store it
-            fc_ticket = {}
-            fc_ticket["fc"] = done_ticket['fc'].copy()
-            fc_ticket["fc"]["pnfsid"] = fid
-            fc_ticket["fc"]["pnfsvid"] = "" #p.volume_fileP.id
-            fc_ticket["fc"]["pnfs_name0"] = fname
-            fc_ticket["fc"]["pnfs_mapname"] = "" #p.mapfile
-            fc_ticket["fc"]["drive"] = drive
-            fc_ticket["fc"]['uid'] = done_ticket['wrapper']['uid']
-            fc_ticket["fc"]['gid'] = done_ticket['wrapper']['gid']
-
-            #As long as encp is restricted to working with one enstore system
-            # at a time, passing get_fcc() the bfid info is not necessary.
-            fcc = get_fcc()   #ticket["fc"]["bfid"]
-            fc_reply = fcc.set_pnfsid(fc_ticket)
-
-            if not e_errors.is_ok(fc_reply['status'][0]):
-                Trace.alarm(e_errors.ERROR, fc_reply['status'][0], fc_reply)
-                done_ticket['status'] = fc_reply['status']
-                return
-
-            Trace.message(TICKET_LEVEL, "FILE DB PNFS FIELDS SET")
-            Trace.message(TICKET_LEVEL, pprint.pformat(fc_reply))
-
-            #ticket['status'] = fc_reply['status']
-        except (KeyboardInterrupt, SystemExit):
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-        except:
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.INFO, "Unable to send info. to file clerk. %s %s."
-                      % (str(exc), str(msg)))
-            done_ticket['status'] = (str(exc), str(msg))
-            return
-
-        Trace.message(TIME_LEVEL, "Time to set file database: %s sec." %
-                      (time.time() - filedb_start_time,))
-
-        if not done_ticket.get('copy', None):  #Don't set size if copy.
-            filesize_start_time = time.time() # Start time of setting the filesize.
-
-            # file size needs to be the LAST metadata to be recorded
-            Trace.message(INFO_LEVEL, "Setting filesize.")
-            try:
-                #The dcache sets the file size.  If encp tries to set it again,
-                # pnfs sets the size to zero.  Thus, only do this for normal
-                # transfers.
-                if not e.put_cache:
-                    #If the size is already set don't set it again.  Doing so
-                    # would set the filesize back to zero.
-                    statinfo, bfid, pinfo = pac.get_file_stat(done_ticket['wrapper']['pnfsFilename'])
-#                    size = os.stat(done_ticket['wrapper']['pnfsFilename'])[stat.ST_SIZE]
-                    size = statinfo[stat.ST_SIZE]
-                    if long(size) == long(done_ticket['file_size']) or long(size) == 1L:
-                        Trace.log(e_errors.INFO,
-                                  "Filesize (%s) for file %s already set." %
-                                  (done_ticket['file_size'],
-                                   done_ticket['wrapper']['pnfsFilename']))
-                    else:
-                        # set the file size
-                        pac.set_file_size(fname,done_ticket['file_size'])
-            except (KeyboardInterrupt, SystemExit):
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            except:
-                exc, msg = sys.exc_info()[:2]
-                done_ticket['status'] = (str(exc), str(msg))
-                return
-
-            Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
-                      (time.time() - filesize_start_time,))
-
-        #This functions write errors/warnings to the log file and put an
-        # error status in the ticket.
-        # Dmitry commented it out
-        #verify_file_size(done_ticket) #Verify size is the same.
-      
-
-        #Verify that the pnfs info was set correctly.
-        # Dmitry commented this out
-#        result_dict = handle_retries([work_ticket], work_ticket,
-#                                     done_ticket, e)
-
-        result_dict = work_ticket
-        if e_errors.is_retriable(result_dict['status'][0]):
-            continue
-        elif e_errors.is_non_retriable(result_dict['status'][0]):
-            return combine_dict(result_dict, work_ticket)
-
-
-        #Set the UNIX file permissions.
-        #Writes errors to log file.
-        #The last peice of metadata that should be set is the filesize.  This
-        # is done last inside of set_pnfs_settings().  Unfortunatly, write
-        # permissions are needed to set the filesize.  If setting the
-        # permissions goes first and write permissions are not included
-        # in the values from the input file then the transer will fail.  Thus
-        # setting the outfile permissions is done after setting the filesize,
-        # however, if setting the permissions fails the file is left alone
-        # but it is still treated like a failed transfer.  Worst case senerio
-        # on a failure is that the file is left with full permissions.
-        pac.set_outfile_permissions(done_ticket)
-
-        ###What kind of check should be done here?
-        #This error should result in the file being left where it is, but it
-        # is still considered a failed transfer (aka. exit code = 1 and
-        # data access layer is still printed).
-        if not e_errors.is_ok(done_ticket.get('status', (e_errors.OK,None))):
-            print_data_access_layer_format(done_ticket['infile'],
-                                           done_ticket['outfile'],
-                                           done_ticket['file_size'],
-                                           done_ticket)
-            #We want to set this here, just in case the error isn't technically
-            # non-retriable.
-            done_ticket['completion_status'] = FAILURE
-
-        tstring = '%s_overall_time' % done_ticket['unique_id']
-        tinfo[tstring] = time.time() - overall_start #-------------Overall End
-
-        #Remove the new file from the list of those to be deleted should
-        # encp stop suddenly.  (ie. crash or control-C).
-        try:
-            delete_at_exit.unregister_bfid(done_ticket['fc']['bfid'])
-        except (IndexError, KeyError):
-            Trace.log(e_errors.INFO, "unable to unregister bfid")
-        try:
-            delete_at_exit.unregister(done_ticket['outfile']) #pnfsname
-        except (IndexError, KeyError):
-             Trace.log(e_errors.INFO, "unable to unregister file")
-             
-        Trace.message(TRANSFER_LEVEL,
-                      "File status after verification: %s   elapsed=%s" %
-                      (done_ticket['status'],
-                       time.time()-tinfo['encp_start_time']))
-
-        return done_ticket
-
-    #If we get out of the while loop, then return error.
-    msg = "Failed to write file %s." % work_ticket['outfile']
-    done_ticket = {'status':(e_errors.TOO_MANY_RETRIES, msg)}
-    return done_ticket
-
 ############################################################################
 
 def write_to_hsm(e, tinfo):
@@ -7262,7 +6737,8 @@ def write_to_hsm(e, tinfo):
                 create_zero_length_pnfs_files(request_list[i], e)
             except OSError, msg:
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
-                       or msg.args[0] == -1:
+                       or (msg.args[0] == errno.EIO and \
+                           msg.args[1].find("corrupt") != -1):
                     request_list[i]['status'] = \
                                    (e_errors.FILESYSTEM_CORRUPT, str(msg))
                 else:
@@ -8934,7 +8410,8 @@ def read_from_hsm(e, tinfo):
             e_ticket['status'] = (msg.type, str(msg))
         elif isinstance(msg, OSError):
             if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
-               or msg.args[0] == -1:
+                   or (msg.args[0] == errno.EIO and \
+                       msg.args[1].find("corrupt") != -1):
                 e_ticket = {'status' : (e_errors.FILESYSTEM_CORRUPT, str(msg))}
             else:
                 e_ticket = {'status' : (e_errors.OSERROR, str(msg))}
@@ -8982,7 +8459,8 @@ def read_from_hsm(e, tinfo):
                create_zero_length_local_files(requests_per_vol[vol][i])
             except OSError, msg:
                 if msg.args[0] == getattr(errno, str("EFSCORRUPTED"), None) \
-                       or msg.args[0] == -1:
+                       or (msg.args[0] == errno.EIO and \
+                           msg.args[1].find("corrupt") != -1):
                     requests_per_vol[vol][i]['status'] = \
                                  (e_errors.FILESYSTEM_CORRUPT, str(msg))
                 else:
@@ -9923,11 +9401,33 @@ def log_encp_start(tinfo, intf):
         hostname = socket.getfqdn(socket.gethostname())
     except (OSError, socket.error, socket.herror, socket.gaierror):
         hostname = "invalid_hostname"
-        
+
+    try:
+        os_info = os.uname()
+    except OSError:
+        os_info = ('', '', '', '', '')
+
+    try:
+        release_data = []
+        for fname in os.listdir("/etc"):
+            if fname[-7:] == "release":
+                fp = open("/etc/" + fname, "r")
+                info = fp.readline().strip() #Only care about first line?
+                fp.close()
+                if info not in release_data:
+                    release_data.append(info)
+    except OSError:
+        release_data = []
+    release_info = ""
+    for info in release_data:
+        release_info = release_info + " " + info
+    
     #Other strings for the log file.
     start_line = "Start time: %s" % time.ctime(tinfo['encp_start_time'])
     command_line = "Command line: %s" % (string.join(intf.argv),)
     version_line = "Version: %s" % (encp_client_version().strip(),)
+    os_line = "OS: %s %s %s Release: %s" % \
+              (os_info[0], os_info[2], os_info[4], str(release_info))
     id_line = "User: %s(%d)  Group: %s(%d)  Euser: %s(%d)  Egroup: %s(%d)" %\
               (real_name, os.getuid(), real_group, os.getgid(),
                user_name, os.geteuid(), user_group, os.getegid())
@@ -9942,6 +9442,7 @@ def log_encp_start(tinfo, intf):
     Trace.message(DONE_LEVEL, id_line)
     Trace.message(DONE_LEVEL, command_line)
     Trace.message(DONE_LEVEL, version_line)
+    Trace.message(DONE_LEVEL, os_line)
     if intf.outtype == HSMFILE or intf.outtype == RHSMFILE:
         Trace.message(DONE_LEVEL, tag_line)
     Trace.message(DONE_LEVEL, cwd_line)
@@ -9953,11 +9454,11 @@ def log_encp_start(tinfo, intf):
     #Convenient, but maybe not correct place, to hack in log message
     # that shows how encp was called.
     if intf.outtype == "hsmfile":  #write
-        Trace.log(e_errors.INFO, "%s  %s  %s  %s  %s" %
-                  (version_line, id_line, tag_line, cwd_line, command_line))
+        Trace.log(e_errors.INFO, "%s  %s %s  %s  %s  %s" %
+                  (version_line, os_line, id_line, tag_line, cwd_line, command_line))
     else:                       #read
-        Trace.log(e_errors.INFO, "%s  %s  %s  %s" %
-                  (version_line, id_line, cwd_line, command_line))
+        Trace.log(e_errors.INFO, "%s  %s, %s  %s  %s" %
+                  (version_line, os_line, id_line, cwd_line, command_line))
 
 
 
