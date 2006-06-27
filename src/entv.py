@@ -148,14 +148,14 @@ def cleanup_objects():
 
     #First report what the garbage collection algorithm says...
     if uncollectable_count > 0:
-        Trace.trace(0, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
+        Trace.trace(10, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
     #Then (starting with the second pass) report the object count difference.
     if old_len == 0:
         old_len = new_len #Only set this on the first pass.
     else:
         if new_len - old_len > 2:
-            Trace.trace(0, "NEW COUNT DIFFERENCE: %s - %s = %s"
+            Trace.trace(10, "NEW COUNT DIFFERENCE: %s - %s = %s"
                         % (new_len, old_len, new_len - old_len))
         if new_len - old_len >= 100:
             #Only return true if 
