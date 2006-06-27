@@ -154,7 +154,6 @@ def cleanup_objects():
     if old_len == 0:
         old_len = new_len #Only set this on the first pass.
     else:
-        print new_len - old_len
         if new_len - old_len > 2:
             Trace.trace(0, "NEW COUNT DIFFERENCE: %s - %s = %s"
                         % (new_len, old_len, new_len - old_len))
