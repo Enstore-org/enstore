@@ -139,6 +139,13 @@ case ${FLAVOR} in
 	SunOS+5.8)
 		;;
 	Linux+2.4)
+		if [ `ups flavor -4` == "Linux+2.4-2.3.2" ]; then
+                        # Take care of Linux 9.0 and LTS.
+                        FLAVOR=`$UPS_DIR/bin/ups flavor -4`
+                fi
+
+		;;
+	Linux+2.6*)
 		;;
         *)
                 FLAVOR=`$UPS_DIR/bin/ups flavor -2`
