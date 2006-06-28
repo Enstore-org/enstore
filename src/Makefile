@@ -127,6 +127,7 @@ entv:
 	if [ -n "$(ENSTORE_DEVEL_DIR)" ]; then \
 		tcltk_dirs=`ls -ld $(ENSTORE_DEVEL_DIR)/tcltk/lib/tcl* $(ENSTORE_DEVEL_DIR)/tcltk/lib/tk* | egrep "^d" | awk '{print $$9}'` && \
 		cp -r $$tcltk_dirs ENTV_BIN ; \
+		cp -r $(ENSTORE_DIR)/etc/Images ENTV_BIN ; \
 	else \
 		cp -r $(ENSTORE_DIR)/etc/TclTk/tcl8.3  $(ENSTORE_DIR)/etc/TclTk/tk8.3 $(ENSTORE_DIR)/etc/Images ENTV_BIN ; \
 	fi
