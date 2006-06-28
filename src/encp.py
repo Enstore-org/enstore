@@ -4827,7 +4827,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     pf_status = (e_errors.OK, None)
     skip_layer_cleanup = False
     if is_write(encp_intf) and type(pnfs_filename) == types.StringType \
-           and pnfs_filename and not encp_intf.copies:
+           and pnfs_filename and not request_dictionary.get('copy', None):
         #If the user wants us to specifically check if another encp has
         # written (layers 1 or 4) to this pnfs file; now is the time to check.
         try:
@@ -6090,12 +6090,16 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
-        if not library and e.output_library:
+        if e.output_library:
             #Only take the first item of a possible comma seperated list.
-            library = e.output_library.split(",")[0]
+            all_libraries = e.output_library.split(",")
+            library = all_libraries[0]
+            use_copies = len(all_libraries[1:])
         if not library:
             #If library is still empty, use the default
-            library = t.get_library(odirname).split(",")[0]
+            all_libraries = t.get_library(odirname).split(",")
+            library = all_libraries[0]
+            use_copies = len(all_libraries[1:])
         #The pnfs file family may be overridden with the options
         # --ephemeral or --file-family.
         if not file_family:
@@ -6245,31 +6249,37 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
         request_list.append(work_ticket)
 
+    #If the user overrides the copy count, use that instead.
+    if e.copies != None:
+        use_copies = e.copies
+
     #Make dictionaries for the copies of the data.
     request_copy_list = []
-    if e.copies > 0:
-        for n_copy in range(1, e.copies + 1):
+    if use_copies > 0:
+
+        parmameter_libraries = e.output_library.split(",")
+        tag_libraries = t.get_library(odirname).split(",")
+        
+        for n_copy in range(1, use_copies + 1):
 
             #Determine the library manager to use.  First, try to see if
             # the command line has the information.  Otherwise, check
             # the library tag.  In both cases, the library should be a
             # comma seperated list of library manager short names.
             try:
-                current_library = e.output_library.split(",")[n_copy]
+                current_library = parmameter_libraries[n_copy]
             except IndexError:
                 try:
-                    current_library = \
-                                t.get_library(odirname).split(",")[n_copy]
+                    current_library = tag_libraries[n_copy]
                 except IndexError:
                     #We get here if n copies were requested, but less than
                     # that number of libraries were found.
-                    e.copies = n_copy - 1
-                    break
-                    #raise EncpError(None,
-                    #                "Too many copies requested for the "
-                    #                "number of configured copy libraries.",
-                    #                e_errors.USERERROR, copy_ticket)
-
+                    #use_copies = n_copy - 1
+                    #break
+                    raise EncpError(None,
+                                    "Too many copies requested for the "
+                                    "number of configured copy libraries.",
+                                    e_errors.USERERROR)
             
             for work_ticket in request_list:
                 copy_ticket = copy.deepcopy(work_ticket)
@@ -8606,7 +8616,7 @@ class EncpInterface(option.Interface):
         self.data_access_layer = 0 # no special listings
         self.verbose = 0           # higher the number the more is output
         self.version = 0           # print out the encp version
-        self.copies = 0            # number of copies to write to tape
+        self.copies = None         # number of copies to write to tape
 
         #EXfer optimimazation options
         self.buffer_size = 262144  # 256K: the buffer size
@@ -9021,8 +9031,8 @@ class EncpInterface(option.Interface):
             self.print_usage("Argument for --max-resubmit must be a "
                              "positive integer or None.")
 
-        if self.copies < 0:
-            self.print_usage("Argument for --copy must be a positive integer.")
+        if self.copies != None and self.copies < 0:
+            self.print_usage("Argument for --copy must be a non-negative integer.")
 
         # bomb out if we don't have an input/output if a special command
         # line was given.  (--volume, --get-cache, --put-cache, --bfid)
