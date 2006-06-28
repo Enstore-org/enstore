@@ -22,10 +22,10 @@ DIR=$(DEFAULT_DIR)
 
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_22
+            VERS=v2_25
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
-           CHAIN="rev_01"
+           CHAIN="lts41"
       UPS_SUBDIR=ups
  ADDPRODUCT_HOST=fnkits.fnal.gov
 DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)

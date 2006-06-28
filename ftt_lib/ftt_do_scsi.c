@@ -272,8 +272,12 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* enable outgoing compression */
 	    buf[BD_SIZE + 2] &= ~(1 << 7);
 	    buf[BD_SIZE + 2] |= (compression << 7);
+            buf[BD_SIZE + 2] |= (compression << 7);
 
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 120, 1);
+            if (0 != strncmp(d->prod_id,"ULT",3)){
+                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 120, 1);
+            }
+
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -290,7 +294,12 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* the parent process set... */
 	    /* buf[BD_SIZE] = d->devinfo[d->which_is_default].hwdens; */
  	    buf[BD_SIZE + 14] = compression;
-	    res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 120, 1);
+
+            if (0 == strncmp(d->prod_id,"ULT",3)){
+               res = ftt_set_compression(d,0);
+            }else{
+	       res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 120, 1);
+	    }
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
