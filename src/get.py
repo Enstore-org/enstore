@@ -292,7 +292,7 @@ def transfer_file(in_fd, out_fd):
             bytes = bytes + os.write(out_fd, data)
         except OSError, detail:
             #Handle the ENOSPC error differently.
-            if detail.get('errno', None) == errno.ENOSPC:
+            if getattr(detail, "errno", None) == errno.ENOSPC:
                 status = (e_errors.NOSPACE, str(detail))
             #Handle OSErrors
             else:
