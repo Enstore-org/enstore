@@ -58,10 +58,15 @@ if [ ${nVols:-0} -gt 0 ]
 then
   vols=`stk_dv $nVols $moveFrom | awk '$1~/[A-Z][A-Z][A-Z0-9][0-9][0-9][0-9]/ && $2~/[0-9-]+/ && $3~/[0-9:]+/ {print $1}'`
   echo "$nVols will be moved from LSM $moveFrom to LSM $moveInto."
+  let n=0
   for vol in $vols
   do
     echo "Moving $vol."
     stk_mv $vol $moveInto 1>/dev/null
-    sleep 60
+# pass-thru port (PTP) can hold 4 cartridges, so pause only every 4th move
+    if (( (++n % 4) == 0 ))
+    then
+      sleep 60
+    fi
   done
 fi
