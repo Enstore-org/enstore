@@ -804,11 +804,50 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
                                                                        stats[self.ftt.WRITE_PROT],
                                                                        self.override_ro_mount))
+            try: 
+                user_read = long(stats[self.ftt.USER_READ])/1024.
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting USER_READ: %s %s'%(detail,stats[self.ftt.USER_READ]))
+                user_read = -1
+                    
+            try: 
+                user_write = long(stats[self.ftt.USER_WRITE])/1024.
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting USER_WRITE: %s %s'%(detail,stats[self.ftt.USER_WRITE]))
+                user_write = -1
+                
+            try:
+                read_count = long(stats[self.ftt.READ_COUNT])/1024.
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting READ_COUNT: %s %s'%(detail,stats[self.ftt.READ_COUNT]))
+                read_count = -1
+            try:
+                write_count = long(stats[self.ftt.WRITE_COUNT])/1024.
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting WRITE_COUNT: %s %s'%(detail, stats[self.ftt.WRITE_COUNT]))
+                write_count = -1
+            try:
+                read_errors = long(stats[self.ftt.READ_ERRORS])
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting READ_ERRORS: %s %s'%(detail,stats[self.ftt.READ_ERRORS]))
+                read_errors = -1
+            try:
+                write_errors = long(stats[self.ftt.WRITE_ERRORS])
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting WRITE_ERRORS: %s %s'%(detail,stats[self.ftt.WRITE_ERRORS]))
+                write_errors = -1
+            try:
+                write_prot = int(stats[self.ftt.WRITE_PROT])
+            except TypeError, detail:
+                Trace.log(e_errors.ERROR, 'Type Error getting WRITE_PROT: %s %s'%(detail,stats[self.ftt.WRITE_PROT]))
+                write_prot = -1
+            
             if self.stat_file:
                 if not os.path.exists(self.stat_file):
                    dirname, basename = os.path.split(self.stat_file)
                    if not os.path.exists(dirname):
                        os.makedirs(dirname)
+                
                 fd = open(self.stat_file, "w")
                 fd.write("FORMAT VERSION:         %d\n"%(22,))
                 fd.write("INIT FLAG:              %d\n"%(1,))
@@ -825,10 +864,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 fd.write("MOT HRS:                %s\n"%(stats[self.ftt.MOTION_HOURS],))
                 fd.write("RD ERR:                 %s\n"%(stats[self.ftt.READ_ERRORS],))
                 fd.write("WR ERR:                 %s\n"%(stats[self.ftt.WRITE_ERRORS],))
-                fd.write("MB UREAD:               %s\n"%(long(stats[self.ftt.USER_READ])/1024.,))
-                fd.write("MB UWRITE:              %s\n"%(long(stats[self.ftt.USER_WRITE])/1024.,))
-                fd.write("MB DREAD:                  %s\n"%(long(stats[self.ftt.READ_COUNT])/1024.,))
-                fd.write("MB DWRITE:                 %s\n"%(long(stats[self.ftt.WRITE_COUNT])/1024.,))
+                fd.write("MB UREAD:               %s\n"%(user_read,))
+                fd.write("MB UWRITE:              %s\n"%(user_write,))
+                fd.write("MB DREAD:                  %s\n"%(read_count,))
+                fd.write("MB DWRITE:                 %s\n"%(write_count,))
                 fd.write("RETRIES:                %s\n"%(stats[self.ftt.TRACK_RETRY],))
                 fd.write("WRITEPROT:               %s\n"%(stats[self.ftt.WRITE_PROT],))
                 fd.write("UNDERRUN:               %s\n"%(stats[self.ftt.UNDERRUN],))
@@ -846,16 +885,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   stats[self.ftt.POWER_HOURS],
                                   stats[self.ftt.MOTION_HOURS],
                                   stats[self.ftt.CLEANING_BIT],
-                                  long(stats[self.ftt.USER_READ])/1024.,
-                                  long(stats[self.ftt.USER_WRITE])/1024.,
-                                  long(stats[self.ftt.READ_COUNT])/1024.,
-                                  long(stats[self.ftt.WRITE_COUNT])/1024.,
-                                  long(stats[self.ftt.READ_ERRORS]),
-                                  long(stats[self.ftt.WRITE_ERRORS]),
+                                  user_read,
+                                  user_write,
+                                  read_count,
+                                  write_count,
+                                  read_errors,
+                                  write_errors,
                                   stats[self.ftt.TRACK_RETRY],
                                   stats[self.ftt.UNDERRUN],
                                   0,
-                                  int(stats[self.ftt.WRITE_PROT]))
+                                  write_prot)
                 
     def start(self):
         name = self.name
