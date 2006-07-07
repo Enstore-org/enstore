@@ -318,6 +318,22 @@ class Buffer:
     def __repr__(self):
         return "Buffer %s  %s  %s" % (self.min_bytes, self._buf_bytes, self.max_bytes)
 
+    def dump(self, f):
+        for name, value in self.__class__.__dict__.items( ) + self.__dict__.items( ):
+            v = value
+            try:
+                l = len(value)
+            except (TypeError, AttributeError):
+                l = None
+            if l:
+                if l < 100:
+                    v = value
+                else:
+                    v = ">100"
+                
+            f.write("%s = %s, len = %s\n"%(name, v, l))
+        
+
     def block_read(self, nbytes, driver, fill_buffer=1):
 
         if self.client_crc_on:
@@ -669,6 +685,31 @@ class Mover(dispatching_worker.DispatchingWorker,
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
 
+    def dump(self, ticket):
+        out_ticket = {'status':(e_errors.OK,None)}
+        d=os.environ.get("ENSTORE_TMP","/tmp")
+        f = open("%s/mover_dump-%s"%(d,time.time(),), "w")
+        self.reply_to_caller(out_ticket)
+        f.write("%s\n"%(time.ctime(),))
+        if self.buffer:
+            f.write("dumping Buffer\n")
+            self.buffer.dump(f)
+        for name, value in self.__class__.__dict__.items( ) + self.__dict__.items( ):
+            v = value
+            try:
+                l = len(value)
+            except (TypeError, AttributeError):
+                l = None
+            if l:
+                if l < 100:
+                    v = value
+                else:
+                    v = ">100"
+                
+            f.write("%s = %s, len = %s\n"%(name, v, l))
+        f.close()
+        
+        
     def init_data_buffer(self):
         if self.buffer:
             self.buffer.clear()
@@ -4752,6 +4793,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
                  'client': self.client_ip,
+                 'buffer':'%s'%(self.buffer,),
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)

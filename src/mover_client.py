@@ -61,6 +61,10 @@ class MoverClient(generic_client.GenericClient):
                           "sendto" : sendto,
                           "notify" : notify}, rcv_timeout, tries)
 
+    def dump(self, rcv_timeout=R_TO, tries=R_T):
+        return self.send({"work" : "dump"}, rcv_timeout, tries)
+    
+
 class MoverClientInterface(generic_client.GenericClientInterface):
     def __init__(self, args=sys.argv, user_mode=1):
         #self.do_parse = flag
@@ -77,6 +81,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.notify = []
         self.sendto = []
         self.dump = 0
+        self.mover_dump = 0
         self.warm_restart = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -99,6 +104,12 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                      option.USER_LEVEL:option.ADMIN},
         option.DUMP:{option.HELP_STRING:
                      "get the tape drive dump (used only with M2 movers)",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.MOVER_DUMP:{option.HELP_STRING:
+                     "send mover internals to stdout",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
@@ -207,6 +218,8 @@ def do_work(intf):
         ticket = movc.warm_restart(intf.alive_rcv_timeout, intf.alive_retries)
     elif intf.dump:
         ticket = movc.device_dump(intf.sendto, intf.notify, intf.alive_rcv_timeout, intf.alive_retries)
+    elif intf.mover_dump:
+        ticket = movc.dump(intf.alive_rcv_timeout, intf.alive_retries)
     else:
         intf.print_help()
         sys.exit(0)

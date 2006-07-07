@@ -293,6 +293,7 @@ MMAP_IO = "mmap-io"                          #encp
 MMAP_SIZE = "mmap-size"                      #encp
 MODIFY = "modify"                            #volume
 MOUNT = "mount"                              #media, plotter
+MOVER_DUMP = "mover_dump"                    #mover
 MOVER_TIMEOUT = "mover-timeout"              #assert, encp
 MOVERS_FILE = "movers-file"                  #entv
 NAMEOF = "nameof"                            #pnfs
@@ -463,7 +464,7 @@ valid_option_list = [
     LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
-    MESSAGE, MESSAGES_FILE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_TIMEOUT,
+    MESSAGE, MESSAGES_FILE, MMAP_IO, MMAP_SIZE, MODIFY, MOUNT, MOVER_DUMP, MOVER_TIMEOUT,
     MOVERS_FILE, MIGRATED,
     NAMEOF, NEW_LIBRARY, NO_ACCESS, NOCHECK, NO_CRC, NOT_ALLOWED, NO_MAIL,
     NO_PLOT_HTML,
