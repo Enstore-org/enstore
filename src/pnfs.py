@@ -673,13 +673,53 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
 
-        initial_pnfs_db = self.get_id(fname)[:4]
-        current_path = old_path = fname
+        try:
+            #Getting the db from 
+            initial_pnfs_db = int(self.get_id(fname)[:4], 16)
+            current_path = old_path = fname
+        except (OSError, IOError), msg:
+            #Check if the file does not exist.
+            if not os.path.exists(fname):
+                raise OSError(errno.ENOENT,
+                              "%s: %s" % (os.strerror(errno.ENOENT), fname))
 
+            #Check if we can get the database directly.  This only works
+            # for directories.
+            try:
+                current_pnfs_db = int(self.get_database(fname).split(":")[1],
+                                      16)
+                #We were given the mount point as that starting point.
+                return fname
+            except (OSError, IOError), msg2:
+                if msg2.args[0] == errno.ENOENT:
+                    raise OSError(errno.ENOENT,
+                                  "%s: %s" % (os.strerror(errno.EINVAL),
+                                              "Not a valid pnfs directory"))
+
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        #Strip off one directory segment at a time.  We are looking for
+        # where the DB number changes.
         while 1:
             current_path = os.path.dirname(current_path)
-            current_pnfs_db = self.get_id(current_path)[:4]
+            try:
+                current_pnfs_db = int(self.get_id(current_path)[:4], 16)
+            except (OSError, IOError), msg:
+                if msg.args[0] == errno.ENOENT:
+                    #We've reached the top without hitting a change of DB.
+                    current_pnfs_db = int(self.get_database(old_path).split(":")[1],
+                                          16)
+                    if initial_pnfs_db == current_pnfs_db:
+                        #This check is here only as great paranoia.  If
+                        # getting the database id didn't through a traceback
+                        # then we should be good to go.
+                        return current_path
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             if initial_pnfs_db != current_pnfs_db:
+                #We found the change of DB.
                 return old_path
             old_path = current_path
             
@@ -1326,6 +1366,17 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (AttributeError, ValueError), detail:
             print "A valid pnfs id was not entered."
             return 1
+
+    def pmount_point(self):
+        try:
+            print_results(self.get_mount_point())
+            return 0
+        except (OSError, IOError), detail:
+            print str(detail)
+            return 1
+        except (AttributeError, ValueError), detail:
+            print "A valid pnfs id was not entered."
+            return 1
         
     def pparent(self):  #, intf):
         try:
@@ -1831,6 +1882,18 @@ class PnfsInterface(option.Interface):
                                          option.VALUE_LABEL:"layer",
                                          }]
               },
+        option.MOUNT_POINT:{option.HELP_STRING:"prints the mount point of " \
+                            "the pnfs file or directory",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_NAME:"mount_point",
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.VALUE_NAME:"file",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.VALUE_LABEL:"filename",
+                            option.FORCE_SET_DEFAULT:option.FORCE,
+                            option.USER_LEVEL:option.ADMIN,
+                            },
         option.NAMEOF:{option.HELP_STRING:"prints the filename of the pnfs id"\
                        " (CWD must be under /pnfs)",
                        option.DEFAULT_VALUE:option.DEFAULT,
