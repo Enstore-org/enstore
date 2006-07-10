@@ -344,49 +344,49 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def get_path(self,ticket) :
-        pnfs_id  = ticket['pnfs_id']
-        dirname  = ticket['dirname']
-        p = pnfs.Pnfs(pnfs_id,dirname)
+    def get_path(self, ticket):
+        pnfs_id = ticket['pnfs_id']
+        dirname = ticket['dirname']
+        p = pnfs.Pnfs(pnfs_id, dirname)
         ticket['path'] = p.get_path()
-        ticket['status']   = (e_errors.OK, None)
+        ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
-    def e_access(self,ticket) :
-        path  = ticket['path']
-        mode  = ticket['mode']
-        rc = file_utils.e_access(path,mode)
+    def e_access(self, ticket):
+        path = ticket['path']
+        mode = ticket['mode']
+        rc = file_utils.e_access(path, mode)
         Trace.log(e_errors.INFO, 'e_access for file %s mode %s rc=%s'%(path,mode,rc,))
-        ticket['rc']=rc
-        ticket['status']   = (e_errors.OK, None)
+        ticket['rc'] = rc
+        ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
-    def set_bit_file_id(self,ticket) :
-        bfid  = ticket['bfid']
+    def set_bit_file_id(self, ticket):
+        bfid = ticket['bfid']
         fname = ticket['fname']
-        p=pnfs.Pnfs(fname)
+        p = pnfs.Pnfs(fname)
         p.set_bit_file_id(bfid)
-        ticket['status']   = (e_errors.OK, None)
+        ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
 
-    def get_bit_file_id(self,ticket) :
+    def get_bit_file_id(self, ticket):
         fname = ticket['fname']
-        p=pnfs.Pnfs(fname)
-        ticket['bfid']=p.get_bit_file_id()
-        ticket['status']   = (e_errors.OK, None)
+        p = pnfs.Pnfs(fname)
+        ticket['bfid'] = p.get_bit_file_id()
+        ticket['status'] = (e_errors.OK, None)
         Trace.log(e_errors.INFO, 'get_bit_file_id %s %s'%(fname,ticket['bfid'],))
         self.reply_to_caller(ticket)
         return
 
-    def get_id(self,ticket) :
+    def get_id(self, ticket):
         fname = ticket['fname']
         try:
             p=pnfs.Pnfs(fname)
-            ticket['file_id']=p.get_id()
-            ticket['status']   = (e_errors.OK, None)
+            ticket['file_id'] = p.get_id()
+            ticket['status']  = (e_errors.OK, None)
         except OSError, msg:
             ticket['file_id']=None
             ticket['errno'] = msg.args[0]
@@ -399,18 +399,18 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.INFO, 'get_id %s %s'%(fname,ticket['file_id'],))
         return
 
-    def get_parent_id(self,ticket) :
+    def get_parent_id(self, ticket):
         pnfsid = ticket['pnfsid']
         try:
             p=pnfs.Pnfs(pnfsid, shorcut=True)
-            ticket['parent_id']=p.get_parent_id()
-            ticket['status']   = (e_errors.OK, None)
+            ticket['parent_id'] = p.get_parent_id()
+            ticket['status'] = (e_errors.OK, None)
         except OSError, msg:
-            ticket['parent_id']=None
+            ticket['parent_id'] = None
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.OSERROR, str(msg))
         except IOError, msg:
-            ticket['parent_id']=None
+            ticket['parent_id'] = None
             ticket['errno'] = msg.args[0]
             ticket['status'] = (e_errors.IOERROR, str(msg))
         self.reply_to_caller(ticket)
@@ -418,7 +418,26 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
                   'get_parent_id pnfs %s'%(ticket['parent_id'],))
         return
 
-    def set_xreference(self,ticket) :
+    def get_xreference(self, ticket):
+        fname = ticket['fname']
+        try:
+            p=pnfs.Pnfs(fname)
+            ticket['xref'] = p.get_xreference()
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['xref'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except IOError, msg:
+            ticket['xref'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        Trace.log(e_errors.INFO,
+                  'get_xreference pnfs %s'%(ticket['xref'],))
+        return
+        
+    def set_xreference(self, ticket):
         fname = ticket['pnfsFilename']
         p=pnfs.Pnfs(fname)
         p.get_bit_file_id()
@@ -439,7 +458,23 @@ class PnfsAgent(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(ticket)
         return
 
-    def set_file_size(self,ticket) :
+    def get_file_size(self, ticket):
+        fname = ticket['fname']
+        try:
+            ticket['size']=tuple(os.stat(fname))[stat.ST_SIZE]
+            ticket['status'] = (e_errors.OK, None)
+        except OSError, msg:
+            ticket['size'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.OSERROR, str(msg))
+        except OSError, msg:
+            ticket['size'] = None
+            ticket['errno'] = msg.args[0]
+            ticket['status'] = (e_errors.IOERROR, str(msg))
+        self.reply_to_caller(ticket)
+        return
+
+    def set_file_size(self, ticket):
         fname = ticket['fname']
         p=pnfs.Pnfs(fname)
         p.get_bit_file_id()
