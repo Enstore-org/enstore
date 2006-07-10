@@ -186,6 +186,8 @@ def do_work(intf):
                         (option.default_host(),
 			 option.default_port())).get('backup')
 
+    print "backup_config =", `backup_config`
+
     try:
         bckHome = backup_config['dir']
     except:
