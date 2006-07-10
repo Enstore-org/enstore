@@ -496,7 +496,9 @@ def do_work(intf):
         else:
             intf.print_help()
             sys.exit(0)
-    except (KeyboardInterrupt,SystemExit):
+
+        pac.check_ticket(ticket)
+    except (KeyboardInterrupt):
         sys.exit(1)
          
 
