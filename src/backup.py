@@ -171,12 +171,12 @@ def do_work(intf):
 			 option.default_port())).get('database')
         dbHome = dbInfo['db_dir']
 	jouHome = dbInfo['jou_dir']
-
-    print "dbInfo =", `dbInfo`
-
     except:
 	dbHome=os.environ['ENSTORE_DIR']
         jouHome=dbHome
+
+    print "dbInfo =", `dbInfo`
+
     try:
     	os.chdir(dbHome)
     except os.error, msg:
