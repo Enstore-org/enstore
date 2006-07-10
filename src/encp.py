@@ -151,6 +151,8 @@ TICKET_1_LEVEL = 11
 #  0 - Means only print this output on fatal error.
 # -1 - Means never print this output.
 data_access_layer_requested = 0
+#This is the global used by Pnfs().  It used to force use of the pnfs agent.
+pnfs_agent_client_requested = 0
 
 #Initial seed for generate_unique_id().
 _counter = 0
@@ -318,10 +320,12 @@ class Pnfs:
 
     def __init__(self, pnfsFilename="", mount_point="", shortcut=None,
                  use_pnfs_agent = None):
+        global pnfs_agent_client_requested
+        
         ###Do we still need mount_point and shortcut here?
         __pychecker__ = "unusednames=mount_point,shortcut"
 
-        if use_pnfs_agent:
+        if use_pnfs_agent or pnfs_agent_client_requested:
             self.use_pnfs_agent = 1
             self.p = get_pac()
         elif pnfsFilename:
@@ -480,17 +484,34 @@ def is_volume(volume):
             return 1   #If pass a disk volume.
     return 0
 
+def is_location_cookie_tape(lc):
+    #For tapes and null volumes.
+    tape_regex = re.compile("^[0-9]{4}(_)[0-9]{9}(_)[0-9]{7}$")
+
+    if (len(lc) == 22 and \
+        tape_regex.match(lc)):
+        return 1
+
+    return 0
+
+#Alias this for completeness.
+is_location_cookie_null = is_location_cookie_tape
+
+def is_location_cookie_disk(lc):
+    #For disk volumes.
+    disk_regex = re.compile("^[/0-9A-Za-z_]*(//)[/0-9A-Za-z_]*(:)[0-9]*$")
+
+    if disk_regex.match(lc):
+            return 1
+    return 0
+
 def is_location_cookie(lc):
     if type(lc) == types.StringType:
-        #For tapes and null volumes.
-        tape_regex = re.compile("^[0-9]{4}(_)[0-9]{9}(_)[0-9]{7}$")
-        disk_regex = re.compile("^[/0-9A-Za-z_]*(//)[/0-9A-Za-z_]*(:)[0-9]*$")
+        if is_location_cookie_tape(lc):
+            return 1
+        elif is_location_cookie_disk(lc):
+            return 1
         
-        if (len(lc) == 22 and \
-            tape_regex.match(lc)):
-            return 1
-        elif disk_regex.match(lc):
-            return 1
     return 0
 
 ############################################################################
@@ -2721,12 +2742,7 @@ def inputfile_check(input_files, e):
         inputlist = [input_files]
 
     #Get the correct type of pnfs interface to use.
-    if e.intype == HSMFILE:
-        p = Pnfs()
-    elif e.intype == RHSMFILE:
-        p = Pnfs(use_pnfs_agent = True)
-    else: #e.intype == UNIXFILE:
-        p = None
+    p = Pnfs()
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(0, len(inputlist)):
@@ -2844,12 +2860,7 @@ def outputfile_check(inputlist, outputlist, e):
         outputlist = [outputlist]
 
     #Get the correct type of pnfs interface to use.
-    if e.outtype == HSMFILE:
-        p = Pnfs()
-    elif e.outtype == RHSMFILE:
-        p = Pnfs(use_pnfs_agent = True)
-    else: #e.outtype == UNIXFILE:
-        p = None
+    p = Pnfs()
 
     # Make sure we can open the files. If we can't, we bomb out to user
     for i in range(len(inputlist)):
@@ -4540,6 +4551,9 @@ def verify_file_size(ticket, encp_intf = None):
             ticket['status'] = (e_errors.OSERROR, str(detail))
             return
 
+        print "full_filesize:", full_filesize
+        print "pnfs_real_size:", pnfs_real_size
+        print "pnfs_filesize:", pnfs_filesize
         if full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
                   "size (%s) for large file %s." \
@@ -6909,10 +6923,7 @@ def verify_read_request_consistancy(requests_per_vol, e):
     sum_size = 0L
     sum_files = 0L
     outputfile_dict = {}
-    if e.intype == RHSMFILE:
-        p = Pnfs(use_pnfs_agent = True)
-    else:
-        p = Pnfs()
+    p = Pnfs()
     
     vols = requests_per_vol.keys()
     vols.sort()
@@ -7463,10 +7474,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
     nfiles = 0
     requests_per_vol = {}
     csc = None
-    if e.intype == RHSMFILE:
-        p = Pnfs(use_pnfs_agent = True)
-    else:
-        p = Pnfs(use_pnfs_agent = False)
+    p = Pnfs()
 
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input)==types.ListType:
@@ -7684,7 +7692,12 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 #These two variables should only be used withing the e.volume
                 # if statement.  After that their use would break usability
                 # with the other read method type branches.
-                number = int(extract_file_number(fc_reply['location_cookie']))
+                if is_location_cookie_disk(fc_reply['location_cookie']):
+                    #i starts with 0.  To make the 1st file at location 1
+                    # we add 1 to the locations.
+                    number = i + 1
+                else:
+                    number = int(extract_file_number(fc_reply['location_cookie']))
                 filename = os.path.basename(fc_reply['pnfs_name0'])
 
                 Trace.message(TRANSFER_LEVEL,
@@ -9300,6 +9313,17 @@ class EncpInterface(option.Interface):
                 self.outtype  = UNIXFILE
                 if self.intype == UNIXFILE:
                     self.outtype  = RHSMFILE
+
+            if r_encp == "only_pnfs_agent":
+                pnfs_agent_client_requested = True
+                """
+                #If the user want to force use of the pnfs agent, instead
+                # of the default behavior...
+                if self.intype == HSMFILE:
+                    self.intype = RHSMFILE
+                if self.outtype == HSMFILE:
+                    self.outtype = RHSMFILE
+                """
         else:
             #Assign the collection of types to these variables.
             if p1 == 1:
@@ -9340,11 +9364,8 @@ def log_encp_start(tinfo, intf):
     # output the tag information.
     try:
         if intf.put_cache:
-            if intf.outtype == RHSMFILE:
-                p = Pnfs(use_pnfs_agent = 1)
-            else:
-                p = Pnfs()
-                
+            p = Pnfs()
+
             shortcut_name = p.get_path(intf.put_cache,
                                        intf.pnfs_mount_point,
                                        shortcut = True)
