@@ -172,6 +172,8 @@ def do_work(intf):
         dbHome = dbInfo['db_dir']
 	jouHome = dbInfo['jou_dir']
 
+    print "dbInfo =", `dbInfo`
+
     except:
 	dbHome=os.environ['ENSTORE_DIR']
         jouHome=dbHome
