@@ -109,8 +109,11 @@ def is_pnfs_path(pathname, check_name_only = None):
     try:
         if os.stat(filename):
             return 1
-    except OSError:
-        pass
+    except OSError, msg:
+        if msg.args[0] == errno.ENOENT:
+            pass
+        else:
+            return 1
     
     #If we get here, then the path contains a directory named 'pnfs' but does
     # not point to a pnfs directory.
