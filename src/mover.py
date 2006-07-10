@@ -2482,7 +2482,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:    
                 exc, detail = sys.exc_info()[:2]
                 Trace.trace(33,"Exception %s %s"%(str(exc),str(detail)))
-                #Trace.handle_error(exc, detail, tb)
+                Trace.handle_error(exc, detail, tb)
                 self.read_tape_running = 0
                 self.transfer_failed(e_errors.READ_ERROR, detail, error_source=TAPE)
                 failed = 1
