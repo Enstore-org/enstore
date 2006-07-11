@@ -796,16 +796,17 @@ def get_mount_point2(pnfs_id):
     # and add them to the search path.  We only need one pnfs area that
     # is conected (does not need to be the correct one) to the proper
     # pnfs database.  This is messy, but it gets the job done.
-    dbnum, mount_path = admin_paths[0]  #there should only be one...
-    mount_path = os.path.join(mount_path, "usr")
-    dir_list = os.listdir(mount_path)
-    for fname in dir_list:
-        f_path = os.path.join(mount_path, fname)
-        f_stat = os.lstat(f_path)
-        if stat.S_ISDIR(f_stat[stat.ST_MODE]):
-            p = pnfs.Pnfs(f_path)
-            db_num = p.get_database(f_path).split(":")[1]
-            admin_paths.append((db_num, f_path))
+    if admin_paths != []:
+        dbnum, mount_path = admin_paths[0]  #there should only be one...
+        mount_path = os.path.join(mount_path, "usr")
+        dir_list = os.listdir(mount_path)
+        for fname in dir_list:
+            f_path = os.path.join(mount_path, fname)
+            f_stat = os.lstat(f_path)
+            if stat.S_ISDIR(f_stat[stat.ST_MODE]):
+                p = pnfs.Pnfs(f_path)
+                db_num = p.get_database(f_path).split(":")[1]
+                admin_paths.append((db_num, f_path))
 
     search_order = traditional_paths + admin_paths
 
