@@ -590,6 +590,12 @@ setuid_read_write_test()
     section="SETUID READ AND WRITE"
     print_test_name $section
     
+    which setuid > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+	echo "Unable to find setuid.  Skipping test and continuing."
+	return
+    fi
+
     truncate_encp_output
 
     #Snag a random file.
