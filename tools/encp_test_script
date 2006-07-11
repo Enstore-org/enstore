@@ -1,0 +1,269 @@
+#! /bin/bash
+
+if [ ! -d "$LOCAL_DIR" ]; then
+    echo "\$LOCAL_DIR not set.  Stopping test."
+    exit 1
+fi
+if [ ! -d "$PNFS_DIR" ]; then
+    echo "\$PNFS_DIR not set.  Stopping test."
+    exit 1
+fi
+
+verbose="--verbose 9"
+unalias ls
+
+source encp_test_functions
+
+if [ $# -eq 0 ]; then
+    single_read_test=`expr 1`
+#    single_stken_read_test=`expr 0`
+    single_read_write_test=`expr 1`
+    multiple_read_write_test=`expr 1`
+    dcache_read_write_test=`expr 1`
+    non_conf_read_write_test=`expr 1`
+    setuid_read_write_test=`expr 1`
+    single_threaded_read_write_test=`expr 1`
+    multiple_threaded_read_write_test=`expr 1`
+    single_ecrc_read_write_test=`expr 1`
+    single_assert_test=`expr 1`
+    ensync_test=`expr 1`
+    single_relative_path_read_write_test=`expr 1`
+    single_local_pnfs_path_read_test=`expr 1`
+    single_no_brand_read_test=`expr 1`
+    volume_read_test=`expr 1`
+    single_fs_path_read_test=`expr 1`
+    data_access_layer_read_write_test=`expr 1`
+    multiple_copies_read_write_test=`expr 1`
+    pnfs_agent_read_write_test=`expr 1`
+else
+    single_read_test=`expr 0`
+#    single_stken_read_test=`expr 0`
+    single_read_write_test=`expr 0`
+    multiple_read_write_test=`expr 0`
+    dcache_read_write_test=`expr 0`
+    non_conf_read_write_test=`expr 0`
+    setuid_read_write_test=`expr 0`
+    single_threaded_read_write_test=`expr 0`
+    multiple_threaded_read_write_test=`expr 0`
+    single_ecrc_read_write_test=`expr 0`
+    single_assert_test=`expr 0`
+    ensync_test=`expr 0`
+    single_relative_path_read_write_test=`expr 0`
+    single_local_pnfs_path_read_test=`expr 0`
+    single_no_brand_read_test=`expr 0`
+    volume_read_test=`expr 0`
+    single_fs_path_read_test=`expr 0`
+    data_access_layer_read_write_test=`expr 0`
+    multiple_copies_read_write_test=`expr 0`
+    pnfs_agent_read_write_test=`expr 0`
+
+    for switch in $*; do
+	if [ "single_read_test" = $switch ]; then
+	    single_read_test=`expr 1`
+	fi
+	#if [ "single_stken_read_test" = $switch ]; then
+	#    single_stken_read_test=`expr 1`
+	#fi
+	if [ "single_read_write_test" = $switch ]; then
+	    single_read_write_test=`expr 1`
+	fi
+	if [ "multiple_read_write_test" = $switch ]; then
+	    multiple_read_write_test=`expr 1`
+	fi
+	if [ "dcache_read_write_test" = $switch ]; then
+	    dcache_read_write_test=`expr 1`
+	fi
+	if [ "non_conf_read_write_test" = $switch ]; then
+	    non_conf_read_write_test=`expr 1`
+	fi
+	if [ "setuid_read_write_test" = $switch ]; then
+	    setuid_read_write_test=`expr 1`
+	fi
+	if [ "single_threaded_read_write_test" = $switch ]; then
+	    single_threaded_read_write_test=`expr 1`
+	fi
+	if [ "multiple_threaded_read_write_test" = $switch ]; then
+	    multiple_threaded_read_write_test=`expr 1`
+	fi
+	if [ "single_ecrc_read_write_test" = $switch ]; then
+	    single_ecrc_read_write_test=`expr 1`
+	fi
+	if [ "single_assert_test" = $switch ]; then
+	    single_assert_test=`expr 1`
+	fi
+	if [ "ensync_test" = $switch ]; then
+	    ensync_test=`expr 1`
+	fi
+	if [ "single_relative_path_read_write_test" = $switch ]; then
+	    single_relative_path_read_write_test=`expr 1`
+	fi
+	if [ "single_local_pnfs_path_read_test" = $switch ]; then
+	    single_local_pnfs_path_read_test=`expr 1`
+	fi
+	if [ "single_no_brand_read_test" = $switch ]; then
+	    single_no_brand_read_test=`expr 1`
+	fi
+	if [ "volume_read_test" = $switch ]; then
+	    volume_read_test=`expr 1`
+	fi
+	if [ "single_fs_path_read_test" = $switch ]; then
+	    single_fs_path_read_test=`expr 1`
+	fi
+	if [ "data_access_layer_read_write_test" = $switch ]; then
+	    data_access_layer_read_write_test=`expr 1`
+	fi
+	if [ "multiple_copies_read_write_test" = $switch ]; then
+	    multiple_copies_read_write_test=`expr 1`
+	fi
+	if [ "pnfs_agent_read_write_test" = $switch ]; then
+	    pnfs_agent_read_write_test=`expr 1`
+	fi
+    done
+fi
+
+###
+### SINGLE READ TEST
+###
+if [ $single_read_test -eq 1 ]; then
+    single_read_test
+fi
+
+###
+### SINGLE STKEN READ TEST
+###
+#if [ $single_stken_read_test -eq 1 ]; then
+#    single_stken_read_test
+#fi
+
+###
+### SINGLE READ & WRITE TEST
+###
+if [ $single_read_write_test -eq 1 ]; then
+    single_read_write_test
+fi
+
+###
+### MULITPLE READ & WRITE TEST
+###
+if [ $multiple_read_write_test -eq 1 ]; then
+    multiple_read_write_test
+fi
+
+###
+### DCACHE READ & WRITE TEST
+###
+if [ $dcache_read_write_test -eq 1 ]; then
+    dcache_read_write_test
+fi
+
+
+###
+### NON-CONF READ & WRITE TEST
+###
+if [ $non_conf_read_write_test -eq 1 ]; then
+    non_conf_read_write_test
+fi
+
+
+###
+### SETUID READ & WRITE TEST
+###
+if [ $setuid_read_write_test -eq 1 ]; then
+    setuid_read_write_test
+fi
+
+
+###
+### SINGLE THREADED READ & WRITE TEST
+###
+if [ $single_threaded_read_write_test -eq 1 ]; then
+    single_threaded_read_write_test
+fi
+
+
+###
+### MULITPLE THREDED READ & WRITE TEST
+###
+if [ $multiple_threaded_read_write_test -eq 1 ]; then
+    multiple_threaded_read_write_test
+fi
+
+
+###
+### SINGLE ECRC READ & WRITE TEST
+###
+if [ $single_ecrc_read_write_test -eq 1 ]; then
+    single_ecrc_read_write_test
+fi
+
+
+###
+### SINGLE ASSERT TEST
+###
+if [ $single_assert_test -eq 1 ]; then
+    single_assert_test
+fi
+
+
+###
+### ENSYNC TEST
+###
+if [ $ensync_test -eq 1 ]; then
+    ensync_test
+fi
+
+###
+### SINGLE RELATIVE PATH READ WRITE TEST
+###
+if [ $single_relative_path_read_write_test -eq 1 ]; then
+    single_relative_path_read_write_test
+fi
+
+###
+### SINGLE LOCAL PNFS PATH READ WRITE TEST
+###
+if [ $single_local_pnfs_path_read_test -eq 1 ]; then
+    single_local_pnfs_path_read_test
+fi
+
+###
+### SINGLE NO BRAND READ TEST
+###
+if [ $single_no_brand_read_test -eq 1 ]; then
+    single_no_brand_read_test
+fi
+
+###
+### VOLUME READ TEST
+###
+if [ $volume_read_test -eq 1 ]; then
+    volume_read_test
+fi
+
+###
+### SINGLE FS PATH READ TEST
+###
+if [ $single_fs_path_read_test -eq 1 ]; then
+    single_fs_path_read_test
+fi
+
+###
+### DATA ACCESS LAYER READ WRITE TEST
+###
+if [ $data_access_layer_read_write_test -eq 1 ]; then
+    data_access_layer_read_write_test
+fi
+
+###
+### MULTIPLE COPES READ WRITE TEST
+###
+if [ $multiple_copies_read_write_test -eq 1 ]; then
+    multiple_copies_read_write_test
+fi
+
+###
+### PNFS AGENT READ WRITE TEST
+###
+if [ $pnfs_agent_read_write_test -eq 1 ]; then
+    pnfs_agent_read_write_test
+fi
