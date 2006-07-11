@@ -665,9 +665,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.control_socket = None
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
-        self.stream_w_flag = 0 # this flag is set when before stream_write is called
+        self.stream_w_flag = 0    # this flag is set when before stream_write is called
 
-        self.dont_update_lm = 0 # if this flag is set do not update LM to avoid mover restart
+        self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
+        self.sanity_cookie = None # needed for buffer reset after transfer is completed
+        self.client_crc_on = 1    # needed for buffer reset after transfer is completed
+        
         
     def __setattr__(self, attr, val):
         #tricky code to catch state changes
@@ -2983,6 +2986,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.volume_family=vc['volume_family']
         delay = 0
         sanity_cookie = ticket['fc'].get('sanity_cookie', None)
+        self.sanity_cookie = sanity_cookie # needed for buffer reset after transfer is completed
         
         if ticket.has_key('client_crc'):
             client_crc_on = ticket['client_crc']
@@ -2990,6 +2994,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             client_crc_on = 0
         else:
             client_crc_on = 1 # assume that client does CRC
+        self.client_crc_on = client_crc_on # needed for buffer reset after transfer is completed
 
         # if client_crc is ON:
         #    write requests -- calculate CRC when writing from memory to tape
@@ -3297,6 +3302,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == OFFLINE:
             # transfer failed should not get called in OFFLINE state
             return
+        self.reset(self.sanity_cookie, self.client_crc_on) # reset (buffer)
         self.timer('transfer_time')
         after_dismount_function = None
         volume_label = self.current_volume
@@ -3540,6 +3546,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dont_update_lm = 0
         
     def transfer_completed(self):
+        self.reset(self.sanity_cookie, self.client_crc_on) # reset (buffer)
         # simple synchonizatin between tape and network threads.
         # without this not updated file info is transferred to get
         for i in range(10):
