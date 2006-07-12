@@ -643,10 +643,19 @@ def help(topic=None):
 		print "    -- find|locate with details"
 		print "operation.py relate <job>+"
 		print "    -- find jobs that have common objects" 
+		print "operation.py recommend_write_protect_on [<media_type_list>] [limit <n>]"
+		print "    -- recommend volumes for flipping write protect tab on"
+		print "operation.py recommend_write_protect_off [<media_type_list>] [limit <n>]"
+		print "    -- recommend volumes for flipping write protect tab off"
+		print "operation.py auto_write_protect_on [<media_type_list>] [no_limit]"
+		print "    -- automatically generate helpdesk ticket for flipping WP on"
+		print "operation.py auto_write_protect_off [<media_type_list>] [no_limit]"
+		print "    -- automatically generate helpdesk ticket for flipping WP off"
 		print
 		print "try:"
 		print "operation.py help <topic>"
 	elif topic == "create":
+		print
 		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
 		print
 		print "<job> is a user defined unique name of the job"
@@ -659,6 +668,7 @@ def help(topic=None):
 		print "EXAMPLE:"
 		print "operation.py create write_protect_on WP3 CAP3:  VO2093 VO2094 VO2095 VO2096 VO2097 VO2098 VO2099 VO2152 VO2154 VO2195 VO2196 VO2197 VO2198 VO2199 VO2203 VO2206 VO2207 VO2208 VO2209 VO2211 VO2213 CAP4: VO2224 VO2225 VO2226 VO2227 VO2245 VO2246 VO2252 VO2253 VO2254 VO2256 VO2257 VO2258 VO2259 VO2501 VO2532 VO2533 VO2534 VO2540 VO2541 VO2542 VO2544"
 	elif topic == "list":
+		print
 		print "operation.py list [all|open|finished|closed|completed|<job>+|has <object>]"
 		print
 		print "all: list all jobs"
@@ -667,10 +677,12 @@ def help(topic=None):
 		print "<job>+ : list named jobs"
 		print "has <object>: list all jobs that have <object> as an argument"
 	elif topic == "show":
+		print
 		print "operation.py show <job>+"
 		print
 		print "show details of <job>s in the list. <job> is addressed by its unique name"
 	elif topic == "current":
+		print
 		print "operation.py current <job>+"
 		print
 		print "show the current task of <job>."
@@ -679,6 +691,7 @@ def help(topic=None):
 		print "in case of a not yet started job, current task is task 0"
 		print "in case of a finished job, current task is the last task"
 	elif topic == "next":
+		print
 		print "operation.py next <job>+"
 		print
 		print "show next task of <job>"
@@ -686,6 +699,7 @@ def help(topic=None):
 		print "in case of a have-not-started job, next task is the first task."
 		print "in case of a finished job, next task is task 0"
 	elif topic == "start":
+		print
 		print "operation.py start <job> [<arg>]"
 		print
 		print "start the next task of <job> with optional argument"
@@ -694,27 +708,75 @@ def help(topic=None):
 		print "EXAMPLE:"
 		print "operation.py start STKWP3 <help_desk_ticket_id>"
 	elif topic == "finish":
+		print
 		print "operation.py finish <job> [<result>]"
 		print
 		print "finish current task of <job> with optional <result>"
 		print "EXAMPLE:"
 		print "operation.py finish STKWP3 DONE"
 	elif topic == "delete":
+		print
 		print "operation.py delete <job>+ [sincerely]"
 		print
 		print "delete <job> in the list"
 		print "this is a dangerous command, use with extra care"
 		print '<job>s will not be deleted unless "sincerely" is specified in the end'
 	elif topic == "find" or topic == "locate":
+		print
 		print "operation.py find|locate <object>+"
 		print
 		print "list the jobs that have <object> as an argument"
 	elif topic == "find+" or topic == "locate+":
+		print
 		print "operation.py find+|locate+ <object>+"
 		print
 		print "same as find|locate but show details of the jobs"
+	elif topic == "recommend_write_protect_on" or topic == "recommend_write_protect_off":
+		print
+		print "operation.py recommend_write_protect_on [<media_type_list>] [limit <n>]"
+		print "operation.py recommend_write_protect_off [<media_type_list>] [limit <n>]"
+		print
+		print "list recommended volumes for write protect tab flipping on/off"
+		print
+		print "<media_type_list> is a list of media types separated by comma ','"
+		print "when <media_type_list> is omitted, the default list takes place"
+		print
+		print "with 'limit <n>', it only lists, at most, first <n> volumes for the job"
+		print "otherwise, it lists all"
+		print
+		print "EXAMPLES:"
+		print "operation.py recommend_write_protect_on"
+		print "operation.py recommend_write_protect_on 9940,9940B"
+		print "operation.py recommend_write_protect_on limit 100"
+		print "operation.py recommend_write_protect_on 9940,9940B limit 100"
+		print "operation.py recommend_write_protect_off"
+		print "operation.py recommend_write_protect_off 9940,9940B"
+		print "operation.py recommend_write_protect_off limit 100"
+		print "operation.py recommend_write_protect_off 9940,9940B limit 100"
+	elif topic == "auto_write_protect_on" or topic == "auto_write_protect_off":
+		print
+		print "operation.py auto_write_protect_on [<media_type_list>] [no_limit]"
+		print "operation.py auto_write_protect_off [<media_type_list>] [no_limit]"
+		print
+		print "from recommended list, create a job for write protect tab flipping on/off"
+		print "and generate a helpdesk ticket automatically"
+		print
+		print "<media_type_list> is a list of media types separated by comma ','"
+		print
+		print "there is a default limit of 10 caps (220 volume)"
+		print "with 'no_limit', it generates everything in on ticket"
+		print
+		print "EXAMPLES:"
+		print "operation.py auto_write_protect_on"
+		print "operation.py auto_write_protect_on 9940,9940B"
+		print "operation.py auto_write_protect_on no_limit"
+		print "operation.py auto_write_protect_on 9940,9940B no_limit"
+		print "operation.py auto_write_protect_off"
+		print "operation.py auto_write_protect_off 9940,9940B"
+		print "operation.py auto_write_protect_off no_limit"
+		print "operation.py auto_write_protect_off 9940,9940B no_limit"
 	else:
-		print "don't know about %s"%(topic)
+		print "don't know anything about %s"%(topic)
 		print
 		help()
 
@@ -747,6 +809,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 		mts = mts+ " or media_type = '%s'"%(i)
 	mts = mts+")"
 
+	q = "" # to make lint happy
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
 		for i in excl[1:]:
@@ -762,8 +825,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
-			order by label \
-			limit %d;"%(mts, exclusion, limit)
+			order by label "%(mts, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -775,8 +837,12 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label \
-			limit %d;"%(mts, limit)
+			order by label "%(mts)
+	if limit:
+		q = q + ' limit %d;'%(limit)
+	else:
+		q = q + ';'
+
 	if debug:
 		print q
 	res = edb.query(q).getresult()
@@ -812,6 +878,7 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 		mts = mts+ " or media_type = '%s'"%(i)
 	mts = mts+")"
 
+	q = ""	# to make lint happy
 	if excl:
 		exclusion = "'%s'"%(excl[0][0])
 		for i in excl[1:]:
@@ -827,8 +894,7 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not label in (%s) \
-			order by label \
-			limit %d;"%(mts, exclusion, limit)
+			order by label "%(mts, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -840,8 +906,13 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label \
-			limit %d;"%(mts, limit)
+			order by label "%(mts)
+
+	if limit:
+		q = q + " limit %d;"%(limit)
+	else:
+		q = q + ";"
+
 	if debug:
 		print q
 	res = edb.query(q).getresult()
@@ -1059,8 +1130,16 @@ def execute(args):
 		else:
 			return "don't know what to do"
 	elif cmd == "auto_write_protect_on":
-		if len(args) > 1:
-			res = recommend_write_protect_job(args[1])
+		if len(args) > 2:
+			if args[2] == "no_limit":
+				res = recommend_write_protect_job(args[1], limit=0)
+			else:
+				res = recommend_write_protect_job(args[1])
+		elif len(args) == 2:
+			if args[1]  == "no_limit":
+				res = recommend_write_protect_job(limit=0)
+			else:
+				res = recommend_write_protect_job(args[1])
 		else:
 			res = recommend_write_protect_job()
 		# create job
@@ -1094,8 +1173,16 @@ def execute(args):
 		else:
 			return "no more volumes to do"
 	elif cmd == "auto_write_protect_off":
-		if len(args) > 1:
-			res = recommend_write_permit_job(args[1])
+		if len(args) > 2:
+			if args[2] == "no_limit":
+				res = recommend_write_permit_job(args[1], limit=0)
+			else:
+				res = recommend_write_permit_job(args[1])
+		elif len(args) == 2:
+			if args[1]  == "no_limit":
+				res = recommend_write_permit_job(limit=0)
+			else:
+				res = recommend_write_permit_job(args[1])
 		else:
 			res = recommend_write_permit_job()
 		if res:
@@ -1129,10 +1216,20 @@ def execute(args):
 		else:
 			return "no more volumes to do"
 	elif cmd == "recommend_write_protect_on":
-		if len(args) > 1:
-			res = recommend_write_protect_job(media_type = args[1], limit=1000000)
+		if len(args) > 3:
+			if args[2] == 'limit':
+				res = recommend_write_protect_job(media_type = args[1], limit=int(args[3]))
+			else:
+				res = recommend_write_protect_job(media_type = args[1], limit=0)
+		elif len(args) == 3:
+			if args[1] == 'limit':
+				res = recommend_write_protect_job(limit=int(args[2]))
+			else:
+				res = recommend_write_protect_job(limit=0)
+		elif len(args) == 2:
+			res = recommend_write_protect_job(media_type = args[1], limit=0)
 		else:
-			res = recommend_write_protect_job(limit=1000000)
+			res = recommend_write_protect_job(limit=0)
 		# pprint.pprint(res)
 		for i in res:
 			show_cap(i, res[i])
@@ -1143,10 +1240,20 @@ def execute(args):
 		print "%d tapes in %d caps"%(total, caps)
 		return ""
 	elif cmd == "recommend_write_protect_off":
-		if len(args) > 1:
-			res = recommend_write_permit_job(media_type = args[1], limit=1000000)
+		if len(args) > 3:
+			if args[2] == 'limit':
+				res = recommend_write_permit_job(media_type = args[1], limit=int(args[3]))
+			else:
+				res = recommend_write_permit_job(media_type = args[1], limit=0)
+		elif len(args) == 3:
+			if args[1] == 'limit':
+				res = recommend_write_permit_job(limit=int(args[2]))
+			else:
+				res = recommend_write_permit_job(limit=0)
+		elif len(args) == 2:
+			res = recommend_write_permit_job(media_type = args[1], limit=0)
 		else:
-			res = recommend_write_permit_job(limit=1000000)
+			res = recommend_write_permit_job(limit=0)
 		# pprint.pprint(res)
 		for i in res:
 			show_cap(i, res[i])
