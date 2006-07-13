@@ -111,27 +111,30 @@ def _open2(pathname,mode=0666):
             # listing and check to see if it is there.  If so, corrupted
             # directory.  If not, some other error occured.
             rtn_errno = getattr(errno, str("EFSCORRUPTED"), errno.EIO)
-            msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt."
+            msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt" \
+                  + ": " + pathname
         elif s and s[stat.ST_NLINK] > 2:
             #If there happen to be more than 2 hard links to the same file.
             # This should never happen.
             rtn_errno = getattr(errno, str("EMLINK"),
                                 getattr(errno, str("EIO")))
-            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
+            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK]) \
+                  + ": " + pathname
         elif s:
             #If there is only one link to the file.  In this case the link
             # failed.  The use of "ENOLINK" is for Linux, IRIX and SunOS.
             # The "EFTYPE" is for OSF1.
             rtn_errno = getattr(errno, str("ENOLINK"),
                                 getattr(errno, str("EFTYPE")))
-            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK])
-
+            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK]) \
+                  + ": " + pathname
         else:
             #If we get here, then something really bad happened.
             rtn_errno = getattr(errno, str("ENOLINK"),
                                 getattr(errno, str("EFTYPE")))
-            msg = os.strerror(rtn_errno) + ": " + "Unknown"
-
+            msg = os.strerror(rtn_errno) + ": " + "Unknown" \
+                  + ": " + pathname
+            
         os.close(fd_tmp)
         os.unlink(tmpname)
         #return -(detail.errno) #return errno values as negative.
