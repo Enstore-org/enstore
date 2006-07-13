@@ -238,11 +238,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     def layer_file(self, f, n):
         pn, fn = os.path.split(f)
-        return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
+        if is_access_name(fn):
+            return os.path.join(pn, "%s(%d)" % (fn, n))
+        else:
+            return os.path.join(pn, ".(use)(%d)(%s)" % (n, fn))
 
     def id_file(self, f):
         pn, fn = os.path.split(f)
-        print pn, fn, is_access_name(fn)
         if is_access_name(fn):
             #Just a note:  This is silly.  Finding out the pnfs id when the
             # id is already in the .(access)(<pnfsid>) name.  However,
@@ -2366,12 +2368,9 @@ class Tag:
             if intf.library == 1:
                 print self.get_library()
             else:
-                if charset.is_in_charset(intf.library):
-                    self.set_library(intf.library)
-                elif intf.user_level == option.ADMIN and \
-                         charset.is_string_in_character_set(intf.library,
-                                                       charset.charset + ","):
-                    #If we are an administrator, allow the comma (,) character
+                if charset.is_string_in_character_set(intf.library,
+                                                      charset.charset + ","):
+                    #As of encp v3_6a allow the comma (,) character
                     # so that copies can be enabled.
                     self.set_library(intf.library)
                 else:
@@ -2613,11 +2612,14 @@ class Tag:
 ##############################################################################
 
 class N:
-    def __init__(self, dbnum):
-        try:
-            self.dir = os.getcwd()
-        except OSError:
-            self.dir = ""
+    def __init__(self, dbnum, directory = None):
+        if directory:
+            self.dir = directory
+        else:
+            try:
+                self.dir = os.getcwd()
+            except OSError:
+                self.dir = ""
         self.dbnum = dbnum
 
     # get the cursor information
@@ -3026,22 +3028,26 @@ def do_work(intf):
 
     rtn = 0
 
-    if intf.file:
-        p=Pnfs(intf.file)
-        t=None
+    try:
+        if intf.file:
+            p=Pnfs(intf.file)
+            t=None
+            n=None
+        elif intf.pnfs_id:
+            p=Pnfs(intf.pnfs_id)
+            t=None
+            n=None
+        elif hasattr(intf, "dbnum") and intf.dbnum:
+            p=None
+            t=None
+            n=N(intf.dbnum)
+        else:
+            p=None
+            t=Tag(intf.directory)
         n=None
-    elif intf.pnfs_id:
-        p=Pnfs(intf.pnfs_id)
-        t=None
-        n=None
-    elif hasattr(intf, "dbnum:") and intf.dbnum:
-        p=None
-        t=None
-        n=N(intf.dbnum)
-    else:
-        p=None
-        t=Tag(intf.directory)
-        n=None
+    except OSError, msg:
+        print str(msg)
+        return 1
         
     for arg in intf.option_list:
         if string.replace(arg, "_", "-") in intf.options.keys():
