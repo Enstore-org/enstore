@@ -95,6 +95,7 @@ import pprint
 import types
 import sys
 import os
+import stat
 
 # enstore import
 import option
@@ -206,6 +207,76 @@ def get_rem_ticket_number(rem_res):
 				return "HELPDESK_TICKET_"+t[5]
 	return 'UNKNOWN_TICKET'
 
+# get_unfinished_job(cluster) -- get unfinish job of certain cluster
+def get_unfinished_job(cluster=None):
+	if cluster:
+		q = "select name from job where name ilike '%s%%' and finish is null;"%(cluster)
+	else:
+		q = "select name from job where finish is null;"
+	res = db.query(q).getresult()
+	jobs = []
+	for i in res:
+		jobs.append(i[0])
+	return jobs
+
+# decode_job(job) -- decode the type of job from its name
+def decode_job(job):
+	if job[:3] == 'STK' or job[:3] == "CDF":
+		cluster = job[:3]
+		type = job[4]
+		t = job[5:].split('-')
+		job_range = range(int(t[0]), int(t[1])+1)
+	elif job[:2] == 'D0':
+		cluster = job[:2]
+		type = job[3]
+		t = job[4:].split('-')
+		job_range = range(int(t[0]), int(t[1])+1) 
+	return cluster, type, job_range
+
+# is_done(job) -- is this job done?
+def is_done(job):
+	c, t, r = decode_job(job)
+	if t == 'E':	# write enable
+		p = WRITE_PERMIT_SCRIPT_PATH
+	elif t == 'P':	# write protect
+		p = WRITE_PROTECT_SCRIPT_PATH
+	else:		# don't know
+		if debug:
+			print "unknown job", job, c, t, `r`
+		return 0
+	t0 = 0
+
+	for i in r:
+		pp = os.path.join(p, `i`)
+		if os.access(pp, os.F_OK):
+			return 0
+		elif os.access(pp+'.done', os.F_OK):
+			t1 = os.stat(pp+'.done')[stat.ST_CTIME]
+			if t1 > t0:
+				t0 = t1
+		else:
+			return 0
+	return t0
+		
+# try_close_all(cluster) -- try close open job in cluster
+def try_close_all(cluster):
+	j_list = get_unfinished_job(cluster)
+	for i in j_list:
+		t = is_done(i)
+		if t:
+			print i, "is done at", time.ctime(t)
+			finish_current_task(i, result='DONE', comment='AUTO-CLOSE', timestamp=time2timestamp(t))
+			print i, "is closed at", time.ctime(time.time())
+		else:
+			print i, "is not done yet"
+
+# auto_close_all() -- automatically close all finished jobs
+def auto_close_all():
+	global cluster
+	if os.uname()[1] != script_host:
+		print "Wrong host %s (%s)"%(os.uname()[1], script_host)
+		return
+	try_close_all(cluster)
 
 # create_job() -- generic job creation
 def create_job(name, type, args, comment = ''):
@@ -593,10 +664,10 @@ def show(job):
 	for t in job['task']:
 		if t['action'] == None:
 			t['action'] = "default"
-		print "%3d %s %40s (%s) %s %s %s %s"%(
+		print "%3d %s %40s (%s) %s %s %s %s %s"%(
 			t['seq'], t['auto_start'], t['dsc'],
 			t['action'], t['start'], t['finish'], t['args'],
-			t['result'])
+			t['result'], t['comment'])
 	print "Objects:"
 	for i in job['object'].keys():
 		print i+':',
@@ -1377,6 +1448,8 @@ def execute(args):
 			if debug:
 				print q
 			print db.query(q)
+	elif cmd == "auto_close_all":
+		auto_close_all()
 	elif cmd == "help":
 		if len(args) == 1:
 			help()
