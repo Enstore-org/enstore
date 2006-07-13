@@ -722,6 +722,8 @@ def help(topic=None):
 		print "    -- automatically generate helpdesk ticket for flipping WP on"
 		print "operation.py auto_write_protect_off [<media_type_list>] [no_limit]"
 		print "    -- automatically generate helpdesk ticket for flipping WP off"
+		print "operation.py auto_close_all"
+		print "    -- try to close all finished open jobs on this cluster"
 		print
 		print "try:"
 		print "operation.py help <topic>"
@@ -846,6 +848,13 @@ def help(topic=None):
 		print "operation.py auto_write_protect_off 9940,9940B"
 		print "operation.py auto_write_protect_off no_limit"
 		print "operation.py auto_write_protect_off 9940,9940B no_limit"
+	elif topic == 'auto_close_all':
+		print
+		print "operation.py auto_close_all"
+		print
+		print "try to close all finished open jobs on this cluster"
+		print
+		print "this command is meant for script/cronjob or experts!!"
 	else:
 		print "don't know anything about %s"%(topic)
 		print
