@@ -102,55 +102,9 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             # get a new bit file id
             bfid = self.unique_bit_file_id()
 
-        # check for copy
-        original_bfid = None
-        if ticket["fc"].has_key("original_bfid"):
-            # check if it is valid
-            original_bfid = ticket["fc"].get("original_bfid")
-            original_file = self.dict[original_bfid]
-            if not original_file:
-                msg = "new_bit_file(copy): original bfid %s does not exist"%(original_bfid)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.NO_FILES, msg)
-                self.reply_to_caller(ticket)
-                return
-            # check size
-            if original_file['size'] != record['size']:
-                msg = "new_bit_file(copy): wrong size %d, (%s, %d)"%(
-                    record['size'], original_bfid, original_file['size'])
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-            # check crc
-            if original_file['complete_crc'] != record["complete_crc"]:
-                msg = "new_bit_file(copy): wrong crc %d, (%s, %d)"%(
-                     record["complete_crc"], original_bfid, original_file['complete_crc'])
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-            # check sanity_cookie
-            if original_file['sanity_cookie'] != record["sanity_cookie"]:
-                msg = "new_bit_file(copy): wrong sanity_cookie %s, (%s, %s)"%(
-                     `record["sanity_cookie"]`, original_bfid, `original_file['sanity_cookie']`)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
-
         record["bfid"] = bfid
         # record it to the database
-        self.dict[bfid] = record
-
-        # if it is a copy, register it
-        if original_bfid:
-            if self.register_copy(original_bfid, bfid):
-                msg = "new_bit_file(copy): failed to register copy %s, %s"%(original_bfid, bfid)
-                Trace.log(e_errors.ERROR, msg)
-                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
-                self.reply_to_caller(ticket)
-                return
+        self.dict[bfid] = record 
         
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = (e_errors.OK, None)
@@ -288,6 +242,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         ticket["sanity_cookie"]=record["sanity_cookie"]
         self.reply_to_caller(ticket)
 
+
     #### DONE        
     # change the delete state element in the dictionary
     def set_deleted(self, ticket):
@@ -312,17 +267,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if record["deleted"] != deleted:
             record["deleted"] = deleted
             self.dict[bfid] = record
-
-        # take care of the copies
-        copies = self.__find_copies(bfid)
-        for i in copies:
-            record = self.dict[i]
-            # skip non existing copies
-            if record:
-                if record["deleted"] != deleted:
-                    record["deleted"] = deleted
-                    self.dict[i] = record
-
         ticket["status"] = (e_errors.OK, None)
         # look up in our dictionary the request bit field id
         self.reply_to_caller(ticket)
@@ -516,83 +460,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         self.reply_to_caller(ticket)
         return
 
-    # register_copy(original, copy) -- register copy of original
-    def register_copy(self, original, copy):
-        Trace.log(e_errors.INFO,
-                  'register copy %s of original %s' % (copy, original))
-	q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(original, copy)
-        try:
-            res = self.dict.db.query(q)
-        except:
-            return 1
-        return
-
-    # __find_copies(bfid) -- find all copies
-    def __find_copies(self, bfid):
-        q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
-        bfids = []
-        try:
-            for i in self.dict.db.query(q).getresult():
-                bfids.append(i[0])
-        except:
-            pass
-        return bfids
-
-    # find_copies(self, ticket) -- find all copies of bfid
-    # this might need recurrsion in the future!
-    def find_copies(self, ticket):
-        try:
-            bfid = ticket["bfid"]
-        except KeyError, detail:
-            msg = "find_copies(): key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        try:
-            bfids = self.__find_copies(bfid)
-            ticket["copies"] = bfids
-            ticket["status"] = (e_errors.OK, None)
-        except:
-            ticket["copies"] = []
-            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
-        self.reply_to_caller(ticket)
-        return
-
-    # __find_original(bfid) -- find its original
-    # there should eb at most one original!
-    def __find_original(self, bfid):
-        q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
-        try:
-            res = self.dict.db.query(q).getresult()
-            if len(res):
-                return res[0][0]
-        except:
-            pass
-        return None
-
-    # find_original(bfid) -- server version
-    def find_original(self, ticket):
-        try:
-            bfid = ticket["bfid"]
-        except KeyError, detail:
-            msg = "find_original(): key %s is missing" % (detail,)
-            ticket["status"] = (e_errors.KEYERROR, msg)
-            Trace.log(e_errors.ERROR, msg)
-            self.reply_to_caller(ticket)
-            return
-
-        try:
-            original = self.__find_original(bfid)
-            ticket["original"] = original
-            ticket["status"] = (e_errors.OK, None)
-        except:
-            ticket["original"] = None
-            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
-        self.reply_to_caller(ticket)
-        return
-
     #### DONE
     # __has_undeleted_file(self, vol) -- check if all files are deleted
 
@@ -624,7 +491,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             result = self.__has_undeleted_file(vol)
             ticket["status"] = (e_errors.OK, result)
         except:
-            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
+            ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquire failed")
         # and return to the caller
         self.reply_to_caller(ticket)
         return
