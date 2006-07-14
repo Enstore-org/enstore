@@ -2,7 +2,7 @@
 
 import os
 import sys
-import pprint
+#import pprint
 import string
 
 
@@ -13,7 +13,10 @@ def search_directory(directory):
 	dirs_list = []
 	
 	for filename in os.listdir("."):  #directory):
+		#print "FILENAME:", filename
 		if filename[-1] == "~":
+			continue
+		elif filename[0] == "#" or filename[-1] == "#":
 			continue
 		elif filename[-4:] == ".pyc":
 			continue
@@ -31,7 +34,7 @@ def search_directory(directory):
 			continue
 		elif string.find(filename, "_wrap") >= 0: #from modules dir.
 			continue
-		elif os.popen("file %s" % (filename,)).readline().find("ELF") >= 0:
+		elif os.popen("file '%s'" % (filename,)).readline().find("ELF") >= 0:
 			continue
 		elif os.path.isdir(filename):
 			#Remember the directories for later.
