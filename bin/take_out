@@ -26,8 +26,8 @@ shelf_volumes_work	shelve
 purge_volumes_work	remove
 EOD
 
-	       ns=`find $work -type f -name \*.done -mtime -1 -print | awk 'END {print NR}'`
-	       nf=`find $work -type f -name \*.fail -mtime -1 -print | awk 'END {print NR}'`
+	       ns=`find $work -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
+	       nf=`find $work -type f -name \*.fail -daystart -mtime -1 -print | awk 'END {print NR}'`
 	       msg="Today's $script work: $ns groups ${action%e}ed, $nf groups failed."
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ]; then
@@ -85,7 +85,7 @@ cd $work
 
 rem=`ls -vI \*.\* | awk 'END {print NR}'`
 if expr $rem : 0 >/dev/null; then
-   echo "`date` There are no groups to $action. Good bye."
+   echo "`date` There are no groups to $action. Goodbye."
    check_work
    exit
 else
