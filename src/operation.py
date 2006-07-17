@@ -95,6 +95,7 @@ import pprint
 import types
 import sys
 import os
+import pwd
 import stat
 import smtplib
 
@@ -133,7 +134,7 @@ def is_time(t):
 
 # send_mail(subject, message) -- simplified sendmail
 def send_mail(subject, message):
-	from_addr = os.getlogin()+'@'+os.uname()[1]
+	from_addr = pwd.getpwuid(os.getuid())[0]+'@'+os.uname()[1]
 	if os.environ['ENSTORE_MAIL']:
 		to_addr = os.environ['ENSTORE_MAIL']
 	else:
