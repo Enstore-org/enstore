@@ -1967,8 +1967,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # bail out gracefuly
 
                 # set volume to readlonly
-                Trace.alarm(e_errors.ERROR, "Write error on %s. Volume is set readonly" %
-                            (self.current_volume,))
+                Trace.alarm(e_errors.ERROR, "Write error on %s detail %s exception %s. Volume is set readonly" %
+                            (self.current_volume,detail, exc, ))
                 self.vcc.set_system_readonly(self.current_volume)
                 # trick ftt_close, so that it does not attempt to write FM
                 if self.driver_type == 'FTTDriver':
