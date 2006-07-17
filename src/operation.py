@@ -96,6 +96,7 @@ import types
 import sys
 import os
 import stat
+import smtplib
 
 # enstore import
 import option
@@ -129,6 +130,19 @@ def is_time(t):
 		return True
 	else:
 		return False
+
+# send_mail(subject, message) -- simplified sendmail
+def send_mail(subject, message):
+	from_addr = os.getlogin()+'@'+os.uname()[1]
+	if os.environ['ENSTORE_MAIL']:
+		to_addr = os.environ['ENSTORE_MAIL']
+	else:
+		to_addr = "enstore-admin@fnal.gov"
+	msg = [	"From: %s"%(from_addr),
+		"To: %s"%(to_addr),
+		"Subject: %s"%(subject),
+		""] + message
+	return smtplib.SMTP('localhost').sendmail(from_addr, [to_addr], '\n'.join(msg))
 
 TEMP_DIR = '/tmp/operation'
 # make it if it is not there
@@ -261,14 +275,19 @@ def is_done(job):
 # try_close_all(cluster) -- try close open job in cluster
 def try_close_all(cluster):
 	j_list = get_unfinished_job(cluster)
+	msg = []
 	for i in j_list:
 		t = is_done(i)
 		if t:
 			print i, "is done at", time.ctime(t)
 			finish_current_task(i, result='DONE', comment='AUTO-CLOSE', timestamp=time2timestamp(t))
 			print i, "is closed at", time.ctime(time.time())
+			msg.append("%s is closed with timestamp %s"%(
+				i, time.ctime(t)))
 		else:
 			print i, "is not done yet"
+	if msg:
+		send_mail("Closing tab-flipping job(s)", msg)
 
 # auto_close_all() -- automatically close all finished jobs
 def auto_close_all():
