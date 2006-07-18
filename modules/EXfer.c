@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #include <errno.h>
 #ifndef __MACOSX__
 #  include <malloc.h>
@@ -187,6 +188,11 @@ const char no_mmap_threaded_implimentation[] =
   "Multithreaded memory mapped i/o to memory mapped i/o is not supported.  "
   "Reverting to single threaded implemenation.\n";
 
+const char no_mandatory_file_locking[] =
+   "Mandatory file locking not supported.  Reverting to advisory file locking.\n";
+const char unknown_mandatory_file_locking[] =
+   "Unable to determine if mandatory file locking available.\n";
+
 #endif /*DEBUG_REVERT*/
 
 #define EMPTY_MEMORY     0U
@@ -264,6 +270,8 @@ struct transfer
   bool d_synchronous_io;  /*is true if using synchronous io*/
   bool r_synchronous_io;  /*is true if using synchronous io*/
   bool threaded;          /*is true if using threaded implementation*/
+  bool advisory_locking;  /*is true if advisory locking should be used*/
+  bool mandatory_locking; /*is true if manditory locking should be used*/
 
   bool other_mmap_io;     /*is true if other direction using memory mapped io*/
   bool other_fd;          /*contians other direction fd*/    
@@ -448,12 +456,13 @@ static void* get_next_segments(struct transfer *info);
 static int cleanup_segments(struct transfer *info);
 
 /*
- * finish_write():
+ * finish_write() and finish_read():
  * Performs any extra completion operations.  Mostly this means using the
  * appropriate syncing function for posix, direct or mmapped i/o.
  * The return value is -1 on error and zero on success.
  */
 static int finish_write(struct transfer *info);
+static int finish_read(struct transfer *info);
 
 /*
  * do_select():
@@ -1461,10 +1470,43 @@ static int cleanup_segment(int bin, struct transfer *info)
       return 0;
    }
 }
-				    
+
+/* Return 1 on error, 0 on success. */
+static int finish_read(struct transfer *info)
+{
+#ifdef F_SETLK
+   struct flock filelock;
+   int rtn_fcntl;
+
+   /* Now that we are done with this file, release the lock. */
+   if(info->advisory_locking || info->mandatory_locking)
+   {
+      filelock.l_whence = SEEK_SET;
+      filelock.l_start = 0L;
+      filelock.l_type = F_UNLCK;
+      filelock.l_len = 0L;
+      
+      /* Unlock the file. */
+      errno = 0;
+      if((rtn_fcntl = fcntl(info->fd, F_SETLK, &filelock)) < 0)
+      {
+	 pack_return_values(info, 0, errno, FILE_ERROR,
+			    "fcntl(F_SETLK) failed", 0.0,
+			    __FILE__, __LINE__);
+	 return 1;
+      }
+   }
+#endif
+}
+
 /* Return 1 on error, 0 on success. */
 static int finish_write(struct transfer *info)
 {
+#ifdef F_SETLK
+   struct flock filelock;
+   int rtn_fcntl;
+#endif
+   
   /* Only worry about this for posix io. */
   if(!info->mmap_io && !info->direct_io)
   {
@@ -1486,6 +1528,30 @@ static int finish_write(struct transfer *info)
     /* If all else fails, force this to sync all data. */
     sync();
 #endif /*_POSIX_FSYNC*/
+
+
+#ifdef F_SETLK
+    /* Now that we are done with this file, release the lock. */
+    if(info->advisory_locking || info->mandatory_locking)
+    {
+       filelock.l_whence = SEEK_SET;
+       filelock.l_start = 0L;
+       filelock.l_type = F_UNLCK;
+       filelock.l_len = 0L;
+       
+       /* Unlock the file. */
+       errno = 0;
+       if((rtn_fcntl = fcntl(info->fd, F_SETLK, &filelock)) < 0)
+       {
+	  pack_return_values(info, 0, errno, FILE_ERROR,
+			     "fcntl(F_SETLK) failed", 0.0,
+			     __FILE__, __LINE__);
+	  return 1;
+       }
+    }
+#endif
+     
+    
 #if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
     /* If the file descriptor supports fadvise, tell the kernel that
      * the file will not be needed anymore. */
@@ -1723,7 +1789,8 @@ static int setup_posix_io(struct transfer *info)
   struct stat file_info;  /* Information about the file to read/write from. */
   int new_fcntl = 0;      /* Holder of FD flags or-ed with O_[DR]SYNC. */
   int rtn_fcntl;          /* Stores the original FD flags. */
-  
+  struct flock filelock;  /* Stores the locking request. */
+
   /* Stat the file.  The mode is used to check if it is a regular file. */
   if(fstat(info->fd, &file_info))
   {
@@ -1756,7 +1823,7 @@ static int setup_posix_io(struct transfer *info)
 	
      if(new_fcntl)
      {
-	/*Get the current file descriptor flags.*/
+	/* Get the current file descriptor flags. */
 	errno = 0;
 	if((rtn_fcntl = fcntl(info->fd, F_GETFL, 0)) < 0)
 	{
@@ -1776,6 +1843,43 @@ static int setup_posix_io(struct transfer *info)
 	   return 1;
 	}
      }
+
+#ifdef F_SETLK
+     if(info->mandatory_locking)
+     {
+	/* Set the file permissions for mandatory locking. */
+#if 0
+	errno = 0;
+	if(fchmod(info->fd, (file_info.st_mode & ~S_IXGRP) | S_ISGID) < 0)
+	{
+	   pack_return_values(info, 0, errno, FILE_ERROR,
+			      "fcntl(F_SETFL) failed", 0.0,
+			      __FILE__, __LINE__);
+	   return 1;
+	}
+#endif
+     }
+     if(info->advisory_locking || info->mandatory_locking)
+     {
+	filelock.l_whence = SEEK_SET;
+	filelock.l_start = 0L;
+	if(info->transfer_direction > 0)  /* If true, it is a write. */
+	   filelock.l_type = F_WRLCK;
+	else /* read */
+	   filelock.l_type = F_RDLCK;
+	filelock.l_len = 0L;
+
+	/* Get the requested file lock. */
+	errno = 0;
+	if((rtn_fcntl = fcntl(info->fd, F_SETLK, &filelock)) < 0)
+	{
+	   pack_return_values(info, 0, errno, FILE_ERROR,
+			      "fcntl(F_SETLK) failed", 0.0,
+			      __FILE__, __LINE__);
+	   return 1;
+	}
+     }
+#endif
      
     /* Get the number of bytes to transfer between fsync() calls. */
     info->fsync_threshold = get_fsync_threshold(info);
@@ -3864,8 +3968,8 @@ static void* thread_read(void *info)
   }
 
   /* Sync the data to disk and other 'completion' steps. */
-  /*if(finish_mmap_io(read_info))
-    return NULL;*/
+  if(finish_read(read_info))
+    return NULL;
 
   /* Get total end time. */
   if(gettimeofday(&end_total, NULL) < 0)
@@ -4139,12 +4243,10 @@ static void* thread_write(void *info)
     }
   }
 
-  /* Sync the data to disk and other 'completion' steps.  There is not
-   * a finish_read() function, since reading does not require calling any
-   * *sync() function. */
+  /* Sync the data to disk and other 'completion' steps. */
   if(finish_write(write_info))
     return NULL;
-
+  
   /* Get total end time. */
   if(gettimeofday(&end_total, NULL) < 0)
   {
@@ -4216,7 +4318,7 @@ static void do_read_write(struct transfer *read_info,
     return;
   /* Detect (and setup if necessary) the use of posix io. */
   if(setup_posix_io(read_info))
-    return;
+     return;
   if(setup_posix_io(write_info))
     return;
 
@@ -4234,14 +4336,6 @@ static void do_read_write(struct transfer *read_info,
 			"memalign failed", 0.0, __FILE__, __LINE__);
      return;
   }
-  /* Memory mapped i/o is done a little differently. */
-  /*if(!read_info->mmap_io && !write_info->mmap_io)
-  {
-     for(i = 0; i < read_info->array_size; i++)
-     {
-	buffer[i] = page_aligned_malloc(read_info->block_size);
-     }
-     }*/
 
 #ifdef DEBUG
   /* Allocate and set to zeros the array (that is one element in length)
@@ -4398,8 +4492,6 @@ static void do_read_write(struct transfer *read_info,
       /* Update this nested loop's counting variables. */
       bytes_remaining -= sts;
       bytes_transfered += sts;
-      /*read_info->mmap_offset += sts;
-	read_info->bytes -= sts;*/
 
 #ifdef DEBUG
       *stored = bytes_transfered;
@@ -4483,8 +4575,6 @@ static void do_read_write(struct transfer *read_info,
       /* Handle calling select to wait on the descriptor. */
       bytes_remaining -= sts;
       bytes_transfered += sts;
-      /*write_info->mmap_offset += sts;
-	write_info->bytes -= sts;*/
 
 #ifdef DEBUG
       *stored = bytes_transfered;
@@ -4506,15 +4596,11 @@ static void do_read_write(struct transfer *read_info,
     write_info->bytes -= bytes_transfered;
   }
   
-  /* Sync the data to disk and other 'completion' steps.  There is not
-   * a finish_read() function, since reading does not require calling any
-   * *sync() function. */
+  /* Sync the data to disk and other 'completion' steps. */
   if(finish_write(write_info))
     return;
-  /*if(finish_mmap_io(read_info))
+  if(finish_read(read_info))
     return;
-  if(finish_mmap_io(write_info))
-  return;*/
 
   /* Get the time that the thread finished to work on transfering data. */
   if(gettimeofday(&end_time, NULL) < 0)
@@ -4527,15 +4613,6 @@ static void do_read_write(struct transfer *read_info,
   }
   time_elapsed = elapsed_time(&start_time, &end_time);
 
-  /* Release the buffer memory. */
-  /* Memory mapped i/o is done a little differently. */
-  /*if(!read_info->mmap_io && !write_info->mmap_io)
-  {
-     for(i = 0; i < read_info->array_size; i++)
-     {
-	free(buffer[i]);
-     }
-     }*/
   free(buffer);
 #ifdef DEBUG
   free(stored);
@@ -5160,6 +5237,9 @@ static int invalidate_cache_linux(char* abspath)
 
   int device_fd;
 
+  if(geteuid() != 0) /* Skip this if we are not root. */
+     return 1;
+  
   if(stat(abspath, &file_info) < 0)
      return 1;
   if(!S_ISREG(file_info.st_mode))
@@ -5258,6 +5338,159 @@ static int invalidate_cache_linux(char* abspath)
 
 /***************************************************************************/
 
+/* Determine if a filesystem supports mandatory file locks. */
+int mandatory_lock_test(char *filepath, int verbose)
+{
+   int pid;                /* pid from fork().  (mandatory lock test) */
+   int wait_rtn;           /* Exit status from child.  (mandatory lock test) */
+  
+   char *directory, *filename, *dir_s, *file_s;
+   char use_filename[NAME_MAX] = "..";
+   char use_pathname[PATH_MAX] = "";
+   char buffer[5];
+
+   int fd;
+   int rtn_fcntl, rtn_read;
+   struct flock filelock;
+   struct stat file_stat;
+
+   /*
+    * Get the temporary filename for our test file.
+    */
+   
+   dir_s = strdup(filepath);
+   file_s = strdup(filepath);
+
+   if(dir_s == NULL || file_s == NULL)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test memory allocation failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+   
+   directory = dirname(dir_s);
+   filename = basename(file_s);
+
+   strncat(use_filename, filename, NAME_MAX - 2);
+   
+   strncat(use_pathname, directory, PATH_MAX);
+   strncat(use_pathname, "/", 1);
+   strncat(use_pathname, use_filename, NAME_MAX);
+
+   free(dir_s);
+   free(file_s);
+   
+   /* Try opening/creating the sample file. */
+   if((fd = open(use_pathname, O_RDWR | O_CREAT | O_NONBLOCK,
+		 S_IRUSR | S_IWUSR | S_IRGRP | S_ISGID)) < 0)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test open() failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+   if(fstat(fd, &file_stat) < 0)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test fstat() failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+   if(fchmod(fd, (file_stat.st_mode & ~S_IXGRP) | S_ISGID) < 0)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test fchmod() failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+   
+   /* Try getting the requested file lock. */
+   errno = 0;
+   filelock.l_whence = SEEK_SET;
+   filelock.l_start = 0L;
+   filelock.l_type = F_WRLCK;
+   filelock.l_len = 0L;
+   if((rtn_fcntl = fcntl(fd, F_SETLK, &filelock)) < 0)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test fcntl(F_SETLK) failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+
+   /*
+    * Fork a child.  This child will attempt read the file we have just
+    * locked.  If it succeeds, then no manditory locking.  If it gets
+    * EAGAIN or EACCES then we have manditory locking.  Anything else
+    * means got some other error.
+    */
+   if((pid = fork()) < 0)
+   {
+      if(verbose)
+      {
+	 (void)fprintf(stderr,
+		       "Mandatory write test fork() failed: %s\n",
+		       strerror(errno));
+      }
+      return 2;
+   }
+   else if(pid == 0) /* CHILD */
+   {
+      if((rtn_read = read(fd, buffer, 2)) < 0)
+      {
+	 if(errno == EAGAIN || errno == EACCES)
+	 {
+	    /* Mandatory locks supported. */
+	    (void)close(fd);
+	    exit(0);
+	 }
+	 (void)close(fd);
+	 exit(2); /* Got another error. */
+      }
+      /* Mandatory locks not supported. */
+      (void)close(fd);
+      exit(1);
+   }
+   else /* PARENT */
+   {
+      (void)waitpid(pid, &wait_rtn, 0);
+      if(WIFEXITED(wait_rtn))
+      {
+	 return WEXITSTATUS(wait_rtn);
+      }
+      else if(WIFSIGNALED(wait_rtn))
+      {
+	 if(verbose)
+	 {
+	    (void)fprintf(stderr,
+			  "Mandatory write test child process failed with "
+			  "signal: %d\n", WTERMSIG(wait_rtn));
+	 }
+	 return 2;
+      }
+   }
+   return 2; /* Is this possible? */
+}
+
+
+/***************************************************************************/
+
 #define ON_OFF(value) ((char*)((value) ? "on" : "off"))
 
 int main(int argc, char **argv)
@@ -5269,7 +5502,9 @@ int main(int argc, char **argv)
   unsigned int crc_ui;
   int flags_in = 0;
   int flags_out = 0;
+  int mode_out = 0;
   int opt;
+  int rtn;
   int          cache             = 0;
   int          verbose           = 0;
   size_t       block_size        = 256*1024;
@@ -5281,6 +5516,8 @@ int main(int argc, char **argv)
   int          d_synchronous_io  = 0;
   int          r_synchronous_io  = 0;
   int          threaded_transfer = 0;
+  int          advisory_locking  = 0;
+  int          mandatory_locking = 0;
   int          ecrc              = 0;
   struct transfer reads;
   struct transfer writes;
@@ -5300,6 +5537,12 @@ int main(int argc, char **argv)
   int r_synchronous_io_in        = 0;
   int r_synchronous_io_out       = 0;
   int r_synchronous_io_index     = 0;
+  int advisory_locking_in        = 0;
+  int advisory_locking_out       = 0;
+  int advisory_locking_index     = 0;
+  int mandatory_locking_in       = 0;
+  int mandatory_locking_out      = 0;
+  int mandatory_locking_index    = 0;
   int first_file_optind          = 0;
   int second_file_optind         = 0;
   
@@ -5308,7 +5551,7 @@ int main(int argc, char **argv)
   {
     /* The + for the first character in optstring is need on Linux machines
      * to tell getopt to use the posix compliant version of getopt(). */
-    while(((opt = getopt(argc, argv, "+cevtmdSDRa:b:l:")) != -1))
+    while(((opt = getopt(argc, argv, "+cevtmdSDRAMa:b:l:")) != -1))
     {
       switch(opt)
       {
@@ -5348,6 +5591,16 @@ int main(int argc, char **argv)
 	r_synchronous_io += 1;
 	if(r_synchronous_io_index == 0)
 	  r_synchronous_io_index = optind - 1;
+	break;
+      case 'A': /* advisory locking */
+	advisory_locking += 1;
+	if(advisory_locking_index == 0)
+	  advisory_locking_index = optind - 1;
+	break;
+      case 'M': /* mandatory locking */
+	mandatory_locking += 1;
+	if(mandatory_locking_index == 0)
+	  mandatory_locking_index = optind - 1;
 	break;
       case 'a':  /* array size */
 	errno = 0;
@@ -5435,6 +5688,24 @@ int main(int argc, char **argv)
   else if(r_synchronous_io > 1)
      r_synchronous_io_in = r_synchronous_io_out = 1;
 
+  /* Determine if the advisory locking was for the input file, output file
+   * or both. */
+  if((advisory_locking == 1) && (advisory_locking_index < first_file_optind))
+     advisory_locking_in = 1;
+  else if(advisory_locking == 1)
+     advisory_locking_out = 1;
+  else if(advisory_locking > 1)
+     advisory_locking_in = advisory_locking_out = 1;
+
+  /* Determine if the advisory locking was for the input file, output file
+   * or both. */
+  if((mandatory_locking == 1) && (mandatory_locking_index < first_file_optind))
+     mandatory_locking_in = 1;
+  else if(mandatory_locking == 1)
+     mandatory_locking_out = 1;
+  else if(mandatory_locking > 1)
+     mandatory_locking_in = mandatory_locking_out = 1;
+  
   /* Determine the flags for the input file descriptor. */
   flags_in |= O_RDONLY;
   
@@ -5445,7 +5716,55 @@ int main(int argc, char **argv)
      flags_out |= O_RDWR;
   else
      flags_out |= O_WRONLY;
-  
+
+  mode_out = S_IRUSR | S_IWUSR | S_IRGRP;
+  if(mandatory_locking_out)
+     mode_out |= S_ISGID;
+
+  /*
+   * Determine if filesystems in question support mandatory file locking.
+   */
+  rtn = mandatory_lock_test(argv[first_file_optind], verbose);
+  if(rtn)
+  {
+     /*
+      * revert to using advisory locks
+      */
+
+     char *string_ptr;
+
+     if(rtn == 1)
+	string_ptr = (char*) no_mandatory_file_locking;
+     else
+	string_ptr = (char*) unknown_mandatory_file_locking;
+     
+#ifdef DEBUG_REVERT
+     (void)fprintf(stderr, "%s:  %s", argv[first_file_optind], string_ptr);
+#endif /*DEBUG_REVERT*/
+     mandatory_locking_in = 0;
+     advisory_locking_in = 1;
+  }
+  rtn = mandatory_lock_test(argv[second_file_optind], verbose);
+  if(rtn)
+  {
+     /*
+      * revert to using advisory locks
+      */
+
+     char *string_ptr;
+
+     if(rtn == 1)
+	string_ptr = (char*) no_mandatory_file_locking;
+     else
+	string_ptr = (char*) unknown_mandatory_file_locking;
+
+#ifdef DEBUG_REVERT
+     (void)fprintf(stderr, "%s:  %s", argv[second_file_optind], string_ptr);
+#endif /*DEBUG_REVERT*/
+     mandatory_locking_out = 0;
+     advisory_locking_out = 1;
+  }
+
   /* Check the number of arguments from the command line. */
   if(argc < 3)
   {
@@ -5457,6 +5776,7 @@ int main(int argc, char **argv)
 		  basename(abspath));
     return 1;
   }
+
 
   if(verbose)
   {
@@ -5471,11 +5791,15 @@ int main(int argc, char **argv)
      (void)printf("Synchronous i/o in: %s\n", ON_OFF(synchronous_io_in));
      (void)printf("D Synchronous i/o in: %s\n", ON_OFF(d_synchronous_io_in));
      (void)printf("R Synchronous i/o in: %s\n", ON_OFF(r_synchronous_io_in));
+     (void)printf("Advisory locking in: %s\n", ON_OFF(advisory_locking_in));
+     (void)printf("Mandatory locking in: %s\n", ON_OFF(mandatory_locking_in));
      (void)printf("Direct i/o out: %s\n", ON_OFF(direct_io_out));
      (void)printf("Mmap i/o out: %s\n", ON_OFF(mmap_io_out));
      (void)printf("Synchronous i/o out: %s\n", ON_OFF(synchronous_io_out));
      (void)printf("D Synchronous i/o out: %s\n", ON_OFF(d_synchronous_io_out));
      (void)printf("R Synchronous i/o out: %s\n", ON_OFF(r_synchronous_io_out));
+     (void)printf("Advisory locking out: %s\n", ON_OFF(advisory_locking_out));
+     (void)printf("Mandatory locking out: %s\n", ON_OFF(mandatory_locking_out));
   }
 
   /* Check the input file. */
@@ -5536,6 +5860,32 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  /* Check the input file. */
+  if(mandatory_locking_in)
+  {
+     errno = 0;
+     if(fstat(fd_in, &file_info) < 0)
+     {
+	(void)fprintf(stderr, "input stat(%s): %s\n", abspath, strerror(errno));
+	return 1;
+     }
+     errno = 0;
+     if(S_ISREG(file_info.st_mode))
+     {
+	if((file_info.st_mode & S_IXGRP) || !(file_info.st_mode & S_ISGID))
+	{
+	   (void)fprintf(stderr, "input file %s error:\n"
+			 "  1) mandatory file locking requested\n"
+			 "  2) group exectute bit is %s.  Should be off.\n"
+			 "  3) set-group-id bit is %s.  Should be on.\n",
+			 abspath,
+			 ON_OFF(file_info.st_mode & S_IXGRP),
+			 ON_OFF((file_info.st_mode & S_ISGID)));
+	   return 1;
+	}
+     }
+  }
+  
   if(verbose)
   {
      (void)fprintf(stderr, "The input file: %s\n", abspath);
@@ -5550,8 +5900,7 @@ int main(int argc, char **argv)
 
   /* Open the output file. */
   errno = 0;
-  if((fd_out = open(argv[second_file_optind], flags_out,
-		    S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
+  if((fd_out = open(argv[second_file_optind], flags_out, mode_out)) < 0)
   {
      (void)fprintf(stderr, "output open(%s): %s\n",
 		   argv[second_file_optind], strerror(errno));
@@ -5567,7 +5916,7 @@ int main(int argc, char **argv)
 
   /* Check the output file. */
   errno = 0;
-  if(stat(abspath, &file_info) < 0)
+  if(fstat(fd_out, &file_info) < 0)
   {
      (void)fprintf(stderr, "output stat(%s): %s\n", abspath, strerror(errno));
      return 1;
@@ -5577,6 +5926,24 @@ int main(int argc, char **argv)
   {
      (void)fprintf(stderr, "output file %s is not a regular file\n", abspath);
      return 1;
+  }
+  if(mandatory_locking_out)
+  {
+     errno = 0;
+     if(S_ISREG(file_info.st_mode))
+     {
+	if((file_info.st_mode & S_IXGRP) || !(file_info.st_mode & S_ISGID))
+	{
+	   (void)fprintf(stderr, "pitput file %s error:\n"
+			 "  1) mandatory file locking requested\n"
+			 "  2) group exectute bit is %s.  Should be off.\n"
+			 "  3) set-group-id bit is %s.  Should be on.\n",
+			 abspath,
+			 ON_OFF(file_info.st_mode & S_IXGRP),
+			 ON_OFF((file_info.st_mode & S_ISGID)));
+	   return 1;
+	}
+     }
   }
   
   if(verbose)
@@ -5610,6 +5977,8 @@ int main(int argc, char **argv)
   reads.synchronous_io = (bool)synchronous_io_in;
   reads.d_synchronous_io = (bool)d_synchronous_io_in;
   reads.r_synchronous_io = (bool)r_synchronous_io_in;
+  reads.advisory_locking = (bool)advisory_locking_in;
+  reads.mandatory_locking = (bool)mandatory_locking_in;
   writes.fd = fd_out;
   writes.size = size;
   writes.bytes = size;
@@ -5627,6 +5996,8 @@ int main(int argc, char **argv)
   writes.synchronous_io = (bool)synchronous_io_out;
   writes.d_synchronous_io = (bool)d_synchronous_io_out;
   writes.r_synchronous_io = (bool)r_synchronous_io_out;
+  writes.advisory_locking = (bool)advisory_locking_out;
+  writes.mandatory_locking = (bool)mandatory_locking_out;
 
   /* Do the transfer test. */
   errno = 0;
