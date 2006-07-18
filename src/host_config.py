@@ -509,6 +509,7 @@ def update_route(dest, interface_ip):
         # used from encp to enroute2.
         sys.stderr.write("Unable to change route.  Update, recompile and"
                          " try again.\n")
+        return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
@@ -543,6 +544,7 @@ def unset_route(dest):
         # used from encp to enroute2.
         sys.stderr.write("Unable to change route.  Update, recompile and"
                          " try again.\n")
+        return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
 	raise OSError(errno.EPERM, "Routing: " + enroute.errstr(err))
