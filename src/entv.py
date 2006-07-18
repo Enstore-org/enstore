@@ -1217,7 +1217,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
         self.capture_timeout = 120  #seconds for capture.
         self.dont_show = ""
         self.verbose = 0
-        self.display = ":0.0"
+        self.display = os.environ.get("DISPLAY", ":0.0")
         self.generate_messages_file = 0
         self.movers_file = ""
         self.messages_file = ""
