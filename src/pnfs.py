@@ -1661,7 +1661,7 @@ class PnfsInterface(option.Interface):
                                          option.FORCE_SET_DEFAULT:option.FORCE,
                                           }]
                },
-                option.TAGCHMOD:{option.HELP_STRING:"changes the permissions"
+        option.TAGCHMOD:{option.HELP_STRING:"changes the permissions"
                          " for the tag; use UNIX chmod style permissions",
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_NAME:"tagchmod",
