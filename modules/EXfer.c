@@ -5470,6 +5470,12 @@ int mandatory_lock_test(char *filepath, int verbose)
    else /* PARENT */
    {
       (void)waitpid(pid, &wait_rtn, 0);
+
+      /* Do some cleanup. */
+      (void)close(fd);
+      (void)unlink(use_pathname);
+
+      /* Process the exit status of the child process. */
       if(WIFEXITED(wait_rtn))
       {
 	 return WEXITSTATUS(wait_rtn);
