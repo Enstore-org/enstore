@@ -1158,7 +1158,18 @@ def check_bit_file(bfid):
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
         try:
-            pnfs_path = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+            tmp_name = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+            if tmp_name[0] == "/":
+                #Make sure the path is a absolute path.
+                pnfs_path = tmp_name
+            else:
+                #If the path is not an absolute path we get here.  What
+                # happend is that get_path() was able to find a pnfs
+                # mount point connected to the correct pnfs database,
+                # but not a mount for the correct database.
+                #
+                #The best we can do is use the .(access)() name.
+                pass
         except (OSError, IOError), detail:
             if detail.errno == errno.ENOENT or detail.errno == errno.EIO:
                 err = err + ["%s orphaned file"%(file_record['pnfsid'])]
