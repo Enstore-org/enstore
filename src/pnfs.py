@@ -664,6 +664,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         elif os.access(os.path.join(search_path, filepath.split("/", 1)[1]),
                        os.F_OK):
             filepath = os.path.join(search_path, filepath.split("/", 1)[1])
+        else:
+            #If we get here then a mount point exists that belongs to
+            # a pnfs server that knows about the file, but it is not the
+            # correct mount point.  Instead of returning:
+            #   /pnfs/flake/encp_test/100KB_002
+            # you would get
+            #   flake/encp_test/100KB_002
+            pass
 
         if not id:
             self.path = filepath
