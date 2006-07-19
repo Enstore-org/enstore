@@ -3521,13 +3521,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 if not after_dismount_function:
                     if not self.maybe_clean():
-                        self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
+                        if cur_thread_name and cur_thread_name == 'media_thread':
+                            self.dismount_volume(after_function=self.idle)
+                        else:
+                            self.run_in_thread('media_thread', self.dismount_volume, after_function=self.idle)
 
-                        #self.dismount_volume(after_function=self.idle)
                 else:
-                    self.run_in_thread('media_thread', self.dismount_volume, after_function=after_dismount_function)
+                    if cur_thread_name and cur_thread_name == 'media_thread':
+                        self.dismount_volume(after_function=self.idle)
+                    else:
+                        self.run_in_thread('media_thread', self.dismount_volume, after_function=after_dismount_function)
 
-                    #self.dismount_volume(after_function=after_dismount_function)
             #self.tr_failed = 0
             self.dont_update_lm = 0
             return
