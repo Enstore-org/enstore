@@ -8,7 +8,7 @@ import pwd
 import getopt
 
 sys2host={'cdf': ('cdfensrv1','data'),
-          'cms': ('cmspnfs', 'data'),
+          'cms': ('cmspnfs', 'psql-data'),
           'd0': ('d0ensrv1', 'data'),
           'stk':('stkensrv1','psql-data'),
           'sdss': ('?????', '?????'),
