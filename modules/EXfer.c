@@ -1497,6 +1497,7 @@ static int finish_read(struct transfer *info)
       }
    }
 #endif
+   return 0;
 }
 
 /* Return 1 on error, 0 on success. */
