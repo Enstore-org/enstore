@@ -4550,9 +4550,6 @@ def verify_file_size(ticket, encp_intf = None):
             ticket['status'] = (e_errors.OSERROR, str(detail))
             return
 
-        print "full_filesize:", full_filesize
-        print "pnfs_real_size:", pnfs_real_size
-        print "pnfs_filesize:", pnfs_filesize
         if full_filesize != pnfs_real_size:
             msg = "Expected local file size (%s) to equal remote file " \
                   "size (%s) for large file %s." \
