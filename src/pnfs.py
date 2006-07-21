@@ -164,6 +164,62 @@ def get_directory_name(filepath):
    
     return directory_name
 
+#Global cache.
+db_pnfsid_cache = {}
+
+def parse_mtab():
+    global db_pnfsid_cache
+    
+    #Clear this out to remove stale entries.
+    db_pnfsid_cache = {}
+    
+    fp = open("/etc/mtab", "r")
+    for line in fp.readlines():
+        #The 2nd and 3rd items in the list are important to us here.
+        data = line[:-1].split()
+        mp = data[1]
+        fs_type = data[2]
+
+        #If the filesystem is not an NFS filesystem, skip it.
+        if fs_type != "nfs":
+            continue
+
+        #Obtain the list of "files" in the top directory.
+        try:
+            dir_list = os.listdir(mp)
+        except (OSError, IOError):
+            continue
+
+        #If the list is empty, move on to the next.
+        if len(dir_list) == 0:
+            continue
+
+        #Unfortunately, it is possible to have files like:
+        # .(use)(1)(.(access)(0001000000000000000576C0)) in your pnfs
+        # area.  These are mostly from developers' testing, and it didn't
+        # work right.  So, keep looping passed these files until we find
+        # one that works.
+        for i in range(len(dir_list)):
+            try:
+                db_fp = open(os.path.join(mp, ".(id)(%s)" % dir_list[i]), "r")
+                break
+            except IOError:
+                continue
+        else:
+            continue
+        db_data = db_fp.readline()
+        db_fp.close()
+
+
+        #If the databases id is not in the cache, add it along with the
+        # mount point that goes with it.
+        db_pnfsid = int(db_data[:4], 16)
+        if db_pnfsid not in db_pnfsid_cache.keys():
+            db_pnfsid_cache[db_pnfsid] = mp
+
+    fp.close()
+
+    return db_pnfsid_cache
 
 ##############################################################################
 
@@ -202,7 +258,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             try:
                 if shortcut:
                     raise ValueError, "Applying filename shortcut"
-                
+
                 pnfsFilename = self.get_path(self.id)
             except (OSError, IOError, AttributeError, ValueError):
                 #No longer do just the following: pnfsFilename = ""
@@ -511,26 +567,37 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.id = pnfs_id
         return pnfs_id
 
+    ##########################################################################
+
     def get_showid(self, id=None, directory=""):
 
-        #if directory:
-        #    use_dir = directory
-        #else:
-        #    use_dir = self.dir
-
-        if id:
-            fname = os.path.join(directory, ".(showid)(%s)"%(id,))
+        if directory:
+            use_dir = directory
         else:
-            fname = os.path.join(self.dir, ".(showid)(%s)"%(self.id,))
+            use_dir = self.dir
+        
+        if id:
+            use_id = id
+        else:
+            use_id = self.id
 
-        f = open(fname,'r')
-        showid = f.readlines()
-        f.close()
+        search_path, showid = self._get_mount_point2(use_id, use_dir,
+                                                     ".(showid)(%s)")
 
         if not id:
             self.showid = showid
         return id
 
+    #A smaller faster version of get_nameof().
+    def _get_nameof(self, id, directory):
+        fname = self.nameof_file(directory, id)
+
+        f = open(fname,'r')
+        nameof = f.readlines()
+        f.close()
+
+        return nameof[0].replace("\n", "")
+        
     # get the nameof information, given the id
     def get_nameof(self, id=None, directory=""):
 
@@ -544,17 +611,24 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             use_id = self.id
 
-        fname = self.nameof_file(use_dir, use_id)
-
-        f = open(fname,'r')
-        nameof = f.readlines()
-        f.close()
+        search_path, target = self._get_mount_point2(use_id, use_dir,
+                                                     ".(nameof)(%s)")
         
-        nameof = string.replace(nameof[0],'\n','')
+        nameof = target[0].replace("\n", "")
 
         if not id:
             self.nameof = nameof
         return nameof
+
+    #A smaller faster version of get_parent().
+    def _get_parent(self, id, directory):
+        fname = self.parent_file(directory, id)
+
+        f = open(fname,'r')
+        parent = f.readlines()
+        f.close()
+
+        return parent[0].replace("\n", "")
 
     # get the parent information, given the id
     def get_parent(self, id=None, directory=""):
@@ -568,13 +642,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             use_id = self.id
 
-        fname = self.parent_file(use_dir, use_id)
-
-        f = open(fname,'r')
-        parent = f.readlines()
-        f.close()
+        search_path, target = self._get_mount_point2(use_id, use_dir,
+                                                     ".(parent)(%s)")
         
-        parent = string.replace(parent[0],'\n','')
+        parent = target[0].replace("\n", "")
 
         if not id:
             self.parent = parent
@@ -600,38 +671,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             raise ValueError("No valid pnfs id.")
 
-        ###Note: The filepath should be munged with the mountpoint.
-        search_path = os.path.join("/", use_dir.split("/")[0])
-        for d in use_dir.split("/")[1:]:
-            search_path = os.path.join(search_path, d)
-            if os.path.ismount(search_path):
-                #If the path is of the master /pnfs/fs, then the /usr should
-                # be appended.  This is the user that is the equivalent of
-                # the /root/fs/usr, but in this case the /usr compent of the
-                # directory is required because it is removed from the filepath
-                # variable when the entire /root/fs/usr is removed from the
-                # beginning.
-                if search_path == "/pnfs/fs":
-                    search_path = "/pnfs/fs/usr"
-                break;
-        else:
-            raise OSError(errno.ENODEV, "%s: %s"%(os.strerror(errno.ENODEV),
-                                            "Unable to determine mount point"))
-
+        search_path, target = self._get_mount_point2(use_id, use_dir,
+                                                     ".(nameof)(%s)")
+        filepath = target[0].replace("\n", "")
+        
         #If the user doesn't want the pain of going through a full name
         # lookup, return this alternate name.
         if shortcut:
             return os.path.join(search_path, ".(access)(%s)" % use_id)
 
-        #Obtain the root file path.  This is done by obtaining a directory
-        # component id, its name and parents id.  Then with the parents id
-        # the process is repeated.  It stops when the component is the /root
-        # directory (pnfs_id=000000000000000000001020).
-        try:
-            filepath = self.get_nameof(use_id, use_dir) # starting point.
-        except (OSError, IOError):
-            raise OSError(errno.ENOENT, "%s: %s" % (os.strerror(errno.ENOENT),
-                                                    "Not a valid pnfs id"))
         #Loop through the pnfs ids to find each ids parent until the "root"
         # id is found.  The comparison for the use_id is to prevent some
         # random directory named 'root' in the users path from being selected
@@ -640,8 +688,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # Grrrrrrr.
         name = ""  # compoent name of a directory.
         while name != "root" or use_id != "000000000000000000001020":
-            use_id = self.get_parent(use_id, use_dir) #get parent id
-            name = self.get_nameof(use_id, use_dir) #get nameof parent id
+            use_id = self._get_parent(use_id, search_path) #get parent id
+            name = self._get_nameof(use_id, search_path) #get nameof parent id
             filepath = os.path.join(name, filepath) #join filepath together
         filepath = os.path.join("/", filepath)
         #Truncate the begining false directories.
@@ -678,9 +726,43 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         return filepath
 
+    ##########################################################################
+
     #Return just the mount point section of a pnfs path.
     def get_mount_point(self, filepath = None):
+        if filepath:
+            fname = filepath
+        else:
+            fname = self.filepath
 
+        #Make sure that the original exits.
+        current_path = fname
+        try:
+            self.get_database(current_path)
+        except (OSError, IOError), msg:
+            if msg.args[0] == errno.ENOTDIR:
+                current_path = os.path.dirname(fname)
+                self.get_database(current_path)
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        #Strip off one directory segment at a time.  We are looking for
+        # where pnfs stops.
+        old_path = current_path
+        current_path = os.path.dirname(current_path)
+        while current_path:
+            try:
+                self.get_database(current_path)
+            except (OSError, IOError), msg:
+                if msg.args[0] == errno.ENOENT:
+                    return old_path
+
+            old_path = current_path
+            current_path = os.path.dirname(current_path)
+
+        return None
+
+    def get_pnfs_db_directory(self, filepath = None):
         if filepath:
             fname = filepath
         else:
@@ -737,7 +819,70 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             old_path = current_path
             
         return None
+
+    #Get the mountpoint for the pnfs id.
+    # As a side effect also get the first
+    # 'id' is the pnfs id
+    
+    def _get_mount_point2(self, id, directory, pnfsname=None):
+        if id != None:
+            if is_pnfsid(id):
+                use_id = id
+            else:
+                raise ValueError("The pnfs id (%s) is not valid." % id)
+        else:
+            raise ValueError("No valid pnfs id.")
+
+        #Try and optimize things by looking for the target to begin with.
+        if type(pnfsname) == types.StringType:
+            use_pnfsname = pnfsname % id
+        else:
+            use_pnfsname = ".(access)(%s)" % id
+
+        #Try the initial directory.
+        pfn = os.path.join(directory, use_pnfsname)
+        try:
+            f = open(pfn, 'r')
+            pnfs_value = f.readlines()
+            f.close()
+
+            #Remember to truncate the original path to just the mount
+            # point
+            search_path = self.get_mount_point(directory)
+        except (OSError, IOError):
+            #We will need the pnfs database numbers.
+            use_pnfsid_db=int(use_id[:4], 16)
+            count = 0
+            mp_dict = parse_mtab()
+            #Search all of the pnfs mountpoints that are mounted.
+            for db_num, mp in mp_dict.items():
+                if db_num == use_pnfsid_db:
+                    pfn = os.path.join(mp, use_pnfsname)
+                    try:
+                        f = open(pfn, 'r')
+                        pnfs_value = f.readlines()
+                        f.close()
+
+                        count = count + 1
+                        search_path = mp
+                    except (OSError, IOError):
+                        continue
+
+            if count == 0:
+                raise OSError(errno.ENOENT,
+                              "%s: %s" % (os.strerror(errno.ENOENT),
+                                          "Not a valid pnfs id"))
+            elif count > 1:
+
+                raise OSError(errno.ENODEV,
+                              "%s: %s" % (os.strerror(errno.ENODEV),
+                                          "Too many matching mount points"))
+
+        return search_path, pnfs_value
         
+
+    ##########################################################################
+
     # get the cursor information
     def get_cursor(self, directory=None):
 
@@ -3042,7 +3187,7 @@ def do_work(intf):
             t=None
             n=None
         elif intf.pnfs_id:
-            p=Pnfs(intf.pnfs_id)
+            p=Pnfs(intf.pnfs_id, shortcut=True)
             t=None
             n=None
         elif hasattr(intf, "dbnum") and intf.dbnum:
