@@ -1143,7 +1143,7 @@ def check_bit_file(bfid):
     if db_num == 0: # and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
         use_name = file_record['pnfs_name0'].replace("/pnfs/", "/pnfs/fs/usr/", 1)
     elif db_num > 0:
-        use_name = file_record['pnfs_name0'].replace("/fs/usr/", "", 1)
+        use_name = file_record['pnfs_name0'].replace("/fs/usr/", "/", 1)
     
     #We need to check if it is an orphaned file.  If the pnfsids match
     # then the file has not been moved or renamed since it was written.
@@ -1158,7 +1158,7 @@ def check_bit_file(bfid):
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
         try:
-            tmp_name = pnfs.Pnfs(mount_point = mp).get_path(file_record['pnfsid'])
+            tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
             if tmp_name[0] == "/":
                 #Make sure the path is a absolute path.
                 pnfs_path = tmp_name
