@@ -1488,7 +1488,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-        except (AttributeError,), detail:
+        except (AttributeError, ValueError), detail:
             print "A valid pnfs id was not entered."
             return 1
     
@@ -1509,7 +1509,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-        except (AttributeError,), detail:
+        except (AttributeError, ValueError), detail:
             print "A valid pnfs id was not entered."
             return 1
         
@@ -1544,7 +1544,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         except (OSError, IOError), detail:
             print str(detail)
             return 1
-        except (AttributeError,), detail:
+        except (AttributeError, ValueError), detail:
             print "A valid pnfs id was not entered."
             return 1
     
