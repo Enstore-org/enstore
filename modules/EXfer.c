@@ -5728,50 +5728,6 @@ int main(int argc, char **argv)
   if(mandatory_locking_out)
      mode_out |= S_ISGID;
 
-  /*
-   * Determine if filesystems in question support mandatory file locking.
-   */
-  rtn = mandatory_lock_test(argv[first_file_optind], verbose);
-  if(rtn)
-  {
-     /*
-      * revert to using advisory locks
-      */
-
-     char *string_ptr;
-
-     if(rtn == 1)
-	string_ptr = (char*) no_mandatory_file_locking;
-     else
-	string_ptr = (char*) unknown_mandatory_file_locking;
-     
-#ifdef DEBUG_REVERT
-     (void)fprintf(stderr, "%s:  %s", argv[first_file_optind], string_ptr);
-#endif /*DEBUG_REVERT*/
-     mandatory_locking_in = 0;
-     advisory_locking_in = 1;
-  }
-  rtn = mandatory_lock_test(argv[second_file_optind], verbose);
-  if(rtn)
-  {
-     /*
-      * revert to using advisory locks
-      */
-
-     char *string_ptr;
-
-     if(rtn == 1)
-	string_ptr = (char*) no_mandatory_file_locking;
-     else
-	string_ptr = (char*) unknown_mandatory_file_locking;
-
-#ifdef DEBUG_REVERT
-     (void)fprintf(stderr, "%s:  %s", argv[second_file_optind], string_ptr);
-#endif /*DEBUG_REVERT*/
-     mandatory_locking_out = 0;
-     advisory_locking_out = 1;
-  }
-
   /* Check the number of arguments from the command line. */
   if(argc < 3)
   {
@@ -5779,11 +5735,60 @@ int main(int argc, char **argv)
     (void)fprintf(stderr,
 		  "Usage: %s [-cevt] [-a <# of buffers>] [-b <buffer size>]\n"
 		  "       [-l <mmap buffer size>] "
-		  "[-dmSDR] <source_file> [-dmSDR] <dest_file>\n",
+		  "[-dmSDRAM] <source_file> [-dmSDRAM] <dest_file>\n",
 		  basename(abspath));
     return 1;
   }
 
+  /*
+   * Determine if filesystems in question support mandatory file locking.
+   */
+  if(mandatory_locking_in)
+  {
+     rtn = mandatory_lock_test(argv[first_file_optind], verbose);
+     if(rtn)
+     {
+	/*
+	 * revert to using advisory locks
+	 */
+
+	char *string_ptr;
+
+	if(rtn == 1)
+	   string_ptr = (char*) no_mandatory_file_locking;
+	else
+	   string_ptr = (char*) unknown_mandatory_file_locking;
+     
+#ifdef DEBUG_REVERT
+	(void)fprintf(stderr, "%s:  %s", argv[first_file_optind], string_ptr);
+#endif /*DEBUG_REVERT*/
+	mandatory_locking_in = 0;
+	advisory_locking_in = 1;
+     }
+  }
+  if(mandatory_locking_out)
+  {
+     rtn = mandatory_lock_test(argv[second_file_optind], verbose);
+     if(rtn)
+     {
+	/*
+	 * revert to using advisory locks
+	 */
+
+	char *string_ptr;
+
+	if(rtn == 1)
+	   string_ptr = (char*) no_mandatory_file_locking;
+	else
+	   string_ptr = (char*) unknown_mandatory_file_locking;
+
+#ifdef DEBUG_REVERT
+	(void)fprintf(stderr, "%s:  %s", argv[second_file_optind], string_ptr);
+#endif /*DEBUG_REVERT*/
+	mandatory_locking_out = 0;
+	advisory_locking_out = 1;
+     }
+  }
 
   if(verbose)
   {
