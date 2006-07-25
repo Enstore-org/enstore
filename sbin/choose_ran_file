@@ -37,7 +37,7 @@ enstore info --query "select label,library,media_type,wrapper,write_protected
 from volume where 
     label not like '%.deleted' and 
     label not like 'CLN%' and 
-    label like '%:%' and
+    label not like '%:%' and
     system_inhibit_0 = 'none' and
     user_inhibit_0 = 'none' and
     last_access <> -1 and
