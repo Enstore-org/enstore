@@ -794,7 +794,7 @@ def final_scan_volume(vol):
 
 	# make sure this is a migration volume
 	sg, ff, wp = string.split(v['volume_family'], '.')
-	if ff[-lomffs:] != MIGRATION_FILE_FAMILY_KEY:
+	if ff.find(MIGRATION_FILE_FAMILY_KEY) == -1:
 		error_log(MY_TASK, "%s is not a migration volume"%(vol))
 		return 1
 
