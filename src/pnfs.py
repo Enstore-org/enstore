@@ -674,7 +674,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         search_path, target = self._get_mount_point2(use_id, use_dir,
                                                      ".(nameof)(%s)")
         filepath = target[0].replace("\n", "")
-        
+
+        #At this point 'filepath' contains just the basename of the file
+        # with the "use_id" pnfs id.
+
         #If the user doesn't want the pain of going through a full name
         # lookup, return this alternate name.
         if shortcut:
@@ -826,9 +829,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     
     def _get_mount_point2(self, id, directory, pnfsname=None):
         if id != None:
-            if is_pnfsid(id):
-                use_id = id
-            else:
+            if not is_pnfsid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
         else:
             raise ValueError("No valid pnfs id.")
@@ -849,24 +850,57 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #Remember to truncate the original path to just the mount
             # point
             search_path = self.get_mount_point(directory)
+
+            found_db_num = int(self.get_database(search_path).split(":")[1],
+                               16)
         except (OSError, IOError):
             #We will need the pnfs database numbers.
-            use_pnfsid_db=int(use_id[:4], 16)
+            #use_pnfsid_db=int(use_id[:4], 16)
             count = 0
+            found_db_num = None
+            found_fname = None
             mp_dict = parse_mtab()
             #Search all of the pnfs mountpoints that are mounted.
             for db_num, mp in mp_dict.items():
-                if db_num == use_pnfsid_db:
-                    pfn = os.path.join(mp, use_pnfsname)
-                    try:
-                        f = open(pfn, 'r')
-                        pnfs_value = f.readlines()
-                        f.close()
+                #If the mountpoint doesn't know about our database fail now.
+                try:
+                    N(db_num, mp).get_databaseN(db_num)
+                except (OSError, IOError):
+                    continue
+                
+                #Check if the current mp knows about our specific pnfsid.
+                pfn = os.path.join(mp, use_pnfsname)
+                try:
+                    f = open(pfn, 'r')
+                    pnfs_value = f.readlines()
+                    f.close()
 
-                        count = count + 1
-                        search_path = mp
-                    except (OSError, IOError):
-                        continue
+                    if count:
+                        try:
+                            cur_mp_stat = os.stat(found_fname)
+                            found_mp_stat = os.stat(pfn)
+                        except (OSError, IOError):
+                            continue
+                        if cur_mp_stat[stat.ST_INO] == \
+                               found_mp_stat[stat.ST_INO]:
+                            #If we get here then we found two mountpoints
+                            # that map to the same file.  Since these
+                            # two paths point to the same file,
+                            # we don't want to fail with the ENODEV
+                            # error a little farthur down.  This
+                            # will most likely occur with both the
+                            # /pnfs/path and /pnfs/fs/usr/path
+                            # mountpoints being mounted.
+                            continue
+
+                    count = count + 1
+                    #The next items are to remember what we found.
+                    # Hopefully we only get here once.
+                    search_path = mp
+                    found_db_num = db_num
+                    found_fname = pfn
+                except (OSError, IOError):
+                    continue
 
             if count == 0:
                 raise OSError(errno.ENOENT,
@@ -878,8 +912,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                               "%s: %s" % (os.strerror(errno.ENODEV),
                                           "Too many matching mount points"))
 
+        #Small hack for the admin path.
+        if found_db_num == 0:
+            search_path = os.path.join(search_path, "usr")
+
         return search_path, pnfs_value
-        
 
     ##########################################################################
 
