@@ -53,20 +53,30 @@ check:
 	$(ENSTORE_DIR)/tools/mylint.py ./*.py
 	$(ENSTORE_DIR)/tools/check_pct.py -w ./*.py
 
-encp:
+pre_encp:
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
 	mkdir ENCPBIN
+
+encp_cmd_build:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
+
+encp_cmd_build_for_dcache:
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user2.py
+	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp ENCPBIN_TEMP/encp_user2	ENCPBIN/encp
+
+post_encp:
+	rm -rf ENCPBIN_TEMP
+
 	cp ../modules/enroute2	ENCPBIN
 	cp ../modules/ddencp	ENCPBIN
 	cp ../modules/ecrc	ENCPBIN
 	cp ../bin/en_check	ENCPBIN
-	rm -rf ENCPBIN_TEMP
 
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
@@ -81,6 +91,10 @@ encp:
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 	cp ENSYNC_BIN_TEMP/ensync      ENCPBIN
 	rm -rf ENSYNC_BIN_TEMP
+
+encp: pre_encp encp_cmd_build post_encp
+
+encp_for_dcache: pre_encp encp_cmd_build_for_dcache post_encp
 
 #- rm -rf ENMV_BIN_TEMP
 #mkdir ENMV_BIN_TEMP

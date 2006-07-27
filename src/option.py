@@ -117,6 +117,7 @@ IGNORED  = "ignored"
 
 #command level
 USER = "user"
+USER2 = "user2"
 ADMIN = "admin"
 
 #variable type
@@ -555,6 +556,8 @@ class Interface:
     def __init__(self, args=sys.argv, user_mode=0):
         if not user_mode: #Admin
             self.user_level = ADMIN
+        elif user_mode == 2:
+            self.user_level = USER2
         else:
             self.user_level = USER
 
@@ -767,8 +770,12 @@ class Interface:
         for opts in list_of_options:
 
             #Don't even print out options that the user doesn't have access to.
-            if self.options[opts].get(USER_LEVEL, USER) == ADMIN \
-               and self.user_level == USER:
+            option_level = self.options[opts].get(USER_LEVEL, USER)
+            if self.user_level in [USER] and \
+               option_level in [ADMIN, USER2]:
+                continue
+            if self.user_level in [USER2] and \
+               option_level in [ADMIN]:
                 continue
 
             #Snag all optional/required values that belong to this option.
@@ -871,8 +878,12 @@ class Interface:
         list_of_options.sort()
         for key in list_of_options:
             #Ignore admin options if in user mode.
-            if self.options[key].get(USER_LEVEL, USER) == ADMIN \
-               and self.user_level == USER:
+            option_level = self.options[key].get(USER_LEVEL, USER)
+            if self.user_level in [USER] and \
+               option_level in [ADMIN, USER2]:
+                continue
+            if self.user_level in [USER2] and \
+               option_level in [ADMIN]:
                 continue
 
             #Deterimine if the option needs an "=" or "[=]" after it.
@@ -981,10 +992,14 @@ class Interface:
             if short_opt and len(short_opt) == 1:
                 #If the user does not have permission to execute such an option
                 # skip over it.
-                if self.options[opt].get(USER_LEVEL, USER) == ADMIN and \
-                   self.user_level == USER:
+                option_level = self.options[opt].get(USER_LEVEL, USER)
+                if self.user_level in [USER] and \
+                       option_level in [ADMIN, USER2]:
                     continue
-                
+                if self.user_level in [USER2] and \
+                       option_level in [ADMIN]:
+                    continue
+
                 temp = temp + short_opt
                 
                 if self.options[opt].get(VALUE_USAGE, None) in [REQUIRED]:
@@ -1051,10 +1066,13 @@ class Interface:
             opt = arg[0]
             value = arg[1]
 
-            if self.is_admin_option(opt) and self.user_level == USER:
-                #Deni access to admin commands if regular user.
-                self.print_usage("option %s is an administrator option" %
-                                 (opt,))
+            if self.user_level != ADMIN:
+                if self.is_admin_option(opt) or \
+                       (self.is_user2_option(opt) and \
+                        self.user_level in [USER]):
+                    #Deni access to admin commands if regular user.
+                    self.print_usage("option %s is an administrator option" %
+                                     (opt,))
 
             if self.is_long_option(opt):
                 #Option is a long option.  This means that the option is
@@ -1343,6 +1361,18 @@ class Interface:
                 USER_LEVEL, USER) == USER:
                 return 1
         return 0
+
+    def is_user2_option(self, opt):
+        if self.is_long_option(opt):
+            if self.options[self.trim_option(opt)].get(
+                USER_LEVEL, USER) == USER2:
+                return 1
+        elif self.is_short_option(opt):
+            long_opt = self.short_to_long(opt)
+            if self.options[self.trim_option(long_opt)].get(
+                USER_LEVEL, USER) == USER2:
+                return 1
+        return 0
         
     def is_admin_option(self, opt):
         if self.is_long_option(opt):
@@ -1606,7 +1636,8 @@ class Interface:
             if extra_option[VALUE_USAGE] == IGNORED:
                 next = None
             elif extra_option[VALUE_USAGE] in [REQUIRED, OPTIONAL] and \
-                 next != None and self.is_option(next):
+                 next != None and self.is_option(next) and \
+                 self.is_switch_option(next):
                 next = None
                 
             extra_option[EXTRA_OPTION] = 1 #This is sometimes important...
