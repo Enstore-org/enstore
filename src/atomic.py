@@ -67,9 +67,15 @@ def _open2(pathname,mode=0666):
         ok = 1
     except OSError, detail:
         #If the output file already exists, we should be able to stop now.
-        # However, EEXIST is given for two cases.  The first is that the
-        # file does already exist.  The second occurs from a race condition
-        # inherent to the NFS V2 protocol.
+        # However, EEXIST is given for three cases.
+        # 1) The first is that the file does already exist.
+        # 2) The second occurs from a race condition inherent to the NFS
+        #    V2 protocol.  The link() call fails, but the infact does
+        #    succeed to create the directory entry and increase the link
+        #    count to two.
+        # 3) There is a bug in pnfs that the directory entry is
+        #    successfully created, but the link count fails to be
+        #    increased from one to two.
         #
         #Unfortunately, this means that we need to enter the following
         # loop for both cases to determine which case it is.
@@ -79,12 +85,14 @@ def _open2(pathname,mode=0666):
             for i in range(5):
                 s = os.stat(tmpname)
                 if s and s[stat.ST_NLINK]==2:
+                    #We know it is case 2.
                     ok = 1
                     break
+                
                 time.sleep(1)
             else:
-                #We now know it is case one.
                 if detail.args[0] == errno.EEXIST:
+                    #We now know it is case 1.
                     raise OSError, detail
         except OSError:
             #ok = 0
@@ -102,6 +110,7 @@ def _open2(pathname,mode=0666):
         return fd
     else:
         #delete_at_exit.unregister(pathname)
+        """
         if os.path.basename(pathname) in os.listdir(os.path.dirname(pathname)):
             #Check if the filesystem is corrupted.  If there is a file
             # listed in a directory that does not point to a valid inode the
@@ -113,7 +122,9 @@ def _open2(pathname,mode=0666):
             rtn_errno = getattr(errno, str("EFSCORRUPTED"), errno.EIO)
             msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt" \
                   + ": " + pathname
-        elif s and s[stat.ST_NLINK] > 2:
+        """
+        
+        if s and s[stat.ST_NLINK] > 2:
             #If there happen to be more than 2 hard links to the same file.
             # This should never happen.
             rtn_errno = getattr(errno, str("EMLINK"),
@@ -121,13 +132,33 @@ def _open2(pathname,mode=0666):
             msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK]) \
                   + ": " + pathname
         elif s:
-            #If there is only one link to the file.  In this case the link
-            # failed.  The use of "ENOLINK" is for Linux, IRIX and SunOS.
-            # The "EFTYPE" is for OSF1.
-            rtn_errno = getattr(errno, str("ENOLINK"),
-                                getattr(errno, str("EFTYPE")))
-            msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK]) \
-                  + ": " + pathname
+            try:
+                s2 = os.stat(pathname)
+            except OSError:
+                s2 = None
+                
+            if s2 and s[stat.ST_NLINK] == 1 and s2[stat.ST_NLINK] == 1 \
+                       and s[stat.ST_INO] == s2[stat.ST_INO]:
+                #We know it is case 3.
+                rtn_errno = errno.EAGAIN
+                msg = os.strerror(rtn_errno) + ": " + "Filesystem is corrupt"
+
+                os.close(fd_tmp)
+                #This case is different.  Since there are two directory
+                # entries pointing to the file with a link count of 1, we
+                # need to delete correct path.  This will leave the
+                # temporary lock file as a ghost file.
+                os.unlink(pathname)
+
+                raise OSError(rtn_errno, msg) #This case is different.
+            else:
+                #If there is only one link to the file.  In this case the link
+                # failed.  The use of "ENOLINK" is for Linux, IRIX and SunOS.
+                # The "EFTYPE" is for OSF1.
+                rtn_errno = getattr(errno, str("ENOLINK"),
+                                    getattr(errno, str("EFTYPE")))
+                msg = os.strerror(rtn_errno) + ": " + str(s[stat.ST_NLINK]) \
+                      + ": " + pathname
         else:
             #If we get here, then something really bad happened.
             rtn_errno = getattr(errno, str("ENOLINK"),
