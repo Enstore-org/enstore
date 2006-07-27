@@ -193,6 +193,7 @@ if [ $# -gt 0 ] ; then
              opt=""
              ;;
          -q) QUALIFIERS="-q $optarg"
+             QUALS=$optarg
              opt=""
              ;;
          -s) STEPS=`for i in \`echo $optarg | sed -e 's/,/ /g'\` ; do
@@ -380,8 +381,15 @@ for try in list doit; do
            if [ "$try" = "doit" ] ; then
               cd $ENSTORE_DIR/src
               check_status $? "cd $ENSTORE_DIR/src"
-              make clean encp
-              check_status $? "make clean encp"
+	      #If the 'dcache' qualifier was specified do a slightly
+	      # different build.
+	      if [ `echo $QUALS | tr ":" "\n" | grep dcache` == dcache ]; then
+		make clean encp_for_dcache
+		check_status $? "make clean encp_for_dcache"
+	      else
+		make clean encp
+		check_status $? "make clean encp"
+	      fi
            fi
            ;;
 
