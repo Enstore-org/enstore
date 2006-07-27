@@ -3063,20 +3063,32 @@ def create_zero_length_pnfs_files(filenames, e = None):
                 raise OSError, msg
 
         else: # locally mounted filesystem.
-            try:
-                fd = atomic.open(fname, mode=0666) #raises OSError on error.
+            local_errno = -1
+            while local_errno == -1 or local_errno == errno.EAGAIN:
+                try:
+                    #raises OSError on error.
+                    fd = atomic.open(fname, mode=0666)
 
-                if type(f) == types.DictType:
-                    #The inode is used later on to determine if another process
-                    # has deleted or removed the remote pnfs file.
-                    f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
-                    #The pnfs id is used to track down the new paths to files
-                    # that were moved before encp completes.
-                    f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
+                    if type(f) == types.DictType:
+                        #The inode is used later on to determine if
+                        # another process has deleted or removed the
+                        # remote pnfs file.
+                        f['wrapper']['inode'] = os.fstat(fd)[stat.ST_INO]
+                        #The pnfs id is used to track down the new paths
+                        # to files that were moved before encp completes.
+                        f['fc']['pnfsid'] = pnfs.Pnfs(fname).get_id()
 
-                os.close(fd)
-            except OSError, msg:
-                raise OSError, msg
+                    os.close(fd)
+                    local_errno = 0
+                except OSError, msg:
+                    if msg.args[0] == errno.EAGAIN:
+                        #If we got here then we just created a 'ghost' file
+                        # with the temporary lock filename.  Lets wait
+                        # a moment before trying again.
+                        time.sleep(2)
+                        continue
+                    
+                    raise OSError, msg
 
 def create_zero_length_local_files(filenames):
     if type(filenames) != types.ListType:
@@ -8839,7 +8851,7 @@ class EncpInterface(option.Interface):
                           "the first 'filename' is really the file's pnfs id.",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
-                          option.USER_LEVEL:option.ADMIN,},
+                          option.USER_LEVEL:option.USER2,},
         option.IGNORE_FAIR_SHARE:{option.HELP_STRING:
                              "Do not count transfer against fairshare limit.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -8929,7 +8941,7 @@ class EncpInterface(option.Interface):
                               "should be.",
                               option.VALUE_USAGE:option.REQUIRED,
                               option.VALUE_TYPE:option.STRING,
-                              option.USER_LEVEL:option.ADMIN,},
+                              option.USER_LEVEL:option.USER2,},
         option.OVERRIDE_RO_MOUNT:{option.HELP_STRING:
                                   "Override read only tape for read/write.",
                                   option.DEFAULT_TYPE:option.INTEGER,
@@ -8945,7 +8957,7 @@ class EncpInterface(option.Interface):
                                  "mount point to use. (dcache only)",
                                  option.VALUE_USAGE:option.REQUIRED,
                                  option.VALUE_TYPE:option.STRING,
-                                 option.USER_LEVEL:option.ADMIN,},
+                                 option.USER_LEVEL:option.USER2,},
         option.PRIORITY:{option.HELP_STRING:"Sets the initial job priority."
                          "  Only knowledgeable users should set this.",
                          option.VALUE_USAGE:option.REQUIRED,
@@ -8956,7 +8968,7 @@ class EncpInterface(option.Interface):
                           "the first 'filename' is really the file's pnfs id.",
                           option.VALUE_TYPE:option.STRING,
                           option.VALUE_USAGE:option.REQUIRED,
-                          option.USER_LEVEL:option.ADMIN,},
+                          option.USER_LEVEL:option.USER2,},
         option.RESUBMIT_TIMEOUT:{option.HELP_STRING:
                                  "Number of seconds to wait for the mover "
                                  "before resubmiting the request "
@@ -8971,7 +8983,7 @@ class EncpInterface(option.Interface):
                          "lookups of pnfs ids.",
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.DEFAULT_VALUE:1,
-                         option.USER_LEVEL:option.ADMIN,},
+                         option.USER_LEVEL:option.USER2,},
         option.STORAGE_GROUP:{option.HELP_STRING:
                                "Specify an alternative storage group to "
                                "override the pnfs strorage group tag "
