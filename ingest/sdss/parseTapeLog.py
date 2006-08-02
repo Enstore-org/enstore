@@ -112,6 +112,11 @@ def parsePtTapeTapelogFile(filename):
             #        tape falls in the range.
             #        * 133 through 139 and starting with 1897 are evens.
             #        + 136 and 160 through 1887 are odds.
+            # sfm == 1 and fma == 0 implies files at locations 1, 2, 3...
+            #
+            # sfm == 2 and fma == -1 implies files at locations 1, 3, 5...
+            #
+            # sfm == 2 and fma == 0 implies files at locations 2, 4, 6...
             if tapelabel[:2] == "JL":
                 tape_number = int(tapelabel[2:])
                 if 61 <= tape_number and tape_number <= 133:
@@ -132,34 +137,94 @@ def parsePtTapeTapelogFile(filename):
                 elif 1897 <= tape_number and tape_number <= 2153:
                     sfm = 2
                     fma = 0
-                elif 2245 <= tape_number and tape_number <= 2335:
+                elif 2245 <= tape_number and tape_number <= 2334:
                     sfm = 2
                     fma = -1
-                elif 2349 <= tape_number and tape_number <= 2380:
+                elif 2335 <= tape_number and tape_number <= 2380:
                     sfm = 2
                     fma = 0
-                elif 2411 <= tape_number and tape_number <= 3379:
+                elif 2411 <= tape_number and tape_number <= 3251:
                     sfm = 2
                     fma = -1
-                elif 3413 <= tape_number and tape_number <= 3635:
+                elif 3331 <= tape_number and tape_number <= 3338:
+                    sfm = 2
+                    fma = 0
+                elif 3339 <= tape_number and tape_number <= 3339:
+                    sfm = 2
+                    fma = -1
+                elif 3341 <= tape_number and tape_number <= 3341:
+                    sfm = 2
+                    fma = 0
+                elif 3342 <= tape_number and tape_number <= 3373:
+                    sfm = 2
+                    fma = -1
+                elif 3375 <= tape_number and tape_number <= 3375:
+                    sfm = 2
+                    fma = 0
+                elif 3379 <= tape_number and tape_number <= 3379:
+                    sfm = 2
+                    fma = -1
+                elif 3413 <= tape_number and tape_number <= 3492:
+                    sfm = 2
+                    fma = 0
+                elif 3495 <= tape_number and tape_number <= 3505:
+                    sfm = 2
+                    fma = -1
+                elif 3520 <= tape_number and tape_number <= 3635:
                     sfm = 2
                     fma = 0
                 elif 3659 <= tape_number and tape_number <= 3661:
                     sfm = 2
                     fma = -1
-                elif 3690 <= tape_number and tape_number <= 3908:
+                elif 3690 <= tape_number and tape_number <= 3820:
+                    sfm = 2
+                    fma = 0
+                elif 3823 <= tape_number and tape_number <= 3823:
+                    sfm = 2
+                    fma = -1
+                elif 3826 <= tape_number and tape_number <= 3908:
                     sfm = 2
                     fma = 0
                 elif 3953 <= tape_number and tape_number <= 3966:
                     sfm = 2
                     fma = -1
-                elif 4021 <= tape_number and tape_number <= 4906:
+                elif 4021 <= tape_number and tape_number <= 4480:
+                    sfm = 2
+                    fma = 0
+                elif 4487 <= tape_number and tape_number <= 4496:
+                    sfm = 2
+                    fma = -1
+                elif 4535 <= tape_number and tape_number <= 4561:
+                    sfm = 2
+                    fma = 0
+                elif 4564 <= tape_number and tape_number <= 4568:
+                    sfm = 2
+                    fma = -1
+                elif 4571 <= tape_number and tape_number <= 4610:
+                    sfm = 2
+                    fma = 0
+                elif 4613 <= tape_number and tape_number <= 4617:
+                    sfm = 2
+                    fma = -1
+                elif 4656 <= tape_number and tape_number <= 4709:
+                    sfm = 2
+                    fma = 0
+                elif 4712 <= tape_number and tape_number <= 4712:
+                    sfm = 2
+                    fma = -1
+                elif 4715 <= tape_number and tape_number <= 4906:
                     sfm = 2
                     fma = 0
                 elif 4935 <= tape_number and tape_number <= 4935:
                     sfm = 2
                     fma = -1
-                elif 4950 <= tape_number and tape_number <= 6240:
+                elif 4950 <= tape_number and tape_number <= 5084:
+                    sfm = 2
+                    fma = 0
+                elif 5099 <= tape_number and tape_number <= 5099:
+                    sfm = 2
+                    fma = -1
+                elif 5114 <= tape_number and tape_number <= 6240:
                     sfm = 2
                     fma = 0
                 elif 6247 <= tape_number and tape_number <= 6255:
@@ -169,8 +234,8 @@ def parsePtTapeTapelogFile(filename):
                     sfm = 2
                     fma = 0
                 elif 7446 <= tape_number and tape_number <= 7446:
-                    sfm = 2
-                    fma = -1
+                    sfm = 1
+                    fma = 0
                 elif 7449 <= tape_number and tape_number <= 8768:
                     sfm = 2
                     fma = 0
@@ -182,11 +247,17 @@ def parsePtTapeTapelogFile(filename):
                 sys.stderr.write("%s tape layout unknown\n" % tapelabel)
                 sys.exit(1)
                 
-        elif words[:2] == ["Data", "="]:
+        elif words[:2] == ["Data", "="] or \
+                 (len(words) == 1 and words[0].is_digit):
             #Split "Data =" lines containing tuples of the following:
             # (mjd,)
+            #Another type of line is one just containing a number for
+            # the mjd.
             try:
-                mjd = words[2]
+                if words[:2] == ["Data", "="]:
+                    mjd = words[2]
+                else:
+                    mjd = words[0]
 
                 #The mjd_list code is necessary to determine if the same
                 # tarfile (at least in name) is written to the tape more
