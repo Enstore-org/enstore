@@ -3336,12 +3336,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.watch_syslog()
                 
             if (msg.find("FTT_EIO") != -1):
-                # possibly a scsi error, report error but go idle
-                #self.watch_syslog()
                 ftt_eio = 1
             elif msg.find("FTT_EBLANK") != -1:
-                # possibly a scsi error, log low level diagnostics
-                #self.watch_syslog()
+                if self.mode == WRITE:
+                    self.vcc.set_system_readonly(self.current_volume)
                 if self.stop:
                     self.offline() # stop here for investigation
                     return
@@ -4754,10 +4752,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_buffered = self.buffer.nbytes()
                 buffer_min_bytes = self.buffer.min_bytes
                 buffer_max_bytes = self.buffer.max_bytes
+                buf = self.buffer 
             else:
                 bytes_buffered = 0
                 buffer_min_bytes = 0
                 buffer_max_bytes = 0
+                buf = None
         except AttributeError:
             # try it again
             time.sleep(3)
@@ -4800,7 +4800,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                  'default_dismount_delay': self.default_dismount_delay,
                  'max_dismount_delay': self.max_dismount_delay,
                  'client': self.client_ip,
-                 'buffer':'%s'%(self.buffer,),
+                 'buffer':'%s'%(buf,),
                  }
         if self.state is HAVE_BOUND and self.dismount_time and self.dismount_time>now:
             tick['will dismount'] = 'in %.1f seconds' % (self.dismount_time - now)
