@@ -4769,6 +4769,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_buffered = 0
                 buffer_min_bytes = 0
                 buffer_max_bytes = 0
+                buf = None
         tick = { 'status'       : status_info,
                  'drive_sn'     : self.config['serial_num'],
                  'drive_vendor' : self.config['vendor_id'],
