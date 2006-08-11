@@ -1094,7 +1094,17 @@ def check_bit_file(bfid):
             #Make sure this is the correct file.
             if layer1_bfid == file_record['bfid']:
                 if file_record['deleted'] == 'yes':
-                    err.append("pnfs entry exists")
+                    try:
+                        tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                        err.append("pnfs entry exists")
+                    except (OSError, IOError), detail:
+                        if detail.errno == errno.ENOENT or \
+                               detail.errno == errno.EIO:
+                            err.append("%s orphaned file" % (file_record['pnfsid'],))
+                        else:
+                            err.append("%s error accessing file"%(file_record['pnfsid'],))
+                            return
+                        
                     errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
