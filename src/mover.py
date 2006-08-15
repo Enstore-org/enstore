@@ -3137,7 +3137,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 have_tape = self.tape_driver.open(self.device, self.mode, retry_count=30)
             except  self.ftt.FTTError, detail:
                 Trace.alarm(e_errors.ERROR,"Supposedly a serious problem with tape drive positioning the tape: %s %s."%(self.ftt.FTTError, detail))
-                self.transfer_failed(e_errors.WRITE_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
+                self.transfer_failed(e_errors.POSITIONING_ERROR, "Serious FTT error %s"%(detail,), error_source=DRIVE)
                 return
                 
             if have_tape == 1:
@@ -3298,7 +3298,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == OFFLINE:
             # transfer failed should not get called in OFFLINE state
             return
-        self.init_data_buffer() # reset buffer
+        #self.init_data_buffer() # reset buffer
         self.timer('transfer_time')
         after_dismount_function = None
         volume_label = self.current_volume
