@@ -164,6 +164,22 @@ host/cdfenmvr25a.fnal.gov@FNAL.GOV
 host/cdfenmvr26a.fnal.gov@FNAL.GOV
 host/cdfenmvr27a.fnal.gov@FNAL.GOV
 host/cdfenmvr28a.fnal.gov@FNAL.GOV)
+host/gccenmvr1a.fnal.gov@FNAL.GOV
+host/gccenmvr2a.fnal.gov@FNAL.GOV
+host/gccenmvr3a.fnal.gov@FNAL.GOV
+host/gccenmvr4a.fnal.gov@FNAL.GOV
+host/gccenmvr5a.fnal.gov@FNAL.GOV
+host/gccenmvr6a.fnal.gov@FNAL.GOV
+host/gccenmvr7a.fnal.gov@FNAL.GOV
+host/gccenmvr8a.fnal.gov@FNAL.GOV
+host/gccenmvr9a.fnal.gov@FNAL.GOV
+host/gccenmvr10a.fnal.gov@FNAL.GOV
+host/gccenmvr11a.fnal.gov@FNAL.GOV
+host/gccenmvr12a.fnal.gov@FNAL.GOV
+host/gccenmvr13a.fnal.gov@FNAL.GOV
+host/gccenmvr14a.fnal.gov@FNAL.GOV
+host/gccenmvr15a.fnal.gov@FNAL.GOV
+host/gccenmvr16a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,
 enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
 host/cmssrv28.fnal.gov@FNAL.GOV
