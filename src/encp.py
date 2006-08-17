@@ -582,14 +582,13 @@ def combine_dict(*dictionaries):
 
 def is_access_name(filepath):
     #Determine if it is an ".(access)()" name.
-    access_match = re.compile("/\.\(access\)\([0-9A-Ea-e]+\)")
+    access_match = re.compile("/\.\(access\)\([0-9A-Fa-f]+\)")
     if re.search(access_match, filepath):
         return True
 
     return False
 
 def get_directory_name(filepath):
-
     if type(filepath) != types.StringType:
         return None
 
@@ -2804,8 +2803,9 @@ def inputfile_check(input_files, e):
             #For Reads make sure the filesystem size and the pnfs size match.
             # If the PNFS filesystem and layer 4 sizes are different,
             # calling this function raises OSError exception.
-            if p:
-                p.get_file_size()
+            #if p:
+            if is_pnfs_path(inputlist[i]):
+                p.get_file_size(inputlist[i])
                 
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -2965,7 +2965,7 @@ def outputfile_check(inputlist, outputlist, e):
                     #    list for pnfs (EPERM)
                     # 4) user root is modifying something outside of the
                     #    /pnfs/fs/usr/xyz/ filesystem (EPERM).
-                    p.writelayer(1, "")
+                    p.writelayer(1, "", outputlist[i])
 
                     #Get the outfile size.
                     try:
@@ -5678,11 +5678,21 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
 #None
 #Verifies that various information in the tickets are correct, valid, spelled
 # correctly, etc.
-def verify_write_request_consistancy(request_list):
+def verify_write_request_consistancy(request_list, e):
     
     outputfile_dict = {}
 
     for request in request_list:
+
+        if request['infile'] not in ["/dev/zero",
+                                     "/dev/random", "/dev/urandom"]:
+            inputfile_check(request['infile'], e)
+            
+        if request['outfile'] not in ["/dev/null", "/dev/zero",
+                                      "/dev/random", "/dev/urandom"]:
+            if not request['wrapper']['inode']:
+                #Only test this before the output file is created.
+                outputfile_check(request['infile'], request['outfile'], e)
 
         #This block of code makes sure the the user is not moving
         # two files with the same basename in different directories
@@ -6081,7 +6091,8 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             except (OSError, IOError):
                 ifullname = get_ininfo(e.input[i])
                 istatinfo = os.stat(ifullname)
-                #inputfile_check(ifullname, e)
+
+            #inputfile_check(ifullname, e)
 
             ofullname = get_oninfo(e.input[i], e.output[0], e)
 
@@ -6376,7 +6387,7 @@ def stall_write_transfer(data_path_socket, e):
             write_fd = select.select([], [data_path_socket], [],
                                      duration)[1]
             break
-        except select.error, msg:
+        except (select.error, socket.error), msg:
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
@@ -6403,7 +6414,7 @@ def stall_write_transfer(data_path_socket, e):
             read_fd = select.select([data_path_socket], [], [],
                                      duration)[0]
             break
-        except select.error, msg:
+        except (select.error, socket.error), msg:
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
@@ -6484,7 +6495,7 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
 
         #Be paranoid.  Check this the ticket again.
         try:
-            verify_write_request_consistancy([ticket])
+            verify_write_request_consistancy([ticket], e)
         except EncpError, msg:
             msg.ticket['status'] = (msg.type, msg.strerror)
             return msg.ticket
@@ -6734,7 +6745,7 @@ def write_to_hsm(e, tinfo):
     #This will halt the program if everything isn't consistant.
 
     try:
-        verify_write_request_consistancy(request_list)
+        verify_write_request_consistancy(request_list, e)
     except EncpError, msg:
         msg.ticket['status'] = (msg.type, msg.strerror)
         return msg.ticket, request_list
@@ -6846,7 +6857,7 @@ def write_to_hsm(e, tinfo):
                                              exit_status, tinfo)
 
     #If applicable print new file family.
-    if e.output_file_family:
+    if e.output_file_family and e_errors.is_ok(done_ticket):
         ff = string.split(done_ticket["vc"]["file_family"], ".")
         Trace.message(DONE_LEVEL, "New File Family Created: %s" % ff)
 
@@ -6968,9 +6979,16 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 if e_errors.is_ok(fcc_response):
                     if fcc_response['original'] != None:
                         is_copy = True
+
+            if request['infile'] not in ["/dev/zero",
+                                         "/dev/random", "/dev/urandom"]:
+                inputfile_check(request['infile'], e)
                                 
             if request['outfile'] not in ["/dev/null", "/dev/zero",
                                           "/dev/random", "/dev/urandom"]:
+                if not request.get('local_inode', None):
+                    outputfile_check(request['infile'], request['outfile'], e)
+                
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
                 # into the same destination directory.
@@ -7914,18 +7932,19 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             except (OSError, IOError):
                 ifullname = get_ininfo(e.input[i])
                 istatinfo = p.get_stat(ifullname)
-                #inputfile_check(ifullname, e)
+
+            #inputfile_check(ifullname, e)
 
             ofullname = get_oninfo(e.input[i], e.output[0], e)
-            if ofullname not in ["/dev/null", "/dev/zero",
-                                 "/dev/random", "/dev/urandom"]:
+            #if ofullname not in ["/dev/null", "/dev/zero",
+            #                     "/dev/random", "/dev/urandom"]:
                 #The existence rules behind the output file are more
                 # complicated than those of the input file.  We always need
                 # to call outputfile_check.  It still should go in
                 # some verify function though.
             #Fundamentally this belongs in verify_read_request_consistancy(),
             # but information needed about the input file requires this check.
-                outputfile_check(ifullname, ofullname, e)
+            #    outputfile_check(ifullname, ofullname, e)
 
             #file_size = long(istatinfo[stat.ST_SIZE])
             #if file_size == 1L:
@@ -8111,7 +8130,7 @@ def stall_read_transfer(data_path_socket, work_ticket, e):
             read_fd, unused, unused = select.select([data_path_socket],
                                                     [], [], duration)
             break
-        except select.error, msg:
+        except (select.error, socket.error), msg:
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If the select was interupted by a signal, keep going.
                 duration = duration - (time.time() - start_time)
