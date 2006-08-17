@@ -4765,6 +4765,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 bytes_buffered = self.buffer.nbytes()
                 buffer_min_bytes = self.buffer.min_bytes
                 buffer_max_bytes = self.buffer.max_bytes
+                buf = self.buffer 
             else:
                 bytes_buffered = 0
                 buffer_min_bytes = 0
