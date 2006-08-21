@@ -746,6 +746,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 thread_name = None
             Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
+            Trace.trace(87,"LOG: PS %s"%(result,)) 
           
             # see what threads are running
             threads = threading.enumerate()
@@ -2841,7 +2842,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(87,"setup_transfer: Thread %s is running" % (thread_name,))
             else:
                 Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
-            
+        
+        self.log_state(logit=1)    
         
         self.lock_state()
         self.save_state = self.state
