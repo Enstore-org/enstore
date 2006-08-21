@@ -253,6 +253,7 @@ class Buffer:
         self.first_block = 1
         
     def clear(self):
+        Trace.trace(10,"clear buffer start")
         self._lock.acquire()
         l = len(self._buf)
         for i in range(l):
@@ -262,6 +263,7 @@ class Buffer:
         for i in range(l):
             d = self._freelist.pop(0)
             del(d)
+        Trace.trace(10,"clear buffer finish")
         self._lock.release()
         
         self.write_ok.clear()
@@ -712,6 +714,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         
     def init_data_buffer(self):
+        Trace.trace(10, "init_data_buffer started")
         if self.buffer:
             self.buffer.clear()
             del(self.buffer)
@@ -725,6 +728,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             result = pipeObj.fromchild.readlines()  # result has returned string
             Trace.log(e_errors.INFO,"Init d_b LOG: PS %s"%(result,))
             del(pipeObj)
+        Trace.trace(10, "init_data_buffer finished")
 
         
     def return_state(self):
