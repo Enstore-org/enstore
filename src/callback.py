@@ -98,7 +98,7 @@ def get_callback(ip=None):
     host, port = s.getsockname()
     return host, port, s
 
-#recv with a timeout
+#send with a timeout
 def timeout_send(sock,msg,timeout=15*60):
     timeout = float(timeout)
     junk,fds,junk = select.select([],[sock],[],timeout)
