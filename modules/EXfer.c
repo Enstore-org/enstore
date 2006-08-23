@@ -456,6 +456,12 @@ static void* get_next_segments(struct transfer *info);
 static int cleanup_segments(struct transfer *info);
 
 /*
+ * remove_lock():
+ * If the file descriptor passed in the struct still has the file locked,
+ * free the lock. */
+static int remove_lock(struct transfer *info);
+
+/*
  * finish_write() and finish_read():
  * Performs any extra completion operations.  Mostly this means using the
  * appropriate syncing function for posix, direct or mmapped i/o.
@@ -819,6 +825,8 @@ static struct transfer* pack_return_values(struct transfer* retval,
   retval->filename = filename;           /* Filename an error occured on. */
   retval->done = 1;                      /* Flag saying transfer half done. */
 
+  remove_lock(retval); /* If necessary remove the lock. */
+  
   /* Putting the following here is just the lazy thing to do. */
   /* For this code to work this must be executed after setting retval->done
    * to 1 above. */
@@ -1471,8 +1479,7 @@ static int cleanup_segment(int bin, struct transfer *info)
    }
 }
 
-/* Return 1 on error, 0 on success. */
-static int finish_read(struct transfer *info)
+static int remove_lock(struct transfer *info)
 {
 #ifdef F_SETLK
    struct flock filelock;
@@ -1501,12 +1508,15 @@ static int finish_read(struct transfer *info)
 }
 
 /* Return 1 on error, 0 on success. */
+static int finish_read(struct transfer *info)
+{
+   return remove_lock(info);
+}
+
+/* Return 1 on error, 0 on success. */
 static int finish_write(struct transfer *info)
 {
-#ifdef F_SETLK
-   struct flock filelock;
-   int rtn_fcntl;
-#endif
+  int rtn_fcntl;
    
   /* Only worry about this for posix io. */
   if(!info->mmap_io && !info->direct_io)
@@ -1530,29 +1540,6 @@ static int finish_write(struct transfer *info)
     sync();
 #endif /*_POSIX_FSYNC*/
 
-
-#ifdef F_SETLK
-    /* Now that we are done with this file, release the lock. */
-    if(info->advisory_locking || info->mandatory_locking)
-    {
-       filelock.l_whence = SEEK_SET;
-       filelock.l_start = 0L;
-       filelock.l_type = F_UNLCK;
-       filelock.l_len = 0L;
-       
-       /* Unlock the file. */
-       errno = 0;
-       if((rtn_fcntl = fcntl(info->fd, F_SETLK, &filelock)) < 0)
-       {
-	  pack_return_values(info, 0, errno, FILE_ERROR,
-			     "fcntl(F_SETLK) failed", 0.0,
-			     __FILE__, __LINE__);
-	  return 1;
-       }
-    }
-#endif
-     
-    
 #if defined ( _POSIX_ADVISORY_INFO ) && _POSIX_ADVISORY_INFO >= 200112L
     /* If the file descriptor supports fadvise, tell the kernel that
      * the file will not be needed anymore. */
@@ -1568,6 +1555,10 @@ static int finish_write(struct transfer *info)
 #endif /*_POSIX_ADVISORY_INFO*/
   }
 
+  rtn_fcntl = remove_lock(info);
+  if(rtn_fcntl)
+     return rtn_fcntl;
+  
   return 0;
 }
 
@@ -4309,19 +4300,19 @@ static void do_read_write(struct transfer *read_info,
 
   /* Detect (and setup if necessary) the use of memory mapped io. */
   if(setup_mmap_io(read_info))
-    return;
+     return;
   if(setup_mmap_io(write_info))
-    return;
+     return;
   /* Detect (and setup if necessary) the use of direct io. */
   if(setup_direct_io(read_info))
-    return;
+     return;
   if(setup_direct_io(write_info))
-    return;
+     return;
   /* Detect (and setup if necessary) the use of posix io. */
   if(setup_posix_io(read_info))
      return;
   if(setup_posix_io(write_info))
-    return;
+     return;
 
   /* Allocate and initialize the arrays */
 
@@ -4401,7 +4392,9 @@ static void do_read_write(struct transfer *read_info,
        }
     }
     else if(get_next_segment(0, read_info) == NULL)
+    {
        return;
+    }
 	
     /* Number of bytes remaining for this loop. */
     if(read_info->mmap_io || write_info->mmap_io)
