@@ -354,6 +354,7 @@ class FTTDriver(generic_driver.Driver):
             p=os.popen("mt -f %s offline 2>&1" % (self.device),'r')
             r=p.read()
             s=p.close()
+            del(p)
             if not s:
                 ok = 1
                 break
@@ -363,6 +364,7 @@ class FTTDriver(generic_driver.Driver):
                     p=os.popen("mt -f %s rewind 2>&1" % (self.device),'r')
                     r=p.read()
                     s=p.close()
+                    del(p)
                     if s:
                         Trace.log(e_errors.ERROR, "eject: mt rewind failed: %s" % (r,))
         if not ok:
@@ -389,7 +391,7 @@ class FTTDriver(generic_driver.Driver):
         try:
             #Trace.trace(42, "ftt.get_mode()")
             mode = self.ftt.get_mode()
-            #Trace.trace(42, "%s=ftt.get_mode() done"%(mode,))
+            Trace.trace(42, "%s=ftt.get_mode() done"%(mode,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "get_mode %s %s" % (detail, detail.value))
             return -1
@@ -407,7 +409,7 @@ class FTTDriver(generic_driver.Driver):
         try:
             #Trace.trace(42, "ftt.set_mode(%s,%s,%s)"%(density,compression,blocksize,))
             r = self.ftt.set_mode(density, compression, blocksize)
-            #Trace.trace(42, "%s=ftt.set_mode(%s,%s,%s) done"%(r,density,compression,blocksize,))
+            Trace.trace(42, "%s=ftt.set_mode(%s,%s,%s) done"%(r,density,compression,blocksize,))
         except ftt.FTTError, detail:
             Trace.log(e_errors.ERROR, "set_mode %s %s" % (detail, detail.value))
             return -1
