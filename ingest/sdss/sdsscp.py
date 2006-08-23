@@ -61,7 +61,7 @@ def main():
 
     #Check credentials.
     if os.system("klist -s"):
-        sys.stderr.write("Failed to find valid credentails.\n")
+        sys.stderr.write("Failed to find valid credentials.\n")
         sys.exit(123)
 
     #Determine the par filepath.
