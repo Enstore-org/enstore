@@ -2601,8 +2601,12 @@ def access_check(path, mode):
 
     #Before giving up that this is a pnfs file, ask the pnfs_agent.
     # Is there a more performance efficent way?
-    pac = get_pac()
-    return  pac.e_access(path, mode)
+    r_encp = os.environ.get('REMOTE_ENCP')
+    if r_encp != None:
+        pac = get_pac()
+        return  pac.e_access(path, mode)
+
+    return False
 
 #Make sure that the filename is valid.
 def filename_check(filename):
