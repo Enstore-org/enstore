@@ -122,7 +122,7 @@ def state_name(state):
 READ, WRITE, ASSERT = range(3)
 
 #error sources
-TAPE, ROBOT, NETWORK, DRIVE, USER = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER']
+TAPE, ROBOT, NETWORK, DRIVE, USER, MOVER = ['TAPE', 'ROBOT', 'NETWORK', 'DRIVE', 'USER','MOVER']
 
 def mode_name(mode):
     if mode is None:
@@ -711,6 +711,32 @@ class Mover(dispatching_worker.DispatchingWorker,
                 
             f.write("%s = %s, len = %s\n"%(name, v, l))
         f.close()
+    def dump(self, ticket):
+        out_ticket = {'status':(e_errors.OK,None)}
+        self.reply_to_caller(out_ticket)
+        self.dump_vars()
+
+    def dump_vars(self):
+        d=os.environ.get("ENSTORE_TMP","/tmp")
+        f = open("%s/mover_dump-%s"%(d,time.time(),), "w")
+        f.write("%s\n"%(time.ctime(),))
+        if self.buffer:
+            f.write("dumping Buffer\n")
+            self.buffer.dump(f)
+        for name, value in self.__class__.__dict__.items( ) + self.__dict__.items( ):
+            v = value
+            try:
+                l = len(value)
+            except (TypeError, AttributeError):
+                l = None
+            if l:
+                if l < 100:
+                    v = value
+                else:
+                    v = ">100"
+                
+            f.write("%s = %s, len = %s\n"%(name, v, l))
+        f.close()
         
         
     def init_data_buffer(self):
@@ -750,7 +776,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 thread_name = None
             Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
-            Trace.trace(87,"LOG: PS %s"%(result,)) 
+            Trace.trace(87,"LOG: PS %s"%(result,))
+            self.dump_vars()
           
             # see what threads are running
             threads = threading.enumerate()
@@ -760,6 +787,45 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.log(e_errors.INFO,"LOG: Thread %s is running" % (thread_name,))
                 else:
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
+            
+    def memory_usage(self):
+        self.on_start = 0
+        if self.on_start:
+            self.on_start=0
+            return
+        cmd = "EPS | grep %s"%(self.name,)
+        pipeObj = popen2.Popen3(cmd, 0, 0)
+        if pipeObj is None:
+            return 0
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
+        #Trace.log(e_errors.INFO,"LOG: PS %s"%(result,))
+        del(pipeObj)
+        # parse the line
+        #result[0].split('\t')
+        mem_u = 0.
+        z=result[0].split(' ')
+        #print z
+        if z[0] == 'root':
+            c = 0
+            i = 1
+            while 1:
+                #print z[i],i,c
+                if i < len(z):
+                    if z[i] != '':
+                        c = c + 1
+                    if c == 3:
+                        mem_u = float(z[i])
+                        break
+                    i = i + 1
+                else:
+                    break
+        if mem_u > self.max_idle_mem:
+            Trace.log(e_errors.WARNING, "Memory usage %s approaches a limit %s. %s. Will restart the mover"%(mem_u, self.max_idle_mem, result,))
+            #self.transfer_failed(e_errors.NOSPACE,"No memory. Mover will restart",error_source=MOVER, dismount_allowed=0) 
+            self.restart()
+            return 1
+        return 0
             
 
     def watch_syslog(self):
@@ -947,6 +1013,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         name = self.name
         self.t0 = time.time()
         self.tr_failed = 0
+        self.on_start = 1
+        self.restart_flag = 0
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -1018,7 +1086,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.connect_to = self.config.get("connect_timeout", 15)
         self.connect_retry = self.config.get("connect_retries", 4)
         self.stop =  self.config.get('stop_mover',None)
-        self.check_first_written_enabled =self.config.get("check_first_written_file", 0) 
+        self.check_first_written_enabled =self.config.get("check_first_written_file", 0)
+        self.max_idle_mem = self.config.get('max_idle_mem', 10) # pecentage of memory usage in idle state 
         self.transfer_deficiency = 1.0
         self.buffer = None
         self.udpc = udp_client.UDPClient()
@@ -1281,6 +1350,15 @@ class Mover(dispatching_worker.DispatchingWorker,
         
 
     def restart(self):
+        cur_thread = threading.currentThread()
+        if cur_thread:
+            cur_thread_name = cur_thread.getName()
+        else:
+            cur_thread_name = None
+        Trace.log(e_errors.INFO, "Current thread %s"%(cur_thread_name,))
+        if cur_thread_name != 'MainThread':
+            self.restart_flag = 1
+            return
         # to avoid restart while restarting get lock from a file
         restart_allowed = 1
         Trace.log(e_errors.INFO, "Checking restart lock")
@@ -1298,12 +1376,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             sys.exit(-1)
         Trace.log(e_errors.INFO, "Getting restart lock")
         self.restart_lock()   
-        cur_thread = threading.currentThread()
-        if cur_thread:
-            cur_thread_name = cur_thread.getName()
-        else:
-            cur_thread_name = None
-        Trace.log(e_errors.INFO, "Current thread %s"%(cur_thread_name,))
         if cur_thread_name:
             if cur_thread_name in ('net_thread', 'MainThread'):
                 # check if tape_thread is active before allowing dismount
@@ -1453,6 +1525,10 @@ class Mover(dispatching_worker.DispatchingWorker,
 
     ## This is the function which is responsible for updating the LM.
     def update_lm(self, state=None, reset_timer=None, error_source=None):
+        if self.state == IDLE:
+            # check memory usage and if bad restart
+            self.memory_usage()
+        
         if self.dont_update_lm: return        
         self.need_lm_update = (0, None, 0, None)
         if state is None:
@@ -1464,6 +1540,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             thread_name = None
         Trace.trace(20, "update_lm: thread %s"% (thread_name,))
+        if (thread_name == 'MainThread') and self.restart_flag:
+            self.restart()
 
         if not hasattr(self,'_last_state'):
             self._last_state = None
@@ -1522,7 +1600,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.reset_interval_timer(self.update_lm)
 
         # check time in state
-        if (thread_name is 'MainThread'):
+        if (thread_name == 'MainThread'):
             time_in_state = int(now - self.state_change_time)
             if not hasattr(self,'time_in_state'):
                 self.time_in_state = 0
@@ -2847,7 +2925,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
         
-        self.log_state(logit=1)    
+        self.log_state(logit=1)
         
         self.lock_state()
         self.save_state = self.state
@@ -3032,6 +3110,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.current_work_ticket['vc'].update(self.vol_info)
         else:
             Trace.log(e_errors.ERROR, "setup_transfer: volume label=%s" % (volume_label,))
+
+
         if self.vol_info['status'][0] != e_errors.OK:
             msg =  ({READ: e_errors.READ_NOTAPE, WRITE: e_errors.WRITE_NOTAPE}.get(
                 self.setup_mode, e_errors.EPROTO), self.vol_info['status'][1])
@@ -4945,6 +5025,8 @@ class DiskMover(Mover):
         name = self.name
         self.t0 = time.time()
         self.tr_failed = 0
+        self.on_start = 1
+        self.restart_flag = 0
         self.config = self.csc.get(name)
         if self.config['status'][0] != 'ok':
             raise MoverError('could not start mover %s: %s'%(name, self.config['status']))
@@ -4974,6 +5056,7 @@ class DiskMover(Mover):
         self.max_rate = self.config.get('max_rate', 11.2*MB) #XXX
         self.log_mover_state = self.config.get('log_state', None)
         self.restart_on_error = self.config.get("restart_on_error", None)
+        self.max_idle_mem = self.config.get('max_idle_mem', 10) # pecentage of memory usage in idle state 
         self.stop =  self.config.get('stop_mover',None)
         self.transfer_deficiency = 1.0
         self.buffer = None
