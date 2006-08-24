@@ -57,6 +57,11 @@ QUALIFIERS=sirius
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
+QUALIFIERS=dcache
+        ACTION=SETUP
+                exeActionRequired(COMMON_SETUP)
+
+FLAVOR=ANY
 QUALIFIERS=""
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/chooseConfig`)
