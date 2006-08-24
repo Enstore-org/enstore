@@ -2791,25 +2791,31 @@ def inputfile_check(input_files, e):
                 raise EncpError(errno.EACCES, inputlist[i],
                                 e_errors.USERERROR, {'infile' : inputlist[i]})
             """
-            #Since the file exists, we can get its stats.
-            #     statinfo = os.stat(inputlist[i])
-            statinfo = get_stat(inputlist[i])
+
+            if not e.override_deleted:
+                    #and request['fc']['deleted'] != 'no'):
             
-            # input files can't be directories
-            if not stat.S_ISREG(statinfo[stat.ST_MODE]):
-                raise EncpError(errno.EISDIR, inputlist[i], e_errors.USERERROR,
-                                {'infile' : inputlist[i]})
+                #Since the file exists, we can get its stats.
+                #     statinfo = os.stat(inputlist[i])
+                statinfo = get_stat(inputlist[i])
 
-            ###
-            ### We should have permission checks here, based on the stat info.
-            ### 
+                # input files can't be directories
+                if not stat.S_ISREG(statinfo[stat.ST_MODE]):
+                    raise EncpError(errno.EISDIR, inputlist[i],
+                                    e_errors.USERERROR,
+                                    {'infile' : inputlist[i]})
 
-            #For Reads make sure the filesystem size and the pnfs size match.
-            # If the PNFS filesystem and layer 4 sizes are different,
-            # calling this function raises OSError exception.
-            #if p:
-            if is_pnfs_path(inputlist[i]):
-                p.get_file_size(inputlist[i])
+                ###
+                ### We should have permission checks here, based on the
+                ### stat info.
+                ### 
+
+                #For Reads make sure the filesystem size and the pnfs size
+                # match.  If the PNFS filesystem and layer 4 sizes are
+                # different, calling this function raises OSError exception.
+                #if p:
+                if is_pnfs_path(inputlist[i]):
+                    p.get_file_size(inputlist[i])
                 
             # we cannot allow 2 input files to be the same
             # this will cause the 2nd to just overwrite the 1st
@@ -4954,7 +4960,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                       "To many resubmissions for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RESUBMITS, status)
 
-    #If the transfer has failed to many times, remove it from the queue.
+    #If the transfer has failed too many times, remove it from the queue.
     # Since TOO_MANY_RETRIES is non-retriable, set this here.
     # If the error is already non-retriable, skip this step.
     if max_retries != None and retry >= max_retries \
@@ -4963,6 +4969,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         Trace.message(ERROR_LEVEL,
                       "To many retries for %s -> %s."%(infile,outfile))
         status = (e_errors.TOO_MANY_RETRIES, status)
+
+    #If we can an error (for example TCP_EXCEPTION), that does not result
+    # in request_dictionary containing a request, we need to handle this
+    # situation like the RESUBMITTING case to make sure all files get
+    # Resent to the LM.  More importantly so we avoid a recursive error
+    # loop resending an empty request.
+    if request_dictionary.get('unique_id', None) == None \
+             and e_errors.is_retriable(status) \
+             and status[0] != e_errors.RESUBMITTING:
+        Trace.message(ERROR_LEVEL,
+                      "Treating error like resubmit for %s -> %s."%(infile,outfile))
+        status = (e_errors.RESUBMITTING, status)
 
     #For reads only when a media error occurs.
     retry_non_retriable_media_error = False
@@ -5161,18 +5179,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # request when it removes the old one.  Do this only when there was an
     # actuall error, not just a timeout.  Also, increase the retry count by 1.
     else:
-        #Since, we are going to continue, we want to receive future event
-        # relay NEWCONFIGFILE messages.
-        #Note: The duration for receiving event relay messages and waiting
-        # for a mover are both 15 minutes.  If the later were to become
-        # greater than the former, a potential time window of missed messages
-        # could exist.
-        #try:
-        #    csc = get_csc()
-        #    if csc.new_config_obj.is_caching_enabled():
-        #        csc.new_config_obj.erc.subscribe()
-        #except EncpError:
-        #    pass
         
         #Log the intermidiate error as a warning instead as a full error.
         Trace.log(e_errors.WARNING, "Retriable error: %s" % str(status))
@@ -5180,37 +5186,6 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         #Get a new unique id for the transfer request since the last attempt
         # ended in error.
         request_dictionary['unique_id'] = generate_unique_id()
-
-        """
-        #For reads only when a media error occurs.
-        if e_errors.is_media(status) and is_read(request_dictionary):
-            #Note: request_dictionary['bfid'] should always carry the
-            # original bfid string while (request_dictionary['fc']['bfid']
-            # should contain the bfid of the copy (original included) that
-            # was just tried.
-
-            fcc = get_fcc()
-            vcc = get_vcc()
-
-            copy_list_dict = fcc.find_copies(request_dictionary['bfid'])
-            if e_errors.is_ok(copy_list_dict):
-                copy_list = copy_list_dict['copies']
-            else:
-                copy_list = []
-
-            while copy_list:
-                copy_index = random.randint(0, len(copy_list) - 1)
-                next_bfid = copy_list[copy_index]
-            
-                fc_info = fcc.get_bfid(next_bfid, 5, 20)
-                if e_errors.is_ok(fc_info):
-                    vc_info = vcc.inquire_vol(fc_info['external_label'], 5, 20)
-                    if e_errors.is_ok(vc_info):
-                        request_dictionary['fc'] = fc_info
-                        request_dictionary['vc'] = vc_info
-
-                del copy_list[copy_index]
-        """
 
         #Keep retrying this file.
         try:
@@ -7031,7 +7006,6 @@ def verify_read_request_consistancy(requests_per_vol, e):
             # switch/flag has been specified by the user.
             if not (e.override_deleted
                     and request['fc']['deleted'] != 'no'):
-
                 
                 #If no layer 4 is present, then report the error, raise an
                 # alarm, but continue with the transfer.
