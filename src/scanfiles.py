@@ -1240,7 +1240,7 @@ def check_file(f, file_info):
         err.append("found temporary file")
         if not f_stats:
             f_stats, (err_s, warn_s, info_s) = get_stat(f)
-            err = err + errs
+            err = err + err_s
             warn = warn + warn_s
             info = info + info_s
         return err, warn, info
