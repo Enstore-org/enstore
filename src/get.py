@@ -319,7 +319,7 @@ def receive_final_dialog_2(udp_socket, e):
 
     #Keep the udp socket queues clear.
     while time.time() < final_dialog_2_start_time + e.mover_timeout:
-        mover_udp_done_ticket = udp_socket.process_request()
+        mover_udp_done_ticket = udp_socket.do_request()
 
         #If requested output the raw 
         Trace.trace(11, "UDP MOVER MESSAGE:")
