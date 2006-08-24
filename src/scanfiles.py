@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+# system imports
 import os
 import sys
 import stat
@@ -20,6 +21,7 @@ import gc
 import signal
 import re
 
+# enstore modules
 import info_client
 import configuration_client
 import option
@@ -1236,6 +1238,11 @@ def check_file(f, file_info):
     # it still exists.
     if fname[:4] == ".nfs" or fname[-5:] == "_lock":
         err.append("found temporary file")
+        if not f_stats:
+            f_stats, (err_s, warn_s, info_s) = get_stat(f)
+            err = err + errs
+            warn = warn + warn_s
+            info = info + info_s
         return err, warn, info
 
     #Skip blacklisted files.
@@ -1662,7 +1669,7 @@ def main(intf_of_scanfiles, file_object, file_list):
         elif file_object:
             line = file_object.readline()
             while line:
-                line = line.strip()
+                line = line.split(" ... ")[0].strip()
                 if intf_of_scanfiles.bfid:
                     check_bit_file(line)
                 elif intf_of_scanfiles.vol:
