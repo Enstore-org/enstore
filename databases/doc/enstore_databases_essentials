@@ -117,7 +117,7 @@ schema: $ENSTORE_DIR/databases/schemas/drivestat.schema
 
 [Restore database from backup]
 
-[h] restore from backup
+[h] restore enstoredb from backup
     Assuming database area is corrupted and journals are good
     [1] get last backup from *srv3
         the back is stored in *srv3:/diska/enstore-backup/dbase.*.*
@@ -151,6 +151,14 @@ schema: $ENSTORE_DIR/databases/schemas/drivestat.schema
     need ALL journal files in all backups taken after that.
     To be very paranoid, you may bring everything in
     *srv3:/diska/enstore-backup/JOURNALS over.
+
+[h2] restore accountingdb and drivestat from backup
+    accounting db and drivestat db do not have journal files.
+    the backups are at
+    *srv3:/diska/pgdb-backup/*.backup
+    they are database dumps.
+    to restore, create a new database area and use pg_restore to
+    restore the databases
 
 [Tools]
 
