@@ -822,7 +822,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     break
         if mem_u > self.max_idle_mem:
             Trace.log(e_errors.WARNING, "Memory usage %s approaches a limit %s. %s. Will restart the mover"%(mem_u, self.max_idle_mem, result,))
-            #self.transfer_failed(e_errors.NOSPACE,"No memory. Mover will restart",error_source=MOVER, dismount_allowed=0) 
+            #self.transfer_failed(e_errors.NOSPACE,"No memory. Mover will restart",error_source=MOVER, dismount_allowed=0)
+            self.log_state(logit=1)
+            self.dump_vars()
             self.restart()
             return 1
         return 0
@@ -2925,7 +2927,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             else:
                 Trace.trace(87,"setup_transfer: Thread %s is dead"%(thread_name,))
         
-        self.log_state(logit=1)
+        #self.log_state(logit=1)
         
         self.lock_state()
         self.save_state = self.state
