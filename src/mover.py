@@ -777,7 +777,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 thread_name = None
             Trace.log(e_errors.INFO,"LOG: CurThread %s"%(thread_name))
             Trace.trace(87,"LOG: PS %s"%(result,))
-            self.dump_vars()
+            #self.dump_vars()
           
             # see what threads are running
             threads = threading.enumerate()
