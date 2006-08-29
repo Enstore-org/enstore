@@ -6,6 +6,7 @@ import popen2
 import string
 import pwd
 import getopt
+import time
 
 sys2host={'cdf': ('cdfensrv1','data'),
           'cms': ('cmspnfs', 'psql-data'),
@@ -57,7 +58,11 @@ def get_config(host):
             l1 = string.join(('#', l))
             l = l1
         of.write(l)
+    of.close()
+    f.close()
     os.system("mv pnfsSetup.%s.tmp pnfsSetup.%s"%(host, host))
+#    os.system("chown root.root pnfsSetup.%s"%(host, ))
+    os.system("cp -f pnfsSetup.%s /usr/etc/pnfsSetup"%(host, ))
     # get local pnfs directory
     pnfs_dir=os.popen('. /usr/local/etc/setups.sh; setup pnfs; echo $PNFS_DIR').readlines()[0][:-1]
     #
