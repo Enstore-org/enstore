@@ -6,6 +6,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 timeout=4
 output=/home/enstore/`hostname`.startup
+touch $output
+chown enstore.enstore $output
 estat=0
 
 case "$1" in
