@@ -243,22 +243,41 @@ def timeout_recv(sock, nbytes, timeout = 15 * 60):
 # read a complete message
 def read_tcp_raw(sock, timeout=15*60):
     #Trace.log(e_errors.INFO, "read_tcp_raw: starting")
-    tmp = timeout_recv(sock, 8, timeout)
+    tmp = timeout_recv(sock, 8, timeout) # the message length
+    len_tmp = len(tmp)
+    if len_tmp != 8:
+        error_string = "read_tcp_raw: wrong bytecount"
+        try:
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        Trace.log(e_errors.ERROR,
+                 "%s (%d) %s" % (error_string, len_tmp, tmp))
+        Trace.log(e_errors.ERROR,
+                  "%s from %s" % (error_string, peername,))
+        return ""
     try:
         bytecount = int(tmp)
     except (ValueError, TypeError):
-        #bytecount = None
-        Trace.log(e_errors.ERROR, "read_tcp_raw: bad bytecount %s" % (tmp,))
-        return ""
-    if len(tmp) != 8:
+        error_string = "read_tcp_raw: bad bytecount"
         try:
-            Trace.log(e_errors.ERROR,"read_tcp_raw: wrong bytecount %s"%(tmp,))
-        except ValueError, msg:
-            Trace.log(e_errors.ERROR,"read_tcp_raw: %s"%(msg,))
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        Trace.log(e_errors.ERROR, "%s %s" % (error_string, tmp,))
+        Trace.log(e_errors.ERROR,
+                  "%s from %s" % (error_string, peername,))
         return ""
     tmp = timeout_recv(sock,8, timeout) # the 'signature'
     if len(tmp)!=8 or tmp[:6] != "ENSTOR":
-        Trace.log(e_errors.ERROR,"read_tcp_raw: invalid signature %s"%(tmp,))
+        error_string = "read_tcp_raw: invalid signature"
+        try:
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        Trace.log(e_errors.ERROR, "%s %s" % (error_string, tmp,))
+        Trace.log(e_errors.ERROR,
+                  "%s from %s" % (error_string, peername,))
         return ""
     salt= int(tmp[6:])
     msg = ""
@@ -268,13 +287,29 @@ def read_tcp_raw(sock, timeout=15*60):
             break
         msg = msg+tmp
     if len(msg)!=bytecount:
-        Trace.log(e_errors.ERROR,"read_tcp_raw: bytecount mismatch %s != %s"%(len(msg),bytecount))
+        error_string = "read_tcp_raw: bytecount mismatch"
+        try:
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        Trace.log(e_errors.ERROR,
+                  "%s %s != %s" % (error_string, len(msg), bytecount))
+        Trace.log(e_errors.ERROR,
+                  "%s from %s" % (error_string, peername,))
         return ""
     tmp = timeout_recv(sock,8, timeout)
     crc = long(tmp, 16)  #XXX 
     mycrc = checksum.adler32(salt,msg,len(msg))
     if crc != mycrc:
-        Trace.log(e_errors.ERROR,"read_tcp_raw: checksum mismatch %s != %s"%(mycrc, crc))
+        error_string = "read_tcp_raw: checksum mismatch"
+        try:
+            peername = sock.getpeername()
+        except (socket.error, socket.herror, socket.gaierror):
+            peername = "unknown"
+        Trace.log(e_errors.ERROR,
+                  "%s %s != %s" % (error_string, mycrc, crc))
+        Trace.log(e_errors.ERROR,
+                  "%s from %s" % (error_string, peername,))
         return ""
     return msg
 
