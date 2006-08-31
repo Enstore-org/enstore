@@ -23,7 +23,7 @@ get_ticket() {
     fi
     KRB5CCNAME=/tmp/krb5cc_enstore_$$
     export KRB5CCNAME
-    ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+    ${krbdir}/kinit -k -t /local/ups/kt/dcachekt enstore/cd/${thisHost}
 # ${krbdir}/klist -fea
 }
 
