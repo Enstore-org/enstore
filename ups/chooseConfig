@@ -15,6 +15,7 @@ cdfen=cdfensrv2.fnal.gov
 rip=rip7.fnal.gov
 cachen=$stken
 happy=happy.fnal.gov
+fndapr=fndapr.fnal.gov
 water=131.225.84.1
 rain=rain.fnal.gov
 woodlawn=woodlawn.fnal.gov
@@ -27,7 +28,7 @@ complain=1
 
 # default for environment variables with a default
 ENSTORE_MAIL=enstore-auto@fnal.gov
-
+if [ `whoami` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
@@ -79,6 +80,14 @@ case $node in
 	    ENSTORE_CONFIG_HOST=$water
 	    ENSTORE_CONFIG_FILE=water.conf
             complain=0
+            ;;
+  fndapr)
+	    ENSTORE_MAIL=berman@fnal.gov
+	    ENSTORE_CONFIG_HOST=$fndapr
+	    ENSTORE_CONFIG_FILE=berman.conf
+            complain=0
+            ;;
+  odyssey)  complain=0
             ;;
   woodlawn) #Chih-Hao Huang's Desktop
 	    ENSTORE_MAIL=huangch@fnal.gov
