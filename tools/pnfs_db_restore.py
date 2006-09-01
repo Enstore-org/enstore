@@ -8,7 +8,7 @@ import pwd
 import getopt
 import time
 
-sys2host={'cdf': ('cdfensrv1','data'),
+sys2host={'cdf': ('cdfensrv1','psql-data'),
           'cms': ('cmspnfs', 'psql-data'),
           'd0': ('d0ensrv1', 'data'),
           'stk':('stkensrv1','psql-data'),
