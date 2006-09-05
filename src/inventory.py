@@ -385,7 +385,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
     # take care of formated size
     fw[10] = fw[10]-2
     fw.insert(11, 2)
-    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%-%ds  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
+    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%%ds  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
 
     vq_file.write(header_format%fields)
     vq_file.write(header_format%fields2)
@@ -448,7 +448,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
                              (bk,) + \
                              volume_quotas[keys][5:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
-                             volume_quotas[keys][8:]
+                             volume_quotas[keys][8:13]
             vq_file.write(row_format % formated_tuple)
         vq_file.write("\n") #insert newline between sections
     vq_file.close()
