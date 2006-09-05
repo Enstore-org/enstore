@@ -318,7 +318,18 @@ def read_tcp_obj(sock, timeout=15*60) :
     s=read_tcp_raw(sock, timeout)
     if not s:
         raise e_errors.TCP_EXCEPTION
-    return _eval(s)
+    
+    try:
+        obj = cPickle.loads(s)
+    except (cPickle.PickleError, cPickle.PicklingError,
+            cPickle.UnpickleableError, cPickle.UnpicklingError):
+        try:
+            obj = _eval(s)
+        except SyntaxError:
+            obj = None
+    
+    #return _eval(s)
+    return obj
 
 def read_tcp_obj_new(sock, timeout=15*60) :
     s=read_tcp_raw(sock, timeout)
