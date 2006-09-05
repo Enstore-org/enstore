@@ -358,11 +358,15 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
         # remember none: emergency
         fw[2] = max(fw[2], len(volume_quotas[key][1]), 15)
         at = authorized_tapes.get(volume_quotas[key][:2], ("N/A", "N/A"))
+        if volume_quotas[key][4]:
+            bk = "%d/%d"%(volume_quotas[key][13], volume_quotas[key][4])
+        else:
+            bk = '0'
         fw[3] = max(fw[3], len(str(at[0])))
         fw[4] = max(fw[4], len(str(at[1])))
         fw[5] = max(fw[5], len(str(volume_quotas[key][2])))
         fw[6] = max(fw[6], len(str(volume_quotas[key][3])))
-        fw[7] = max(fw[7], len(str(volume_quotas[key][4])))
+        fw[7] = max(fw[7], len(bk))
         fw[8] = max(fw[8], len(str(volume_quotas[key][5])))
         fw[9] = max(fw[9], len(str(volume_quotas[key][6])))
         qs = format_storage_size(volume_quotas[key][7])
@@ -381,7 +385,7 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
     # take care of formated size
     fw[10] = fw[10]-2
     fw.insert(11, 2)
-    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
+    row_format = "%%%dd  %%-%ds  %%-%ds  %%%ds  %%%ds  %%%ds  %%%dd  %%-%ds  %%%dd  %%%dd  %%%d.2f%%%ds  %%%dd  %%%dd  %%%dd  %%%dd  %%%dd\n"%tuple(fw)
 
     vq_file.write(header_format%fields)
     vq_file.write(header_format%fields2)
@@ -432,11 +436,17 @@ def print_volume_quotas_status(volume_quotas, authorized_tapes, output_file, quo
                 formated_storage_group = "none: emergency"
             else:
                 formated_storage_group = volume_quotas[keys][1]
+            if volume_quotas[keys][4]:
+                bk = '%d/%d'%(volume_quotas[keys][13], volume_quotas[keys][4])
+            else:
+                bk = '0'
             formated_tuple = (count, volume_quotas[keys][0],) + \
                              (formated_storage_group,) + \
                              authorized_tapes.get(volume_quotas[keys][:2],
                                                   ("N/A", "N/A")) + \
-                             volume_quotas[keys][2:7] + \
+                             volume_quotas[keys][2:4] + \
+                             (bk,) + \
+                             volume_quotas[keys][5:7] + \
                              format_storage_size(volume_quotas[keys][7]) + \
                              volume_quotas[keys][8:]
             vq_file.write(row_format % formated_tuple)
@@ -460,7 +470,8 @@ def print_volume_quota_sums(volume_quotas, authorized_tapes, output_file,
     for key in quotas:
         #Get the current (library, storage_group) out of the dict.
         (l, sg, quota, allocated, blank_v, written_v, deleted_v, used,
-            active_f, deleted_f, unknown_f, recyclable_v, migrated_v) = volume_quotas[key]
+            active_f, deleted_f, unknown_f, recyclable_v, migrated_v,
+            wp_n) = volume_quotas[key]
 
         #For each library total up the numbers.
         try: # total up the number of requested tapes.
@@ -1035,10 +1046,13 @@ def inventory(output_dir, cache_dir):
         except:
             quota = 'N/A'
 
+	wp_n = 0
         # for the list stuff
         if not total and vv['volume_family'][-10:] == '.none.none':
             written_vol = 0
             blank_vol = 1
+            if vv['write_protected'] == 'n':
+                wp_n = 1
         else:
             written_vol = 1
             blank_vol = 0
@@ -1064,7 +1078,8 @@ def inventory(output_dir, cache_dir):
                 v_info[9] + deleted,
                 v_info[10] + unknown,
                 v_info[11] + recyclable_vol,
-                v_info[12] + migrated_vol)
+                v_info[12] + migrated_vol,
+                v_info[13] + wp_n)
         else:
             volumes_allocated[(library, storage_group)] = (
                 library,
@@ -1079,7 +1094,8 @@ def inventory(output_dir, cache_dir):
                 deleted,
                 unknown,
                 recyclable_vol,
-                migrated_vol)
+                migrated_vol,
+                wp_n)
 
         # statistics stuff
         la_file.write("%f, %s %s\n" % (vv['last_access'],
