@@ -3582,41 +3582,64 @@ def open_control_socket(listen_socket, mover_timeout):
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
-    read_fds, unused, unused = select.select([listen_socket], [], [],
-                                             mover_timeout)
+    start_wait_time = time.time()
+    wait_left_time = mover_timeout
+    while wait_left_time:
+        
+        read_fds, unused, unused = select.select([listen_socket], [], [],
+                                                 wait_left_time)
+        
+        #If there are no successful connected sockets, then select timedout.
+        if not read_fds:
+            raise EncpError(errno.ETIMEDOUT,
+                            "Mover did not call control back.",
+                            e_errors.TIMEDOUT)
 
-    #If there are no successful connected sockets, then select timedout.
-    if not read_fds:
-        raise EncpError(errno.ETIMEDOUT,
-                        "Mover did not call control back.", e_errors.TIMEDOUT)
-    
-    control_socket, address = listen_socket.accept()
+        control_socket, address = listen_socket.accept()
 
-    if not hostaddr.allow(address):
-        control_socket.close()
-        raise EncpError(errno.EPERM, "Host %s not allowed." % address[0],
-                        e_errors.NOT_ALWD_EXCEPTION)
+        if not hostaddr.allow(address):
+            try:
+                control_socket.close()
+            except socket.error:
+                pass
+            #raise EncpError(errno.EPERM, "Host %s not allowed." % address[0],
+            #                e_errors.NOT_ALWD_EXCEPTION)
+            wait_left_time = start_wait_time + mover_timeout - time.time()
+            wait_left_time = max(wait_left_time, 0)
+            continue
 
-    try:
-	#This should help the connection.  It also seems to allow the
-	# connection to servive the antispoofing/routing problem for
-        # properly configured (enstore.conf & enroute2) multihomed nodes.
-	control_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
-				 socket.IPTOS_LOWDELAY)
-    except socket.error, msg:
-	sys.stderr.write("Socket error setting IPTOS_LOWDELAY option: %s\n" %
-			 str(msg))
+        #wait_left_time = start_wait_time + mover_timeout - time.time()
+        #wait_left_time = max(wait_left_time, 0)
 
-    try:
-        ticket = callback.read_tcp_obj(control_socket)
-    except e_errors.TCP_EXCEPTION:
-        raise EncpError(errno.EPROTO, "Unable to obtain mover response",
-                        e_errors.TCP_EXCEPTION)
+        try:
+            #This should help the connection.  It also seems to allow the
+            # connection to survive the antispoofing/routing problem for
+            # properly configured (enstore.conf & enroute2) multihomed nodes.
+            control_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
+                                     socket.IPTOS_LOWDELAY)
+        except socket.error, msg:
+            sys.stderr.write("Socket error setting IPTOS_LOWDELAY option: %s\n"
+                             % str(msg))
 
-    if not e_errors.is_ok(ticket):
-        #If the mover already returned an error, don't bother checking if
-        # it is closed already...
-        return control_socket, address, ticket
+        try:
+            ticket = callback.read_tcp_obj(control_socket)
+        except e_errors.TCP_EXCEPTION:
+            try:
+                control_socket.close()
+            except socket.error:
+                pass
+            #raise EncpError(errno.EPROTO, "Unable to obtain mover response",
+            #                e_errors.TCP_EXCEPTION)
+            wait_left_time = start_wait_time + mover_timeout - time.time()
+            wait_left_time = max(wait_left_time, 0)
+            continue
+
+        if not e_errors.is_ok(ticket):
+            #If the mover already returned an error, don't bother checking if
+            # it is closed already...
+            return control_socket, address, ticket
+
+        break
 
     message = "Control socket %s is connected to %s for %s." % \
               (control_socket.getsockname(),
