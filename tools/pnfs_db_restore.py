@@ -21,7 +21,7 @@ version2version={'v8_0_7' : '8.0',
 def usage(cmd):
 #    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
     print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
-    print "\t allowed systems: cms, cdf, d0m stk"
+    print "\t allowed systems: cms|cdf|d0|stk"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
     print "\t allowed pnfs versions v8_0_7, v8_1_3"
 #    sys.exit(1)
