@@ -138,6 +138,8 @@ for thefile in systems:
         if string.find(line,'emergency') >= 0:
             try:
                 (c,l,sg,e,ra,aa,q,a,bv,wv,dv,su,af,df,uf, rf, mf) = line.split()
+                if bv.find('/') != -1:
+                    bv = bv.split('/')[1]
             except:
                 print 'can not parse', line,len(line)
                 continue
@@ -145,6 +147,8 @@ for thefile in systems:
 
             try:
                 (c,l,sg,ra,aa,q,a,bv,wv,dv,su,af,df,uf, rf, mf) = line.split()
+                if bv.find('/') != -1:
+                    bv = bv.split('/')[1]
             except:
                 print 'can not parse', line,len(line)
                 continue
