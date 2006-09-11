@@ -17,6 +17,21 @@
 #  define BSD_COMP
 #endif
 
+/* A little hack for IRIX to use its F_DIOINFO ioctl() (for DIRECT I/O).
+ * Some versions of IRIX standards.h header file do not define _SGIAPI
+ * correctly. */
+#if defined(__sgi)
+#  include <standards.h>
+#  undef _SGIAPI
+#  define _SGIAPI 1
+/* The redefining of the xopen constants was recommended by the python
+ * developers. */
+#  undef _NO_XOPEN4
+#  define _NO_XOPEN4 1
+#  undef _NO_XOPEN5
+#  define _NO_XOPEN5 1
+#endif
+
 /* Macros for Large File Summit (LFS) conformance. */
 #define _FILE_OFFSET_BITS 64
 #define _LARGEFILE_SOURCE 1
