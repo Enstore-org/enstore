@@ -163,6 +163,10 @@ DATABASENAME = 'operation'
 #WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
 WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/write_protect_work'
 WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/write_permit_work'
+ADIC_WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_protect_work'
+ADIC_WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_permit_work'
+
+DEFAULT_LIBRARIES = "9940,CD-9940B,D0-9940B,cdf,CDF-9940B"
 
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -734,13 +738,13 @@ def help(topic=None):
 		print "    -- find|locate with details"
 		print "operation.py relate <job>+"
 		print "    -- find jobs that have common objects" 
-		print "operation.py recommend_write_protect_on [<media_type_list>] [limit <n>]"
+		print "operation.py recommend_write_protect_on [<library_list>] [limit <n>]"
 		print "    -- recommend volumes for flipping write protect tab on"
-		print "operation.py recommend_write_protect_off [<media_type_list>] [limit <n>]"
+		print "operation.py recommend_write_protect_off [<library_list>] [limit <n>]"
 		print "    -- recommend volumes for flipping write protect tab off"
-		print "operation.py auto_write_protect_on [<media_type_list>] [no_limit]"
+		print "operation.py auto_write_protect_on [<library_list>] [no_limit]"
 		print "    -- automatically generate helpdesk ticket for flipping WP on"
-		print "operation.py auto_write_protect_off [<media_type_list>] [no_limit]"
+		print "operation.py auto_write_protect_off [<library_list>] [no_limit]"
 		print "    -- automatically generate helpdesk ticket for flipping WP off"
 		print "operation.py auto_close_all"
 		print "    -- try to close all finished open jobs on this cluster"
@@ -826,48 +830,48 @@ def help(topic=None):
 		print "same as find|locate but show details of the jobs"
 	elif topic == "recommend_write_protect_on" or topic == "recommend_write_protect_off":
 		print
-		print "operation.py recommend_write_protect_on [<media_type_list>] [limit <n>]"
-		print "operation.py recommend_write_protect_off [<media_type_list>] [limit <n>]"
+		print "operation.py recommend_write_protect_on [<library_list>] [limit <n>]"
+		print "operation.py recommend_write_protect_off [<library_list>] [limit <n>]"
 		print
 		print "list recommended volumes for write protect tab flipping on/off"
 		print
-		print "<media_type_list> is a list of media types separated by comma ','"
-		print "when <media_type_list> is omitted, the default list takes place"
+		print "<library_list> is a list of media types separated by comma ','"
+		print "when <library_list> is omitted, the default list takes place"
 		print
 		print "with 'limit <n>', it only lists, at most, first <n> volumes for the job"
 		print "otherwise, it lists all"
 		print
 		print "EXAMPLES:"
 		print "operation.py recommend_write_protect_on"
-		print "operation.py recommend_write_protect_on 9940,9940B"
+		print "operation.py recommend_write_protect_on 9940,CD-9940B"
 		print "operation.py recommend_write_protect_on limit 100"
-		print "operation.py recommend_write_protect_on 9940,9940B limit 100"
+		print "operation.py recommend_write_protect_on 9940,CD-9940B limit 100"
 		print "operation.py recommend_write_protect_off"
-		print "operation.py recommend_write_protect_off 9940,9940B"
+		print "operation.py recommend_write_protect_off 9940,CD-9940B"
 		print "operation.py recommend_write_protect_off limit 100"
-		print "operation.py recommend_write_protect_off 9940,9940B limit 100"
+		print "operation.py recommend_write_protect_off 9940,CD-9940B limit 100"
 	elif topic == "auto_write_protect_on" or topic == "auto_write_protect_off":
 		print
-		print "operation.py auto_write_protect_on [<media_type_list>] [no_limit]"
-		print "operation.py auto_write_protect_off [<media_type_list>] [no_limit]"
+		print "operation.py auto_write_protect_on [<library_list>] [no_limit]"
+		print "operation.py auto_write_protect_off [<library_list>] [no_limit]"
 		print
 		print "from recommended list, create a job for write protect tab flipping on/off"
 		print "and generate a helpdesk ticket automatically"
 		print
-		print "<media_type_list> is a list of media types separated by comma ','"
+		print "<library_list> is a list of media types separated by comma ','"
 		print
 		print "there is a default limit of 10 caps (220 volume)"
 		print "with 'no_limit', it generates everything in on ticket"
 		print
 		print "EXAMPLES:"
 		print "operation.py auto_write_protect_on"
-		print "operation.py auto_write_protect_on 9940,9940B"
+		print "operation.py auto_write_protect_on 9940,CD-9940B"
 		print "operation.py auto_write_protect_on no_limit"
-		print "operation.py auto_write_protect_on 9940,9940B no_limit"
+		print "operation.py auto_write_protect_on 9940,CD-9940B no_limit"
 		print "operation.py auto_write_protect_off"
-		print "operation.py auto_write_protect_off 9940,9940B"
+		print "operation.py auto_write_protect_off 9940,CD-9940B"
 		print "operation.py auto_write_protect_off no_limit"
-		print "operation.py auto_write_protect_off 9940,9940B no_limit"
+		print "operation.py auto_write_protect_off 9940,CD-9940B no_limit"
 	elif topic == 'auto_close_all':
 		print
 		print "operation.py auto_close_all"
@@ -889,7 +893,7 @@ def even(i):
 CAPS_PER_TICKET = 10
 VOLUMES_PER_CAP = 21
 
-def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WP') + 1
 	# get exclusion list:
@@ -902,12 +906,12 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 		print q
 	excl = db.query(q).getresult()
 
-	# take care of media_type
-	mt = media_type.split(",")
-	mts = "(media_type = '%s'"%(mt[0])
-	for i in mt[1:]:
-		mts = mts+ " or media_type = '%s'"%(i)
-	mts = mts+")"
+	# take care of libraries
+	lb = library.split(",")
+	lbs = "(library = '%s'"%(lb[0])
+	for i in lb[1:]:
+		lbs = lbs + " or library = '%s'"%(i)
+	lbs = lbs+")"
 
 	q = "" # to make lint happy
 	if excl:
@@ -925,7 +929,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' and \
 			not label in (%s) \
-			order by label "%(mts, exclusion)
+			order by label "%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -937,7 +941,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label "%(mts)
+			order by label "%(lbs)
 	if limit:
 		q = q + ' limit %d;'%(limit)
 	else:
@@ -959,7 +963,7 @@ def recommend_write_protect_job(media_type='9940B,9940', limit=VOLUMES_PER_CAP*C
 			cap_n = cap_n + 1
 	return job
 
-def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
 	# get max cap number
 	n = get_max_cap_number(cluster, 'WE') + 1
 	# get exclusion list:
@@ -971,12 +975,12 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 		print q
 	excl = db.query(q).getresult()
 
-	# take care of media_type
-	mt = media_type.split(",")
-	mts = "(media_type = '%s'"%(mt[0])
-	for i in mt[1:]:
-		mts = mts+ " or media_type = '%s'"%(i)
-	mts = mts+")"
+	# take care of libraries
+	lb = library.split(",")
+	lbs = "(library = '%s'"%(lb[0])
+	for i in lb[1:]:
+		lbs = lbs + " or library = '%s'"%(i)
+	lbs = lbs+")"
 
 	q = ""	# to make lint happy
 	if excl:
@@ -994,7 +998,7 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not label in (%s) \
-			order by label "%(mts, exclusion)
+			order by label "%(lbs, exclusion)
 	else:
 		q = "select label from volume where \
 			%s and \
@@ -1006,7 +1010,7 @@ def recommend_write_permit_job(media_type='9940B,9940', limit = VOLUMES_PER_CAP*
 			(select storage_group||'.'||file_family \
 				from no_flipping_file_family) and\
 			not file_family like '%%-MIGRATION%%' \
-			order by label "%(mts)
+			order by label "%(lbs)
 
 	if limit:
 		q = q + " limit %d;"%(limit)
@@ -1318,16 +1322,16 @@ def execute(args):
 	elif cmd == "recommend_write_protect_on":
 		if len(args) > 3:
 			if args[2] == 'limit':
-				res = recommend_write_protect_job(media_type = args[1], limit=int(args[3]))
+				res = recommend_write_protect_job(library = args[1], limit=int(args[3]))
 			else:
-				res = recommend_write_protect_job(media_type = args[1], limit=0)
+				res = recommend_write_protect_job(library = args[1], limit=0)
 		elif len(args) == 3:
 			if args[1] == 'limit':
 				res = recommend_write_protect_job(limit=int(args[2]))
 			else:
 				res = recommend_write_protect_job(limit=0)
 		elif len(args) == 2:
-			res = recommend_write_protect_job(media_type = args[1], limit=0)
+			res = recommend_write_protect_job(library = args[1], limit=0)
 		else:
 			res = recommend_write_protect_job(limit=0)
 		# pprint.pprint(res)
@@ -1342,16 +1346,16 @@ def execute(args):
 	elif cmd == "recommend_write_protect_off":
 		if len(args) > 3:
 			if args[2] == 'limit':
-				res = recommend_write_permit_job(media_type = args[1], limit=int(args[3]))
+				res = recommend_write_permit_job(library = args[1], limit=int(args[3]))
 			else:
-				res = recommend_write_permit_job(media_type = args[1], limit=0)
+				res = recommend_write_permit_job(library = args[1], limit=0)
 		elif len(args) == 3:
 			if args[1] == 'limit':
 				res = recommend_write_permit_job(limit=int(args[2]))
 			else:
 				res = recommend_write_permit_job(limit=0)
 		elif len(args) == 2:
-			res = recommend_write_permit_job(media_type = args[1], limit=0)
+			res = recommend_write_permit_job(library = args[1], limit=0)
 		else:
 			res = recommend_write_permit_job(limit=0)
 		# pprint.pprint(res)
