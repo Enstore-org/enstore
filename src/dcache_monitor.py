@@ -241,7 +241,7 @@ def do_work(i,db_name) :
 
 if __name__ == '__main__':
     i=0
-    cmd="mdb status | awk '{print $2}' | egrep -v 'Name|admin|NULL'"
+    cmd="mdb status | awk '{print $2}' | egrep -v 'Name|admin|NULL|test'"
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
     inp.close ()
