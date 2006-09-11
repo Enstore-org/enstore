@@ -157,6 +157,14 @@
 #ifndef MADV_DONTNEED
 #define MADV_DONTNEED -1
 #endif*/
+
+/* Define the NAME_MAX constant if Solaris does not define it. */
+#if defined(__sun) && !defined(NAME_MAX)
+/* In reality we should use pathconf(path, _PC_NAME_MAX) to get this value.
+ * Page 48 of Advanced Programming in the Unix Environment, Second Edition,
+ * states that if we assume the UFS filesystem, then 255 is fine. */
+#define NAME_MAX 255
+#endif
 			 
 /* Set the size of readback chunks to 1MB. */
 #define ECRC_READBACK_BUFFER_SIZE 1048576
