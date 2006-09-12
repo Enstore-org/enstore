@@ -1535,7 +1535,11 @@ def check_file(f, file_info):
         #Actually perform this check that is common to all types of files.
         if parent_id != parent_dir_id:
             if parent_id != None and parent_dir_id != None:
-                err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
+                alt_path = os.path.join(os.path.dirname(f),
+                                        ".(access)(%s)" % parent_id, fname)
+                alt_stats = os.stat(alt_path)
+                if f_stats != alt_stats:
+                    err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
         
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted parent id')
