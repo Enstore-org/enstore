@@ -198,7 +198,8 @@ def prepare_html(db_name):
     #
     # check for any bad files 
     #
-    res=db.query("select count(*) from volatile_files where layer2='n'")
+    now_time       = time.time()
+    res=db.query("select count(*) from volatile_files where layer2='n' and unix_date<%d"%(int(now_time-3600)))
     count=0
     for row in res.getresult():
         if not row:
@@ -206,7 +207,7 @@ def prepare_html(db_name):
         count=int(row[0])
     if ( count != 0 ) :
         fname="%s_bad.txt"%(db_name,)
-        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' order by date asc"
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' and unix_date<%d order by date asc"%(int(now_time-3600))
         cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
