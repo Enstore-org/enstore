@@ -451,9 +451,11 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
               else
                  rm -fr $INSTALLDIR
                  check_status $? "protections bad??  rm -fr $INSTALLDIR"
+		 mkdir -p $INSTALLDIR
+		 check_status $? "mkdir -p $INSTALLDIR"
               fi
 
-              if [ $product = "encp" ]; then
+              if [ $product = "encp" -o $product = 'encp_for_dcache' ]; then
 
                 mkdir -m 755 $INSTALLDIR/volume_import
 		chmod u+rwx $INSTALLDIR/volume_import
