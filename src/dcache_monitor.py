@@ -199,7 +199,10 @@ def prepare_html(db_name):
     # check for any bad files 
     #
     now_time       = time.time()
-    res=db.query("select count(*) from volatile_files where layer2='n' and unix_date<%d"%(int(now_time-3600)))
+    stmt="select count(*) from volatile_files where layer2='n' and unix_date<%d"%(int(now_time-3600))
+    if ( db_name == "netflow" ) :
+        stmt="select count(*) from volatile_files where layer2='n' and unix_date<%d"%(int(now_time-12*3600))
+    res=db.query(stmt)
     count=0
     for row in res.getresult():
         if not row:
@@ -256,6 +259,7 @@ if __name__ == '__main__':
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
     os.system(cmd)
 
+#    for db_name in ['minos']:
     for db_name in dbs:
         exitmutexes.append(0)
         do_work(i,db_name)
