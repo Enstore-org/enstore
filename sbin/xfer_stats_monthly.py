@@ -28,7 +28,9 @@ SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date betwee
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_day group by date order by date" # was xferby_month
 
 SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
-SELECT_WRITTEN_BYTES ="select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null'";
+SELECT_WRITTEN_BYTES ="select  substr(bfid,5,10), size, deleted  from file where  file.deleted = 'n' and file.volume in (select volume.id from volume where volume.media_type != 'null' and system_inhibit_0 != 'DELETED' ) "
+
+#select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null' and deleted='n'";
 
 def showError(msg):
     sys.stderr.write("Error: " + msg)
@@ -64,9 +66,9 @@ def get_sum(h) :
     for i in range(h.n_bins()) :
         sum = sum + h.get_bin_content(i)
     return sum
-
             
 exitmutexes=[]
+tape_exitmutexes=[]
 
 def fill_histograms(i,server_name,server_port,hlist):
     config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
@@ -91,6 +93,30 @@ def fill_histograms(i,server_name,server_port,hlist):
         h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[1]/TB)
     db.close()
     exitmutexes[i]=1
+
+def fill_tape_histograms(i,server_name,server_port,hlist):
+    config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
+    acc            = config_server_client.get("database", {})
+    db_server_name = acc.get('db_host')
+    db_name        = acc.get('dbname')
+    db_port        = acc.get('db_port')
+    name           = db_server_name.split('.')[0]
+    name=db_server_name.split('.')[0]
+#    print "we are in thread ",i,db_server_name,db_name,db_port
+    
+    h   = hlist[i]
+    
+    if db_port:
+        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
+    else:
+        db = pg.DB(host=db_server_name, dbname=db_name);
+    res=db.query(SELECT_WRITTEN_BYTES)
+    for row in res.getresult():
+        if not row:
+            continue
+        h.fill(float(row[0]),float(row[1])/TB)
+    db.close()
+    tape_exitmutexes[i]=1
 
 def plot_bpd():
     #
@@ -398,6 +424,136 @@ def plot_bytes():
     iplotters.append(iplotter1)
 
 
+
+    for p in plotters:
+        p.reshuffle()
+        tmp=p.get_histogram_list()[0]
+        tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        t_day = get_sum(tmp)
+
+        delta =  tmp.binarray[i_day_max]*0.05
+        
+        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
+                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
+                                                                                             tmp.binarray[i_day_max]+delta,))
+        
+#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#                                                                                             tmp.binarray[i_day_min]+delta,))
+
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
+#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+       
+        tmp.set_marker_type("impulses")
+        p.plot()
+
+    for p in iplotters:
+        p.reshuffle()
+        tmp=p.get_histogram_list()[0]
+        tmp.set_line_color(1)
+
+        t_day_min,i_day_min,t_day_max,i_day_max = get_min_max(tmp)
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .1,.8  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        
+        tmp.set_marker_type("impulses")
+        p.plot()
+
+def plot_tape_bytes():
+    #
+    # This function plots bytes written/deleted to/from Enstore base on data in file and volume tables
+    # from *ensrv0 postgress databases damn slow
+    #
+    intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    servers=[]
+    servers=csc.get('known_config_servers')
+    histograms=[]
+    
+    now_time    = time.time()
+    t           = time.ctime(time.time())
+    Y, M, D, h, m, s, wd, jd, dst = time.localtime(now_time)
+    start_day   = time.mktime((2001, 12, 31, 23, 59, 59, 0, 0, 0))
+    now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
+    nbins       = int((now_day-start_day)/(30.*24.*3600.)+0.5)
+#    Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
+
+
+    s1 = histogram.Histogram1D("on_tape_total_by_month","Total bytes on tape per month from Enstore",nbins,float(start_day),float(now_day))
+    s1.set_time_axis(True)
+    plotter1=histogram.Plotter("on_tape_total_by_month","Total TBytes on tape per month from Enstore")
+    s1_i = histogram.Histogram1D("on_tape_total_by_month","Integrated Total bytes on tape per month from Enstore",nbins,float(start_day),float(now_day))
+    s1_i.set_time_axis(True)
+    iplotter1=histogram.Plotter("integrated_on_tape_total_by_month","Integrated Total TBytes on tape per month from Enstore")
+
+    i = 0
+    color=1
+    for server in servers:
+        server_name,server_port = servers.get(server)
+#        if (server == "stken") : continue
+        if ( server_port != None ):
+
+            h   = histogram.Histogram1D("on_tape_by_month_%s"%(server,),"Total Bytes On Tape by Month By %s"%(server,),nbins,float(start_day),float(now_day))
+            decorate(h,color,"TB/month",server)
+            histograms.append(h)
+            
+            tape_exitmutexes.append(0)
+            thread.start_new(fill_tape_histograms, (i,server_name,server_port,histograms))
+            i=i+1
+            color=color+1
+
+    while 0 in tape_exitmutexes: pass
+    
+    i = 0
+    for i in range(len(histograms)):
+        h1  = histograms[i]
+        color = i + 2
+        tmp=s1+h1
+        tmp.set_name("on_tape_monthly_%s"%(h1.get_marker_text(),))
+        tmp.set_data_file_name("on_tape_monthly_%s"%(h1.get_marker_text(),))
+        tmp.set_marker_text(h1.get_marker_text())
+        tmp.set_time_axis(True)
+        tmp.set_ylabel(h1.get_ylabel())
+        tmp.set_marker_type(h1.get_marker_type())
+        tmp.set_line_color(color)
+        tmp.set_line_width(20)
+        plotter1.add(tmp)
+        s1=tmp
+
+
+        integral1 = h1.integral()
+
+        integral1.set_marker_text(h1.get_marker_text())
+        integral1.set_marker_type("impulses")
+        integral1.set_ylabel("TB");
+
+        tmp=s1_i+integral1
+        tmp.set_name("integrated_on_tape_monthly_%s"%(h1.get_marker_text(),))
+        tmp.set_data_file_name("integrated_on_tape_monthly_%s"%(h1.get_marker_text(),))
+        tmp.set_marker_text(h1.get_marker_text())
+        tmp.set_time_axis(True)
+        tmp.set_ylabel(h1.get_ylabel())
+        tmp.set_marker_type(h1.get_marker_type())
+        tmp.set_line_color(color)
+        tmp.set_line_width(20)
+        iplotter1.add(tmp)
+        s1_i=tmp
+
+        i=i+1
+
+    plotters=[]
+    plotters.append(plotter1)
+    
+    iplotters=[]
+    iplotters.append(iplotter1)
+
+
+
     for p in plotters:
         p.reshuffle()
         tmp=p.get_histogram_list()[0]
@@ -440,6 +596,7 @@ def plot_bytes():
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
+    plot_tape_bytes()
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
     os.system(cmd)
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
