@@ -28,7 +28,7 @@ complain=1
 
 # default for environment variables with a default
 ENSTORE_MAIL=enstore-auto@fnal.gov
-if [ `whoami` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
+if [ `logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
@@ -87,8 +87,8 @@ case $node in
 	    ENSTORE_CONFIG_FILE=berman.conf
             complain=0
             ;;
-  odyssey)  complain=0
-            ;;
+#  odyssey)  complain=0
+#            ;;
   woodlawn) #Chih-Hao Huang's Desktop
 	    ENSTORE_MAIL=huangch@fnal.gov
             ENSTORE_CONFIG_HOST=$woodlawn
