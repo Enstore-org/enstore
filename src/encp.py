@@ -7960,7 +7960,13 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #    p = pnfs.Pnfs(ifullname)
             #    bfid = p.get_bit_file_id()
 
-            bfid = p.get_bit_file_id(ifullname)
+            try:
+                bfid = p.get_bit_file_id(ifullname)
+            except IOError, msg:
+                #If this didn't exist, we should return the correct name.
+                if msg.args[0] == errno.ENOENT:
+                    raise IOError(errno.ENOENT, "%s: %s" % \
+                                  (os.strerror(errno.ENOENT), ifullname))
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
             read_work = 'read_from_hsm'
