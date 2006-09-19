@@ -199,6 +199,13 @@ class ConfigurationClient(generic_client.GenericClient):
             ret['port'] = enstore_constants.MONITOR_PORT
         ##END HACK.
 
+        if ret['status'][0] == e_errors.KEYERROR:
+            import traceback
+            Trace.log(e_errors.INFO, "Key %s requested from:" % (key,))
+            # log it
+            for l in traceback.format_stack():
+                Trace.log(e_errors.INFO, l)
+                
         return ret
 
     # dump the configuration dictionary
