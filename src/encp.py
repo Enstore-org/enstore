@@ -2375,29 +2375,41 @@ def get_udp_callback_addr(encp_intf, udps=None):
 
 ##############################################################################
 
+def _get_stat(pathname):
+    __pychecker__="unusednames=i"
+     
+    for i in [0, 1, 2, 3, 4]:
+        try:
+            statinfo = os.stat(pathname)
+            return statinfo
+        except (OSError, IOError), msg:
+            if msg.args[0] in [errno.EIO, errno.ENOENT]:
+                time.sleep(1)
+                continue
+            else:
+                raise msg
+
+    raise msg
+
 def get_stat(filename):
     #global pnfs_is_automounted
     
-    __pychecker__="unusednames=i"
-
     pathname = os.path.abspath(filename)
 
     try:
-        statinfo = os.stat(pathname)
+        statinfo = _get_stat(pathname)
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) == errno.ENOENT:
-            if __is_pnfs_local_path(pathname, check_name_only = 1):
-                #Sometimes when using pnfs mounted locally the NFS client times
-                # out and gives the application the error ENOENT.  When in
-                # reality the file is fine when asked some time later.
-                for i in range(5):
-                    try:
-                        statinfo = os.stat(pathname)
-                        return statinfo
-                    except (OSError, IOError):
-                        time.sleep(1)
-            elif __is_pnfs_remote_path(pathname, check_name_only = 1):
+            #if __is_pnfs_local_path(pathname, check_name_only = 1):
+            #    #Sometimes when using pnfs mounted locally the NFS client times
+            #    # out and gives the application the error ENOENT.  When in
+            #    # reality the file is fine when asked some time later.
+            #    statinfo = _get_stat(pathname)
+            #    return statinfo
+            #el
+            if os.environ.get('REMOTE_ENCP') != None and \
+                   __is_pnfs_remote_path(pathname, check_name_only = 1):
                 #Also, when using the pnfs_agent, we will get ENOENT becuase
                 # locally the file will not exist.
                 pac = get_pac()
@@ -6962,7 +6974,8 @@ def verify_read_request_consistancy(requests_per_vol, e):
             msg = "Error insuring consistancy with request list for " \
                   "volume %s." % (vol,)
             status = (e_errors.CONFLICT, msg)
-            raise EncpError(None, msg, e_errors.CONFLICT, {'status':status})
+            raise EncpError(None, str(msg), e_errors.CONFLICT,
+                            {'status':status})
             #print_data_access_layer_format("", "", 0, {'status':status})
             #quit() #Harsh, but necessary.
             
@@ -6984,12 +6997,31 @@ def verify_read_request_consistancy(requests_per_vol, e):
 
             if request['infile'] not in ["/dev/zero",
                                          "/dev/random", "/dev/urandom"]:
-                inputfile_check(request['infile'], e)
-                                
+                try:
+                    inputfile_check(request['infile'], e)
+                except IOError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                except OSError, msg:
+                    raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                    {'infile' : request['infile'],
+                                     'outfile' : request['outfile']})
+                
             if request['outfile'] not in ["/dev/null", "/dev/zero",
                                           "/dev/random", "/dev/urandom"]:
                 if not request.get('local_inode', None):
-                    outputfile_check(request['infile'], request['outfile'], e)
+                    try:
+                        outputfile_check(request['infile'],
+                                         request['outfile'], e)
+                    except IOError, msg:
+                        raise EncpError(msg.args, str(msg), e_errors.IOERROR,
+                                        {'infile' : request['infile'],
+                                         'outfile' : request['outfile']})
+                    except OSError, msg:
+                        raise EncpError(msg.args, str(msg), e_errors.OSERROR,
+                                        {'infile' : request['infile'],
+                                         'outfile' : request['outfile']})
                 
                 #This block of code makes sure the the user is not moving
                 # two files with the same basename in different directories
