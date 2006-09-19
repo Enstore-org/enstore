@@ -549,9 +549,12 @@ class Histogram1D:
             h.set_title(title)
         h.set_data_file_name("%s_data.pts"%(h.name,))
         r_sum = self.get_bin_content(0)
+        stop = 0;
         for i in range(self.nbins):
-            if (self.get_time_axis()) : 
-                if (self.get_bin_center(i+1) >  time.time()): continue
+            if (self.get_time_axis()) :
+                if ( stop == 1 ) : continue
+                if (0.5*(self.get_bin_center(i+1)+self.get_bin_center(i))>time.time()):
+                    stop=1
             y      = self.get_bin_content(i)
             r_sum  = r_sum + y
             h.binarray[i]=r_sum
