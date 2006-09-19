@@ -551,7 +551,7 @@ class Histogram1D:
         r_sum = self.get_bin_content(0)
         for i in range(self.nbins):
             if (self.get_time_axis()) : 
-                if (self.get_bin_center(i) >  time.time()): continue
+                if (self.get_bin_center(i+1) >  time.time()): continue
             y      = self.get_bin_content(i)
             r_sum  = r_sum + y
             h.binarray[i]=r_sum
@@ -1278,9 +1278,13 @@ if __name__ == "__main__":
     ntuple.get_data_file().close()
     ntuple.set_line_color(2)
     ntuple.set_line_width(5)
-    ntuple.set_marker_type("points pt 5")
+    ntuple.set_marker_type("points pt 1 ps 10 ") 
+#   ntuple.set_marker_type("points pt 5")
+
+
     ntuple.plot("1:2")
     hh.plot()
+#    sys.exit(0)
 #    hh.plot_ascii()
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
     h1.set_xlabel("x variable")
@@ -1292,13 +1296,18 @@ if __name__ == "__main__":
     t = time.ctime(time.time()) 
     h1.add_text("set label \"Plotted %s \" at graph .99,0 rotate font \"Helvetica,10\"\n"% (t,))
     h1.add_text("set label \"Should %s, Done %s(%3.1f%%), Not Done %s.\" at graph .05,.90\n" % (100,100,0.7,100))
+    
 
     derivative = h1.derivative()
     derivative.plot()
     os.system("display %s.jpg&"%(derivative.get_name()))
 
+    integral = h1.integral("integral","integral",True);
+    integral.plot();
+
     h1.plot()
     os.system("display %s.jpg&"%(h1.get_name()))
+    sys.exit(0)
 
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")
