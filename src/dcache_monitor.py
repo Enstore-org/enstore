@@ -236,6 +236,7 @@ def prepare_html(db_name):
             
 def do_work(i,db_name) :
     try:
+        print "Doiing database ",db_name
         check_volatile_files(db_name)
         insert_into_volatile_files(db_name)
         prepare_html(db_name)
