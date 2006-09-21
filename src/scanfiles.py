@@ -1719,7 +1719,15 @@ if __name__ == '__main__':
          intf_of_scanfiles.config_port))
 
     #Get the list of library managers.
-    lm = csc.get_library_managers().keys()
+    #    This old way had the disadvantage that if you wanted to run
+    #      offline database scans you needed to have fully configured
+    #      libraries in the offline config file instead of just stubs.
+    #    lm = csc.get_library_managers().keys()
+    lm = []
+    config_dict = csc.dump_and_save()
+    for item in config_dict.keys():
+        if item[-16:] == ".library_manager":
+            lm.append(item[:-16])
 
     infc = info_client.infoClient(csc)
 
