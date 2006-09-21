@@ -103,7 +103,7 @@ def main():
         histograms.append(h1)
         histograms.append(h2)
         histograms.append(h3)
-        db.close()
+    db.close()
 
     for hist in histograms:
         if (hist.n_entries()>0) :
@@ -113,6 +113,6 @@ if __name__ == "__main__":
     try:
         main()
     except:
-        print "Failed to execut "
+        print "Failed to execute "
         sys.exit(1);
         
