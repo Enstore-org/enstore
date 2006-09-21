@@ -1462,7 +1462,7 @@ def check_file(f, file_info):
         # File Family check.  Take care of MIGRATION, too.
         if layer4['file_family'] != file_family and \
             layer4['file_family'] + '-MIGRATION' != file_family:
-            err.append('file_family(%s, %s)' % (layer4['file_family'],
+            info.append('file_family(%s, %s)' % (layer4['file_family'],
                                                 file_family))
         # Library Manager check.
         if library not in lm:
