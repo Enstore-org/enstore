@@ -45,14 +45,15 @@ def main():
     db_server_name = acc.get('db_host')
     db_name        = acc.get('dbname')
     db_port        = acc.get('db_port')
-    
+
+    storage_groups = []
     if db_port:
         db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
     else:
         db = pg.DB(host=db_server_name, dbname=db_name);
-
+        
     res=db.query("select distinct(storage_group) from volume")
-    storage_groups = []
+
     for row in res.getresult():
         if not row:
             continue
@@ -102,12 +103,16 @@ def main():
         histograms.append(h1)
         histograms.append(h2)
         histograms.append(h3)
-
-    db.close()
+        db.close()
 
     for hist in histograms:
         if (hist.n_entries()>0) :
             hist.plot()
     sys.exit(0)
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        print "Failed to execut "
+        sys.exit(1);
+        
