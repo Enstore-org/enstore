@@ -159,6 +159,94 @@ DATABASEHOST = 'stkensrv6.fnal.gov'
 DATABASEPORT = 5432;
 DATABASENAME = 'operation'
 
+# This is a hard wired configuration
+def library_type(cluster, lib):
+	if cluster == 'D0':
+		if lib == 'samlto' or lib == 'samlto2':
+			return 'aml2'
+		if lib == '9940' or lib == 'D0-9940B' or lib == 'mezsilo':
+			return 'stk'
+	elif cluster == 'STK':
+		if lib == '9940' or lib == 'CD-9940B':
+			return 'stk'
+	elif cluster == 'CDF':
+		if lib == '9940' or lib == 'CDF-9940B' or lib == 'cdf':
+			return 'stk'
+		if lib == 'CDF-LTO3':
+			return 'sl8500'
+	elif cluster == 'GCC':
+		if lib == 'LTO3':
+			return 'sl8500'
+	else:
+		return None
+	return None
+
+# get_cluster(host) -- determine current cluster
+def get_cluster(host):
+	if host[:2] == 'd0':
+		return 'D0'
+	elif host[:3] == 'stk':
+		return 'STK'
+	elif host[:3] == 'cdf':
+		return 'CDF'
+	elif host[:3] == 'gcc':
+		return 'GCC'
+	else:
+		return None
+
+# get_script_host(cluster) -- determine stript host
+def get_script_host(cluster):
+	if cluster.upper()[:2] == 'D0':
+		return 'd0ensrv4.fnal.gov'
+	elif cluster.upper()[:3] == 'STK':
+		return 'stkensrv4.fnal.gov'
+	elif cluster.upper()[:3] == 'CDF':
+		return 'cdfensrv4.fnal.gov'
+	elif cluster.upper()[:3] == 'GCC':
+		return 'gccensrv2.fnal.gov'
+	else:
+		return 'localhost'
+
+# get_write_protect_script_path(library_type) -- determine script path
+def get_write_protect_script_path(lib_type):
+	if lib_type == 'stk':
+		return  '/home/enstore/isa-tools/write_protect_work'
+	elif lib_type ==  'aml2':
+		return '/home/enstore/isa-tools/adic_write_protect_work'
+	else:
+		return '/tmp'
+
+# get_write_permit_script_path(library_type) -- determine script path
+def get_write_permit_script_path(lib_type):
+	if lib_type == 'stk':
+		return  '/home/enstore/isa-tools/write_permit_work'
+	elif lib_type ==  'aml2':
+		return '/home/enstore/isa-tools/adic_write_permit_work'
+	else:
+		return '/tmp'
+
+# get_default_library(cluster)
+def get_default_library(cluster):
+	if cluster == 'STK':
+		return "9940,CD-9940B"
+	elif cluster == 'CDF':
+		return "cdf,CDF-9940B"
+	elif cluster == 'D0':
+		return "mezsilo,D0-9940B"
+	elif cluster == 'GCC':
+		return "LTO3"
+	else:
+		return "unknown"
+
+# get_qualifier(library_type) -- determine name qualifier
+def get_qualifier(lib_type):
+	if lib_type == 'aml2':
+		return 'a'
+	elif lib_type == 'sl8500':
+		return 's'
+	else:
+		return ''
+
 #WRITE_PROTECT_SCRIPT_PATH = '/write_protect_work'
 #WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
 WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/write_protect_work'
@@ -166,25 +254,15 @@ WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/write_permit_work'
 ADIC_WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_protect_work'
 ADIC_WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_permit_work'
 
-DEFAULT_LIBRARIES = "9940,CD-9940B,D0-9940B,cdf,CDF-9940B"
+# DEFAULT_LIBRARIES = "9940,CD-9940B,D0-9940B,cdf,CDF-9940B"
 
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 enstoredb = csc.get('database')
 
-# determine the cluster
-if enstoredb['db_host'][:2] == 'd0':
-	cluster = 'D0'
-	script_host = 'd0ensrv4.fnal.gov'
-elif enstoredb['db_host'][:3] == 'stk':
-	cluster = 'STK'
-	script_host = 'stkensrv4.fnal.gov'
-elif enstoredb['db_host'][:3] == 'cdf':
-	cluster = 'CDF'
-	script_host = 'cdfensrv4.fnal.gov'
-else:
-	cluster = 'UNK'
-	script_host = 'localhost'
+cluster = get_cluster(enstoredb['db_host'])
+script_host = get_script_host(cluster)
+DEFAULT_LIBRARIES = get_default_library(cluster)
 
 # get_db() -- initialize a database connection
 def get_db():
@@ -888,14 +966,80 @@ def help(topic=None):
 def even(i):
 	return int(i/2)*2 == i
 
+# get_caps_per_ticket(lib_type) -- determine caps per ticket
+def caps_per_ticket(lib_type):
+	if lib_type == 'stk':
+		return 10
+	elif lib_type == 'aml2':
+		return 7
+	elif lib_type == 'sl8500':
+		return 16
+	else:
+		return None
+
+def volumes_per_cap(lib_type):
+	if lib_type == 'stk':
+		return 21
+	elif lib_type == 'aml2':
+		return 30
+	elif lib_type == 'sl8500':
+		return 13
+	else:
+		return None
+
+# same_tape_library(libs) -- check if all library are using the same robot
+def same_tape_library(libs):
+	l = libs.split(",")
+	t = library_type(cluster, l[0])
+	for i in l[1:]:
+		if library_type(cluster, i) != t:
+			return None
+	return t
+
+# dump() -- dump all global variables
+def dump():
+	for i in __builtins__.globals().keys():
+		if i[:2] == '__':	# internal
+			continue
+		if type(__builtins__.globals()[i]) == type(1) or \
+			type(__builtins__.globals()[i]) == type(1.0) or \
+			type(__builtins__.globals()[i]) == type("") or \
+			type(__builtins__.globals()[i]) == type({}) or \
+			type(__builtins__.globals()[i]) == type([]):
+			print i, '=',
+			pprint.pprint(__builtins__.globals()[i])
+
 # complex operations
 
 CAPS_PER_TICKET = 10
 VOLUMES_PER_CAP = 21
 
-def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=None):
+	# check if they are of the same robot
+	lt = same_tape_library(library)
+	if not lt:
+		print "Error: %s are not the same robot"%(library)
+		return {}
+
+	CAPS_PER_TICKET = caps_per_ticket(lt)
+	VOLUMES_PER_CAP = volumes_per_cap(lt)
+
+	# take care of limit:
+	# if limit == None: limit = default
+	# if limit == 0: no limit
+	# if limit == n, let it be n
+
+	if limit == None:	# use default
+		limit = CAPS_PER_TICKET * VOLUMES_PER_CAP
+
+	if lt == 'aml2':
+		op = 'aWP'
+	elif lt == 'sl8500':
+		op = 'sWP'
+	else:
+		op = 'WP'
 	# get max cap number
-	n = get_max_cap_number(cluster, 'WP') + 1
+	n = get_max_cap_number(cluster, op) + 1
 	# get exclusion list:
 	q = "select object from object, job \
 		where \
@@ -963,9 +1107,32 @@ def recommend_write_protect_job(library=DEFAULT_LIBRARIES, limit=VOLUMES_PER_CAP
 			cap_n = cap_n + 1
 	return job
 
-def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit = VOLUMES_PER_CAP*CAPS_PER_TICKET):
+def recommend_write_permit_job(library=DEFAULT_LIBRARIES, limit=None):
+	# check if they are of the same robot
+	lt = same_tape_library(library)
+	if not lt:
+		print "Error: %s are not the same robot"%(library)
+		return {}
+
+	CAPS_PER_TICKET = caps_per_ticket(lt)
+	VOLUMES_PER_CAP = volumes_per_cap(lt)
+
+	# take care of limit:
+	# if limit == None: limit = default
+	# if limit == 0: no limit
+	# if limit == n, let it be n
+	if limit == None:       # use default
+		limit = CAPS_PER_TICKET * VOLUMES_PER_CAP
+
+	if lt == 'aml2':
+		op = 'aWE'
+	elif lt == 'sl8500':
+		op = 'sWE'
+	else:
+		op = 'WE'
+
 	# get max cap number
-	n = get_max_cap_number(cluster, 'WE') + 1
+	n = get_max_cap_number(cluster, op) + 1
 	# get exclusion list:
 	q = "select object from object, job \
 		where \
@@ -1044,20 +1211,36 @@ def make_cap_args(d):
 	return res
 
 # make_cap(list)
-def make_cap(l):
-	if cluster == "D0":
-		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 1,0,0 "
-	elif cluster == "STK":
-		cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
-	elif cluster == "CDF":
-		cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,1,0 "
-	else:
-		return None
-	for i in l:
-		cap_script = cap_script + ' ' + i
-	cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'"
+def make_cap(l, library_type='stk'):
+	cap_script = ""
+	if library_type == 'stk':
+		if cluster == "D0":
+			cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 1,0,0 "
+		elif cluster == "STK":
+			cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
+		elif cluster == "CDF":
+			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,1,0 "
+		else:
+			return None
+		for i in l:
+			cap_script = cap_script + ' ' + i
+		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
+	elif library_type == 'aml2':
+		cap_script = ''
+		count = 0
+		for i in l:
+			if count == 0:
+				cap_script = cap_script + "dasadmin eject -t 3480 "+ i
+			else:
+				cap_script = cap_script +','+ i
+			count = count + 1
+			if count == 10:
+				cap_script = cap_script + ' E03\n'
+				count = 0
+		if count != 0:
+			cap_script = cap_script + ' E03\n'
 	return cap_script
-
+				
 # get_max_cap_number(cluster)
 def get_max_cap_number(cluster, op_type=''):
 	q = "select max(to_number(substr(association, 4), 'FM999999')) \
@@ -1065,21 +1248,22 @@ def get_max_cap_number(cluster, op_type=''):
 		where name like '%s%s%%' and object.job = job.id;"%(
 		cluster, op_type)
 	res = db.query(q).getresult()
-	if res:
+	if res[0][0]:
 		return int(res[0][0])
 	else:
 		return 0
 
-def make_help_desk_ticket(n, cluster, script_host, job):
+def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
 	if job == "protect":
 		action = "lock"
 	elif job == "permit":
 		action = "unlock"
 	else:
 		action = "do not touch"
+	VOLUMES_PER_CAP = volumes_per_cap(library_type)
 	system_name = script_host
 	short_message = "write %s %d tapes (flip tabs) in %s silos"%(job, n, cluster.lower()+'en')
-	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore silos.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster)
+	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
 	submitter = "MSS"
 	user = "MSS"
 	password = "2p9u6c"
@@ -1159,7 +1343,10 @@ def execute(args):
 
 	cmd = args[0]
 
-	if cmd == "list": # list all job
+	if cmd == "dump": # dump all global variables
+		dump()
+		return
+	elif cmd == "list": # list all job
 		if n_args < 2 or args[1] == 'all':
 			q = "select job.id, job.name, \
 				job_definition.name as job, start, \
@@ -1207,10 +1394,25 @@ def execute(args):
 			if debug:
 				print q
 			return db.query(q)
+		elif args[1] == 'recent':
+			if len(args) > 2:
+				limit = int(args[2])
+			else:
+				limit = 20
+			q = "select job.id, job.name, \
+				job_definition.name as job, start, \
+				finish, comment \
+				from job, job_definition where \
+					job.type = job_definition.id \
+				order by job.start desc limit %d;"%(
+				limit)
+			if debug:
+				print q
+			return db.query(q)
 		else:
-			or_stmt = "job.name = '%s' "%(args[1])
+			or_stmt = "job.name like '%s' "%(args[1])
 			for i in args[2:]:
-				or_stmt = or_stmt + "or job.name = '%s' "%(i)
+				or_stmt = or_stmt + "or job.name like '%s' "%(i)
 			q = "select job.id, job.name, \
 				job_definition.name as job, start, \
 				finish, comment \
@@ -1246,9 +1448,17 @@ def execute(args):
 				res = recommend_write_protect_job(args[1])
 		else:
 			res = recommend_write_protect_job()
+
 		# create job
 		if res:
-			job_name = cluster+'WP'+`min(res.keys())`+'-'+`max(res.keys())`
+			# get the qualifier
+			if len(args) > 1:
+				lt = library_type(cluster,args[1].split(',')[0])
+			else:
+				lt = library_type(cluster, get_default_library(cluster).split(',')[0])
+			qf = get_qualifier(lt)
+
+			job_name = cluster+qf+'WP'+`min(res.keys())`+'-'+`max(res.keys())`
 			create_write_protect_on_job(job_name, make_cap_args(res), 'AUTO-GENERATED')
 			# clean up temp directory
 			clean_up_temp_dir()
@@ -1256,14 +1466,13 @@ def execute(args):
 			for i in res.keys():
 				total = total + len(res[i])
 				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-				f.write(make_cap(res[i]))
-				f.write('\n')
+				f.write(make_cap(res[i], lt))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				WRITE_PROTECT_SCRIPT_PATH)
 			print cc
 			os.system(cc)
-			cc = make_help_desk_ticket(total, cluster, script_host, 'protect')
+			cc = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
 			print cc
 			# use popen to get the ticket number
 			rem_res = os.popen(cc, 'r').readlines()
@@ -1291,7 +1500,13 @@ def execute(args):
 			res = recommend_write_permit_job()
 		if res:
 			# create job
-			job_name = cluster+'WE'+`min(res.keys())`+'-'+`max(res.keys())`
+			if len(args) > 1:
+				lt = library_type(cluster,args[1].split(',')[0])
+			else:
+				lt = library_type(cluster, get_default_library(cluster).split(',')[0])
+			qf = get_qualifier(lt)
+
+			job_name = cluster+qf+'WE'+`min(res.keys())`+'-'+`max(res.keys())`
 			create_write_protect_off_job(job_name, make_cap_args(res), 'AUTO-GENERATED')
 			# clean up temp directory
 			clean_up_temp_dir()
@@ -1299,14 +1514,13 @@ def execute(args):
 			for i in res.keys():
 				total = total + len(res[i])
 				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-				f.write(make_cap(res[i]))
-				f.write('\n')
+				f.write(make_cap(res[i], lt))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				WRITE_PERMIT_SCRIPT_PATH)
 			print cc
 			os.system(cc)
-			cc = make_help_desk_ticket(total, cluster, script_host, 'permit')
+			cc = make_help_desk_ticket(total, cluster, script_host, 'permit', lt)
 			print cc
 			# use popen to get the ticket number
 			rem_res = os.popen(cc, 'r').readlines()
