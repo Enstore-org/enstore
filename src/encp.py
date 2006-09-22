@@ -2383,6 +2383,10 @@ def _get_stat(pathname):
             statinfo = os.stat(pathname)
             return statinfo
         except (OSError, IOError), msg:
+            #Historically all systems have returned ENOENT falsely when
+            # a timeout occured and the file really did exist.  This also,
+            # happens a lot if pnfs is automounted. One node, flxi04,
+            # appears to be throwing EIO instead for these cases.
             if msg.args[0] in [errno.EIO, errno.ENOENT]:
                 time.sleep(1)
                 continue
@@ -2392,23 +2396,29 @@ def _get_stat(pathname):
     raise msg
 
 def get_stat(filename):
-    #global pnfs_is_automounted
+    global pnfs_is_automounted
     
     pathname = os.path.abspath(filename)
 
     try:
-        statinfo = _get_stat(pathname)
+        #This is intentionally left as an os.stat().  For the case of
+        # using the pnfs_agent it doesn't make sense to fail N times
+        # here.  Thus, we fail after one time, fall into the exception
+        # handling were we either retry the stat (because pnfs is not
+        # robust) or we need to ask the pnfs_agent.
+        statinfo = os.stat(pathname)
         return statinfo
     except (OSError, IOError), msg:
-        if getattr(msg, "errno", None) == errno.ENOENT:
-            #if __is_pnfs_local_path(pathname, check_name_only = 1):
-            #    #Sometimes when using pnfs mounted locally the NFS client times
-            #    # out and gives the application the error ENOENT.  When in
-            #    # reality the file is fine when asked some time later.
-            #    statinfo = _get_stat(pathname)
-            #    return statinfo
-            #el
-            if os.environ.get('REMOTE_ENCP') != None and \
+        if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
+            if pnfs_is_automounted or \
+                     __is_pnfs_local_path(pathname, check_name_only = 1):
+                #Sometimes when using pnfs mounted locally the NFS client times
+                # out and gives the application the error ENOENT.  When in
+                # reality the file is fine when asked some time later.
+                # Automounting pnfs can cause timeout problems too.
+                statinfo = _get_stat(pathname)
+                return statinfo
+            elif os.environ.get('REMOTE_ENCP') != None and \
                    __is_pnfs_remote_path(pathname, check_name_only = 1):
                 #Also, when using the pnfs_agent, we will get ENOENT becuase
                 # locally the file will not exist.
