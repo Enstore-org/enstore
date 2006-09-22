@@ -226,15 +226,18 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     return rtn  #Always False
 
 def __is_pnfs_remote_path(filename, check_name_only = None):
-    pac = get_pac()
-    rtn = pac.is_pnfs_path(filename, check_name_only = check_name_only)
+    if pnfs_agent_client_requested or os.environ.get('REMOTE_ENCP') != None:
+        pac = get_pac()
+        rtn = pac.is_pnfs_path(filename, check_name_only = check_name_only)
 
-    if check_name_only:
-        #If we get here we only want to determine if the filesystem is
-        # valid pnfs filesystem.  Not whether the target actually exists.
-        return rtn
+        if check_name_only:
+            #If we get here we only want to determine if the filesystem is
+            # valid pnfs filesystem.  Not whether the target actually exists.
+            return rtn
 
-    return pac.e_access(filename, os.F_OK)
+        return pac.e_access(filename, os.F_OK)
+
+    return False
 
 ############################################################################
 
@@ -611,7 +614,9 @@ def get_directory_name(filepath):
             parent_id = f.readlines()[0].strip()
             f.close()
         except OSError, msg:
-            if msg.args[0] == errno.ENOENT:
+            if msg.args[0] == errno.ENOENT and \
+                   (pnfs_agent_client_requested or
+                    os.environ.get('REMOTE_ENCP') != None):
                 pac = get_pac()
                 parent_id = pac.get_parent_id(pnfsid)
                 if not parent_id: #Does this work to catch errors?
@@ -2406,7 +2411,10 @@ def get_stat(filename):
         # here.  Thus, we fail after one time, fall into the exception
         # handling were we either retry the stat (because pnfs is not
         # robust) or we need to ask the pnfs_agent.
-        statinfo = os.stat(pathname)
+        if pnfs_agent_client_requested:
+            raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
+        else:
+            statinfo = os.stat(pathname)
         return statinfo
     except (OSError, IOError), msg:
         if getattr(msg, "errno", None) in [errno.ENOENT, errno.EIO]:
@@ -2418,8 +2426,7 @@ def get_stat(filename):
                 # Automounting pnfs can cause timeout problems too.
                 statinfo = _get_stat(pathname)
                 return statinfo
-            elif os.environ.get('REMOTE_ENCP') != None and \
-                   __is_pnfs_remote_path(pathname, check_name_only = 1):
+            elif __is_pnfs_remote_path(pathname, check_name_only = 1):
                 #Also, when using the pnfs_agent, we will get ENOENT becuase
                 # locally the file will not exist.
                 pac = get_pac()
@@ -2623,8 +2630,7 @@ def access_check(path, mode):
 
     #Before giving up that this is a pnfs file, ask the pnfs_agent.
     # Is there a more performance efficent way?
-    r_encp = os.environ.get('REMOTE_ENCP')
-    if r_encp != None:
+    if pnfs_agent_client_requested or os.environ.get('REMOTE_ENCP') != None:
         pac = get_pac()
         return  pac.e_access(path, mode)
 
