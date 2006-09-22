@@ -46,6 +46,8 @@ def main():
     db_name        = acc.get('dbname')
     db_port        = acc.get('db_port')
 
+    print db_server_name, db_name, db_port
+  
     storage_groups = []
     if db_port:
         db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
@@ -114,5 +116,5 @@ if __name__ == "__main__":
         main()
     except:
         print "Failed to execute "
-        sys.exit(1);
+        sys.exit(0);
         
