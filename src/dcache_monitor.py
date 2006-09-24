@@ -156,14 +156,18 @@ def insert_into_volatile_files(db_name):
             h1=l1+2
             pnfsid_string=pnfsid_string+p[l:h]+p[l1:h1]
         pnfsid_string=string.upper(pnfsid_string)
-        f=open(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
         is_file=0
         dbnum=0
-        for line in f.readlines():
-            data = string.split(line[:-1],":")
-            if ( is_file == 0 and data[0].strip(" ") == "Type" and data[1].strip(" ") == "--I---r----" ) :
-                is_file=1
-        f.close()
+        try: 
+            f=open(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
+        except IOError:
+            print 'cannot open', os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,))
+        else:
+            for line in f.readlines():
+                data = string.split(line[:-1],":")
+                if ( is_file == 0 and data[0].strip(" ") == "Type" and data[1].strip(" ") == "--I---r----" ) :
+                    is_file=1
+            f.close()
         if ( is_file == 1 ) :
             try: 
                 p=pnfs.Pnfs(pnfsid_string,"/pnfs/fs/usr/%s"%(db_name,));
@@ -236,10 +240,16 @@ def prepare_html(db_name):
             
 def do_work(i,db_name) :
     try:
-        print "Doiing database ",db_name
         check_volatile_files(db_name)
-        insert_into_volatile_files(db_name)
+        print "checked volatile ",db_name
+        try:
+            insert_into_volatile_files(db_name)
+        except:
+            print "Excepted in the insert_volatile"
+            print "Unexpected error:", sys.exc_info()[0]
+        print "inserted into volatile ",db_name
         prepare_html(db_name)
+        print "prepared html  volatile ",db_name
     except (pg.ProgrammingError,OSError, IOError):
         pass
     exitmutexes[i]=1
@@ -257,7 +267,7 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
+#    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
     os.system(cmd)
 
 #    for db_name in ['minos']:
