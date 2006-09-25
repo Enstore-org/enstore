@@ -70,7 +70,7 @@ get_ports() {
     strong_port=$kerberosFtpPort
     weak_port=$ftpPort
     cert_port=2811
-    srm_port=$srmPort1
+    srm_port=${srmPort1:-${srmPort}}
 }
 
 # assume success exit code

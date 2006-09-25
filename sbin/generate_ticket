@@ -1,4 +1,20 @@
 #!/bin/sh
+
+# INPUTS:
+# <system_name> <condition> <short_msg> <long_msg> [submitter user password category type item]
+#
+# system_name : node on which error occurred (must match in Remedy to generate workflow))
+# condition   : error condition (must match in Remedy to generate work flow)
+# short_msg   : error details
+# long_msg    : more error details
+# submitter   : submitter of ticket  ('MSS' for mass storage system)
+# user        : user known to Remedy ('MSS' for mass storage system)
+# password    : password to be able to access rememdy ('2p9u6c' for mass storage system)
+# category    : category of ticket ('MSS' for mass storage system)
+# type        : type of error within the category ('STK Enstore' or 'D0 Enstore' or 'CDF Enstore' for MSS)
+# item        : item within the type 
+#
+
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
@@ -14,6 +30,11 @@ then
 	echo "enstore alarm --raise --root_error 'remedy_api product missing or not current' --severity E"|at now+1min
 else
 	# make sure we have enough inputs, either 4 or 10
+	# the inputs are -
+	# create_entry  <remedy_server> <system_name> <condition> <short_msg> <long_msg> [submitter user password category type item]
+	#
+	# if the last parameters are defaulted, then NGOP defaults are used.
+	#
 	if [ "$#" = "4" ];
 	then
 		$REMEDY_API_DIR/bin/create_entry $remedy_server $1 $2 $3 $4

@@ -2,6 +2,13 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+checkModTime () {
+    dataFile = $1
+    today=`date +'%b %e'`
+    mtime=`ls -l ${dataFile}*`|grep "$today"
+    return $?
+}
+
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 ttt=`which gang >/dev/null 2>&1`
 if [ $? -eq 0 ];
@@ -48,6 +55,8 @@ lastmonth=`date -d '1 month ago' +'%Y-%m-%d:00:01'`
 tomorrow=`date -d '1 day' +'%Y-%m-%d:00:01'`
 lastmonday=`date -d 'last monday' +'%Y-%m-%d:00:01'`
 
+blankH="/root/blankHISTOGRAM"
+
 for i in *; do
   echo $i ..............................................
   cd $base/$i
@@ -70,6 +79,12 @@ for i in *; do
 	lastweek=$last1week; 
      fi
      echo generating plot for $i/$f
+     rtn=`checkModTime $i/$f.ps`
+     if [ "$rtn" = "1" ];
+     then
+	# the date of the files was earlier than today, they are out of date
+	j=$blankH
+     fi
      file=`mktemp /tmp/cronplot.XXXXXXXX`
      file2=`mktemp /tmp/cronplot2.XXXXXXXX`
      pt=`python $ENSTORE_DIR/src/get_cron_title.py $f`
