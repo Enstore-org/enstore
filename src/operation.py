@@ -213,6 +213,8 @@ def get_write_protect_script_path(lib_type):
 		return  '/home/enstore/isa-tools/write_protect_work'
 	elif lib_type ==  'aml2':
 		return '/home/enstore/isa-tools/adic_write_protect_work'
+	elif lib_type == 'sl8500':
+		return '/home/enstore/isa-tools/8500_write_protect_work'
 	else:
 		return '/tmp'
 
@@ -222,6 +224,8 @@ def get_write_permit_script_path(lib_type):
 		return  '/home/enstore/isa-tools/write_permit_work'
 	elif lib_type ==  'aml2':
 		return '/home/enstore/isa-tools/adic_write_permit_work'
+	elif lib_type == 'sl8500':
+		return '/home/enstore/isa-tools/8500_write_permit_work'
 	else:
 		return '/tmp'
 
@@ -973,7 +977,7 @@ def caps_per_ticket(lib_type):
 	elif lib_type == 'aml2':
 		return 7
 	elif lib_type == 'sl8500':
-		return 16
+		return 4
 	else:
 		return None
 
@@ -983,7 +987,7 @@ def volumes_per_cap(lib_type):
 	elif lib_type == 'aml2':
 		return 30
 	elif lib_type == 'sl8500':
-		return 13
+		return 39 
 	else:
 		return None
 
@@ -1220,6 +1224,8 @@ def make_cap(l, library_type='stk'):
 			cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
 		elif cluster == "CDF":
 			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,1,0 "
+		elif cluster == "GCC":
+			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
 		else:
 			return None
 		for i in l:
@@ -1239,6 +1245,21 @@ def make_cap(l, library_type='stk'):
 				count = 0
 		if count != 0:
 			cap_script = cap_script + ' E03\n'
+	elif library_type == 'sl8500':
+		if cluster == "D0":
+			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		elif cluster == "STK":
+			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		elif cluster == "CDF":
+			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		elif cluster == "GCC":
+			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
+		else:
+			return None
+		for i in l:
+			cap_script = cap_script + ' ' + i
+		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
+			
 	return cap_script
 				
 # get_max_cap_number(cluster)
@@ -1262,7 +1283,13 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
 		action = "do not touch"
 	VOLUMES_PER_CAP = volumes_per_cap(library_type)
 	system_name = script_host
-	short_message = "write %s %d tapes (flip tabs) in %s silos"%(job, n, cluster.lower()+'en')
+
+	# take care of 9310
+	# The conventional "stk" library is officially called '9310'
+	if library_type == "stk":
+		library_type = '9310'
+
+	short_message = "write %s %d tapes (flip tabs) in %s %s tape library"%(job, n, cluster.lower()+'en', library_type.upper())
 	long_message = 'Please run "flip_tab %s" on %s to write %s %d tapes (%d caps) in %s enstore %s tape library.'%(action, script_host, job, n, int((n-1)/VOLUMES_PER_CAP)+1, cluster, library_type.upper())
 	submitter = "MSS"
 	user = "MSS"
@@ -1469,7 +1496,7 @@ def execute(args):
 				f.write(make_cap(res[i], lt))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
-				WRITE_PROTECT_SCRIPT_PATH)
+				get_write_protect_script_path(lt))
 			print cc
 			os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'protect', lt)
@@ -1517,7 +1544,7 @@ def execute(args):
 				f.write(make_cap(res[i], lt))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
-				WRITE_PERMIT_SCRIPT_PATH)
+				get_write_permit_script_path(lt))
 			print cc
 			os.system(cc)
 			cc = make_help_desk_ticket(total, cluster, script_host, 'permit', lt)
