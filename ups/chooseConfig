@@ -28,7 +28,7 @@ complain=1
 
 # default for environment variables with a default
 ENSTORE_MAIL=enstore-auto@fnal.gov
-if [ `/usr/bin/logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
+#if [ `/usr/bin/logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
