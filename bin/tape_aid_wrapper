@@ -1,0 +1,262 @@
+#!/bin/sh -u
+
+# tape_aid_wrapper is what the flip_tab and take_out scripts are linked to.
+
+if [ "${1:-}" = "-d" ]; then debug=1; shift; fi
+
+if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
+
+usage() { case $script in
+	    flip_tab | take_out)
+	       echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
+	       ;;
+	    adic_flip_tab | adic_take_out)	# deprecated form
+	       echo "Usage: login as enstore to d0ensrv4 or stkensrv4"
+	       ;;
+	    tape_aid_wrapper)
+	       echo "Usage: run as flip_tab or take_out"
+	       ;;
+	  esac
+	  case $script in
+	    *flip_tab)
+	       echo "       enter $script [[un]lock]"
+	       ;;
+	    *take_out)
+	       echo "       enter $script [remove|shelve]"
+	       ;;
+	  esac
+	}
+
+check_work() { local action1 work1
+	       while read action1 work1
+	       do
+		 if [ $work1 != $(basename $work) -a -d $(dirname $work)/$work1 ]; then
+		    rem=`ls -vI \*.\* $(dirname $work)/$work1 | awk 'END {print NR}'`
+		    if [ $rem -gt 1 ]; then
+		       echo "`date` There are $rem groups to $action1."
+		    elif [ $rem -eq 1 ]; then
+		       echo "`date` There is one group to $action1."
+		    fi
+		 fi
+	       done << EOD
+lock  	${robot}_write_protect_work
+unlock	${robot}_write_permit_work
+shelve	${robot}_shelf_volumes_work
+remove	${robot}_purge_volumes_work
+EOD
+
+	       ns=`find $work -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
+	       nf=`find $work -type f -name \*.fail -daystart -mtime -1 -print | awk 'END {print NR}'`
+	       msg="Today's $robot robot $script work: $ns groups ${action%e}ed, $nf groups failed."
+	       echo "`date` $msg"
+	       if [ $ns -gt 0 -o $nf -gt 0 ] && [ ${debug:-0} -eq 0 ]; then
+		  enstore alarm --raise --severity "I" --root-error "$msg"
+		  if echo $script | grep 'flip_tab' > /dev/null; then
+		     echo "$msg" | mail -s "$gang tape aid work" isa-group@fnal.gov berman@fnal.gov
+		  fi
+	       fi
+	     }
+
+script=`basename $0`
+case $script in
+  flip_tab | take_out)
+     ;;
+  adic_flip_tab)      # deprecated form
+     script=flip_tab
+     location=ADIC
+     ;;
+  adic_take_out)      # deprecated form
+     script=take_out
+     location=ADIC
+     ;;
+  *) usage
+     exit 1
+     ;;
+esac
+
+[ "`whoami`" != enstore ] && usage && exit 1
+
+node=`hostname -s`
+
+# should use config server to determine media changer host
+if ! echo $node | egrep '^(d0|stk|cdf)ensrv4$' > /dev/null; then
+   usage
+   exit 1
+fi
+
+gang=`gang`
+
+until [ -n "${location:-}" ]; do
+  echo
+  echo "Where are you ?  Choose"
+  echo " 1) GCC  if you are in GCC"
+  echo " 2) FCC2 if you are on the 2nd floor in FCC"
+  if [ $gang = cdfen ]; then
+    locations="GCC FCC2"
+    echo " 3) Quit if you are somewhere else"
+  else
+    locations="GCC FCC2 FCCM"
+    echo " 3) FCCM if you are on the mezzanine in FCC"
+    echo " 4) Quit if you are somewhere else"
+  fi
+  echo
+  EOF=1
+  select location in $locations Quit; do EOF=0; break; done
+  [ $EOF -gt 0 ] && exit
+done
+
+case $location in
+
+  GCC)
+     robot="8500"
+     icap="0,1,0"	# library 1, rail 2, cap A
+     ocap="0,1,0"	# library 1, rail 2, cap A
+     sun="fntt-gcc"
+     ;;
+
+  FCCM)
+     robot="9310"
+     case $node in
+       d0ensrv4)
+	  icap="1,1,0"
+	  ocap="1,0,0"
+	  ;;
+       stkensrv4)
+	  icap="0,1,0"
+	  ocap="0,0,0"
+	  ;;
+     esac
+     sun=fntt
+     ;;
+
+  FCC2)
+     case $node in
+       d0ensrv4)
+	  robot="aml2"
+	  type=3480
+	  ;;
+       stkensrv4)
+	  robot="aml2"
+	  type=DECDLT
+	  ;;
+       cdfensrv4)
+	  robot="9310"
+	  icap="0,0,0"
+	  ocap="0,1,0"
+	  sun=fntt2
+	  ;;
+     esac
+     ;;
+
+  ADIC)			# shortcut taken when script called as adic_[flip_tab|take_out]
+     robot="aml2"
+     case $node in
+       d0ensrv4)
+	  type=3480
+	  ;;
+       stkensrv4)
+	  type=DECDLT
+	  ;;
+       *) usage
+	  exit 1
+	  ;;
+     esac
+     ;;
+
+  *) exit
+     ;;
+
+esac
+
+# take_out needs the volume clerk - find it thru the config server
+if echo $script | grep 'take_out' > /dev/null; then
+  vcDict=`enstore conf --show volume_clerk`
+  clerk=`python -c "print $vcDict['host']"`
+  [ ${debug:-0} -gt 0 ] && echo "Volume Clerk host is $clerk"
+fi
+
+case $script in
+  *flip_tab)
+     action=${1:-"lock"}
+     case $action in
+       lock)
+	  work=$HOME/isa-tools/${robot}_write_protect_work
+	  prot=on
+	  ;;
+       unlock)
+	  work=$HOME/isa-tools/${robot}_write_permit_work
+	  prot=off
+	  ;;
+       *) usage
+	  exit 1
+	  ;;
+     esac
+     ;;
+  *take_out)
+     action=${1:-"shelve"}
+     case $action in
+       shelve)
+	  work=$HOME/isa-tools/${robot}_shelf_volumes_work
+	  ;;
+       remove)
+	  work=$HOME/isa-tools/${robot}_purge_volumes_work
+	  . $HOME/gettkt
+	  ;;
+       *) usage
+	  exit 1
+	  ;;
+     esac
+     ;;
+esac
+
+# look for work at home first, then under /
+if [ ! -d $work ]; then
+   work=/$(basename $work)
+fi
+
+if [ ! -d $work ]; then
+   echo "`date` ERROR. $work does not exist"
+   exit 1
+fi
+
+cd $work
+
+rem=`ls -vI \*.\* | awk 'END {print NR}'`
+if expr $rem : 0 >/dev/null; then
+   echo "`date` There are no groups to $action. Goodbye."
+   check_work
+   exit
+else
+   if [ $rem -gt 1 ]; then
+      /bin/echo -n "There are $rem groups to $action. Proceed [y/n]? "
+   else
+      /bin/echo -n "There is one group to $action. Proceed [y/n]? "
+   fi
+   if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+      if [ ${debug:-0} -eq 0 ]; then
+	 if echo $script | grep 'flip_tab' > /dev/null; then
+	    echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" isa-group@fnal.gov
+	 fi
+      else
+	 echo "Starting $script $action $robot on $node."
+      fi
+   else
+      exit
+   fi
+fi
+
+if [ ${debug:-0} -gt 0 ]; then
+   check_work
+   exit		# quit before we cause real trouble
+fi
+
+output=/tmp/${script}.${action}.${robot}.output
+
+case $robot in
+  9310 | 8500)
+     . $ENSTORE_DIR/src/${script}_acsls.sh
+     ;;
+  aml2)
+     . $ENSTORE_DIR/src/${script}_das.sh
+     ;;
+esac
