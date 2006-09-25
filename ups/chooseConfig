@@ -26,9 +26,25 @@ airedale=airedale.fnal.gov
 gccen=gccensrv1.fnal.gov
 complain=1
 
+get_logname()
+{
+    #Logname is the posix way.  It just doesn't work from crons.
+    which logname > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	logname
+        return 0 
+    fi
+    which whoami > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+	whoami
+	return 0
+    fi
+    return 1
+}
+
 # default for environment variables with a default
 ENSTORE_MAIL=enstore-auto@fnal.gov
-#if [ `/usr/bin/logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
+if [ `get_logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
