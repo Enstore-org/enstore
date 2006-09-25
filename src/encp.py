@@ -150,9 +150,10 @@ TICKET_1_LEVEL = 11
 #  1 - Means always print this output; regardless of success or failure.
 #  0 - Means only print this output on fatal error.
 # -1 - Means never print this output.
-data_access_layer_requested = 0
+data_access_layer_requested = False
 #This is the global used by Pnfs().  It used to force use of the pnfs agent.
-pnfs_agent_client_requested = 0
+pnfs_agent_client_requested = False
+pnfs_agent_client_allowed = False
 
 #Initial seed for generate_unique_id().
 _counter = 0
@@ -226,7 +227,7 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     return rtn  #Always False
 
 def __is_pnfs_remote_path(filename, check_name_only = None):
-    if pnfs_agent_client_requested or os.environ.get('REMOTE_ENCP') != None:
+    if pnfs_agent_client_requested or pnfs_agent_client_allowed:
         pac = get_pac()
         rtn = pac.is_pnfs_path(filename, check_name_only = check_name_only)
 
@@ -615,8 +616,7 @@ def get_directory_name(filepath):
             f.close()
         except OSError, msg:
             if msg.args[0] == errno.ENOENT and \
-                   (pnfs_agent_client_requested or
-                    os.environ.get('REMOTE_ENCP') != None):
+                   (pnfs_agent_client_requested or pnfs_agent_client_allowed):
                 pac = get_pac()
                 parent_id = pac.get_parent_id(pnfsid)
                 if not parent_id: #Does this work to catch errors?
@@ -2630,7 +2630,7 @@ def access_check(path, mode):
 
     #Before giving up that this is a pnfs file, ask the pnfs_agent.
     # Is there a more performance efficent way?
-    if pnfs_agent_client_requested or os.environ.get('REMOTE_ENCP') != None:
+    if pnfs_agent_client_requested or pnfs_agent_client_allowed:
         pac = get_pac()
         return  pac.e_access(path, mode)
 
@@ -8694,6 +8694,8 @@ class EncpInterface(option.Interface):
 
         #This is flag is accessed via a global variable.
         global pnfs_is_automounted
+        global pnfs_agent_client_allowed
+        global pnfs_agent_client_requested
 
         #priority options
         self.chk_crc = 1           # we will check the crc unless told not to
@@ -8786,6 +8788,13 @@ class EncpInterface(option.Interface):
 
         # This is accessed globally...
         pnfs_is_automounted = self.pnfs_is_automounted
+
+        r_encp = os.environ.get('REMOTE_ENCP')
+        if r_encp != None:
+            pnfs_agent_client_allowed = True
+        if r_encp == "only_pnfs_agent":
+            pnfs_agent_client_requested = True
+
 
     def __str__(self):
         str_rep = ""
@@ -9094,6 +9103,7 @@ class EncpInterface(option.Interface):
     # parse the options from the command line
     def parse_options(self):
         global pnfs_agent_client_requested
+        global pnfs_agent_client_allowed
         
         # normal parsing of options
         option.Interface.parse_options(self)
@@ -9210,6 +9220,29 @@ class EncpInterface(option.Interface):
             # 2) The user misspelled the path before the pnfs mount point
             #    in the absolute filename.
 
+            if pnfs_agent_client_requested:
+                try:
+                    #Pnfs Agent.
+                    pac = get_pac()
+                    result = pac.is_pnfs_path(fullname,
+                                              check_name_only = 1)
+                except EncpError:
+                    result = 0
+
+                if result:
+                    e.append(0)
+                    #p.append(result)
+                    p.append(2)
+                    continue
+                else:
+                    e.append(os.path.exists(dirname))
+                    p.append(0) #Assume local file.
+                    #Do not even try checking if pnfs is locally mounted.
+                    # The user has specifically requested that encp
+                    # only access pnfs through the pnfs_agent.  Just go
+                    # on and check the next file.
+                    continue
+
             try:
                 #Original full path.  (Best choice if possible)
                 result = pnfs.is_pnfs_path(fullname,
@@ -9220,7 +9253,6 @@ class EncpInterface(option.Interface):
             if result:
                 e.append(1)
                 p.append(result)
-                
                 continue
 
             try:
@@ -9265,22 +9297,20 @@ class EncpInterface(option.Interface):
                 self.args[i] = grid_path
                 continue
 
-            try:
-                #Pnfs Agent.
-                r_encp = os.environ.get('REMOTE_ENCP')
-                if r_encp != None:
+            if pnfs_agent_client_allowed:
+                try:
+                    #Pnfs Agent.
                     pac = get_pac()
                     result = pac.is_pnfs_path(fullname,
                                               check_name_only = 1)
-                else:
+                except EncpError:
                     result = 0
-            except EncpError:
-                result = 0
 
-            if result:
-                e.append(0)
-                p.append(result)
-                continue
+                if result:
+                    e.append(0)
+                    #p.append(result)
+                    p.append(2)
+                    continue
 
             e.append(os.path.exists(dirname))
             p.append(0) #Assume local file.
@@ -9290,6 +9320,7 @@ class EncpInterface(option.Interface):
 
         #The p# variables are used as holders for testing if all input files
         # are unixfiles or hsmfiles (aka pnfs files).
+        #    2 = pnfs agent, 1 = pnfs & 0 = local
         p1 = p[0]
         p2 = p[self.arglen - 1]
         #The m# variables are used to determine if all of the input files
@@ -9300,8 +9331,8 @@ class EncpInterface(option.Interface):
         # Dmitry's hacking
         # e1 = 
         #       0 - non-existing path, 1 - existing path
-        e1 = e[0]
-        e2 = e[self.arglen - 1]
+        ###e1 = e[0]
+        ###e2 = e[self.arglen - 1]
 
         #Also, build two new lists of input and output files.  The output
         # list should always be 1 in length.  A simple, assignment is not
@@ -9376,38 +9407,32 @@ class EncpInterface(option.Interface):
         #      exist locally we asume that it is on remote pnfs server
         #      we create special type to handle this case "rhsm" aka "remote hsm"
 
-        r_encp = os.environ.get('REMOTE_ENCP')
-        if r_encp != None:
-            if p1 == 1:
-                if e1 == 1:
-                    self.intype = HSMFILE
-                else:
-                    self.intype = RHSMFILE
+        if pnfs_agent_client_requested:
+            if p1 == 1 or p1 == 2:
+                self.intype = RHSMFILE
             else:
-                if e1 == 1:	
-                    self.intype = UNIXFILE
-                else:
-                    self.intype = RHSMFILE
-            if p2 == 1:
-                if e2 == 1:
-                    self.outtype = HSMFILE
-                else:
-                    self.outtype = RHSMFILE
+                self.intype = UNIXFILE
+            if p2 == 1 or p2 == 2:
+                self.outtype = RHSMFILE
             else:
-                self.outtype  = UNIXFILE
-                if self.intype == UNIXFILE:
-                    self.outtype  = RHSMFILE
+                self.outtype = UNIXFILE
 
-            if r_encp == "only_pnfs_agent":
-                pnfs_agent_client_requested = True
-                """
-                #If the user want to force use of the pnfs agent, instead
-                # of the default behavior...
-                if self.intype == HSMFILE:
-                    self.intype = RHSMFILE
-                if self.outtype == HSMFILE:
-                    self.outtype = RHSMFILE
-                """
+        elif pnfs_agent_client_allowed:
+            if p1 == 2:
+                self.intype = RHSMFILE
+            elif p1 == 1:
+                self.intype = HSMFILE
+                pnfs_agent_client_allowed = False
+            else:
+                self.intype = UNIXFILE
+            if p2 == 2:
+                self.outtype = RHSMFILE
+            elif p1 == 1:
+                self.outtype = HSMFILE
+                pnfs_agent_client_allowed = False
+            else:
+                self.outtype = UNIXFILE
+                
         else:
             #Assign the collection of types to these variables.
             if p1 == 1:
