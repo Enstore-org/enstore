@@ -324,34 +324,38 @@ def get_unfinished_job(cluster=None):
 def decode_job(job):
 	if job[:3] == 'STK' or job[:3] == "CDF":
 		cluster = job[:3]
-		if job[3].isdigit():
-			lt = 'stk'
-			type = job[4]
-			t = job[5:].split('-')
-			job_range = range(int(t[0]), int(t[1])+1)
-		else:
+		if job[3] in ['a', 's']:
 			if job[3] == 'a':
 				lt = 'aml2'
 			elif job[3] == 's':
 				lt = 'sl8500'
+			else:
+				lt = 'unknown'
 			type = job[5]
 			t = job[6:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1)
+		else:
+			lt = 'stk'
+			type = job[4]
+			t = job[5:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1)
 	elif job[:2] == 'D0':
 		cluster = job[:2]
-		if job[2].isdigit():
-			lt = 'stk'
-			type = job[3]
-			t = job[4:].split('-')
-			job_range = range(int(t[0]), int(t[1])+1) 
-		else:
+		if job[2] in ['a', 's']:
 			if job[2] == 'a':
 				lt = 'aml2'
 			elif job[2] == 's':
 				lt = 'sl8500'
+			else:
+				lt = 'unknown'
 			type = job[4]
 			t = job[5:].split('-')
 			job_range = range(int(t[0]), int(t[1])+1)
+		else:
+			lt = 'stk'
+			type = job[3]
+			t = job[4:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1) 
 	return cluster, type, job_range, lt
 
 # is_done(job) -- is this job done?
