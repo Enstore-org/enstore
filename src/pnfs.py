@@ -899,7 +899,20 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     search_path = mp
                     found_db_num = db_num
                     found_fname = pfn
-                except (OSError, IOError):
+                except (OSError, IOError), msg:
+                    if msg.args[0] == errno.EIO:
+                        #This block of code is to report if an orphaned file
+                        # was requested.  This will only apply to orphans
+                        # with their 'parent' directory missing them.
+                        # If the directory is 
+                        try:
+                            stat_info = os.stat(pfn)
+                        except (OSError, IOError):
+                            stat_info = None
+                        if stat_info:
+                            raise OSError(errno.EIO,
+                                          "Found unnamed orphan file: %s" % 
+                                          pfn)
                     continue
 
             if count == 0:
