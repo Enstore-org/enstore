@@ -324,23 +324,45 @@ def get_unfinished_job(cluster=None):
 def decode_job(job):
 	if job[:3] == 'STK' or job[:3] == "CDF":
 		cluster = job[:3]
-		type = job[4]
-		t = job[5:].split('-')
-		job_range = range(int(t[0]), int(t[1])+1)
+		if job[3].isdigit():
+			lt = 'stk'
+			type = job[4]
+			t = job[5:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1)
+		else:
+			if job[3] == 'a':
+				lt = 'aml2'
+			elif job[3] == 's':
+				lt = 'sl8500'
+			type = job[5]
+			t = job[6:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1)
 	elif job[:2] == 'D0':
 		cluster = job[:2]
-		type = job[3]
-		t = job[4:].split('-')
-		job_range = range(int(t[0]), int(t[1])+1) 
-	return cluster, type, job_range
+		if job[2].isdigit():
+			lt = 'stk'
+			type = job[3]
+			t = job[4:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1) 
+		else:
+			if job[2] == 'a':
+				lt = 'aml2'
+			elif job[2] == 's':
+				lt = 'sl8500'
+			type = job[4]
+			t = job[5:].split('-')
+			job_range = range(int(t[0]), int(t[1])+1)
+	return cluster, type, job_range, lt
 
 # is_done(job) -- is this job done?
 def is_done(job):
-	c, t, r = decode_job(job)
+	c, t, r, lt = decode_job(job)
+	if c != cluster:	# not on this cluster
+		return 0
 	if t == 'E':	# write enable
-		p = WRITE_PERMIT_SCRIPT_PATH
+		p = get_write_protect_script_path(lt)
 	elif t == 'P':	# write protect
-		p = WRITE_PROTECT_SCRIPT_PATH
+		p = get_write_permit_script_path(lt)
 	else:		# don't know
 		if debug:
 			print "unknown job", job, c, t, `r`
