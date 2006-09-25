@@ -553,7 +553,10 @@ class Histogram1D:
         for i in range(self.nbins):
             if (self.get_time_axis()) :
                 if ( stop == 1 ) : continue
-                if (0.5*(self.get_bin_center(i+1)+self.get_bin_center(i))>time.time()):
+                next = i+1
+                if ( next >= self.nbins) :
+                    next=i
+                if (0.5*(self.get_bin_center(next)+self.get_bin_center(i))>time.time()):
                     stop=1
             y      = self.get_bin_content(i)
             r_sum  = r_sum + y
