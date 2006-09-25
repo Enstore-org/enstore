@@ -31,13 +31,27 @@ get_logname()
     #Logname is the posix way.  It just doesn't work from crons.
     which logname > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-	logname
-        return 0 
+	the_logname=`logname`
+	if [ $? -eq 0 ]; then
+            echo $the_logname
+            return 0
+        fi
     fi
     which whoami > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-	whoami
-	return 0
+	the_logname=`whoami`
+        if [ $? -eq 0 ]; then
+            echo $the_logname
+            return 0
+        fi
+    fi
+    which id > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        the_logname=`id -nu`
+        if [ $? -eq 0 ]; then
+            echo $the_logname
+            return 0
+        fi
     fi
     return 1
 }
