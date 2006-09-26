@@ -668,6 +668,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.lock_file_info = 0   # lock until file info is updated
         self.read_tape_running = 0 # use this to synchronize read and network threads
         self.stream_w_flag = 0    # this flag is set when before stream_write is called
+        self.vc_address = None  # volume clerk address. Used in LM to identify volume clerk. Needed for sharing movers and
+        # LMs across systems
 
         self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
         
@@ -1245,7 +1247,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                             self.state = HAVE_BOUND
                             Trace.log(e_errors.INFO, "have vol %s at startup" % (self.current_volume,))
                             self.dismount_time = time.time() + self.default_dismount_delay
-                            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                            try:
+                                self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+                            except:
+                                self.vcc == None
                         
                     else:
                         # failed to read label eject tape
@@ -3105,6 +3110,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                 server_address=fc['address'])
         self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=vc['address'])
+        self.vc_address = vc['address']
         self.unique_id = self.current_work_ticket['unique_id']
         volume_label = fc['external_label']
         if volume_label:
@@ -6125,6 +6131,7 @@ class DiskMover(Mover):
             "transfer_deficiency": int(self.transfer_deficiency),
             'time_in_state': now - self.state_change_time,
             "library": self.current_library,
+            "volume_clerk": self.vc_address,
 
             }
         return ticket

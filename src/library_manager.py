@@ -399,7 +399,7 @@ class LibraryManagerMethods:
         self.max_suspect_volumes = max_suspect_volumes
         # instantiate volume clerk client
         self.csc = csc
-        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
+        #self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
         self.sg_limits = {'use_default' : 1,
                           'default' : 0,
                           'limits' : {}
@@ -751,6 +751,9 @@ class LibraryManagerMethods:
             # width not exceeded, ask volume clerk for a new volume.
             Trace.trace(9,"process_write_request for %s" % (rq.ticket,))
             Trace.trace(22, "PW_RQ5")
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                         server_address=rq.ticket['vc']['address'])
+
             v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
                                            rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                            vol_family, 
@@ -1021,6 +1024,10 @@ class LibraryManagerMethods:
                     if method and method != "read_tape_start":
                         # size has a meaning only for general rq
                         fsize = fsize+self.min_file_size
+                        
+                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                     server_address=w['vc']['address'])
+
                     ret = self.vcc.is_vol_available(rq.work,
                                                     w['fc']['external_label'],
                                                     w["vc"]["volume_family"],
@@ -1107,6 +1114,10 @@ class LibraryManagerMethods:
             if method and method != "read_tape_start":
                 # size has a meaning only for general rq
                 fsize = fsize+self.min_file_size
+
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                     server_address=rq.ticket['vc']['address'])
+
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
                                             fsize)
@@ -1141,6 +1152,9 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work,external_label, requestor)
         else:
             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                             server_address=rq.ticket['vc']['address'])
+
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
                                             fsize)
@@ -1594,6 +1608,9 @@ class LibraryManagerMethods:
                         (len(suspect_volume['movers']),))
                                 
             # set volume as noaccess
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                             server_address=ticket['vc']['address'])
+
             self.vcc.set_system_noaccess(label)
 	    Trace.alarm(e_errors.ERROR, 
 			"Volume %s failed on maximal allowed movers (%s)"%(label, 
@@ -2102,6 +2119,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return
 
         # check if this volume is OK
+        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                         server_address=ticket['vc']['address'])
+
         v = self.vcc.inquire_vol(ticket['fc']['external_label'])
         if v['status'][0] != e_errors.OK:
             Trace.log(e_errors.ERROR, "read_from_hsm: can't update vloume info %s"%
@@ -2312,6 +2332,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
         else:
             Trace.trace(29,"inquire_vol")
+            self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                             server_address=w['vc']['address'])
+
             vol_info = self.vcc.inquire_vol(mticket['external_label'])
             mticket['volume_status'] = (vol_info.get('system_inhibit',['Unknown', 'Unknown']),
                                         vol_info.get('user_inhibit',['Unknown', 'Unknown']))
@@ -2370,6 +2393,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if self.mover_type(mticket) == 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
+                if mticket['volume_clerk'] == None:
+                    # mover starting, no volume info
+                   self.reply_to_caller({'work': 'no_work'})
+                   return
+                    
+                self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                 server_address=mticket['volume_clerk'])
+                
                 vol_info = self.vcc.inquire_vol(mticket['external_label'])
                 if vol_info['status'][0] == e_errors.OK:
                     mticket['volume_family'] = vol_info['volume_family']
@@ -2469,6 +2500,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if self.mover_type(mticket) == 'DiskMover':
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
+                    if mticket['volume_clerk'] == None:
+                        # mover starting, no volume info
+                        self.reply_to_caller({'work': 'no_work'})
+                        return
+                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                     server_address=mticket['volume_clerk'])
                     vol_info = self.vcc.inquire_vol(mticket['external_label'])
                     if vol_info['status'][0] != e_errors.OK:
                        Trace.log(e_errors.ERROR, "mover_bound_volume 2: can't update volume info, status:%s"%
@@ -2584,6 +2621,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                         w['status'] = (e_errors.NOACCESS, None)
 
                     # set volume as noaccess
+                    if mticket['volume_clerk'] == None:
+                        # mover starting, no volume info
+                        return
+                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                     server_address=mticket['volume_clerk'])
                     self.vcc.set_system_noaccess(mticket['external_label'])
                     Trace.alarm(e_errors.ERROR, 
                                 "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
