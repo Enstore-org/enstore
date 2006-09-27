@@ -210,9 +210,9 @@ def get_script_host(cluster):
 # get_write_protect_script_path(library_type) -- determine script path
 def get_write_protect_script_path(lib_type):
 	if lib_type == 'stk':
-		return  '/home/enstore/isa-tools/write_protect_work'
+		return  '/home/enstore/isa-tools/9310_write_protect_work'
 	elif lib_type ==  'aml2':
-		return '/home/enstore/isa-tools/adic_write_protect_work'
+		return '/home/enstore/isa-tools/aml2_write_protect_work'
 	elif lib_type == 'sl8500':
 		return '/home/enstore/isa-tools/8500_write_protect_work'
 	else:
@@ -221,9 +221,9 @@ def get_write_protect_script_path(lib_type):
 # get_write_permit_script_path(library_type) -- determine script path
 def get_write_permit_script_path(lib_type):
 	if lib_type == 'stk':
-		return  '/home/enstore/isa-tools/write_permit_work'
+		return  '/home/enstore/isa-tools/9310_write_permit_work'
 	elif lib_type ==  'aml2':
-		return '/home/enstore/isa-tools/adic_write_permit_work'
+		return '/home/enstore/isa-tools/aml2_write_permit_work'
 	elif lib_type == 'sl8500':
 		return '/home/enstore/isa-tools/8500_write_permit_work'
 	else:
@@ -1241,7 +1241,7 @@ def make_cap_args(d):
 	return res
 
 # make_cap(list)
-def make_cap(l, library_type='stk'):
+def make_cap(l, library_type='stk', cap_n = 0):
 	cap_script = ""
 	if library_type == 'stk':
 		if cluster == "D0":
@@ -1259,6 +1259,10 @@ def make_cap(l, library_type='stk'):
 		cap_script = cap_script + " \\\\r logoff|bin/cmd_proc -l -q 2>/dev/null'\n"
 	elif library_type == 'aml2':
 		cap_script = ''
+		if cap_n % 2:	# odd
+			door = ' E03\n'
+		else:
+			door = ' E05\n'
 		count = 0
 		for i in l:
 			if count == 0:
@@ -1267,10 +1271,10 @@ def make_cap(l, library_type='stk'):
 				cap_script = cap_script +','+ i
 			count = count + 1
 			if count == 10:
-				cap_script = cap_script + ' E03\n'
+				cap_script = cap_script + door
 				count = 0
 		if count != 0:
-			cap_script = cap_script + ' E03\n'
+			cap_script = cap_script + door
 	elif library_type == 'sl8500':
 		if cluster == "D0":
 			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
@@ -1519,7 +1523,7 @@ def execute(args):
 			for i in res.keys():
 				total = total + len(res[i])
 				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-				f.write(make_cap(res[i], lt))
+				f.write(make_cap(res[i], lt, i))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				get_write_protect_script_path(lt))
@@ -1567,7 +1571,7 @@ def execute(args):
 			for i in res.keys():
 				total = total + len(res[i])
 				f = open(os.path.join(TEMP_DIR, str(i)), 'w')
-				f.write(make_cap(res[i], lt))
+				f.write(make_cap(res[i], lt, i))
 				f.close()
 			cc = "cd %s; enrcp * %s:%s"%(TEMP_DIR, script_host,
 				get_write_permit_script_path(lt))
