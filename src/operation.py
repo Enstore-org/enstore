@@ -826,7 +826,7 @@ def help(topic=None):
 	if not topic:
 		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
 		print "    -- creating a job"
-		print "operation.py list [all|open|finished|closed|completed|<job>+|has <object>]"
+		print "operation.py list [all|open|finished|closed|completed|<job>+|has <object>]|recent <n>"
 		print "    -- list job(s)"
 		print "operation.py show <job>+"
 		print "    -- show details of job(s)"
