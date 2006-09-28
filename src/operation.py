@@ -364,9 +364,9 @@ def is_done(job):
 	if c != cluster:	# not on this cluster
 		return 0
 	if t == 'E':	# write enable
-		p = get_write_protect_script_path(lt)
-	elif t == 'P':	# write protect
 		p = get_write_permit_script_path(lt)
+	elif t == 'P':	# write protect
+		p = get_write_protect_script_path(lt)
 	else:		# don't know
 		if debug:
 			print "unknown job", job, c, t, `r`
