@@ -88,12 +88,10 @@ client_color cdfensrv3     #444444
 client_color d0ensrv3      #444444
 
 #cdf 9940A to 9940B migration
-client_color stkendm1a     #ff0099
-client_color stkendm2a     #ff0099
-client_color stkendm3a     #ff0099
-client_color stkendm4a     #ff0099
-#client_color d0enout2a     #ff9900
-#client_color fcdfcaf324    #ff9900
+client_color stkendm[0-9]+a #ff0099
+
+#STKen dCache
+client_color stkendca[0-9]+a #0000dd
 
 #miniboone online data taking
 client_color hal9004       #dd0000
@@ -102,94 +100,13 @@ client_color southport     #dd0000
 #CDF clients ###########
 
 #cdf online data taking
-client_color fcdfsgi1-eg1  #dd0000
-client_color fcdfsgi1-eg2  #dd0000
-client_color fcdfsgi1-eg3  #dd0000
-client_color fcdfsgi1-eg4  #dd0000
+client_color fcdfsgi1.*  #dd0000
 
 #where N is 08-12, 17-24, 35-40, more later
-client_color fcdfdata008   #0000dd
-client_color fcdfdata009   #0000dd
-client_color fcdfdata010   #0000dd
-client_color fcdfdata011   #0000dd
-#client_color fcdfdata012   #0000dd
-
-client_color fcdfdata017   #0000dd
-client_color fcdfdata018   #0000dd
-client_color fcdfdata019   #0000dd
-client_color fcdfdata020   #0000dd
-client_color fcdfdata021   #0000dd
-client_color fcdfdata022   #0000dd
-client_color fcdfdata023   #0000dd
-client_color fcdfdata024   #0000dd
-
-client_color fcdfdata035   #0000dd
-client_color fcdfdata036   #0000dd
-client_color fcdfdata037   #0000dd
-client_color fcdfdata038   #0000dd
-client_color fcdfdata039   #0000dd
-client_color fcdfdata040   #0000dd
-
-client_color fcdfdata052   #0000dd
-#client_color fcdfdata053   #0000dd
-client_color fcdfdata054   #0000dd
-#client_color fcdfdata055   #0000dd
-client_color fcdfdata056   #0000dd
-#client_color fcdfdata057   #0000dd
-client_color fcdfdata058   #0000dd
-client_color fcdfdata059   #0000dd
-client_color fcdfdata060   #0000dd
-client_color fcdfdata061   #0000dd
-client_color fcdfdata062   #0000dd
-client_color fcdfdata063   #0000dd
-client_color fcdfdata064   #0000dd
-client_color fcdfdata065   #0000dd
-client_color fcdfdata066   #0000dd
-client_color fcdfdata067   #0000dd
-client_color fcdfdata068   #0000dd
-client_color fcdfdata069   #0000dd
-client_color fcdfdata070   #0000dd
-client_color fcdfdata071   #0000dd
-client_color fcdfdata072   #0000dd
-client_color fcdfdata073   #0000dd
-client_color fcdfdata074   #0000dd
-client_color fcdfdata075   #0000dd
-client_color fcdfdata076   #0000dd
-client_color fcdfdata077   #0000dd
-client_color fcdfdata078   #0000dd
-client_color fcdfdata079   #0000dd
-client_color fcdfdata080   #0000dd
-client_color fcdfdata081   #0000dd
-client_color fcdfdata082   #0000dd
-client_color fcdfdata083   #0000dd
-client_color fcdfdata084   #0000dd
-client_color fcdfdata085   #0000dd
-client_color fcdfdata086   #0000dd
-client_color fcdfdata087   #0000dd
-client_color fcdfdata088   #0000dd
-
-client_color fcdfdata093   #0000dd
-client_color fcdfdata094   #0000dd
-client_color fcdfdata095   #0000dd
-client_color fcdfdata096   #0000dd
-client_color fcdfdata097   #0000dd
-client_color fcdfdata098   #0000dd
-client_color fcdfdata099   #0000dd
-client_color fcdfdata100   #0000dd
-
-client_color fcdfdata105   #0000dd
-client_color fcdfdata106   #0000dd
-client_color fcdfdata107   #0000dd
-client_color fcdfdata108   #0000dd
-client_color fcdfdata109   #0000dd
-client_color fcdfdata110   #0000dd
-
-client_color fcdfdata112   #0000dd
-
-client_color fcdfdata1[1-9]{2} #0000dd
+client_color fcdfdata[0-9]+ #0000dd
 
 #farms - there are a lot of them
-client_color fncdf[0-9]+   #ff00ff
+#client_color fncdf[0-9]+   #ff00ff
 
 #D0 clients #########
 
@@ -197,25 +114,7 @@ client_color fncdf[0-9]+   #ff00ff
 client_color d0ol.*         #dd0000
 
 #farm input
-client_color fnd051         #0000dd
-client_color fnd052         #0000dd
-client_color fnd053         #0000dd
-client_color fnd054         #0000dd
-client_color fnd055         #0000dd
-client_color fnd056         #0000dd
-client_color fnd057         #0000dd
-client_color fnd058         #0000dd
-client_color fnd059         #0000dd
-client_color fnd060         #0000dd
-client_color fnd061         #0000dd
-client_color fnd062         #0000dd
-client_color fnd063         #0000dd
-client_color fnd064         #0000dd
-client_color fnd065         #0000dd
-client_color fnd066         #0000dd
-client_color fnd067         #0000dd
-client_color fnd068         #0000dd
-client_color fnd069         #0000dd
+client_color fnd0[0-9]+
 
 #farm output
 client_color d0bbin-ens     #dd0000
