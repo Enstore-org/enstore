@@ -121,8 +121,12 @@ layout = LINEAR
 
 ANIMATE = 1
 STILL = 0
+
 CLIENT_COLOR = 1
 LIBRARY_COLOR = 2
+
+WAITING = 1
+CONNECTED = 0
 
 MMPC = 20.0     # Max Movers Per Column
 MIPC = 20       # Max Items Per Column
@@ -144,38 +148,58 @@ inqc_dict_cache = {}
 
 class Queue:
     def __init__(self):
-        self.queue = []
+        self.queue = {}
         self.lock = threading.Lock()
 
-    def len_queue(self):
+    def len_queue(self, tid=None):
         self.lock.acquire()
-        
-        number = len(self.queue)
+
+        try:
+            number = len(self.queue[tid])
+        except KeyError:
+            number = 0
 
         self.lock.release()
 
         return number
 
-    def clear_queue(self):
+    def clear_queue(self, tid = None):
         self.lock.acquire()
         
         #while len(self.queue):
         #    del self.queue[0]
 
-        del self.queue[:]
+        try:
+            del self.queue[tid][:]
+        except KeyError:
+            pass
 
         self.lock.release()
-        
+
+    def clear_queues(self):
+        self.lock.acquire()
+
+        for queue in self.queue.values():
+            del queue[:]
+
+        self.queue = {}
+
+        self.lock.release()
+    
     def put_queue(self, queue_item, tid=None):
         self.lock.acquire()
 
-        self.queue.append({'item' : queue_item, 'tid' : tid})
+        if self.queue.get(tid, None) == None:
+            self.queue[tid] = []
+        
+        self.queue[tid].append({'item' : queue_item, 'tid' : tid})
 
         self.lock.release()
 
     def get_queue(self, tid=None):
         self.lock.acquire()
 
+        """
         for i in range(len(self.queue)):
             try:
                 temp = self.queue[i]
@@ -187,7 +211,14 @@ class Queue:
                 break
         else:
             temp = {'item': None}
-            
+        """
+
+        try:
+            temp = self.queue[tid][0]
+            del self.queue[tid][0]
+        except (KeyError, IndexError):
+            temp = {'item' : None}
+        
         self.lock.release()
 
         return temp['item']
@@ -1414,13 +1445,16 @@ class Client:
         self.n_connections      = 0
         self.mover_names        = {}
         self.last_activity_time = time.time()
-        self.waiting            = 0
+        self.waiting            = None   #1 = wait, 0 = connected, None = init 
         self.label              = None
         self.outline            = None
+        self.font_color         = colors('client_font_color')
+        self.color              = None
+        self.outline_color      = self.display.get_client_color(self.name)
 
         self.resize()
         self.position()
-        self.update_state()
+        self.update_state(CONNECTED)  #Sets self.waiting.
         self.draw()
         
     #########################################################################
@@ -1463,25 +1497,19 @@ class Client:
 
     #########################################################################
 
-    def update_state(self):
+    def update_state(self, waiting_state):
 
         ### color
 
-        self.font_color = colors('client_font_color')
-        
-        if self.waiting:
-            self.color = colors('client_wait_color')
-        else:
-            self.color = colors('client_active_color')
+        if waiting_state != self.waiting:
+            self.waiting = waiting_state
+            if self.waiting == WAITING:
+                self.color = colors('client_wait_color')
+            else:
+                self.color = colors('client_active_color')
 
-        #If configured in the .entvrc file, else use black.
-        self.outline_color = self.display.get_client_color(self.name)
-
-        #If the object is already drawn; update it.
-        if self.outline:
-            self.display.itemconfigure(self.outline,
-                                       fill = self.color,
-                                       outline = self.outline_color) 
+            if self.outline:
+                self.display.itemconfigure(self.outline, fill = self.color)
 
     #########################################################################
 
@@ -1532,25 +1560,18 @@ class Connection:
         self.line               = None
         self.path               = []
         self.color              = None
-        self.color_type         = CLIENT_COLOR
+        self.color_type         = None    #CLIENT_COLOR
 
+        self.update_color(self.display.master.connection_color.get())
         self.position()
 
     #########################################################################
         
     def draw(self):
-        if not self.color:
-            if self.display.master.connection_color.get() == CLIENT_COLOR:
-                self.color_type = CLIENT_COLOR
-                self.color = self.display.get_client_color(self.client.name)
-            else:  #LIBRARY_COLOR
-                self.color_type = LIBRARY_COLOR
-                self.color = self.display.get_mover_color(self.mover.library)
-
         if self.line:
             self.display.coords(self.line, tuple(self.path))
-            self.display.itemconfigure(self.line, dashoffset = self.dashoffset,
-                                       fill = self.color)
+            self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
+                                       #fill = self.color)
         else:
             self.line = self.display.create_line(self.path, dash='...-',
                                                  width=2, smooth=1,
@@ -1565,18 +1586,6 @@ class Connection:
             pass
 
     def animate(self, now=None):
-        #This first block will honor changing the color of the connection line.
-        cc = self.display.master.connection_color.get()
-        if self.color_type != cc:
-            if cc == CLIENT_COLOR:
-                self.color_type = CLIENT_COLOR
-                self.color = self.display.get_client_color(self.client.name)
-            else:  #LIBRARY_COLOR
-                self.color_type = LIBRARY_COLOR
-                self.color = self.display.get_mover_color(self.mover.library)
-
-            self.display.itemconfigure(self.line, fill = self.color)
-
         if self.rate == None:
             #The transfer is complete don't update in this case.
             return
@@ -1610,6 +1619,17 @@ class Connection:
         self.segment_stop_time    = now + 5 #let the animation run 5 seconds
         #self.segment_start_offset = self.dashoffset
         self.rate                 = rate
+
+    def update_color(self, color_type):
+        if color_type == CLIENT_COLOR:
+            self.color_type = CLIENT_COLOR
+            self.color = self.display.get_client_color(self.client.name)
+        else:  #LIBRARY_COLOR
+            self.color_type = LIBRARY_COLOR
+            self.color = self.display.get_mover_color(self.mover.library)
+
+        if self.line:
+            self.display.itemconfigure(self.line, fill = self.color)
 
     #########################################################################
 
@@ -2396,13 +2416,23 @@ class Display(Tkinter.Canvas):
             return
 
         #Only process the messages in the queue at this time.
-        number = min(message_queue.len_queue(), 1000)
+        number = min(message_queue.len_queue(self.system_name), 1000)
 
-        while number > 0:
+        #Try and only take a small time to do this.  If we get behind,
+        # (aka more than 100 backlog) we will take the hit of delaying
+        # updating the screen until the backlog is gone.
+        remember_number = number
+        wait_time = (ANIMATE_TIME * 0.001 / 2)
+        t0 = time.time()
+
+        while (number > 0 and remember_number > 100) or \
+                  (number > 0 and (time.time() - t0) < (wait_time)):
 
             #Words is a list of the split string command.
             command = self.get_valid_command()
-
+            if command == "":
+                #For ignored messages or dropped transfer messages...
+                continue
             #If a datagram gets dropped, attempt to recover the lost
             # information by asking for it.
             if not self.is_up_to_date(command):
@@ -2411,12 +2441,11 @@ class Display(Tkinter.Canvas):
                     words = command.split()
                     request_queue.put_queue(words[1],
                                             tid = words[1].split("@")[-1])
-                    #self.put_request(words[1], words[1].split("@")[-1])
                     startup_lock.release()
-            
+
             #Process the next item in the queue.
             self.handle_command(command)
-            
+
             number = number - 1
 
             if self.stopped:
@@ -2573,19 +2602,13 @@ class Display(Tkinter.Canvas):
         return self.library_colors[library]
 
     def get_client_color(self, client):
-        #If this is the first client.
-        if not getattr(self, "client_colors", None):
-            self.client_colors = {}
-
-        #If this client's color is already remembered.
         for item in self.client_colors.items():
             try:
-                client_search = re.compile(item[0])
-                if client_search.search(client).group():
+                if re.compile(item[0]).search(client):
                     return item[1]
             except AttributeError:
                 pass
-        
+                
         self.client_colors[client] = colors('client_outline_color')
 
         return self.client_colors[client]
@@ -2829,8 +2852,7 @@ class Display(Tkinter.Canvas):
             if old_number != new_number:
                 self.reposition_canvas()
             
-            client.waiting = 1
-            client.update_state() #change fill color if needed
+            client.update_state(WAITING) #change fill color if needed
             client.draw()
 
         clients_lock.release()
@@ -2859,9 +2881,9 @@ class Display(Tkinter.Canvas):
             self.add_client_position(client_name)
             client = Client(client_name, self)
             self.clients[client_name] = client
+
             #If the client command is ever used, these lines are necessary.
-            #   client.waiting = 0
-            #   client.update_state() #change fill color if needed
+            #   client.update_state(CONNECTED) #change fill color if needed
             client.draw()  #Draws the client.
 
             #If the number of client columns changed we need to reposition.
@@ -2872,7 +2894,7 @@ class Display(Tkinter.Canvas):
                 self.reposition_canvas(force = 1)
         else:
             client.waiting = 0
-            client.update_state() #change fill color if needed
+            client.update_state(CONNECTED) #change fill color if needed
 
         #Draw the connection.
 
@@ -2897,6 +2919,7 @@ class Display(Tkinter.Canvas):
             #Increase the number of connections this client has.
             client.n_connections = client.n_connections + 1
             client.mover_names[mover.name] = mover.name
+
         connection.draw() #Either draw or redraw correctly.
 
         ###What are these for?
@@ -2904,7 +2927,7 @@ class Display(Tkinter.Canvas):
         mover.b0 = 0L
 
         clients_lock.release()
-                
+
     def disconnect_command(self, command_list):
 
         clients_lock.acquire()
@@ -3057,7 +3080,7 @@ class Display(Tkinter.Canvas):
 
         if words[0] in self.comm_dict.keys():
             #Under normal situations.
-            message_queue.put_queue(command)
+            message_queue.put_queue(command, self.system_name)
 
     #      connect MOVER_NAME CLIENT_NAME
     #      disconnect MOVER_NAME CLIENT_NAME
@@ -3096,7 +3119,7 @@ class Display(Tkinter.Canvas):
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
     def get_valid_command(self):  #, command):
-        
+
         command = message_queue.get_queue(self.system_name)
         if not command:
             return ""
@@ -3112,7 +3135,8 @@ class Display(Tkinter.Canvas):
 
         #Don't bother processing transfer messages if we are not keeping up.
         if words[0] in ["transfer"] and \
-           message_queue.len_queue() > max(20, (len(self.movers))):
+               message_queue.len_queue(self.system_name) > \
+               max(20, (len(self.movers))):
             return ""  #[]
 
         if len(words) < self.comm_dict[words[0]]['length']:

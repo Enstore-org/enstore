@@ -76,6 +76,9 @@ stop_now = 0
 old_list = []
 old_len  = 0
 
+#For callbacks called from the master window.  This is the list of canvases.
+displays = []
+
 #########################################################################
 # common support functions
 #########################################################################
@@ -946,7 +949,8 @@ def handle_messages(csc_addr, system_name, intf):
             if not e_errors.is_ok(er_dict):
                 time.sleep(60)
                 #display.queue_command("reinit")
-                enstore_display.message_queue.put_queue("reinit")
+                enstore_display.message_queue.put_queue("reinit",
+                                                        enstore_system)
                 return
 
             er_addr = (er_dict.get('hostip', None), er_dict.get('port', None))
@@ -1004,7 +1008,7 @@ def handle_messages(csc_addr, system_name, intf):
             #Don't overwhelm the display thread.
             time.sleep(0.03)
             #while len(display.command_queue) > 50:
-            while enstore_display.message_queue.len_queue() > 20:
+            while enstore_display.message_queue.len_queue(enstore_system) > 20:
                 time.sleep(0.01)
         else:
             #test whether there is a command ready to read, timeout in
@@ -1185,7 +1189,7 @@ def set_geometry(tk, entvrc_info):
 #  Create menubar
 #########################################################################
 
-def create_menubar(animate, master):
+def create_menubar(menu_defaults, master):
     if not master:
         return
     
@@ -1197,11 +1201,12 @@ def create_menubar(animate, master):
     #Create the animate check button and set animate accordingly.
     master.entv_do_animation = Tkinter.BooleanVar()
     master.connection_color = Tkinter.IntVar()
-    master.connection_color.set(enstore_display.CLIENT_COLOR)
+    master.connection_color.set(menu_defaults['connection_color'])
     
     #By default animation is off.  If we need to turn animation, do so now.
-    if animate == enstore_display.ANIMATE:
-        master.entv_do_animation.set(enstore_display.ANIMATE)
+    #if menu_defaults['animate'] == enstore_display.ANIMATE:
+    master.entv_do_animation.set(menu_defaults['animate'])
+                                
     #Add the checkbutton to the menu.
     ## Note: There is no way to obtain the actual checkbutton object.
     ## This would make accessing it internally do-able.
@@ -1216,32 +1221,54 @@ def create_menubar(animate, master):
         onvalue = enstore_display.ANIMATE,
         offvalue = enstore_display.STILL,
         variable = master.entv_do_animation,
-        #command = self.toggle_animation,
+        command = toggle_animation,
         )
     master.entv_option_menu.add_separator()
     master.entv_option_menu.add_radiobutton(
         label = "Connections use client color",
+        indicatoron = Tkinter.TRUE,
         value = enstore_display.CLIENT_COLOR,
         variable = master.connection_color,
         command = toggle_connection_color,
-        indicatoron = Tkinter.TRUE,
         )
     master.entv_option_menu.add_radiobutton(
         label = "Connections use library color",
+        indicatoron = Tkinter.TRUE,
         value = enstore_display.LIBRARY_COLOR,
         variable = master.connection_color,
         command = toggle_connection_color,
-        indicatoron = Tkinter.TRUE,
         )
-    
     
     #Added the menus to there respective parent widgets.
     master.entv_menubar.add_cascade(label = "options",
                                     menu = master.entv_option_menu)
     master.config(menu = master.entv_menubar)
 
+def toggle_animation():
+    global displays
+
+    for display in displays:
+        if display.master.entv_do_animation.get() == enstore_display.ANIMATE:
+            if not display.after_smooth_animation_id:
+                display.after_smooth_animation_id = display.after(
+                    enstore_display.ANIMATE_TIME, display.smooth_animation)
+        else: #enstore_display.STILL
+            if display.after_smooth_animation_id:
+                display.after_cancel(display.after_smooth_animation_id)
+                display.after_smooth_animation_id = None
+                
+
 def toggle_connection_color():
-    pass
+    global displays
+    
+    #Update the colors for the connections all at once.  The other way to
+    # do this would be to poll the value of
+    # display.master.connection_color.get() for every frame of animation.
+    # that would be a big waste of CPU.
+    for display in displays:
+        cc = display.master.connection_color.get()
+        for connection in display.connections.values():
+            connection.update_color(cc)
 
 #########################################################################
 #  Interface class
@@ -1335,6 +1362,7 @@ class EntvClientInterface(generic_client.GenericClientInterface):
 
 def main(intf):
     global stop_now
+    global displays
 
     if intf.movers_file or intf.messages_file:
         csc = None
@@ -1394,7 +1422,9 @@ def main(intf):
     master = Tkinter.Tk(screenName = intf.display)
     master.withdraw()
     master.title(title_name)
-    create_menubar(enstore_display.STILL, master)
+    menu_defaults = {'animate' : enstore_display.STILL,
+                     'connection_color' : enstore_display.CLIENT_COLOR }
+    create_menubar(menu_defaults, master)
     
     continue_working = 1
     restart_entv = False
@@ -1535,8 +1565,8 @@ def main(intf):
         #Don't move the following into threads in enstore_display functions.
         # There are wierd references that prevent them from being reclaimed
         # by the garbage collector.
-        enstore_display.message_queue.clear_queue()
-        enstore_display.request_queue.clear_queue()
+        enstore_display.message_queue.clear_queues()
+        enstore_display.request_queue.clear_queues()
 
         #Force reclaimation of memory (and other resources) and also
         # report if leaks are occuring.
