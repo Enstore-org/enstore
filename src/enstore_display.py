@@ -114,12 +114,15 @@ display_lock = threading.Lock()
 #queue_lock   = threading.Lock()
 startup_lock = threading.Lock()
 thread_lock  = threading.Lock()
+clients_lock = threading.Lock()
 
 CIRCULAR, LINEAR = range(2)
 layout = LINEAR
 
 ANIMATE = 1
 STILL = 0
+CLIENT_COLOR = 1
+LIBRARY_COLOR = 2
 
 MMPC = 20.0     # Max Movers Per Column
 MIPC = 20       # Max Items Per Column
@@ -1409,6 +1412,7 @@ class Client:
         self.name               = name
         self.display            = display
         self.n_connections      = 0
+        self.mover_names        = {}
         self.last_activity_time = time.time()
         self.waiting            = 0
         self.label              = None
@@ -1528,19 +1532,25 @@ class Connection:
         self.line               = None
         self.path               = []
         self.color              = None
+        self.color_type         = CLIENT_COLOR
 
         self.position()
 
     #########################################################################
         
     def draw(self):
-
         if not self.color:
-            self.color = self.display.get_client_color(self.client.name)
+            if self.display.master.connection_color.get() == CLIENT_COLOR:
+                self.color_type = CLIENT_COLOR
+                self.color = self.display.get_client_color(self.client.name)
+            else:  #LIBRARY_COLOR
+                self.color_type = LIBRARY_COLOR
+                self.color = self.display.get_mover_color(self.mover.library)
 
         if self.line:
             self.display.coords(self.line, tuple(self.path))
-            self.display.itemconfigure(self.line, dashoffset = self.dashoffset)
+            self.display.itemconfigure(self.line, dashoffset = self.dashoffset,
+                                       fill = self.color)
         else:
             self.line = self.display.create_line(self.path, dash='...-',
                                                  width=2, smooth=1,
@@ -1555,6 +1565,18 @@ class Connection:
             pass
 
     def animate(self, now=None):
+        #This first block will honor changing the color of the connection line.
+        cc = self.display.master.connection_color.get()
+        if self.color_type != cc:
+            if cc == CLIENT_COLOR:
+                self.color_type = CLIENT_COLOR
+                self.color = self.display.get_client_color(self.client.name)
+            else:  #LIBRARY_COLOR
+                self.color_type = LIBRARY_COLOR
+                self.color = self.display.get_mover_color(self.mover.library)
+
+            self.display.itemconfigure(self.line, fill = self.color)
+
         if self.rate == None:
             #The transfer is complete don't update in this case.
             return
@@ -2006,7 +2028,8 @@ class Display(Tkinter.Canvas):
     """  The main state display """
     ##** means "variable number of keyword arguments" (passed as a dictionary)
     #entvrc_info is a dictionary of various parameters.
-    def __init__(self, entvrc_info, master = None, mover_display = None,
+    def __init__(self, entvrc_info, system_name,
+                 master = None, mover_display = None,
                  **attributes):
         if not hasattr(self, "master"):
             self.master = master
@@ -2014,7 +2037,7 @@ class Display(Tkinter.Canvas):
         else:
             reinited = 1
 
-        title = entvrc_info.get('title', "Enstore")
+        self.system_name = system_name
         self.library_colors = entvrc_info.get('library_colors', {})
         self.client_colors = entvrc_info.get('client_colors', {})
 
@@ -2025,7 +2048,7 @@ class Display(Tkinter.Canvas):
             if master:
                 self.master_geometry = self.master.geometry()
                 Tkinter.Canvas.__init__(self, master = master)
-                self.master.title(title)
+                
             else:
                 Tkinter.Canvas.__init__(self)
 
@@ -2079,6 +2102,14 @@ class Display(Tkinter.Canvas):
         self.bind('<Visibility>', self.visibility)
         self.bind('<Button-2>', self.print_canvas)
 
+        self.after_smooth_animation_id = None
+        self.after_clients_id = None
+        self.after_reinitialize_id = None
+        self.after_process_messages_id = None
+        self.after_join_id = None
+        self.after_offline_reason_id = None
+        self.after_reposition_id = None
+
         #Clear the window for drawing to the screen.
         self.pack(expand = 1, fill = Tkinter.BOTH)
         self.update()
@@ -2089,6 +2120,8 @@ class Display(Tkinter.Canvas):
             self.mover_display = mover_display
         else:
             self.mover_display = None
+
+        self.startup()
 
     def reinit_display(self):
         self._reinit = 0
@@ -2154,11 +2187,16 @@ class Display(Tkinter.Canvas):
         self.master_geometry = self.master.geometry()
 
         try:
-            self.after_cancel(self.after_smooth_animation_id)
-            self.after_cancel(self.after_clients_id)
-            self.after_cancel(self.after_reinitialize_id)
-            self.after_cancel(self.after_process_messages_id)
-            self.after_cancel(self.after_offline_reason_id)
+            if self.after_smooth_animation_id:
+                self.after_cancel(self.after_smooth_animation_id)
+            if self.after_clients_id:
+                self.after_cancel(self.after_clients_id)
+            if self.after_reinitialize_id:
+                self.after_cancel(self.after_reinitialize_id)
+            if self.after_process_messages_id:
+                self.after_cancel(self.after_process_messages_id)
+            if self.after_offline_reason_id:
+                self.after_cancel(self.after_offline_reason_id)
             if self.after_reposition_id:
                 self.after_cancel(self.after_reposition_id)
         except AttributeError:
@@ -2217,12 +2255,18 @@ class Display(Tkinter.Canvas):
         #Since the window has been closed, it makes no sense to continue
         # to update this information.  It is a major performace killer
         # to leave these running.
-        self.after_cancel(self.after_smooth_animation_id)
-        self.after_cancel(self.after_clients_id)
-        self.after_cancel(self.after_reinitialize_id)
-        self.after_cancel(self.after_process_messages_id)
-        self.after_cancel(self.after_join_id)
-        self.after_cancel(self.after_offline_reason_id)
+        if self.after_smooth_animation_id:
+            self.after_cancel(self.after_smooth_animation_id)
+        if self.after_clients_id:
+            self.after_cancel(self.after_clients_id)
+        if self.after_reinitialize_id:
+            self.after_cancel(self.after_reinitialize_id)
+        if self.after_process_messages_id:
+            self.after_cancel(self.after_process_messages_id)
+        if self.after_join_id:
+            self.after_cancel(self.after_join_id)
+        if self.after_offline_reason_id:
+            self.after_cancel(self.after_offline_reason_id)
 
         for mov in self.movers.values():
             self.after_cancel(mov.timer_id)
@@ -2352,10 +2396,7 @@ class Display(Tkinter.Canvas):
             return
 
         #Only process the messages in the queue at this time.
-        number = min(message_queue.len_queue(), MIPC)
-        #queue_lock.acquire()
-        #number = min(len(self.command_queue), MIPC)
-        #queue_lock.release()
+        number = min(message_queue.len_queue(), 1000)
 
         while number > 0:
 
@@ -2406,11 +2447,13 @@ class Display(Tkinter.Canvas):
     def disconnect_clients(self):
 
         display_lock.acquire()
-
+        clients_lock.acquire()
+        
         now = time.time()
         #### Check for unconnected clients
         for client_name, client in self.clients.items():
-            if (client.n_connections > 0 or client.waiting == 1):
+            #if (client.n_connections > 0 or client.waiting == 1):
+            if len(client.mover_names) > 0 or client.waiting == 1:
                 continue
             if now - client.last_activity_time > 5: # grace period
                 Trace.trace(2, "It's been longer than 5 seconds, %s " \
@@ -2430,6 +2473,7 @@ class Display(Tkinter.Canvas):
         self.after_clients_id = self.after(UPDATE_TIME,
                                            self.disconnect_clients)
 
+        clients_lock.release()
         display_lock.release()
 
     #Called from self.after().
@@ -2450,7 +2494,7 @@ class Display(Tkinter.Canvas):
         display_lock.acquire()
 
         already_requested = [] #For multiple inquisitors; one for each system.
-        
+
         for mover in self.movers.values():
             system_name = mover.name.split("@")[1]
             
@@ -2549,7 +2593,7 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     def add_client_position(self, client_name):
-        #Start searching the existing columns for the client's name.
+        # searching the existing columns for the client's name.
         for i in range(len(self.client_positions) + 1)[1:]:
             if self.client_positions[i].has_item(client_name):
                 return
@@ -2768,6 +2812,8 @@ class Display(Tkinter.Canvas):
         ## For now, don't draw waiting clients (there are just
         ## too many of them)
         return
+
+        clients_lock.acquire()
             
         client_name = normalize_name(command_list[1])
         client = self.clients.get(client_name) 
@@ -2787,7 +2833,13 @@ class Display(Tkinter.Canvas):
             client.update_state() #change fill color if needed
             client.draw()
 
+        clients_lock.release()
+
     def connect_command(self, command_list):
+
+        #We don't need disconnect_clients() to be run (or the garbage
+        # collection to happen perhapse?) in between the client 
+        clients_lock.acquire()
 
         now = time.time()
 
@@ -2815,6 +2867,8 @@ class Display(Tkinter.Canvas):
             #If the number of client columns changed we need to reposition.
             new_number = self.get_client_column_count()
             if old_number != new_number:
+                if client_name not in self.clients:
+                    print "ERROR: Newly added client not found in client list."
                 self.reposition_canvas(force = 1)
         else:
             client.waiting = 0
@@ -2828,11 +2882,13 @@ class Display(Tkinter.Canvas):
             #Decrease the old clients connection count.
             old_client = connection.client
             old_client.n_connections = old_client.n_connections - 1
+            del old_client.mover_names[mover.name]
             #Take the existing connection and make it like new.
             connection.undraw()
             connection.__init__(mover, client, self)
             #Increase the number of connections this client has.
             client.n_connections = client.n_connections + 1
+            client.mover_names[mover.name] = mover.name
         #If not create a new connection.
         else:
             connection = Connection(mover, client, self)
@@ -2840,13 +2896,19 @@ class Display(Tkinter.Canvas):
             connection.update_rate(0)
             #Increase the number of connections this client has.
             client.n_connections = client.n_connections + 1
+            client.mover_names[mover.name] = mover.name
         connection.draw() #Either draw or redraw correctly.
 
         ###What are these for?
         mover.t0 = now
         mover.b0 = 0L
+
+        clients_lock.release()
                 
     def disconnect_command(self, command_list):
+
+        clients_lock.acquire()
+        
         Trace.trace(2, "mover %s is disconnecting from %s" %
                     (command_list[1], command_list[2]))
         
@@ -2858,6 +2920,10 @@ class Display(Tkinter.Canvas):
         #Decrease the number of connections this client has.
         try:
             client.n_connections = client.n_connections - 1
+        except (AttributeError, KeyError):
+            pass
+        try:
+            del client.mover_names[mover.name]
         except (AttributeError, KeyError):
             pass
         
@@ -2876,7 +2942,9 @@ class Display(Tkinter.Canvas):
             mover.update_progress(None, None)
             mover.update_buffer(None)
             mover.update_rate(None)
-                
+
+        clients_lock.release()
+    
     def loaded_command(self, command_list):
 
         mover = self.movers.get(command_list[1])
@@ -3028,7 +3096,8 @@ class Display(Tkinter.Canvas):
                  'newconfigfile' : {'function':newconfig_command, 'length':1}}
 
     def get_valid_command(self):  #, command):
-        command = message_queue.get_queue()
+        
+        command = message_queue.get_queue(self.system_name)
         if not command:
             return ""
 
@@ -3087,7 +3156,7 @@ class Display(Tkinter.Canvas):
             #Every command gets processed though handle_command().  Thus,
             # this will output all processed messages and those necessary
             # to insert because of missed messges.
-            Trace.message(10, string.join((time.ctime(), command), " "))
+            Trace.trace(10, string.join((time.ctime(), command), " "))
 
             #Run the corresponding function.
             display_lock.acquire()
@@ -3122,12 +3191,14 @@ class Display(Tkinter.Canvas):
                 del self.movers[key]
             except KeyError:
                 Trace.trace(1, "Unable to remove mover %s" % key)
+        clients_lock.acquire()
         for key in self.clients.keys():
             try:
                 self.clients[key].display = None
                 del self.clients[key]
             except KeyError:
                 Trace.trace(1, "Unable to remove client %s" % key)
+        clients_lock.release()
         for key in self.connections.keys():
             try:
                 self.connections[key].mover = None
@@ -3185,11 +3256,7 @@ class Display(Tkinter.Canvas):
             pass  #If the window is already destroyed (i.e. user closed it)
                   # then this error will occur.
 
-    def mainloop(self, threshold = None):
-        global offline_reason_thread
-        
-        #self.reposition_canvas(force = True)
-        #self.pack(expand = 1, fill = Tkinter.BOTH)
+    def startup(self):
         #If the window does not yet exist, draw it.  This should only
         # be true the first time mainloop() gets called; for
         # reinitializations this should not happen.
@@ -3199,9 +3266,9 @@ class Display(Tkinter.Canvas):
             # When this is here, it is one factor to having the first drawing
             # look correct (among other factors).
             
-            self.master.deiconify()
-            self.master.lift()
-            self.master.update()
+            #self.master.deiconify()
+            #self.master.lift()
+            #self.master.update()
         
         self.after_smooth_animation_id = self.after(ANIMATE_TIME,
                                                     self.smooth_animation)
@@ -3215,6 +3282,22 @@ class Display(Tkinter.Canvas):
                                         self.join_thread)
         self.after_offline_reason_id = self.after(5000, #5 seconds
                                                   self.check_offline_reason)
+        self.after_reposition_id = None
+
+    def shutdown(self):
+        global offline_reason_thread
+
+        #Grab last thread if necessary.
+        if offline_reason_thread:
+            thread_lock.acquire()
+            offline_reason_thread.join()
+            del offline_reason_thread
+            offline_reason_thread = None
+            thread_lock.release()        
+
+    def mainloop(self, threshold = None):
+
+        self.startup()
 
         #Since, the startup_lock is still held, we have nothing yet to do.
         # This would be a good time to cleanup before things get hairy.
@@ -3228,7 +3311,6 @@ class Display(Tkinter.Canvas):
             #Will get here if run from enstore_display.py not entv.py.
             pass
 
-        self.after_reposition_id = None
         if threshold == None:
             self.master.mainloop()
         else:
@@ -3236,13 +3318,7 @@ class Display(Tkinter.Canvas):
             # an integer.
             self.master.mainloop(threshold)
 
-        #Grab last thread if necessary.
-        if offline_reason_thread:
-            thread_lock.acquire()
-            offline_reason_thread.join()
-            del offline_reason_thread
-            offline_reason_thread = None
-            thread_lock.release()
+        self.shutdown()
 
 #########################################################################
 

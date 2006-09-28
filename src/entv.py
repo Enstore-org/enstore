@@ -265,8 +265,18 @@ def get_all_systems(csc, intf=None): #, system_name=None):
     #Special section for test systems that are not in their own
     # config file's 'known_config_servers' section.
     if not config_servers:
-        ip = socket.gethostbyname(config_host)
-        addr_info = socket.gethostbyaddr(ip)
+        i = 0
+        while i < 3:
+            try:
+                ip = socket.gethostbyname(config_host)
+                addr_info = socket.gethostbyaddr(ip)
+                break
+            except socket.error:
+                time.sleep(1)
+                continue
+        else:
+            sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
+            sys.exit(1)
         if addr_info[1] != []:
             short_name = addr_info[1][0]
         else:
@@ -451,7 +461,7 @@ def get_entvrc(csc, intf):
 
     return rtn_dict
 
-def set_entvrc(display, csc, intf):
+def set_entvrc(display, address, intf):
     
     #If there isn't geometry don't do anything.
     master_geometry = getattr(display, "master_geometry", None)
@@ -459,6 +469,7 @@ def set_entvrc(display, csc, intf):
         return
 
     try:
+        """
         if intf.movers_file:
             address = "localhost"
         elif intf.args:
@@ -482,6 +493,7 @@ def set_entvrc(display, csc, intf):
         else:
             #We need a default.
             address = os.environ['ENSTORE_CONFIG_HOST']
+        """
         
         #Do this now to save the time to do the conversion for every line.
         csc_server_name = socket.getfqdn(address)
@@ -507,7 +519,9 @@ def set_entvrc(display, csc, intf):
         new_line_written = 0
 
         #Loop through any existing data from the file.
+        getfqdn = socket.getfqdn  #Speed up lookups.
         for line in data:
+            #t1 = time.time()
             #Split the line into its individual words.
             words = line.split()
 
@@ -516,8 +530,17 @@ def set_entvrc(display, csc, intf):
                 tmp_file.write("\n")   #Skip empty lines.
                 continue
 
+            if words[0] == "client_color" or words[0] == "library_color" \
+               or line[0] == "#":
+                tmp_file.write("%s\n" % (line,))
+
+                #The reason for looking for client_color, library_color
+                # and comment lines is to avoid calling (socket.)getfqdn().
+                # It really slows things down.
+
             #If this is the correct line to update; update it.
-            if socket.getfqdn(words[0]) == csc_server_name:
+            elif getfqdn(words[0]) == csc_server_name:
+
                 #We can't assume a user that puts together there own
                 # .entvrc file will do it correctly.
                 try:
@@ -538,7 +561,7 @@ def set_entvrc(display, csc, intf):
 
                 new_line_written = 1
             else:
-                tmp_file.write(line + "\n")
+                tmp_file.write("%s\n" % (line,))
 
         #If the enstore system entv display is not found, add it at the end.
         if not new_line_written:
@@ -657,7 +680,7 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
     for lm in lm_list:
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
-        except TypeError:
+        except (TypeError, NameError):
             #sys.stderr.write(str(lm_dict[lm]))
             continue
 
@@ -696,11 +719,11 @@ def handle_status(mover, status):
         outage_dict = status.get('outage', {})
         send_error_list = {}  #Really a dictionary.
         for mover_name, outage in outage_dict.items():
-            send_error_list[mover] = "error %s %s" % (mover_name.split(".")[0],
-                                                      outage)
+            send_error_list[mover_name] = "error %s %s" % \
+                                          (mover_name.split(".")[0], outage)
         for mover_name, reason in offline_dict.items():
-            send_error_list[mover] = "error %s %s" % (mover_name.split(".")[0],
-                                                      reason)
+            send_error_list[mover_name] = "error %s %s" % \
+                                          (mover_name.split(".")[0], reason)
         return send_error_list.values()
     
     state = status.get('state','Unknown')
@@ -799,12 +822,12 @@ def request_mover_status(display, csc, intf):
     enstore_display.startup_lock.release()
 """
 
-def start_messages_thread(csc_addr, intf):
+def start_messages_thread(csc_addr, system_name, intf):
     global messages_threads
 
     messages_threads.append(threading.Thread(
         target = handle_messages,
-        args = (csc_addr, intf),
+        args = (csc_addr, system_name, intf),
         ))
     messages_threads[-1].start()
 
@@ -864,7 +887,7 @@ def send_sched_request(csc, send_request_dict, u, count = 0):
 #event_relay_addr is a 2-tuple of ip/hostname and port number.
 #intf is an instance of the EntvInterface class.
 #def handle_messages(display, csc, intf):
-def handle_messages(csc_addr, intf):
+def handle_messages(csc_addr, system_name, intf):
     global stop_now
 
     #Prevent the main thread from queuing status requests.
@@ -950,7 +973,7 @@ def handle_messages(csc_addr, intf):
     
     #Allow the main thread to queue status requests.
     enstore_display.startup_lock.release()
-
+    
     while not stop_now: # and not display.stopped:
 
         #Send any requests to the mover.
@@ -1076,7 +1099,7 @@ def handle_messages(csc_addr, intf):
         put_func = enstore_display.message_queue.put_queue #Shortcut.
         for command in commands:
             #For normal use put everything into the queue.
-            put_func(command)  #, enstore_system)
+            put_func(command, system_name)  #, enstore_system)
             
         #If necessary, handle resubscribing.
         if not intf.messages_file:
@@ -1173,6 +1196,9 @@ def create_menubar(animate, master):
 
     #Create the animate check button and set animate accordingly.
     master.entv_do_animation = Tkinter.BooleanVar()
+    master.connection_color = Tkinter.IntVar()
+    master.connection_color.set(enstore_display.CLIENT_COLOR)
+    
     #By default animation is off.  If we need to turn animation, do so now.
     if animate == enstore_display.ANIMATE:
         master.entv_do_animation.set(enstore_display.ANIMATE)
@@ -1192,12 +1218,31 @@ def create_menubar(animate, master):
         variable = master.entv_do_animation,
         #command = self.toggle_animation,
         )
-
+    master.entv_option_menu.add_separator()
+    master.entv_option_menu.add_radiobutton(
+        label = "Connections use client color",
+        value = enstore_display.CLIENT_COLOR,
+        variable = master.connection_color,
+        command = toggle_connection_color,
+        indicatoron = Tkinter.TRUE,
+        )
+    master.entv_option_menu.add_radiobutton(
+        label = "Connections use library color",
+        value = enstore_display.LIBRARY_COLOR,
+        variable = master.connection_color,
+        command = toggle_connection_color,
+        indicatoron = Tkinter.TRUE,
+        )
+    
+    
     #Added the menus to there respective parent widgets.
     master.entv_menubar.add_cascade(label = "options",
                                     menu = master.entv_option_menu)
     master.config(menu = master.entv_menubar)
-    
+
+def toggle_connection_color():
+    pass
+
 #########################################################################
 #  Interface class
 #########################################################################
@@ -1295,6 +1340,7 @@ def main(intf):
         csc = None
 
         system_name = DEFAULT_SYSTEM_NAME
+        title_name = DEFAULT_SYSTEM_NAME
 
         cscs_info = {}
         cscs = [None]
@@ -1327,21 +1373,27 @@ def main(intf):
         #Get the short name for the enstore system specified.
         system_name = get_system_name(intf, cscs_info)
 
-        cscs = []
-        for address in cscs_info.values():
-            cscs.append(configuration_client.ConfigurationClient(address))
+        cscs = {}
+        for system_name, address in cscs_info.items():
+            cscs[system_name] = configuration_client.ConfigurationClient(address)
             try:
-                cscs[-1].dump_and_save()
+                cscs[system_name].dump_and_save()
 
                 # Once, the enable_caching() function is called the
                 # csc get() function is okay to use.
-                cscs[-1].new_config_obj.enable_caching()
+                cscs[system_name].new_config_obj.enable_caching()
             except:
                 pass
+
+        if len(cscs_info) == 1:
+            title_name = cscs_info.keys()[0]
+        else:
+            title_name = "%s: %s" % ("Enstore", cscs_info.keys())
 
     #Get the main window.
     master = Tkinter.Tk(screenName = intf.display)
     master.withdraw()
+    master.title(title_name)
     create_menubar(enstore_display.STILL, master)
     
     continue_working = 1
@@ -1360,42 +1412,44 @@ def main(intf):
             #entvrc_dict['title'] = "Enstore"
         else:
             entvrc_dict = get_entvrc(csc, intf)
-            entvrc_dict['title'] = system_name #For simplicity put this here.
+            #entvrc_dict['title'] = system_name #For simplicity put this here.
 
         #Set the size of the window.
         set_geometry(master, entvrc_dict)
 
-        #if display == None:
-        display = enstore_display.Display(entvrc_dict, master = master,
-                                          mover_display = mover_display,
+        """
+        if intf.messages_file:
+            system_names = "Enstore"
+            csc_addrs = [None]
+        else:
+            system_names = cscs_info.keys()
+            csc_addrs = cscs_info.values()
+        """
+        
+        displays = []
+        for system_name, csc_addr in cscs_info.items():
+            display = enstore_display.Display(entvrc_dict, system_name,
+                                              master = master,
+                                              mover_display = mover_display,
                              background = entvrc_dict.get('background', None))
 
-        if not intf.messages_file:
-            for csc_addr in cscs_info.values():
+            display.pack(side = Tkinter.LEFT, fill = Tkinter.BOTH,
+                         expand = Tkinter.YES)
+            #This function can be called for 'canned' entv too.
+            # This is because a None value is inserted into the
+            # cscs list.
+            display.handle_command("csc %s %s" % csc_addr)
 
-                if csc_addr:
-                    try:
-                        #Inform the display the config server to use.  Don't do
-                        # this if running 'canned' entv.  Make sure this is run
-                        # before the movers_command is.
-                        display.handle_command("csc %s %s" % csc_addr)
-                            #"csc %s %s" % (cscs[i].server_address[0],
-                            #               cscs[i].server_address[1]))
-                    except:
-                        pass
-
-            mover_list = []
-            for i in range(len(cscs)):
-                if cscs[i].server_address:
-                    #Inform the display the config server to use.  Make sure this
-                    # is run before the movers_command is.
-                    #This function can be called for 'canned' entv too.  This is
-                    # because a None value is inserted into the cscs list.
-                    mover_list = mover_list + get_mover_list(intf, cscs[i], 0, 1)
-
-            #Inform the display the names of all the movers.
-            movers_command = "movers" + " " + string.join(mover_list, " ")
-            display.handle_command(movers_command)
+            if not intf.messages_file:
+                #Obtain the list of all movers.
+                mover_list = get_mover_list(intf, cscs[system_name], 0, 1)
+                mover_list = ["movers"] + mover_list
+                movers_command = string.join(mover_list, " ")
+                
+                #Inform the display the names of all the movers.
+                display.handle_command(movers_command)
+            
+            displays.append(display)
 
         #If we want a clean commands file, we need to set the inital movers
         # state to idle.
@@ -1418,34 +1472,64 @@ def main(intf):
         
         if intf.messages_file:
             #Read from file the event relay messages to process.
-            start_messages_thread(None, intf)
+            start_messages_thread(None, "Enstore", intf)
         else:
             #Start a thread for each event relay we should contact.
-            for i in range(len(cscs)):
-                start_messages_thread((cscs[i].server_address[0],
-                                       cscs[i].server_address[1]), intf)
+            for system_name, csc in cscs.items():
+                start_messages_thread((csc.server_address[0],
+                                       csc.server_address[1]),
+                                      system_name, intf)
+
+        #Let the other startup threads go.
+        enstore_display.startup_lock.release()
+
+        #for dis in displays:
+        #    dis.startup()
+
+        master.deiconify()
+        master.lift()
+        #master.update()
+
+        # This would be a good time to cleanup before things get hairy.
+        gc.collect()
+        del gc.garbage[:]
 
         #Loop until user says don't.
-        display.mainloop()
+        master.mainloop()
 
         #Tell other thread(s) to stop.
         stop_now = 1
 
+        #Cleanup the display.
+        continue_working = 0
+        for display in displays:
+            #Determine if this is a reinitialization (True) or not (False).
+            continue_working = continue_working + display.attempt_reinit()
+
+            display.cleanup_display()
+            display.shutdown()
+            del display.mover_display
+            #Forces cleanup of objects that would not happen otherwise.  As
+            # part of the destroy call Tkinter does generate a Destroy event
+            # that results in window_killed() being called.  Skipping a
+            # destroy() function call would result in a huge memory leak.
+            try:
+                display.destroy()
+            except Tkinter.TclError:
+                #It might already be destroyed (i.e. window closed by user).
+                pass
+
         #Set the geometry of the .entvrc file (if necessary).
-        set_entvrc(display, csc, intf)
+        address = cscs_info[displays[0].system_name][0]
+        set_entvrc(displays[0], address, intf)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
         stop_messages_threads()
         Trace.trace(1, "message thread finished")
 
-        #Determine if this is a reinitialization (True) or not (False).
-        continue_working = display.attempt_reinit()
-
-        mover_display = display.mover_display
-
         #Reclaim all of display's resources now.
-        del display
+        del displays[:]
         del entvrc_dict
         del mover_list[:]
         #Don't move the following into threads in enstore_display functions.
@@ -1465,6 +1549,8 @@ def main(intf):
             os.execv(sys.argv[0], sys.argv)
 
         if continue_working:
+            master.update()
+            
             #As long as we are reinitializing, make sure we pick up any
             # new configuration changes.  It is possible that the
             # reinialization is happening because a NEWCONFIGFILE message
