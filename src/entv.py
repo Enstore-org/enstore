@@ -166,6 +166,21 @@ def cleanup_objects():
 
     return None
 
+def memory_in_use():
+    if os.uname()[0] == "Linux":
+        f = open("/proc/%d/status" % (os.getpid(),), "r")
+        proc_info = f.readlines()
+        f.close()
+
+        for item in proc_info:
+            words = item.split()
+            if words[0] == "VmSize:":
+                return int(words[1])
+
+        return None #Should never happen.
+    else:
+        return None
+
 """
 def get_system(intf=None): #, system_name=None):
     global _system_csc
@@ -464,7 +479,7 @@ def get_entvrc(csc, intf):
 
     return rtn_dict
 
-def set_entvrc(display, address, intf):
+def set_entvrc(display, address):
     
     #If there isn't geometry don't do anything.
     master_geometry = getattr(display, "master_geometry", None)
@@ -472,32 +487,6 @@ def set_entvrc(display, address, intf):
         return
 
     try:
-        """
-        if intf.movers_file:
-            address = "localhost"
-        elif intf.args:
-            # get a configuration server
-            #default_config_host = enstore_functions2.default_host()
-            #default_config_port = enstore_functions2.default_port()
-            #csc = configuration_client.ConfigurationClient(
-            #    (default_config_host, default_config_port))
-
-            config_servers = csc.get('known_config_servers', {})
-            #Based on the config file determine which config server was
-            # specified.
-            for name in config_servers.keys():
-                if name == intf.args[0]:
-                    address = config_servers[name][0]
-                    break
-                elif len(config_servers[name][0]) >= len(intf.args[0]) and \
-                   config_servers[name][0][len(intf.args[0]):] == intf.args[0]:
-                    address = config_servers[name][0]
-                    break
-        else:
-            #We need a default.
-            address = os.environ['ENSTORE_CONFIG_HOST']
-        """
-        
         #Do this now to save the time to do the conversion for every line.
         csc_server_name = socket.getfqdn(address)
 
@@ -1430,6 +1419,7 @@ def main(intf):
     restart_entv = False
     display = None
     mover_display = None
+    mem_in_use = -1 #Make this -1 to distinguish from None cases.
 
     while continue_working:
 
@@ -1551,7 +1541,7 @@ def main(intf):
 
         #Set the geometry of the .entvrc file (if necessary).
         address = cscs_info[displays[0].system_name][0]
-        set_entvrc(displays[0], address, intf)
+        set_entvrc(displays[0], address)
 
         #Wait for the other threads to finish.
         Trace.trace(1, "waiting for threads to stop")
@@ -1571,6 +1561,18 @@ def main(intf):
         #Force reclaimation of memory (and other resources) and also
         # report if leaks are occuring.
         restart_entv = cleanup_objects()
+
+        if mem_in_use == -1:
+            #Only do this the first time through.
+            mem_in_use = memory_in_use()
+        elif mem_in_use != None and mem_in_use != -1:
+            #Do this check for all loops after the first.
+            current_mem_used = memory_in_use()
+            if mem_in_use != None and current_mem_used != None \
+               and current_mem_used > 2 * mem_in_use:
+                #If the memory size is twice what it was, start a new
+                # process so we don't take up to much memory.
+                restart_entv = True
 
         if continue_working and restart_entv:
             #At this point a lot of objects have been unable to be freed.

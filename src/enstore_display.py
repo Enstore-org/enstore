@@ -25,7 +25,7 @@ import mover_client
 import configuration_client
 import enstore_constants
 import e_errors
-import inquisitor_client
+#import inquisitor_client
 
 #Set up paths to find our private copy of tcl/tk 8.3
 
@@ -2107,7 +2107,11 @@ class Display(Tkinter.Canvas):
             #If animation is turned on, set animation on (by default it
             # is set off until here).
             if entvrc_info.get('animate', 1) == ANIMATE:
-                master.entv_do_animation.set(ANIMATE)
+                try:
+                    master.entv_do_animation.set(ANIMATE)
+                except AttributeError:
+                    #Deal with this if we run enstore_display directly.
+                    pass
 
         self.width  = int(self['width'])
         self.height = int(self['height'])
@@ -2351,7 +2355,11 @@ class Display(Tkinter.Canvas):
 
         #If the user turned off animation, don't do it.
         #if not self.animate:
-        if self.master and self.master.entv_do_animation.get() == STILL: 
+        try:
+            if self.master and self.master.entv_do_animation.get() == STILL: 
+                return
+        except AttributeError:
+            #Deal with starting enstore_display.py directly.
             return
         
         now = time.time()
@@ -3352,6 +3360,8 @@ if __name__ == "__main__":
     else:
         title = "Enstore"
 
-    display = Display({}, background=rgbtohex(173, 216, 230))
+    master = Tkinter.Tk()
+    display = Display({'background' : rgbtohex(173, 216, 230)},
+                      "localhost", master = master)
     display.mainloop()
 
