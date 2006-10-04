@@ -312,38 +312,9 @@ class DispatchingWorker(udp_server.UDPServer):
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
-        # ref udp_client.py (i.e. we may wish to have a udp_client method
-        # to get this information)
-        self.reply_address = client_address
-        idn, number, ticket = self.r_eval(request)
-        if idn == None \
-               or type(ticket) != type({}) \
-               or not ticket.has_key("work"):
-            Trace.log(e_errors.ERROR, "Malformed request from %s %s" %
-                      (client_address, request,))
-            reply = (0L,{'status': (e_errors.MALFORMED, None)},None)
-            self.server_socket.sendto(repr(reply), self.reply_address)
-            return
-        self.client_number = number
-        self.current_id = idn
 
-        
-        if self.request_dict.has_key(idn):
-
-            # UDPClient resends messages if it doesn't get a response
-            # from us, see it we've already handled this request earlier. We've
-            # handled it if we have a record of it in our dict
-            lst = self.request_dict[idn]
-            if lst[0] == number:
-                Trace.trace(6,"process_request "+repr(idn)+" already handled")
-                self.reply_with_list(lst)
-                return
-
-            # if the request number is smaller, then there has been a timing
-            # race and we've already handled this as much as we are going to.
-            elif number < lst[0]: 
-                Trace.trace(6,"process_request "+repr(idn)+" old news")
-                return #old news, timing race....
+        ticket = udp_server.UDPServer.process_request(self, request,
+                                                      client_address)
 
         # look in the ticket and figure out what work user wants
         try:

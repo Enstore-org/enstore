@@ -22,7 +22,7 @@ import fcntl
 #    fcntl.F_SETFD = FCNTL.F_SETFD
 #    fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
 import copy
-#import types
+import types
 import rexec
 
 # enstore imports
@@ -32,6 +32,7 @@ import udp_common
 import Trace
 import e_errors
 import host_config
+
 
 # Generic request response server class, for multiple connections
 # Note that the get_request actually read the data from the socket
@@ -120,7 +121,30 @@ class UDPServer:
         print "server_bind add %s"%(self.server_address,)
         Trace.trace(16,"server_bind add %s"%(self.server_address,))
         self.server_socket.bind(self.server_address)
-    
+
+    def handle_timeout(self):
+        # override this method for specific timeout hadling
+        pass
+
+    def fileno(self):
+        """Return socket file number.
+
+        Interface required by select().
+
+        """
+        return self.server_socket.fileno()
+
+    def do_request(self):
+        # ref udp_client.py (i.e. we may wish to have a udp_client method
+        # to get this information)
+
+        request, client_address = self.get_message()
+
+        if not request:
+            return None
+
+        self.process_request(request, client_address)
+
     def get_message(self):
         # returns  (string, socket address)
         #      string is a stringified ticket, after CRC is removed
@@ -150,44 +174,45 @@ class UDPServer:
                 # calculate CRC
                 crc = checksum.adler32(0L, request, len(request))
                 if (crc != inCRC) :
-                    Trace.log(e_errors.INFO, "BAD CRC request: "+request)
                     Trace.log(e_errors.INFO,
-                              "CRC: "+repr(inCRC)+" calculated CRC: "+repr(crc))
+                              "BAD CRC request: %s " % (request,))
+                    Trace.log(e_errors.INFO,
+                              "CRC: %s calculated CRC: %s" %
+                              (repr(inCRC), repr(crc)))
+                              
                     request=None
 
         return (request, addr)
 
-    def handle_timeout(self):
-        # override this method for specific timeout hadling
-        pass
-
-    def fileno(self):
-        """Return socket file number.
-
-        Interface required by select().
-
-        """
-        return self.server_socket.fileno()
-
     # Process the  request that was (generally) sent from UDPClient.send
-    def process_request(self):
-        # ref udp_client.py (i.e. we may wish to have a udp_client method
-        # to get this information)
-
-        request, client_address = self.get_message()
-
-        if not request:
-            return None
-        self.reply_address = client_address
+    def process_request(self, request, client_address):
+       
         idn, number, ticket = self.r_eval(request)
         if idn == None or type(ticket) != type({}):
-            Trace.log(e_errors.ERROR,"Malformed request from %s %s"%(client_address, request,))
+            Trace.log(e_errors.ERROR,
+                      "Malformed request from %s %s" %
+                      (client_address, request,))
             reply = (0L,{'status': (e_errors.MALFORMED, None)},None)
-            self.server_socket.sendto(repr(reply), self.reply_address)
+            self.server_socket.sendto(repr(reply), client_address)
             return None
+
+        reply_address = client_address
+        client_number = number
+        current_id = idn
+        #The following are not thread safe.
+        self.reply_address = client_address
         self.client_number = number
         self.current_id = idn
 
+        #The reason we need to include this information (at least
+        # temporarily) is that for a multithreaded server it would
+        # be possible for this function to process multiple requests
+        # before repy_with_list() could be called from another thread(s).
+        # In such a situation reply_to_caller() would reply with the
+        # most recent request address and not to the one that made the request.
+        ticket['r_a'] = (reply_address,
+                         client_number,
+                         current_id)
 
         if self.request_dict.has_key(idn):
 
@@ -196,16 +221,18 @@ class UDPServer:
             # handled it if we have a record of it in our dict
             lst = self.request_dict[idn]
             if lst[0] == number:
-                Trace.trace(16,"process_request "+repr(idn)+" already handled")
-                self.reply_with_list(lst)
+                Trace.trace(16,
+                          "process_request %s already handled" % (repr(idn),))
+                self.reply_with_list(lst, client_address, idn)
                 return None
 
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             elif number < lst[0]: 
-                Trace.trace(16,"process_request "+repr(idn)+" old news")
-                return None#old news, timing race....
+                Trace.trace(16, "process_request %s old news" % (repr(idn),))
+                return None #old news, timing race....
         self.purge_stale_entries()
+
         return ticket
 
 
@@ -213,43 +240,77 @@ class UDPServer:
     # generally, the requested user function will send its response through
     # this function - this keeps the request numbers straight
     def reply_to_caller(self, ticket):
-        reply = (self.client_number, ticket, time.time()) 
-        self.reply_with_list(reply)          
+        if type(ticket) == types.DictType and ticket.get("r_a", None):
+            reply_address = ticket["r_a"][0] 
+            client_number = ticket["r_a"][1]
+            current_id    = ticket["r_a"][2]
+
+            del ticket['r_a']
+        
+        else:
+            #Can we ever get here?  If we do it isn't thread safe.
+            reply_address = self.reply_address
+            client_number = self.client_number
+            current_id    = self.current_id
+
+        reply = (client_number, ticket, time.time())
+        self.reply_with_list(reply, reply_address, current_id)
 
     # if a different interface is needed to send the reply on then use it.
     def reply_to_caller_using_interface_ip(self, ticket, interface_ip):
-        reply = (self.client_number, ticket, time.time()) 
-	self.request_dict[self.current_id] = copy.deepcopy(reply)
-	ip, port, send_socket = udp_common.get_callback(interface_ip)
-        send_socket.sendto(repr(self.request_dict[self.current_id]),
-			   self.reply_address)
-	del send_socket
+        if type(ticket) == types.DictType and ticket.get("r_a", None):
+            reply_address = ticket["r_a"][0] 
+            client_number = ticket["r_a"][1]
+            current_id    = ticket["r_a"][2]
+
+            del ticket['r_a']
+        
+        else:
+            #Can we ever get here?  If we do it isn't thread safe.
+            reply_address = self.reply_address
+            client_number = self.client_number
+            current_id    = self.current_id
+
+        reply = (client_number, ticket, time.time())
+        self.reply_with_list(reply, reply_address, current_id, interface_ip)
+        
+        #reply = (client_number, ticket, time.time()) 
+	#self.request_dict[current_id] = copy.deepcopy(reply)
+	#ip, port, send_socket = udp_common.get_callback(interface_ip)
+        #send_socket.sendto(repr(self.request_dict[current_id]),
+	#		   reply_address)
+	#del send_socket
 
         Trace.trace(16,
               "udp_server (reply with interface %s): to %s: request_dict %s" %
               (interface_ip, self.reply_address,
-               self.request_dict[self.current_id],))
+               self.request_dict[current_id],))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
-    def reply_with_list(self, list):
-        current_id = copy.deepcopy(list)
-        reply_address = self.reply_address
-        self.request_dict[self.current_id] = copy.deepcopy(list)
+    def reply_with_list(self, list, reply_address, current_id,
+                        interface_ip = None):
+
+        list_copy = copy.deepcopy(list)
+        self.request_dict[current_id] = list_copy
+
+        if interface_ip != None:
+            ip, port, send_socket = udp_common.get_callback(interface_ip)
+        else:
+            send_socket = self.server_socket
         
         try:
             Trace.trace(16, "udp_server (reply): to %s: request_dict %s" %
                         (reply_address, current_id))
-            self.server_socket.sendto(repr(current_id),reply_address)
+            send_socket.sendto(repr(list_copy), reply_address)
         except:
             Trace.handle_error()
-            print self.request_dict, reply_address, list
-        
+
     # for requests that are not handled serially reply_address, current_id,
     # and client_number number must be reset.  In the forking media changer
     # these are in the forked child and passed back to us
-    def reply_with_address(self,ticket):
-        self.reply_address = ticket["ra"][0] 
+    def reply_with_address(self, ticket):
+        self.reply_address = ticket["ra"][0]
         self.client_number = ticket["ra"][1]
         self.current_id    = ticket["ra"][2]
         reply = (self.client_number, ticket, time.time())
@@ -268,7 +329,7 @@ if __name__ == "__main__":
     
     udpsrv = UDPServer(('', 7700), receive_timeout = 60.0)
     while 1:
-        ticket = udpsrv.process_request()
+        ticket = udpsrv.do_request()
         if ticket:
             print "Message %s"%(ticket,)
             udpsrv.reply_to_caller(ticket)
