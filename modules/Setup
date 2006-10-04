@@ -77,31 +77,31 @@ SYS_FS_UFS_QUOTA_H=`if [ -f /usr/include/sys/fs/ufs_quota.h ]; then echo "-DHAVE
 QUOTAS=$(SYS_QUOTA_H) $(XFS_XQM_H) $(SYS_FS_UFS_QUOTA_H)
 
 # EXfer EXfer.c  -D`uname` adler32.a $(POSIX4) $(RT)
-EXfer EXfer.c  -D`uname` $(QUOTAS) adler32.a $(POSIX4) $(RT) $(GEN)
+EXfer EXfer.c  -I$(PYTHONINC) -D`uname` $(QUOTAS) adler32.a $(POSIX4) $(RT) $(GEN)
 
 # NOTE: "=" can not be on the same line with module definition
 FTT_DEF=FTT_DIR=
 
 
-IPC IPC.c
+IPC IPC.c  -I$(PYTHONINC)
 
-Devcodes Devcodes.c
+Devcodes Devcodes.c  -I$(PYTHONINC)
 
 # The EMASS/aci_shadow modules are not built unless ACI_DIR is defined ; see Makefile
 #aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
-aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $(ACI_DIR)/lib/libaci.a
-aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic 
-derrno derrno_wrap.c -I$(ACI_DIR)/inc
+#aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $(ACI_DIR)/lib/libaci.a
+aci_shadowc aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic 
+derrno derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc
 
-checksum checksum_wrap_thread.c adler32.a
+checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a
 
-socket_ext socket_ext_wrap.c
+socket_ext socket_ext_wrap.c  -I$(PYTHONINC)
 
-strbuffer  strbuffer_wrap_thread.c -D`uname`
+strbuffer strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname`
 
-_ftt _ftt_wrap_thread.c  -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
+_ftt _ftt_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
 
-runon runon_wrap.c runon.c
-enroute enroute_wrap.c enroute.c
+runon runon_wrap.c  -I$(PYTHONINC) runon.c
+enroute enroute_wrap.c  -I$(PYTHONINC) enroute.c
 
-Interfaces interfaces.c
+Interfaces interfaces.c  -I$(PYTHONINC)
