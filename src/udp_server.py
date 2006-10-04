@@ -143,7 +143,7 @@ class UDPServer:
         if not request:
             return None
 
-        self.process_request(request, client_address)
+        return self.process_request(request, client_address)
 
     def get_message(self):
         # returns  (string, socket address)

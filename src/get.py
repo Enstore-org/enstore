@@ -1131,7 +1131,7 @@ def readtape_from_hsm(e, tinfo):
         Trace.log(e_errors.INFO, "Waiting for mover ready message.")
         while time.time() < start_time + e.mover_timeout:
             #Keep looping until the message arives.
-            mover_ready = udp_socket.process_request()
+            mover_ready = udp_socket.do_request()
             
             #If requested output the raw message.
             Trace.trace(11, "UDP MOVER READY MESSAGE:")

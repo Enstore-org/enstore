@@ -3485,7 +3485,7 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
     while(time.time() - start_time < encp_intf.resubmit_timeout):
         try:
             #Get the udp ticket.
-            udp_ticket = udp_server.process_request()
+            udp_ticket = udp_server.do_request()
         except socket.error, msg:
             Trace.log(e_errors.ERROR, str(msg))
             raise EncpError(msg.args[0], str(msg),
