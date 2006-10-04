@@ -58,7 +58,7 @@ get_logname()
 
 # default for environment variables with a default
 ENSTORE_MAIL=enstore-auto@fnal.gov
-if [ `get_logname` = 'dcache' ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
+if [ `get_logname`x = 'dcache'x ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
