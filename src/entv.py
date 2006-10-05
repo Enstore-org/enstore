@@ -366,6 +366,7 @@ def get_entvrc(csc, intf):
 
     library_colors = {}
     client_colors = {}
+    found_server = False
 
     try:
         if intf.movers_file:
@@ -430,7 +431,8 @@ def get_entvrc(csc, intf):
 
             #Check if the hostname matches that of the current
             # configuration server.
-            if socket.getfqdn(words[0]) == socket.getfqdn(address):
+            if found_server == False and \
+                   socket.getfqdn(words[0]) == socket.getfqdn(address):
                 try:
                     geometry = words[1]
                 except IndexError:
@@ -446,8 +448,9 @@ def get_entvrc(csc, intf):
                         animate = 0
                 except IndexError:
                     animate = 1
-                break
-        else:
+                found_server = True
+
+        if not found_server:
             #If it wasn't found raise this to set the defaults.
             if entvrc_data and len(words):
                 raise IndexError(words[0])
