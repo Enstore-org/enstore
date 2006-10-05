@@ -1247,6 +1247,15 @@ def toggle_connection_color():
         for connection in display.connections.values():
             connection.update_color(cc)
 
+def resize(self = None):
+    global displays
+
+    for display in displays:
+        display.pack_forget()
+    for display in displays:
+        display.pack(side = Tkinter.LEFT, fill = Tkinter.BOTH,
+                     expand = Tkinter.YES)
+
 #########################################################################
 #  Interface class
 #########################################################################
@@ -1399,6 +1408,7 @@ def main(intf):
     master = Tkinter.Tk(screenName = intf.display)
     master.withdraw()
     master.title(title_name)
+    master.bind('<Configure>', resize)
     menu_defaults = {'animate' : enstore_display.STILL,
                      'connection_color' : enstore_display.CLIENT_COLOR }
     create_menubar(menu_defaults, master)
