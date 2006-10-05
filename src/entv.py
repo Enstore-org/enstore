@@ -364,6 +364,9 @@ def get_entvrc_file():
 
 def get_entvrc(csc, intf):
 
+    library_colors = {}
+    client_colors = {}
+
     try:
         if intf.movers_file:
             address = "localhost"
@@ -406,6 +409,27 @@ def get_entvrc(csc, intf):
             if not words:
                 continue
 
+            #If the line gives outline color for movers based on their
+            # library manager, pass this information along.
+            if words[0] == "library_color":
+                try:
+                    library_colors[words[1]] = words[2]
+                except (IndexError, KeyError, AttributeError, ValueError,
+                        TypeError):
+                    pass
+                continue
+
+            #If the line gives fill color for clients based on their nodename.
+            if words[0] == "client_color":
+                try:
+                    client_colors[words[1]] = words[2]
+                except (IndexError, KeyError, AttributeError, ValueError,
+                        TypeError):
+                    pass
+                continue
+
+            #Check if the hostname matches that of the current
+            # configuration server.
             if socket.getfqdn(words[0]) == socket.getfqdn(address):
                 try:
                     geometry = words[1]
@@ -433,42 +457,6 @@ def get_entvrc(csc, intf):
         geometry = "1200x1600+0+0"
         background = DEFAULT_BG_COLOR
         animate = 1
-
-    library_colors = {}
-    client_colors = {}
-
-    #Pass through the file looking for library color lines.
-    for line in entvrc_data:
-
-        #Check the line for problems or things to skip, like comments.
-        if len(line) == 0:
-            continue
-        if line[0] == "#": #Skip comment lines.
-            continue
-
-        #Split the string and look for problems.
-        words = line.strip().split()
-        if not words:
-            continue
-        
-        #If the line gives outline color for movers based on their
-        # library manager, pass this information along.
-        if words[0] == "library_color":
-            try:
-                library_colors[words[1]] = words[2]
-            except (IndexError, KeyError, AttributeError, ValueError,
-                    TypeError):
-                pass
-            continue
-
-        #If the line gives fill color for clients based on their nodename.
-        if words[0] == "client_color":
-            try:
-                client_colors[words[1]] = words[2]
-            except (IndexError, KeyError, AttributeError, ValueError,
-                    TypeError):
-                pass
-            continue
 
     rtn_dict = {}
     rtn_dict['geometry'] = geometry
