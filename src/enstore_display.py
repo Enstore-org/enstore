@@ -529,6 +529,8 @@ class Mover:
 
         #Carefull.  As long as draw_timer() gets called after animate_timer
         # in __init__() we are okay.
+        if self.timer_id:
+            self.display.after_cancel(self.timer_id)
         self.timer_id = self.display.after(UPDATE_TIME, self.animate_timer)
 
     #########################################################################
@@ -2135,7 +2137,7 @@ class Display(Tkinter.Canvas):
         self.after_reposition_id = None
 
         #Clear the window for drawing to the screen.
-        self.pack(expand = 1, fill = Tkinter.BOTH)
+        #self.pack(expand = 1, fill = Tkinter.BOTH)
         self.update()
 
         #Force the specific mover display to be reinitialized.
@@ -2313,6 +2315,9 @@ class Display(Tkinter.Canvas):
     #########################################################################
 
     def reposition_canvas(self, force = None):
+
+        Trace.trace(5, "Starting reposition_canvas()")
+        
         try:
             size = self.winfo_width(), self.winfo_height()
         except Tkinter.TclError:
@@ -2329,6 +2334,8 @@ class Display(Tkinter.Canvas):
                 self.reposition_connections()
 
             self.after_reposition_id = None
+
+        Trace.trace(5, "Finishing reposition_canvas()")
         
     def reposition_movers(self, number_of_movers=None):
         items = self.movers.values()
@@ -2420,12 +2427,17 @@ class Display(Tkinter.Canvas):
         
     #Called from self.after().
     def process_messages(self):
+
+
+        Trace.trace(5, "Starting process_messages()")
+        
         if self.stopped: #If we should stop, then stop.
+            Trace.trace(5, "Finishing process_messages() early")
             return
 
         #Only process the messages in the queue at this time.
         number = min(message_queue.len_queue(self.system_name), 1000)
-
+        
         #Try and only take a small time to do this.  If we get behind,
         # (aka more than 100 backlog) we will take the hit of delaying
         # updating the screen until the backlog is gone.
@@ -2433,12 +2445,14 @@ class Display(Tkinter.Canvas):
         wait_time = (ANIMATE_TIME * 0.001 / 2)
         t0 = time.time()
 
-        while (number > 0 and remember_number > 100) or \
-                  (number > 0 and (time.time() - t0) < (wait_time)):
+        #while (number > 0 and remember_number > 100) or \
+        #          (number > 0 and (time.time() - t0) < (wait_time)):
+        while (number > 0 and (time.time() - t0) < (wait_time)):
 
             #Words is a list of the split string command.
             command = self.get_valid_command()
             if command == "":
+                number = number - 1
                 #For ignored messages or dropped transfer messages...
                 continue
             #If a datagram gets dropped, attempt to recover the lost
@@ -2464,10 +2478,12 @@ class Display(Tkinter.Canvas):
             self.after_process_messages_id = self.after(MESSAGES_TIME,
                                                         self.process_messages)
 
-        return
+        Trace.trace(5, "Finishing process_messages()")
         
     #Called from self.after().
     def smooth_animation(self):
+
+        Trace.trace(5, "Starting smooth_animation()")
 
         display_lock.acquire()
         
@@ -2480,8 +2496,12 @@ class Display(Tkinter.Canvas):
 
         display_lock.release()
 
+        Trace.trace(5, "Finishing smooth_animation()")
+
     #Called from self.after().
     def disconnect_clients(self):
+
+        Trace.trace(5, "Starting disconnect_clients()")
 
         display_lock.acquire()
         clients_lock.acquire()
@@ -2513,8 +2533,12 @@ class Display(Tkinter.Canvas):
         clients_lock.release()
         display_lock.release()
 
+        Trace.trace(5, "Finishing disconnect_clients()")
+
     #Called from self.after().
     def join_thread(self):
+
+        Trace.trace(5, "Starting join_thread()")
 
         display_lock.acquire()
 
@@ -2524,9 +2548,13 @@ class Display(Tkinter.Canvas):
 
         display_lock.release()
 
+        Trace.trace(5, "Finishing join_thread()")
+
 
     def check_offline_reason(self):
         global request_queue
+
+        Trace.trace(5, "Starting check_offline_reason()")
 
         display_lock.acquire()
 
@@ -2551,6 +2579,8 @@ class Display(Tkinter.Canvas):
                                                   self.check_offline_reason)
 
         display_lock.release()
+
+        Trace.trace(5, "Finishing check_offline_reason()")
         
     #Called from entv.handle_periodic_actions().
     #def handle_titling(self):
