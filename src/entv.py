@@ -1247,15 +1247,18 @@ def toggle_connection_color():
         for connection in display.connections.values():
             connection.update_color(cc)
 
-def resize(self = None):
+def resize(event = None):
     global displays
 
     for display in displays:
-        display.pack_forget()
-    for display in displays:
-        display.pack(side = Tkinter.LEFT, fill = Tkinter.BOTH,
-                     expand = Tkinter.YES)
+        #Recalculating this for each display is not efficent.
+        size = display.master.geometry().split("+")[0]
+        sizes = size.split("x")
+        width = int(sizes[0]) / len(displays)
+        height = int(sizes[1])
 
+        display.configure(height = height, width = width)
+    
 #########################################################################
 #  Interface class
 #########################################################################
@@ -1443,11 +1446,18 @@ def main(intf):
             system_names = cscs_info.keys()
             csc_addrs = cscs_info.values()
         """
+
+        size = entvrc_dict['geometry'].split("+")[0]
+        sizes = size.split("x")
+        width = int(sizes[0]) / len(cscs_info)
+        height = int(sizes[1])
         
         displays = []
         for system_name, csc_addr in cscs_info.items():
             display = enstore_display.Display(entvrc_dict, system_name,
                                               master = master,
+                                              width = width,
+                                              height = height,
                                               mover_display = mover_display,
                              background = entvrc_dict.get('background', None))
 
