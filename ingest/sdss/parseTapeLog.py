@@ -50,6 +50,7 @@ def makePtTapeFilename(mjd, mjd_count):
 
 def parseTarTapeParFile(filename):
     filelist = []
+    filecounts = {}
     f = open(filename)
     line = f.readline()
     while line:
@@ -58,8 +59,24 @@ def parseTarTapeParFile(filename):
             # (tape, filemark, contents, tar_id)
             try:
                 (unused, filemark, contents, tar_id) = line.split()
-                filelist.append((int(filemark) + 1,
-                                 makeTarTapeFilename(contents, tar_id)))
+                filename = makeTarTapeFilename(contents, tar_id, )
+
+                #We need to handle the possibility that the same file
+                # (at least in name) is written on the tape more than once.
+                try:
+                    previous_count = filecounts[filename]
+                except KeyError:
+                    previous_count = 0
+
+                if previous_count:
+                    use_filename = "%s-copy%d" % (filename, previous_count)
+                else:
+                    use_filename = filename
+                
+                filelist.append((int(filemark) + 1, use_filename))
+
+                #Store the new tally for occurances for this filename.
+                filecounts[filename] = previous_count + 1 
             except ValueError:
                 pass
 
