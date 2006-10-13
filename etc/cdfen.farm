@@ -28,9 +28,9 @@ cdfenmvr25a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr26a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr27a	cdfenmvr-a	cdfen-alla	cdfen-all
 cdfenmvr28a	cdfenmvr-a	cdfen-alla	cdfen-all
-REMOVE		gccenmvr*a
-cdfenmvr101a	cdfenmvr-a	cdfen-alla	cdfen-all
-cdfenmvr102a	cdfenmvr-a	cdfen-alla	cdfen-all
-cdfenmvr104a	cdfenmvr-a	cdfen-alla	cdfen-all
-cdfenmvr105a	cdfenmvr-a	cdfen-alla	cdfen-all
-cdfenmvr110a	cdfenmvr-a	cdfen-alla	cdfen-all
+REMOVE		gccenmvr*a					cdfen-lto3
+cdfenmvr101a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-lto3
+cdfenmvr102a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-lto3
+cdfenmvr104a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-lto3
+cdfenmvr105a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-lto3
+cdfenmvr110a	cdfenmvr-a	cdfen-alla	cdfen-all	cdfen-lto3
