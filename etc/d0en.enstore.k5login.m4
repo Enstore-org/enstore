@@ -1,4 +1,4 @@
-enstore/cd/hppc.fnal.gov@FNAL.GOV
+enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv0.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv1.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv2.fnal.gov@FNAL.GOV
@@ -18,15 +18,11 @@ enstore/cd/d0enmvr9a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr10a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr11a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr12a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr14a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr17a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr19a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr20a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr21a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr22a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr23a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr24a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr26a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr28a.fnal.gov@FNAL.GOV
@@ -57,8 +53,6 @@ enstore/cd/d0enmvr56a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr57a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr58a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr59a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr60a.fnal.gov@FNAL.GOV
-enstore/cd/d0enmvr61a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV

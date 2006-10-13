@@ -1,7 +1,16 @@
+host/stkensrv3.fnal.gov@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
+enstore/cd/fndca2a.fnal.gov@FNAL.GOV
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV
-enstore/cd/stkendca3a.fnal.gov@FNAL.GOV
-enstore/cd/stkensrv3.fnal.gov@FNAL.GOV,
+enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
+host/cmspnfs1.fnal.gov@FNAL.GOV
+host/cmspnfs2.fnal.gov@FNAL.GOV
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1,
+enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
+host/cmssrv28.fnal.gov@FNAL.GOV
+host/cmsdcdr1.fnal.gov@FNAL.GOV
+host/cmsdcdr2.fnal.gov@FNAL.GOV
+host/cmsdcmon1.fnal.gov@FNAL.GOV,
 host/rip1.fnal.gov@FNAL.GOV
 host/rip2.fnal.gov@FNAL.GOV
 host/rip3.fnal.gov@FNAL.GOV
@@ -31,15 +40,11 @@ host/d0enmvr9a.fnal.gov@FNAL.GOV
 host/d0enmvr10a.fnal.gov@FNAL.GOV
 host/d0enmvr11a.fnal.gov@FNAL.GOV
 host/d0enmvr12a.fnal.gov@FNAL.GOV
-host/d0enmvr14a.fnal.gov@FNAL.GOV
 host/d0enmvr17a.fnal.gov@FNAL.GOV
 host/d0enmvr19a.fnal.gov@FNAL.GOV
 host/d0enmvr20a.fnal.gov@FNAL.GOV
-host/d0enmvr21a.fnal.gov@FNAL.GOV
-host/d0enmvr22a.fnal.gov@FNAL.GOV
 host/d0enmvr23a.fnal.gov@FNAL.GOV
 host/d0enmvr24a.fnal.gov@FNAL.GOV
-host/d0enmvr25a.fnal.gov@FNAL.GOV
 host/d0enmvr26a.fnal.gov@FNAL.GOV
 host/d0enmvr27a.fnal.gov@FNAL.GOV
 host/d0enmvr28a.fnal.gov@FNAL.GOV
@@ -70,32 +75,16 @@ host/d0enmvr56a.fnal.gov@FNAL.GOV
 host/d0enmvr57a.fnal.gov@FNAL.GOV
 host/d0enmvr58a.fnal.gov@FNAL.GOV
 host/d0enmvr59a.fnal.gov@FNAL.GOV
-host/d0enmvr60a.fnal.gov@FNAL.GOV
-host/d0enmvr61a.fnal.gov@FNAL.GOV
-host/cmspnfs1.fnal.gov@FNAL.GOV
 host/eagpnfs1.fnal.gov@FNAL.GOV
 host/stkensrv0.fnal.gov@FNAL.GOV
 host/stkensrv1.fnal.gov@FNAL.GOV
 host/stkensrv2.fnal.gov@FNAL.GOV
-host/stkensrv3.fnal.gov@FNAL.GOV
 host/stkensrv4.fnal.gov@FNAL.GOV
 host/stkensrv5.fnal.gov@FNAL.GOV
 host/stkensrv6.fnal.gov@FNAL.GOV
 host/stkensrv7.fnal.gov@FNAL.GOV
 host/stkensrv8.fnal.gov@FNAL.GOV
-host/stkensrv9.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, stkensrv3,
-host/stkendca6a.fnal.gov@FNAL.GOV
-host/stkendca7a.fnal.gov@FNAL.GOV
-host/stkendca8a.fnal.gov@FNAL.GOV
-host/stkendca9a.fnal.gov@FNAL.GOV
-host/stkendca10a.fnal.gov@FNAL.GOV
-host/stkendca11a.fnal.gov@FNAL.GOV
-host/stkendca12a.fnal.gov@FNAL.GOV
-host/stkendca13a.fnal.gov@FNAL.GOV
-host/stkendca14a.fnal.gov@FNAL.GOV
-host/stkendca15a.fnal.gov@FNAL.GOV
-host/stkendca16a.fnal.gov@FNAL.GOV, `dnl')
+host/stkenscan1.fnal.gov@FNAL.GOV
 host/stkenmvr5a.fnal.gov@FNAL.GOV
 host/stkenmvr6a.fnal.gov@FNAL.GOV
 host/stkenmvr7a.fnal.gov@FNAL.GOV
@@ -109,8 +98,6 @@ host/stkenmvr14a.fnal.gov@FNAL.GOV
 host/stkenmvr15a.fnal.gov@FNAL.GOV
 host/stkenmvr16a.fnal.gov@FNAL.GOV
 host/stkenmvr17a.fnal.gov@FNAL.GOV
-host/stkenmvr18a.fnal.gov@FNAL.GOV
-host/stkenmvr19a.fnal.gov@FNAL.GOV
 host/stkenmvr20a.fnal.gov@FNAL.GOV
 host/stkenmvr21a.fnal.gov@FNAL.GOV
 host/stkenmvr22a.fnal.gov@FNAL.GOV
@@ -128,10 +115,32 @@ host/stkenmvr33a.fnal.gov@FNAL.GOV
 host/stkenmvr34a.fnal.gov@FNAL.GOV
 host/stkenmvr35a.fnal.gov@FNAL.GOV
 host/stkenmvr36a.fnal.gov@FNAL.GOV
-host/stkenmvr38a.fnal.gov@FNAL.GOV
-host/stkenmvr39a.fnal.gov@FNAL.GOV
 host/stkenmvr40a.fnal.gov@FNAL.GOV
 host/stkenmvr41a.fnal.gov@FNAL.GOV
+host/stkenmvr103a.fnal.gov@FNAL.GOV
+host/stkenmvr107a.fnal.gov@FNAL.GOV
+host/stkenmvr108a.fnal.gov@FNAL.GOV
+host/stkenmvr111a.fnal.gov@FNAL.GOV
+host/stkenmvr112a.fnal.gov@FNAL.GOV
+host/stkenmvr113a.fnal.gov@FNAL.GOV
+host/stkenmvr114a.fnal.gov@FNAL.GOV
+host/stkenmvr115a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, stkensrv3,
+host/stkendca6a.fnal.gov@FNAL.GOV
+host/stkendca7a.fnal.gov@FNAL.GOV
+host/stkendca8a.fnal.gov@FNAL.GOV
+host/stkendca9a.fnal.gov@FNAL.GOV
+host/stkendca10a.fnal.gov@FNAL.GOV
+host/stkendca11a.fnal.gov@FNAL.GOV
+host/stkendca12a.fnal.gov@FNAL.GOV
+host/stkendca13a.fnal.gov@FNAL.GOV
+host/stkendca14a.fnal.gov@FNAL.GOV
+host/stkendca15a.fnal.gov@FNAL.GOV
+host/stkendca16a.fnal.gov@FNAL.GOV
+host/stkendca17a.fnal.gov@FNAL.GOV
+host/stkendca18a.fnal.gov@FNAL.GOV
+host/stkendca19a.fnal.gov@FNAL.GOV
+host/stkendca20a.fnal.gov@FNAL.GOV, `dnl')
 host/stkendm1a.fnal.gov@FNAL.GOV
 host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV
@@ -163,18 +172,12 @@ host/cdfenmvr24a.fnal.gov@FNAL.GOV
 host/cdfenmvr25a.fnal.gov@FNAL.GOV
 host/cdfenmvr26a.fnal.gov@FNAL.GOV
 host/cdfenmvr27a.fnal.gov@FNAL.GOV
-host/cdfenmvr28a.fnal.gov@FNAL.GOV)
+host/cdfenmvr28a.fnal.gov@FNAL.GOV
 host/cdfenmvr101a.fnal.gov@FNAL.GOV
 host/cdfenmvr102a.fnal.gov@FNAL.GOV
 host/cdfenmvr104a.fnal.gov@FNAL.GOV
 host/cdfenmvr105a.fnal.gov@FNAL.GOV
-host/cdfenmvr110a.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1,
-enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
-host/cmssrv28.fnal.gov@FNAL.GOV
-host/cmsdcdr1.fnal.gov@FNAL.GOV
-host/cmsdcdr2.fnal.gov@FNAL.GOV
-host/cmsdcmon1.fnal.gov@FNAL.GOV, `dnl')
+host/cdfenmvr110a.fnal.gov@FNAL.GOV))
 ifelse(HOSTNAME, stkensrv1,
 host/fndca3a.fnal.gov@FNAL.GOV
 host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
@@ -187,23 +190,32 @@ bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `fagan@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `fagan@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 fuhrmann@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `ifisk@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `ifisk@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1,  `jlkaiser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `lisa@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
 moibenko@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `stiehr@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `stiehr@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1,  `tdh@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1,  `tmesser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `tmesser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs1,  `yujun@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, cmspnfs2,  `yujun@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV

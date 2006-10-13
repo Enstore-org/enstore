@@ -1,4 +1,4 @@
-enstore/cd/hppc.fnal.gov@FNAL.GOV
+enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv0.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv1.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
