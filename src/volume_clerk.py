@@ -782,9 +782,10 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        # comment will be truncked at 80 characters
-        if len(comment) > 80:
-            comment = comment[:80]
+        # no more restriction on the length of comment
+        # # comment will be truncked at 80 characters
+        # if len(comment) > 80:
+        #     comment = comment[:80]
 
         record = self.dict[vol]
         if not record:
@@ -794,9 +795,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.reply_to_caller(ticket)
             return
 
-        if comment:
-            record['comment'] = comment
+        record['comment'] = comment
         self.dict[vol] = record
+        self.change_state(vol, 'set_comment', comment)
         ticket['status'] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
         return
