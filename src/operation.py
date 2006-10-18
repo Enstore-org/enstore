@@ -162,13 +162,17 @@ DATABASENAME = 'operation'
 # This is a hard wired configuration
 def library_type(cluster, lib):
 	if cluster == 'D0':
-		if lib == 'samlto' or lib == 'samlto2':
-			return 'aml2'
 		if lib == '9940' or lib == 'D0-9940B' or lib == 'mezsilo':
 			return 'stk'
+		if lib == 'samlto' or lib == 'samlto2':
+			return 'aml2'
+		if lib == 'D0-LTO3':
+			return 'sl8500'
 	elif cluster == 'STK':
 		if lib == '9940' or lib == 'CD-9940B':
 			return 'stk'
+		if lib == 'CD-LTO3':
+			return 'sl8500'
 	elif cluster == 'CDF':
 		if lib == '9940' or lib == 'CDF-9940B' or lib == 'cdf':
 			return 'stk'
@@ -194,7 +198,7 @@ def get_cluster(host):
 	else:
 		return None
 
-# get_script_host(cluster) -- determine stript host
+# get_script_host(cluster) -- determine script host
 def get_script_host(cluster):
 	if cluster.upper()[:2] == 'D0':
 		return 'd0ensrv4.fnal.gov'
@@ -250,15 +254,6 @@ def get_qualifier(lib_type):
 		return 's'
 	else:
 		return ''
-
-#WRITE_PROTECT_SCRIPT_PATH = '/write_protect_work'
-#WRITE_PERMIT_SCRIPT_PATH = '/write_permit_work'
-WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/write_protect_work'
-WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/write_permit_work'
-ADIC_WRITE_PROTECT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_protect_work'
-ADIC_WRITE_PERMIT_SCRIPT_PATH = '/home/enstore/isa-tools/adic_write_permit_work'
-
-# DEFAULT_LIBRARIES = "9940,CD-9940B,D0-9940B,cdf,CDF-9940B"
 
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -864,7 +859,7 @@ def help(topic=None):
 		print "operation.py create write_protect_on|write_protect_off <job> [[<association>:] [<associate>:]<object>]+"
 		print
 		print "<job> is a user defined unique name of the job"
-		print "<association> is a way to group objects. By default, there is no assoication"
+		print "<association> is a way to group objects. By default, there is no association"
 		print "<association>: change the association for the rest of the objects in list"
 		print "     It is allowed to have multiple <association>: in the command."
 		print "     Each <association>: changes the global association setting."
@@ -878,7 +873,7 @@ def help(topic=None):
 		print
 		print "all: list all jobs"
 		print "open: list all open (not closed) jobs"
-		print "finished|close|completed: list all completed jobs. finished|close|completed are the same thing"
+		print "finished|closed|completed: list all completed jobs. finished|closed|completed are the same thing"
 		print "<job>+ : list named jobs"
 		print "has <object>: list all jobs that have <object> as an argument"
 	elif topic == "show":
@@ -925,7 +920,7 @@ def help(topic=None):
 		print
 		print "delete <job> in the list"
 		print "this is a dangerous command, use with extra care"
-		print '<job>s will not be deleted unless "sincerely" is specified in the end'
+		print '<job>s will not be deleted unless "sincerely" is specified at the end'
 	elif topic == "find" or topic == "locate":
 		print
 		print "operation.py find|locate <object>+"
@@ -969,7 +964,7 @@ def help(topic=None):
 		print "<library_list> is a list of media types separated by comma ','"
 		print
 		print "there is a default limit of 10 caps (220 volume)"
-		print "with 'no_limit', it generates everything in on ticket"
+		print "with 'no_limit', it generates everything in one ticket"
 		print
 		print "EXAMPLES:"
 		print "operation.py auto_write_protect_on"
@@ -1003,7 +998,7 @@ def caps_per_ticket(lib_type):
 	elif lib_type == 'aml2':
 		return 7
 	elif lib_type == 'sl8500':
-		return 4
+		return 5
 	else:
 		return None
 
@@ -1250,8 +1245,6 @@ def make_cap(l, library_type='stk', cap_n = 0):
 			cap_script = "/usr/bin/rsh fntt -l acsss 'echo eject 0,0,0 "
 		elif cluster == "CDF":
 			cap_script = "/usr/bin/rsh fntt2 -l acsss 'echo eject 0,1,0 "
-		elif cluster == "GCC":
-			cap_script = "/usr/bin/rsh fntt-gcc -l acsss 'echo eject 0,1,0 "
 		else:
 			return None
 		for i in l:
