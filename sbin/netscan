@@ -163,8 +163,19 @@ else
   MOVER=0
 fi
 
-# are we a dcache server? (accept dca2a-19a)
-if $ECHO $node | $EGREP '^stkendca([2-9]|1[0-9])a$' >/dev/null
+# are we a dcache node? (accept fndca2a-3a, stkendca2a-3a)
+# admin nodes (head, door, monitor)
+if $ECHO $node | $EGREP '^fndca[23]a$' >/dev/null
+then
+  DCACHE=1
+  nodetype=dca
+# more admin nodes
+elif $ECHO $node | $EGREP '^stkendca[23]a$' >/dev/null
+then
+  DCACHE=1
+  nodetype=dca
+# pool nodes
+elif $ECHO $node | $EGREP '^stkendca([6-9]|[12][0-9])a$' >/dev/null
 then
   DCACHE=1
   nodetype=dca
@@ -511,11 +522,11 @@ ALLOW_BASE="
 
 # Extra for console servers
 ALLOW_CONS="$ALLOW_BASE
+	LISTEN,X,:x11,TCP,x\n
 	LISTEN,conserver,:console,TCP,x\n
-	LISTEN,conserver,:,TCP,conserver#-d\n
+	LISTEN,conserver,:,TCP,conserver\n
 "
 #	TCP,console,:console,TCP,x\n
-#	LISTEN,X,:x11,TCP,x\n
 
 # Extra for enstore postgres db servers
 ALLOW_PGDB="$ALLOW_BASE
@@ -564,6 +575,8 @@ ALLOW_DSRV4="$ALLOW_ADIC
 	LISTEN,$INETD,:ftp,TCP,x\n
 	LISTEN,rsh,:,TCP,fntt#-l#acsss\n
 	LISTEN,rsh,:,TCP,-l#acsss#fntt\n
+	LISTEN,rsh,:,TCP,fntt-gcc#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt-gcc\n
 "
 
 # Extra for stkensrv4 - makes stk and adic calls
@@ -571,6 +584,8 @@ ALLOW_SSRV4="$ALLOW_ADIC
 	LISTEN,$INETD,:ftp,TCP,x\n
 	LISTEN,rsh,:,TCP,fntt#-l#acsss\n
 	LISTEN,rsh,:,TCP,-l#acsss#fntt\n
+	LISTEN,rsh,:,TCP,fntt-gcc#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt-gcc\n
 "
 
 # Extra for cdfensrv4 - makes stk calls
@@ -578,6 +593,8 @@ ALLOW_CSRV4="$ALLOW_BASE
 	LISTEN,$INETD,:ftp,TCP,x\n
 	LISTEN,rsh,:,TCP,fntt2#-l#acsss\n
 	LISTEN,rsh,:,TCP,-l#acsss#fntt2\n
+	LISTEN,rsh,:,TCP,fntt-gcc#-l#acsss\n
+	LISTEN,rsh,:,TCP,-l#acsss#fntt-gcc\n
 "
 
 # Extra for d0ensrv3
@@ -751,7 +768,7 @@ then
   check_mode	/PRODUCTION				0644
 fi
 
-if (( MOVER || SERVER ))
+if (( MOVER || SERVER )) && [ -e /PRODUCTION ]
 then
 
   # verify hosts, k5login, and network files contain this host's fqdn
@@ -1159,10 +1176,10 @@ today=`$DATE -I`
     let npsql=0
     if [ -r /diska/pnfs/db/info/D-0000 ]; then
        # determine the psql database path
-       if [ -d /diska/pnfs/db/data/base ]; then
-	 psqldb=data/base
-       elif [ -d /diska/pnfs/db/psql-data/base ]; then
+       if [ -d /diska/pnfs/db/psql-data/base ]; then
 	 psqldb=psql-data/base
+       elif [ -d /diska/pnfs/db/data/base ]; then
+	 psqldb=data/base
        else
 	 psqldb=
        fi
@@ -1479,7 +1496,7 @@ fs_mount=`$AWK '$3 ~ /nfs/ {print $2}' /proc/mounts`
 for dsk in `$ECHO $fs_avail $fs_mount | $TR " " "\n" | $SORT | $UNIQ -u`
 do
   if [ -d $dsk ]; then
-     if [ `$LS -1 $dsk | $WC -l` -ne 0 ]; then
+     if [ `$LS -A $dsk | $WC -l` -ne 0 ]; then
 	siz=`$DU -ks $dsk | $AWK '{print $1}'`
 	msg="Files hidden behind $dsk: $siz KB"
 	logit "$msg"
