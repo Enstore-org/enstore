@@ -20,14 +20,14 @@ gang=`gang`
 
 # function to convert mover id to corresponding node name
 moverToNode() { enstore config --show $1 |
-		awk -F: '/\<data_ip\>/ {match($2, ".*((d0|stk|cdf)enmvr[1-9][0-9]?(a|b)).*", a); print a[1]}'
+		awk -F: '/\<data_ip\>/ {match($2, ".*((d0|stk|cdf)enmvr[1-9][0-9]*(a|b)).*", a); print a[1]}'
 	      }
 
 # function to list known down movers
 lsKnownDown() { enstore sched --show |
-		awk '/Enstore Items/		 {known=0}
-		     /Enstore Items Known Down/  {known=1}
-		     /[A-Z0-9]*\.mover/ && known {print $1}' |
+		awk '/Enstore Items/		  {known=0}
+		     /Enstore Items Known Down/   {known=1}
+		     /[A-Z0-9_]*\.mover/ && known {print $1}' |
 		while read mover
 		do
 		  moverToNode $mover
@@ -35,8 +35,10 @@ lsKnownDown() { enstore sched --show |
 	      }
 
 # function to select critical nodes (servers *srv[0-246], mainly)
+#	fndca3a		dcache head node (fndca)
+#	stkendca2a	dcache door node (fndca1)
 criticalNode() { echo "$1" |
-		 egrep '(d0|stk|cdf)ensrv[0-246]|cmspnfs1|stkendca3a' > /dev/null
+		 egrep '(d0|stk|cdf)ensrv[0-246]|fndca3a|stkendca2a' > /dev/null
 	       }
 
 case $job in
@@ -53,7 +55,11 @@ quickcheck)
 	fi
     done
 
-    [ $gang = stken ] && extra=/usr/local/etc/farmlets/stkendca
+    # test srv4 nodes on the control network from d0ensrv3
+    [ $gang = d0en ] && peers="${peers}d0ensrv4p\nstkensrv4p\ncdfensrv4p\n"
+
+    # test public dcache nodes and data mover nodes from stken
+    [ $gang = stken ] && extra="/usr/local/etc/farmlets/stkendca /usr/local/etc/farmlets/stkendm"
 
     NODES=`awk -v omit="$omit" -v host="$host" -v peers="$peers" \
 	   'BEGIN {split(omit, x); for (i in x) v[x[i]]=i}
