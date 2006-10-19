@@ -319,6 +319,15 @@ class DispatchingWorker(udp_server.UDPServer):
         # look in the ticket and figure out what work user wants
         try:
             function_name = ticket["work"]
+        except (KeyError, AttributeError, TypeError), detail:
+            ticket = {'status' : (e_errors.KEYERROR, 
+                                  "cannot find any named function")}
+            Trace.trace(6,"%s process_request %s"
+                        % (detail, ticket))
+            self.reply_to_caller(ticket)
+            return
+
+        try:
             Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
         except (KeyError, AttributeError, TypeError), detail:
