@@ -321,7 +321,7 @@ class DispatchingWorker(udp_server.UDPServer):
             function_name = ticket["work"]
             Trace.trace(5,"process_request: function %s"%(function_name,))
             function = getattr(self,function_name)
-        except (KeyError, AttributeError), detail:
+        except (KeyError, AttributeError, TypeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
                                   "cannot find requested function `%s'"
                                   % (function_name,))}
