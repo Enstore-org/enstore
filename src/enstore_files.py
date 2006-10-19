@@ -432,7 +432,9 @@ class HTMLEncpStatusFile(EnStatusFile):
                                         encp_line.disk_rate])
             else:
                 formatted_lines.append([encp_line.time, 
-                                        node, user, error])
+                                        node, user, "%s : (SRC: %s) (DST: %s)"%(error,
+                                                                                encp_line.infile,
+                                                                                encp_line.outfile)])
 
     # output the encp info
     def write(self, lines):
