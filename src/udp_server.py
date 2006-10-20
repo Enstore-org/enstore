@@ -186,6 +186,22 @@ class UDPServer:
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
+
+        ### In some cases involving the media_changer, this function will
+        ### process messages read from the child processes when
+        ### DispatchingWorker.get_request() calls it.  The only major
+        ### consecquence of this is that we don't put anything into
+        ### ticket['r_a'].  If we do, these fake values of:
+        ###    idn = 0
+        ###    number = 0
+        ###    client_address = ()
+        ### will cause reply_with_address() and reply_to_caller() to do the
+        ### wrong thing and not send back the reply.  This is becuase
+        ### the media changer places these values into ticket['ra'],
+        ### and we don't want to have two sets of competing information.
+        ### Note: The use of 'r_a' was choosen internally for the
+        ### udp_server becuase of the pre-existing use of 'ra' between
+        ### the media_changer and udp_server.
        
         idn, number, ticket = self.r_eval(request)
         if idn == None or type(ticket) != type({}):
@@ -210,9 +226,10 @@ class UDPServer:
         # before repy_with_list() could be called from another thread(s).
         # In such a situation reply_to_caller() would reply with the
         # most recent request address and not to the one that made the request.
-        ticket['r_a'] = (reply_address,
-                         client_number,
-                         current_id)
+        if reply_address:
+            ticket['r_a'] = (reply_address,
+                             client_number,
+                             current_id)
 
         if self.request_dict.has_key(idn):
 
