@@ -24,6 +24,7 @@ import event_relay_client
 import event_relay_messages
 import enstore_constants
 import enstore_erc_functions
+import hostaddr
 
 class GenericServerInterface(option.Interface):
 
@@ -45,11 +46,22 @@ class GenericServerInterface(option.Interface):
 class GenericServer(generic_client.GenericClient):
 
     def handle_er_msg(self, fd):
+        __pychecker__ = "no-argsused"
+        
 	msg = enstore_erc_functions.read_erc(self.erc)
 	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
             Trace.log(e_errors.INFO,
                       "Recieved notification of new configuration file.")
             self.csc.new_config_obj.new_config_msg()
+            try:
+                hostaddr.update_domains(self.csc)
+            except AttributeError:
+                #The configuration server itself will fall here.
+                # It can't create a client to itself.  However, the
+                # configuration server should never call this function
+                # eiter.
+                pass
+                    
 	return msg
 
     def __init__(self, csc, name, function=None, flags=0,
