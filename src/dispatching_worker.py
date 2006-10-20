@@ -207,6 +207,34 @@ class DispatchingWorker(udp_server.UDPServer):
         if self.callback.has_key(fd):
             del self.callback[fd]
 
+    def read_fd(self, fd):
+        
+            raw_bytecount = os.read(fd, 8)
+
+            #Read on the number of bytes in the message.
+            try:
+                bytecount = int(raw_bytecount)
+            except ValueError:
+                Trace.trace(20,
+                            'get_request_select: bad bytecount %s %s'
+                            % (raw_bytecount, len(raw_bytecount)))
+                bytecount = 0
+
+            #Read in the message.
+            msg = ""
+            while len(msg)<bytecount:
+                tmp = os.read(fd, bytecount - len(msg))
+                if not tmp:
+                    break
+                msg = msg+tmp
+
+            #Finish off the communication.
+            self.remove_select_fd(fd)
+            os.close(fd)
+
+            #Return the request and an empty address.
+            addr = ()
+            return (msg, addr)
 
     def get_request(self):
         # returns  (string, socket address)
@@ -238,47 +266,26 @@ class DispatchingWorker(udp_server.UDPServer):
                 return ('',()) #timeout
 
             #handle pending I/O operations first
-            for fd in r+w:
+            for fd in r + w:
                 if self.callback.has_key(fd) and self.callback[fd]:
                     self.callback[fd](fd)
 
             #now handle other incoming requests
             for fd in r:
+                
                 if type(fd) == type(1) \
-                   and fd in self.read_fds \
-                   and self.callback[fd]==None: #XXX this is special-case code,
-                                                #for old usage in media_changer
-                    msg = os.read(fd, 8)
+                       and fd in self.read_fds \
+                       and self.callback[fd]==None:
+                    #XXX this is special-case code,
+                    #for old usage in media_changer
 
-                    try:
-                        bytecount = int(msg)
-                    except ValueError:
-                        Trace.trace(20,
-                                    'get_request_select: bad bytecount %s %s'
-                                    % (msg, len(msg)))
-                        break
-                    msg = ""
-                    while len(msg)<bytecount:
-                        tmp = os.read(fd, bytecount - len(msg))
-                        if not tmp:
-                            break
-                        msg = msg+tmp
-                    request= (msg,())          # if so read it
-                    self.remove_select_fd(fd)
-                    os.close(fd)
-                    return request
+                    (request, addr) = self.read_fd(fd)
+                    return (request, addr)
+                
                 elif fd == self.server_socket:
                     #Get the 'raw' request and the address from whence it came.
-                    req, addr = self.server_socket.recvfrom(
-                        self.max_packet_size, self.rcv_timeout)
+                    (request, addr) = udp_server.UDPServer.get_message(self)
 
-                    try:
-                        if self.csc.new_config_obj.have_new_config():
-                            hostaddr.update_domains(self.csc)
-                    except AttributeError:
-                        #The configuration server itself will fall here.
-                        # It can't create a client to itself.
-                        pass
                     #Determine if the address the request came from is
                     # one that we should be responding to.
                     try:
@@ -286,9 +293,10 @@ class DispatchingWorker(udp_server.UDPServer):
                     except IndexError, detail:
                         Trace.log(e_errors.ERROR,
                                   "hostaddr failed with %s Req.= %s, addr= %s"\
-                                  % (detail, req, addr))
+                                  % (detail, request, addr))
                         request = None
                         return (request, addr)
+
                     #If it should not be responded to, handle the error.
                     if not is_valid_address:
                         Trace.log(e_errors.ERROR,
@@ -297,22 +305,17 @@ class DispatchingWorker(udp_server.UDPServer):
                         request = None
                         return (request, addr)
                     
-                    gotit = 1
-                    request, inCRC = self.r_eval(req)
-                    # calculate CRC
-                    crc = checksum.adler32(0L, request, len(request))
-                    if (crc != inCRC) :
-                        Trace.log(e_errors.INFO, "BAD CRC request: " + request)
-                        Trace.log(e_errors.INFO,
-                                  "CRC: " + repr(inCRC) +
-                                  " calculated CRC: " + repr(crc))
-                        request=None
+                    return (request, addr)
 
-        return (request, addr)
+        return (None, ())
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
 
+        #Since get_request() gets requests from UDPServer.get_message()
+        # and self.read_fd(fd).  Thusly, some care needs to be taken
+        # from within UDPServer.process_request() to be tolerent of
+        # requests not originally read with UDPServer.get_message().
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
