@@ -118,6 +118,9 @@ class cleanUDP :
 
         # Mitigate case 1 -- ECONNREFUSED from previous sendto
         def sendto(self, data, address) : 
+		if not address:
+			return 0
+
                 self.previous_sendto_address = self.this_sendto_address
                 self.this_sendto_address = address
 
