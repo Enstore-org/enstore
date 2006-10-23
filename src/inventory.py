@@ -720,9 +720,10 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
     
 
 def is_b_library(lib):
-    if lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration':
-        return 1
-    return 0
+    return lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration'
+
+def is_lto3_library(lib):
+    return lib[-4:] == 'LTO3'
 
 # write_protect_status -- check the write protect status of the volume
 def write_protect_status(vol, db):
@@ -1020,16 +1021,20 @@ def inventory(output_dir, cache_dir):
             else:
                 remark = ''
             if vv['media_type'] == '9940':
-                if actual_size > 80*1048576*1024 or is_b_library(vv['library']):
+                if actual_size > 80*1048576*1024 or is_b_library(vv['library']) or vv['capacity_bytes'] != 60*1048576*1024:
                     de_count = de_count + 1
                     de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
             elif vv['media_type'] == '9940B':
-                if actual_size and (actual_size < 100*1048576*1024 or not is_b_library(vv['library']) or vv['capacity_bytes'] < 180*1048576*1024):
+                if actual_size and (actual_size < 100*1048576*1024 or actual_size > 250*1048576*1024 or not is_b_library(vv['library']) or vv['capacity_bytes'] != 200*1048576*1024):
                     de_count = de_count + 1
                     de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
             elif is_b_library(vv['library']) and vv['media_type'] != '9940B':
                     de_count = de_count + 1
                     de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
+            elif vv['media_type'] == 'LTO3':
+                if actual_size and actual_size < 300*1048576*1024 or vv['capacity_bytes'] != 400*1048576*1024 or not is_lto3_library(vv['library']):
+                    de_file.write(de_format%(de_count, vk, actual_size, vv['capacity_bytes'], vv['library'], vv['media_type'], remark))
+
 
         # volume_sums[vk] = {'active':active, 'deleted':deleted,
         #                    'active_size':active_size,
