@@ -33,7 +33,7 @@ Quarter_ago=`date --date "91 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
 if [ $node = $copy_node ] ; then
 
-  volfile=/tmp/STKROBOT-VOLUMES-$gang
+  volfile=/tmp/SL8500-VOLUMES-$gang
   rm -f $volfile
 
   output=${1:-/dev/tty}
@@ -91,7 +91,7 @@ EOF
       used=`eval $filter <$volfile | cut -c31-35 | sed 's/, /,/' | grep -c "$silo"`
     fi
     tot=`expr ${free:-0} + ${used:-0}`
-    echo "$now $silo $tot ${used:-0} ${free:-0}" >>$HOME/STK_USED_SLOTS.$silo
+    echo "$now $silo $tot ${used:-0} ${free:-0}" >>$HOME/SL8500_USED_SLOTS.$silo
   done
 
   for remote_copy
@@ -104,13 +104,13 @@ EOF
 elif [ $node = $plot_node ] ; then
 
   pltcmd=/tmp/stk.us.gnu
-  enrcp $copy_node:STK_USED_SLOTS* $HOME/
+  enrcp $copy_node:SL8500_USED_SLOTS* $HOME/
   now=`date +"%Y-%m-%d:%H:%M:%S"`
-  for i in $HOME/STK_USED_SLOTS*; do
+  for i in $HOME/SL8500_USED_SLOTS*; do
     silo=`basename $i | cut -f2 -d.`
     rm -f $pltcmd
     free=`tail -n1 $i | awk '{print $5}'`
-    echo "set output \"/tmp/silo.$silo.ps\"
+    echo "set output \"/tmp/SL8500.$silo.ps\"
 set terminal postscript color solid
 set title \"Used Slots in STK Silo $silo $now\"
 set xlabel \"Date\"
@@ -126,10 +126,10 @@ set label \"Plotted `date` \" at graph .99,0 rotate font \"Helvetica,10\"
 set label \"$free Free\" at graph .2,.9 font \"Helvetica,80\"
 plot \"$i\" using 1:3 w impulses linetype 2, \"$i\" using 1:4 t \"Used Slots\" w impulses linetype 1" >$pltcmd
     gnuplot $pltcmd
-    convert -rotate 90 /tmp/silo.$silo.ps /tmp/silo.$silo.jpg
-    convert -geometry 120x120 -modulate 80 /tmp/silo.$silo.jpg /tmp/silo.${silo}_stamp.jpg
+    convert -rotate 90 /tmp/SL8500.$silo.ps /tmp/SL8500.$silo.jpg
+    convert -geometry 120x120 -modulate 80 /tmp/SL8500.$silo.jpg /tmp/SL8500.${silo}_stamp.jpg
   done
-  cp /tmp/silo*.ps /tmp/silo*.jpg /fnal/ups/prd/www_pages/enstore/
+  cp /tmp/SL8500*.ps /tmp/SL8500*.jpg /fnal/ups/prd/www_pages/enstore/
 
 else
   echo \"$0\" runs only on $copy_node or $plot_node
