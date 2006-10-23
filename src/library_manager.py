@@ -2393,13 +2393,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if self.mover_type(mticket) == 'DiskMover':
                 mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
             else:
-                if mticket['volume_clerk'] == None:
-                    # mover starting, no volume info
-                   self.reply_to_caller({'work': 'no_work'})
-                   return
-                    
-                self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                                 server_address=mticket['volume_clerk'])
+                if mticket.has_key('volume_clerk'):
+                    if mticket['volume_clerk'] == None:
+                        # mover starting, no volume info
+                        self.reply_to_caller({'work': 'no_work'})
+                        return
+                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                     server_address=mticket['volume_clerk'])
+                else:
+                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
                 
                 vol_info = self.vcc.inquire_vol(mticket['external_label'])
                 if vol_info['status'][0] == e_errors.OK:
@@ -2500,12 +2502,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 if self.mover_type(mticket) == 'DiskMover':
                     mticket['volume_status'] = (['none', 'none'], ['none', 'none'])
                 else:
-                    if mticket['volume_clerk'] == None:
-                        # mover starting, no volume info
-                        self.reply_to_caller({'work': 'no_work'})
-                        return
                     self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                                     server_address=mticket['volume_clerk'])
+                                                                     server_address=w['vc']['address'])
                     vol_info = self.vcc.inquire_vol(mticket['external_label'])
                     if vol_info['status'][0] != e_errors.OK:
                        Trace.log(e_errors.ERROR, "mover_bound_volume 2: can't update volume info, status:%s"%
@@ -2621,11 +2619,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                         w['status'] = (e_errors.NOACCESS, None)
 
                     # set volume as noaccess
-                    if mticket['volume_clerk'] == None:
-                        # mover starting, no volume info
-                        return
-                    self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
-                                                                     server_address=mticket['volume_clerk'])
+                    if mticket.has_key('volume_clerk'):
+                        if mticket['volume_clerk'] == None:
+                            # mover starting, no volume info
+                            return
+                        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+                                                                         server_address=mticket['volume_clerk'])
+                    else:
+                        self.vcc = volume_clerk_client.VolumeClerkClient(self.csc)
                     self.vcc.set_system_noaccess(mticket['external_label'])
                     Trace.alarm(e_errors.ERROR, 
                                 "Mover error (%s) caused volume %s to go NOACCESS"%(mticket['mover'],
