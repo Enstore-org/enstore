@@ -7926,11 +7926,21 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
             #file_size = long(fc_reply['size'])
             #Grab the stat info.
-            if e.override_deleted and fc_reply['deleted'] != 'no' \
-                   and not ifullname:
-                #This if protects us in the case where we are reading
+            if e.override_deleted and fc_reply['deleted'] != 'no':
+                # This protects us in case we are reading
                 # a deleted file using the bfid.
-                istatinfo = None
+                if ifullname:
+                    try: 
+                        istatinfo = p.get_stat(ifullname)
+                    except (OSError, IOError), msg:
+                        if msg.args[0] == errno.ENOENT:
+                            istatinfo = None
+                        else:
+                            raise sys.exc_info()[0], sys.exc_info()[1], \
+                                  sys.exc_info()[2]
+                    
+                else:
+                    istatinfo = None
             else:
                 istatinfo = p.get_stat(ifullname)
 
