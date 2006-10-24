@@ -112,7 +112,7 @@ elif [ $node = $plot_node ] ; then
     free=`tail -n1 $i | awk '{print $5}'`
     echo "set output \"/tmp/SL8500.$silo.ps\"
 set terminal postscript color solid
-set title \"Used Slots in STK Silo $silo $now\"
+set title \"Used Slots in SL8500 Rail $silo $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
