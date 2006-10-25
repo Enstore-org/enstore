@@ -80,17 +80,17 @@ fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 # tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500, the Public or CMS silos, or the SDSS tower"
-sort -mu /tmp/silo-volumes /tmp/rail-volumes /tmp/tower-volumes >/tmp/robot-volumes
+echo "Tapes declared to enstore that are not in the SL8500, the Public or CMS silo, or the SDSS tower"
+sort -mu /tmp/{silo,rail,tower}-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
 
-# tapes in a silo and the tower, whether in enstore or not, ie, duplicate names
+# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are in both a Public or CMS silo and the SDSS tower"
-sort -m /tmp/silo-volumes /tmp/tower-volumes | uniq -d | while read vol; do
-  grep $vol /diska/tape-inventory/VOLUMES_DEFINED /diska/tape-inventory/STK-VOLUMES.html /diska/tape-inventory/AML2-VOLUMES.html
+echo "Tapes that are apparently in more than one robot"
+sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
+  grep $vol /diska/tape-inventory/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
 done
 
 echo
@@ -141,7 +141,7 @@ egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         1, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
-  awk 'NF==10 && $1 == /^PR[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+  awk 'NF==10 && $1 ~ /^PR[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Empty|Occupied)" /diska/tape-inventory/AML2-VOLUMES.html |\
   awk '{print $2}' |\
@@ -163,11 +163,11 @@ echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declar
 comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
 fgrep -f /tmp/rail-not-enstore /diska/tape-inventory/SL8500-VOLUMES.html
 
-# tapes in the D0 AML/2 tower, but not in enstore
-# d0en has only LTOs in the ADIC
+# tapes in a D0 AML/2 tower, but not in enstore
+# d0en has only LTOs in the AML/2
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the D0 tower that are not fully declared to enstore"
+echo "Tapes in a D0 AML/2 tower that are not fully declared to enstore"
 comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
 fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 
@@ -179,17 +179,17 @@ fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 # tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500, the D0 silos, or the D0 towers"
-sort -mu /tmp/silo-volumes /tmp/rail-volumes /tmp/tower-volumes >/tmp/robot-volumes
+echo "Tapes declared to enstore that are not in the SL8500, a D0 silo, or a D0 tower"
+sort -mu /tmp/{silo,rail,tower}-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
 
-# tapes in a silo and the tower, whether in enstore or not, ie, duplicate names
+# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes that are in both a D0 silo and the D0 tower"
-sort -m /tmp/silo-volumes /tmp/tower-volumes | uniq -d | while read vol; do
-  grep $vol /diska/tape-inventory/VOLUMES_DEFINED /diska/tape-inventory/STK-VOLUMES.html /diska/tape-inventory/AML2-VOLUMES.html
+echo "Tapes that are apparently in more than one robot"
+sort -m /tmp/{silo,rail,tower}-volumes | uniq -d | while read vol; do
+  grep $vol /diska/tape-inventory/{VOLUMES_DEFINED,{SL8500,STK,AML2}-VOLUMES.html}
 done
 
 echo
@@ -238,7 +238,7 @@ egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
-  awk 'NF==10 && $1 == /^IA[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+  awk 'NF==10 && $1 ~ /^IA[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
   sort >/tmp/rail-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
@@ -265,10 +265,18 @@ fgrep -f /tmp/rail-not-enstore /diska/tape-inventory/SL8500-VOLUMES.html
 # tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the SL8500 or the CDF silos"
-sort -mu /tmp/silo-volumes /tmp/rail-volumes >/tmp/robot-volumes
+echo "Tapes declared to enstore that are not in the SL8500 or a CDF silo"
+sort -mu /tmp/{silo,rail}-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
+
+# tapes apparently in more than one robot, whether in enstore or not, ie, duplicate names
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes that are apparently in more than one robot"
+sort -m /tmp/{silo,rail}-volumes | uniq -d | while read vol; do
+  grep $vol /diska/tape-inventory/{VOLUMES_DEFINED,{SL8500,STK}-VOLUMES.html}
+done
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
