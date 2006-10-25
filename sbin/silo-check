@@ -12,7 +12,8 @@ enstore conf --show | sed -n "s/.*'\([a-zA-Z0-9][-a-zA-Z0-9]*\)\.library_manager
 
 if [ $gang = "stken" ]; then
 
-# stken silos are acs 0 & lsm 0&1
+# stken 9310 silos are acs 0 & lsm 0,1
+# stken 8500 rails are acs 0 & lsm 0-3
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -32,7 +33,7 @@ if [ $gang = "stken" ]; then
 # volser xxnnnn media DECDLT attrib {Empty|Ejected|Mounted|Occupied}
 #
 # all lines of enstore inventory have ten fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   write_lock	mounts   volume_family
+#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
 # where each inhibit takes two fields (including parentheses)
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
@@ -40,24 +41,34 @@ if [ $gang = "stken" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 && $1 ~ /^VO[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+  sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" /diska/tape-inventory/AML2-VOLUMES.html |\
   awk '{print $2}' |\
   sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
-# tapes in the silos, but not in enstore
+# tapes in the PowderHorn 9310, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the Public and CMS silos (acs 0, lsm 0 and 1) that are not fully declared to enstore"
+echo "Tapes in the PowderHorn 9310 (acs 0, lsm 0 and 1) that are not fully declared to enstore"
 comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
 fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
 
-# tapes in the tower, but not in enstore
-# stken has only DLTs in the ADIC
+# tapes in the StreamLine 8500, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the SDSS tower that are not fully declared to enstore"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
+fgrep -f /tmp/rail-not-enstore /diska/tape-inventory/SL8500-VOLUMES.html
+
+# tapes in the SDSS AML/2 tower, but not in enstore
+# stken has only DLTs in the AML/2
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in the SDSS AML/2 tower that are not fully declared to enstore"
 comm -23 /tmp/tower-volumes /tmp/vols-defined >/tmp/tower-not-enstore
 fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 
@@ -66,11 +77,11 @@ fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 #echo "Tapes not in any category"
 #egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        0, [01],"
 
-# tapes in enstore, but not in the silos or the tower
+# tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the Public or CMS silos or the SDSS tower"
-sort -mu /tmp/silo-volumes /tmp/tower-volumes >/tmp/robot-volumes
+echo "Tapes declared to enstore that are not in the SL8500, the Public or CMS silos, or the SDSS tower"
+sort -mu /tmp/silo-volumes /tmp/rail-volumes /tmp/tower-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
 
@@ -101,7 +112,7 @@ echo "--------------------------------------------------------------------------
 
 elif [ $gang = "d0en" ]; then
 
-# d0en silos are acs 1 & lsm 0&1
+# d0en silos are acs 1 & lsm 0,1
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -120,8 +131,8 @@ elif [ $gang = "d0en" ]; then
 # each line in the tower inventory is in this format:
 # volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
 #
-# all lines of enstore inventory have nine fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   mounts   volume_family
+# all lines of enstore inventory have ten fields, in this format:
+#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
 # where each inhibit takes two fields (including parentheses)
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
@@ -129,20 +140,30 @@ elif [ $gang = "d0en" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         1, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 && $1 == /^PR[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+  sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Empty|Occupied)" /diska/tape-inventory/AML2-VOLUMES.html |\
   awk '{print $2}' |\
   sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
-# tapes in the silos, but not in enstore
+# tapes in the PowderHorn 9310, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the D0 silos (acs 1, lsm 0 and 1) that are not fully declared to enstore"
+echo "Tapes in the PowderHorn 9310 (acs 1, lsm 0 and 1) that are not fully declared to enstore"
 comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
 fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
 
-# tapes in the tower, but not in enstore
+# tapes in the StreamLine 8500, but not in enstore
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
+fgrep -f /tmp/rail-not-enstore /diska/tape-inventory/SL8500-VOLUMES.html
+
+# tapes in the D0 AML/2 tower, but not in enstore
 # d0en has only LTOs in the ADIC
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
@@ -155,11 +176,11 @@ fgrep -f /tmp/tower-not-enstore /diska/tape-inventory/AML2-VOLUMES.html
 #echo "Tapes not in any category"
 #egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        1, [01],"
 
-# tapes in enstore, but not in the silos or the tower
+# tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the D0 silos or the D0 tower"
-sort -mu /tmp/silo-volumes /tmp/tower-volumes >/tmp/robot-volumes
+echo "Tapes declared to enstore that are not in the SL8500, the D0 silos, or the D0 towers"
+sort -mu /tmp/silo-volumes /tmp/rail-volumes /tmp/tower-volumes >/tmp/robot-volumes
 comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
 fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
 
@@ -190,7 +211,8 @@ echo "--------------------------------------------------------------------------
 
 elif [ $gang = "cdfen" ]; then
 
-# cdfen silos are acs 0 & lsm 0&1
+# cdfen 9310 silos are acs 0 & lsm 0,1
+# cdfen 8500 rails are acs 0 & lsm 0-3
 
 # for "query drive" (ACSLS 6), each line in the silo inventory is in one of four formats:
 #   vol   home		acs, lsm, panel, row, col	type
@@ -206,8 +228,8 @@ elif [ $gang = "cdfen" ]; then
 #   Media is one of STK2P, STK2W
 #   Type is one of data, clean
 #
-# all lines of enstore inventory have nine fields, in this format:
-#   vol   avail   system_inhibit   user_inhibit   library   mounts   volume_family
+# all lines of enstore inventory have ten fields, in this format:
+#   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
 # where each inhibit takes two fields (including parentheses)
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
@@ -215,27 +237,38 @@ elif [ $gang = "cdfen" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 && $1 == /^IA[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+  sort >/tmp/rail-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
-# tapes in the silos, but not in enstore
+# tapes in the PowderHorn 9310, but not in enstore
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes in the CDF silos (acs 0, lsm 0 and 1) that are not fully declared to enstore"
+echo "Tapes in the PowderHorn 9310 (acs 0, lsm 0 and 1) that are not fully declared to enstore"
 comm -23 /tmp/silo-volumes /tmp/vols-defined >/tmp/silo-not-enstore
 fgrep -f /tmp/silo-not-enstore /diska/tape-inventory/STK-VOLUMES.html
+
+# tapes in the StreamLine 8500, but not in enstore
+echo
+echo "--------------------------------------------------------------------------------------------------------------------"
+echo "Tapes in the StreamLine 8500 (acs 0, lsm 0 to 3) that are not fully declared to enstore"
+comm -23 /tmp/rail-volumes /tmp/vols-defined >/tmp/rail-not-enstore
+fgrep -f /tmp/rail-not-enstore /diska/tape-inventory/SL8500-VOLUMES.html
 
 #echo
 #echo "--------------------------------------------------------------------------------------------------------------------"
 #echo "Tapes not in any category"
 #egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |grep -v "        0, [01],"
 
-# tapes in enstore, but not in the silos
+# tapes in enstore, but not in the robots
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
-echo "Tapes declared to enstore that are not in the CDF silos"
-comm -23 /tmp/vols-defined /tmp/silo-volumes >/tmp/enstore-not-silo
-fgrep -f /tmp/enstore-not-silo /diska/tape-inventory/VOLUMES_DEFINED
+echo "Tapes declared to enstore that are not in the SL8500 or the CDF silos"
+sort -mu /tmp/silo-volumes /tmp/rail-volumes >/tmp/robot-volumes
+comm -23 /tmp/vols-defined /tmp/robot-volumes >/tmp/enstore-not-robot
+fgrep -f /tmp/enstore-not-robot /diska/tape-inventory/VOLUMES_DEFINED
 
 echo
 echo "--------------------------------------------------------------------------------------------------------------------"
@@ -254,6 +287,5 @@ echo
 echo "--------------------------------------------------------------------------------------------------------------------"
 
 fi
-
 
 date
