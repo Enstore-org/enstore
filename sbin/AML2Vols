@@ -2,10 +2,12 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-# this script runs as user enstore
+# both parts of this script run as user enstore
 
 node=`hostname -s`
 gang=`gang`
+
+robot="D0 ADIC AML/2"
 case $gang in
    d0en) media=3480
 	 ;;
@@ -19,18 +21,16 @@ esac
 copy_node=${gang}srv4
 plot_node=${gang}srv2
 
-robot="D0 ADIC AML/2"
-
 Quarter_ago=`date --date "91 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
-if [ $node = $copy_node ] ; then
-
-  volfile=/tmp/ADICROBOT-VOLUMES-$gang
-  rm -f $volfile
+if [ $node = $copy_node ]; then
 
   output=${1:-/dev/tty}
   shift
   [ -f $output ] && rm -f $output
+
+  volfile=/tmp/ADICROBOT-VOLUMES-$gang
+  rm -f $volfile
 
   cat << EOF >>$output
 <html> <head> <title>$robot Volume Status Page</title> </head>
@@ -56,15 +56,12 @@ EOF
 
   total=`do_awk $media $volfile`
 
+  filter="awk -v Media=$media '\$4 == Media'"
+
   cat << EOF >>$output
 <h1><center>Total Volumes Fetched : $total</center><h1>
 <h1><center>$robot Volume Fetch Done : `date`</center><h1>
 <hr>
-EOF
-
-  filter="awk -v Media=$media '\$4 == Media'"
-
-  cat << EOF >>$output
 <h1>Tapes in the $robot satisfying: "$filter"
 <pre>
 EOF
@@ -103,7 +100,7 @@ EOF
     fi
   done
 
-elif [ $node = $plot_node ] ; then
+elif [ $node = $plot_node ]; then
 
   pltcmd=/tmp/aml2.us.gnu
   enrcp $copy_node:AML2_USED_SLOTS* $HOME/

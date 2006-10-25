@@ -6,18 +6,21 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`hostname -s`
 gang=`gang`
+
+# silos are PowderHorn 9310 robots
+silo_robot="PowderHorn 9310"
 case $gang in
    d0en) silo_node=fntt
 	 silo_list="1,0 1,1"
-	 lsm_field=" 1"
+	 silo_acs=" 1"
 	 ;;
   stken) silo_node=fntt
 	 silo_list="0,0 0,1"
-	 lsm_field=" 0"
+	 silo_acs=" 0"
 	 ;;
   cdfen) silo_node=fntt2
 	 silo_list="0,0 0,1"
-	 lsm_field=" 0"
+	 silo_acs=" 0"
 	 ;;
       *) echo \"$0\" not supported on $gang
 	 exit 1
@@ -27,47 +30,42 @@ esac
 copy_node=${gang}srv4
 plot_node=${gang}srv2
 
-robot="PowderHorn 9310"
-
 Quarter_ago=`date --date "91 days ago" +"%Y-%m-%d:%H:%M:%S"`
 
-if [ $node = $copy_node ] ; then
-
-  volfile=/tmp/STKROBOT-VOLUMES-$gang
-  rm -f $volfile
+if [ $node = $copy_node ]; then
 
   output=${1:-/dev/tty}
   shift
   [ -f $output ] && rm -f $output
 
+  volfile=/tmp/STKROBOT-VOLUMES-$gang
+  rm -f $volfile
+
   # find out whether we're running ACSLS 6 or 7
   /usr/bin/rsh $silo_node -l acsss "echo '\r' logoff | bin/cmd_proc -l -q >/dev/null" 2>/tmp/acsls-banner
   if grep "ACSLS 7" /tmp/acsls-banner >/dev/null; then
-    select="display volume \* -home $lsm_field,*,*,*,*"
+    select="display volume \* -home $silo_acs,*,*,*,*"
     filter="awk '\$8~/home|move|mount|dismount|in_drive/'"
   else
     select="query volume all"
-    filter="awk -v Lsm='$lsm_field' '/home|in drive|in transit/ && substr(\$0,31,2)==Lsm'"
+    filter="awk -v Acs='$silo_acs' '/home|in drive|in transit/ && substr(\$0,31,2)==Acs'"
   fi
 
   cat << EOF >>$output
-<html> <head> <title>$robot Volume Status Page</title> </head>
+<html> <head> <title>$silo_robot Volume Status Page</title> </head>
 <body>
 <body bgcolor="#ffffff" text=#a0a0ff">
 <meta http-equiv="Refresh" content="900">
-<h1><center>$robot Volume Fetch Begin: `date`</center><h1>
+<h1><center>$silo_robot Volume Fetch Begin: `date`</center><h1>
 <hr>
 EOF
 
   /usr/bin/rsh $silo_node -l acsss "echo $select '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" >$volfile
 
   cat << EOF >>$output
-<h1><center>$robot Volume Fetch Done : `date`</center><h1>
+<h1><center>$silo_robot Volume Fetch Done : `date`</center><h1>
 <hr>
-EOF
-
-  cat << EOF >>$output
-<h1>Tapes in the $robot satisfying: "$filter"
+<h1>Tapes in the $silo_robot satisfying: "$filter"
 <pre>
 EOF
 
@@ -76,7 +74,7 @@ EOF
   cat << EOF >>$output
 </pre>
 <hr>
-<h1><center>$robot Volume Status Page Done : `date`</center><h1>
+<h1><center>$silo_robot Volume Status Page Done : `date`</center><h1>
 <hr>
 </body>
 EOF
@@ -84,7 +82,7 @@ EOF
   lsms=`/usr/bin/rsh $silo_node -l acsss "echo query lsm all '\r' logoff | bin/cmd_proc -l -q 2>/dev/null" | grep online`
   now=`date +"%Y-%m-%d:%H:%M:%S"`
   for silo in $silo_list; do
-    free=`echo "$lsms" | sed 's/, /,/' | awk -v silo="$silo" '$1 == silo {print $3}'`
+    free=`echo "$lsms" | sed 's/, /,/' | awk -v Silo="$silo" '$1 == Silo {print $3}'`
     if grep "ACSLS 7" /tmp/acsls-banner >/dev/null; then
       used=`eval $filter <$volfile | awk -v Silo="$silo" '{if (sprintf("%s,%s",$2,$3)==Silo) k++}; END {print k}'`
     else
@@ -101,7 +99,7 @@ EOF
     fi
   done
 
-elif [ $node = $plot_node ] ; then
+elif [ $node = $plot_node ]; then
 
   pltcmd=/tmp/stk.us.gnu
   enrcp $copy_node:STK_USED_SLOTS* $HOME/
@@ -112,7 +110,7 @@ elif [ $node = $plot_node ] ; then
     free=`tail -n1 $i | awk '{print $5}'`
     echo "set output \"/tmp/silo.$silo.ps\"
 set terminal postscript color solid
-set title \"Used Slots in STK Silo $silo $now\"
+set title \"Used Slots in PowderHorn 9310 silo $silo $now\"
 set xlabel \"Date\"
 set timefmt \"%Y-%m-%d:%H:%M:%S\"
 set xdata time
