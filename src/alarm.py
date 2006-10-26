@@ -152,6 +152,10 @@ class GenericAlarm:
 	    if len(alarm_info) == len(self.alarm_info):
 		keys = self.alarm_info.keys()
 		for key in keys:
+                    # do not compare this key as it is put in by udp_server and is not
+                    # information about the alarm.
+                    if key == "r_a":
+                        continue
 		    if alarm_info.has_key(key):
 			if not self.alarm_info[key] == alarm_info[key]:
 			    # we found something that does not match
