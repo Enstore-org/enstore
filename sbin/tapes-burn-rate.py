@@ -26,11 +26,15 @@ def sort_the_file(infile):
     while 1:
         line = fi.readline()
         if not line: break
-        d,v,mb=line.split()
-        t=time.mktime(time.strptime(d,"%d-%b-%y"))
-        do=time.strftime("%Y-%m-%d",time.localtime(t))
-        ol = string.join((do,v,mb),'\t')
-        fo.write('%s\n' % (ol,))
+        try:
+            d,v,mb=line.split()
+            t=time.mktime(time.strptime(d,"%d-%b-%y"))
+            do=time.strftime("%Y-%m-%d",time.localtime(t))
+            ol = string.join((do,v,mb),'\t')
+            fo.write('%s\n' % (ol,))
+        except:
+            print "Error parsing line ",line, infile
+            break
     fi.close()
     fo.close()
     os.system("sort %s.tmp > /tmp/%s"%(infile,infile))
@@ -192,20 +196,18 @@ for thefile in 'cdfen','d0en','stken':
     f.close()
 
 group_fd = {}
-# copy all "old" tapes files
-#os.system("cp ../burn-rate/*.tapes .")
-#eagle = open('CD-9840.tapes','w')
 eagle = open('CD-9840.tapes','a')
 group_fd['CD-9840'] = eagle
-#beagle = open('CD-9940.tapes','w')
 beagle = open('CD-9940.tapes','a')
 group_fd['CD-9940'] = beagle
 ALL_9940 = open('ALL_9940.tapes','a')
 ALL_9940B = open('ALL_9940B.tapes', 'a')
+ALL_LTO3 = open('ALL_LTO3.tapes', 'a')
 CD_9940B = open('CD-9940B.tapes', 'a')
 group_fd['ALL_9940'] = ALL_9940
 group_fd['ALL_9940B'] = ALL_9940B
 group_fd['CD-9940B'] = CD_9940B
+group_fd['ALL_LTO3'] = ALL_LTO3
 
 
 print 'sorting drivestat into storage group and library'
@@ -214,11 +216,14 @@ eagle_mb = 0L
 beagle_mb = 0L
 eagle_v={}
 beagle_v={}
+all_lto3_mb = 0L
 all_9940_mb = 0L
 all_9940b_mb = 0L
 cd_9940b_mb = 0L
+all_lto3_v = {}
 all_9940_v = {}
 all_9940b_v = {}
+cd_9940b_v = {}
 cd_9940b_v = {}
 while 1:
     line = f.readline()
@@ -269,6 +274,10 @@ while 1:
     #if g=='cdf.cdf':
         #print "WWW",ol
     #print "LLLLL",l
+    if l in ['CD-LTO3', 'CDF-LTO3', 'D0-LTO3']:
+        all_lto3_mb = all_lto3_mb +  long(mb)
+        all_lto3_v[v] = 1
+        ALL_LTO3.write('%s\n' % (ol,))
     if l in ['mezsilo', 'cdf', '9940']:
        all_9940_mb = all_9940_mb + long(mb)
        all_9940_v[v] = 1
@@ -297,7 +306,8 @@ while 1:
     #    beagle.write('%s\n' % (ol,))
     else:
         #pass
-        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
+#        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',line
+        print 'What is it, not cdf,samlto,cms,eagle,9940 CD tape?',l,sg
 
 #sys.exit()
 for g in group_fd.keys():
@@ -317,27 +327,24 @@ _9940b_su = 0.
 cd_9940b_wv = cd_9940b_bv = 0
 cd_9940b_su = 0.
 
+all_lto3_wv = all_lto3_bv = 0
+all_lto3_su = 0.
+
 rpt=open('report','w')
 for g in group_fd.keys():
     print "make plot for %s"%(g,)
     if g == 'ALL_9940':
         pass
-        
-        #wv = len(all_9940_v)
-        #su="%.2f%s"%(all_9940_mb / 1024.,"GB")
     elif g == 'ALL_9940B':
         pass
-        #wv = len(all_9940b_v)
-        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
+    elif g == 'ALL_LTO3':
+        pass
     elif g == 'CD-9940B':
         pass
-        #wv = len(all_9940b_v)
-        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
     print "GOT HERE"
     if QUOTAS.has_key(g):
         print g, QUOTAS[g]
         (wv,bv,su, l) = QUOTAS[g]
-        
         cap = lib_capacity(g)
         if cap == 0:
             print "DON'T KNOW WHAT IS CAPACITY FOR %s"(g,)
@@ -361,7 +368,14 @@ for g in group_fd.keys():
           _9940_bv = _9940_bv + int(bv)
           _9940_su = _9940_su + su
         
-            
+
+        elif l in ['CD-LTO3', 'CDF-LTO3', 'D0-LTO3']:
+          su = float(su.split("G")[0])
+          all_lto3_wv = all_lto3_wv + int(wv)
+          all_lto3_bv = all_lto3_bv + int(bv)
+          all_lto3_su = all_lto3_su + su
+        
+
     elif g == "CD-9840":
         (wv1,bv1,su1,l) = QUOTAS.get('blank-9840.none',('-1','-1','-1','-1'))
         (wv2,bv2,su2,l) = QUOTAS.get('eagle.none:',('-1','-1','-1','-1'))
@@ -381,7 +395,8 @@ for g in group_fd.keys():
         cap = CAP_9940
     elif g == 'ALL_9940':
         pass
-        
+    elif g == 'ALL_LTO3':
+        pass
         #wv = len(all_9940_v)
         #su="%.2f%s"%(all_9940_mb / 1024.,"GB")
     elif g == 'ALL_9940B':
@@ -391,13 +406,17 @@ for g in group_fd.keys():
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B']:
+    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B', 'ALL_LTO3']:
         pass
     else:
         sort_the_file('%s.tapes'%(g,))
         cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su, cap)
         print cmd
         os.system(cmd)
+sort_the_file('ALL_LTO3.tapes')
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_LTO3',d1,d2,all_lto3_wv,all_lto3_bv,all_lto3_su, 400)
+print cmd
+os.system(cmd)
 sort_the_file('ALL_9940.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_9940',d1,d2,_9940_wv,_9940_bv,_9940_su, 60)
 print cmd
