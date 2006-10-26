@@ -65,6 +65,16 @@ def is_access_name(filepath):
 
     return False
 
+#Remove the /pnfs/ or /pnfs/fs/usr/ from the pnfs path.
+def strip_pnfs_mountpoint(pathname):
+    tmp1 = pathname[pathname.find("/pnfs/"):]
+    tmp2 = tmp1[6:]
+    if tmp2[:7] == "fs/usr/":
+        tmp3 = tmp2[7:]
+    else:
+        tmp3 = tmp2
+    return tmp3
+
 def is_pnfs_path(pathname, check_name_only = None):
 
     #Expand the filename to the absolute path.
@@ -625,10 +635,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         fname = self.parent_file(directory, id)
 
         f = open(fname,'r')
-        parent = f.readlines()
+        parent = f.readline()
         f.close()
 
-        return parent[0].replace("\n", "")
+        return parent.replace("\n", "")
 
     # get the parent information, given the id
     def get_parent(self, id=None, directory=""):
@@ -844,13 +854,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         pfn = os.path.join(directory, use_pnfsname)
         try:
             f = open(pfn, 'r')
-            pnfs_value = f.readlines()
+            pnfs_value = f.readline()
             f.close()
 
             #Remember to truncate the original path to just the mount
             # point
             search_path = self.get_mount_point(directory)
-
+            
             found_db_num = int(self.get_database(search_path).split(":")[1],
                                16)
         except (OSError, IOError):
@@ -872,7 +882,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 pfn = os.path.join(mp, use_pnfsname)
                 try:
                     f = open(pfn, 'r')
-                    pnfs_value = f.readlines()
+                    pnfs_value = f.readline()
                     f.close()
 
                     if count:
@@ -929,7 +939,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         if found_db_num == 0:
             search_path = os.path.join(search_path, "usr")
 
-        return search_path, pnfs_value
+        #The pnfs_value is put into a list becuase originally this
+        # function used readlines().  However, for performance reasons,
+        # readline() is a better choice.  Returning a list is just a
+        # historical note from having used readlines() previously.
+        return search_path, [pnfs_value]
 
     ##########################################################################
 
