@@ -1154,42 +1154,69 @@ def check_bit_file(bfid):
     # will bite the bullet of calling get_path() for those.
     if db_num == 0: # and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
         use_name = file_record['pnfs_name0'].replace("/pnfs/", "/pnfs/fs/usr/", 1)
+        use_mp = mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
     elif db_num > 0:
         use_name = file_record['pnfs_name0'].replace("/fs/usr/", "/", 1)
-    
-    #We need to check if it is an orphaned file.  If the pnfsids match
-    # then the file has not been moved or renamed since it was written.
-    # If they match, then the ".(access)()" filename is passed to check_file().
-    # check_file() should skip its own check of the ".(access)()" filenames,
-    # since they have been shone to still be valid.
-    #
-    # If it doesn't match then:
-    # 1) The file is orphaned.  (get_path() gives ENOENT or EIO)
-    # 2) The file is moved.  (get_path() gives the new path)
-    # 3) The file is renamed. (get_path() gives the new name)
+        use_mp = mp.replace("/fs/usr", "/", 1)
+
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
-        try:
-            tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
-            if tmp_name[0] == "/":
-                #Make sure the path is a absolute path.
-                pnfs_path = tmp_name
-            else:
-                #If the path is not an absolute path we get here.  What
-                # happend is that get_path() was able to find a pnfs
-                # mount point connected to the correct pnfs database,
-                # but not a mount for the correct database.
-                #
-                #The best we can do is use the .(access)() name.
+        #Before jumping off the deep end by calling get_path(), lets try
+        # one more thing.  Here we try and remove any intermidiate
+        # directories that are not present in the current path.
+        #  Example: original path begins: /pnfs/sam/dzero/...
+        #           current use path begins /pnfs/fs/usr/dzero/...
+        #           If we can detect that we need to remove the "/sam/"
+        #           part we can save the time of a full get_path() lookup.
+        just_pnfs_path_part = pnfs.strip_pnfs_mountpoint(file_record['pnfs_name0'])
+        dir_list = just_pnfs_path_part.split("/", 2) #Don't check everything...
+        for i in range(len(dir_list[:-1])):
+            single_dir = os.path.join(use_mp, dir_list[i])
+            try:
+                os.stat(single_dir)
+                use_name = os.path.join(use_mp,
+                                         string.join(dir_list[i:], "/"))
+                break
+            except (OSError, IOError):
                 pass
-        except (OSError, IOError), detail:
-            if detail.errno == errno.ENOENT or detail.errno == errno.EIO:
-                err = err + ["%s orphaned file"%(file_record['pnfsid'])]
-                errors_and_warnings(prefix, err, warn, info)
-            else:
-                err = err + ["%s error accessing file"%(file_record['pnfsid'])]
-                errors_and_warnings(prefix, err, warn, info)
-            return
+
+        #We need to check if it is an orphaned file.  If the pnfsids match
+        # then the file has not been moved or renamed since it was written.
+        # If they match, then the ".(access)()" filename is passed to
+        # check_file(). check_file() should skip its own check of the
+        # ".(access)()" filenames, since they have been shone to still be
+        # valid.
+        #
+        # If it doesn't match then:
+        # 1) The file is orphaned.  (get_path() gives ENOENT or EIO)
+        # 2) The file is moved.  (get_path() gives the new path)
+        # 3) The file is renamed. (get_path() gives the new name)
+        cur_pnfsid = get_pnfsid(use_name)[0]
+        if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
+            try:
+                t0 = time.time()
+                tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                if tmp_name[0] == "/":
+                    #Make sure the path is a absolute path.
+                    pnfs_path = tmp_name
+                else:
+                    #If the path is not an absolute path we get here.  What
+                    # happend is that get_path() was able to find a pnfs
+                    # mount point connected to the correct pnfs database,
+                    # but not a mount for the correct database.
+                    #
+                    #The best we can do is use the .(access)() name.
+                    pass
+            except (OSError, IOError), detail:
+                if detail.errno == errno.ENOENT or detail.errno == errno.EIO:
+                    err = err + ["%s orphaned file"%(file_record['pnfsid'])]
+                    errors_and_warnings(prefix, err, warn, info)
+                else:
+                    err = err + ["%s error accessing file"%(file_record['pnfsid'])]
+                    errors_and_warnings(prefix, err, warn, info)
+                    return
+        else:
+            pnfs_path = use_name
     else:
         pnfs_path = use_name
 
