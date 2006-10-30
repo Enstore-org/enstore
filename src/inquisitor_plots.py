@@ -111,6 +111,8 @@ class InquisitorPlots:
                                                                                              start_col)
         latencys = self.acc_db.query(query)
 
+
+
         # get the mounts for each drive type.  first get a list of the drive
         # types
         query = "select distinct %s from %s"%(type_col, table)
@@ -130,13 +132,13 @@ class InquisitorPlots:
         # only do the plotting if we have some data
         if total_mounts:
             # create the total mount latency data files
-            mlatfile = enstore_plots.MlatDataFile(self.output_dir, self.mount_label)
-            mlatfile.open()
-            mlatfile.plot(latencys.dictresult())
-            mlatfile.close()
-            mlatfile.install(self.html_dir)
-            mlatfile.cleanup(self.keep, self.keep_dir)
-
+#            mlatfile = enstore_plots.MlatDataFile(self.output_dir, self.mount_label)
+#            mlatfile.open()
+#            mlatfile.plot(latencys.dictresult())
+#            mlatfile.close()
+#            mlatfile.install(self.html_dir)
+#            mlatfile.cleanup(self.keep, self.keep_dir)
+#
 	    # now save any new mount count data for the continuing total
             # count. and create the overall total mount plot
 	    mpdfile = enstore_plots.MpdDataFile(self.output_dir, self.mount_label)
@@ -152,6 +154,47 @@ class InquisitorPlots:
             mmpdfile.close()
             mmpdfile.install(self.html_dir)
 	    mmpdfile.cleanup(self.keep, self.keep_dir)
+
+        query = "select to_char(start , 'YYYY-MM-DD') as %s, count(*) as total from %s %s and type != 'ULTRIUM-TD3' group by to_char(start, 'YYYY-MM-DD') order by to_char(start, 'YYYY-MM-DD')"%(start_col, table, time_q)
+        total_mounts = self.acc_db.query(query)
+        query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s and type != 'ULTRIUM-TD3' order by %s"%(start_col,
+                                                                                                                       finish_col,
+                                                                                                                       start_col,
+                                                                                                                       table, time_q,
+                                                                                                                       start_col)
+
+        latencys = self.acc_db.query(query)
+
+        if total_mounts:
+            # create the total mount latency data files
+            mlatfile = enstore_plots.MlatDataFile(self.output_dir,self.mount_label)
+            mlatfile.open()
+            mlatfile.plot(latencys.dictresult())
+            mlatfile.close()
+            mlatfile.install(self.html_dir)
+            mlatfile.cleanup(self.keep, self.keep_dir)
+
+        query = "select to_char(start , 'YYYY-MM-DD') as %s, count(*) as total from %s %s and type = 'ULTRIUM-TD3' group by to_char(start, 'YYYY-MM-DD') order by to_char(start, 'YYYY-MM-DD')"%(start_col, table, time_q)
+        total_mounts = self.acc_db.query(query)
+        query = "select %s, to_char(%s-%s, 'HH24:MI:SS') as latency from %s %s and type = 'ULTRIUM-TD3' order by %s"%(start_col,
+                                                                                                                       finish_col,
+                                                                                                                       start_col,
+                                                                                                                       table, time_q,
+                                                                                                                       start_col)
+
+        latencys = self.acc_db.query(query)
+
+        if total_mounts:
+            # create the total mount latency data files
+            mlatfile = enstore_plots.MlatDataFile(self.output_dir, "GCC")
+            mlatfile.name=enstore_constants.MLAT_FILE+"_gcc"
+            mlatfile.psfile = mlatfile.file_name+enstore_constants.PS
+            mlatfile.open()
+            mlatfile.plot(latencys.dictresult())
+            mlatfile.close()
+            mlatfile.install(self.html_dir)
+            mlatfile.cleanup(self.keep, self.keep_dir)
+
         # close db connection
         self.close_db_connection()
 
