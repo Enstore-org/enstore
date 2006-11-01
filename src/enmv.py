@@ -333,18 +333,37 @@ def move_file(input_filename, output_filename):
     # also be read-only (because rename() would succed).  Thus, we need to
     # turn on the write bits.
     try:
-        if not p.pstat[stat.ST_MODE] & (stat.S_IWUSR | stat.S_IWGRP |
-                                        stat.S_IWOTH):
-            os.chmod(output_filename,
-                     stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        #The 'other' bits don't help with reading/writing to the layers.
+        # Thus we need to ignore this as a safe possiblity.
+        #
+        #The 'group' bits don't give you the ability to chmod() a file.
+
+        if os.geteuid() == 0:
+            pass
+        elif os.geteuid() == p.pstat[stat.ST_UID]:
+             if not (p.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
+                  not (p.pstat[stat.ST_MODE] & stat.S_IWUSR):
+                 os.chmod(output_filename,
+                          p.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
+        elif os.getegid() == p.pstat[stat.ST_GID] \
+             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
+             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
+            #Since, we don't need to change the permissions in this case,
+            # we should be okay to proceed.
+            pass
+        else:
+            print_error(e_errors.USERERROR,
+                        "Insufficent permissions to move file")
+            sys.exit(1)
     except OSError, msg:
         print_error(e_errors.OSERROR,
                     "Unable to set temporary permissions: %s" % str(msg))
+        sys.exit(1)
 
     try:
         #Update file's layer 1 information.
         new_p.set_bit_file_id(new_bfid)
-    except OSError, msg:
+    except (OSError, IOError), msg:
         print_error(e_errors.OSERROR,
                     "Pnfs layer 1 update failed: %s" % str(msg))
         sys.exit(1)
@@ -424,11 +443,16 @@ def move_file(input_filename, output_filename):
         # They would have been modified if the original file was read-only.
         
         try:
-            os.chmod(output_filename, p.pstat[stat.ST_MODE])
+            if os.stat(output_filename)[stat.ST_MODE] != p.pstat[stat.ST_MODE]:
+                os.chmod(output_filename, p.pstat[stat.ST_MODE])
         except OSError, msg:
             print_error(e_errors.OSERROR,
                         "File permissions update failed: %s" % str(msg))
-            sys.exit(1)
+            #We don't wat to fail the transfer over this. Otherwise the
+            # pnfs part of the move is completed, but the Enstore DB
+            # part won't be.  That confict will prevent encp from reading
+            # the file.
+            #sys.exit(1)
 
     #Update the file clerk information.  This must be last.  If any of the
     # the prevous steps fail in setting the pnfs information, the
