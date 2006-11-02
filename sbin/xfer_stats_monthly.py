@@ -572,9 +572,9 @@ def plot_tape_bytes():
 #                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
 #                                                                                             tmp.binarray[i_day_min]+delta,))
 
-        tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
-        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
-                                                                                                        time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
+        tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_day+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.95  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_day_max))),))
 #        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
 #                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
 #        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
