@@ -41,8 +41,8 @@ if [ $gang = "stken" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
-  awk 'NF==10 && $1 ~ /^VO[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+egrep -v "^$|^<|(TEST|(PR|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" /diska/tape-inventory/AML2-VOLUMES.html |\
   awk '{print $2}' |\
@@ -140,8 +140,8 @@ elif [ $gang = "d0en" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         1, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
-  awk 'NF==10 && $1 ~ /^PR[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+egrep -v "^$|^<|(TEST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Empty|Occupied)" /diska/tape-inventory/AML2-VOLUMES.html |\
   awk '{print $2}' |\
@@ -237,8 +237,8 @@ elif [ $gang = "cdfen" ]; then
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/STK-VOLUMES.html |\
   awk 'NF==10 || /         0, [01],/ {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
-  awk 'NF==10 && $1 ~ /^IA[0-9A-Z][0-9A-Z][0-9][0-9]/ {print $1}' |\
+egrep -v "^$|^<|(TEST|(VO|PR)[0-9A-Z][0-9A-Z])[0-9][0-9]" /diska/tape-inventory/SL8500-VOLUMES.html |\
+  awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' /diska/tape-inventory/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
