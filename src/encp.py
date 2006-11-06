@@ -2092,7 +2092,7 @@ def print_data_access_layer_format(inputfile, outputfile, filesize, ticket):
     unique_id = ticket.get('unique_id', "")
     hostname = ticket.get('encp_ip',
                           ticket.get('wrapper', {}).get('machine',
-                                                     ("", "", "", "", "")))[1]
+                                                     ("", "", "", "", ""))[1])
     if hostname:
         try:
             hostname = socket.gethostbyname(hostname)
@@ -2592,12 +2592,12 @@ def is_pnfs_path(filename, check_name_only = None):
 
     pathname = os.path.abspath(filename)
 
-    rtn = __is_pnfs_local_path(filename)
+    rtn = __is_pnfs_local_path(pathname, check_name_only)
     if not rtn:
         #If we get here we did not find a matching locally mounted
         # pnfs filesystem.  Ask the pnfs agent.
-        pac = get_pac()
-        rtn = pac.is_pnfs_path(pathname, check_name_only = check_name_only)
+        rtn = __is_pnfs_remote_path(pathname, check_name_only)
+        
     return rtn
 
 # for automounted pnfs
