@@ -327,6 +327,8 @@ class DispatchingWorker(udp_server.UDPServer):
                                   "cannot find any named function")}
             Trace.trace(6,"%s process_request %s"
                         % (detail, ticket))
+            Trace.log(e_errors.ERROR,
+                        "%s process_request %s" % (detail, ticket))
             self.reply_to_caller(ticket)
             return
 
@@ -339,6 +341,8 @@ class DispatchingWorker(udp_server.UDPServer):
                                   % (function_name,))}
             Trace.trace(6,"%s process_request %s %s"
                         % (detail, ticket, function_name))
+            Trace.log(e_errors.ERROR,
+                        "%s process_request %s" % (detail, ticket))
             self.reply_to_caller(ticket)
             return
 
