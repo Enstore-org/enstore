@@ -239,14 +239,17 @@ class UDPServer:
             lst = self.request_dict[idn]
             if lst[0] == number:
                 Trace.trace(16,
-                          "process_request %s already handled" % (repr(idn),))
+                            "process_request %s from %s already handled" % \
+                            (repr(idn), client_address))
                 self.reply_with_list(lst, client_address, idn)
                 return None
 
             # if the request number is smaller, then there has been a timing
             # race and we've already handled this as much as we are going to.
             elif number < lst[0]: 
-                Trace.trace(16, "process_request %s old news" % (repr(idn),))
+                Trace.trace(16,
+                            "process_request %s from %s old news" % \
+                            (repr(idn), client_address))
                 return None #old news, timing race....
         self.purge_stale_entries()
 

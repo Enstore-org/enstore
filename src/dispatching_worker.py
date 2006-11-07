@@ -319,16 +319,21 @@ class DispatchingWorker(udp_server.UDPServer):
         ticket = udp_server.UDPServer.process_request(self, request,
                                                       client_address)
 
+        #This checks help process cases where the message was repeated
+        # by the client.
+        if not ticket:
+            return
+
         # look in the ticket and figure out what work user wants
         try:
             function_name = ticket["work"]
         except (KeyError, AttributeError, TypeError), detail:
             ticket = {'status' : (e_errors.KEYERROR, 
                                   "cannot find any named function")}
-            Trace.trace(6,"%s process_request %s"
-                        % (detail, ticket))
-            Trace.log(e_errors.ERROR,
-                        "%s process_request %s" % (detail, ticket))
+            msg = "%s process_request %s from %s" % \
+                (detail, ticket, client_address)
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
@@ -339,10 +344,10 @@ class DispatchingWorker(udp_server.UDPServer):
             ticket = {'status' : (e_errors.KEYERROR, 
                                   "cannot find requested function `%s'"
                                   % (function_name,))}
-            Trace.trace(6,"%s process_request %s %s"
-                        % (detail, ticket, function_name))
-            Trace.log(e_errors.ERROR,
-                        "%s process_request %s" % (detail, ticket))
+            msg = "%s process_request %s %s from %s" % \
+                (detail, ticket, function_name, client_address) 
+            Trace.trace(6, msg)
+            Trace.log(e_errors.ERROR, msg)
             self.reply_to_caller(ticket)
             return
 
