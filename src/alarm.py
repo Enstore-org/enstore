@@ -60,6 +60,12 @@ class GenericAlarm:
 	self.num_times_raised = 1L
         self.ticket_generated = None
 
+    def remove_RA(self):
+        # this is a key put here by udp_server that is not useful and not connected
+        # to an alarm.
+        if self.alarm_info.has_key(RA):
+            del self.alarm_info[RA]
+
     def set_ticket(self, condition, type):
         self.condition = condition
         self.type = type
@@ -178,12 +184,6 @@ class GenericAlarm:
         return self.id
 
 class Alarm(GenericAlarm):
-
-    def remove_RA(self):
-        # this is a key put here by udp_server that is not useful and not connected
-        # to an alarm.
-        if self.alarm_info.has_key(RA):
-            del self.alarm_info[RA]
 
     def __init__(self, host, severity, root_error, pid, uid, source,
                  condition, remedy_type, alarm_info=None):
