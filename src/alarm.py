@@ -31,8 +31,6 @@ SEVERITY = "severity"
 MATCH = 1
 NO_MATCH = 0
 
-RA = "r_a"
-
 PATROL_SEVERITY = { e_errors.sevdict[e_errors.ALARM] : '4',
                     e_errors.sevdict[e_errors.ERROR] : '4',
                     e_errors.sevdict[e_errors.USER_ERROR] : '3',
@@ -59,12 +57,6 @@ class GenericAlarm:
         self.patrol = 0
 	self.num_times_raised = 1L
         self.ticket_generated = None
-
-    def remove_RA(self):
-        # this is a key put here by udp_server that is not useful and not connected
-        # to an alarm.
-        if self.alarm_info.has_key(RA):
-            del self.alarm_info[RA]
 
     def set_ticket(self, condition, type):
         self.condition = condition
@@ -162,7 +154,7 @@ class GenericAlarm:
 		for key in keys:
                     # do not compare this key as it is put in by udp_server and is not
                     # information about the alarm.
-                    if key == RA:
+                    if key == "r_a":
                         continue
 		    if alarm_info.has_key(key):
 			if not self.alarm_info[key] == alarm_info[key]:
@@ -198,7 +190,6 @@ class Alarm(GenericAlarm):
         self.uid = uid
         self.source = source
         self.alarm_info = alarm_info
-        self.remove_RA()
         self.condition = condition
         self.type = remedy_type
 
@@ -233,7 +224,6 @@ class AsciiAlarm(GenericAlarm):
                     self.timedate_last = float(self.timedate_last)
                 except (TypeError, ValueError):
                     self.id = 0    # not a valid alarm
-        self.remove_RA()
 
 
 class LogFileAlarm(GenericAlarm):
@@ -250,7 +240,6 @@ class LogFileAlarm(GenericAlarm):
 	else:
 	    self.severity = e_errors.ALARM
 	self.alarm_info = dict
-        self.remove_RA()
 
     def __init__(self, text, date):
 	GenericAlarm.__init__(self)
