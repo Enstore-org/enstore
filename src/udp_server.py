@@ -301,10 +301,10 @@ class UDPServer:
 	#		   reply_address)
 	#del send_socket
 
-        Trace.trace(16,
-              "udp_server (reply with interface %s): to %s: request_dict %s" %
-              (interface_ip, self.reply_address,
-               self.request_dict[current_id],))
+        #Trace.trace(16,
+        #      "udp_server (reply with interface %s): to %s: request_dict %s" %
+        #      (interface_ip, self.reply_address,
+        #       self.request_dict[current_id],))
 
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
@@ -316,12 +316,14 @@ class UDPServer:
 
         if interface_ip != None:
             ip, port, send_socket = udp_common.get_callback(interface_ip)
+            with_interface = " with interface %s" % interface_ip
         else:
             send_socket = self.server_socket
+            with_interface = ""  #Give better trace message.
         
         try:
-            Trace.trace(16, "udp_server (reply): to %s: request_dict %s" %
-                        (reply_address, current_id))
+            Trace.trace(16, "udp_server (reply%s): to %s: request_dict %s" %
+                        (with_interface, reply_address, current_id))
             send_socket.sendto(repr(list_copy), reply_address)
         except:
             Trace.handle_error()
@@ -333,12 +335,12 @@ class UDPServer:
         self.reply_address = ticket["ra"][0]
         self.client_number = ticket["ra"][1]
         self.current_id    = ticket["ra"][2]
-        reply = (self.client_number, ticket, time.time())
-        Trace.trace(19,"reply_with_address %s %s %s %s"%( 
-            self.reply_address,
-            self.current_id,
-            self.client_number,
-            reply))
+        #reply = (self.client_number, ticket, time.time())
+        #Trace.trace(19,"reply_with_address %s %s %s %s"%( 
+        #    self.reply_address,
+        #    self.current_id,
+        #    self.client_number,
+        #    reply))
         self.reply_to_caller(ticket)
 
 if __name__ == "__main__":
