@@ -1634,6 +1634,8 @@ if __name__ == "__main__" :
         exc,msg,tb=sys.exc_info()
         Trace.log(e_errors.ERROR, "MC Error %s %s"%(exc,msg))
         sys.exit(1)
+    if keys.has_key('max_work'):
+       intf.max_work = int(keys['max_work']) 
 
     import __main__
     constructor=getattr(__main__, mc_type)
