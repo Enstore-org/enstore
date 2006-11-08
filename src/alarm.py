@@ -31,6 +31,8 @@ SEVERITY = "severity"
 MATCH = 1
 NO_MATCH = 0
 
+RA = "r_a"
+
 PATROL_SEVERITY = { e_errors.sevdict[e_errors.ALARM] : '4',
                     e_errors.sevdict[e_errors.ERROR] : '4',
                     e_errors.sevdict[e_errors.USER_ERROR] : '3',
@@ -154,7 +156,7 @@ class GenericAlarm:
 		for key in keys:
                     # do not compare this key as it is put in by udp_server and is not
                     # information about the alarm.
-                    if key == "r_a":
+                    if key == RA:
                         continue
 		    if alarm_info.has_key(key):
 			if not self.alarm_info[key] == alarm_info[key]:
@@ -190,6 +192,10 @@ class Alarm(GenericAlarm):
         self.uid = uid
         self.source = source
         self.alarm_info = alarm_info
+        # this is a key put here by udp_server that is not useful and not connected
+        # to an alarm.
+        if self.alarm_info.has_key(RA):
+            del self.alarm_info[RA]
         self.condition = condition
         self.type = remedy_type
 
