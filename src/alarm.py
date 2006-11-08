@@ -179,6 +179,12 @@ class GenericAlarm:
 
 class Alarm(GenericAlarm):
 
+    def remove_RA(self):
+        # this is a key put here by udp_server that is not useful and not connected
+        # to an alarm.
+        if self.alarm_info.has_key(RA):
+            del self.alarm_info[RA]
+
     def __init__(self, host, severity, root_error, pid, uid, source,
                  condition, remedy_type, alarm_info=None):
         GenericAlarm.__init__(self)
@@ -192,10 +198,7 @@ class Alarm(GenericAlarm):
         self.uid = uid
         self.source = source
         self.alarm_info = alarm_info
-        # this is a key put here by udp_server that is not useful and not connected
-        # to an alarm.
-        if self.alarm_info.has_key(RA):
-            del self.alarm_info[RA]
+        self.remove_RA()
         self.condition = condition
         self.type = remedy_type
 
@@ -230,6 +233,7 @@ class AsciiAlarm(GenericAlarm):
                     self.timedate_last = float(self.timedate_last)
                 except (TypeError, ValueError):
                     self.id = 0    # not a valid alarm
+        self.remove_RA()
 
 
 class LogFileAlarm(GenericAlarm):
@@ -246,6 +250,7 @@ class LogFileAlarm(GenericAlarm):
 	else:
 	    self.severity = e_errors.ALARM
 	self.alarm_info = dict
+        self.remove_RA()
 
     def __init__(self, text, date):
 	GenericAlarm.__init__(self)
