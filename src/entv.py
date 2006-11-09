@@ -1418,6 +1418,7 @@ def main(intf):
     menu_defaults = {'animate' : enstore_display.STILL,
                      'connection_color' : enstore_display.CLIENT_COLOR }
     create_menubar(menu_defaults, master)
+    master.display_count = len(cscs_info.keys())
     
     continue_working = 1
     restart_entv = False

@@ -19,6 +19,7 @@ import types
 import threading
 import re
 import gc
+import resource
 
 import Trace
 import mover_client
@@ -132,7 +133,6 @@ MMPC = 20.0     # Max Movers Per Column
 MIPC = 20       # Max Items Per Column
 
 REINIT_TIME = 3600000  #in milliseconds (1 hour)
-#ANIMATE_TIME = 30      #in milliseconds (~1/33rd of second)
 ANIMATE_TIME = 42      #in milliseconds (~1/42nd of second)
 UPDATE_TIME = 1000     #in milliseconds (1 second)
 MESSAGES_TIME = 250    #in milliseconds (1/4th of second)
@@ -145,6 +145,8 @@ offline_reason_thread = None
 #To prevent instantiating a slew of Inquisitors.
 inqc_dict_cache = {}
 
+st = 0
+pt = 0
 
 class Queue:
     def __init__(self):
@@ -226,7 +228,15 @@ class Queue:
 #These are the queue classes.
 message_queue = Queue()
 request_queue = Queue()
-    
+
+#Older python versions don't have a sum() function.  Define one for them.
+if sys.version_info < (2, 3, 0):
+    def local_sum(sequence, start = 0):
+        import operator
+        return reduce(operator.add, sequence, start)
+
+    __builtins__.sum = local_sum
+
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
     a window of size w, h"""
@@ -424,7 +434,41 @@ def split_geometry(geometry):
     y_position = int(y_position.replace("+", ""))
 
     return window_width, window_height, x_position, y_position
-    
+
+#########################################################################
+# These two functions can only be called from one location in the code
+# due to use of the global variables.
+
+last_animate = time.time()
+def animate_time():
+    global st
+    global last_animate
+
+    sum_time = sum(resource.getrusage(resource.RUSAGE_SELF)[:2])
+    cpu = min(1000, int(1000 * (sum_time - st)) * 2)
+    st = sum_time
+
+    now = time.time()
+    rtn = max(1, int(ANIMATE_TIME + cpu - ((now - last_animate) * 1000)))
+    last_animate = now
+
+    return rtn
+
+last_process = time.time()
+def process_time():
+    #global pt
+    global last_process
+
+    #sum_time = sum(resource.getrusage(resource.RUSAGE_SELF)[:2])
+    #rtn = max(int(1000 * (sum_time - pt)), MESSAGES_TIME)
+    #pt = sum_time
+
+    now = time.time()
+    rtn = max(1, int(MESSAGES_TIME - ((now - last_process) * 1000)))
+    last_process = now
+
+    return rtn
+
 #########################################################################
 # Most of the functions will be handled by the mover.
 # its  functions include:
@@ -1111,22 +1155,19 @@ class Mover:
         self.timer_seconds = seconds
         self.timer_string = HMS(seconds)
 
-        #Only worry if this for "too long" situation.  When the state changes
-        # this will be set back to normal color in update_state().
-        if (self.timer_seconds > 3600) and \
-           (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
-                           "MOUNT_WAIT", "DISMOUNT_WAIT", "FINISH_WRITE",
-                           "HAVE_BOUND", "DRAINING", "CLEANING"]):
-            self.timer_color = colors('timer_longtime_color')
-            self.display.itemconfigure(self.timer_display,
-                                       fill = self.timer_color)
-
-        if self.timer_string and self.timer_display:
+        if self.timer_display:
             self.display.itemconfigure(self.timer_display,
                                        text = self.timer_string)
-        else:
-            #print "Traceback avoided.  timer_string = %s" % self.timer_string
-            pass
+            
+            #Only worry if this for "too long" situation.  When the state
+            # changes this will be set back to normal color in update_state().
+            if (self.timer_seconds > 3600) and \
+               (self.state in ["ACTIVE", "SEEK", "SETUP", "loaded",
+                               "MOUNT_WAIT", "DISMOUNT_WAIT", "FINISH_WRITE",
+                               "HAVE_BOUND", "DRAINING", "CLEANING"]):
+                self.timer_color = colors('timer_longtime_color')
+                self.display.itemconfigure(self.timer_display,
+                                           fill = self.timer_color)
 
     def update_rate(self, rate):
 
@@ -2430,6 +2471,7 @@ class Display(Tkinter.Canvas):
 
 
         Trace.trace(5, "Starting process_messages()")
+        t0 = time.time()
         
         if self.stopped: #If we should stop, then stop.
             Trace.trace(5, "Finishing process_messages() early")
@@ -2438,17 +2480,11 @@ class Display(Tkinter.Canvas):
         #Only process the messages in the queue at this time.
         number = min(message_queue.len_queue(self.system_name), 1000)
         
-        #Try and only take a small time to do this.  If we get behind,
-        # (aka more than 100 backlog) we will take the hit of delaying
-        # updating the screen until the backlog is gone.
+        #Try and only take a small time to do this.
         remember_number = number
-        wait_time = (ANIMATE_TIME * 0.001 / 2)
-        t0 = time.time()
+        wait_time = (MESSAGES_TIME * 0.001 / self.master.display_count + 1)
 
-        #while (number > 0 and remember_number > 100) or \
-        #          (number > 0 and (time.time() - t0) < (wait_time)):
         while (number > 0 and (time.time() - t0) < (wait_time)):
-
             #Words is a list of the split string command.
             command = self.get_valid_command()
             if command == "":
@@ -2475,10 +2511,11 @@ class Display(Tkinter.Canvas):
 
         #Schedule the next animation.
         if not self.stopped:
-            self.after_process_messages_id = self.after(MESSAGES_TIME,
+            self.after_process_messages_id = self.after(process_time(),
                                                         self.process_messages)
 
-        Trace.trace(5, "Finishing process_messages()")
+        Trace.trace(5, "Finishing process_messages() (%f sec/%d messages)" %
+                    (time.time() - t0, remember_number - number))
         
     #Called from self.after().
     def smooth_animation(self):
@@ -2491,7 +2528,7 @@ class Display(Tkinter.Canvas):
         self.connection_animation()
 
         #Schedule the next animation.
-        self.after_smooth_animation_id = self.after(ANIMATE_TIME,
+        self.after_smooth_animation_id = self.after(animate_time(),
                                                     self.smooth_animation)
 
         display_lock.release()
@@ -2503,7 +2540,6 @@ class Display(Tkinter.Canvas):
 
         Trace.trace(5, "Starting disconnect_clients()")
 
-        display_lock.acquire()
         clients_lock.acquire()
         
         now = time.time()
@@ -2515,7 +2551,11 @@ class Display(Tkinter.Canvas):
             if now - client.last_activity_time > 5: # grace period
                 Trace.trace(2, "It's been longer than 5 seconds, %s " \
                             " client must be deleted" % (client_name,))
+
+                display_lock.acquire()
                 client.undraw()
+                display_lock.release()
+
                 try:
                     # Remove client from the client list.
                     del self.clients[client_name]
@@ -2527,10 +2567,11 @@ class Display(Tkinter.Canvas):
                 except KeyError:
                     pass
 
+        clients_lock.release()
+
+        display_lock.acquire()
         self.after_clients_id = self.after(UPDATE_TIME,
                                            self.disconnect_clients)
-
-        clients_lock.release()
         display_lock.release()
 
         Trace.trace(5, "Finishing disconnect_clients()")
@@ -2706,11 +2747,11 @@ class Display(Tkinter.Canvas):
         else:
             columns_search = [column]
         
-        sum = 0
+        sum_value = 0
         for i in columns_search:
-            sum = sum + self.client_positions[i].count()
+            sum_value = sum_value + self.client_positions[i].count()
 
-        return sum
+        return sum_value
 
     def get_client_column_count(self):
         if len(self.client_positions) < 1:
@@ -2763,11 +2804,11 @@ class Display(Tkinter.Canvas):
         else:
             columns_search = [column]
         
-        sum = 0
+        sum_value = 0
         for i in columns_search:
-            sum = sum + self.mover_positions[i].count()
+            sum_value = sum_value + self.mover_positions[i].count()
 
-        return sum
+        return sum_value
 
     #Return the number of movers in the largest column.
     def get_mover_maximum_column_count(self):
@@ -3094,7 +3135,7 @@ class Display(Tkinter.Canvas):
                 connection.update_rate(None)
             else:
                 #Experience shows this is a good adjustment.
-                connection.update_rate(rate / (256*1024))
+                connection.update_rate(rate / 262144)
 
         if connection:
             #Don't use the variable "now" here.  We want to use the local
@@ -3218,7 +3259,7 @@ class Display(Tkinter.Canvas):
             #Every command gets processed though handle_command().  Thus,
             # this will output all processed messages and those necessary
             # to insert because of missed messges.
-            Trace.trace(10, string.join((time.ctime(), command), " "))
+            #Trace.trace(10, string.join((time.ctime(), command), " "))
 
             #Run the corresponding function.
             display_lock.acquire()
