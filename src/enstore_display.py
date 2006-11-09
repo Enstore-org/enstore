@@ -573,8 +573,8 @@ class Mover:
 
         #Carefull.  As long as draw_timer() gets called after animate_timer
         # in __init__() we are okay.
-        if self.timer_id:
-            self.display.after_cancel(self.timer_id)
+        #if self.timer_id:
+        #    self.display.after_cancel(self.timer_id)
         self.timer_id = self.display.after(UPDATE_TIME, self.animate_timer)
 
     #########################################################################
