@@ -2089,6 +2089,11 @@ class EnAlarmPage(EnBaseHtmlDoc):
                 td.append(HTMLgen.BR())
                 td.append("(%s/%s)"%(alarm[8], alarm[9]))
             tr.append(td)
+            # if the additional info is a dictionary and has the r_a key in it, get rid of it,
+            # it is a leftover from udp_server
+            if type(alarm[11]) == types.DictionaryType:
+                if alarm[11].has_key(enstore_constants.RA):
+                    del alarm[11][enstore_constants.RA]
             tr.append(HTMLgen.TD(alarm[11]))
 	    table.append(tr)
 	    i = i + 1
