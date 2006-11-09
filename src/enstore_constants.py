@@ -72,6 +72,7 @@ ANYALARMS = "alarms"
 URL = "url"
 ROOT_ERROR = "root_error"
 SEVERITY = "severity"
+RA = "r_a"
 
 NULL_DRIVER = "NullDriver"
 DRIVE_ID = "drive_id"

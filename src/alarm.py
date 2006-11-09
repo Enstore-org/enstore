@@ -154,7 +154,7 @@ class GenericAlarm:
 		for key in keys:
                     # do not compare this key as it is put in by udp_server and is not
                     # information about the alarm.
-                    if key == "r_a":
+                    if key == enstore_constants.RA:
                         continue
 		    if alarm_info.has_key(key):
 			if not self.alarm_info[key] == alarm_info[key]:
