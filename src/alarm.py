@@ -148,14 +148,15 @@ class GenericAlarm:
             self.condition == condition and
             self.type == remedy_type):
 	    # now that all that is done we can compare the dictionary to see
-	    # if it is the same
-	    if len(alarm_info) == len(self.alarm_info):
+	    # if it is the same.  we need to ignore any r_a keywords first.
+            alarm_info_t = alarm_info
+            if alarm_info_t.has_key(enstore_constants.RA):
+                del alarm_info_t[enstore_constants.RA]
+            if self.alarm_info.has_key(enstore_constants.RA):
+                del self.alarm_info[enstore_constants.RA]
+            if len(alarm_info) == len(self.alarm_info):
 		keys = self.alarm_info.keys()
 		for key in keys:
-                    # do not compare this key as it is put in by udp_server and is not
-                    # information about the alarm.
-                    if key == enstore_constants.RA:
-                        continue
 		    if alarm_info.has_key(key):
 			if not self.alarm_info[key] == alarm_info[key]:
 			    # we found something that does not match
