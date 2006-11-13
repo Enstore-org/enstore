@@ -202,6 +202,7 @@ def extract_backup(check_dir, container):
 	os.system("pg_restore -d backup -v -a "+container)
         os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
 	os.system("psql backup -c 'create index volume_storage_group_idx on volume(storage_group);'")
+	os.system("psql backup -c 'create index volume_system_inhibit_0_idx on volume(system_inhibit_0);'")
 
 LISTING_FILE = "COMPLETE_FILE_LISTING"
 
@@ -214,7 +215,7 @@ def check_db(check_dir):
 	f.close()
 
 	print timeofday.tod(), "Listing all files ... (old style)"
-	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and not volume.label like '%.deleted' and deleted = 'n';"+'"'+" >> "+out_file
+	cmd = "psql -d backup -A -F ' ' -c "+'"'+"select bfid, label as volume, file_family, size, crc, location_cookie, pnfs_path as path from file, volume where file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n';"+'"'+" >> "+out_file
 	print cmd
 	os.system(cmd)
 
@@ -234,7 +235,7 @@ def check_db(check_dir):
 		f.close()
 		print timeofday.tod(), "Listing %s files ... "%(sg)
 	
-		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and not volume.label like '%%.deleted' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
+		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
 		print cmd
 		os.system(cmd)
 
