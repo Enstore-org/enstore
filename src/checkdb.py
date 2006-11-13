@@ -199,6 +199,7 @@ def extract_backup(check_dir, container):
 	os.system("pg_restore -d backup -v -s -t file_copies_map "+container)
 	os.system("pg_restore -d backup -v -a "+container)
         os.system("psql backup -c 'alter table only volume add constraint volume_pkey primary key (id);'")
+	os.system("psql backup -c 'create index volume_storage_group_idx on volume(storage_group);'")
 
 LISTING_FILE = "COMPLETE_FILE_LISTING"
 
