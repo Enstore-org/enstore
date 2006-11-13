@@ -19,6 +19,8 @@ import pg
 # path to database
 db_path = "/diskc/check-database"
 
+EXCLUDED_STORAGE_GROUP = ['backups', 'CLEAN', 'null', 'test', 'none']
+
 def print_usage():
     print "Usage:", sys.argv[0], "[--help]"
     print "  --help   print this help message"
@@ -223,6 +225,8 @@ def check_db(check_dir):
 	del db
 	for i in res:
 		sg = i[0]
+		if sg in EXCLUDED_STORAGE_GROUP:
+			continue
 		out_file = LISTING_FILE+'_'+sg
 		f = open(out_file, 'w')
 		f.write("-- Listed at %s\n--\n"%(time_stamp))
