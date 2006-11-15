@@ -3421,9 +3421,21 @@ def get_ininfo(inputfile):
     # get fully qualified name
     unused, ifullname, unused, ibasename = fullpath(inputfile)
 
-    for fname in [get_enstore_pnfs_path(inputfile),
-                  get_enstore_fs_path(inputfile),
-                  get_enstore_canonical_path(inputfile)]:
+    dir_list = []
+    try:
+        dir_list.append(get_enstore_pnfs_path(inputfile))
+    except EncpError:
+        pass
+    try:
+        dir_list.append(get_enstore_fs_path(inputfile))
+    except EncpError:
+        pass
+    try:
+        dir_list.append(get_enstore_canonical_path(inputfile))
+    except EncpError:
+        pass
+
+    for fname in dir_list:
         if access_check(fname, os.F_OK):
             return fname
 
