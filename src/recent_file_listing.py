@@ -21,7 +21,7 @@ if __name__ == '__main__':
 	if len(sys.argv) > 2:
 		DURATION = int(sys.argv[2])
 	if len(sys.argv) > 3:
-		PREFIX = int(sys.argv[3])
+		PREFIX = sys.argv[3]
 
 	t = time.localtime()
 	t1 = (t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, 0, 0,
