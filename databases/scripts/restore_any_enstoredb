@@ -8,12 +8,11 @@ database_scripts=$enstore_dir/databases/scripts
 database_owner=products
 db_name=enstoredb
 db_owner=enstore
-db_port=8888
+db_port=8848
 db_startup_script=$database_scripts/enstore-db
 db_schema=$enstore_dir/databases/schemas/enstoredb.schema
 tmp=/tmp
 restore_tmp=/diskb/DBRESTORE
-journal_dir=/diska/enstore-journal
 db_dump_file=enstoredb.dmp
 
 # find the host
@@ -99,6 +98,9 @@ then
 	dest=$database_area.`date +%F.%T`
 	echo mv $database_area $dest
 	mv $database_area $dest
+	echo "try shutting down existing database server, if any"
+	echo kill \`head -1 $database_area/postmaster.pid\`
+	kill `head -1 $database_area/postmaster.pid`
 fi
 
 # create initial database area
@@ -137,3 +139,5 @@ echo su $database_owner -c \"pg_restore -p $db_port -d $db_name $restore_tmp/$db
 su $database_owner -c "pg_restore -p $db_port -d $db_name $restore_tmp/$db_dump_file"
 
 echo "enstoredb is up and running ..."
+echo "database area is " $database_area
+echo "database port is " $db_port
