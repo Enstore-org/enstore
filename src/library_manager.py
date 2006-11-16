@@ -1732,6 +1732,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.suspect_vol_expiration_to = self.keys.get('suspect_volume_expiration_time',None)
         self.share_movers = self.keys.get('share_movers', None) # for the federation to fair share
                                                                 # movers across multiple library managers
+        self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
         
         LibraryManagerMethods.__init__(self, self.name,
                                        self.csc,
@@ -1839,13 +1840,39 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 return 1
         return 0
                 
+
+    def access_granted(self, ticket):
+        if self.allow_access == None:
+            return 1
+        if ticket['vc'].has_key('storage_group'):
+            if  self.allow_access.has_key(ticket['vc']['storage_group']):
+                callback = ticket.get('callback_addr', None)
+                if callback:
+                    host_from_ticket = hostaddr.address_to_name(callback[0])
+                else:
+                    host_from_ticket = ticket['wrapper']['machine'][1]
+                Trace.trace(33, 'host %s, list %s'%(host_from_ticket, self.allow_access[ticket['vc']['storage_group']]))
+                for host in self.allow_access[ticket['vc']['storage_group']]:
+                    if re.search(host, host_from_ticket):  # host is in the list: acccess granted
+                        return 1
+                return 0  # host is not in the list acccess permitted
+            else:
+                return 1
+        return 1
         
+            
         
     def write_to_hsm(self, ticket):
         key = encp_ticket.write_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
                                 "ticket does not have a mandatory key %s"%(key,))
+            self.reply_to_caller(ticket)
+            return
+        Trace.trace(33,'access_granted=%s'%(self.access_granted(ticket))) 
+        if self.access_granted(ticket) == 0:
+            ticket['status'] = (e_errors.NOWRITE,
+                                "You have no permission to write from this host")
             self.reply_to_caller(ticket)
             return
             
