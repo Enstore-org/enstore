@@ -136,7 +136,10 @@ state. Default - do not restart</td></tr>
 
 <tr><td><a NAME="compression">compression</a></td><td>0 means no compression. Everything else means use the drive compression (default: None - use the drive compression)</td></tr>
 
-<tr><td><a NAME="get_remaining_from_stats">get_remaining_from_stats</a></td><td>get remaining bytes info from drive</td></tr>
+<tr><td><a
+		NAME="get_remaining_from_stats">get_remaining_from_stats</a></td><td>get remaining bytes info from drive</td></tr>
+<tr><td><a
+		NAME="get_remaining_from_stats">blank_error_increment</a></td><td>Sometimes ftt returns FTT_EBLANK for not blank tapes. To allow a tape to be in a pool and not to go to NOACCESS. Integer, default 5</td></tr>
 </table>
 
 
@@ -153,7 +156,13 @@ state. Default - do not restart</td></tr>
 <tr><td><a NAME="RobotArm">RobotArm</a></td><td>robot arm in AML2 robot (specific for AML2 robotic library)</td></tr>
 <tr><td><a NAME="IdleTimeHome">IdleTimeHome</a></td><td>home robot arm if it is idle and not in a home position after this period of time has expired (default 5 min, specific for AML2 robotic library)</td></tr>
 <tr><td><a NAME="IOBoxMedia">IOBoxMedia</a></td><td>specifies types of media and addresses of IO box for importing/exporting tapes into the robot (specific for AML2 robotic library)</td></tr>
-<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if present, specifes the type of media, time until cleaning tape gets dismounted and number of cleaning cycles to clean a tape drive</td></tr>
+<tr><td><a NAME="DriveCleanTime">DriveCleanTime</a></td><td>if
+	      present, specifes the type of media, time until cleaning
+	      tape gets dismounted and number of cleaning cycles to
+	      clean a tape drive</td></tr>
+<tr><td><a NAME="max_work">DriveCleanTime</a></td><td>if
+	      present, specifes the maximal number of simultaneous
+	      requests to robot. Integer, default 7</td></tr>
 </table>
 
 <h2>Volume Clerk Keys</h2>
@@ -289,7 +298,7 @@ state. Default - do not restart</td></tr>
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Tue Jan 11 13:35:04 CST 2005
+Last modified: Fri Nov 17 16:05:07 CST 2006
 <!-- hhmts end -->
   </body>
 </html>
