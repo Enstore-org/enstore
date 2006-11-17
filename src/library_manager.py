@@ -1853,7 +1853,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                     host_from_ticket = ticket['wrapper']['machine'][1]
                 Trace.trace(33, 'host %s, list %s'%(host_from_ticket, self.allow_access[ticket['vc']['storage_group']]))
                 for host in self.allow_access[ticket['vc']['storage_group']]:
-                    if re.search(host, host_from_ticket):  # host is in the list: acccess granted
+                    if re.search('^%s'%(host,), host_from_ticket):  # host is in the list: acccess granted
                         return 1
                 return 0  # host is not in the list acccess permitted
             else:
