@@ -128,7 +128,7 @@ def recover(backup_time=None):
 
 
     #copy a backup file
-    cmd = '/usr/bin/rsync %s:%s .'%(backup_host, backup_file)
+    cmd = '/usr/bin/rsync -e rsh  %s:%s .'%(backup_host, backup_file)
     print 'copying: %s'% (cmd,)
     os.system(cmd)
 
