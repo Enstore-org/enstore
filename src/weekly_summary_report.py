@@ -54,6 +54,8 @@ else:
 # add oleynik@fnal.gov to all reports
 if system == 'D0' or system == 'CDF':
 	mail_address = mail_address + ' cope@fnal.gov'
+if system == 'CDF':
+	mail_address = mail_address + ' genser@fnal.gov'
 mail_address = mail_address + ' oleynik@fnal.gov'
 
 eprint(f, "This report is generated at %s for %s system"%(
