@@ -2220,12 +2220,20 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         # On OK status printed out with the error data_access_layer format
         # can occur with the use of --data-access-layer.  However, such
         # success should not go into the encp_error table.
-        acc = get_acc()
-        acc.log_encp_error(inputfile, outputfile, use_file_size, storage_group,
-                           unique_id, encp_client_version(),
-                           status, msg, hostname, time.time(),
-                           file_family, wrapper, mover_name,
-                           product_id, device_sn, rw, external_label)
+        try:
+            acc = get_acc()
+            acc.log_encp_error(inputfile, outputfile, use_file_size,
+                               storage_group, unique_id, encp_client_version(),
+                               status, msg, hostname, time.time(),
+                               file_family, wrapper, mover_name,
+                               product_id, device_sn, rw, external_label)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except:
+            exc, msg = sys.exc_info()[:2]
+            Trace.log(e_errors.ERROR,
+                      "Unable to update accounting DB with error: (%s, %s)" % \
+                      (str(exc), str(msg)))
 
 #######################################################################
 
@@ -8030,13 +8038,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #    p = pnfs.Pnfs(ifullname)
             #    bfid = p.get_bit_file_id()
 
-            try:
-                bfid = p.get_bit_file_id(ifullname)
-            except IOError, msg:
-                #If this didn't exist, we should return the correct name.
-                if msg.args[0] == errno.ENOENT:
-                    raise IOError(errno.ENOENT, "%s: %s" % \
-                                  (os.strerror(errno.ENOENT), ifullname))
+            bfid = p.get_bit_file_id(ifullname)
+            
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
             read_work = 'read_from_hsm'
