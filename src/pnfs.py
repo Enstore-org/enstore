@@ -1159,33 +1159,55 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     
     # get the bit file id
     def get_bit_file_id(self, filepath=None):
+
+        if filepath:
+            use_filepath = filepath
+        else:
+            use_filepath = self.filepath
+        
         try:
-            if filepath:
-                bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
-                                             filepath)[0]
-            else:
-                bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
-                                             self.filepath)[0]
-                self.bit_file_id = bit_file_id
+            bit_file_id = self.readlayer(enstore_constants.BFID_LAYER,
+                                         use_filepath)[0]
         except IndexError:
-            raise IOError(errno.EIO, "%s: Layer %d is empty" %
+            raise IOError(errno.EIO, "%s: Layer %d is empty: %s" %
                           (os.strerror(errno.EIO),
-                           enstore_constants.BFID_LAYER))
+                           enstore_constants.BFID_LAYER,
+                           use_filepath))
+        except (OSError, IOError), msg:
+            if msg.args[0] in (errno.ENOENT,):
+                #We only need to re-create the ENOENT error.  If reading
+                # layer 1 gives ENOENT, then the entire file is gone
+                # (which is what we want to report).  However, most
+                # (all?) other errors will apply to the layer 1 file
+                # and should be reported as such.
+                exception = sys.exc_info()[0]
+                raise exception(msg.args[0], "%s: %s" % \
+                                (os.strerror(msg.args[0]), use_filepath))
+            else:
+                #Just pass allong all other exceptions.
+                raise sys.exc_info()[0], sys.exc_info()[1], \
+                      sys.exc_info()[2]
+            
+        if not filepath:
+            self.bit_file_id = bit_file_id
+
         return bit_file_id
 
     # get the cross reference layer
     def get_xreference(self, filepath=None):
 
-        #Get the xref layer information.
         if filepath:
-            xinfo = self.readlayer(enstore_constants.XREF_LAYER, filepath)
+            use_filepath = filepath
         else:
-            xinfo = self.readlayer(enstore_constants.XREF_LAYER)
+            use_filepath = self.filepath
 
+        #Get the xref layer information.
+        xinfo = self.readlayer(enstore_constants.XREF_LAYER, use_filepath)
         if len(xinfo) == 0:
-            raise IOError(errno.EIO, "%s: Layer %d is empty" %
+            raise IOError(errno.EIO, "%s: Layer %d is empty: %s" %
                           (os.strerror(errno.EIO),
-                           enstore_constants.XREF_LAYER))
+                           enstore_constants.XREF_LAYER,
+                           use_filepath))
 
         #Strip off whitespace from each line.
         xinfo = map(string.strip, xinfo[:11])
