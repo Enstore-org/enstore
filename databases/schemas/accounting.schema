@@ -742,6 +742,53 @@ CREATE VIEW lock_status AS
 
 ALTER TABLE public.lock_status OWNER TO enstore;
 
+SET default_with_oids = false;
+
+--
+-- Name: mover; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE mover (
+    name character varying NOT NULL,
+    max_rate double precision,
+    max_buffer bigint,
+    check_written_file integer,
+    max_failures integer,
+    library character varying,
+    host character varying,
+    max_consecutive_failures integer,
+    max_time_in_state integer,
+    device character varying,
+    norestart character varying,
+    driver character varying,
+    port integer,
+    send_stats integer,
+    mc_device character varying,
+    compression integer,
+    statistics_path character varying,
+    mount_delay integer,
+    check_first_written_file integer,
+    data_ip character varying,
+    logname character varying,
+    media_changer character varying,
+    hostip character varying,
+    do_cleaning character varying,
+    update_interval integer,
+    syslog_entry character varying,
+    min_buffer bigint,
+    noupdown character varying,
+    inq_ignore character varying,
+    dismount_delay integer,
+    max_dismount_delay integer,
+    max_in_state_cnt integer,
+    include_thread_name character varying
+);
+
+
+ALTER TABLE public.mover OWNER TO enstore;
+
+SET default_with_oids = true;
+
 --
 -- Name: old_bytes_per_day; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -850,6 +897,14 @@ ALTER TABLE public.xfer_by_month OWNER TO enstore;
 
 ALTER TABLE ONLY event
     ADD CONSTRAINT event_pkey PRIMARY KEY (tag);
+
+
+--
+-- Name: mover_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY mover
+    ADD CONSTRAINT mover_pkey PRIMARY KEY (name);
 
 
 --
@@ -1027,6 +1082,20 @@ CREATE INDEX event_start_idx ON event USING btree ("start");
 
 
 --
+-- Name: mover_logname_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX mover_logname_idx ON mover USING btree (logname);
+
+
+--
+-- Name: mover_media_changer_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX mover_media_changer_idx ON mover USING btree (media_changer);
+
+
+--
 -- Name: tape_mnts_node_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -1059,6 +1128,13 @@ CREATE INDEX tape_mnts_type_idx ON tape_mounts USING btree ("type");
 --
 
 CREATE INDEX tape_mnts_volume_idx ON tape_mounts USING btree (volume);
+
+
+--
+-- Name: tape_mounts_logname_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_mounts_logname_idx ON tape_mounts USING btree (logname);
 
 
 --
