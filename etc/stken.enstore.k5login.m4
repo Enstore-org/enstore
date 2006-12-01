@@ -87,15 +87,18 @@ ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs2, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
+kschu@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca3a') == 0 || index(HOSTNAME, `fndca3a') == 0), 1,
 kurt@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs2, `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
+mircea@FNAL.GOV
 moibenko@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
+stan@FNAL.GOV
 ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs2, `stiehr@FNAL.GOV', `dnl')
 ifelse(HOSTNAME, cmspnfs1, `tdh@FNAL.GOV', `dnl')

@@ -49,10 +49,13 @@ george@FNAL.GOV
 huangch@FNAL.GOV
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
+kschu@FNAL.GOV
 litvinse@FNAL.GOV
+mircea@FNAL.GOV
 moibenko@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
+stan@FNAL.GOV
 timur@FNAL.GOV
 zalokar@FNAL.GOV
