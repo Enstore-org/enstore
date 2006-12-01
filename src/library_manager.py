@@ -2065,6 +2065,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                 "ticket does not have a mandatory key %s"%(key,))
             self.reply_to_caller(ticket)
             return
+        if self.access_granted(ticket) == 0:
+            ticket['status'] = (e_errors.NOREAD,
+                                "You have no permission to write from this host")
+            self.reply_to_caller(ticket)
+            return
         method = ticket.get('method', None)
         if method and method == 'read_next': # this request must go directly to mover
             ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
