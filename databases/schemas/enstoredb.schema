@@ -1013,6 +1013,13 @@ CREATE INDEX volume_file_family_idx ON volume USING btree (file_family);
 
 
 --
+-- Name: volume_label_key_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX volume_label_key_idx ON volume USING btree (label);
+
+
+--
 -- Name: volume_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
