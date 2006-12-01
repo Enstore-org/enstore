@@ -62,6 +62,12 @@ if [ `get_logname`x = 'dcache'x ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 
 case $node in
 
+  stkenscan*)
+            ENSTORE_CONFIG_HOST=stkenscan1.fnal.gov
+            ENSTORE_CONFIG_FILE=offline.conf
+            complain=0
+            ;;
+
   stken*|cmspnfs1*|eagpnfs1*)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
