@@ -1675,15 +1675,6 @@ class LibraryManagerMethods:
 class LibraryManager(dispatching_worker.DispatchingWorker,
                      generic_server.GenericServer,
                      LibraryManagerMethods):
-    # override handle_er_msg method of generic server
-    def handle_er_msg(self, fd):
-        msg =  generic_server.GenericServer.handle_er_msg(fd)
-        if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
-            Trace.log(e_errors.INFO,
-                      "LM Recieved notification of new configuration file.")
-            self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
-        return msg
-
 
     def __init__(self, libman, csc):
         self.name_ext = "LM"
@@ -1851,6 +1842,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 
 
     def access_granted(self, ticket):
+        self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
+        Trace.trace(33, 'allow_access: %s'%(self.allow_access,))
         if self.allow_access == None:
             return 1
         if ticket['vc'].has_key('storage_group'):
