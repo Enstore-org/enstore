@@ -2067,7 +2067,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             return
         if self.access_granted(ticket) == 0:
             ticket['status'] = (e_errors.NOREAD,
-                                "You have no permission to write from this host")
+                                "You have no permission to read from this host")
             self.reply_to_caller(ticket)
             return
         method = ticket.get('method', None)
