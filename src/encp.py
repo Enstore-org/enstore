@@ -7568,8 +7568,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
     nfiles = 0
     requests_per_vol = {}
-    csc = None
+    #csc = get_csc() #Get csc once for max_attempts().
+    fcc = None
     p = Pnfs()
+    tape_ticket = None #Only used if e.volume is set.
+    vc_reply = None
 
     # create internal list of input unix files even if just 1 file passed in
     if type(e.input)==types.ListType:
@@ -7645,6 +7648,9 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 rest['exit_status'] = 2
             raise EncpError(None, message, status[0], rest)
 
+        #Shortcut for accessability.
+        tape_list = tape_ticket.get("tape_list", [])
+
         #Set these here.  ("Get" with --list.)
         if e.list:
             #If a list was supplied, determine how many files are in the list.
@@ -7661,15 +7667,115 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
         else:        
             number_of_files = len(tape_ticket['tape_list'])
+            list_of_files = tape_ticket['tape_list']
             #Always say one (for the ticket to send to the LM) when the
             # number of files is unknown.
             if number_of_files == 0:
                 number_of_files = 1
     else: # Normal read, --get-dcache, --put-cache, --get-bfid.
         number_of_files = len(e.input)
+        list_of_files = e.input
 
     # check the input unix file. if files don't exits, we bomb out to the user
     for i in range(number_of_files):
+
+        #We need to put the minimal items into this dictionary to pass
+        # to create_read_request() that will fill in the rest.
+        request = {}
+        if e.volume and e.list:
+            number, filename = list_of_files.split()[:2]
+            request['infile'] = filename
+            request['vc'] = vc_reply.copy()
+            #If everything is okay, search the listing for the location
+            # of the file requested.  tape_ticket is used for performance
+            # reasons over fcc.bfid_info().
+            for i in range(len(tape_list)):
+                #For each file number on the tape, compare it with
+                # a location cookie in the list of tapes.
+                if number == \
+                   extract_file_number(tape_list[i]['location_cookie']):
+                    #Make a copy so the following "del tape_list[i]" will
+                    # not cause reference problems.
+                    request['fc'] = tape_list[i].copy()
+                    #Include the server address in the returned info.
+                    # Normally, get_file_clerk_info() would do this for us,
+                    # but since we are using tape_ticket instead (for
+                    # performance reasons) we need to set the address
+                    # explicitly.
+                    request['fc']['address'] = fcc.server_address
+                    #Shrink the tape_ticket list for performance reasons.
+                    del tape_list[i]
+                    break
+            else:
+                request['fc'] = {
+                    'address' : fcc.server_address,
+                    'bfid' : None,
+                    'complete_crc' : None,
+                    'deleted' : None,
+                    'drive' : None,
+                    'external_label' : e.volume,
+                    'location_cookie':generate_location_cookie(number),
+                    'pnfs_mapname': None,
+                    'pnfs_name0': os.path.join(e.input[0],
+                                        generate_location_cookie(number)),
+                    'pnfsid': None,
+                    'pnfsvid': None,
+                    'sanity_cookie': None,
+                    'size': None,
+                    'status' : (e_errors.OK, None)
+                    }
+            use_infile = request['fc']['pnfs_name0']  #used for error reporting
+        elif e.volume:
+            request['fc'] = tape_ticket['tape_list'][i].copy()
+            request['fc']['address'] = fcc.server_address
+            request['vc'] = vc_reply.copy()
+            use_infile = request['fc']['pnfs_name0']  #used for error reporting
+        elif e.get_cache:
+            request['fc'] = {}
+            request['fc']['pnfsid'] = e.get_cache
+            use_infile = e.get_cache  #used for error reporting
+        elif e.get_bfid:
+            request['bfid'] = e.get_bfid
+            request['fc'] = {}
+            request['fc']['bfid'] = e.get_bfid
+            use_infile = e.get_bfid  #used for error reporting
+        else:
+            request['infile'] = list_of_files[i]
+            use_infile = request['infile']  #used for error reporting
+
+        try:
+            request = create_read_request(request, i, callback_addr,
+                                          udp_callback_addr, tinfo, p, e)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (OSError, IOError), msg:
+            if isinstance(msg, OSError):
+                e_type = e_errors.OSERROR
+            else:
+                e_type = e_errors.IOERROR
+
+            raise EncpError(msg.args[0], use_infile, e_type,
+                            {'infile' : use_infile})
+        
+        if request == None:
+            #This is a rare possibility.
+            continue
+
+        label = request['volume']
+        requests_per_vol[label] = requests_per_vol.get(label, []) + [request]
+        nfiles = nfiles+1
+
+        #When output is redirected to a file, sometimes it needs a push
+        # to get there.
+        sys.stdout.flush()
+        sys.stderr.flush()
+    
+    return requests_per_vol
+
+
+def create_read_request(request, file_number,
+                        callback_addr, udp_callback_addr, tinfo,
+                        p, e):
 
         # The following if...elif...else... statement needs to declare a set
         # of variables withing each branch to be used in constructing the
@@ -7690,114 +7796,27 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         #If the user specified a volume to read.
         if e.volume:
 
-            # Check the file number on the tape to make sure everything is
-            # correct.  This if...else... statement determines the next
-            # fc_relply value from the tape listing.
-
-            #If the list of files was passed in via --list, find the
-            # correct file and move on.
-            if getattr(e, "list", None):
-                #Get the number and filename for the next line on the file.
-                number, filename = list_of_files[i].split()[:2]
-                #Massage the file posistion (aka file number) of the current
-                # file on the tape and the name it will have.
-                #These two variables should only be used withing the e.volume
-                # if statement.  After that their use would break usability
-                # with the other read method type branches.
-                number = int(number)
-                filename = os.path.basename(filename)
             
-                Trace.message(TRANSFER_LEVEL,
-                              "Preparing file number %s (%s) for transfer."
-                              % (number, filename))
+            #If these fail what could we do?
+            fc_reply = request['fc']
+            vc_reply = request['vc']
 
-                #If everything is okay, search the listing for the location
-                # of the file requested.  tape_ticket is used for performance
-                # reasons over fcc.bfid_info().
-                tape_list = tape_ticket.get("tape_list", [])
-                for i in range(len(tape_list)):
-                    #For each file number on the tape, compare it with
-                    # a location cookie in the list of tapes.
-                    if number == \
-                       extract_file_number(tape_list[i]['location_cookie']):
-                        #Make a copy so the following "del tape_list[i]" will
-                        # not cause reference problems.
-                        fc_reply = tape_list[i].copy()
-                        #Include the server address in the returned info.
-                        # Normally, get_file_clerk_info() would do this for us,
-                        # but since we are using tape_ticket instead (for
-                        # performance reasons) we need to set the address
-                        # explicitly.
-                        fc_reply['address'] = fcc.server_address
-                        #Shrink the tape_ticket list for performance reasons.
-                        del tape_list[i]
-                        break
-                else:
-                    fc_reply = {
-                        'address' : fcc.server_address,
-                        'bfid' : None,
-                        'complete_crc' : None,
-                        'deleted' : None,
-                        'drive' : None,
-                        'external_label' : e.volume,
-                        'location_cookie':generate_location_cookie(number),
-                        'pnfs_mapname': None,
-                        'pnfs_name0': os.path.join(e.input[0],
-                                            generate_location_cookie(number)),
-                        'pnfsid': None,
-                        'pnfsvid': None,
-                        'sanity_cookie': None,
-                        'size': None,
-                        'status' : (e_errors.OK, None)
-                        }
+            #Get the file posistion (aka file number) of the current
+            # file on the tape and the name it will have.
+            #These two variables should only be used withing the e.volume
+            # if statement.  After that their use would break usability
+            # with the other read method type branches.
+            if is_location_cookie_disk(fc_reply['location_cookie']):
+                #file_number starts with 0.  To make the 1st file at location 1
+                # we add 1 to the locations.
+                number = file_number + 1
+            else:
+                number = int(extract_file_number(fc_reply['location_cookie']))
+            filename = os.path.basename(fc_reply['pnfs_name0'])
 
-            else: #No e.list from "get"'s --list switch.
-                
-                try:
-                    fc_reply = tape_ticket.get("tape_list", [])[i]
-                    #Include the server address in the returned info.
-                    # Normally, get_file_clerk_info() would do this for us,
-                    # but since we are using tape_ticket instead (for
-                    # performance reasons) we need to set the address
-                    # explicitly.
-                    fc_reply['address'] = fcc.server_address
-                except IndexError:
-                    #We get here if bfids_list[] is empty.  It is empty when
-                    # trying to read a volume with no known metadata (thus the
-                    # IndexError when reading the zeroth element).
-                    fc_reply = {'address' : fcc.server_address,
-                                'bfid' : None,
-                                'complete_crc' : None,
-                                'deleted' : None,
-                                'drive' : None,
-                                'external_label' : e.volume,
-                                'location_cookie':generate_location_cookie(1),
-                                'pnfs_mapname' : None,
-                                'pnfs_name0' : os.path.join(e.input[0],
-                                                 generate_location_cookie(1)),
-                                'pnfsid' : None,
-                                'pnfsvid' : None,
-                                'sanity_cookie' : None,
-                                'size' : None,
-                                'status' : (e_errors.OK, None)
-                                }
-
-                #Get the file posistion (aka file number) of the current
-                # file on the tape and the name it will have.
-                #These two variables should only be used withing the e.volume
-                # if statement.  After that their use would break usability
-                # with the other read method type branches.
-                if is_location_cookie_disk(fc_reply['location_cookie']):
-                    #i starts with 0.  To make the 1st file at location 1
-                    # we add 1 to the locations.
-                    number = i + 1
-                else:
-                    number = int(extract_file_number(fc_reply['location_cookie']))
-                filename = os.path.basename(fc_reply['pnfs_name0'])
-
-                Trace.message(TRANSFER_LEVEL,
-                              "Preparing file number %s (%s) for transfer." %
-                              (number, filename))
+            Trace.message(TRANSFER_LEVEL,
+                          "Preparing file number %s (%s) for transfer." %
+                          (number, filename))
 
             #The database/file_clerk seems to return the stringified
             # None values rathur than an actual None value.  Fix them.
@@ -7815,7 +7834,8 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 if e.skip_deleted_files:
                     sys.stdout.write("Skipping deleted file (%s) %s.\n" %
                                      (number, filename))
-                    continue
+                    #continue
+                    return None
                 else:
                     status = (e_errors.USERERROR,
                               "Requesting file (%s) that has been deleted."
@@ -7853,18 +7873,12 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                                      "file has been deleted.\n" % lc)
 
                     #Determine the inupt filename.
-                    ifullname = pnfs_name0 #os.path.join(e.input[0], filename)
-
-                    #Get the pnfs interface class instance.
-                    #p = pnfs.Pnfs(ifullname)
+                    ifullname = pnfs_name0
 
             #If ifullname is still None, then the file does not exist
             # anywhere.  Use the correct name.
             if ifullname == None:
                 ifullname = os.path.join(e.input[0], filename)
-
-                #Get the pnfs interface class instance.
-                #p = pnfs.Pnfs(ifullname)
 
             #Grab the stat info.
             istatinfo = p.get_stat(ifullname)
@@ -7873,21 +7887,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             # from a failed previous transfer.
             if fc_reply.get('pnfs_name0', None) == None:
                 fc_reply['pnfs_name0'] = ifullname
-
-            """
-            #Determine the filesize.  None if non-existant.
-            #file_size = get_file_size(ifullname)
-
-            try:
-                #We should call stat here and remember all the information.
-                file_size = p.get_file_size()
-
-                #Don't use p.get_file_size() to avoid a slow os.stat() call.
-                #p.pstatinfo(update=0)
-                #file_size = p.file_size
-            except AttributeError:
-                file_size = None
-            """
 
             #Determine the output filename.
             if e.output[0] in ["/dev/null", "/dev/null",
@@ -7944,7 +7943,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             else:
                 unused, ofullname, unused, unused = fullpath(e.output[0])
 
-            #file_size = long(fc_reply['size'])
             #Grab the stat info.
             if e.override_deleted and fc_reply['deleted'] != 'no':
                 # This protects us in case we are reading
@@ -7981,7 +7979,6 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                 ifullname = p.get_path(e.get_cache, e.pnfs_mount_point,
                                        shortcut=e.shortcut)
             
-            #file_size = get_file_size(ifullname)
             #Grab the stat info.
             istatinfo = p.get_stat(ifullname)
             
@@ -8004,40 +8001,19 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
             #Fundamentally this belongs in verify_read_request_consistancy(),
             # but information needed about the input file requires this check.
             try:
-                istatinfo = p.get_stat(e.input[i])
-                ifullname = e.input[i]
+                istatinfo = p.get_stat(request['infile'])
+                ifullname = request['infile']
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except (OSError, IOError):
-                ifullname = get_ininfo(e.input[i])
+                ifullname = get_ininfo(request['infile'])
                 istatinfo = p.get_stat(ifullname)
 
             #inputfile_check(ifullname, e)
 
-            ofullname = get_oninfo(e.input[i], e.output[0], e)
-            #if ofullname not in ["/dev/null", "/dev/zero",
-            #                     "/dev/random", "/dev/urandom"]:
-                #The existence rules behind the output file are more
-                # complicated than those of the input file.  We always need
-                # to call outputfile_check.  It still should go in
-                # some verify function though.
-            #Fundamentally this belongs in verify_read_request_consistancy(),
-            # but information needed about the input file requires this check.
-            #    outputfile_check(ifullname, ofullname, e)
+            ofullname = get_oninfo(ifullname, e.output[0], e)
 
-            #file_size = long(istatinfo[stat.ST_SIZE])
-            #if file_size == 1L:
-            #    #If this is likely a large file, we need to do this the
-            #    # hard way.
-            #    file_size = get_file_size(ifullname)
-
-            #if e.intype == RHSMFILE:
-            #    p = get_pac()
-            #    bfid = p.get_bit_file_id(ifullname)
-            #else:  #e.intype == HSMFILE
-            #    p = pnfs.Pnfs(ifullname)
-            #    bfid = p.get_bit_file_id()
-
+            os.remove(ifullname)
             bfid = p.get_bit_file_id(ifullname)
             
             vc_reply, fc_reply = get_clerks_info(bfid, e)
@@ -8106,22 +8082,20 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         #There is no need to deal with routing on non-multihomed machines.
         #config = host_config.get_config()
         #if config and config.get('interface', None):
-        #    route_selection = 0  #1
+        #    route_selection = 1   #1 to use udp_server, 0 for no.
         #else:
-        #    route_selection = 0
-        #route_selection = 0  #1 to use udp_server, 0 for no.
+        #    route_selection = 0   #1 to use udp_server, 0 for no.
 
         # allow library manager selection based on the environment variable
         lm = os.environ.get('ENSTORE_SPECIAL_LIB')
         if lm != None:
             vc_reply['library'] = lm
 
-        if not csc:
-            csc = get_csc() #Get csc once for max_attempts().
         #Determine the max resend values for this transfer.
+        csc = get_csc()
         resend = max_attempts(csc, vc_reply['library'], e)
 
-        request = {}
+        #request = {}
         request['bfid'] = bfid
         request['callback_addr'] = callback_addr
         request['client_crc'] = e.chk_crc
@@ -8146,15 +8120,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         request['work'] = read_work #'read_from_hsm' or 'read_tape'
         request['wrapper'] = wrapper
 
-        requests_per_vol[label] = requests_per_vol.get(label,[]) + [request]
-        nfiles = nfiles+1
-
-        #When output is redirected to a file, sometimes it needs a push
-        # to get there.
-        sys.stdout.flush()
-        sys.stderr.flush()
-    
-    return requests_per_vol
+        return request
 
 #######################################################################
 
