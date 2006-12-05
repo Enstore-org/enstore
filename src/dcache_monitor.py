@@ -13,29 +13,15 @@
 ###############################################################################
 
 
-# system imports
 import sys
 import string
-# import time
 import errno
 import socket
-# import select
-import pprint
-# import rexec
-import stat
-
-# enstore imports
-#import setpath
-import hostaddr
-import option
-import generic_client
-import backup_client
 import pg
 import time
 import pnfs
 import os
 import re
-# import thread
 import pnfsidparser
 
 
