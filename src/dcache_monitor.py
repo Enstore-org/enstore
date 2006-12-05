@@ -220,10 +220,8 @@ def prepare_html(db_name):
         os.system(cmd)
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
-    delta_time     = 12*3600
-    if ( db_name == "minos" ) :
-        delta_time  = 24*3600
-    now_time       = time.time()
+    delta_time     = 24*3600
+    # now_time       = time.time()
     res=db.query("select count(*) from volatile_files where layer2='y' and unix_date<%d"%(int(now_time-delta_time),))
     count1=0
     for row in res.getresult():
@@ -238,8 +236,10 @@ def prepare_html(db_name):
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     db.close()
+    if (count !=0 or count1 !=0):  return True
             
 def do_work(i,db_name) :
+    rc=False
     try:
         check_volatile_files(db_name)
         print "checked volatile ",db_name
@@ -249,11 +249,12 @@ def do_work(i,db_name) :
             print "Excepted in the insert_volatile"
             print "Unexpected error:", sys.exc_info()[0]
         print "inserted into volatile ",db_name
-        prepare_html(db_name)
+        rc=prepare_html(db_name)
         print "prepared html  volatile ",db_name
     except (pg.ProgrammingError,OSError, IOError):
         pass
     exitmutexes[i]=1
+    return rc
 
 if __name__ == '__main__':
     i=0
@@ -270,15 +271,20 @@ if __name__ == '__main__':
 
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
     os.system(cmd)
-
+    send_mail=False
 #    for db_name in ['minos']:
     for db_name in dbs:
         exitmutexes.append(0)
-        do_work(i,db_name)
+        if ( do_work(i,db_name) == True ) :
+            send_mail=True 
 #       thread.start_new(do_work, (i,db_name))
 #       exitmutexes.append(0)
         i=i+1
 #    while 0 in exitmutexes: pass
+     if ( send_mail == True ) :
+         os.system("cat *.txt > mail.txt");
+         os.system('mail dcache-admin@fnal.gov -s "THERE ARE FILES WITH MISSING LAYERS OLDER THAN 24 HOURS" < mail.txt')
+         os.system("rm -d mail.txt")
 
 
 #    for db_name in ['eagle', 'exp-db']:
