@@ -236,7 +236,10 @@ def prepare_html(db_name):
         cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     db.close()
-    if (count !=0 or count1 !=0):  return True
+    if (count !=0 or count1 !=0):
+        return True
+    else:
+        return False
             
 def do_work(i,db_name) :
     rc=False
@@ -275,13 +278,13 @@ if __name__ == '__main__':
 #    for db_name in ['minos']:
     for db_name in dbs:
         exitmutexes.append(0)
-        if ( do_work(i,db_name) == True ) :
+        if ( do_work(i,db_name) ) :
             do_mail=True
 #       thread.start_new(do_work, (i,db_name))
 #       exitmutexes.append(0)
         i=i+1
 #    while 0 in exitmutexes: pass
-    if ( do_mail == True ) :
+    if ( do_mail ) :
         os.system("cat *.txt > mail.txt");
         os.system('mail dcache-admin@fnal.gov -s "THERE ARE FILES WITH MISSING LAYERS OLDER THAN 24 HOURS" < mail.txt')
         os.system("rm -d mail.txt")
