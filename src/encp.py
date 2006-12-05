@@ -6093,9 +6093,10 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
     request_list = []
 
     #Initialize these, so that they can be set only once.
-    csc = vcc = fcc = None
-    file_family = file_family_width = file_family_wrapper = None
-    library = storage_group = None
+    use_copies = 0
+    #vcc = fcc = None
+    #file_family = file_family_width = file_family_wrapper = None
+    #library = storage_group = None
     if e.outtype == RHSMFILE:
         t = p = Pnfs(use_pnfs_agent = True)
     else:
@@ -6113,8 +6114,102 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                         'Cannot have multiple output files',
                         e_errors.USERERROR)
 
-    # check the input unix file. if files don't exits, we bomb out to the user
+    # check the input unix file. if files don't exists, we bomb out to the user
+    tags = None
     for i in range(len(e.input)):
+
+        work_ticket = {}
+        if tags:
+            #Have create_write_request() get these only once.
+            work_ticket['vc'] = tags
+        if e.put_cache:
+            use_infile = e.put_cache #used for error reporting
+        else:
+            work_ticket['infile'] = e.input[i]
+            use_infile = work_ticket['infile'] #used for error reporting
+
+        try:
+            work_ticket, tags = create_write_request(work_ticket, i,
+                                                     callback_addr,
+                                                     udp_callback_addr,
+                                                     p, t, e, tinfo)
+        except (KeyboardInterrupt, SystemExit):
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        except (OSError, IOError), msg:
+            if isinstance(msg, OSError):
+                e_type = e_errors.OSERROR
+            else:
+                e_type = e_errors.IOERROR
+
+            raise EncpError(msg.args[0], use_infile, e_type,
+                            {'infile' : use_infile})
+
+        if work_ticket == None:
+            #This is a rare possibility.
+            continue
+
+        request_list.append(work_ticket)
+
+    #If the user overrides the copy count, use that instead.
+    use_copies = len(tags['all_libraries'][1:])
+    if e.copies != None:
+        use_copies = e.copies
+
+    #Make dictionaries for the copies of the data.
+    request_copy_list = []
+    if use_copies > 0:
+
+        parmameter_libraries = e.output_library.split(",")
+        tag_libraries = t.get_library(os.path.dirname(work_ticket['outfile'])).split(",")
+        
+        for n_copy in range(1, use_copies + 1):
+
+
+            #Determine the library manager to use.  First, try to see if
+            # the command line has the information.  Otherwise, check
+            # the library tag.  In both cases, the library should be a
+            # comma seperated list of library manager short names.
+            try:
+                current_library = parmameter_libraries[n_copy]
+            except IndexError:
+                try:
+                    current_library = tag_libraries[n_copy]
+                except IndexError:
+                    #We get here if n copies were requested, but less than
+                    # that number of libraries were found.
+                    #use_copies = n_copy - 1
+                    #break
+                    raise EncpError(None,
+                                    "Too many copies requested for the "
+                                    "number of configured copy libraries.",
+                                    e_errors.USERERROR)
+
+            for work_ticket in request_list:
+                copy_ticket = copy.deepcopy(work_ticket)
+                #Specify the copy number; this is the copy number relative to
+                # this encp.
+                copy_ticket['copy'] = n_copy
+                #Make the transfer id unique, but also keep the original around.
+                copy_ticket['original_unique_id'] = copy_ticket['unique_id']
+                del copy_ticket['unique_id']
+                copy_ticket['unique_id'] = generate_unique_id()
+                #Move the file_family to original_file_family; this is similar
+                # to how the original_bfid is sent too.
+                copy_ticket['vc']['original_file_family'] = \
+                                             copy_ticket['vc']['file_family']
+                del copy_ticket['vc']['file_family']
+                #Set the new library.
+                copy_ticket['vc']['library'] = current_library
+
+
+                #Store the copy ticket.
+                request_copy_list.append(copy_ticket)
+
+    return request_list + request_copy_list
+
+def create_write_request(work_ticket, file_number,
+                         callback_addr, udp_callback_addr,
+                         p, t, e, tinfo):
 
         if e.put_cache:
 
@@ -6132,19 +6227,19 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             istatinfo = os.stat(ifullname)
         else: #The output file was given as a normal filename.
             #ifullname, ofullname = get_ninfo(e.input[i], e.output[0], e)
-
+            
             try:
-                istatinfo = os.stat(e.input[i])
-                ifullname = e.input[i]
+                istatinfo = os.stat(work_ticket['infile'])
+                ifullname = work_ticket['infile']
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except (OSError, IOError):
-                ifullname = get_ininfo(e.input[i])
+                ifullname = get_ininfo(work_ticket['infile'])
                 istatinfo = os.stat(ifullname)
 
             #inputfile_check(ifullname, e)
-
-            ofullname = get_oninfo(e.input[i], e.output[0], e)
+            
+            ofullname = get_oninfo(ifullname, e.output[0], e)
 
             #The existence rules behind the output file are more
             # complicated than those of the input file.  We always need
@@ -6156,33 +6251,38 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             #outputfile_check(ifullname, ofullname, e)
 
         odirname = get_directory_name(ofullname)
-
-        #ostatinfo = p.get_pnfsstat(ofullname) #same as p.get_stat(odirname)
         ostatinfo = p.get_stat(odirname)
-        
-        #Get these two pieces of information about the local input file.
-        if ifullname in ["/dev/zero", "/dev/random", "/dev/urandom"]:
-            bound_limits = [long(os.environ.get('ENSTORE_RANDOM_LB', 0L)),
-                            long(os.environ.get('ENSTORE_RANDOM_UB',
-                                                2147483648L))]
-            bound_limits.sort()
-            file_size = long(random.uniform(bound_limits[0], bound_limits[1]))
-        else:
-            file_size = long(istatinfo[stat.ST_SIZE])
-        file_inode = istatinfo[stat.ST_INO]
+
+        #See if these are already known.
+        try:
+            tags = work_ticket['vc'].copy()
+        except KeyError:
+            tags = {}
+        all_libraries = tags.get('all_libraries', None)
+        library = tags.get('library', None)
+        file_family = tags.get('file_family', None)
+        file_family_width = tags.get('file_family_width', None)
+        file_family_wrapper = tags.get('file_family_wrapper', None)
+        storage_group = tags.get('storage_group', None)
+        try:
+            #Only need this after the last loop (when we don't get here).
+            del tags['all_libraries'] 
+        except KeyError:
+            pass
         
         #There is no sense to get these values every time.  Only get them
         # on the first pass.
-        if e.output_library:
-            #Only take the first item of a possible comma seperated list.
-            all_libraries = e.output_library.split(",")
-            library = all_libraries[0]
-            use_copies = len(all_libraries[1:])
         if not library:
-            #If library is still empty, use the default
-            all_libraries = t.get_library(odirname).split(",")
-            library = all_libraries[0]
-            use_copies = len(all_libraries[1:])
+            if e.output_library:
+                #Only take the first item of a possible comma seperated list.
+                all_libraries = e.output_library.split(",")
+                library = all_libraries[0]
+                #use_copies = len(all_libraries[1:])
+            if not library:
+                #If library is still empty, use the default
+                all_libraries = t.get_library(odirname).split(",")
+                library = all_libraries[0]
+                #use_copies = len(all_libraries[1:])
         #The pnfs file family may be overridden with the options
         # --ephemeral or --file-family.
         if not file_family:
@@ -6206,6 +6306,36 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
             else:
                 storage_group = t.get_storage_group(odirname)
 
+        vcc, fcc = get_clerks()
+
+        #Get the information needed to contact the file clerk, volume clerk and
+        # the library manager.
+        volume_clerk = {"address"            : vcc.server_address,
+                        "library"            : library,
+                        "file_family"        : file_family,#might be overridden
+                        # technically width does not belong here,
+                        # but it associated with the volume
+                        "file_family_width"  : file_family_width,
+                        "wrapper"            : file_family_wrapper,
+                        "storage_group"      : storage_group,}
+        file_clerk = {'address' : fcc.server_address}
+
+        #Determine the max resend values for this transfer.
+        csc = get_csc()
+        resend = max_attempts(csc, volume_clerk['library'], e)
+
+        #Get these two pieces of information about the local input file.
+        if ifullname in ["/dev/zero", "/dev/random", "/dev/urandom"]:
+            bound_limits = [long(os.environ.get('ENSTORE_RANDOM_LB', 0L)),
+                            long(os.environ.get('ENSTORE_RANDOM_UB',
+                                                2147483648L))]
+            bound_limits.sort()
+            file_size = long(random.uniform(bound_limits[0], bound_limits[1]))
+        else:
+            file_size = long(istatinfo[stat.ST_SIZE])
+        file_inode = istatinfo[stat.ST_INO]
+
+        
         #Get the data aquisition information.
         encp_daq = get_dinfo()
 
@@ -6225,26 +6355,9 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         # If this is not the last transfer in the list, force the delayed
         # dismount to be 'long.'  The last transfer should continue to use
         # the default setting.
-        if i < (len(e.input) - 1):
+        if file_number < (len(e.input) - 1):
             #In minutes.
             encp_el['delayed_dismount'] = max(3, encp_el['delayed_dismount'])
-
-        #only do this the first time.
-        if not vcc or not fcc:
-            csc = get_csc() #Get csc once for max_attempts().
-            vcc, fcc = get_clerks()
-                
-        #Get the information needed to contact the file clerk, volume clerk and
-        # the library manager.
-        volume_clerk = {"address"            : vcc.server_address,
-                        "library"            : library,
-                        "file_family"        : file_family,#might be overridden
-                        # technically width does not belong here,
-                        # but it associated with the volume
-                        "file_family_width"  : file_family_width,
-                        "wrapper"            : file_family_wrapper,
-                        "storage_group"      : storage_group,}
-        file_clerk = {'address' : fcc.server_address}
 
         #config = host_config.get_config()
         #if config and config.get('interface', None):
@@ -6256,20 +6369,16 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         #else:
         #    route_selection = 0
 
-        #Determine the max resend values for this transfer.
-        resend = max_attempts(csc, volume_clerk['library'], e)
-
         #We cannot use --shortcut without --override-path when
         # using NULL movers and tapes.  The mover insists that
         # "NULL" appear in the pnfs pathname, which conflicts with
         # the task of --shortcut.  So, we need to breakdown and do
         # this full name lookup.
         if e.shortcut and not e.override_path and \
-               file_family_wrapper == "null":
+               volume_clerk['wrapper'] == "null":
             
             #Grab current configuration information.
-            if not csc:
-                csc = get_csc()
+            csc = get_csc()
             if not csc.have_complete_config:
                 csc.save_and_dump()
 
@@ -6285,7 +6394,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                         library_list = [value['library']]
 
                     for lib in library_list:
-                        if library == lib.split(".")[0]:
+                        if volume_clerk['library'] == lib.split(".")[0]:
                             #If we find a null mover with a library that
                             # matches that of the library we are using; we
                             # know the following is true (this is a recap):
@@ -6306,7 +6415,7 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
 
                     break  #stop processing the outter loop.
 
-        work_ticket = {}
+        #work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
         work_ticket['encp'] = encp_el
@@ -6330,62 +6439,15 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
         work_ticket['work'] = "write_to_hsm"
         work_ticket['wrapper'] = wrapper
 
-        request_list.append(work_ticket)
+        tags = {}
+        tags['library'] = library
+        tags['all_libraries'] = all_libraries
+        tags['file_family'] = file_family
+        tags['file_family_width'] = file_family_width
+        tags['file_family_wrapper'] = file_family_wrapper
+        tags['storage_group'] = storage_group
 
-    #If the user overrides the copy count, use that instead.
-    if e.copies != None:
-        use_copies = e.copies
-
-    #Make dictionaries for the copies of the data.
-    request_copy_list = []
-    if use_copies > 0:
-
-        parmameter_libraries = e.output_library.split(",")
-        tag_libraries = t.get_library(odirname).split(",")
-        
-        for n_copy in range(1, use_copies + 1):
-
-            #Determine the library manager to use.  First, try to see if
-            # the command line has the information.  Otherwise, check
-            # the library tag.  In both cases, the library should be a
-            # comma seperated list of library manager short names.
-            try:
-                current_library = parmameter_libraries[n_copy]
-            except IndexError:
-                try:
-                    current_library = tag_libraries[n_copy]
-                except IndexError:
-                    #We get here if n copies were requested, but less than
-                    # that number of libraries were found.
-                    #use_copies = n_copy - 1
-                    #break
-                    raise EncpError(None,
-                                    "Too many copies requested for the "
-                                    "number of configured copy libraries.",
-                                    e_errors.USERERROR)
-            
-            for work_ticket in request_list:
-                copy_ticket = copy.deepcopy(work_ticket)
-                #Specify the copy number; this is the copy number relative to
-                # this encp.
-                copy_ticket['copy'] = n_copy
-                #Make the transfer id unique, but also keep the original around.
-                copy_ticket['original_unique_id'] = copy_ticket['unique_id']
-                del copy_ticket['unique_id']
-                copy_ticket['unique_id'] = generate_unique_id()
-                #Move the file_family to original_file_family; this is similar
-                # to how the original_bfid is sent too.
-                copy_ticket['vc']['original_file_family'] = \
-                                             copy_ticket['vc']['file_family']
-                del copy_ticket['vc']['file_family']
-                #Set the new library.
-                copy_ticket['vc']['library'] = current_library
-
-
-                #Store the copy ticket.
-                request_copy_list.append(copy_ticket)
-
-    return request_list + request_copy_list
+        return work_ticket, tags
 
 ############################################################################
 
@@ -8013,7 +8075,6 @@ def create_read_request(request, file_number,
 
             ofullname = get_oninfo(ifullname, e.output[0], e)
 
-            os.remove(ifullname)
             bfid = p.get_bit_file_id(ifullname)
             
             vc_reply, fc_reply = get_clerks_info(bfid, e)
