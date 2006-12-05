@@ -108,9 +108,9 @@ def check_volatile_files(db_name):
                 l4_str="y";
                 if not check_layer_1(l1) :
                     l1_str="n"
-                if not check_layer_2(l2)  :
+                if not check_layer_2(l2) :
                     l2_str="n"
-                if not check_layer_4(l4) ) :
+                if not check_layer_4(l4) :
                     l4_str="n"
                 sql_txt = "update volatile_files set layer1='%s',layer2='%s',layer4='%s' where pnfsid_string='%s'"%(l1_str,l2_str,l4_str,pnfsid)
                 r=db.query(sql_txt)
