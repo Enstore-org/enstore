@@ -21,6 +21,7 @@ import errno
 import gc, inspect
 import types
 import pprint
+import signal
 
 
 #enstore imports
@@ -90,6 +91,22 @@ def entv_client_version():
     entv_file = globals().get('__file__', "")
     if entv_file: version_string = version_string + entv_file
     return version_string
+
+def alarm_signal_handler(sig, frame):
+    __pychecker__ = "unusednames=frame"
+    
+    if sig != signal.SIGALRM:
+        return
+    
+    for display in displays:
+        time_passed = time.time() - display.last_message_processed
+        if time_passed > TEN_MINUTES:
+            sys.stderr.write("Seconds passed since last message: %s\n" %
+                             (time_passed),)
+            sys.stderr.flush()
+            display.reinitialize()
+            
+    signal.alarm(10)
 
 def open_files(message):
     print message,
@@ -431,7 +448,7 @@ def get_entvrc(csc, intf):
 
             #Check if the hostname matches that of the current
             # configuration server.
-            if found_server == False and \
+            if not found_server and \
                    socket.getfqdn(words[0]) == socket.getfqdn(address):
                 try:
                     geometry = words[1]
@@ -808,12 +825,34 @@ def request_mover_status(display, csc, intf):
 def start_messages_thread(csc_addr, system_name, intf):
     global messages_threads
 
-    messages_threads.append(threading.Thread(
-        target = handle_messages,
-        args = (csc_addr, system_name, intf),
-        ))
-    messages_threads[-1].start()
+    __pychecker__ = "unusednames=i"
 
+    for i in range(0, 5):
+
+        messages_threads.append(threading.Thread(
+            target = handle_messages,
+            args = (csc_addr, system_name, intf),
+            name = system_name,
+            ))
+        messages_threads[-1].start()
+
+        if messages_threads[-1] in threading.enumerate():
+            #We succeded in starting the thread.
+            break
+
+        #We failed to start the thread.
+        messages_threads[-1].stop()
+        del messages_threads[-1]
+
+        time.sleep(1)
+        #If we get here go back to the top of the loop and try again.
+
+    else:
+        #We kept on failing to start the thread.
+        sys.stderr.write("Failed to start network thread for %s.\n" %
+                         (system_name,))
+        sys.stderr.flush()
+            
     return
 
 def stop_messages_threads():
@@ -1253,6 +1292,8 @@ def toggle_connection_color():
 def resize(event = None):
     global displays
 
+    __pychecker__ = "no-argsused"
+
     for display in displays:
         #Recalculating this for each display is not efficent.
         size = display.master.geometry().split("+")[0]
@@ -1525,6 +1566,9 @@ def main(intf):
         # This would be a good time to cleanup before things get hairy.
         gc.collect()
         del gc.garbage[:]
+
+        signal.signal(signal.SIGALRM, alarm_signal_handler)
+        signal.alarm(TEN_MINUTES) #Start the alarm clock.
 
         #Loop until user says don't.
         master.mainloop()

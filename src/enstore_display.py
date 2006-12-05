@@ -2290,6 +2290,9 @@ class Display(Tkinter.Canvas):
             pass
 
     def reinitialize(self, event=None):
+        ### Keep in mind this function can be called from a Tk callback or
+        ### from a SIGALRM signal being recieved.
+        
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -2485,6 +2488,7 @@ class Display(Tkinter.Canvas):
         wait_time = (MESSAGES_TIME * 0.001 / self.master.display_count + 1)
 
         while (number > 0 and (time.time() - t0) < (wait_time)):
+            
             #Words is a list of the split string command.
             command = self.get_valid_command()
             if command == "":
@@ -2513,6 +2517,10 @@ class Display(Tkinter.Canvas):
         if not self.stopped:
             self.after_process_messages_id = self.after(process_time(),
                                                         self.process_messages)
+            if remember_number != number:
+                #We remember this time because of the possibility of a
+                # signal handler needing it to detect if we are hung.
+                self.last_message_processed = time.time()
 
         Trace.trace(5, "Finishing process_messages() (%f sec/%d messages)" %
                     (time.time() - t0, remember_number - number))
