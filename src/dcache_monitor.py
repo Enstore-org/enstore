@@ -15,8 +15,6 @@
 
 import sys
 import string
-import errno
-import socket
 import pg
 import time
 import pnfs
