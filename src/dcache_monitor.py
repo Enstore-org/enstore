@@ -30,19 +30,12 @@ import hostaddr
 import option
 import generic_client
 import backup_client
-#import udp_client
-import Trace
-import e_errors
-# import cPickle
-import info_client
-import enstore_constants
 import pg
 import time
 import pnfs
 import os
 import re
-import thread
-import popen2
+# import thread
 import pnfsidparser
 
 
@@ -144,7 +137,6 @@ def insert_into_volatile_files(db_name):
         p = str(row[1]);
         pnfsid_string=pnfsidparser.parse_id(p)
         is_file=0
-        dbnum=0
         try: 
             f=open(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
         except IOError:
