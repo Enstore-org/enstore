@@ -37,13 +37,13 @@ import e_errors
 import info_client
 import enstore_constants
 import pg
-import string
 import time
 import pnfs
 import os
 import re
 import thread
 import popen2
+import pnfsidparser
 
 
 exitmutexes=[]
@@ -142,20 +142,7 @@ def insert_into_volatile_files(db_name):
             continue
         d = row[0];
         p = str(row[1]);
-        pnfsid_string=""
-        for i in [0,4,8,12]:
-            l=i+2
-            h=l+2
-            l1=i
-            h1=l1+2
-            pnfsid_string=pnfsid_string+p[l:h]+p[l1:h1]
-        for i in [20,16]:
-            l=i+2
-            h=l+2
-            l1=i
-            h1=l1+2
-            pnfsid_string=pnfsid_string+p[l:h]+p[l1:h1]
-        pnfsid_string=string.upper(pnfsid_string)
+        pnfsid_string=pnfsidparser.parse_id(p)
         is_file=0
         dbnum=0
         try: 
