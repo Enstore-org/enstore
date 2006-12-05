@@ -281,7 +281,7 @@ if __name__ == '__main__':
 #       exitmutexes.append(0)
         i=i+1
 #    while 0 in exitmutexes: pass
-     if ( send_mail == True ) :
+     if ( send_mail ) :
          os.system("cat *.txt > mail.txt");
          os.system('mail dcache-admin@fnal.gov -s "THERE ARE FILES WITH MISSING LAYERS OLDER THAN 24 HOURS" < mail.txt')
          os.system("rm -d mail.txt")
