@@ -271,17 +271,17 @@ if __name__ == '__main__':
 
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
     os.system(cmd)
-    send_mail=False
+    do_mail=0
 #    for db_name in ['minos']:
     for db_name in dbs:
         exitmutexes.append(0)
         if ( do_work(i,db_name) == True ) :
-            send_mail=True 
+            do_mail=1
 #       thread.start_new(do_work, (i,db_name))
 #       exitmutexes.append(0)
         i=i+1
 #    while 0 in exitmutexes: pass
-     if ( send_mail ) :
+     if ( send_mail == 1 ) :
          os.system("cat *.txt > mail.txt");
          os.system('mail dcache-admin@fnal.gov -s "THERE ARE FILES WITH MISSING LAYERS OLDER THAN 24 HOURS" < mail.txt')
          os.system("rm -d mail.txt")
