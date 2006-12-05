@@ -99,18 +99,18 @@ def check_volatile_files(db_name):
             l1=p.readlayer(1)
             l2=p.readlayer(2)
             l4=p.readlayer(4)
-            if (check_layer_1(l1) == True and check_layer_4(l4) == True ) :
+            if (check_layer_1(l1) and check_layer_4(l4) ) :
                 sql_txt = "delete from volatile_files where pnfsid_string='%s'"%(pnfsid,)
                 r=db.query(sql_txt)
             else:
                 l1_str="y";
                 l2_str="y";
                 l4_str="y";
-                if (check_layer_1(l1) == False ) :
+                if not check_layer_1(l1) :
                     l1_str="n"
-                if (check_layer_2(l2) == False ) :
+                if not check_layer_2(l2)  :
                     l2_str="n"
-                if (check_layer_4(l4) == False ) :
+                if not check_layer_4(l4) ) :
                     l4_str="n"
                 sql_txt = "update volatile_files set layer1='%s',layer2='%s',layer4='%s' where pnfsid_string='%s'"%(l1_str,l2_str,l4_str,pnfsid)
                 r=db.query(sql_txt)
@@ -162,15 +162,15 @@ def insert_into_volatile_files(db_name):
                 l1=p.readlayer(1)
                 l2=p.readlayer(2)
                 l4=p.readlayer(4)
-                if (check_layer_1(l1) == False or check_layer_4(l4) == False ) :
+                if not check_layer_1(l1)  or not check_layer_4(l4) :
                     l1_str="y";
                     l2_str="y";
                     l4_str="y";
-                    if (check_layer_1(l1) == False ) :
+                    if not check_layer_1(l1) :
                         l1_str="n"
-                    if (check_layer_2(l2) == False ) :
-                        l2_str="n"
-                    if (check_layer_4(l4) == False ) :
+                    if not check_layer_2(l2) :
+                        l2_str="n" 
+                    if not check_layer_4(l4) :
                         l4_str="n"
                     
                     insert_query_txt="insert into volatile_files (date,unix_date,pnfsid_string,pnfsid,pnfs_path,layer1,layer2,layer4) "+\
