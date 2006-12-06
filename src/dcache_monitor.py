@@ -250,7 +250,7 @@ if __name__ == '__main__':
     if ( do_mail ) :
         os.system("cat *.txt > mail.txt");
         os.system('mail dcache-admin@fnal.gov -s "THERE ARE FILES WITH MISSING LAYERS OLDER THAN 24 HOURS" < mail.txt')
-        os.system("rm -d mail.txt")
+        os.system("rm -f mail.txt")
 
 
 #    for db_name in ['eagle', 'exp-db']:
