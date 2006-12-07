@@ -26,6 +26,8 @@ import enstore_mail
 import www_server
 import enstore_html
 import event_relay_messages
+import types
+
 
 def default_alive_rcv_timeout():
     return 5
@@ -106,8 +108,27 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
     #    *, always send mail when get this alarm
     def send_mail_action(self, theAlarm, isNew, params):
         params_len = len(params)
+        alarm_info=theAlarm.alarm_info
+        #
+        # We expect to get in alarm_ifno a bunch of key,value pairs
+        # like e.g.
+        #   alarm_info['pattern']= { 'sg' : 'cms',
+        #                          'node' : 'fcdsgi2.fnal.gov' } 
+        #                      Dmitry Litvintsev (litvinse@fnal.gov)
+        #       
         if isNew or (params_len > 1 and params[1] == "*"):
-            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
+            e_mail=""
+            if type(params[2]) == types.StringType:
+                e_mail=params[2]
+            else:
+                patterns_in_alarm=alarm_info.get['patterns'].values()
+                for p in patterns_in_alarm:
+                    if p in params[2].keys():
+                        e_mail=params[2][p]
+                if (e_mail=="") :
+                    e_mail=params[2]['*']
+#            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
+            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
         self.action_defaults(theAlarm, isNew, params)
 
     # in order to create a new alarm action, do -
