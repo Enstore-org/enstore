@@ -2177,6 +2177,10 @@ class Display(Tkinter.Canvas):
         self.after_offline_reason_id = None
         self.after_reposition_id = None
 
+        #Set this to the current time so that the alarm signal doesn't
+        # get raised to hastily.  
+        self.last_message_processed = time.time()
+
         #Clear the window for drawing to the screen.
         #self.pack(expand = 1, fill = Tkinter.BOTH)
         self.update()
