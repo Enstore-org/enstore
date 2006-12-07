@@ -94,13 +94,14 @@ echo "creating new database area"
 
 if [ -d $database_area ]
 then
-	echo $database_area exists, rename it
-	dest=$database_area.`date +%F.%T`
-	echo mv $database_area $dest
-	mv $database_area $dest
+	echo $database_area exists
 	echo "try shutting down existing database server, if any"
 	echo kill \`head -1 $database_area/postmaster.pid\`
 	kill `head -1 $database_area/postmaster.pid`
+	echo renaming $database_area
+	dest=$database_area.`date +%F.%T`
+	echo mv $database_area $dest
+	mv $database_area $dest
 fi
 
 # create initial database area
