@@ -175,13 +175,14 @@ def recover(backup_time=None):
     ## print "postgreSQL can be started by /etc/init.d/postgres-boot start"
     ## print "pnfs can be started by /etc/init.d/pnfs start"
 
-
+    os.system("rm -f %s/postmaster.pid"%(pgdb))
 
     # start postgres
     cmd='/etc/init.d/postgres-boot start'
     #cmd='source /home/enstore/gettkt;. /usr/local/etc/setups.sh; setup pnfs; . /usr/etc/pnfsSetup; su enstore -c "$PNFS_DIR/tools/linux/pgsql/bin/postmaster -D $database_postgres >/diska/postgres-log/postgres.logfile 2>&1 &"'
     #cmd='su enstore; source /usr/local/etc/setups.sh; setup pnfs; . /usr/etc/pnfsSetup; $PNFS_DIR/tools/linux/pgsql/bin/postmaster -D $database_postgres >/diska/postgres-log/postgres.logfile 2>&1 &'
     print "Starting DB server: %s"% (cmd,)
+    time.sleep(360)
     os.system(cmd)
     # this is sloppy but how else can I check that postmasted is ready
     # recovery may take a very long time
