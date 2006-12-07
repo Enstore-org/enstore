@@ -106,7 +106,7 @@ def alarm_signal_handler(sig, frame):
             sys.stderr.flush()
             display.reinitialize()
             
-    signal.alarm(10)
+    signal.alarm(TEN_MINUTES)
 
 def open_files(message):
     print message,
