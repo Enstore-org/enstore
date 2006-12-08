@@ -1277,34 +1277,45 @@ class Mover(dispatching_worker.DispatchingWorker,
                     vol_ticket = { "external_label": "Unknown",
                                    "media_type":self.media_type}
                     # check if media changer is open
-                    mcc_reply = self.mcc.GetWork()
-                    if mcc_reply['max_work'] == 0:
-                        # media changer would not accept requests. Go OFFLINE
-                        Trace.alarm(e_errors.ERROR, "media changer is locked, going OFFLINE")
-                        self.state = OFFLINE
+                    retry_cnt = 10
+                    for i in range(retry_cnt):
+                        mcc_reply = self.mcc.GetWork()
+                        if not mcc_reply.has_key('max_work'):
+                            Trace.log(e_errors.INFO, "Media Changer returned %s"%(mcc_reply,))
+                        else:
+                            time.sleep(2)
+                            break
                     else:
-                        
-                        while 1:
-                            mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
-                            status = mcc_reply.get('status')
-                            if status and status[0] == e_errors.MC_QUEUE_FULL:
-                                # media changer responded but could not perform the operation
-                                Trace.log(e_errors.INFO, "Media Changer returned %s"%(status[0],)) 
-                                # to avoid false "too long in state.."
-                                # reset self.time_in_state
-                                self.time_in_state = time.time()
-                                time.sleep(10)
-                                continue
-                            else:
-                                break
-                                
-                        if status and status[0] != e_errors.OK:
-                            self.offline()
-                            #return Do not return here as this does not comlete
-                            # the initialization
-                            # dispathing worker does not get instantiated and
-                            # this causes a failure, causing exceptions and
-                            # restarts in a loop
+                        Trace.log(e_errors.ERROR, "Media Changer did not return expected reply: %s"%(mcc_reply,))
+                        self.state = OFFLINE
+                    if self.state != OFFLINE:
+                        if mcc_reply['max_work'] == 0:
+                            # media changer would not accept requests. Go OFFLINE
+                            Trace.alarm(e_errors.ERROR, "media changer is locked, going OFFLINE")
+                            self.state = OFFLINE
+                        else:
+
+                            while 1:
+                                mcc_reply = self.mcc.unloadvol(vol_ticket, self.name, self.mc_device)
+                                status = mcc_reply.get('status')
+                                if status and status[0] == e_errors.MC_QUEUE_FULL:
+                                    # media changer responded but could not perform the operation
+                                    Trace.log(e_errors.INFO, "Media Changer returned %s"%(status[0],)) 
+                                    # to avoid false "too long in state.."
+                                    # reset self.time_in_state
+                                    self.time_in_state = time.time()
+                                    time.sleep(10)
+                                    continue
+                                else:
+                                    break
+
+                            if status and status[0] != e_errors.OK:
+                                self.offline()
+                                #return Do not return here as this does not comlete
+                                # the initialization
+                                # dispathing worker does not get instantiated and
+                                # this causes a failure, causing exceptions and
+                                # restarts in a loop
                 if good_label: # to prevent mover from failure in ftt_get_stats
                     if self.maybe_clean():
                         have_tape = 0
