@@ -52,11 +52,15 @@ class Journal:
 			self.checkpoint()
 
 	def __delitem__(self, key):
-		v = self.dict[key]
+		if self.dict.has_key(key):
+			v = self.dict[key]
+		else:
+			v = {}
 		j = "del self.dict['%s'] # %s\n" % (key, v)
 		self.jfile.write(j)
 		self.jfile.flush()
-		del self.dict[key]
+		if self.dict.has_key(key):
+			del self.dict[key]
 		self.count = self.count + 1
 		if self.limit and self.count >= self.limit:
 			self.checkpoint()
