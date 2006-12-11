@@ -34,7 +34,7 @@ case $host in
 		;;
 	d0en*)
 		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-d0ensrv0
-		
+		;;	
 	*)
 		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-cdfensrv0
 		;;
