@@ -17,25 +17,35 @@ journal_dir=/diska/enstore-journal
 db_dump_file=enstoredb.dmp
 
 # find the host
-host=`uname -n | cut -d. -f1`
+host = $1
+if [ "$host" == "" ]
+then
+	host=`uname -n | cut -d. -f1`
+fi
 
 case $host in
-	stkensrv0|cdfensrv0|d0ensrv0)
-		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-$host
+	stken*)
+		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-stkensrv0
 		;;
+	cdfen*)
+		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-cdfensrv0
+		;;
+	d0en*)
+		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-d0ensrv0
+		
 	*)
 		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-cdfensrv0
 		;;
 esac
 
 case $host in
-	stkensrv0)
+	stken*)
 		backup_host=stkensrv3.fnal.gov
 		;;
-	cdfensrv0)
+	cdfen*)
 		backup_host=cdfensrv3.fnal.gov
 		;;
-	d0ensrv0)
+	d0en*)
 		backup_host=d0ensrv3.fnal.gov
 		;;
 	*)
