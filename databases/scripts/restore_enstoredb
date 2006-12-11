@@ -23,6 +23,8 @@ then
 	host=`uname -n | cut -d. -f1`
 fi
 
+echo "host = $host"
+
 case $host in
 	stken*)
 		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-stkensrv0
