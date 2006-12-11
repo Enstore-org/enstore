@@ -56,7 +56,7 @@ class Journal:
 			v = self.dict[key]
 		else:
 			v = {}
-		j = "del self.dict['%s'] # %s\n" % (key, v)
+		j = "del self.dict['%s'] # %s\n" % (key, `v`)
 		self.jfile.write(j)
 		self.jfile.flush()
 		if self.dict.has_key(key):
