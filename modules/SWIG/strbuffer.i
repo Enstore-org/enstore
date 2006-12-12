@@ -33,11 +33,29 @@
     }
 %}
 
+#ifdef SWIG_VERSION
+/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
+
+%{
+/* Include in the generated wrapper file */
+typedef char * cptr;
+%}
+/* Tell SWIG about it */
+typedef char * cptr;
+
+%typemap(in) cptr{
+        $1 = PyString_AsString($input);
+}
+
+#else
+
 %typedef char * cptr;
 
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
+
+#endif
 
 int buf_read(int fd, cptr buf, int offset, int nbytes);
 int buf_read_string(cptr src, cptr buf, int offset, int nbytes);
