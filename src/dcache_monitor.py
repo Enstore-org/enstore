@@ -181,7 +181,7 @@ def prepare_html(db_name):
         os.system("rm -f %s"%fname);
         cmd = "psql  %s  -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "su  - enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; setup enstore > /dev/null 2>&1; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
 #        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     delta_time     = 24*3600
@@ -236,7 +236,7 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-    cmd = "su  - enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; setup enstore > /dev/null 2>&1; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\"\'"
+    cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp;  source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\"\'"
     os.system(cmd)
     do_mail=False
 #    for db_name in ['minos']:
