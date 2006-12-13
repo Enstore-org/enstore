@@ -235,7 +235,7 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh  enstore@stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
+    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh -l  enstore stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
     os.system(cmd)
     do_mail=False
 #    for db_name in ['minos']:
