@@ -49,7 +49,7 @@ def check_volatile_files(db_name):
     #
     # extract entries from volatile files
     #
-    db = pg.DB(db_name);
+    db = pg.DB(db_name,user="enstore");
     sql_txt = "select pnfsid_string from volatile_files order by date"
     res=db.query(sql_txt)
     pnfsids = []
@@ -97,7 +97,7 @@ def check_volatile_files(db_name):
     db.close()
 
 def insert_into_volatile_files(db_name):
-    db = pg.DB(db_name);
+    db = pg.DB(db_name,user="enstore");
     #
     # establish time boundaries
     #
@@ -161,7 +161,7 @@ def insert_into_volatile_files(db_name):
     db.close()
 
 def prepare_html(db_name):
-    db = pg.DB(db_name);
+    db = pg.DB(db_name,user="enstore");
     #
     # check for any bad files 
     #
