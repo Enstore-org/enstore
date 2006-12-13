@@ -179,9 +179,10 @@ def prepare_html(db_name):
         fname="%s_bad.txt"%(db_name,)
         sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' and unix_date<%d order by date asc"%(int(now_time-3600))
         os.system("rm -f %s"%fname);
-        cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        cmd = "psql  %s  -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        cmd = "su  - enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; setup enstore > /dev/null 2>&1; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+#        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     delta_time     = 24*3600
     # now_time       = time.time()
@@ -235,7 +236,7 @@ if __name__ == '__main__':
         dbs.append(line[:-1])
     out.close()
 
-    cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh -l  enstore stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\""
+    cmd = "su  - enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; setup enstore > /dev/null 2>&1; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\"\'"
     os.system(cmd)
     do_mail=False
 #    for db_name in ['minos']:
