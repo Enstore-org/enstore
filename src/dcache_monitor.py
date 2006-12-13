@@ -195,9 +195,10 @@ def prepare_html(db_name):
     if ( count1!=0 ) : 
         fname="%s.txt"%(db_name,)
         sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' and unix_date<%d  order by date asc"%(int(now_time-delta_time),)
-        cmd = "psql  %s  -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        cmd = "psql  %s -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
         os.system(cmd)
-        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+#        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
     db.close()
     if (count !=0 or count1 !=0):
