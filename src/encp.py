@@ -224,7 +224,7 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     if rtn:
         return os.path.exists(filename)
 
-    return rtn  #Always False
+    return rtn  #Always Fals
 
 def __is_pnfs_remote_path(filename, check_name_only = None):
     if pnfs_agent_client_requested or pnfs_agent_client_allowed:
@@ -239,6 +239,7 @@ def __is_pnfs_remote_path(filename, check_name_only = None):
         return pac.e_access(filename, os.F_OK)
 
     return False
+
 
 ############################################################################
 
@@ -2419,7 +2420,14 @@ def get_stat(filename):
         # here.  Thus, we fail after one time, fall into the exception
         # handling were we either retry the stat (because pnfs is not
         # robust) or we need to ask the pnfs_agent.
-        if pnfs_agent_client_requested:
+        if pathname.find("pnfs") != -1 and pnfs_agent_client_requested:
+            #We need the find() of the substring "pnfs" to quickly (as
+            # compared to stat()s over (P)NFS) determine if the file is
+            # likely a pnfs file.  This test should exclude most local
+            # files.  There is nothing that prevents the user from having
+            # the string "pnfs" in their (local) file and directory names.
+            # These rare cases are handled with the is_local_path() if
+            # test below.
             raise OSError(errno.ENOENT, "Force use of pnfs_agent.")
         else:
             statinfo = os.stat(pathname)
@@ -2449,6 +2457,14 @@ def get_stat(filename):
                 else:
                     raise EncpError(None, str(statinfo_ticket['status'][1]),
                                     statinfo_ticket['status'][0])
+            elif is_local_path(pathname, check_name_only = 1):
+                #You can only get here by choosing to name your files poorly.
+                # By poorly, this means having the string "pnfs" in your
+                # local (aka not in pnfs) path.  The only penalty is this
+                # is a little slower, because a greater number of os.stat()
+                # calls are needed to sort out the situation.
+                statinfo = os.stat(pathname)
+                return statinfo
 
         #If this is a local file that we got an error on, raise it back to
         # the calling function.
@@ -2595,6 +2611,38 @@ def stat_decode(statinfo):
 
     return rtn_dict
 
+
+def is_local_path(filename, check_name_only = None):
+
+    pathname = os.path.abspath(filename)
+
+    try:
+        fstats = os.stat(pathname)
+        if stat.S_ISREG(fstats[stat.ST_MODE]):
+            dname = os.path.dirname(pathname)
+        elif stat.S_ISDIR(fstats[stat.ST_MODE]):
+            dname = pathname
+        else:
+            dname = pathname  #Can this happen?
+    except (OSError, IOError):
+        fstats = None
+        dname = os.path.dirname(pathname)
+
+    dname = os.path.dirname(pathname)
+    const_name = os.path.join(dname, ".(get)(const)")
+    
+    try:
+        os.stat(const_name)
+        return False
+    except (OSError, IOError):
+        pass
+
+    if check_name_only:
+        return True
+    elif fstats:
+        return True
+        
+    return False
 
 def is_pnfs_path(filename, check_name_only = None):
 
