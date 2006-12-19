@@ -1317,8 +1317,8 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
 	submitter = "MSS"
 	user = "MSS"
 	password = "2p9u6c"
-	category = "Other"
-	aType = "LoadTapes"
+	category = "Media Service"
+	aType = "Flip Tabs"
 	item = "Other"
 
 	cmd = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'genMediaTicket')
