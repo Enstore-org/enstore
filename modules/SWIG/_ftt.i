@@ -91,12 +91,30 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
     }
 }    
 
+#ifdef SWIG_VERSION
+/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
+
+%{
+/* Include in the generated wrapper file */
+typedef char * cptr;
+%}
+/* Tell SWIG about it */
+typedef char * cptr;
+
+%typemap(in) cptr{
+        $1 = PyString_AsString($input);
+
+#else
+/* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
+ * care to differentiate between 1.3.x and 1.1.y, though an issue exists
+ * for 1.3 versions with a patch level 10 or less. */
 
 %typedef char * cptr;
 
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
+#endif
 
 /* ftt_defines.h
 **
