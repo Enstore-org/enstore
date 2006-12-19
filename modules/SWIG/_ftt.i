@@ -103,6 +103,7 @@ typedef char * cptr;
 
 %typemap(in) cptr{
         $1 = PyString_AsString($input);
+}
 
 #else
 /* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
