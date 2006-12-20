@@ -22,7 +22,7 @@ import generic_server
 import Trace
 import e_errors
 import enstore_constants
-import monitored_server
+#import monitored_server
 import event_relay_messages
 import time
 import hostaddr
@@ -55,44 +55,51 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		generic_server.GenericServer.__init__(self, csc, MY_NAME,
 						function = self.handle_er_msg)
 		Trace.init(self.log_name)
-		self.keys = self.csc.get(MY_NAME)
-
-		self.alive_interval = monitored_server.get_alive_interval(self.csc,
-                                                                  MY_NAME,
-                                                                  self.keys)
 
 		att = self.csc.get(MY_NAME)
-		dbInfo = self.csc.get("database")
-		self.hostip = att['hostip']
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
 
 		# get database connection
+		dbInfo = self.csc.get("database")
 		try:
-			self.file = edb.FileDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0)
+			self.file = edb.FileDB(host=dbInfo['db_host'],
+					       port=dbInfo['db_port'],
+					       auto_journal=0)
 		except:
 			exc_type, exc_value = sys.exc_info()[:2]
-			msg = str(exc_type)+' '+str(exc_value)+' IS POSTMASTER RUNNING?'
+			msg = "%s %s %s" % (str(exc_type), str(exc_value),
+					    "IS POSTMASTER RUNNING?")
 			Trace.log(e_errors.ERROR,msg)
 			Trace.alarm(e_errors.ERROR,msg, {})
-			Trace.log(e_errors.ERROR, "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
+			Trace.log(e_errors.ERROR,
+			     "CAN NOT ESTABLISH DATABASE CONNECTION ... QUIT!")
 			sys.exit(1)
 
 		self.db = self.file.db
-		self.volume = edb.VolumeDB(host=dbInfo['db_host'], port=dbInfo['db_port'], auto_journal=0, rdb=self.db)
+		self.volume = edb.VolumeDB(host=dbInfo['db_host'],
+					   port=dbInfo['db_port'],
+					   auto_journal=0, rdb=self.db)
 		self.sgdb = esgdb.SGDb(self.db)
 
 
 		# setup the communications with the event relay task
-		self.erc.start([event_relay_messages.NEWCONFIGFILE])
-		# start our heartbeat to the event relay process
-		self.erc.start_heartbeat(enstore_constants.INFO_SERVER, 
-					 self.alive_interval)
+		self.event_relay_subscribe([event_relay_messages.NEWCONFIGFILE])
 
 		self.set_error_handler(self.info_error_handler)
 		return
 
+	def reinit(self):
+		# stop the communications with the event relay task
+		self.event_relay_unsubscribe()
+
+		#Close the connections with the database.
+		self.close()
+
+		self.__init__(self.csc)
+
 	def info_error_handler(self, exc, msg, tb):
+		__pychecker__ = "unusednames=tb"
 		if exc == edb.pg.Error or msg == "no connection to the server":
 			self.reconnect(msg)
 		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
@@ -624,13 +631,19 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 					q = q + "where %s = %s"%(key, val)
 				else:
 					q = q + "where %s %s %s"%(key, cond, val)
-			q = q + "and not label like '%%.deleted'"
+			if state in ['DELETED']:
+				q = q + "and label like '%%.deleted'"
+			else:
+				q = q + "and not label like '%%.deleted'"
 		elif state:
 			if state in ['full', 'readonly', 'migrated']:
 				q = q + "where system_inhibit_1 = '%s'"%(state)
 			else:
 				q = q + "where system_inhibit_0 = '%s'"%(string.upper(state))
-			q = q + "and not label like '%%.deleted'"
+			if state in ['DELETED']:
+				q = q + "and label like '%%.deleted'"
+			else:
+				q = q + "and not label like '%%.deleted'"
 
 		msg['header'] = 'FULL'
 
@@ -1071,7 +1084,8 @@ if __name__ == '__main__':
 			infoServer.db.close()
 			sys.exit(exit_code)
 		except:
-			infoServer.serve_forever_error(infoServer.log_name)
+			#infoServer.serve_forever_error(infoServer.log_name)
+			Trace.handle_error()
 			infoServer.reconnect("paranoid")
 			continue
 	

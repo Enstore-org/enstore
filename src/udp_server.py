@@ -46,8 +46,25 @@ class UDPServer:
         self.address_family = socket.AF_INET
 
         try:
+            #If we already have a server_socket...
+            if getattr(self, "server_socket", None):
+                if type(server_address) == type(()) \
+                   and type(server_address[0]) == type("") \
+                   and type(server_address[1]) == type(0):
+                    ssa = self.server_socket.getsockname()
+                    if ssa == server_address:
+                        self.server_address = ssa
+                    else:
+                        self.server_socket.close()
+                        ip, port, self.server_socket = udp_common.get_callback(
+                            server_address[0], server_address[1])
+                        self.server_address = (ip, port)
+                else:
+                    ip, port, self.server_socket = \
+                        udp_common.get_default_callback()
+                    self.server_address = (ip, port)
             #If an address was not specified.
-            if type(server_address) != type(()) or \
+            elif type(server_address) != type(()) or \
                (type(server_address) != type(()) and len(server_address) != 2):
                 ip,port,self.server_socket = udp_common.get_default_callback()
                 self.server_address = (ip, port)

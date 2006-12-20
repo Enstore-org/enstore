@@ -152,7 +152,13 @@ class EventRelayClient:
             if self.sock:
                 self.sock.close()
             return self.ERROR
-        
+
+    def unsetup(self):
+        self.invalid = 1
+        self.error_msg = ""
+        if self.sock:
+            self.sock.close()
+        return self.SUCCESS
 
     def __init__(self, server=None, function=None, event_relay_host=None, 
                  event_relay_port=None):
@@ -209,6 +215,17 @@ class EventRelayClient:
                                               self.resubscribe_rate)
         return self.SUCCESS
 
+    def stop(self):
+        if not self.invalid:
+            if self.server is not None:
+                if self.do_interval:
+                    self.server.remove_interval_func(self.subscribe)
+                if self.do_select_fd:
+                    self.server.remove_select_fd(self.sock)
+                
+        self.unsubscribe()
+        self.unsetup()
+
     # send the message to the event relay
     def send(self, msg):
         try:
@@ -261,6 +278,7 @@ class EventRelayClient:
         return self.send(self.heartbeat_msg)
 
     def start_heartbeat(self, name, heartbeat_interval, function=None):
+        print name, heartbeat_interval, function
         # we will set up a heartbeat to be sent periodically to the event
         # relay process
         if not self.invalid:
@@ -272,6 +290,13 @@ class EventRelayClient:
             if self.do_interval:
                 self.server.add_interval_func(self.heartbeat, self.heartbeat_interval)
             return self.SUCCESS
+        else:
+            return self.ERROR
+
+    def stop_heartbeat(self):
+        if self.do_interval:
+             self.server.remove_interval_func(self.heartbeat)
+             return self.SUCCESS
         else:
             return self.ERROR
 

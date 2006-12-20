@@ -16,12 +16,12 @@ import threading
 
 import dispatching_worker
 import generic_server
-import configuration_client
+#import configuration_client
 import timeofday
 #import udp_client
 #import enstore_functions2
 import enstore_constants
-import monitored_server
+#import monitored_server
 #import event_relay_client
 import event_relay_messages
 import Trace
@@ -29,6 +29,8 @@ import e_errors
 
 
 MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
+
+rate_lock = threading.Lock()
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -53,15 +55,19 @@ def next_minute(t=None):
     t = time.mktime((Y, M, D, h, m, 0, wd, jd, dst))
     return t
         
-
 class Ratekeeper(dispatching_worker.DispatchingWorker,
                  generic_server.GenericServer):
+    
     interval = 15
     resubscribe_interval = 10*60 
-    def __init__(self):
+    def __init__(self, csc):
+        generic_server.GenericServer.__init__(self, csc, MY_NAME,
+                                              #function = self.handle_er_msg
+                                              )
+        Trace.init(self.log_name)
+
         #Get the configuration from the configuration server.
-        csc = configuration_client.ConfigurationClient()
-        ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
+        ratekeep = self.csc.get('ratekeeper', timeout=15, retry=3)
         
         ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
         ratekeeper_host = ratekeep.get('hostip',ratekeep.get('host','MISSING'))
@@ -84,6 +90,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         if ratekeeper_nodes == 'MISSING':
             ratekeeper_nodes = ''
 
+        dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
+
         self.filename_base = socket.gethostname()  #filename_base
         self.output_dir = ratekeeper_dir
         self.outfile = None
@@ -92,27 +100,30 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         self.subscribe_time = 0
         self.mover_msg = {} #key is mover, value is last (num, denom)
 
-        generic_server.GenericServer.__init__(self, csc, MY_NAME)
-        Trace.init(self.log_name)
-        dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
-
-        self.alive_interval = monitored_server.get_alive_interval(self.csc,
-                                                                  MY_NAME)
-
         #The generic server __init__ function creates self.erc, but it
         # needs some additional paramaters.
-        #start() allows the ratekeeper to recieve message from the ER.
-        self.erc.start([event_relay_messages.TRANSFER,
-                        event_relay_messages.NEWCONFIGFILE])
-        #start_heartbeat() allows the ratekeeper to send alive messages to ER.
-        self.erc.start_heartbeat(enstore_constants.RATEKEEPER, 
-                                 self.alive_interval)
+        self.event_relay_subscribe([event_relay_messages.TRANSFER,
+                                    event_relay_messages.NEWCONFIGFILE])
+
         #The event relay client start() function sets up the erc socket to be
         # monitored by the dispatching worker layer.  We do not want this
         # in the ratekeeper.  It monitors this socket on its own, so it
-        # must be removed from the list.  
+        # must be removed from the list.
         self.remove_select_fd(self.erc.sock)
+
+    def reinit(self):
+        rate_lock.acquire()
+
+        # stop the communications with the event relay task
+        self.event_relay_unsubscribe()
+
+        ###We shouldn't need to stop the rk_main thread here.  It will
+        ### pick up any relavent configuration changes every 15 seconds.
         
+        self.__init__(self.csc)
+
+        rate_lock.release()
+    
     def subscribe(self):
         self.erc.subscribe()
 
@@ -147,8 +158,10 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         denom = long(words[3])
 
         #Get the last pair of numbers for each mover.
+        rate_lock.acquire()
         prev = self.mover_msg.get(mover)
         self.mover_msg[mover] = (num, denom)
+        rate_lock.release()
 
         #When a new file is started, the first transfer occurs, a mover
         # quits, et al, then initialize these parameters.
@@ -186,15 +199,18 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         while 1:
             now = time.time()
 
+            rate_lock.acquire()
             self.check_outfile(now)
             if now - self.subscribe_time > self.resubscribe_interval:
                 self.subscribe()
                 self.subscribe_time = now
+            rate_lock.release()
                 
             end_time = self.start_time + N * self.interval
             remaining = end_time - now
             if remaining <= 0:
                 try:
+                    rate_lock.acquire()
                     self.outfile.write( "%s %d %d %d %d\n" %
                                         (time.strftime("%m-%d-%Y %H:%M:%S",
                                                        time.localtime(now)),
@@ -203,6 +219,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                          bytes_read_dict.get("NULL", 0),
                                          bytes_written_dict.get("NULL", 0),))
                     self.outfile.flush()
+                    rate_lock.release()
                 except:
                     sys.stderr.write("Can't write to output file\n")
 
@@ -217,7 +234,9 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             if remaining <= 0: #Possible from ntp clock update???
                 continue
 
+            rate_lock.acquire()
             r, w, x = select.select([self.erc.sock], [], [], remaining)
+            rate_lock.release()
 
             if not r:
                 continue
@@ -238,12 +257,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 continue
 
             if words[0] == event_relay_messages.NEWCONFIGFILE:
-                print "lsdfklajshfklajshflkshfslakdfh"
-                #The following lines are taken from handle_er_msg()
-                # in generic_server.
-                Trace.log(e_errors.INFO,
-                          "Recieved notification of new configuration file.")
-                self.csc.new_config_obj.new_config_msg()
+                #Hack to get what we want from GenericServer.
+                self._reinit2()
                 continue
             elif words[0] == event_relay_messages.TRANSFER:
                 #If the split strings don't contain the fields we are
@@ -279,7 +294,7 @@ class RatekeeperInterface(generic_server.GenericServerInterface):
 if __name__ == "__main__":
     intf = RatekeeperInterface()
 
-    rk = Ratekeeper()
+    rk = Ratekeeper((intf.config_host, intf.config_port))
     
     reply = rk.handle_generic_commands(intf)
 
@@ -288,6 +303,7 @@ if __name__ == "__main__":
 
     while 1:
         try:
+            Trace.log(e_errors.INFO, "Ratekeeper (re)starting")
             rk.serve_forever()
         except SystemExit, exit_code:
             sys.exit(exit_code)

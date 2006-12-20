@@ -42,7 +42,6 @@ class GenericServerInterface(option.Interface):
     def valid_dictionaries(self):
         return (self.help_options, self.trace_options)
 
-
 class GenericServer(generic_client.GenericClient):
 
     def handle_er_msg(self, fd):
@@ -50,31 +49,46 @@ class GenericServer(generic_client.GenericClient):
         
 	msg = enstore_erc_functions.read_erc(self.erc)
 	if msg and msg.type == event_relay_messages.NEWCONFIGFILE:
-            Trace.log(e_errors.INFO,
-                      "Recieved notification of new configuration file.")
-            self.csc.new_config_obj.new_config_msg()
-            try:
-                hostaddr.update_domains(self.csc)
-            except AttributeError:
-                #The configuration server itself will fall here.
-                # It can't create a client to itself.  However, the
-                # configuration server should never call this function
-                # eiter.
-                pass
-                    
+            self._reinit2()
+
 	return msg
+
+    def _reinit2(self):
+        Trace.log(e_errors.INFO,
+                  "Received notification of new configuration file.")
+        self._reinit()
+
+    def _reinit(self):
+        self.csc.new_config_obj.new_config_msg()
+        try:
+            hostaddr.update_domains(self.csc)
+        except AttributeError:
+            #The configuration server itself will fall here.
+            # It can't create a client to itself.  However, the
+            # configuration server should never call this function
+            # eiter.
+            pass
+        
+        #Individually defined actions for each Enstore server.
+        self.reinit()
+
+    def reinit(self):
+        #Need to override.
+        pass
 
     def __init__(self, csc, name, function=None, flags=0,
                  logc=None, alarmc=None):
+
         # make pychecker happy
         self.socket = None
 
         # do this in order to centralize getting a log, alarm and configuration
         # client. and to record the fact that we only want to do it once.
+        use_flags = enstore_constants.NO_UDP | flags
         generic_client.GenericClient.__init__(self, csc, name, 
-				       flags=enstore_constants.NO_UDP | flags,
+                                              flags=use_flags,
 					      logc=logc, alarmc=alarmc)
-        
+
         #Servers need to communicate with the event relay.  Instantiate the
         # event relay client class to facilitate that communication.
 	self.erc = event_relay_client.EventRelayClient(self, function)
@@ -165,3 +179,29 @@ class GenericServer(generic_client.GenericClient):
                         "exception in send_reply %s" % (t,))
             return
     """
+
+    # get the alive_interval from the server or the default from the inquisitor
+    DEFAULT_ALIVE_INTERVAL = 30
+    def get_alive_interval(self):
+        config = self.csc.get(self.name)
+        alive_interval = config.get(enstore_constants.ALIVE_INTERVAL, None)
+        if not alive_interval:
+            # see if the default is in the inquisitor config dict
+            iconfig = self.csc.get(enstore_constants.INQUISITOR)
+            alive_interval = iconfig.get(enstore_constants.DEFAULT_ALIVE_INTERVAL,
+                                         self.DEFAULT_ALIVE_INTERVAL)
+        return alive_interval
+
+    def event_relay_subscribe(self, message_type_list):
+        # setup the communications with the event relay task
+        self.erc.start(message_type_list)
+        # start our heartbeat to the event relay process
+        self.alive_interval = self.get_alive_interval()
+        self.erc.start_heartbeat(self.name,
+                                 self.alive_interval)
+
+    def event_relay_unsubscribe(self):
+        # stop the communications with the event relay task
+        self.erc.stop()
+        # stop our heartbeat to the event relay process
+        self.erc.stop_heartbeat()
