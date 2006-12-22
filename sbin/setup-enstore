@@ -1,0 +1,59 @@
+# this file has to be sourced.
+# its purpose is to make all necessary setting to run enstore in nonUPS environment
+
+. /home/enstore/ENSTORE_HOME
+
+BASE=~enstore
+PROD_DIR=$BASE/enstore_products
+
+CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
+unset CVS_RSH 2>//dev/null;
+
+FTT_DIR=$PROD_DIR/ftt/v2_22; export FTT_DIR
+
+SWIG_DIR=$PROD_DIR/swig/swig1.1-883; export SWIG_DIR
+SWIG_LIB=$SWIG_DIR/lib/swig_lib; export SWIG_LIB
+PATH=$SWIG_DIR/bin:$PATH
+
+PYTHON_DIR=$PROD_DIR/python/Python-2.5; export PYTHON_DIR
+PATH=$PYTHON_DIR/bin:$PATH
+PYTHONINC=$PYTHON_DIR/include/python2.5; export PYTHONINC
+PYTHONLIB=$PYTHON_DIR/lib/python2.5; export PYTHONLIB
+PYTHONPATH=$ENSTORE_DIR/src:$ENSTORE_DIR/modules:$ENSTORE_DIR/HTMLgen; export PYTHONPATH
+PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
+
+ENSTORE_DIR=$BASE/enstore; export ENSTORE_DIR
+ENSTORE_CONFIG_PORT=7500; export ENSTORE_CONFIG_PORT
+PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
+ENSTORE_MAIL=moibenko@fnal.gov; export ENSTORE_MAIL
+
+POSTGRES_DIR=/usr/local/pgsql
+LD_LIBRARY_PATH=LD_LIBRARY_PATH:$POSTGRES_DIR/lib
+PATH=$POSTGRES_DIR/bin:$PATH
+GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
+
+if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.py $ENSTORE_DIR/bin/encp;fi
+if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+case ${node:-stk} in
+ rip*)  export ENSTORE_CONFIG_HOST=rip7.fnal.gov
+        export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/rip.conf
+        ;;
+ cms*|stk*)  export ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+        export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/stk.conf
+        ;;
+ cdf*)  export ENSTORE_CONFIG_HOST=cdfensrv2.fnal.gov
+        export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/cdf.conf
+        ;;
+  d0*)  export ENSTORE_CONFIG_HOST=d0ensrv2.fnal.gov
+        export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/sam.conf
+        ;;
+ *)     export ENSTORE_CONFIG_HOST=$node.fnal.gov
+# *)     export ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+        export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/$node.conf
+        ;;
+esac
+
+echo ENSTORE_CONFIG_HOST = $ENSTORE_CONFIG_HOST
+
