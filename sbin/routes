@@ -144,7 +144,7 @@ EOF
 	   complain=3
 	   # important servers set the status ball red, causing a page
 	   if [ $complain -eq $current ]; then
-	     criticalNode $node && enstore sched --override enstore --saagStatus red
+	     criticalNode $node && enstore sched --override enstore --saagstatus red
 	   fi
 	   # back off the frequency with which we complain (Fibonacci wise)
 	   fminus1=$complain
