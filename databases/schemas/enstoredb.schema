@@ -587,6 +587,28 @@ CREATE TABLE migration (
 
 ALTER TABLE public.migration OWNER TO enstore;
 
+SET default_with_oids = false;
+
+--
+-- Name: migration_deleted; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE migration_deleted (
+    src_bfid character varying,
+    dst_bfid character varying,
+    copied timestamp without time zone,
+    swapped timestamp without time zone,
+    checked timestamp without time zone,
+    closed timestamp without time zone,
+    remark character varying,
+    "update" timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.migration_deleted OWNER TO enstore;
+
+SET default_with_oids = true;
+
 --
 -- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
