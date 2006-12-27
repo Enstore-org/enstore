@@ -289,8 +289,8 @@ def show_cap(header, list):
 	print
 
 # get_rem_ticket_number(rem_res)
-#	get ticket number from remidy API
-#	rem_res is the result (array of lines) from remidy API
+#	get ticket number from remedy API
+#	rem_res is the result (array of lines) from remedy API
 def get_rem_ticket_number(rem_res):
 	for i in rem_res:
 		t = i.split()
@@ -1323,7 +1323,7 @@ def make_help_desk_ticket(n, cluster, script_host, job, library_type='stk'):
 
 	cmd = os.path.join(os.environ['ENSTORE_DIR'], 'sbin', 'genMediaTicket')
 
-	cc = "%s %s '%s' '%s' %s %s %s %s '%s' %s"%(cmd, system_name, short_message, long_message, submitter, user, password, category, aType, item)
+	cc = "%s %s '%s' '%s' %s %s %s '%s' '%s' %s"%(cmd, system_name, short_message, long_message, submitter, user, password, category, aType, item)
 	return cc
 
 # get_last_job_time(cluster, job_type)
