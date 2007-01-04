@@ -1,15 +1,24 @@
 #!/usr/bin/env python
 
+###############################################################################
+#
 # $Id$
-    
+#
+###############################################################################
+
 """A more OO-style interface to Fermi Tape Tools"""
 
 import sys
 import exceptions
 import string
 
-import setpath
-import _ftt
+#import setpath
+import ftt2
+
+#_ftt is the old module name (from the modules directory).  In supporting
+# swig 1.3 we had a naming collision over the module name _ftt.  Thus
+# the C module is called _ftt2module.so and the python wrapper is ftt2.py.
+_ftt = ftt2 
 
 ascii_error = _ftt.cvar.ftt_ascii_error
 
@@ -162,7 +171,7 @@ class FTT:
         return _ftt.ftt_status(self.d, timeout)
     def get_position(self):
         try:
-            status, file, block = _ftt.ftt_get_position(self.d)
+            status, file_position, block_position = _ftt.ftt_get_position(self.d)
         except TypeError, detail:
             # do not know how this might happen
             raise TypeError, detail
@@ -170,7 +179,7 @@ class FTT:
         if status:
             raise_ftt(value=status)
         else:
-            return file, block
+            return file_position, block_position
     def get_stats(self):
         b = stat_buf()
         check(_ftt.ftt_get_stats(self.d, b.b))
