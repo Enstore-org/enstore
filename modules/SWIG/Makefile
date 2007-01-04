@@ -3,18 +3,21 @@
 # $Id$
 #
 
-SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c ../checksum_wrap_thread.c \
-	../socket_ext_wrap.c ../strbuffer_wrap_thread.c ../_ftt_wrap_thread.c \
+SWIG_GENERATED_C_FILES=../aci_shadow_wrap.c ../derrno_wrap.c \
+	../checksum_wrap_thread.c ../socket_ext_wrap.c \
+	../strbuffer_wrap_thread.c ../ftt2_wrap_thread.c \
 	../runon_wrap.c ../enroute_wrap.c
 
-SWIG_GENERATED_PY_FILES=../aci_shadow.py
+SWIG_GENERATED_PY_FILES=../aci_shadow.py ../derrno.py ../checksum.py \
+	../ftt2.py ../socket_ext.py ../strbuffer.py ../enroute.py \
+	../runon.py
 
-all: $(SWIG_GENERATED_C_FILES)   
+all: $(SWIG_GENERATED_PY_FILES) $(SWIG_GENERATED_C_FILES)
 # SWIG_GENERATED_PY_FILES are automatically created 
 #at the same time as the C files
 
 clean:
-	rm -f *wrap* *doc* *.pyc 
+	rm -f *wrap* *doc* *.pyc *~
 	rm -f $(SWIG_GENERATED_C_FILES)
 	rm -f $(SWIG_GENERATED_PY_FILES)
 
@@ -25,40 +28,71 @@ clean:
 	mv aci_shadow.py .. ;\
 	fi
 
+../aci_shadow.py: ../aci_shadow_wrap.c
+
 
 ../derrno_wrap.c: derrno.i
 	if [ "$(ACI_DIR)_" != _ ] ; then \
-	swig -I$(ACI_DIR)/inc -python derrno.i ; \
+	swig -I$(ACI_DIR)/inc -shadow -python derrno.i ; \
 	mv derrno_wrap.c .. ; \
 	fi
 
+../derrno.py: ../derrno_wrap.c
+
+
 ../checksum_wrap_thread.c: checksum.i
-	swig -python checksum.i 
+	swig -shadow -python -D__STDC__ checksum.i 
 	./threadit.py < checksum_wrap.c > ../checksum_wrap_thread.c
 	rm checksum_wrap.c
+	mv checksum.py ..
+
+../checksum.py: ../checksum_wrap_thread.c
 
 
-../_ftt_wrap_thread.c: _ftt.i
+
+../ftt2_wrap_thread.c: ftt2.i
 	if [ "$(FTT_DIR)_" != _ ] ; then \
-		swig -I$(FTT_DIR)/include -python _ftt.i ; \
-		./threadit.py < _ftt_wrap.c > ../_ftt_wrap_thread.c; \
-		rm _ftt_wrap.c ; \
+		swig -I$(FTT_DIR)/include -shadow -python ftt2.i ; \
+		./threadit.py < ftt2_wrap.c > ../ftt2_wrap_thread.c; \
+		rm ftt2_wrap.c ; \
+		mv ftt2.py .. ; \
 	fi
 
+../ftt2.py: ../ftt2_wrap_thread.c
+
+
 ../socket_ext_wrap.c: socket_ext.i
-	swig -python socket_ext.i 
+	swig -shadow -python socket_ext.i 
 	mv socket_ext_wrap.c .. 
+	mv socket_ext.py ..
+
+../socket_ext.py: ../socket_ext_wrap.c
+
 
 ../strbuffer_wrap_thread.c: strbuffer.i
-	swig -python strbuffer.i
+	swig -shadow -python strbuffer.i
 	./threadit.py < strbuffer_wrap.c > ../strbuffer_wrap_thread.c ; \
 	rm strbuffer_wrap.c ;
+	mv strbuffer.py ..
+
+../strbuffer.py: ../strbuffer_wrap_thread.c
+
 
 ../enroute_wrap.c: enroute.i
-	swig -python enroute.i
+	swig -shadow -python enroute.i
 	mv enroute_wrap.c ..
+	if [ -f enroute.py ]; then \
+		mv enroute.py .. ;  \
+	fi
+
+../enroute.py: ../enroute_wrap.c
+
 
 ../runon_wrap.c: runon.i
-	swig -python runon.i
+	swig -shadow -python runon.i
 	mv runon_wrap.c ..
+	if [ -f runon.py ]; then \
+		mv runon.py .. ;  \
+	fi
 
+../runon.py: ../runon_wrap.c

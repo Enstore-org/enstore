@@ -88,20 +88,27 @@ IPC IPC.c  -I$(PYTHONINC)
 Devcodes Devcodes.c  -I$(PYTHONINC)
 
 # The EMASS/aci_shadow modules are not built unless ACI_DIR is defined ; see Makefile
-#aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc -L$(ACI_DIR)/lib -laci
-#aci_shadowc aci_shadow_wrap.c -I./SWIG -I$(ACI_DIR)/inc $(ACI_DIR)/lib/libaci.a
-aci_shadowc aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic 
-derrno derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc
+aci_shadowc aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic
+_aci_shadow aci_shadow_wrap.c  -I$(PYTHONINC) -I./SWIG -I$(ACI_DIR)/inc $ -Wl,-Bstatic -L$(ACI_DIR)/lib -laci -Wl,-Bdynamic
+derrnoc derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc
+_derrno derrno_wrap.c  -I$(PYTHONINC) -I$(ACI_DIR)/inc
 
-checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a
+checksumc checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a
+_checksum checksum_wrap_thread.c  -I$(PYTHONINC) adler32.a
 
-socket_ext socket_ext_wrap.c  -I$(PYTHONINC)
+socket_extc socket_ext_wrap.c  -I$(PYTHONINC)
+_socket_ext socket_ext_wrap.c  -I$(PYTHONINC)
 
-strbuffer strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname`
+strbufferc strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname`
+_strbuffer strbuffer_wrap_thread.c  -I$(PYTHONINC) -D`uname`
 
-_ftt _ftt_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
+ftt2c ftt2_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt
+_ftt2 ftt2_wrap_thread.c  -I$(PYTHONINC) -I$(FTT_DIR)/include -L$(FTT_DIR)/lib -lftt 
 
-runon runon_wrap.c  -I$(PYTHONINC) runon.c
-enroute enroute_wrap.c  -I$(PYTHONINC) enroute.c
+runonc runon_wrap.c runon.c -I$(PYTHONINC)
+_runon runon_wrap.c runon.c -I$(PYTHONINC)
 
-Interfaces interfaces.c  -I$(PYTHONINC)
+enroutec enroute_wrap.c enroute.c -I$(PYTHONINC)
+_enroute enroute_wrap.c enroute.c -I$(PYTHONINC)
+
+Interfaces Interfaces.c  -I$(PYTHONINC)

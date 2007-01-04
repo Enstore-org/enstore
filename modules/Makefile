@@ -31,7 +31,7 @@ FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
 	if [ ! -d mksetup ] ; then  mkdir mksetup; fi
-	cd mksetup/   ; \
+	cd mksetup/ ; \
 	cp ../Setup . ; \
 	if [ "$(ACI_DIR)"x = x ]; then \
 		grep -v ACI Setup > x; \
@@ -124,7 +124,8 @@ installpyc:
 
 clean:
 	-rm -rf Makefile.modules
-	-rm -rf *.o *.so *.a *~ 
+	-rm -rf *.o *.so *.a *~ *.pyc *.py
+	-rm -rf Makefile.pre
 	-rm -rf mksetup makesetup
 	-rm -rf $(ALL_TARGETS) autologinenstore mouse_move
 	@if [ ! -d ../sbin ];then mkdir ../sbin; fi

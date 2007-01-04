@@ -1,6 +1,6 @@
 /* $Id$ */
 
-%module _ftt
+%module ftt2
 
 %{
 #include <ftt.h>
