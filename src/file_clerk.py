@@ -85,15 +85,22 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if ticket["fc"].has_key("bfid"):
             bfid = ticket["fc"]["bfid"]
             # make sure the brand is right
-            if bfid[:4] != self.brand:
+            if bfid[:len(self.brand)] != self.brand:
                 msg = "new_bit_file(): wrong brand %s (%s)"%(bfid, self.brand)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
+            # make sure the bfid is right
+            if bfid[len(self.brand):].isdigit():
+                msg = "new_bit_file(): invalid bfid %s"%(bfid,)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
             # make sure the bfid does not exist
             if self.dict[bfid]:
-                msg = "new_bit_file(): %s exists"%(bfid)
+                msg = "new_bit_file(): %s exists"%(bfid,)
                 Trace.log(e_errors.ERROR, msg)
                 ticket["status"] = (e_errors.BFID_EXISTS, msg)
                 self.reply_to_caller(ticket)
