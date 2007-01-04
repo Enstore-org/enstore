@@ -875,6 +875,13 @@ volume_read_test()
     section="VOLUME READ"
     print_test_name $section
 
+    #Test the version of encp.
+    is_admin_encp
+    if [ $? -eq 0 ]; then
+        echo "Encp is cut version.  Skipping test and continuting."
+        return
+    fi 
+
     truncate_encp_output
 
     #Snag a volume_read_test volume.
