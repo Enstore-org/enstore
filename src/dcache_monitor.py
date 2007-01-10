@@ -224,6 +224,55 @@ def do_work(i,db_name) :
     exitmutexes[i]=1
     return rc
 
+def do_mail(db_name) :
+    db = pg.DB(db_name,user="enstore");
+    #
+    # check for any bad files 
+    #
+    now_time       = int(time.time());
+    then_time      = int(now_time-24*3600)
+    
+    stmt="select count(*) from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d)"%(int(now_time-3600),then_time)
+    if ( db_name == "netflow" ) :
+        stmt="select count(*) from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d)"%(int(now_time-12*3600),then_time)
+    res=db.query(stmt)
+    count=0
+    for row in res.getresult():
+        if not row:
+            continue
+        count=int(row[0])
+    if ( count != 0 ) :
+        fname="%s_bad.txt"%(db_name,)
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d) order by date asc"%(int(now_time-3600),then_time)
+        if ( db_name == "netflow" ) :
+            sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='n' and (unix_date<%d and unix_date>%d) order by date asc"%(int(now_time-12*3600),then_time)
+        os.system("rm -f %s"%fname);
+        cmd = "psql  %s  -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        os.system(cmd)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+        os.system(cmd)
+    now_time=int(now_time-24*3600)
+    then_time=int(now_time-24*3600)
+    res=db.query("select count(*) from volatile_files where layer2='y' and (unix_date<%d and unix_date>%d)"%(now_time,then_time))
+    count1=0
+    for row in res.getresult():
+        if not row:
+            continue
+        count1=int(row[0])
+
+    if ( count1!=0 ) : 
+        fname="%s.txt"%(db_name,)
+        sql_txt = "select date, pnfsid_string, layer1, layer2, layer4, pnfs_path from volatile_files where layer2='y' and (unix_date<%d and unix_date>%d) order by date asc"%(now_time,then_time)
+        cmd = "psql  %s -U enstore -o %s -c \"%s;\""%(db_name,fname,sql_txt)
+        os.system(cmd)
+        cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
+        os.system(cmd)
+    db.close()
+    if (count !=0 or count1 !=0):
+        return True
+    else:
+        return False
+
 if __name__ == '__main__':
     i=0
     cmd="mdb status | awk '{print $2}' | egrep -v 'Name|admin|NULL|test'"
@@ -239,17 +288,22 @@ if __name__ == '__main__':
 
     cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp;  source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrsh stkensrv2.fnal.gov \"rm /diska/www_pages/dcache_monitor/*.txt\"\'"
     os.system(cmd)
-    do_mail=False
+    yes_mail=False
 #    for db_name in ['minos']:
     for db_name in dbs:
         exitmutexes.append(0)
-        if ( do_work(i,db_name) ) :
-            do_mail=True
+        do_work(i,db_name)
 #       thread.start_new(do_work, (i,db_name))
 #       exitmutexes.append(0)
         i=i+1
 #    while 0 in exitmutexes: pass
-    if ( do_mail ) :
+
+    os.system("rm -f *.txt")
+
+    for db_name in dbs:
+        if ( do_mail(db_name) ) :
+            yes_mail=True
+    if ( yes_mail ) :
         os.system("cat *.txt > mail.txt");
         os.system('mail dcache-auto@fnal.gov -s "There are files with missing layers older than 24 hours" < mail.txt')
         os.system("rm -f mail.txt")
