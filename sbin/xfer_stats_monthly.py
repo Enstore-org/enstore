@@ -24,6 +24,7 @@ GB=1024.*1024.*1024.
 MB=1024.*1024.
 KB=1024.
 
+
 SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date between %s and %s group by date order by date desc"
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_day group by date order by date" # was xferby_month
 
@@ -31,6 +32,25 @@ SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file
 SELECT_WRITTEN_BYTES ="select  substr(bfid,5,10), size, deleted  from file where  file.deleted = 'n' and file.volume in (select volume.id from volume where volume.media_type != 'null' and system_inhibit_0 != 'DELETED' ) "
 
 #select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null' and deleted='n'";
+
+def bfid2time(bfid):
+    if bfid[-1] == "L":
+        e = -6
+    else:
+        e = -5
+        
+    if bfid[0].isdigit():
+        i = 0
+    elif bfid[3].isdigit():
+        i = 3
+    else:
+        i = 4
+
+    t = int(bfid[i:e])
+    if t > 1500000000:
+        t = t - 619318800
+
+    return t
 
 def showError(msg):
     sys.stderr.write("Error: " + msg)
@@ -109,12 +129,23 @@ def fill_tape_histograms(i,server_name,server_port,hlist):
     if db_port:
         db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
     else:
-        db = pg.DB(host=db_server_name, dbname=db_name);
-    res=db.query(SELECT_WRITTEN_BYTES)
-    for row in res.getresult():
-        if not row:
-            continue
-        h.fill(float(row[0]),float(row[1])/TB)
+        db = pg.DB(host=db_server_name, dbname=db_name);    
+#    res=db.query(SELECT_WRITTEN_BYTES)
+#    for row in res.getresult():
+#        if not row:
+#            continue
+#        h.fill(float(row[0]),float(row[1])/TB)
+    db.query("begin");
+    db.query("declare file_cursor cursor for select bfid, size from file where deleted = 'n';")
+    while True:
+        res =  db.query("fetch 10000 from file_cursor;").getresult()
+        for row in res:
+            d    = bfid2time(row[0]);
+            size = row[1];
+            h.fill(float(d),float(size)/TB)
+        l=len(res)
+        if (l < 10000):
+            break
     db.close()
     tape_exitmutexes[i]=1
 
