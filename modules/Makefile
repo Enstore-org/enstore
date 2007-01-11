@@ -23,7 +23,7 @@ LIBSOCKETNSL=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lsocket -lnsl"; else ec
 LIBGEN=`if [ "_IRIX" = _$(MACH_OS) ]; then echo "-lgen"; else echo ""; fi`
 LIBDL=`if [ "OSF1" = _(MACH_OS) ]; then echo ""; else echo -ldl; fi`
 XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
-XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm
+XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib64 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm
 FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
 FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
 FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
