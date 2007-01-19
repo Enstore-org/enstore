@@ -35,7 +35,7 @@ class SGDb:
 	# rebuild_sg_count
 	def rebuild_sg_count(self):
 		self.clear()
-		q = "insert into %s (library, storage_group, count) select library, storage_group, sum(*) from volume where not label like '%%.deleted' group by library, storage_group;"%(self.table)
+		q = "insert into %s (library, storage_group, count) select library, storage_group, count(*) from volume where not label like '%%.deleted' group by library, storage_group;"%(self.table)
 		self.db.query(q)
 
 	# get the value
