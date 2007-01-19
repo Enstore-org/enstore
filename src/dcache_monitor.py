@@ -148,7 +148,8 @@ def insert_into_volatile_files(db_name):
                         l2_str="n" 
                     if not check_layer_4(l4) :
                         l4_str="n"
-                    
+                    if ( db_name == "fermigrid" and p.pnfsFilenam.find("volatile") != -1 and check_layer_2(l2) ) :
+                        continue
                     insert_query_txt="insert into volatile_files (date,unix_date,pnfsid_string,pnfsid,pnfs_path,layer1,layer2,layer4) "+\
                                       "values ('"+str(row[0])+"',"+\
                                       str(int(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S'))))+","+\
