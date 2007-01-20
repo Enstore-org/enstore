@@ -32,7 +32,7 @@
 131.225.164.88		d0enmvr20a.fnal.gov	d0enmvr20a
 131.225.164.48		d0enmvr23a.fnal.gov	d0enmvr23a
 131.225.164.47		d0enmvr24a.fnal.gov	d0enmvr24a
-131.225.164.68		d0enmvr26a.fnal.gov	d0enmvr26a
+#131.225.164.68		d0enmvr26a.fnal.gov	d0enmvr26a
 131.225.164.78		d0enmvr27a.fnal.gov	d0enmvr27a
 131.225.164.72		d0enmvr28a.fnal.gov	d0enmvr28a
 131.225.164.71		d0enmvr33a.fnal.gov	d0enmvr33a
@@ -207,6 +207,7 @@
 131.225.215.38		cdfenmvr26a.fnal.gov	cdfenmvr26a
 131.225.215.36		cdfenmvr27a.fnal.gov	cdfenmvr27a
 131.225.215.18		cdfenmvr28a.fnal.gov	cdfenmvr28a
+131.225.164.68		cdfenmvr29a.fnal.gov	cdfenmvr29a
 131.225.215.22		cdfenload.fnal.gov	cdfenload
 
 # Assigned addresses currently not in use (here or elsewhere)
@@ -214,10 +215,8 @@
 #131.225.164.51		d0enmvr9b.fnal.gov	d0enmvr9b
 #131.225.164.54		d0enmvr11b.fnal.gov	d0enmvr11b
 #131.225.164.56		d0enmvr12b.fnal.gov	d0enmvr12b
-#131.225.164.114	d0enmvr14a.fnal.gov	d0enmvr14a
 #131.225.164.217	d0enmvr17b.fnal.gov	d0enmvr17b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
-#131.225.164.70		d0enmvr21b.fnal.gov	d0enmvr21b
 #131.225.164.60		d0enmvr25a.fnal.gov	d0enmvr25a
 #131.225.164.40		d0enmvr60a.fnal.gov	d0enmvr60a
 #131.225.164.15		d0enmvr61a.fnal.gov	d0enmvr61a
@@ -234,8 +233,6 @@
 #131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
-#131.225.13.29		stkenmvr18a.fnal.gov	stkenmvr18a
-#131.225.13.31		stkenmvr19a.fnal.gov	stkenmvr19a
 #131.225.13.104		stkenmvr38a.fnal.gov	stkenmvr38a
 #131.225.13.50		stkendca4a.fnal.gov	stkendca4a
 #131.225.13.51		stkendca5a.fnal.gov	stkendca5a
@@ -246,8 +243,11 @@
 #131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
 #131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 
-# control subnet for d0en and stken (STK 9310 and ADIC AML/2)
-192.168.89.56		adic2.fnal.gov		adic2
+# Control Subnet
+
+# address 0 is reserved
+# control subnet for d0en (STK 9310 and ADIC AML/2)	"The L zone"
+# address range 1-64
 192.168.89.3		d0ensrv2p
 192.168.89.4		d0ensrv3p
 192.168.89.5		d0ensrv4p
@@ -256,8 +256,14 @@
 192.168.89.13		d0ensrv2raid
 192.168.89.14		d0ensrv3raid
 192.168.89.17		d0ensrv6raid
+192.168.89.22	        d0encons1
+192.168.89.23	        d0encons2
+192.168.89.24	        d0encons3
+# address range 33-48	reserved for future use
+192.168.89.56		adic2.fnal.gov		adic2
 
-192.168.89.184		fntt
+# control subnet for stken (STK 9310 and ADIC AML/2)	"The M zone"
+# address range 129-192
 192.168.89.131		stkensrv2p
 192.168.89.132		stkensrv3p
 192.168.89.133		stkensrv4p
@@ -266,9 +272,22 @@
 192.168.89.141		stkensrv2raid
 192.168.89.142		stkensrv3raid
 192.168.89.145		stkensrv6raid
+192.168.89.150	        stkencons1
+192.168.89.151	        stkencons2
+192.168.89.152	        stkencons3
+192.168.89.153	        stkencons4
+# address range 161-176 (see below)
+192.168.89.184		fntt
 
-# control subnet for cdfen (STK 9310)
-192.168.89.120		fntt2
+# control subnet for stken dcache
+# address range 161-176
+192.168.89.172		stkendca17araid
+192.168.89.173		stkendca18araid
+192.168.89.174		stkendca19araid
+192.168.89.175		stkendca20araid
+
+# control subnet for cdfen (STK 9310)			"The N zone"
+# address range 65-128
 192.168.89.67		cdfensrv2p
 192.168.89.68		cdfensrv3p
 192.168.89.69		cdfensrv4p
@@ -277,9 +296,24 @@
 192.168.89.77	  	cdfensrv2raid
 192.168.89.78	  	cdfensrv3raid
 192.168.89.81	  	cdfensrv6raid
+192.168.89.86	        cdfencons1
+192.168.89.87	        cdfencons2
+# address range 97-112	reserved for future use
+192.168.89.120		fntt2
 
-# control subnet for gccen (STK SL8500)
-192.168.89.248		fntt-gcc
-192.168.89.250		gccsla
+# control subnet for gccen (STK SL8500)			"The O zone"
+# address range 193-254
 192.168.89.194		gccensrv1p
 192.168.89.195		gccensrv2p
+# address range 225-240 (see below)
+192.168.89.248		fntt-gcc
+192.168.89.250		gccsla
+192.168.89.251		gccslb
+
+# control subnet for other servers		  "The Hole in the O zone"
+# address range 225-240
+192.168.89.227		ccfsrv2p
+192.168.89.232		stkenscan1p
+192.168.89.237		stkenscan1raid
+
+# address 255 is reserved for broadcast
