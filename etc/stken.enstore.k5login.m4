@@ -66,7 +66,7 @@ enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV))
-ifelse(HOSTNAME, stkensrv1,
+ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -74,39 +74,33 @@ baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-ifelse(HOSTNAME, stkendca12a, `crawdad@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `fagan@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `fagan@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `stkendca12a', `crawdad@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `fagan@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
-fuhrmann@FNAL.GOV, `dnl')
+`fuhrmann@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `ifisk@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `ifisk@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `jlkaiser@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `jlkaiser@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ifisk@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `jlkaiser@FNAL.GOV', `dnl')
 jonest@FNAL.GOV
 kennedy@FNAL.GOV
 kschu@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca3a') == 0 || index(HOSTNAME, `fndca3a') == 0), 1,
-kurt@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, cmspnfs1, `lisa@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `lisa@FNAL.GOV', `dnl')
+`kurt@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `lisa@FNAL.GOV', `dnl')
 litvinse@FNAL.GOV
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `merina@FNAL.GOV', `dnl')
 mircea@FNAL.GOV
 moibenko@FNAL.GOV
 oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ptader@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `richt@FNAL.GOV', `dnl')
 stan@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `stiehr@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `stiehr@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `tdh@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `tdh@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
-ifelse(HOSTNAME, cmspnfs1, `tmesser@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `tmesser@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, stkendca12a, `yocum@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs1, `yujun@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, cmspnfs2, `yujun@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tmesser@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `stkendca12a', `yocum@FNAL.GOV', `dnl')
+ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `yujun@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV

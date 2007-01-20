@@ -27,6 +27,7 @@ enstore/cd/cdfenmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr26a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr27a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr28a.fnal.gov@FNAL.GOV
+enstore/cd/cdfenmvr29a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr101a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr102a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr104a.fnal.gov@FNAL.GOV
@@ -36,7 +37,7 @@ enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, cdfensrv1,
+ifelse(HOSTNAME, `cdfensrv1',
 enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV
 enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -44,7 +45,7 @@ baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-ifelse(HOSTNAME, cdfensrv1, `gcooper@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `cdfensrv1', `gcooper@FNAL.GOV', `dnl')
 george@FNAL.GOV
 huangch@FNAL.GOV
 jonest@FNAL.GOV
