@@ -35,7 +35,7 @@ DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
       UPS_SUBDIR=ups
 # for Flavored products
          FLAVOR=$(DEFAULT_FLAVOR)
-          QUALS=""
+          QUALS="x86_64"
 # for NULL products
 #         FLAVOR=$(DEFAULT_NULL_FLAVOR)
 #          QUALS=""
