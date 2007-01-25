@@ -77,7 +77,6 @@ ts_check = []
 stop_threads_lock=threading.Lock()
 threads_stop = False
 
-
 #For cleanup_objects() to report problems.
 old_list = []
 old_len  = 0
@@ -927,14 +926,14 @@ def check(f, f_stats = None):
                 try:
                     os.setegid(0)
                     os.seteuid(0)
-                except OSError, msg:
+                except OSError:
                     pass
 
             #Set the uid and gid to match that of the file's owner.
             try:
                 os.setegid(f_stats[stat.ST_GID])
                 os.seteuid(f_stats[stat.ST_UID])
-            except OSError, msg:
+            except OSError:
                 pass
     
     file_info = {"f_stats"       : f_stats}
@@ -1143,34 +1142,9 @@ def check_bit_file(bfid):
         # between two machines anyway.
         afn = access_file(mp, file_record['pnfsid']) #afn =  access file name
 
-        """
-        #Stat the file.
-        t0 = time.time()
-        f_stats, (e2, w2, i2) = get_stat(afn)
-        print time.time() - t0, afn
-        if not f_stats:
-            continue
-        if not stat.S_ISREG(f_stats[stat.ST_MODE]):
-            continue
-        
-        try:
-            #Becoming the owner of the file speeds up future open() calls
-            # when checking layers.
-            os.setegid(f_stats[stat.ST_GID])
-            os.seteuid(f_stats[stat.ST_UID])
-        except OSError:
-            pass
-        """
-        
         #Check layer 1 to get the bfid.
         layer1_bfid = __get_layer_1(afn)
         if layer1_bfid:
-
-            #Update the global cache information.
-            #if last_db_tried[0] != pnfsid_db:
-            last_db_tried = (db_num, mp)
-                #search_list = [(db_num, mp)] + db_pnfsid_cache.items()
-
             #Make sure this is the correct file.
             if layer1_bfid == file_record['bfid']:
                 if file_record['deleted'] == 'yes':
@@ -1188,6 +1162,47 @@ def check_bit_file(bfid):
                     errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
+                    #Update the global cache information.  
+                    if db_num != pnfsid_db:
+                        #We use db_pnfsid_cache instead of search_list,
+                        # becuase it is easier to search.
+                        if pnfsid_db in db_pnfsid_cache.keys():
+                            pnfsid_mp = db_pnfsid_cache[pnfsid_db]
+                            #We get here if this is another top level db.
+                            afn = access_file(pnfsid_mp,
+                                              file_record['pnfsid'])
+                            layer1_bfid = __get_layer_1(afn)
+                            if layer1_bfid and \
+                               layer1_bfid == file_record['bfid']:
+                                last_db_tried = (pnfsid_db, pnfsid_mp)
+                        else:
+                            #We get here if it is not mounted or it is
+                            # not a top level db.
+                            find_db = ("0000%s" % (hex(pnfsid_db)[2:],))[-4:]
+                            #The first seems to work for top level DBs.
+                            find_pnfsid_1 = "%s00000000000000001060" % find_db
+                            #The second seems to work for sub DBs.
+                            find_pnfsid_2 = "%s00000000000000001080" % find_db
+                            p = pnfs.Pnfs()
+                            try:
+                                pnfsid_mp = p.get_path(find_pnfsid_1)
+                            except:
+                                try:
+                                    pnfsid_mp = p.get_path(find_pnfsid_2)
+                                except:
+                                    pnfsid_mp = None
+
+                            if pnfsid_mp != None:
+                                afn = access_file(pnfsid_mp,
+                                                  file_record['pnfsid'])
+                                layer1_bfid = __get_layer_1(afn)
+                                if layer1_bfid and \
+                                       layer1_bfid == file_record['bfid']:
+                                    last_db_tried = (pnfsid_db, pnfsid_mp)
+                            else:
+                                last_db_tried = (-1, "")
+
+                    #We found the file, set the pnfs path.
                     pnfs_path = afn
                     break
 
@@ -1327,14 +1342,14 @@ def check_bit_file(bfid):
                 try:
                     os.setegid(0)
                     os.seteuid(0)
-                except OSError, msg:
+                except OSError:
                     pass
 
             #Set the uid and gid to match that of the file's owner.
             try:
                 os.setegid(f_stats[stat.ST_GID])
                 os.seteuid(f_stats[stat.ST_UID])
-            except OSError, msg:
+            except OSError:
                 pass
 
     file_info = {"f_stats"       : f_stats,
