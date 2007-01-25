@@ -37,6 +37,9 @@ create_new_accountingdb:
 create_new_drivestatdb:
     similar to create_new_enstoredb, it creates drivestat db
 
+create_new_databases:
+    create all databases served by a single database server
+
 get_schema:
     dumps current schema from running databases
 
