@@ -1118,6 +1118,11 @@ def check_bit_file(bfid):
     #Loop over all found mount points.
     for db_num, mp in [last_db_tried] + search_list:
 
+        #If last_db_tried is still set to its initial value, we need to
+        # skip the the next.
+        if db_num < 0:
+            continue
+
         """
         #This test is to make sure that the pnfs filesystem we are going
         # to query has a database N (where N is pnfsid_db).  Otherwise
@@ -1163,7 +1168,7 @@ def check_bit_file(bfid):
 
             #Update the global cache information.
             #if last_db_tried[0] != pnfsid_db:
-            last_db_tried = (pnfsid_db, mp)
+            last_db_tried = (db_num, mp)
                 #search_list = [(db_num, mp)] + db_pnfsid_cache.items()
 
             #Make sure this is the correct file.
