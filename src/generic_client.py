@@ -192,17 +192,25 @@ class GenericClient:
                                                rcv_timeout, tries)
 
         if not e_errors.is_ok(ticket):
-            sys.stderr.write(
-                "Got error while trying to obtain configuration: %s\n" %
-                (ticket['status'],))
+            try:
+                sys.stderr.write(
+                    "Got error while trying to obtain configuration: %s\n" %
+                    (ticket['status'],))
+                sys.stderr.flush()
+            except IOError:
+                pass
             return None
         
         try:
             server_address = (ticket['hostip'], ticket['port'])
         except KeyError, detail:
-            sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
-                             ( my_server, detail, 
-                               os.environ.get('ENSTORE_CONFIG_HOST','')))
+            try:
+                sys.stderr.write("Unknown server %s (no %s defined in config on %s)\n" %
+                                 ( my_server, detail, 
+                                   os.environ.get('ENSTORE_CONFIG_HOST','')))
+                sys.stderr.flush()
+            except IOError:
+                pass
 
             #Stop calling os._exit().  This created a situation where
             # code could not instantiate a client and errored out.  Thus,
@@ -269,7 +277,11 @@ class GenericClient:
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
         except KeyError, detail:
-            sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
+            try:
+                sys.stderr.write("Unknown server %s (no key %s)\n" % (server, detail))
+                sys.stderr.flush()
+            except IOError:
+                pass
             os._exit(1)
         return x
 
@@ -291,7 +303,11 @@ class GenericClient:
             else:
                 return {'status' : (e_errors.BROKEN, str(msg))}
         except KeyError:
-            sys.stderr.write("Unknown server %s\n" % (server,))
+            try:
+                sys.stderr.write("Unknown server %s\n" % (server,))
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
         return x
     

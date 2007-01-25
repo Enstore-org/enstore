@@ -101,9 +101,12 @@ def alarm_signal_handler(sig, frame):
     for display in displays:
         time_passed = time.time() - display.last_message_processed
         if time_passed > TEN_MINUTES:
-            sys.stderr.write("Seconds passed since last message: %s\n" %
-                             (time_passed),)
-            sys.stderr.flush()
+            try:
+                sys.stderr.write("Seconds passed since last message: %s\n" %
+                                 (time_passed),)
+                sys.stderr.flush()
+            except IOError:
+                pass
             display.reinitialize()
             
     signal.alarm(TEN_MINUTES)
@@ -264,7 +267,11 @@ def get_all_systems(csc, intf=None): #, system_name=None):
     #If intf is not given and the cached version is already known not to
     # exist throw an error an abort.
     if not intf:
-        sys.stderr.write("Unknown error.  Aborting.\n")
+        try:
+            sys.stderr.write("Unknown error.  Aborting.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     #If running on 'canned' version, don't bother with configuration server.
@@ -284,7 +291,11 @@ def get_all_systems(csc, intf=None): #, system_name=None):
                 del config_servers[system_name]
 
         if len(config_servers) == 0:
-            sys.stderr.write("Unknown enstore systems.  Aborting.\n")
+            try:
+                sys.stderr.write("Unknown enstore systems.  Aborting.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
     else:
         config_host = enstore_functions2.default_host()
@@ -310,7 +321,11 @@ def get_all_systems(csc, intf=None): #, system_name=None):
                 time.sleep(1)
                 continue
         else:
-            sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
+            try:
+                sys.stderr.write("Unable to obtain ip information.  Aborting.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
         if addr_info[1] != []:
             short_name = addr_info[1][0]
@@ -343,7 +358,11 @@ def get_system_name(intf, cscs_info):
         return "Enstore: %s" % intf.args
 
     if len(cscs_info.keys()) == 0:
-        sys.stderr.write("Config not found.\n")
+        try:
+            sys.stderr.write("Config not found.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     elif len(cscs_info.keys()) == 1:
@@ -681,7 +700,11 @@ def get_mover_list(intf, csc, fullnames=None, with_system=None):
         try:
             mover_list = csc.get_movers(lm_dict[lm]['name'])
         except (TypeError, NameError):
-            #sys.stderr.write(str(lm_dict[lm]))
+            #try:
+            #    sys.stderr.write(str(lm_dict[lm]))
+            #    sys.stderr.flush()
+            #except IOError:
+            #    pass
             continue
 
         try:
@@ -849,9 +872,12 @@ def start_messages_thread(csc_addr, system_name, intf):
 
     else:
         #We kept on failing to start the thread.
-        sys.stderr.write("Failed to start network thread for %s.\n" %
-                         (system_name,))
-        sys.stderr.flush()
+        try:
+            sys.stderr.write("Failed to start network thread for %s.\n" %
+                             (system_name,))
+            sys.stderr.flush()
+        except IOError:
+            pass
             
     return
 
@@ -1040,7 +1066,11 @@ def handle_messages(csc_addr, system_name, intf):
                 if msg.args[0] == errno.EINTR:
                     erc.unsubscribe()
                     erc.sock.close()
-                    sys.stderr.write("Exiting early.\n")
+                    try:
+                        sys.stderr.write("Exiting early.\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
                     sys.exit(1)
 
             #If nothing received for 60 seconds, resubscribe.
@@ -1414,13 +1444,21 @@ def main(intf):
             csc = configuration_client.ConfigurationClient(
                 (default_config_host, default_config_port))
         except (socket.error,), msg:
-            sys.stderr.write("Error contacting configuration server: %s\n" %
-                             msg.args[1])
+            try:
+                sys.stderr.write("Error contacting configuration server: %s\n" %
+                                 msg.args[1])
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
         rtn_tkt = csc.dump_and_save(timeout = 2, retry = 2)
         if not e_errors.is_ok(rtn_tkt):
-            sys.stderr.write("Unable to contact configuration server: %s\n" %
-                             str(rtn_tkt['status']))
+            try:
+                sys.stderr.write("Unable to contact configuration server: %s\n" %
+                                 str(rtn_tkt['status']))
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
         csc.new_config_obj.enable_caching()
 
@@ -1428,7 +1466,11 @@ def main(intf):
         # configuration with all unspecified systems removed.
         cscs_info = get_all_systems(csc, intf)
         if not cscs_info:
-            sys.stderr.write("Unable to find configuration server.\n")
+            try:
+                sys.stderr.write("Unable to find configuration server.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit(1)
         
         #Get the short name for the enstore system specified.

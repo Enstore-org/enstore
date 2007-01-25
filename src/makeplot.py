@@ -1,11 +1,18 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
+# system imports
 import sys
 import string
 import os
 import tempfile
 import time
 
+# enstore imports
 import configuration_client
 import enstore_functions2
 
@@ -53,7 +60,7 @@ def get_rate_info():
     csc = configuration_client.ConfigurationClient()
     ratekeep = csc.get('ratekeeper', timeout=15, retry=3)
     
-    dir  = ratekeep.get('dir', 'MISSING')
+    dname= ratekeep.get('dir', 'MISSING')
     tmp_dir  = ratekeep.get('tmp', 'MISSING')
     ratekeeper_name = ratekeep.get('name','MISSING')
     ratekeeper_host = ratekeep.get('host','MISSING')
@@ -62,7 +69,7 @@ def get_rate_info():
     jpg_filename = ratekeep.get('jpg','MISSING')
     jpg_stamp_filename = ratekeep.get('stamp','MISSING')
     
-    if dir == 'MISSING':
+    if dname == 'MISSING':
         print "Unable to determine the log directory."
         sys.exit(1)
     if tmp_dir == 'MISSING':
@@ -86,12 +93,12 @@ def get_rate_info():
         print "Unable to determine the jpg stamp output filename."
         sys.exit(1)
 
-    if dir[-1] != "/":
-        dir = dir + "/"
+    if dname[-1] != "/":
+        dname = dname + "/"
     if tmp_dir[-1] != "/":
         tmp_dir = tmp_dir + "/"
 
-    return dir, tmp_dir, ratekeeper_name, rate_nodes, ps_filename, \
+    return dname, tmp_dir, ratekeeper_name, rate_nodes, ps_filename, \
            jpg_filename, jpg_stamp_filename
 
 
@@ -131,8 +138,8 @@ def filter_out_files(sys_name, log_dir, time_in_days):
 #rate_log_files is the list of files and scaled_filename is the file that
 # the merged data is written to.
 def write_scale_file(log_dir, rate_log_files, scaled_file):
-    for file in rate_log_files:
-        in_file = open(log_dir + file, "r")
+    for fname in rate_log_files:
+        in_file = open(log_dir + fname, "r")
         while 1:
             line = in_file.readline()
             if not line:
@@ -225,7 +232,11 @@ if __name__ == "__main__":
 
     #Make sure the gnuplot is available.
     if os.system("echo exit | gnuplot > /dev/null 2>&1"):
-        sys.stderr.write("Unable to find gnuplot.  Aborting.\n")
+        try:
+            sys.stderr.write("Unable to find gnuplot.  Aborting.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
     
     log_dir, tmp_dir, sys_name, rate_nodes, ps_filename_template, \
@@ -279,8 +290,12 @@ if __name__ == "__main__":
         scaled_file.seek(0, 0) #Go to beginning of the file.
     except (OSError, IOError):
         exc, msg = sys.exc_info()[:2]
-        sys.stderr.write("Unable to write scaled file: %s: %s\n" %
-                         (str(exc), str(msg)))
+        try:
+            sys.stderr.write("Unable to write scaled file: %s: %s\n" %
+                             (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     #Write the smoothed file
@@ -290,8 +305,12 @@ if __name__ == "__main__":
         smooth_file.seek(0, 0) #Go to beginning of the file.
     except (OSError, IOError):
         exc, msg = sys.exc_info()[:2]
-        sys.stderr.write("Unable to write smoothed file: %s: %s\n" %
-                         (str(exc), str(msg)))
+        try:
+            sys.stderr.write("Unable to write smoothed file: %s: %s\n" %
+                             (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     for group in groups:
@@ -304,8 +323,12 @@ if __name__ == "__main__":
             plot_file.close()     #Close this file so gnuplot can read it.
         except (OSError, IOError):
             exc, msg = sys.exc_info()[:2]
-            sys.stderr.write("Unable to write plot file: %s: %s\n" %
-                             (str(exc), str(msg)))
+            try:
+                sys.stderr.write("Unable to write plot file: %s: %s\n" %
+                                 (str(exc), str(msg)))
+                sys.stderr.flush()
+            except IOError:
+                pass
             sys.exit()
             
         os.system("gnuplot < %s" % plot_filename[group])
@@ -321,8 +344,12 @@ if __name__ == "__main__":
         smooth_file.close()
     except (OSError, IOError):
         exc, msg = sys.exc_info()[:2]
-        sys.stderr.write("Unable to write scaled file: %s: %s\n" %
-                         (str(exc), str(msg)))
+        try:
+            sys.stderr.write("Unable to write scaled file: %s: %s\n" %
+                             (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit()
 
     os.remove(scaled_filename)

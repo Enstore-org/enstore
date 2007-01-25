@@ -75,7 +75,11 @@ def error_output(request):
     #Format the output.
     msg = "error_output %s %s\n" % (file_number, message)
     #Print the output.
-    sys.stderr.write(msg)
+    try:
+        sys.stderr.write(msg)
+        sys.stderr.flush()
+    except IOError:
+        pass
 
 def halt(exit_code=1):
     Trace.message(1, "Get exit status: %s" % (exit_code,))
@@ -230,7 +234,11 @@ def mover_handshake(listen_socket, udp_socket, request, encp_intf):
 	       ticket.get('unique_id', None))
 	ticket['status'] = (e_errors.EPROTO, str(msg))
 	#Report the errors.
-	sys.stderr.write("%s\n" % str(msg))
+        try:
+            sys.stderr.write("%s\n" % str(msg))
+            sys.stderr.flush()
+        except IOError:
+            pass
 	Trace.log(e_errors.ERROR, str(msg))
 
     return control_socket, ticket
@@ -412,9 +420,13 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
 	    mover_addr = work_ticket['mover']['callback_addr']
 	except KeyError:
 	    msg = sys.exc_info()[1]
-	    sys.stderr.write("Sub ticket 'mover' not found.\n")
-	    sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
-	    sys.stderr.write(pprint.pformat(work_ticket)+"\n")
+            try:
+                sys.stderr.write("Sub ticket 'mover' not found.\n")
+                sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
+                sys.stderr.write(pprint.pformat(work_ticket)+"\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
 	    if e_errors.is_ok(work_ticket.get('status', (None, None))):
 		work_ticket['status'] = (e_errors.KEYERROR, str(msg))
 	    return None, work_ticket
@@ -454,7 +466,11 @@ def get_single_file(work_ticket, tinfo, control_socket, udp_socket, e):
             Trace.log(e_errors.INFO, "Opened the data socket.")
         except (encp.EncpError, socket.error), detail:
             msg = "Unable to open data socket with mover: %s" % (str(detail),)
-            sys.stderr.write("%s\n" % str(msg))
+            try:
+                sys.stderr.write("%s\n" % str(msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
             Trace.log(e_errors.ERROR, str(msg))
             work_ticket['status'] = (e_errors.NET_ERROR, str(msg))
 
@@ -759,8 +775,12 @@ def set_metadata(ticket, intf):
     try:
         ticket['file_size'] = ticket['exfer'].get("bytes", 0L)
     except:
-        sys.stderr.write("Unexpected error setting metadata.\n")
-        sys.stderr.write(pprint.pformat(ticket))
+        try:
+            sys.stderr.write("Unexpected error setting metadata.\n")
+            sys.stderr.write(pprint.pformat(ticket))
+            sys.stderr.flush()
+        except IOError:
+            pass
         exc, msg, tb = sys.exc_info()
         raise exc, msg, tb
 
@@ -1462,18 +1482,30 @@ if __name__ == '__main__':
     intf_of_encp.argv = sys.argv[:] #Hackish
 
     if not encp.is_volume(sys.argv[-3]):
-        sys.stderr.write("First argument is not a volume name.\n")
+        try:
+            sys.stderr.write("First argument is not a volume name.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
         
     if not os.path.exists(sys.argv[-2]) or not os.path.isdir(sys.argv[-2]) \
        or not pnfs.is_pnfs_path(sys.argv[-2]):
-        sys.stderr.write("Second argument is not an input directory.\n")
+        try:
+            sys.stderr.write("Second argument is not an input directory.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     if sys.argv[-1] == "/dev/null":
         pass  #If the output is /dev/null, this is okay.
     elif not os.path.exists(sys.argv[-1]) or not os.path.isdir(sys.argv[-1]):
-        sys.stderr.write("Third argument is not an output directory.\n")
+        try:
+            sys.stderr.write("Third argument is not an output directory.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     #print encp.format_class_for_print(intf_of_encp, "intf_of_encp")

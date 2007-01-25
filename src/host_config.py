@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+
+###############################################################################
 #
-# $Id$
+# src/$RCSfile$   $Revision$
 #
+###############################################################################
 
 """The client-side configuration file will be called /etc/enstore.conf but this can
 be overridden with env. var. ENSTORE_CONF"""
@@ -53,7 +56,11 @@ def read_config_file(filename):
     try:
         f = open(filename, 'r')
     except:
-        sys.stderr.write("Can't open %s" % (filename,))
+        try:
+            sys.stderr.write("Can't open %s" % (filename,))
+            sys.stderr.flush()
+        except IOError:
+            pass
         return None
     for line in f.readlines():
         comment = string.find(line, "#")
@@ -68,7 +75,11 @@ def read_config_file(filename):
         for token in tokens:
             eq = string.find(token,'=')
             if eq<=0:
-                sys.stderr.write("%s: syntax error, %s"%(filename, token))
+                try:
+                    sys.stderr.write("%s: syntax error, %s"%(filename, token))
+                    sys.stderr.flush()
+                except IOError:
+                    pass
                 f.close()
                 return None
             key, value = token[:eq], token[eq+1:]
@@ -341,7 +352,7 @@ def is_route_in_table(dest):
         try:
             ip = socket.gethostbyname(dest)
             break
-        except socket.error, msg:
+        except (socket.error,), msg:
             if msg.args[0] == errno.EAGAIN or msg.args[0] == errno.EINTR:
                 continue
             else:
@@ -464,8 +475,12 @@ def set_route(dest, interface_ip):
         # and enroute2 have not been compiled recently.  This is likely
         # due to the change to support passing the local interface to be
         # used from encp to enroute2.
-        sys.stderr.write("Unable to change route.  Update, recompile and"
-                         " try again.\n")
+        try:
+            sys.stderr.write("Unable to change route.  Update, recompile and"
+                             " try again.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
@@ -481,7 +496,11 @@ def set_route(dest, interface_ip):
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
-        sys.stderr.write("enroute2 does not support route addition\n")
+        try:
+            sys.stderr.write("enroute2 does not support route addition\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
     
 def update_route(dest, interface_ip):
     config = get_config()
@@ -507,8 +526,12 @@ def update_route(dest, interface_ip):
         # and enroute2 have not been compiled recently.  This is likely
         # due to the change to support passing the local interface to be
         # used from encp to enroute2.
-        sys.stderr.write("Unable to change route.  Update, recompile and"
-                         " try again.\n")
+        try:
+            sys.stderr.write("Unable to change route.  Update, recompile and"
+                             " try again.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
@@ -524,7 +547,11 @@ def update_route(dest, interface_ip):
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
-        sys.stderr.write("enroute2 does not support route modification\n")
+        try:
+            sys.stderr.write("enroute2 does not support route modification\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
     
 def unset_route(dest):
     config = get_config()
@@ -542,8 +569,12 @@ def unset_route(dest):
         # and enroute2 have not been compiled recently.  This is likely
         # due to the change to support passing the local interface to be
         # used from encp to enroute2.
-        sys.stderr.write("Unable to change route.  Update, recompile and"
-                         " try again.\n")
+        try:
+            sys.stderr.write("Unable to change route.  Update, recompile and"
+                             " try again.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         return
 
     if err == 1: #Not called from encp/enstore.  (should never see this)
@@ -559,7 +590,11 @@ def unset_route(dest):
     elif err == 6: #Route change failed.
 	raise OSError(errno.EINVAL, "Routing: " + enroute.errstr(err))
     elif err == 7:  #Feature not supported by enroute2. (ignore)
-        sys.stderr.write("enroute2 does not support route deletion\n")
+        try:
+            sys.stderr.write("enroute2 does not support route deletion\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
 
 ##############################################################################
 # The following three functions select an interface based on various criteria.

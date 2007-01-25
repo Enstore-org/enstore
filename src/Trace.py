@@ -31,7 +31,11 @@ import event_relay_client
 import e_errors
 
 if __name__== '__main__':
-    print "No unit test, sorry"
+    try:
+        sys.exit.stderr("No unit test, sorry\n")
+        sys.stderr.flush()
+    except IOError:
+        pass
     sys.exit(-1)
 
 # message types.  a message type will be appended to every message so that
@@ -54,6 +58,8 @@ print_levels = {}
 log_levels = {}
 alarm_levels = {}
 message_levels = {}
+
+thread_name = None
 
 # stuff added by efb for new event_relay_client
 erc = None
@@ -166,8 +172,12 @@ def log(severity, msg, msg_type=MSG_DEFAULT, doprint=1):
             log_func(time.time(), os.getpid(), logname, (severity, new_msg))
         except:
             exc, detail = sys.exc_info()[:2]
-            sys.stderr.write("Failure writing message to log %s %s\n" %
-                             (msg, detail))
+            try:
+                sys.stderr.write("Failure writing message to log %s %s\n" %
+                                 (msg, detail))
+                sys.stderr.flush()
+            except IOError:
+                pass
         
     if doprint and print_levels.has_key(severity):
         try:

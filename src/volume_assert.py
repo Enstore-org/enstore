@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 ###############################################################################
+#
 # src/$RCSfile$   $Revision$
 #
+###############################################################################
+
 # system imports
 import os
 import sys
@@ -47,7 +50,11 @@ def parse_file(filename):
     try:
         fp = open(filename, "r")
     except OSError, msg:
-        sys.stderr.write(msg + "\n")
+        try:
+            sys.stderr.write(msg + "\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
         
     data=map(string.strip, fp.readlines())
@@ -84,7 +91,11 @@ def get_vcc_list():
     csc = configuration_client.ConfigurationClient()
     config_server_addr_list = csc.get('known_config_servers', 10, 6)
     if not e_errors.is_ok(config_server_addr_list['status']):
-        sys.stderr.write(str(config_server_addr_list['status']) + "\n")
+        try:
+            sys.stderr.write(str(config_server_addr_list['status']) + "\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
     #Remove status.
     del config_server_addr_list['status']
@@ -178,7 +189,11 @@ def create_assert_list(vol_list):
             break  #When the correct vcc is found skip the rest.
 
         else:
-            sys.stderr.write(e_msg)
+            try:
+                sys.stderr.write(e_msg)
+                sys.stderr.flush()
+            except IOError:
+                pass
 
     return assert_list, listen_socket
 
@@ -199,9 +214,13 @@ def submit_assert_requests(assert_list):
         responce_ticket = lmc.volume_assert(ticket, 10, 1)
 
         if not e_errors.is_ok(responce_ticket['status']):
-            sys.stderr.write("Submission for %s failed: %s\n" % \
-                             (ticket['vc']['external_label'],
-                              responce_ticket['status']))
+            try:
+                sys.stderr.write("Submission for %s failed: %s\n" % \
+                                 (ticket['vc']['external_label'],
+                                  responce_ticket['status']))
+                sys.stderr.flush()
+            except IOError:
+                pass
             continue
 
         unique_id_list.append(ticket['unique_id'])
@@ -226,7 +245,11 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         except:
             #Output a message.
             msg = sys.exc_info()[1]
-            sys.stderr.write(str(msg) + "\n")
+            try:
+                sys.stderr.write(str(msg) + "\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
 
             uncompleted_list = []
             for i in range(len(assert_list)):
@@ -251,9 +274,13 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
 
         if not e_errors.is_ok(callback_ticket['status']):
             #Output a message.
-            sys.stderr.write("Early error for %s: %s\n" %
-                             callback_ticket['vc']['external_label'],
-                             str(callback_ticket['status']))
+            try:
+                sys.stderr.write("Early error for %s: %s\n" %
+                                 callback_ticket['vc']['external_label'],
+                                 str(callback_ticket['status']))
+                sys.stderr.flush()
+            except IOError:
+                pass
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -261,7 +288,11 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         #Handle erroneous callbacks.
         if callback_ticket['unique_id'] not in unique_id_list:
             socket.close()
-            sys.stderr.write("Received unique id %s that is not expected.\n")
+            try:
+                sys.stderr.write("Received unique id %s that is not expected.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             continue
 
         try:
@@ -272,8 +303,12 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         except:
             #Output a message.
             msg = sys.exc_info()[1]
-            sys.stderr.write("Encountered final dialog error for %s: %s\n" %
-                             callback_ticket['vc']['external_label'], str(msg))
+            try:
+                sys.stderr.write("Encountered final dialog error for %s: %s\n" %
+                                 callback_ticket['vc']['external_label'], str(msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -288,7 +323,11 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         if e_errors.is_ok(done_ticket['status']):
             Trace.trace(1, message)
         else:
-            sys.stderr.write(message + "\n")
+            try:
+                sys.stderr.write(message + "\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
 
         if done_ticket.get('unique_id', None) != None:
             completed_id_list.append(done_ticket['unique_id'])
@@ -371,7 +410,11 @@ def main(intf):
     elif intf.volume: #read from command line argument.
         vol_list = parse_vol_list(intf.volume)
     else:
-        sys.stderr.write("No volume labels given.\n")
+        try:
+            sys.stderr.write("No volume labels given.\n")
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     #Create the list of assert work requests.
@@ -400,5 +443,8 @@ if __name__ == "__main__":
     try:
 	main(intf)
     except KeyboardInterrupt:
-        sys.stderr.write("KeyboardInterrupt\n")
-        sys.stderr.flush()
+        try:
+            sys.stderr.write("KeyboardInterrupt\n")
+            sys.stderr.flush()
+        except IOError:
+            pass

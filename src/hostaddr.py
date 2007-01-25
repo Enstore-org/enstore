@@ -46,8 +46,11 @@ def gethostinfo(verbose=0):
         if hostname != uname:
             message = "Warning:  gethostname returns %s, uname returns %s\n" \
                       % (hostname, uname)
-            sys.stderr.write(message)
-            sys.stderr.flush()
+            try:
+                sys.stderr.write(message)
+                sys.stderr.flush()
+            except IOError:
+                pass
         hostinfo=socket.gethostbyname_ex(hostname)
         #The following if is necessary for nodes (probably laptops) that
         # have 'problematic' /etc/hosts files.  This is because they contain

@@ -376,8 +376,11 @@ def encp_client_version():
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
     format = "ERROR: "+format
-    sys.stderr.write(format)
-    sys.stderr.flush()
+    try:
+        sys.stderr.write(format)
+        sys.stderr.flush()
+    except IOError:
+        pass
 
 def generate_unique_msg_id():
     global _msg_counter
@@ -656,8 +659,11 @@ def close_descriptors(*fds):
 	    try:
 		fd.close()
 	    except (OSError, IOError), msg:
-		sys.stderr.write(
-                    "Unable to close file object: %s\n" % str(msg))
+                try:
+                    sys.stderr.write(
+                        "Unable to close file object: %s\n" % str(msg))
+                except IOError:
+                    pass
                 Trace.log(e_errors.ERROR,
                           "Unable to close file object: %s\n" % str(msg))
         else:
@@ -667,8 +673,11 @@ def close_descriptors(*fds):
 		#The passed in object was not a valid socket descriptor.
 		pass
             except (OSError, IOError), msg:
-                sys.stderr.write(
-                    "Unable to close fd %s: %s\n" % (fd, str(msg)))
+                try:
+                    sys.stderr.write(
+                        "Unable to close fd %s: %s\n" % (fd, str(msg)))
+                except IOError:
+                    pass
                 Trace.log(e_errors.ERROR,
                           "Unable to close fd %s: %s\n" % (fd, str(msg)))
 
@@ -2184,8 +2193,11 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
     out.flush()
     if msg:
         msg=str(msg)
-        sys.stderr.write(msg+'\n')
-        sys.stderr.flush()
+        try:
+            sys.stderr.write(msg+'\n')
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     try:
         format = "INFILE=%s OUTFILE=%s FILESIZE=%s LABEL=%s LOCATION=%s " +\
@@ -2209,8 +2221,12 @@ STATUS=%s\n"""  #TIME2NOW is TOTAL_TIME, QWAIT_TIME is QUEUE_WAIT_TIME.
         Trace.log(msg_type, errmsg)
     except OSError:
         exc, msg = sys.exc_info()[:2]
-        sys.stderr.write("cannot log error message %s\n" % (errmsg,))
-        sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
+        try:
+            sys.stderr.write("cannot log error message %s\n" % (errmsg,))
+            sys.stderr.write("internal error %s %s\n" % (str(exc), str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     if not e_errors.is_ok(status):
         if not filesize:
@@ -2740,7 +2756,11 @@ def filesystem_check(work_ticket):
                "filesystem %s." % (target_filesystem,)
         Trace.log(e_errors.ERROR, str(msg) + ": " + msg2)
         if getattr(msg, "errno", None) == errno.EINVAL:
-            sys.stderr.write("WARNING: %s  Continuing.\n" % (msg2,))
+            try:
+                sys.stderr.write("WARNING: %s  Continuing.\n" % (msg2,))
+                sys.stderr.flush()
+            except IOError:
+                    pass
             return  #Nothing to test, user needs to be carefull.
         else:
             raise EncpError(getattr(msg, "errno", None), msg2,
@@ -3714,8 +3734,12 @@ def open_control_socket(listen_socket, mover_timeout):
             control_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
                                      socket.IPTOS_LOWDELAY)
         except socket.error, msg:
-            sys.stderr.write("Socket error setting IPTOS_LOWDELAY option: %s\n"
-                             % str(msg))
+            try:
+                sys.stderr.write("Socket error setting IPTOS_LOWDELAY option: %s\n"
+                                 % str(msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
 
         try:
             ticket = callback.read_tcp_obj(control_socket)
@@ -3850,8 +3874,12 @@ def open_data_socket(mover_addr, interface_ip = None):
 	data_path_socket.setsockopt(socket.IPPROTO_IP, socket.IP_TOS,
 				    socket.IPTOS_THROUGHPUT)
     except socket.error, msg:
-	sys.stderr.write("Socket error setting IPTOS_THROUGHPUT option: %s\n" %
-                         str(msg))
+        try:
+            sys.stderr.write("Socket error setting IPTOS_THROUGHPUT option: %s\n" %
+                             str(msg))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     Trace.message(TIME_LEVEL, "Time to open data socket: %s sec." %
                   (time.time() - time_to_open_data_socket,))
@@ -3981,9 +4009,13 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
             mover_addr = ticket['mover']['callback_addr']
         except KeyError:
             msg = sys.exc_info()[1]
-            sys.stderr.write("Sub ticket 'mover' not found.\n")
-            sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
-            sys.stderr.write(pprint.pformat(ticket)+"\n")
+            try:
+                sys.stderr.write("Sub ticket 'mover' not found.\n")
+                sys.stderr.write("%s: %s\n" % (e_errors.KEYERROR, str(msg)))
+                sys.stderr.write(pprint.pformat(ticket)+"\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             if e_errors.is_ok(ticket.get('status', (None, None))):
                 ticket['status'] = (e_errors.KEYERROR, str(msg))
             return None, None, ticket
@@ -4517,12 +4549,20 @@ def check_crc(done_ticket, encp_intf, fd=None):
     #Check this just to be safe.
     if mover_crc == None:
         msg =   "warning: mover did not return CRC; skipping CRC check\n"
-        sys.stderr.write(msg)
+        try:
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+        except IOError:
+            pass
         #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
         return
     if encp_intf.chk_crc and encp_crc == None:
         msg =   "warning: encp failed to calculate CRC; skipping CRC check\n"
-        sys.stderr.write(msg)
+        try:
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+        except IOError:
+            pass
         #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
         return
 
@@ -5255,7 +5295,11 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
             except:
                 exc, msg = sys.exc_info()[:2]
-                #sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+                #try:
+                #    sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+                #    sys.stderr.flush()
+                #except IOError:
+                #    pass
                 Trace.log(e_errors.ERROR,
                           "Resubmission error: %s: %s" % (str(exc), str(msg)))
 
@@ -5339,9 +5383,13 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         except KeyError, msg:
             lm_response = {'status':(e_errors.NET_ERROR,
                             "Unable to obtain response from library manager.")}
-            sys.stderr.write("Error processing retry of %s.\n" %
-                             (request_dictionary['unique_id']))
-            sys.stderr.write(pprint.pformat(request_dictionary)+"\n")
+            try:
+                sys.stderr.write("Error processing retry of %s.\n" %
+                                 (request_dictionary['unique_id']))
+                sys.stderr.write(pprint.pformat(request_dictionary)+"\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
             
         #Now it get checked.  But watch out for the recursion!!!
         internal_result_dict = internal_handle_retries([request_dictionary],
@@ -7520,14 +7568,22 @@ def verify_read_request_consistancy(requests_per_vol, e):
                        and quota[EXfer.CURRENT_BLOCKS] + sum_blocks > \
                        quota[EXfer.BLOCK_SOFT_LIMIT]:
                     message = "WARNING: Transfer will exeed soft quota limit."
-                    sys.stderr.write(message + "\n")
+                    try:
+                        sys.stderr.write(message + "\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
                 #Test if we are near file count quota.
                 if quota[EXfer.FILE_SOFT_LIMIT] \
                        and quota[EXfer.CURRENT_FILES] + sum_files > \
                        quota[EXfer.FILE_SOFT_LIMIT]:
                     message = "WARNING: Transfer will exeed soft quota limit."
-                    sys.stderr.write(message + "\n")
+                    try:
+                        sys.stderr.write(message + "\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
 #######################################################################
 
@@ -7698,7 +7754,11 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
 
     # Paranoid check to make sure that the output has only one element.
     if len(e.output)>1:
-        sys.stderr.write("%s %s\n" % e.output, type(e.output))
+        try:
+            sys.stderr.write("%s %s\n" % e.output, type(e.output))
+            sys.stderr.flush()
+        except IOError:
+            pass
         raise EncpError(None,
                         'Cannot have multiple output files',
                         e_errors.USERERROR)
@@ -8713,7 +8773,11 @@ def read_from_hsm(e, tinfo):
                         # request list?
                         message = "Successfully transfered a file that " \
                                   "is not in the file transfer list."
-                        sys.stderr.write(message + "\n")
+                        try:
+                            sys.stderr.write(message + "\n")
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
                         Trace.log(e_errors.ERROR,
                                   message + "  " + str(done_ticket))
                         
@@ -8733,7 +8797,11 @@ def read_from_hsm(e, tinfo):
 
                     if index == None:
                         message = "Unknown transfer failed."
-                        sys.stderr.write(message + "\n")
+                        try:
+                            sys.stderr.write(message + "\n")
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
                         Trace.log(e_errors.ERROR,
                                   message + "  " + str(done_ticket))
                         
@@ -9765,8 +9833,12 @@ def final_say(intf, done_ticket):
 
     except ValueError:
         exc, msg = sys.exc_info()[:2]
-        sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
-        sys.stderr.write("Exit status: %s\n", exit_status)
+        try:
+            sys.stderr.write("Error (main): %s: %s\n" % (str(exc), str(msg)))
+            sys.stderr.write("Exit status: %s\n", exit_status)
+            sys.stderr.flush()
+        except IOError:
+            pass
         #delete_at_exit.quit(1)
         return exit_status
 

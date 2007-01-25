@@ -93,14 +93,23 @@ except:
 
 #Make sure the environment has at least one copy of TCL/TK.
 if not os.environ.get("TCL_LIBRARY", None):
-    sys.stderr.write("Tcl library not found.\n")
+    try:
+        sys.stderr.write("Tcl library not found.\n")
+    except IOError:
+        pass
     sys.exit(1)
 if not os.environ.get("TK_LIBRARY", None):
-    sys.stderr.write("Tk library not found.\n")
+    try:
+        sys.stderr.write("Tk library not found.\n")
+    except IOError:
+        pass
     sys.exit(1)
 
 if not IMAGE_DIR:
-    sys.stderr.write("IMAGE_DIR is not set.\n")
+    try:
+        sys.stderr.write("IMAGE_DIR is not set.\n")
+    except IOError:
+        pass
     sys.exit(1)
 
 #print "_tkinter.so =", _TKINTER_SO

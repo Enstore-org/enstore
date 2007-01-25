@@ -75,12 +75,20 @@ def ensync(original_dir, pnfs_backup_dir):
         if file not in pnfs_backup_list:
             #This is not a good thing to jump accros file systems.
             if os.path.ismount(filepath):
-                sys.stderr.write("Detected a mount point.  Skipping: %s\n"
-                                 % filepath)
+                try:
+                    sys.stderr.write("Detected a mount point.  Skipping: %s\n"
+                                     % filepath)
+                    sys.stderr.flush()
+                except IOError:
+                    pass
                 continue
             if os.path.ismount(new_filepath):
-                sys.stderr.write("Detected a mount point. Skipping: %s\n"
-                                 % new_filepath)
+                try:
+                    sys.stderr.write("Detected a mount point. Skipping: %s\n"
+                                     % new_filepath)
+                    sys.stderr.flush()
+                except IOError:
+                    pass
                 continue
 
             #The output target should not exist.
@@ -106,9 +114,13 @@ def ensync(original_dir, pnfs_backup_dir):
                     if msg.errno == errno.ENOENT:
                         pass
                     else:
-                        sys.stderr.write(
-                        "Unable to handle new link: %s -> %s\n" % \
-                        (new_filepath, target))
+                        try:
+                            sys.stderr.write(
+                                "Unable to handle new link: %s -> %s\n" % \
+                                (new_filepath, target))
+                            sys.stderr.flush()
+                        except IOError:
+                            pass
                         continue
                     
                 #If the target is on the same file system, handle it.
@@ -117,9 +129,13 @@ def ensync(original_dir, pnfs_backup_dir):
                                               get_relative_cd(filepath,target))
                     new_target = os.path.normpath(new_target)
                 else:
-                    sys.stderr.write(
-                        "Unable to handle original link: %s -> %s\n" % \
-                        (filepath, target))
+                    try:
+                        sys.stderr.write(
+                            "Unable to handle original link: %s -> %s\n" % \
+                            (filepath, target))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
                     continue
 
                 Trace.trace(1, "Creating symbolic link: %s -> %s" % \
@@ -144,8 +160,12 @@ def ensync(original_dir, pnfs_backup_dir):
                 encp_output = fo.readlines()
                 rtn = fo.close()
                 if rtn:
-                    sys.stderr.write("ENCP ERROR\n")
-                    sys.stderr.write(string.join(encp_output))
+                    try:
+                        sys.stderr.write("ENCP ERROR\n")
+                        sys.stderr.write(string.join(encp_output))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
         #If the current "file" is a directory descend into it and repeat.
         if os.path.isdir(filepath):
@@ -154,7 +174,11 @@ def ensync(original_dir, pnfs_backup_dir):
             except (OSError, IOError), msg:
                 msg2 = "Sync. failed for %s from %s.  Continuing.\n" % \
                        (new_filepath, str(msg))
-                sys.stderr.write(msg2)
+                try:
+                    sys.stderr.write(msg2)
+                    sys.stderr.flush()
+                except IOError:
+                    pass
 
 ############################################################################
 ############################################################################
@@ -216,19 +240,35 @@ def main(intf):
 
     #Make sure the inputs are directories.
     if not os.path.isdir(original_dir):
-        sys.stderr.write("Target %s is not a directory.\n" % original_dir)
+        try:
+            sys.stderr.write("Target %s is not a directory.\n" % original_dir)
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
     if not os.path.isdir(pnfs_backup_dir):
-        sys.stderr.write("Target %s is not a directory.\n" % pnfs_backup_dir)
+        try:
+            sys.stderr.write("Target %s is not a directory.\n" % pnfs_backup_dir)
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
         
     #Make sure that one is and one is not a pnfs directory.
     if original_dir[:5] == "/pnfs":
-        sys.stderr.write("Source directory %s in pnfs.\n" % original_dir)
+        try:
+            sys.stderr.write("Source directory %s in pnfs.\n" % original_dir)
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
     if pnfs_backup_dir[:5] != "/pnfs":
-        sys.stderr.write("Destination directory %s not in pnfs.\n" % \
-                         pnfs_backup_dir)
+        try:
+            sys.stderr.write("Destination directory %s not in pnfs.\n" % \
+                             pnfs_backup_dir)
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
     try:
@@ -236,7 +276,11 @@ def main(intf):
     except (OSError, IOError), msg:
         msg2 = "Sync. failed for %s from %s.  Aborting at top level.\n" \
                % (pnfs_backup_dir, str(msg))
-        sys.stderr.write(msg2)
+        try:
+            sys.stderr.write(msg2)
+            sys.stderr.flush()
+        except IOError:
+            pass
         sys.exit(1)
 
 ############################################################################

@@ -16,10 +16,10 @@ import pprint
 import socket
 import select
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_GETFL
-    fcntl.F_SETFL = FCNTL.F_SETFL
+#if sys.version_info < (2, 2, 0):
+#    import FCNTL #FCNTL is depricated in python 2.2 and later.
+#    fcntl.F_GETFL = FCNTL.F_GETFL
+#    fcntl.F_SETFL = FCNTL.F_SETFL
 
 # enstore imports
 import callback
@@ -458,7 +458,11 @@ class MonitorServerClient(generic_client.GenericClient):
             )
 
         if not e_errors.is_ok(reply):
-            sys.stderr.write("Failed to update measurements.\n")
+            try:
+                sys.stderr.write("Failed to update measurements.\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
 
     #Either prints out message to screen, stores info. in a dictionary or both.
     #hostname: The current node that had its rate checked.

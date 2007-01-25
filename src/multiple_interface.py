@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 
 import os
 import sys
@@ -132,7 +138,11 @@ def stats(interfaces):
         # bad design.  This new way avoids having to do that.
         _parse = getattr(sys.modules[__name__], "_parse_"+uname())
     except:
-        sys.stderr.write("Unrecognized platform: %s\n" % uname())
+        try:
+            sys.stderr.write("Unrecognized platform: %s\n" % uname())
+            sys.stderr.flush()
+        except IOError:
+            pass
         _parse = _parse_default
 
     p = os.popen(netstat_cmd + " -i", 'r')
@@ -158,7 +168,11 @@ def stats(interfaces):
                 if tok and tok[0] == real_interface:
                     ret[interface] = _parse(tok)
                 elif tok and tok[0][-1] == "*" and tok[0][:-1] == interface:
-                    sys.stderr.write("Interface %s is down\n" % tok[0][:-1])
+                    try:
+                        sys.stderr.write("Interface %s is down\n" % tok[0][:-1])
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
     return ret
     
 def rates(interfaces):

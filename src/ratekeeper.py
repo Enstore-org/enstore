@@ -138,7 +138,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 try:
                     self.outfile.close()
                 except:
-                    sys.stderr.write("Can't open file\n")
+                    try:
+                        sys.stderr.write("Can't open file\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
             year, month, day = self.ymd
             outfile_name = os.path.join(self.output_dir, \
@@ -188,10 +192,8 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         now = time.time()
         self.start_time = next_minute(now)
         wait = self.start_time - now
-        #sys.stderr.write("waiting %.2f seconds\n" % wait)
         print "waiting %.2f seconds" % (wait,)
         time.sleep(wait)
-        #sys.stderr.write("starting\n")
         print "starting"
         N = 1L
         bytes_read_dict = {} # = 0L
@@ -221,7 +223,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                     self.outfile.flush()
                     rate_lock.release()
                 except:
-                    sys.stderr.write("Can't write to output file\n")
+                    try:
+                        sys.stderr.write("Can't write to output file\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
 
                 for key in bytes_read_dict.keys():
                     bytes_read_dict[key] = 0L

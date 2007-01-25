@@ -177,7 +177,11 @@ class UDPClient:
                     raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
                 except:
                     exc, msg = sys.exc_info()[:2]
-                    sys.stderr.write("%s: %s" % (str(exc), str(msg)))
+                    try:
+                        sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
                     pass
              
 

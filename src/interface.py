@@ -1,13 +1,18 @@
+#!/usr/bin/env python
 ###############################################################################
-# src/$RCSfile$   $Revision$
 #
+# $Id$
+#
+###############################################################################
+
+# system imports
 import string
 import os
 import getopt
 import sys
 
 # enstore imports
-import setpath
+#import setpath
 import Trace
 import e_errors
 import hostaddr
@@ -152,7 +157,11 @@ class Interface:
 
     def missing_parameter(self, param):
         Trace.trace(13,"ERROR: missing parameter %s"%(param,))
-        sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
+        try:
+            sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     def parameters(self):
         return " "
@@ -168,12 +177,20 @@ class Interface:
             self.options(), "\n\t\t")
 
     def print_help(self):
-        sys.stderr.write("USAGE: %s\n"%(self.help_line(),))
+        try:
+            sys.stderr.write("USAGE: %s\n"%(self.help_line(),))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     def print_usage_line(self, opts=None):
         if opts == None:
             opts = self.options()
-        sys.stderr.write(self.get_usage_line(opts))
+        try:
+            sys.stderr.write(self.get_usage_line(opts))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
     def get_usage_line(self, opts=None):
         if opts == None:
@@ -210,7 +227,11 @@ class Interface:
                                             self.options())
         except getopt.error, detail:
             Trace.trace(9, "ERROR: getopt error %s"%(detail,))
-            sys.stderr.write("error: %s\n"%(detail,))
+            try:
+                sys.stderr.write("error: %s\n"%(detail,))
+                sys.stderr.flush()
+            except IOError:
+                pass
             self.print_help()
             sys.exit(1)
         for (opt,value) in optlist :
@@ -241,7 +262,11 @@ class Interface:
                     self.bfids = 1
             elif opt == "--bytes":
                 if not self.test_mode:
-                    sys.stderr.write("bytecount may only be specified in test mode\n")
+                    try:
+                        sys.stderr.write("bytecount may only be specified in test mode\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
                     sys.exit(-1)
                 if value[-1]=='L':
                     value=value[:-1]

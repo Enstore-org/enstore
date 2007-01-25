@@ -87,8 +87,12 @@ def output(server_name):
         output_dir_base = os.path.join(os.environ['ENSTORE_DIR'], "tmp")
     except:
         output_dir_base = "/tmp/enstore/"
-        sys.stderr.write("Unable to determine temp. directory.  Using %s." %
-                         output_dir_base)          
+        try:
+            sys.stderr.write("Unable to determine temp. directory.  Using %s." %
+                             output_dir_base)
+            sys.stderr.flush()
+        except IOError:
+            pass
     try:
         username = pwd.getpwuid(os.geteuid())[0]
     except (KeyError, IndexError):
@@ -103,8 +107,12 @@ def output(server_name):
                 raise OSError, msg
     except OSError:
         output_dir = None
-        sys.stderr.write("Unable to create tmp directory %s: %s" %
-                         (output_dir, str(msg)))
+        try:
+            sys.stderr.write("Unable to create tmp directory %s: %s" %
+                             (output_dir, str(msg)))
+            sys.stderr.flush()
+        except IOError:
+            pass
     try:
         output_file = os.path.join(output_dir, "%s.out" % server_name)
     except TypeError:
@@ -144,8 +152,12 @@ def write_pid_file(servername):
         if hasattr(msg, 'errno') and msg.errno == errno.EEXIST:
             pass
         else:
-            sys.stderr.write(
-                "Error creating pid directory: %s\n" % str(msg))
+            try:
+                sys.stderr.write(
+                    "Error creating pid directory: %s\n" % str(msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
 
     #Make the pid file.
     try:
@@ -155,8 +167,12 @@ def write_pid_file(servername):
         f.write(msg)
         f.close()
     except OSError, msg:
-        sys.stderr.write(
-            "Error writing pid file: %s\n", str(msg))
+        try:
+            sys.stderr.write(
+                "Error writing pid file: %s\n", str(msg))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
 #Return true if the system is in one of the production systems.
 def is_in_cluster():

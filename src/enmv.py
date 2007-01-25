@@ -35,8 +35,11 @@ import Trace
 def print_error(errcode,errmsg):
     format = str(errcode)+" "+str(errmsg) + '\n'
     format = "ERROR: "+format
-    sys.stderr.write(format)
-    sys.stderr.flush()
+    try:
+        sys.stderr.write(format)
+        sys.stderr.flush()
+    except IOError:
+        pass
 
 # same_cookie(c1, c2) -- to see if c1 and c2 are the same
 #Copied from encp.py.
@@ -573,8 +576,12 @@ def do_work(intf):
         delete_at_exit.quit(1)
     #except:
         #exc, msg, tb = sys.exc_info()
-        #sys.stderr.write("%s\n" % (tb,))
-        #sys.stderr.write("%s %s\n" % (exc, msg))
+        #try:
+        #    sys.stderr.write("%s\n" % (tb,))
+        #    sys.stderr.write("%s %s\n" % (exc, msg))
+        #    sys.stderr.flush()
+        #except IOError:
+        #    pass
         #delete_at_exit.quit(1)
         
 

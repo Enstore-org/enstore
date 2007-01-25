@@ -942,7 +942,11 @@ class Interface:
             sys.exit(1)  #An error is known, exit as such.
 
     def missing_parameter(self, param):
-        sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
+        try:
+            sys.stderr.write("ERROR: missing parameter %s\n"%(param,))
+            sys.stderr.flush()
+        except IOError:
+            pass
 
 ############################################################################
 
@@ -968,7 +972,11 @@ class Interface:
         for opt in self.options.keys():
             if opt not in valid_option_list:
                 msg = "Developer error.  Option '%s' not in valid option list."
-                sys.stderr.write(msg % (opt,) + "\n")
+                try:
+                    sys.stderr.write(msg % (opt,) + "\n")
+                    sys.stderr.flush()
+                except IOError:
+                    pass
                 sys.exit(1)
 
     #Verifies that the number of left over options is correct.  If they are
@@ -978,7 +986,11 @@ class Interface:
         if length > num:
             extras = string.join(self.args[-(length - num):], " ")
             msg = "%d extra arguments specified: %s\n" % (length - num, extras)
-            sys.stderr.write(msg)
+            try:
+                sys.stderr.write(msg)
+                sys.stderr.flush()
+            except IOError:
+                pass
 
 ############################################################################
 
@@ -1646,7 +1658,12 @@ class Interface:
                 if next:
                     self.args.remove(next)
             except ValueError:
-                sys.stderr.write("Problem processing argument %s." % (next,))
+                try:
+                    sys.stderr.write("Problem processing argument %s." %
+                                     (next,))
+                    sys.stderr.flush()
+                except IOError:
+                    pass
 
 ############################################################################
     

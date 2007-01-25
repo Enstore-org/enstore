@@ -454,8 +454,12 @@ def do_work(intf):
 	    ticket = iqc.override(intf.override, intf.saagstatus)
 	else:
 	    # we did not get legal status values
-	    sys.stderr.write("ERROR: Invalid saagstatus value.")
-	    sys.stderr.write("    Legal values are: red, yellow, green, question\n")
+            try:
+                sys.stderr.write("ERROR: Invalid saagstatus value.")
+                sys.stderr.write("    Legal values are: red, yellow, green, question\n")
+                sys.stderr.flush()
+            except IOError:
+                pass
 	    intf.print_help()
 	    sys.exit(1)
 

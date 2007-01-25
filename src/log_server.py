@@ -154,8 +154,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    self.extra_logfiles = {}
 
     def open_logfile(self, logfile_name) :
-        dirname, file = os.path.split(logfile_name)
-        debug_file = "DEBUG%s" % (file,)
+        dirname, filename = os.path.split(logfile_name)
+        debug_file = "DEBUG%s" % (filename,)
         debug_file_name = os.path.join(dirname,debug_file)
         # try to open log file for append
         try:
@@ -172,8 +172,14 @@ class Logger(  dispatching_worker.DispatchingWorker
                     self.debug_logfile = open(debug_file_name, 'a')
 		self.open_extra_logs('w')
 	    except:
-                print  "cannot open log %s"%(logfile_name,)
-                sys.stderr.write("cannot open log %s\n"%(logfile_name,))
+                message="cannot open log %s"%(logfile_name,)
+                try:
+                    print  message
+                    sys.stderr.write("%s\n" % message)
+                    sys.stderr.flush()
+                    sys.stdout.flush()
+                except IOError:
+                    pass
 		os._exit(1)
 
     # return the current log file name
@@ -201,8 +207,8 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    files.reverse()
 	    num_files = 0
 	    lfiles = []
-	    for file in files:
-		if file[0:4] == FILE_PREFIX:
+	    for fname in files:
+		if fname[0:4] == FILE_PREFIX:
 		    lfiles.append("%s/%s"%(self.logfile_dir_path,file))
 		    num_files = num_files +1
 		    if num_files >= num_files_to_get and  not period == "all":
@@ -279,9 +285,9 @@ class Logger(  dispatching_worker.DispatchingWorker
             # pull out all the files that match the current name at a min
             size = len(filename)
             matching_l = []
-            for file in file_l:
-                if file[:size] == filename:
-                    matching_l.append(file)
+            for fname in file_l:
+                if fname[:size] == filename:
+                    matching_l.append(fname)
             else:
                 if matching_l:
                     matching_l.sort()
@@ -298,7 +304,7 @@ class Logger(  dispatching_worker.DispatchingWorker
         tm = time.localtime(time.time())          # get the local time
         day = current_day = tm[2];
         if self.test :
-            min = current_min = tm[4]
+            min1 = current_min = tm[4]
         # form the log file name
         fn = '%s%s' % (FILE_PREFIX, format_date(tm))
         if self.test:
@@ -330,7 +336,7 @@ class Logger(  dispatching_worker.DispatchingWorker
             tm = time.localtime(time.time())
             day = tm[2]
             if self.test :
-                min = tm[4]
+                min1 = tm[4]
             # if test flag is not set reopen log file at midnight
             if not self.test :
                 # check if day has been changed
@@ -364,7 +370,7 @@ class Logger(  dispatching_worker.DispatchingWorker
                         self.open_logfile(self.logfile_name)        
             else :
                 # if test flag is set reopen log file every minute
-                if min != current_min :
+                if min1 != current_min :
                     # minute changed: close the current log file
                     self.logfile.close()
                     if not self.no_debug:

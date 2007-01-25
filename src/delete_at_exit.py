@@ -60,7 +60,11 @@ def delete():
                 os.unlink(f)
             except:
                 Trace.log(e_errors.ERROR, "Can not delete file %s.\n" % (f,))
-                sys.stderr.write("Can not delete file %s.\n" % (f,))
+                try:
+                    sys.stderr.write("Can not delete file %s.\n" % (f,))
+                    sys.stderr.flush()
+                except IOError:
+                    pass
         else:
             pac = pnfs_agent_client.PnfsAgentClient(csc)
             #If pac.remove() had the protections on the pnfs agent side
@@ -78,8 +82,12 @@ def delete():
         except:
             Trace.log(e_errors.ERROR,
                       "Can not delete bfid %s from database.\n" % (b,))
-            sys.stderr.write("Can not delete bfid %s from database.\n" % (b,))
-
+            try:
+                sys.stderr.write("Can not delete bfid %s from database.\n" % (b,))
+                sys.stderr.flush()
+            except IOError:
+                    pass
+            
             
 def signal_handler(sig, frame):
 
@@ -117,8 +125,12 @@ def setup_signal_handling():
             except RuntimeError:
                 pass
             except (ValueError, TypeError):
-                sys.stderr.write("Setting signal %s to %s failed.\n" %
-                                 (sig, signal_handler))
+                try:
+                    sys.stderr.write("Setting signal %s to %s failed.\n" %
+                                     (sig, signal_handler))
+                    sys.stderr.flush()
+                except IOError:
+                    pass
 
 #Simply ignoring the pychecker warning really isn't a great solution.  A
 # different name other than "quit" sould really be used.  It is just used
@@ -132,8 +144,11 @@ def quit(exit_code=1):
     #The os._exit() call below does not flush out the contents in file
     # descriptor buffers.  To get stdout and stderr to do this, we must do so
     # explicitly, before calling os._exit().
-    sys.stdout.flush()
-    sys.stderr.flush()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError:
+        pass
 
     #Exit in a unclean way.
     ### Note MWZ 2-26-2004: There is (likely) a reason why this has always
