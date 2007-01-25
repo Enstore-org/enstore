@@ -40,10 +40,18 @@ case "$1" in
 		schema_name=drivestat.schema
 		;;
 	*)
-		echo usage: $0 enstoredb|accounting|drivestat
+		echo usage: $0 "enstoredb|accounting|drivestat"
 		exit
 		;;
 esac
 
 echo pg_dump -p $db_port -h $db_host $db_name -f $schema_dir/$schema_name -i -s -x
 pg_dump -p $db_port -h $db_host $db_name -f $schema_dir/$schema_name -i -s -x
+
+# initialize some parameters in enstoredb
+
+if [ "$1" == "enstoredb" ]
+then
+	echo "cat $enstore_dir/databases/scripts/init_enstoredb >> $schema_dir/$schema_name"
+	cat $enstore_dir/databases/scripts/init_enstoredb >> $schema_dir/$schema_name
+fi
