@@ -4137,7 +4137,7 @@ def submit_one_request(ticket, encp_intf):
                   "Failed to determine the type of transfer: %s" % str(ticket))
 
     #Put in the log file a message connecting filenames to unique_ids.
-    msg = "Sending %s %s request to LM: uninque_id: %s inputfile: %s " \
+    msg = "Sending %s %s request to LM: unique_id: %s inputfile: %s " \
           "outputfile: %s" \
           % (filename, transfer_type, ticket['unique_id'],
              ticket['infile'], ticket['outfile'])
