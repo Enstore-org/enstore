@@ -42,3 +42,7 @@ get_schema:
 
 restore_enstoredb:
     restore enstoredb from last backup
+
+init_enstoredb:
+    post table creation initialization for enstoredb
+    this is automatically included in the schema file by get_schema
