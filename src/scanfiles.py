@@ -108,8 +108,12 @@ def cleanup_objects():
         old_len = new_len #Only set this on the first pass.
     else:
         if new_len - old_len > 0:
-            sys.stderr.write("NEW COUNT DIFFERENCE: %s - %s = %s\n"
-                        % (new_len, old_len, new_len - old_len))
+            try:
+                sys.stderr.write("NEW COUNT DIFFERENCE: %s - %s = %s\n"
+                                 % (new_len, old_len, new_len - old_len))
+                sys.stderr.flush()
+            except IOError:
+                pass
             """
             i = 0
             for item in gc.get_objects():
@@ -913,6 +917,25 @@ def check(f, f_stats = None):
     if err or warn:
         errors_and_warnings(f, err, warn, info)
         return
+
+    #If we are a supper user, reset the effective uid and gid.
+    if os.getuid() == 0:
+        if os.geteuid() != f_stats[stat.ST_UID]:
+            if os.geteuid() != 0:
+                #If the currect effective ids are not currently root,
+                # we need to set them back before (re)setting them.
+                try:
+                    os.setegid(0)
+                    os.seteuid(0)
+                except OSError, msg:
+                    pass
+
+            #Set the uid and gid to match that of the file's owner.
+            try:
+                os.setegid(f_stats[stat.ST_GID])
+                os.seteuid(f_stats[stat.ST_UID])
+            except OSError, msg:
+                pass
     
     file_info = {"f_stats"       : f_stats}
 
@@ -1039,7 +1062,7 @@ def check_bit_file(bfid):
         #Sets global db_pnfsid_cache.
         parse_mtab()
         for db_num, mp in db_pnfsid_cache.items():
-            if db_num == 0 or os.path.basname(mp) == "fs":
+            if db_num == 0 or os.path.basename(mp) == "fs":
                 #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
                 p = pnfs.Pnfs()
                 use_path = os.path.join(mp, "usr")
