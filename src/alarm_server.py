@@ -112,7 +112,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
         #
         # We expect to get in alarm_ifno a bunch of key,value pairs
         # like e.g.
-        #   alarm_info['pattern']= { 'sg' : 'cms',
+        #   alarm_info['patterns']= { 'sg' : 'cms',
         #                          'node' : 'fcdsgi2.fnal.gov' } 
         #                      Dmitry Litvintsev (litvinse@fnal.gov)
         #       
