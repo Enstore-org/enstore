@@ -5199,12 +5199,21 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             print_data_access_layer_format(infile, outfile, file_size,
                                            error_dictionary)
 
+        
+        alarm_dict = {'infile':infile, 'outfile':outfile, 'status':status[1]}
         if e_errors.is_emailable(status[0]):
-            Trace.alarm(e_errors.EMAIL, status[0], {
-                'infile':infile, 'outfile':outfile, 'status':status[1]})
+            storage_group = \
+                          request_dictionary.get('vc', {}).get('storage_group',
+                                                               None)
+            if storage_group:
+                #If we put the storage group into the ticket, then we
+                # should be able to have the e-mail sent to the user.
+                alarm_dict['patterns'] = {'sg' : storage_group,
+                                          'node' : socket.gethostname(),
+                                         }
+            Trace.alarm(e_errors.EMAIL, status[0], alarm_dict)
         elif e_errors.is_alarmable(status[0]):
-            Trace.alarm(e_errors.ERROR, status[0], {
-                'infile':infile, 'outfile':outfile, 'status':status[1]})
+            Trace.alarm(e_errors.ERROR, status[0], alarm_dict)
 
         #try:
         #    #Try to delete the request.  In the event that the connection

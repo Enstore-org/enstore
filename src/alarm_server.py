@@ -121,7 +121,8 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             if type(params[2]) == types.StringType:
                 e_mail=params[2]
             else:
-                patterns_in_alarm=alarm_info['patterns'].values()
+                patterns_in_alarm=alarm_info['text'].get('patterns',
+                                                         {}).values()
                 for p in patterns_in_alarm:
                     if p in params[2].keys():
                         e_mail=params[2][p]
