@@ -189,7 +189,7 @@ class AlarmClientInterface(generic_client.GenericClientInterface):
                            option.USER_LEVEL:option.ADMIN,
                            },
         option.SEVERITY:{option.HELP_STRING:"severity of raised alarm "
-                         "(E, U, W, I, M)[D: W]",
+                         "(E, U, W, I, M, C)[D: W]",
                          option.VALUE_NAME:"severity",
                          option.VALUE_TYPE:option.STRING,
                          option.VALUE_USAGE:option.REQUIRED,
