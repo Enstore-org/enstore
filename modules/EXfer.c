@@ -1902,13 +1902,15 @@ static int setup_posix_io(struct transfer *info)
      * the size of the file. */
     info->last_fsync = info->size;
   }
-  else
+  else /* not a regular file */
   {
     /* Get the number of bytes to transfer between fsync() calls. */
     info->fsync_threshold = 0;
     /* Set the current number of bytes remaining since last fsync to
      * the size of the file. */
     info->last_fsync = 0;
+    /* Only regular files support file locking. */
+    info->advisory_locking = 0;
   }
 
   return 0;
@@ -4902,6 +4904,7 @@ EXfd_xfer(PyObject *self, PyObject *args)
     reads.transfer_direction = -1; /*read*/
     reads.direct_io = direct_io;
     reads.mmap_io = mmap_io;
+    reads.advisory_locking = 1;
     writes.fd = to_fd;
     /*writes.mmap_ptr = MAP_FAILED;*/
     /*writes.mmap_len = 0;*/
@@ -4918,6 +4921,7 @@ EXfd_xfer(PyObject *self, PyObject *args)
     writes.transfer_direction = 1; /*write*/
     writes.direct_io = direct_io;
     writes.mmap_io = mmap_io;
+    writes.advisory_locking = 1;
 
     errno = 0;
     if(threaded_transfer)
