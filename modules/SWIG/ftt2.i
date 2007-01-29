@@ -70,8 +70,49 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 /* End HACK*/
 %}
 
-%include pointer.i
 %include typemaps.i
+
+
+#ifdef SWIG_VERSION
+/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
+
+%include cpointer.i
+
+%typemap(in) FILE * {
+        if (!PyFile_Check($input)) {
+	    PyErr_SetString(PyExc_TypeError, "Expected file object");
+	    return NULL;
+        }
+	$1 = PyFile_AsFile($input);
+}
+
+%typemap (out) char ** {
+    int len, i;
+    len = 0;
+    while ($1[len]) len++;
+    $result = PyList_New(len);
+    for (i = 0; i < len; i++) {
+	PyList_SetItem($result, i, PyString_FromString($1[i]));
+    }
+}
+
+%{
+/* Include in the generated wrapper file */
+typedef char * cptr;
+%}
+/* Tell SWIG about it */
+typedef char * cptr;
+
+%typemap(in) cptr{
+        $1 = PyString_AsString($input);
+}
+
+#else
+/* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
+ * care to differentiate between 1.3.x and 1.1.y, though an issue exists
+ * for 1.3 versions with a patch level 10 or less. */
+
+%include pointer.i
 
 %typemap(python, in) FILE * {
         if (!PyFile_Check($source)) {
@@ -90,25 +131,6 @@ int ftt_set_last_operation(ftt_descriptor d, int op){
 	PyList_SetItem($target, i, PyString_FromString($source[i]));
     }
 }    
-
-#ifdef SWIG_VERSION
-/* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
-
-%{
-/* Include in the generated wrapper file */
-typedef char * cptr;
-%}
-/* Tell SWIG about it */
-typedef char * cptr;
-
-%typemap(in) cptr{
-        $1 = PyString_AsString($input);
-}
-
-#else
-/* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
- * care to differentiate between 1.3.x and 1.1.y, though an issue exists
- * for 1.3 versions with a patch level 10 or less. */
 
 %typedef char * cptr;
 
