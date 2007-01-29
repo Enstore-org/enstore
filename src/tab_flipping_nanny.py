@@ -4,6 +4,7 @@ import operation
 import time
 import sys
 import os
+import getopt
 
 LIMIT = 10 
 
@@ -13,14 +14,35 @@ seven_days = one_day * 7
 TMP_FILE = '/tmp/tab_flipping_nanny.tmp'
 
 if __name__ == '__main__':
+	# parse command line arguments
+	library = None
+	output = None
+	opts, args = getopt.getopt(sys.argv[1:], "l:o:", ["library=", "output="])
+	for o, a in opts:
+		if o in ["-l", "--library"]:
+			library = a
+		elif o in ["-o", "--output"]:
+			output = a
+
 	stdout_save = sys.stdout
-	if len(sys.argv) > 1:
-		sys.stdout = open(sys.argv[1], "w")
-	print "Recommended tap flipping jobs on %s"%(operation.cluster), time.ctime(time.time())
+	if not output and len(args) > 0:
+		output = args[0]
+	if output:
+		sys.stdout = open(output, "w")
+
+	if library:
+		dl = library
+	else:
+		dl = operation.DEFAULT_LIBRARIES
+
+	print "Recommended tap flipping jobs on %s (%s)"%(operation.cluster, dl), time.ctime(time.time())
 	print
 	print "Recommended write protect on jobs:"
 	print
-	res = operation.recommend_write_protect_job(limit=1000000)
+	if library:
+		res = operation.recommend_write_protect_job(library=library, limit=1000000)
+	else:
+		res = operation.recommend_write_protect_job(limit=1000000)
 	for i in res:
 		operation.show_cap(i, res[i])
 	total = 0
@@ -30,13 +52,19 @@ if __name__ == '__main__':
 	print "%d tapes in %d caps"%(total, oncaps)
 	print
 	# check last time a ticket was cut
-	onltt = operation.get_last_write_protect_on_job_time()
+	if library:
+		onltt = operation.get_last_write_protect_on_job_time(library)
+	else:
+		onltt = operation.get_last_write_protect_on_job_time()
 	if time.time() - onltt > seven_days:
 		print "==> Last ticket was cut 7 or more days ago ...", time.ctime(onltt)
 		print
 	print"Recommended write protect off jobs:"
 	print
-	res = operation.recommend_write_permit_job(limit=1000000)
+	if library:
+		res = operation.recommend_write_permit_job(library=library, limit=1000000)
+	else:
+		res = operation.recommend_write_permit_job(limit=1000000)
 	for i in res:
 		operation.show_cap(i, res[i])
 	total = 0
@@ -46,21 +74,27 @@ if __name__ == '__main__':
 	print "%d tapes in %d caps"%(total, offcaps)
 	print
 	# check last time a ticket was cut
-	offltt = operation.get_last_write_protect_off_job_time()
+	if library:
+		offltt = operation.get_last_write_protect_off_job_time(library)
+	else:
+		offltt = operation.get_last_write_protect_off_job_time()
 	if time.time() - offltt > seven_days:
 		print "==> Last ticket was cut 7 or more days ago ...", time.ctime(offltt)
 		print
 	sys.stdout = stdout_save
-	if len(sys.argv) > 1 and (oncaps >= LIMIT or offcaps >= LIMIT):
+	if output and (oncaps >= LIMIT or offcaps >= LIMIT):
 		cmd = 'cat %s'%(sys.argv[1])
 		os.system(cmd)
 		cmd = '/usr/bin/Mail -s "tab flipping watch" %s < %s '%(os.environ['ENSTORE_MAIL'], sys.argv[1])
 		os.system(cmd)
 
 	# should we generate the ticket?
-	if len(sys.argv) > 1 and oncaps and (
+	if output and oncaps and (
 		oncaps >= LIMIT or time.time() - onltt > seven_days):
-		res = operation.execute(['auto_write_protect_on'])
+		execmd = ['auto_write_protect_on']
+		if library:
+			execmd.append(library)
+		res = operation.execute(execmd)
 		f = open(TMP_FILE, 'w')
 		f.write("A write_protection_on ticket is generated for %s at %s\n\n"%(operation.cluster, time.ctime(time.time())))
 		for i in res:
