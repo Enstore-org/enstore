@@ -652,6 +652,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
             sts = self.robotHomeAndRestart(ticket)
             self.lastWorkTime = time.time()
 
+    def robotQuery(self, ticket):
+        ticket['status'] = (e_errors.NOT_SUPPORTED, 0,
+                            "AML2 robot queury is not supported.")
+        self.reply_to_caller(ticket)
+
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
 
@@ -1280,6 +1285,10 @@ class Manual_MediaLoader(MediaLoaderMethods):
         vcc.set_remaining_bytes(v['external_label'],remaining_bytes,'\0', None)
         return (e_errors.OK, 0, None)
 
+    def robotQuery(self, ticket):
+        ticket['status'] = (e_errors.NOT_SUPPORTED, 0,
+                            "Manual media changer has no robot to query.")
+        self.reply_to_caller(ticket)
 
 # Raw Disk and stand alone tape media server
 class RDD_MediaLoader(MediaLoaderMethods):
