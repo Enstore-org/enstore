@@ -20,7 +20,7 @@ try:
 except ImportError:
     thread_support=0
 
-import rexec
+#import rexec
 import types
 
 # enstore imports
@@ -99,9 +99,11 @@ def wait_rsp( sock, address, rcv_timeout ):
 class Container:
     pass
 
+"""
 _rexec = rexec.RExec()
 def r_eval(stuff):
     return _rexec.r_eval(stuff)
+"""
 
 class UDPClient:
 
@@ -238,7 +240,8 @@ class UDPClient:
             exc, msg = sys.exc_info()[:2]
             print exc, msg
             pass
-        
+
+    """
     def _eval_reply(self, reply): #private to send
         try:
             number, out, t = r_eval(reply) #XXX
@@ -253,6 +256,7 @@ class UDPClient:
             Trace.log(e_errors.ERROR, logmsg)
             raise sys.exc_info()
         return number, out, t
+    """
 
 
     def protocolize( self, text ):
@@ -261,11 +265,13 @@ class UDPClient:
         tsd.txn_counter = tsd.txn_counter + 1
 
         # CRC text
-        body = `(tsd.ident, tsd.txn_counter, text)`
+        #body = `(tsd.ident, tsd.txn_counter, text)`
+        body = udp_common.r_repr((tsd.ident, tsd.txn_counter, text))
         crc = checksum.adler32(0L, body, len(body))
 
         # stringify message and check if it is too long
-        message = `(body, crc)`
+        #message = `(body, crc)`
+        message = udp_common.r_repr((body, crc))
 
         if len(message) > TRANSFER_MAX:
             errmsg="send:message too big, size=%d, max=%d" %(len(message),TRANSFER_MAX)
@@ -314,7 +320,8 @@ class UDPClient:
                 if not reply: # receive timed out
                     break #resend
                 try:
-                    rcvd_txn_id, out, t = self._eval_reply(reply)
+                    #rcvd_txn_id, out, t = self._eval_reply(reply)
+                    rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out
@@ -397,7 +404,8 @@ class UDPClient:
                 if not reply: # receive or select timed out
                     break
                 try:
-                    rcvd_txn_id, out, t = self._eval_reply(reply)
+                    #rcvd_txn_id, out, t = self._eval_reply(reply)
+                    rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out

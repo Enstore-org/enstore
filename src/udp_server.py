@@ -23,7 +23,7 @@ import fcntl
 #    fcntl.FD_CLOEXEC = FCNTL.FD_CLOEXEC
 import copy
 import types
-import rexec
+#import rexec
 
 # enstore imports
 #import hostaddr
@@ -102,8 +102,10 @@ class UDPServer:
         # keep requests in request dict for this many seconds
         #self.request_dict_ttl = 1800
         self.request_dict_ttl = 1000
-        
+
+        """
         self.rexec = rexec.RExec()
+        """
         
         # set this socket to be closed in case of an exec
         if self.server_socket != None:
@@ -112,12 +114,14 @@ class UDPServer:
 
     def __del__(self):
         self.server_socket.close()
-        
+
+    """
     def r_eval(self, stuff):
         try:
             return self.rexec.r_eval(stuff)
         except:
             return None,None,None
+    """
     
     def purge_stale_entries(self):
         stale_time = time.time() - self.request_dict_ttl
@@ -185,7 +189,7 @@ class UDPServer:
                 req,addr = self.server_socket.recvfrom(self.max_packet_size,
 						       self.rcv_timeout)
 
-                request,inCRC = self.r_eval(req)
+                request,inCRC = udp_common.r_eval(req)
                 if request == None:
                     return (request, addr)
                 # calculate CRC
@@ -220,7 +224,7 @@ class UDPServer:
         ### udp_server becuase of the pre-existing use of 'ra' between
         ### the media_changer and udp_server.
        
-        idn, number, ticket = self.r_eval(request)
+        idn, number, ticket = udp_common.r_eval(request)
         if idn == None or type(ticket) != type({}):
             Trace.log(e_errors.ERROR,
                       "Malformed request from %s %s" %
@@ -311,18 +315,6 @@ class UDPServer:
         reply = (client_number, ticket, time.time())
         self.reply_with_list(reply, reply_address, current_id, interface_ip)
         
-        #reply = (client_number, ticket, time.time()) 
-	#self.request_dict[current_id] = copy.deepcopy(reply)
-	#ip, port, send_socket = udp_common.get_callback(interface_ip)
-        #send_socket.sendto(repr(self.request_dict[current_id]),
-	#		   reply_address)
-	#del send_socket
-
-        #Trace.trace(16,
-        #      "udp_server (reply with interface %s): to %s: request_dict %s" %
-        #      (interface_ip, self.reply_address,
-        #       self.request_dict[current_id],))
-
     # keep a copy of request to check for later udp retries of same
     # request and then send to the user
     def reply_with_list(self, list, reply_address, current_id,
@@ -341,7 +333,7 @@ class UDPServer:
         try:
             Trace.trace(16, "udp_server (reply%s): to %s: request_dict %s" %
                         (with_interface, reply_address, current_id))
-            send_socket.sendto(repr(list_copy), reply_address)
+            send_socket.sendto(udp_common.r_repr(list_copy), reply_address)
         except:
             Trace.handle_error()
 
