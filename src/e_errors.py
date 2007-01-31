@@ -91,6 +91,8 @@ WRONG_FORMAT = "WRONG FORMAT"
 FILESYSTEM_CORRUPT = "Filesystem is corrupt" #Encp finds pnfs corrupted.
 MC_QUEUE_FULL = "MEDIA_CHANGER_QUEUE_FULL" # media changer queue is full
 BAD_FILE_SIZE = "BAD_FILE_SIZE" # file size is bad. For instance < 0
+NOT_SUPPORTED = "NOT SUPPORTED"
+
 # Severity codes
 # NOTE: IMPORTANT, THESE VALUES CORRESPOND TO "TRACE LEVELS" AND CHANGING
 #       THEM WILL IMPACT OTHER PARTS OF THE SYSTEM
