@@ -16,7 +16,6 @@ import time
 #import thread
 import threading
 #import re
-import rexec
 import errno
 import gc, inspect
 import types
@@ -54,10 +53,6 @@ import Tkinter
 #########################################################################
 # Globals
 #########################################################################
-
-_rexec = rexec.RExec()
-def _eval(stuff):
-    return _rexec.r_eval(stuff)
 
 TEN_MINUTES=600   #600seconds = 10minutes
 DEFAULT_BG_COLOR = '#add8e6'   #light blue
@@ -117,19 +112,6 @@ def open_files(message):
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
-
-
-def dict_eval(data):
-    ##This is like "eval" but it assumes the input is a
-    ## dictionary; any trailing junk will be ignored.
-    last_brace = string.rindex(data, '}')
-    try:
-        d = _eval(data[:last_brace+1])
-    except (ValueError, KeyError, IndexError, TypeError):
-        print "Error", data,
-        d = {}
-    return d
-
 
 def print_object(item):
     if type(item) in [types.FrameType]:
