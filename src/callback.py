@@ -135,6 +135,8 @@ def write_tcp_raw(sock,msg,timeout=15*60):
 # send a message which is a Python object
 def write_tcp_obj(sock,obj,timeout=15*60):
     return write_tcp_raw(sock,repr(obj),timeout)
+### When we want to go strictly to cPickle use the following line.
+#    return write_tcp_obj_new(sock,obj,timeout)
 
 # send a message which is a Python object
 def write_tcp_obj_new(sock,obj,timeout=15*60):
@@ -328,7 +330,6 @@ def read_tcp_obj(sock, timeout=15*60) :
         except SyntaxError:
             obj = None
     
-    #return _eval(s)
     return obj
 
 def read_tcp_obj_new(sock, timeout=15*60) :
