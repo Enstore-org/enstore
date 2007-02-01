@@ -28,6 +28,10 @@ import atomic
 import charset
 import Trace
 
+description = "enmv stands for ENstore MV.  It is a PNFS and Enstore" \
+              " aware tool for moving\nfiles around in pnfs.  enmv is" \
+              " required to move files between PNFS directories\nlocated" \
+              " in different databases.\n"
 
 #def quit(exit_code=1):
 #    delete_at_exit.quit(exit_code)
@@ -517,14 +521,22 @@ class EnmvInterface(option.Interface):
         option.Interface.parse_options(self)
 
         #Need a source and destination file name.
+        if self.help:
+            print description
+            self.print_help()
+        elif self.usage:
+            print description
+            self.print_usage()
         self.arglen = len(self.args)
-        if self.arglen < 2:
-            self.print_usage("%s: not enough arguments specified" %
-                             e_errors.USERERROR)
-            sys.exit(1)
-        elif self.arglen > 2:
-            self.print_usage("%s: not enough arguments specified" %
-                             e_errors.USERERROR)
+        if self.arglen != 2 and (not self.help and not self.usage):
+            if self.arglen < 2:
+                message = "%s: not enough arguments specified" % \
+                          e_errors.USERERROR
+            elif self.arglen > 2:
+                message = "%s: too many arguments specified" % \
+                          e_errors.USERERROR
+            print description
+            self.print_usage(message)
             sys.exit(1)
             
         self.input = [enstore_functions2.fullpath(self.args[0])[1]]
