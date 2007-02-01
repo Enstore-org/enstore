@@ -234,6 +234,7 @@ COMMON:
                 # create some links to put commands into your path
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/encp ];             then ln -s $ENSTORE_DIR/src/encp.py            $ENSTORE_DIR/bin/encp; fi"',            NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enstore ];          then ln -s $ENSTORE_DIR/src/enstore_admin.py   $ENSTORE_DIR/bin/enstore; fi"',         NO_UPS_ENV)
+                execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.py   $ENSTORE_DIR/bin/enmv; fi"',         NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi"',     NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi"',NO_UPS_ENV)
                 execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.py  $ENSTORE_DIR/sbin/enmonitor; fi"',      NO_UPS_ENV)
