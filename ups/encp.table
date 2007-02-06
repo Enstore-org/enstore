@@ -8,20 +8,35 @@ QUALIFIERS=central_mass_store
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
                 exeActionRequired(COMMON_SETUP)
+
 FLAVOR=ANY
 QUALIFIERS=stken
+FLAVOR=ANY
+QUALIFIERS=stken:dcache
+FLAVOR=ANY
+QUALIFIERS=stken:x86_64
+FLAVOR=ANY
+QUALIFIERS=stken:dcache:x86_64
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
 QUALIFIERS=d0en
+FLAVOR=ANY
+QUALIFIERS=d0en:x86_64
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
 QUALIFIERS=cdfen
+FLAVOR=ANY
+QUALIFIERS=cdfen:dcache
+FLAVOR=ANY
+QUALIFIERS=cdfen:x86_64
+FLAVOR=ANY
+QUALIFIERS=cdfen:dcache:x86_64
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
                 exeActionRequired(COMMON_SETUP)
@@ -57,12 +72,9 @@ QUALIFIERS=sirius
                 exeActionRequired(COMMON_SETUP)
 
 FLAVOR=ANY
-QUALIFIERS=dcache
-        ACTION=SETUP
-                exeActionRequired(COMMON_SETUP)
-
-FLAVOR=ANY
 QUALIFIERS=""
+FLAVOR=ANY
+QUALIFIERS=dcache
         ACTION=SETUP
                 envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/chooseConfig`)
                 exeActionRequired(COMMON_SETUP)
