@@ -24,6 +24,8 @@ airedale=airedale.fnal.gov
 #sirius=sirius
 #lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
 gccen=gccensrv1.fnal.gov
+
+qualifier=""
 complain=1
 
 get_logname()
@@ -71,43 +73,52 @@ case $node in
   stken*|cmspnfs1*|eagpnfs1*)
             ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
+	    qualifier=stken
             complain=0
             ;;
   rip*)
 	    ENSTORE_MAIL=huangch@fnal.gov
 	    ENSTORE_CONFIG_HOST=$rip
 	    ENSTORE_CONFIG_FILE=rip.conf
+	    qualifier=rip
             complain=0
             ;;
   cachen*)
             ENSTORE_CONFIG_HOST=$stken
             ENSTORE_CONFIG_FILE=stk.conf
+	    qualifier=stken
             complain=0
             ;;
   d0en*)    ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
+	    qualifier=d0en
             complain=0
             ;;
   cdfen*)   ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
+	    qualifier=cdfen
             complain=0
             ;;
   *minos*)  ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
+	    qualifier=stken
             complain=0
             ;;
   *sam*|*d0*)
             ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
+	    qualifier=d0en
             ;;
   *cdf*|*b0*)
 	    ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
+	    qualifier=cdfen
             ;;
   happy)    #Sasha Moibenko's Desktop
 	    ENSTORE_MAIL=moibenko@fnal.gov
 	    ENSTORE_CONFIG_HOST=$happy
 	    ENSTORE_CONFIG_FILE=happy.conf
+	    qualifier=happy
             complain=0
             ;;
   water|rain)
@@ -157,6 +168,7 @@ case $node in
 	    
   *)        ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
+	    qualifier=stken
             ;;
   
 esac
@@ -228,5 +240,12 @@ elif [ "${1:-x}" = "mail" ]; then
   fi
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $ENSTORE_MAIL
+elif [ "${1:-x}" = "qualifier" ]; then
+  if [ $complain -eq 1 ]; then
+    # note that these warnings go to stderr
+    echo "WARNING: based on your node, `uname -n`, the qualifier to use is ${qualifier}." 1>&2
+  fi
+  # need to feed this back up to the en*.table file on stdout to set it in the users's environment
+  echo $qualifier
 fi
 
