@@ -1,6 +1,7 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "-c" ] ; then dont_complain=1; shift; else dont_complain=0; fi
 
 # $Id$
 
@@ -214,6 +215,10 @@ then
     complain=0
 fi
 
+if [ $dont_complain == 1 ]; then
+  #We want to override this warning message.
+  complain=0;
+fi
 
 
 if [ "${1:-x}" = "x" ]; then
