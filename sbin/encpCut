@@ -382,7 +382,7 @@ for try in list doit; do
               check_status $? "cd $ENSTORE_DIR/src"
 	      #If the 'dcache' qualifier was specified do a slightly
 	      # different build.
-	      if [ `echo "$QUALIFIERS" | tr ": " "\n" | grep dcache`x == dcachex ]; then
+	      if [ `echo "$QUALIFIERS" | tr ": " "\n" | grep dcache`x = dcachex ]; then
 		make clean encp_for_dcache
 		check_status $? "make clean encp_for_dcache"
 	      else
