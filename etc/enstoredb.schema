@@ -32,8 +32,6 @@ CREATE TYPE tr AS (
 );
 
 
-ALTER TYPE public.tr OWNER TO enstore;
-
 --
 -- Name: trb; Type: TYPE; Schema: public; Owner: enstore
 --
@@ -43,8 +41,6 @@ CREATE TYPE trb AS (
 	recycled_bytes bigint
 );
 
-
-ALTER TYPE public.trb OWNER TO enstore;
 
 --
 -- Name: bytes_deleted(timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
@@ -67,8 +63,6 @@ order by storage_group;
 $_$
     LANGUAGE sql;
 
-
-ALTER FUNCTION public.bytes_deleted(timestamp without time zone) OWNER TO enstore;
 
 --
 -- Name: bytes_deleted(timestamp without time zone, timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
@@ -93,8 +87,6 @@ $_$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.bytes_deleted(timestamp without time zone, timestamp without time zone) OWNER TO enstore;
-
 --
 -- Name: bytes_deleted_last_7days(); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -117,8 +109,6 @@ order by storage_group;
 $$
     LANGUAGE sql;
 
-
-ALTER FUNCTION public.bytes_deleted_last_7days() OWNER TO enstore;
 
 --
 -- Name: bytes_recycled(timestamp without time zone, timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
@@ -143,8 +133,6 @@ $_$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.bytes_recycled(timestamp without time zone, timestamp without time zone) OWNER TO enstore;
-
 --
 -- Name: bytes_recycled(timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -166,8 +154,6 @@ order by storage_group;
 $_$
     LANGUAGE sql;
 
-
-ALTER FUNCTION public.bytes_recycled(timestamp without time zone) OWNER TO enstore;
 
 --
 -- Name: bytes_recycled_last_7days(); Type: FUNCTION; Schema: public; Owner: enstore
@@ -192,8 +178,6 @@ $$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.bytes_recycled_last_7days() OWNER TO enstore;
-
 --
 -- Name: lookup_stype(character varying); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -202,8 +186,6 @@ CREATE FUNCTION lookup_stype(character varying) RETURNS integer
     AS $_$select id from state_type where name = $1;$_$
     LANGUAGE sql;
 
-
-ALTER FUNCTION public.lookup_stype(character varying) OWNER TO enstore;
 
 --
 -- Name: lookup_vol(character varying); Type: FUNCTION; Schema: public; Owner: enstore
@@ -214,10 +196,8 @@ CREATE FUNCTION lookup_vol(character varying) RETURNS integer
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.lookup_vol(character varying) OWNER TO enstore;
-
 --
--- Name: plpgsql_call_handler(); Type: FUNCTION; Schema: public; Owner: enstore
+-- Name: plpgsql_call_handler(); Type: FUNCTION; Schema: public; Owner: huangch
 --
 
 CREATE FUNCTION plpgsql_call_handler() RETURNS language_handler
@@ -225,18 +205,14 @@ CREATE FUNCTION plpgsql_call_handler() RETURNS language_handler
     LANGUAGE c;
 
 
-ALTER FUNCTION public.plpgsql_call_handler() OWNER TO enstore;
-
 --
--- Name: plpgsql_validator(oid); Type: FUNCTION; Schema: public; Owner: enstore
+-- Name: plpgsql_validator(oid); Type: FUNCTION; Schema: public; Owner: huangch
 --
 
 CREATE FUNCTION plpgsql_validator(oid) RETURNS void
     AS '$libdir/plpgsql', 'plpgsql_validator'
     LANGUAGE c;
 
-
-ALTER FUNCTION public.plpgsql_validator(oid) OWNER TO enstore;
 
 SET default_tablespace = '';
 
@@ -260,8 +236,6 @@ CREATE TABLE qa (
     alert character varying
 );
 
-
-ALTER TABLE public.qa OWNER TO enstore;
 
 --
 -- Name: quota_alert(); Type: FUNCTION; Schema: public; Owner: enstore
@@ -316,8 +290,6 @@ $$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.quota_alert() OWNER TO enstore;
-
 --
 -- Name: set_update(); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -333,8 +305,6 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.set_update() OWNER TO enstore;
-
 --
 -- Name: tc; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -346,8 +316,6 @@ CREATE TABLE tc (
     volumes numeric
 );
 
-
-ALTER TABLE public.tc OWNER TO enstore;
 
 --
 -- Name: tape_consumption(interval, character); Type: FUNCTION; Schema: public; Owner: enstore
@@ -379,8 +347,6 @@ $_$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.tape_consumption(interval, character) OWNER TO enstore;
-
 --
 -- Name: tapes_recycled(timestamp without time zone, timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -404,8 +370,6 @@ $_$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.tapes_recycled(timestamp without time zone, timestamp without time zone) OWNER TO enstore;
-
 --
 -- Name: tapes_recycled(timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -427,8 +391,6 @@ order by media_type;
 $_$
     LANGUAGE sql;
 
-
-ALTER FUNCTION public.tapes_recycled(timestamp without time zone) OWNER TO enstore;
 
 --
 -- Name: tapes_recycled_last_7days(); Type: FUNCTION; Schema: public; Owner: enstore
@@ -453,8 +415,6 @@ $$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.tapes_recycled_last_7days() OWNER TO enstore;
-
 --
 -- Name: write_protect_status(character varying); Type: FUNCTION; Schema: public; Owner: enstore
 --
@@ -478,8 +438,6 @@ $_$
     LANGUAGE sql;
 
 
-ALTER FUNCTION public.write_protect_status(character varying) OWNER TO enstore;
-
 --
 -- Name: bad_file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -489,18 +447,6 @@ CREATE TABLE bad_file (
     path character varying
 );
 
-
-ALTER TABLE public.bad_file OWNER TO enstore;
-
---
--- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW enstore_tables AS
-    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS "rows", c.relpages AS pages, t.spcname AS "tablespace", c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers > 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
-
-
-ALTER TABLE public.enstore_tables OWNER TO enstore;
 
 --
 -- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -524,8 +470,6 @@ CREATE TABLE file (
 );
 
 
-ALTER TABLE public.file OWNER TO enstore;
-
 --
 -- Name: file2; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -533,8 +477,6 @@ ALTER TABLE public.file OWNER TO enstore;
 CREATE VIEW file2 AS
     SELECT file.bfid, file.crc, file.deleted, file.drive, file.volume, file.location_cookie, file.pnfs_path, file.pnfs_id, file.sanity_size, file.sanity_crc, file.size, file.uid, file.gid, CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE 0 END AS n_deleted, CASE WHEN (file.deleted = 'y'::bpchar) THEN file.size ELSE (0)::bigint END AS size_deleted, CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE 0 END AS n_active, CASE WHEN (file.deleted = 'n'::bpchar) THEN file.size ELSE (0)::bigint END AS size_active, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN 1 ELSE 0 END AS n_unknown, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN file.size ELSE (0)::bigint END AS size_unknown FROM file;
 
-
-ALTER TABLE public.file2 OWNER TO enstore;
 
 --
 -- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -546,18 +488,6 @@ CREATE TABLE file_copies_map (
 );
 
 
-ALTER TABLE public.file_copies_map OWNER TO enstore;
-
---
--- Name: lock_status; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW lock_status AS
-    SELECT (SELECT pg_class.relname FROM pg_class WHERE (pg_class.oid = pg_locks.relation)) AS "table", (SELECT pg_database.datname FROM pg_database WHERE (pg_database.oid = pg_locks."database")) AS "database", pg_locks."transaction", (SELECT pg_stat_activity.usename FROM pg_stat_activity WHERE (pg_stat_activity.procpid = pg_locks.pid)) AS "user", pg_locks."mode", pg_locks."granted" FROM pg_locks;
-
-
-ALTER TABLE public.lock_status OWNER TO enstore;
-
 --
 -- Name: media_capacity; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -567,8 +497,6 @@ CREATE TABLE media_capacity (
     capacity bigint
 );
 
-
-ALTER TABLE public.media_capacity OWNER TO enstore;
 
 --
 -- Name: migration; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -585,30 +513,6 @@ CREATE TABLE migration (
 );
 
 
-ALTER TABLE public.migration OWNER TO enstore;
-
-SET default_with_oids = false;
-
---
--- Name: migration_deleted; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
---
-
-CREATE TABLE migration_deleted (
-    src_bfid character varying,
-    dst_bfid character varying,
-    copied timestamp without time zone,
-    swapped timestamp without time zone,
-    checked timestamp without time zone,
-    closed timestamp without time zone,
-    remark character varying,
-    "update" timestamp without time zone DEFAULT now()
-);
-
-
-ALTER TABLE public.migration_deleted OWNER TO enstore;
-
-SET default_with_oids = true;
-
 --
 -- Name: migration_history; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -620,8 +524,6 @@ CREATE TABLE migration_history (
 );
 
 
-ALTER TABLE public.migration_history OWNER TO enstore;
-
 --
 -- Name: no_flipping_file_family; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -632,8 +534,6 @@ CREATE TABLE no_flipping_file_family (
 );
 
 
-ALTER TABLE public.no_flipping_file_family OWNER TO enstore;
-
 --
 -- Name: no_flipping_storage_group; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -642,8 +542,6 @@ CREATE TABLE no_flipping_storage_group (
     storage_group character varying
 );
 
-
-ALTER TABLE public.no_flipping_storage_group OWNER TO enstore;
 
 --
 -- Name: option; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -654,8 +552,6 @@ CREATE TABLE "option" (
     value character varying
 );
 
-
-ALTER TABLE public."option" OWNER TO enstore;
 
 --
 -- Name: quota; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -670,8 +566,6 @@ CREATE TABLE quota (
     significance character(1) DEFAULT 'y'::bpchar
 );
 
-
-ALTER TABLE public.quota OWNER TO enstore;
 
 --
 -- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -710,8 +604,6 @@ CREATE TABLE volume (
 );
 
 
-ALTER TABLE public.volume OWNER TO enstore;
-
 --
 -- Name: remaining_blanks; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -719,8 +611,6 @@ ALTER TABLE public.volume OWNER TO enstore;
 CREATE VIEW remaining_blanks AS
     SELECT volume.media_type, count(*) AS blanks FROM volume WHERE ((((volume.storage_group)::text = 'none'::text) AND ((volume.file_family)::text = 'none'::text)) AND ((volume.wrapper)::text = 'none'::text)) GROUP BY volume.media_type;
 
-
-ALTER TABLE public.remaining_blanks OWNER TO enstore;
 
 --
 -- Name: sg_count; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -732,8 +622,6 @@ CREATE TABLE sg_count (
     count integer
 );
 
-
-ALTER TABLE public.sg_count OWNER TO enstore;
 
 --
 -- Name: state; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -747,8 +635,6 @@ CREATE TABLE state (
 );
 
 
-ALTER TABLE public.state OWNER TO enstore;
-
 --
 -- Name: state_type; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -758,8 +644,6 @@ CREATE TABLE state_type (
     name character varying NOT NULL
 );
 
-
-ALTER TABLE public.state_type OWNER TO enstore;
 
 --
 -- Name: state_type_seq; Type: SEQUENCE; Schema: public; Owner: enstore
@@ -772,8 +656,6 @@ CREATE SEQUENCE state_type_seq
     CACHE 1;
 
 
-ALTER TABLE public.state_type_seq OWNER TO enstore;
-
 --
 -- Name: volume_seq; Type: SEQUENCE; Schema: public; Owner: enstore
 --
@@ -785,8 +667,6 @@ CREATE SEQUENCE volume_seq
     CACHE 1;
 
 
-ALTER TABLE public.volume_seq OWNER TO enstore;
-
 --
 -- Name: volume_summary; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -794,8 +674,6 @@ ALTER TABLE public.volume_seq OWNER TO enstore;
 CREATE VIEW volume_summary AS
     SELECT volume.label, volume.capacity_bytes, sum(file2.size) AS used, sum(file2.n_active) AS n_active, sum(file2.size_active) AS active, sum(file2.n_deleted) AS n_deleted, sum(file2.size_deleted) AS deleted, sum(file2.n_unknown) AS n_unknown, sum(file2.size_unknown) AS "unknown", volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file2.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment" FROM file2, volume WHERE (file2.volume = volume.id) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment";
 
-
-ALTER TABLE public.volume_summary OWNER TO enstore;
 
 --
 -- Name: volume_summary2; Type: VIEW; Schema: public; Owner: enstore
@@ -805,8 +683,6 @@ CREATE VIEW volume_summary2 AS
     SELECT volume.label, volume.capacity_bytes, sum(CASE WHEN (file.size IS NULL) THEN (0)::bigint ELSE file.size END) AS used, count(CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE NULL::integer END) AS n_active, sum(CASE WHEN ((file.deleted = 'n'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS active, count(CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE NULL::integer END) AS n_deleted, sum(CASE WHEN ((file.deleted = 'y'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS deleted, count(CASE WHEN (file.deleted = 'u'::bpchar) THEN 1 ELSE NULL::integer END) AS n_unknown, sum(CASE WHEN ((file.deleted = 'u'::bpchar) AND (file.size IS NOT NULL)) THEN file.size ELSE (0)::bigint END) AS "unknown", volume.remaining_bytes, (((volume.capacity_bytes - volume.remaining_bytes))::numeric - sum(file.size)) AS unaccountable, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment" FROM (volume LEFT JOIN file ON ((file.volume = volume.id))) GROUP BY volume.label, volume.capacity_bytes, volume.remaining_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment";
 
 
-ALTER TABLE public.volume_summary2 OWNER TO enstore;
-
 --
 -- Name: volume_with_only_deleted_files; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -815,8 +691,6 @@ CREATE VIEW volume_with_only_deleted_files AS
     SELECT foo.label, foo.storage_group, foo.state, foo.media_type, foo.library, foo.n_active, foo.n_deleted, foo.n_unknown FROM (SELECT volume.label, volume.storage_group, volume.system_inhibit_1 AS state, volume.media_type, volume.library, count(CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE NULL::integer END) AS n_active, count(CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE NULL::integer END) AS n_deleted, count(CASE WHEN (file.deleted = 'u'::bpchar) THEN 1 ELSE NULL::integer END) AS n_unknown FROM (volume LEFT JOIN file ON ((file.volume = volume.id))) WHERE (NOT ((volume.label)::text ~~ '%.deleted'::text)) GROUP BY volume.label, volume.storage_group, volume.system_inhibit_1, volume.media_type, volume.library) foo WHERE ((foo.n_active = 0) AND (foo.n_deleted > 0));
 
 
-ALTER TABLE public.volume_with_only_deleted_files OWNER TO enstore;
-
 --
 -- Name: write_protection_audit; Type: VIEW; Schema: public; Owner: enstore
 --
@@ -824,8 +698,6 @@ ALTER TABLE public.volume_with_only_deleted_files OWNER TO enstore;
 CREATE VIEW write_protection_audit AS
     SELECT volume.id, volume.label, volume.block_size, volume.capacity_bytes, volume.declared, volume.eod_cookie, volume.first_access, volume.last_access, volume.library, volume.media_type, volume.non_del_files, volume.remaining_bytes, volume.sum_mounts, volume.sum_rd_access, volume.sum_rd_err, volume.sum_wr_access, volume.sum_wr_err, volume.system_inhibit_0, volume.system_inhibit_1, volume.si_time_0, volume.si_time_1, volume.user_inhibit_0, volume.user_inhibit_1, volume.storage_group, volume.file_family, volume.wrapper, volume."comment", volume.write_protected FROM volume WHERE ((NOT ((volume.label)::text ~~ '%.deleted'::text)) AND ((((volume.system_inhibit_1)::text <> 'none'::text) AND (volume.write_protected <> 'y'::bpchar)) OR (((volume.system_inhibit_1)::text = 'none'::text) AND (volume.write_protected <> 'n'::bpchar))));
 
-
-ALTER TABLE public.write_protection_audit OWNER TO enstore;
 
 --
 -- Name: file_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
@@ -1035,13 +907,6 @@ CREATE INDEX volume_file_family_idx ON volume USING btree (file_family);
 
 
 --
--- Name: volume_label_key_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
---
-
-CREATE INDEX volume_label_key_idx ON volume USING btree (label);
-
-
---
 -- Name: volume_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -1172,24 +1037,55 @@ ALTER TABLE ONLY file_copies_map
 
 
 --
+-- Name: public; Type: ACL; Schema: -; Owner: products
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM products;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- Name: file; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE file FROM PUBLIC;
+REVOKE ALL ON TABLE file FROM enstore;
+GRANT ALL ON TABLE file TO enstore;
+GRANT SELECT ON TABLE file TO root;
+
+
+--
+-- Name: migration; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE migration FROM PUBLIC;
+REVOKE ALL ON TABLE migration FROM enstore;
+GRANT ALL ON TABLE migration TO enstore;
+GRANT ALL ON TABLE migration TO root;
+
+
+--
+-- Name: migration_history; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE migration_history FROM PUBLIC;
+REVOKE ALL ON TABLE migration_history FROM enstore;
+GRANT ALL ON TABLE migration_history TO enstore;
+GRANT ALL ON TABLE migration_history TO root;
+
+
+--
+-- Name: volume; Type: ACL; Schema: public; Owner: enstore
+--
+
+REVOKE ALL ON TABLE volume FROM PUBLIC;
+REVOKE ALL ON TABLE volume FROM enstore;
+GRANT ALL ON TABLE volume TO enstore;
+GRANT SELECT ON TABLE volume TO root;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-
-insert into state_type (name) values ('system_inhibit_0');
-insert into state_type (name) values ('system_inhibit_1');
-insert into state_type (name) values ('user_inhibit_0');
-insert into state_type (name) values ('user_inhibit_1');
-insert into state_type (name) values ('write_protect');
-insert into state_type (name) values ('other');
-insert into state_type (name) values ('modified');
-insert into state_type (name) values ('set_comment');
-insert into state_type (name) values ('new_library');
-
-insert into option (key, value) values ('quota', 'disabled');
-
-insert into media_capacity values('9840', 21474836480);
-insert into media_capacity values('9940', 64424509440);
-insert into media_capacity values('9940B', 214748364800);
-insert into media_capacity values('DECDLT', 21474836480);
-insert into media_capacity values('null', 214748364800);

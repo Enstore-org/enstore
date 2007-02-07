@@ -46,7 +46,7 @@ static PyObject * interfacesGet(void);
 
 static PyObject *InterfacesErrObject;
 
-static char Interfaces_Doc[] =  "Interfaces accesses NICs.";
+static char Interfaces_Doc[] =  "EXfer is a module which Xfers data";
 
 static char Interfaces_get_Doc[] = "\
 fd_xfer(fr_fd, to_fd, no_bytes, blk_siz, crc_flag[, crc])";

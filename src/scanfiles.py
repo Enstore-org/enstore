@@ -108,12 +108,8 @@ def cleanup_objects():
         old_len = new_len #Only set this on the first pass.
     else:
         if new_len - old_len > 0:
-            try:
-                sys.stderr.write("NEW COUNT DIFFERENCE: %s - %s = %s\n"
-                                 % (new_len, old_len, new_len - old_len))
-                sys.stderr.flush()
-            except IOError:
-                pass
+            sys.stderr.write("NEW COUNT DIFFERENCE: %s - %s = %s\n"
+                        % (new_len, old_len, new_len - old_len))
             """
             i = 0
             for item in gc.get_objects():
@@ -566,10 +562,7 @@ def get_stat(f):
             #On success return immediatly.
             return f_stats, (err, warn, info)
         except OSError, msg:
-            if msg.args[0] in [errno.EBUSY, errno.ENOENT]:
-                continue
-            else:
-                break
+            continue
 
     if msg.errno == errno.ENOENT:
 
@@ -590,17 +583,6 @@ def get_stat(f):
         return None, (err, warn, info)
 
     if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
-        if os.getuid() == 0: #If we started as user root...
-            try:
-                os.seteuid(0)  #...reset the effective uid and gid.
-                os.setegid(0)
-
-                f_stats = os.lstat(f)  #Redo the stat.
-                return f_stats, (err, warn, info)
-            except OSError, msg:
-                pass
-
-        #If we get here we still could not stat the file.
         err.append("permission error")
         return None, (err, warn, info)
 
@@ -917,25 +899,6 @@ def check(f, f_stats = None):
     if err or warn:
         errors_and_warnings(f, err, warn, info)
         return
-
-    #If we are a supper user, reset the effective uid and gid.
-    if os.getuid() == 0:
-        if os.geteuid() != f_stats[stat.ST_UID]:
-            if os.geteuid() != 0:
-                #If the currect effective ids are not currently root,
-                # we need to set them back before (re)setting them.
-                try:
-                    os.setegid(0)
-                    os.seteuid(0)
-                except OSError, msg:
-                    pass
-
-            #Set the uid and gid to match that of the file's owner.
-            try:
-                os.setegid(f_stats[stat.ST_GID])
-                os.seteuid(f_stats[stat.ST_UID])
-            except OSError, msg:
-                pass
     
     file_info = {"f_stats"       : f_stats}
 
@@ -1061,26 +1024,8 @@ def check_bit_file(bfid):
     if not db_pnfsid_cache:
         #Sets global db_pnfsid_cache.
         parse_mtab()
-        for db_num, mp in db_pnfsid_cache.items():
-            if db_num == 0 or os.path.basename(mp) == "fs":
-                #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
-                p = pnfs.Pnfs()
-                use_path = os.path.join(mp, "usr")
-                for dname in os.listdir(use_path):
-                    tmp_name = os.path.join(use_path, dname)
-                    if not os.path.isdir(tmp_name):
-                        continue
-                    tmp_db = int(p.get_database(os.path.join(use_path, dname)).split(":")[1])
-                    if tmp_db == db_num:
-                        continue
-                    db_pnfsid_cache[tmp_db] = tmp_name
-
         search_list = db_pnfsid_cache.items()
-        #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
-        # the list and it will be sorted to the end of the list.
-        search_list.sort()
-        search_list.reverse()
-            
+    
     err = []
     warn = []
     info = []
@@ -1115,15 +1060,10 @@ def check_bit_file(bfid):
     if file_record['deleted'] == 'yes':
         info = info + ["deleted"]
 
+
     #Loop over all found mount points.
-    for db_num, mp in [last_db_tried] + search_list:
+    for db_num, mp in search_list:
 
-        #If last_db_tried is still set to its initial value, we need to
-        # skip the the next.
-        if db_num < 0:
-            continue
-
-        """
         #This test is to make sure that the pnfs filesystem we are going
         # to query has a database N (where N is pnfsid_db).  Otherwise
         # we hang querying a non-existant database.  If the pnfsid_db
@@ -1136,40 +1076,22 @@ def check_bit_file(bfid):
                 #This /pnfs/fs doesn't contain a database with the id we
                 # are looking for.
                 continue
-        """
-        
+                
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
         # between two machines anyway.
         afn = access_file(mp, file_record['pnfsid']) #afn =  access file name
 
-        """
-        #Stat the file.
-        t0 = time.time()
-        f_stats, (e2, w2, i2) = get_stat(afn)
-        print time.time() - t0, afn
-        if not f_stats:
-            continue
-        if not stat.S_ISREG(f_stats[stat.ST_MODE]):
-            continue
-        
-        try:
-            #Becoming the owner of the file speeds up future open() calls
-            # when checking layers.
-            os.setegid(f_stats[stat.ST_GID])
-            os.seteuid(f_stats[stat.ST_UID])
-        except OSError:
-            pass
-        """
-        
-        #Check layer 1 to get the bfid.
+        #Instead of stat()ing the file to determine existance, get layer 1
+        # since we will need it.  We avoid a stat() call this way.
         layer1_bfid = __get_layer_1(afn)
+        
         if layer1_bfid:
 
             #Update the global cache information.
-            #if last_db_tried[0] != pnfsid_db:
-            last_db_tried = (db_num, mp)
-                #search_list = [(db_num, mp)] + db_pnfsid_cache.items()
+            if last_db_tried[0] != pnfsid_db:
+                last_db_tried = (pnfsid_db, mp)
+                search_list = [(db_num, mp)] + db_pnfsid_cache.items()
 
             #Make sure this is the correct file.
             if layer1_bfid == file_record['bfid']:
@@ -1222,6 +1144,7 @@ def check_bit_file(bfid):
         errors_and_warnings(prefix, err, warn, info)
         return
 
+
     #Since we know if we are using /pnfs/fs or not, we can maniplate the
     # original name to the correct pnfs base path.  This will speed things
     # up when scanning files written to /pnfs/xyz but only having /pnfs/fs
@@ -1271,6 +1194,7 @@ def check_bit_file(bfid):
         cur_pnfsid = get_pnfsid(use_name)[0]
         if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
             try:
+                t0 = time.time()
                 tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
                 if tmp_name[0] == "/":
                     #Make sure the path is a absolute path.
@@ -1296,7 +1220,6 @@ def check_bit_file(bfid):
     else:
         pnfs_path = use_name
 
-    
     #Stat the file.
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     err = err + e2
@@ -1318,31 +1241,7 @@ def check_bit_file(bfid):
         errors_and_warnings(prefix, err, warn, info)
         return
 
-    #If we are a supper user, reset the effective uid and gid.
-    if os.getuid() == 0:
-        if os.geteuid() != f_stats[stat.ST_UID]:
-            if os.geteuid() != 0:
-                #If the currect effective ids are not currently root,
-                # we need to set them back before (re)setting them.
-                try:
-                    os.setegid(0)
-                    os.seteuid(0)
-                except OSError, msg:
-                    pass
-
-            #Set the uid and gid to match that of the file's owner.
-            try:
-                os.setegid(f_stats[stat.ST_GID])
-                os.seteuid(f_stats[stat.ST_UID])
-            except OSError, msg:
-                pass
-
-    file_info = {"f_stats"       : f_stats,
-                 "layer1"        : layer1_bfid,
-                 "file_record"   : file_record,
-                 "pnfsid"        : file_record['pnfsid']}
-    
-    e1, w1, i1 = check_file(pnfs_path, file_info)    
+    e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
     warn = warn + w1
     info = info + i1

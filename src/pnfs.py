@@ -2217,7 +2217,7 @@ class PnfsInterface(option.Interface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"filename",
                      option.FORCE_SET_DEFAULT:option.FORCE,
-                     option.USER_LEVEL:option.ADMIN,
+                     option.USER_LEVEL:option.USER2,
                      option.EXTRA_VALUES:[{option.VALUE_NAME:"filesize",
                                            option.VALUE_TYPE:option.LONG,
                                            option.VALUE_USAGE:option.REQUIRED,

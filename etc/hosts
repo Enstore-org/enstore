@@ -126,12 +126,14 @@
 131.225.13.134		cdfenmvr104a.fnal.gov	cdfenmvr104a
 #131.225.13.135		gccenmvr5a.fnal.gov	gccenmvr5a
 131.225.13.135		cdfenmvr105a.fnal.gov	cdfenmvr105a
-131.225.13.136		gccenmvr6a.fnal.gov	gccenmvr6a
+#131.225.13.136		gccenmvr6a.fnal.gov	gccenmvr6a
+131.225.13.136		stkenmvr106a.fnal.gov	stkenmvr106a
 #131.225.13.137		gccenmvr7a.fnal.gov	gccenmvr7a
 131.225.13.137		stkenmvr107a.fnal.gov	stkenmvr107a
 #131.225.13.138		gccenmvr8a.fnal.gov	gccenmvr8a
 131.225.13.138		stkenmvr108a.fnal.gov	stkenmvr108a
-131.225.13.139		gccenmvr9a.fnal.gov	gccenmvr9a
+#131.225.13.139		gccenmvr9a.fnal.gov	gccenmvr9a
+131.225.13.139		stkenmvr109a.fnal.gov	stkenmvr109a
 #131.225.13.140		gccenmvr10a.fnal.gov	gccenmvr10a
 131.225.13.140		cdfenmvr110a.fnal.gov	cdfenmvr110a
 #131.225.13.141		gccenmvr11a.fnal.gov	gccenmvr11a

@@ -12,10 +12,10 @@ CDF = "cdf"
 D0 = "d0"
 STK = "stk"
 
-LIBRARIES = {CDF : ["cdf", "A-Loan", "CDF-9940B", "CDF-Migration"],
-	     D0 : ["mezsilo", "samlto", "samm2", "sammam", "shelf-sammam", "D0-9940B",
-                   "samlto2"],
-	     STK : ["9940", "eagle", "CMS-9940B", "CD-9940B", "dlt"]
+LIBRARIES = {CDF : ["cdf", "CDF-9940B", "CDF-LTO3", "CDF-LTO4"],
+	     D0 : ["mezsilo", "samlto", "samm2", "sammam", "D0-9940B",
+                   "samlto2", "shelf-samlto", "D0-LTO3", "D0-LTO4"],
+	     STK : ["9940", "CD-9940B", "CD-LTO3", "CD-LTO4"]
 	     }
 
 def go(system, vq_file_name, vq_output_file, vq_output_file2):

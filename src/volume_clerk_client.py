@@ -1634,8 +1634,11 @@ def do_work(intf):
 
         
     elif intf.new_library:
-        ticket = vcc.new_library(intf.args[0],         # volume name
+        if len(intf.args):
+            ticket = vcc.new_library(intf.args[0],         # volume name
                                  intf.new_library)     # new library name
+        else:
+            ticket = {'status':(e_errors.ERROR, "missing volume name")}
     elif intf.delete:
         # ticket = vcc.delete(intf.delete,intf.force)   # name of this volume
         ticket = vcc.delete_volume(intf.delete)   # name of this volume

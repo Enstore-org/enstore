@@ -1340,17 +1340,29 @@ def get_last_job_time(cluster, job_type):
 		return timestamp2time(res.split('.')[0])
 	return 0
 
-def get_last_write_protect_on_job_time(c=None):
-	if c:
-		return get_last_job_time(c, 'WRITE_PROTECTION_TAB_ON')
-	else:
-		return get_last_job_time(cluster, 'WRITE_PROTECTION_TAB_ON')
+def get_last_write_protect_on_job_time(c=None,l=None):
+	if not c:
+		c = cluster
+	if l:
+		lt = library_type(c, l)
+		if not lt:	# wrong cluster/library
+			return -1
+		q = get_qualifier(lt)
+		if q:
+			c = c+q
+	return get_last_job_time(c, 'WRITE_PROTECTION_TAB_ON')
 		
-def get_last_write_protect_off_job_time(c=None):
-	if c:
-		return get_last_job_time(c, 'WRITE_PROTECTION_TAB_OFF')
-	else:
-		return get_last_job_time(cluster, 'WRITE_PROTECTION_TAB_OFF')
+def get_last_write_protect_off_job_time(c=None, l=None):
+	if not c:
+		c = cluster
+	if l:
+		lt = library_type(c, l)
+		if not lt:      # wrong cluster/library
+			return -1
+		q = get_qualifier(lt)
+		if q:
+			c = c+q 
+	return get_last_job_time(c, 'WRITE_PROTECTION_TAB_OFF')
 
 PROMPT = "operation> "
 
