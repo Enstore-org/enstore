@@ -1340,7 +1340,7 @@ def get_last_job_time(cluster, job_type):
 		return timestamp2time(res.split('.')[0])
 	return 0
 
-def get_last_write_protect_on_job_time(c=None,l=None):
+def get_last_write_protect_on_job_time(l=None,c=None):
 	if not c:
 		c = cluster
 	if l:
@@ -1352,7 +1352,7 @@ def get_last_write_protect_on_job_time(c=None,l=None):
 			c = c+q
 	return get_last_job_time(c, 'WRITE_PROTECTION_TAB_ON')
 		
-def get_last_write_protect_off_job_time(c=None, l=None):
+def get_last_write_protect_off_job_time(l=None, c=None):
 	if not c:
 		c = cluster
 	if l:

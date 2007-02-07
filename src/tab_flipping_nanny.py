@@ -53,7 +53,7 @@ if __name__ == '__main__':
 	print
 	# check last time a ticket was cut
 	if library:
-		onltt = operation.get_last_write_protect_on_job_time(library)
+		onltt = operation.get_last_write_protect_on_job_time(l=library)
 	else:
 		onltt = operation.get_last_write_protect_on_job_time()
 	if time.time() - onltt > seven_days:
@@ -75,7 +75,7 @@ if __name__ == '__main__':
 	print
 	# check last time a ticket was cut
 	if library:
-		offltt = operation.get_last_write_protect_off_job_time(library)
+		offltt = operation.get_last_write_protect_off_job_time(l=library)
 	else:
 		offltt = operation.get_last_write_protect_off_job_time()
 	if time.time() - offltt > seven_days:
