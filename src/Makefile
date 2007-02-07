@@ -97,7 +97,7 @@ ensync_cmd:
 	mkdir ENSYNC_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync_user.py
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSYNC_BIN_TEMP/ensync      ENCPBIN
+	cp ENSYNC_BIN_TEMP/ensync_user      ENCPBIN/ensync
 	rm -rf ENSYNC_BIN_TEMP
 
 encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd post_encp_cmd
