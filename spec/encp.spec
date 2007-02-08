@@ -36,21 +36,28 @@ ENCP utility
 %build
 
 %install
+chmod -R u+wx $RPM_BUILD_ROOT%{prefix}
 rm -rf  $RPM_BUILD_ROOT
 
 #Unsetup any old versions.
 unsetup %{upsproduct} || unset %{setupvar} || true
 
 # get environment, make a scratch product area
-. /usr/local/etc/setups.sh || . /afs/fnal.gov/ups/etc/setups.sh
+if [ -f /usr/local/etc/setups.sh ]; then
+    . /usr/local/etc/setups.sh
+elif [ -f /afs/fnal.gov/ups/etc/setups.sh ]; then
+    . /afs/fnal.gov/ups/etc/setups.sh
+else
+    echo "Unable to find setups.sh"
+    exit 1
+fi
 setup upd
 rm -rf /tmp/ups2rpm
 mkprd /tmp/ups2rpm
 
-#remove old temporary installation
-rm -rf $RPM_BUILD_ROOT%{prefix}
 # put package files in $RBPM_BUILD_ROOT%{prefix}...
 upd install -z /tmp/ups2rpm/db -j -r $RPM_BUILD_ROOT%{prefix} %{upsproduct} %{upsversion} %{upsflags} -G "%{upsflags}"
+chmod u+w $RPM_BUILD_ROOT%{prefix}/*
 
 # prepare to build /etc/profile.d files from ups setup data
 mkdir -p $RPM_BUILD_ROOT/etc/profile.d
@@ -74,18 +81,4 @@ rm -f $tf
 
 %files
 %attr(0755,root,root) /etc/profile.d/%{upsproduct}.*
-%defattr(0555,root,root)
-%{prefix}/EPS
-%{prefix}/chooseConfig
-%{prefix}/ddencp
-%attr(-,root,root) %{prefix}/e_errors.py
-%{prefix}/encp
-%{prefix}/ecrc
-%attr(-,root,root) %{prefix}/encp.table
-%{prefix}/encp_mni_install.sh
-%{prefix}/enroute2
-%{prefix}/enstore
-%{prefix}/enstore_tape
-%{prefix}/ensync
-%attr(-,root,root) %{prefix}/volume_import/*
-
+%{prefix}/*
