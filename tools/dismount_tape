@@ -6,4 +6,4 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # make an array of values
 f=( $(cat /home/enstore/enstore/etc/d_l ) )
-$HOME/enstore/tools/stk_drive m "${f[$0]}"
+/home/enstore/enstore/tools/stk_drive d ${f[0]}
