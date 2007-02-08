@@ -1016,9 +1016,10 @@ def volumes_per_cap(lib_type):
 def same_tape_library(libs):
 	l = libs.split(",")
 	t = library_type(cluster, l[0])
-	for i in l[1:]:
-		if library_type(cluster, i) != t:
-			return None
+	if len(l) > 1:
+		for i in l[1:]:
+			if library_type(cluster, i) != t:
+				return None
 	return t
 
 # dump() -- dump all global variables
@@ -1344,7 +1345,7 @@ def get_last_write_protect_on_job_time(l=None,c=None):
 	if not c:
 		c = cluster
 	if l:
-		lt = library_type(c, l)
+		lt = same_tape_library(l)
 		if not lt:	# wrong cluster/library
 			return -1
 		q = get_qualifier(lt)
@@ -1356,7 +1357,7 @@ def get_last_write_protect_off_job_time(l=None, c=None):
 	if not c:
 		c = cluster
 	if l:
-		lt = library_type(c, l)
+		lt = same_tape_library(l)
 		if not lt:      # wrong cluster/library
 			return -1
 		q = get_qualifier(lt)
