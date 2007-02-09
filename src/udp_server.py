@@ -114,6 +114,7 @@ class UDPServer:
 
     def __del__(self):
         self.server_socket.close()
+        self.server_socket = None
 
     """
     def r_eval(self, stuff):
