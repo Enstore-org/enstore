@@ -7862,8 +7862,9 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         # to create_read_request() that will fill in the rest.
         request = {}
         if e.volume and e.list:
-            number, filename = list_of_files.split()[:2]
-            request['infile'] = filename
+            number, filename = list_of_files[i].split()[:2]
+            request['infile'] = os.path.join(e.input[0],
+                                             os.path.basename(filename))
             request['vc'] = vc_reply.copy()
             #If everything is okay, search the listing for the location
             # of the file requested.  tape_ticket is used for performance
@@ -7895,8 +7896,10 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                     'external_label' : e.volume,
                     'location_cookie':generate_location_cookie(number),
                     'pnfs_mapname': None,
-                    'pnfs_name0': os.path.join(e.input[0],
-                                        generate_location_cookie(number)),
+                    'pnfs_name0':os.path.join(e.input[0],
+                                              os.path.basename(filename)),
+                    #'pnfs_name0': os.path.join(e.input[0],
+                    #                    generate_location_cookie(number)),
                     'pnfsid': None,
                     'pnfsvid': None,
                     'sanity_cookie': None,
