@@ -1,5 +1,13 @@
-%define upsversion v3_6e
 %define upsproduct encp
+%if %{!?upsversion:1}%{?upsversion:0}
+   %define upsversion v3_6d
+%endif
+%if %{!?rpmversion:1}%{?rpmversion:0}
+   %define rpmversion %(echo %{upsversion} | sed -e 's/^[vx]//' -e 's/_/\./g')
+%endif
+%if %{!?upsflags:1}%{?upsflags:0}
+    %define upsflags -q :
+%endif
 %define setupvar   SETUP_ENCP
 #upsflags (if defined on the command line) needs to look something like:
 #   --define 'upsflags -q dcache'
@@ -21,7 +29,7 @@
 Summary: ups package %{upsproduct} as an RPM in %{prefix}
 Release: 1
 Name: %{upsproduct}-ups-opt%{opt_dcache_name}
-Version: 3.6e
+Version: %{rpmversion}
 URL: ftp://ftp.fnal.gov/products/%{upsproduct}/%{upsversion}
 #BuildRequires: upsupdbootstrap
 Group: Enstore
@@ -36,7 +44,10 @@ ENCP utility
 %build
 
 %install
-chmod -R u+wx $RPM_BUILD_ROOT%{prefix}
+echo UPSVERSION %{upsversion}
+if [ -d $RPM_BUILD_ROOT%{prefix} ]; then
+    chmod -fR u+wx $RPM_BUILD_ROOT%{prefix}
+fi
 rm -rf  $RPM_BUILD_ROOT
 
 #Unsetup any old versions.
@@ -57,6 +68,7 @@ mkprd /tmp/ups2rpm
 
 # put package files in $RBPM_BUILD_ROOT%{prefix}...
 upd install -z /tmp/ups2rpm/db -j -r $RPM_BUILD_ROOT%{prefix} %{upsproduct} %{upsversion} %{upsflags} -G "%{upsflags}"
+# making sure they are owned by the user makes for modifying things easier
 chmod u+w $RPM_BUILD_ROOT%{prefix}/*
 
 # prepare to build /etc/profile.d files from ups setup data

@@ -84,9 +84,10 @@ Steps to the cutting process:
  12.  ups declare
  13.  upd delproduct
  14.  upd addproduct
+ 15.  rpmbuild
 "
 
-STEPSDEFINED=14
+STEPSDEFINED=15
 
 echo "$USAGE"
 
@@ -599,8 +600,16 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
               fi
            fi
            ;;
-
-
+	15) echo "Step $Step:  rpmbuild -ba --macros ~/.rpmmacros -D 'upsflags $QUALIFIERS' -D 'upsversion $REV' $ENSTORE_DIR/spec/encp.spec   `starting`"
+           if [ "$try" = "doit" ] ; then
+		if [ `uname` != "Linux" ]; then
+		     check_status 1 "This step is only for Linux machines."
+		else
+		     rpmbuild -ba --macros $ENSTORE_DEVEL_DIR/../COMMON/rpmmacros -D "upsflags $QUALIFIERS" -D "upsversion $REV" $ENSTORE_DIR/spec/encp.spec
+		     check_status $? "rpmbuild"
+		fi
+	   fi	
+           ;;
         *) check_status 1 "There is no step \"$Step\". Why did you ask for it?"
            ;;
 
