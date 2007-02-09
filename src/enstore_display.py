@@ -244,7 +244,7 @@ if sys.version_info < (2, 3, 0):
         import operator
         return reduce(operator.add, sequence, start)
 
-    __builtins__.sum = local_sum
+    sum = local_sum
 
 def scale_to_display(x, y, w, h):
     """Convert coordinates on unit circle to Tk display coordinates for
