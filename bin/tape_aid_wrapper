@@ -52,7 +52,7 @@ EOD
 	       if [ $ns -gt 0 -o $nf -gt 0 ] && [ ${debug:-0} -eq 0 ]; then
 		  enstore alarm --raise --severity "I" --root-error "$msg"
 		  if echo $script | grep 'flip_tab' > /dev/null; then
-		     echo "$msg" | mail -s "$gang tape aid work" isa-group@fnal.gov berman@fnal.gov
+		     echo "$msg" | mail -s "$gang tape aid work" ssa-group@fnal.gov
 		  fi
 	       fi
 	     }
@@ -176,7 +176,7 @@ if echo $script | grep 'take_out' > /dev/null; then
 fi
 
 case $script in
-  *flip_tab)
+  flip_tab)
      action=${1:-"lock"}
      case $action in
        lock)
@@ -192,7 +192,7 @@ case $script in
 	  ;;
      esac
      ;;
-  *take_out)
+  take_out)
      action=${1:-"shelve"}
      case $action in
        shelve)
@@ -235,7 +235,7 @@ else
    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
       if [ ${debug:-0} -eq 0 ]; then
 	 if echo $script | grep 'flip_tab' > /dev/null; then
-	    echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" isa-group@fnal.gov
+	    echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" ssa-group@fnal.gov
 	 fi
       else
 	 echo "Starting $script $action $robot on $node."
