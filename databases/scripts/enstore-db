@@ -46,6 +46,7 @@ case $cmd in
 			/bin/rm -f $db/postmaster.pid
 			echo $pg -p 8888 -D $db -i &
 			$pg -p 8888 -D $db -i &
+			sleep 30
 		else
 			echo enstore-db has already started
 		fi
