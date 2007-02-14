@@ -218,6 +218,7 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
 	self.nooverride = ""
 	self.saagstatus = ""
 	self.update_and_exit = 0
+        self.is_up = ""
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -271,6 +272,13 @@ class InquisitorClientInterface(generic_client.GenericClientInterface):
                                     option.VALUE_USAGE:option.IGNORED,
                                     option.USER_LEVEL:option.ADMIN,
                                     },
+        option.IS_UP:{option.HELP_STRING:
+                        "check if <server> is up",
+                        option.VALUE_TYPE:option.STRING,
+                        option.VALUE_USAGE:option.REQUIRED,
+                        option.VALUE_LABEL:"server",
+                        option.USER_LEVEL:option.ADMIN,
+                        },
         option.MAX_ENCP_LINES:{option.HELP_STRING:"set the number of displayed"
                                " lines on the encp history web page",
                                option.VALUE_TYPE:option.INTEGER,
@@ -417,6 +425,21 @@ def do_work(intf):
     elif intf.get_update_interval:
         ticket = iqc.get_update_interval()
 	print repr(ticket['update_interval'])
+
+    elif intf.is_up:
+	ticket = iqc.show(rcv_timeout=30, tries=1)
+	if e_errors.is_ok(ticket):
+            outage = ticket['outage']
+            server = intf.is_up.upper()
+            for i in outage.keys():
+                if server == i.upper():
+                    print "no"
+                    sys.exit(1)
+            print "yes"
+            sys.exit(0)
+        else:
+            print "unknown"
+            sys.exit(2)
 
     elif intf.get_refresh:
         ticket = iqc.get_refresh()

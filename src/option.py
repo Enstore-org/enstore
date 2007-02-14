@@ -264,6 +264,7 @@ INFILE = "infile"                            #scanfiles
 INFO = "info"                                #pnfs
 INPUT_DIR = "input_dir"                      #plotter
 IO = "io"                                    #pnfs
+IS_UP = "is-up"                              #inquisitor
 JOUHOME = "jouHome"                          #restore
 JUST = "just"                                #start, stop
 KEEP = "keep"                                #plotter
@@ -459,7 +460,7 @@ valid_option_list = [
     GVOL, 
     HELP, HISTORY, HOST, HTML_DIR, HTML_FILE, HTML_GEN_HOST,
     ID, IGNORE_FAIR_SHARE, IGNORE_STORAGE_GROUP,
-    IMPORT, INFILE, INFO, INPUT_DIR, IO,
+    IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
