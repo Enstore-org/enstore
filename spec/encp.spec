@@ -93,4 +93,4 @@ rm -f $tf
 
 %files
 %attr(0755,root,root) /etc/profile.d/%{upsproduct}.*
-%{prefix}/*
+%attr(-,root,root) %{prefix}/*
