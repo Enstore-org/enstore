@@ -17,7 +17,7 @@ journal_dir=/diska/enstore-journal
 db_dump_file=enstoredb.dmp
 
 # find the host
-host = $1
+host=$1
 if [ "$host" == "" ]
 then
 	host=`uname -n | cut -d. -f1`
