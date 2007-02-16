@@ -151,11 +151,11 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			finfo = self.file[bfid]
 		except:
 			exc, msg = sys.exc_info()[:2]
-			status = str(exc), str(msg), str(ticket)
-			Trace.log(e_errors.ERROR, "bfid_info(): %s"%(status,))
+			status = str(exc), str(msg)
+			Trace.log(e_errors.ERROR, "bfid_info() execption: %s"%(status,))
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
-			Trace.log(e_errors.ERROR, "%s"%(ticket,))
+			Trace.log(e_errors.ERROR, "bfid_info() exception: %s %s"%(status, ticket,))
 			self.reply_to_caller(ticket)
 			return
 
