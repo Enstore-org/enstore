@@ -147,7 +147,18 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			return
 
 		# look up in our dictionary the request bit field id
-		finfo = self.file[bfid] 
+		try:
+			finfo = self.file[bfid]
+		except:
+			exc, msg = sys.exc_info()[:2]
+			status = str(exc), str(msg), str(ticket)
+			Trace.log(e_errors.ERROR, "bfid_info(): %s"%(status,))
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Clerk: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			return
+
 		if not finfo:
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
