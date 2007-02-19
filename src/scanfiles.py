@@ -365,9 +365,26 @@ def __get_layer_1(f):
         f1 = open(layer_file(f, 1))
         bfid = f1.readline()
         f1.close()
-    except (OSError, IOError):
-        bfid = None
-        
+    except (OSError, IOError), msg:
+        if msg.args[0] in [errno.EACCES, errno.EPERM]:
+            print os.strerror(msg.args[0]), f
+            if os.getuid() == 0:
+                try:
+                    os.seteuid(0)
+                    os.setegid(0)
+                    try:
+                        f1 = open(layer_file(f, 1))
+                        bfid = f1.readline()
+                        f1.close()
+                    except (OSError, IOError):
+                        bfid = None
+                except OSError:
+                    bfid = None
+            else:
+                bfid = None
+        else:
+            bfid = None
+
     return bfid
 
 def get_layer_1(f):
@@ -381,11 +398,37 @@ def get_layer_1(f):
         bfid = f1.readline()
         f1.close()
     except (OSError, IOError), detail:
-        bfid = None
-        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
-            err.append('no read permissions for layer 1')
+        if detail.args[0] in [errno.EACCES, errno.EPERM]:
+            #If we get here and the real id is user root, we need to reset
+            # the effective user id back to that of root ...
+            if os.getuid() == 0:
+                try:
+                    os.seteuid(0)
+                    os.setegid(0)
+                    try:
+                        #... and try it again.
+                        f1 = open(layer_file(f, 1))
+                        bfid = f1.readline()
+                        f1.close()
+                    except (OSError, IOError):
+                        if detail.errno in [ errno.EACCES, errno.EPERM]:
+                            err.append('no read permissions for layer 1')
+                        else:
+                            err.append('corrupted layer 1 metadata')
+                        bfid = None
+                except OSError:
+                    bfid = None
+            else:
+                if detail.errno in [ errno.EACCES, errno.EPERM]:
+                    err.append('no read permissions for layer 1')
+                else:
+                    err.append('corrupted layer 1 metadata')
+                bfid = None
+        elif detail.args[0] in [errno.ENOENT]:
+            bfid = None
         else:
             err.append('corrupted layer 1 metadata')
+            bfid = None
 
     return bfid, (err, warn, info)
 
@@ -1143,7 +1186,13 @@ def check_bit_file(bfid):
         afn = access_file(mp, file_record['pnfsid']) #afn =  access file name
 
         #Check layer 1 to get the bfid.
-        layer1_bfid = __get_layer_1(afn)
+        layer1_bfid, (err_l, warn_l, info_l) = get_layer_1(afn)
+        err = err + err_l
+        warn = warn + warn_l
+        info = info + info_l
+        if err or warn:
+            errors_and_warnings(prefix, err, warn, info)
+            return
         if layer1_bfid:
             #Make sure this is the correct file.
             if layer1_bfid == file_record['bfid']:
@@ -1244,12 +1293,19 @@ def check_bit_file(bfid):
     #
     #This won't help for the case of moved or renamed files.  We still
     # will bite the bullet of calling get_path() for those.
-    if db_num == 0: # and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
-        use_name = file_record['pnfs_name0'].replace("/pnfs/", "/pnfs/fs/usr/", 1)
+    if db_num == 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
+        use_name = file_record['pnfs_name0'].replace("/pnfs/",
+                                                     "/pnfs/fs/usr/", 1)
         use_mp = mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
-    elif db_num > 0:
+    elif db_num > 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
         use_name = file_record['pnfs_name0'].replace("/fs/usr/", "/", 1)
         use_mp = mp.replace("/fs/usr", "/", 1)
+    else:
+        use_name = file_record['pnfs_name0']
+        use_mp = mp
+    
+    use_name = os.path.abspath(use_name)
+    use_mp = os.path.abspath(use_mp)
 
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
