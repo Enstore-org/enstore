@@ -39,8 +39,12 @@ def main():
 
     accounting_db_server_name = acc.get('dbhost')
     accounting_db_name        = acc.get('dbname')
+    port                      = acc.get('dbport', None)
 
-    login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name,)
+    if port:
+        login_string = "psql  %s -h %s -p %s -t -q -c "%(accounting_db_name,accounting_db_server_name, port)
+    else:
+        login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name)
     cmd = "%s \" select max(unix_time) from encp_xfer_average_by_storage_group;\""%(login_string,)
     inp,out = os.popen2 (cmd, 'r')
     inp.write (cmd)
