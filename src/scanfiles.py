@@ -776,11 +776,13 @@ def parse_mtab():
         db_fp.close()
 
 
-        #If the databases id is not in the cache, add it along with the
+        #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
         db_pnfsid = int(db_data[:4], 16)
-        if db_pnfsid not in db_pnfsid_cache.keys():
-            db_pnfsid_cache[db_pnfsid] = mp
+        #if db_pnfsid not in db_pnfsid_cache.keys():
+        #    db_pnfsid_cache[db_pnfsid] = mp
+        if mp not in db_pnfsid_cache.keys():
+            db_pnfsid_cache[mp] = db_pnfsid
 
     fp.close()
 
@@ -1085,7 +1087,7 @@ def check_vol(vol):
     for i in res['bfids']:
         check_bit_file(i)
 
-last_db_tried = (-1, "")
+last_db_tried = ("", -1)
 search_list = []
 
 # check_bit_file(bfid) -- check file using bfid
@@ -1103,7 +1105,7 @@ def check_bit_file(bfid):
     if not db_pnfsid_cache:
         #Sets global db_pnfsid_cache.
         parse_mtab()
-        for db_num, mp in db_pnfsid_cache.items():
+        for mp, db_num in db_pnfsid_cache.items():
             if db_num == 0 or os.path.basename(mp) == "fs":
                 #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
                 p = pnfs.Pnfs()
@@ -1115,7 +1117,7 @@ def check_bit_file(bfid):
                     tmp_db = int(p.get_database(os.path.join(use_path, dname)).split(":")[1])
                     if tmp_db == db_num:
                         continue
-                    db_pnfsid_cache[tmp_db] = tmp_name
+                    db_pnfsid_cache[tmp_name] = tmp_db
 
         search_list = db_pnfsid_cache.items()
         #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
@@ -1158,7 +1160,7 @@ def check_bit_file(bfid):
         info = info + ["deleted"]
 
     #Loop over all found mount points.
-    for db_num, mp in [last_db_tried] + search_list:
+    for mp, db_num in [last_db_tried] + search_list:
 
         #If last_db_tried is still set to its initial value, we need to
         # skip the the next.
@@ -1215,7 +1217,10 @@ def check_bit_file(bfid):
                     if db_num != pnfsid_db:
                         #We use db_pnfsid_cache instead of search_list,
                         # becuase it is easier to search.
-                        if pnfsid_db in db_pnfsid_cache.keys():
+                        if pnfsid_db in db_pnfsid_cache.values():
+                            #If we keep trying we will find a match.
+                            continue
+                            """
                             pnfsid_mp = db_pnfsid_cache[pnfsid_db]
                             #We get here if this is another top level db.
                             afn = access_file(pnfsid_mp,
@@ -1224,6 +1229,7 @@ def check_bit_file(bfid):
                             if layer1_bfid and \
                                layer1_bfid == file_record['bfid']:
                                 last_db_tried = (pnfsid_db, pnfsid_mp)
+                            """
                         else:
                             #We get here if it is not mounted or it is
                             # not a top level db.
