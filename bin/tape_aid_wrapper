@@ -47,7 +47,7 @@ EOD
 
 	       ns=`find $work -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
 	       nf=`find $work -type f -name \*.fail -daystart -mtime -1 -print | awk 'END {print NR}'`
-	       msg="Today's $robot robot $script work: $ns groups ${action%e}ed, $nf groups failed."
+	       msg="Today's $node $robot robot $script work: $ns groups ${action%e}ed, $nf groups failed."
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ] && [ ${debug:-0} -eq 0 ]; then
 		  enstore alarm --raise --severity "I" --root-error "$msg"
