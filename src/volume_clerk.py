@@ -31,6 +31,7 @@ import monitored_server
 import inquisitor_client
 import cPickle
 import event_relay_messages
+import udp_common
 
 def hack_match(a,b): #XXX clean this up
     a = string.split(a, '.')
@@ -1287,7 +1288,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         Trace.trace(20, "next_write_volume %s" % (ticket,))
             
         vol_veto = ticket["vol_veto_list"]
-        vol_veto_list = self.r_eval(vol_veto)
+        vol_veto_list = udp_common.r_eval(vol_veto)
 
         # get the criteria for the volume from the user's ticket
         min_remaining_bytes = ticket["min_remaining_bytes"]
