@@ -302,8 +302,15 @@ if __name__ == '__main__':
     os.system("rm -f *.txt")
 
     for db_name in dbs:
-        if ( do_mail(db_name) ) :
-            yes_mail=True
+        rc = False
+        try:
+            rc = do_mail(db_name);
+            if ( rc ) : 
+                yes_mail = True
+        except:
+            print "Failed in do_mail for database ",db_name
+            pass 
+
     if ( yes_mail ) :
         os.system("cat *.txt > mail.txt");
         os.system('mail dcache-auto@fnal.gov -s "There are files with missing layers older than 24 hours" < mail.txt')
