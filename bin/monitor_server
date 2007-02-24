@@ -4,7 +4,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # use $HOME because tilde does not work on sgis
 node=`uname -n`
-OUT=$HOME/${node}.monitor_server.output
+OUT=${HOME:-~}/${node}.monitor_server.output
 
 # only resetup everything if not currently set up
 if [ "${ENSTORE_DIR:-}" = "" ];
@@ -41,4 +41,3 @@ restart)
 	exit 1
 	;;
 esac
-
