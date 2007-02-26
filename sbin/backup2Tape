@@ -162,9 +162,18 @@ rm -f $ENSTORE_FILES
 #only backup the latest directory copy.
 ELAST=`ls -ltd  $ENSTORE/dbase.* | head -n1 | awk '{print $NF}'`
 find $ELAST -type f $find_options -print > $ENSTORE_FILES
+# tar journal files
+# make a list of journal files
 find $ENSTORE/JOURNALS -type f $find_options -print > /tmp/journals
-cat /tmp/journals >> $ENSTORE_FILES
-ls /diska/pgdb-backup/* >> $ENSTORE_FILES
+# file list without path
+for i in `cat /tmp/journals`; do basename $i; done > /tmp/journal_files
+# do tar-ing in $ENSTORE/JOURNALS
+(cd $ENSTORE/JOURNALS; tar cvf journals.tar `cat /tmp/journal_files`)
+echo $ENSTORE/JOURNALS/journals.tar >> /tmp/journals
+echo $ENSTORE/JOURNALS/journals.tar >> $ENSTORE_FILES
+rm -f /tmp/journal_files
+# cat /tmp/journals >> $ENSTORE_FILES
+ls /diska/pgdb-backup/*.01 >> $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
 list ""
