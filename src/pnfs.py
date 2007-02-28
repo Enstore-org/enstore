@@ -781,52 +781,34 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
 
+        #Check if we can get the database directly.  This only works
+        # for directories.
         try:
-            #Getting the db from 
-            initial_pnfs_db = int(self.get_id(fname)[:4], 16)
+            initial_pnfs_database = self.get_database(fname).strip()
             current_path = old_path = fname
         except (OSError, IOError), msg:
-            #Check if the file does not exist.
-            if not os.path.exists(fname):
-                raise OSError(errno.ENOENT,
-                              "%s: %s" % (os.strerror(errno.ENOENT), fname))
-
-            #Check if we can get the database directly.  This only works
-            # for directories.
-            try:
-                current_pnfs_db = int(self.get_database(fname).split(":")[1],
-                                      16)
-                #We were given the mount point as that starting point.
-                return fname
-            except (OSError, IOError), msg2:
-                if msg2.args[0] == errno.ENOENT:
-                    raise OSError(errno.ENOENT,
-                                  "%s: %s" % (os.strerror(errno.EINVAL),
-                                              "Not a valid pnfs directory"))
-
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            #If we need a directory, get it and try again.
+            if msg.args[0] == errno.ENOTDIR:
+                try:
+                    dname = get_directory_name(fname)
+                    initial_pnfs_database = self.get_database(dname).strip()
+                    current_path = old_path = dname
+                except (OSError, IOError):
+                    raise sys.exc_info()[0], sys.exc_info()[1], \
+                          sys.exc_info()[2]
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         #Strip off one directory segment at a time.  We are looking for
         # where the DB number changes.
         while 1:
             current_path = os.path.dirname(current_path)
             try:
-                current_pnfs_db = int(self.get_id(current_path)[:4], 16)
-            except (OSError, IOError), msg:
-                if msg.args[0] == errno.ENOENT:
-                    #We've reached the top without hitting a change of DB.
-                    current_pnfs_db = int(self.get_database(old_path).split(":")[1],
-                                          16)
-                    if initial_pnfs_db == current_pnfs_db:
-                        #This check is here only as great paranoia.  If
-                        # getting the database id didn't through a traceback
-                        # then we should be good to go.
-                        return current_path
-                    else:
-                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-                else:
-                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-            if initial_pnfs_db != current_pnfs_db:
+                current_pnfs_database = self.get_database(current_path).strip()
+            except (OSError, IOError):
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+            if initial_pnfs_database != current_pnfs_database:
                 #We found the change of DB.
                 return old_path
             old_path = current_path
