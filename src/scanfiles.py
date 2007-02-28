@@ -1187,7 +1187,8 @@ def check_vol(vol):
                 break
         else:
             #Continue on with checking the bfid.
-            check_bit_file(tape_list[i]['bfid'])
+            check_bit_file(tape_list[i]['bfid'],
+                           {'file_record' : tape_list[i]})
                 
 last_db_tried = ("", (-1, ""))
 search_list = []
@@ -1199,46 +1200,25 @@ search_list = []
 # [3] using pnfs prefix and pnfsid to find the real path
 # [4] use real path to scan the file
 
-def check_bit_file(bfid):
+def check_bit_file(bfid, bfid_info = None):
     global last_db_tried
-    """
-    global db_pnfsid_cache
-    global search_list
 
-    if not db_pnfsid_cache:
-        #Sets global db_pnfsid_cache.
-        parse_mtab()
-        for database_info, (db_num, mp) in db_pnfsid_cache.items():
-            if db_num == 0 or os.path.basename(mp) == "fs":
-                #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
-                p = pnfs.Pnfs()
-                use_path = os.path.join(mp, "usr")
-                for dname in os.listdir(use_path):
-                    tmp_name = os.path.join(use_path, dname)
-                    if not os.path.isdir(tmp_name):
-                        continue
-                    tmp_db_info = p.get_database(os.path.join(use_path, dname))
-                    tmp_db = int(tmp_db_info.split(":")[1])
-                    if tmp_db == db_num:
-                        continue
-                    db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
-
-        search_list = db_pnfsid_cache.items()
-        #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
-        # the list and it will be sorted to the end of the list.
-        search_list.sort()
-        search_list.reverse()
-
-    """
     err = []
     warn = []
     info = []
 
     prefix = bfid
-    file_record, (err, warn, info) = get_filedb_info(bfid)
-    if err or warn:
-        errors_and_warnings(prefix, err, warn, info)
-        return
+
+    if bfid_info:
+        file_record = bfid_info.get('file_record', None)
+    else:
+        file_record = None
+
+    if not file_record:
+        file_record, (err, warn, info) = get_filedb_info(bfid)
+        if err or warn:
+            errors_and_warnings(prefix, err, warn, info)
+            return
 
     prefix = string.join([prefix, "...", file_record['external_label'],
                           file_record['location_cookie']], " ")
@@ -1271,7 +1251,6 @@ def check_bit_file(bfid):
         # skip the the next.
         if db_num < 0:
             continue
-
         
         #This test is to make sure that the pnfs filesystem we are going
         # to query has a database N (where N is pnfsid_db).  Otherwise
@@ -1285,7 +1264,6 @@ def check_bit_file(bfid):
                 #This /pnfs/fs doesn't contain a database with the id we
                 # are looking for.
                 continue
-        
         
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
@@ -1354,7 +1332,7 @@ def check_bit_file(bfid):
                                 pnfs_path = p.get_path(file_record['pnfsid'],
                                                        mp)
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
-                            except (OSError, IOError), msg:
+                            except (OSError, IOError):
                                 pnfsid_mp = None
 
                             if pnfsid_mp != None:
@@ -1418,9 +1396,15 @@ def check_bit_file(bfid):
         use_name = file_record['pnfs_name0'].replace("/pnfs/",
                                                      "/pnfs/fs/usr/", 1)
         use_mp = mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
-    elif db_num > 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
+    elif mp.find("/pnfs/fs/usr/") >= 0 and \
+             file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
+        use_name = file_record['pnfs_name0'].replace("/pnfs/",
+                                                     "/pnfs/fs/usr/", 1)
+        use_mp = mp
+    elif mp.find("/pnfs/fs/usr/") == -1 and \
+             file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
         use_name = file_record['pnfs_name0'].replace("/fs/usr/", "/", 1)
-        use_mp = mp.replace("/fs/usr", "/", 1)
+        use_mp = mp
     else:
         use_name = file_record['pnfs_name0']
         use_mp = mp
@@ -1488,7 +1472,6 @@ def check_bit_file(bfid):
     else:
         pnfs_path = use_name
 
-    
     #Stat the file.
     f_stats, (e2, w2, i2) = get_stat(pnfs_path)
     err = err + e2
@@ -1533,8 +1516,8 @@ def check_bit_file(bfid):
                  "layer1"        : layer1_bfid,
                  "file_record"   : file_record,
                  "pnfsid"        : file_record['pnfsid']}
-    
-    e1, w1, i1 = check_file(pnfs_path, file_info)    
+
+    e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
     warn = warn + w1
     info = info + i1
