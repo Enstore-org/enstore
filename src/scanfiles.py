@@ -749,6 +749,22 @@ def parse_mtab():
         if fs_type != "nfs":
             continue
 
+        try:
+            dataname = os.path.join(mp, ".(get)(database)")
+            db_fp = open(dataname, "r")
+            db_data = db_fp.readline().strip()
+            db_fp.close()
+        except IOError:
+            continue
+
+        db_datas = db_data.split(":")
+        #db_datas[0] is the database name
+        #db_datas[1] is the database id
+        #db_datas[2] is the database (???)
+        #db_datas[3] is the database enabled or disabled status
+        #db_datas[4] is the database (???)
+
+        """
         #Obtain the list of "files" in the top directory.
         try:
             dir_list = os.listdir(mp)
@@ -774,17 +790,84 @@ def parse_mtab():
             continue
         db_data = db_fp.readline()
         db_fp.close()
-
+        """
 
         #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
-        db_pnfsid = int(db_data[:4], 16)
-        #if db_pnfsid not in db_pnfsid_cache.keys():
-        #    db_pnfsid_cache[db_pnfsid] = mp
-        if mp not in db_pnfsid_cache.keys():
-            db_pnfsid_cache[mp] = db_pnfsid
+        db_pnfsid = int(db_datas[1])
+        if db_data not in db_pnfsid_cache.keys():
+            db_pnfsid_cache[db_data] = (db_pnfsid, mp)
 
     fp.close()
+
+def process_mtab():
+    global db_pnfsid_cache
+    global search_list
+    
+    if not db_pnfsid_cache:
+        #Sets global db_pnfsid_cache.
+        parse_mtab()
+        
+    for database_info, (db_num, mp) in db_pnfsid_cache.items():
+        if db_num == 0 or os.path.basename(mp) == "fs":
+            #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
+            p = pnfs.Pnfs()
+            use_path = os.path.join(mp, "usr")
+            for dname in os.listdir(use_path):
+                tmp_name = os.path.join(use_path, dname)
+                if not os.path.isdir(tmp_name):
+                    continue
+                tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
+                if tmp_db_info in db_pnfsid_cache.keys():
+                    continue
+                
+                tmp_db = int(tmp_db_info.split(":")[1])
+                db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
+
+    sort_mtab()
+
+def __db_cmp(x, y):
+    is_x_fs_usr = x[1][1].find("/fs/usr/") > 0
+    is_y_fs_usr = y[1][1].find("/fs/usr/") > 0
+
+    is_x_fs = x[1][0] == 0
+    is_y_fs = y[1][0] == 0
+
+    #Always put /pnfs/fs last.
+    if is_x_fs and not is_y_fs:
+        return -1
+    elif not is_x_fs and is_y_fs:
+        return 1
+
+    #Always put /pnfs/xyz first.
+    elif is_x_fs_usr and not is_y_fs_usr:
+        return -1
+    elif not is_x_fs_usr and is_y_fs_usr:
+        return 1
+
+    #The are the same type of path.  Sort by db number.
+    return cmp(x[1][0], y[1][0])
+
+def sort_mtab():
+    global db_pnfsid_cache
+    global search_list
+
+    search_list = db_pnfsid_cache.items()
+    #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
+    # the list and it will be sorted to the end of the list.
+    search_list.sort(lambda x, y: __db_cmp(x, y))
+    search_list.reverse()
+
+    #import pprint
+    #pprint.pprint(search_list)
+    #sys.exit(1)
+
+def add_mtab(db_info, db_num, db_mp):
+    global db_pnfsid_cache
+
+    if db_info not in db_pnfsid_cache.keys():
+        db_pnfsid_cache[db_info] = (db_num, db_mp)
+        sort_mtab()
 
 """
 def __search_for_mount_point(pnfs_path):
@@ -1080,14 +1163,33 @@ def check_dir(d, dir_info):
 # check_vol(vol) -- check whole volume
 
 def check_vol(vol):
-    res = infc.get_bfids(vol)
-    if res['status'][0] != e_errors.OK:
-        errors_and_warnings(vol, ['can not get info'],[],[])
+    tape_ticket = infc.tape_list(vol)
+    if not e_errors.is_ok(tape_ticket):
+        errors_and_warnings(vol, ['can not get info'], [], [])
         return
-    for i in res['bfids']:
-        check_bit_file(i)
-
-last_db_tried = ("", -1)
+    
+    tape_list = tape_ticket['tape_list']
+    for i in range(len(tape_list)):
+        #First check if there are files with matching locations on this tape.
+        for j in range(len(tape_list)):
+            if i == j:
+                #Skip the current file.
+                continue
+            if tape_list[i]['location_cookie'] == tape_list[j]['location_cookie']:
+                #If we get here then we have multiple locations for the
+                # same tape.
+                ### Historical Note: This has been found to have happened
+                ### while importing SDSS DLT data into Enstore.
+                err = ['volume %s has duplicate location %s (%s, %s)' %
+                       (vol, tape_list[i]['location_cookie'],
+                        tape_list[i]['bfid'], tape_list[j]['bfid'])]
+                errors_and_warnings(vol, err, [], [])
+                break
+        else:
+            #Continue on with checking the bfid.
+            check_bit_file(tape_list[i]['bfid'])
+                
+last_db_tried = ("", (-1, ""))
 search_list = []
 
 # check_bit_file(bfid) -- check file using bfid
@@ -1098,14 +1200,15 @@ search_list = []
 # [4] use real path to scan the file
 
 def check_bit_file(bfid):
-    global db_pnfsid_cache
     global last_db_tried
+    """
+    global db_pnfsid_cache
     global search_list
 
     if not db_pnfsid_cache:
         #Sets global db_pnfsid_cache.
         parse_mtab()
-        for mp, db_num in db_pnfsid_cache.items():
+        for database_info, (db_num, mp) in db_pnfsid_cache.items():
             if db_num == 0 or os.path.basename(mp) == "fs":
                 #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
                 p = pnfs.Pnfs()
@@ -1114,17 +1217,19 @@ def check_bit_file(bfid):
                     tmp_name = os.path.join(use_path, dname)
                     if not os.path.isdir(tmp_name):
                         continue
-                    tmp_db = int(p.get_database(os.path.join(use_path, dname)).split(":")[1])
+                    tmp_db_info = p.get_database(os.path.join(use_path, dname))
+                    tmp_db = int(tmp_db_info.split(":")[1])
                     if tmp_db == db_num:
                         continue
-                    db_pnfsid_cache[tmp_name] = tmp_db
+                    db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
 
         search_list = db_pnfsid_cache.items()
         #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
         # the list and it will be sorted to the end of the list.
         search_list.sort()
         search_list.reverse()
-            
+
+    """
     err = []
     warn = []
     info = []
@@ -1160,14 +1265,14 @@ def check_bit_file(bfid):
         info = info + ["deleted"]
 
     #Loop over all found mount points.
-    for mp, db_num in [last_db_tried] + search_list:
+    for database_info, (db_num, mp)  in [last_db_tried] + search_list:
 
         #If last_db_tried is still set to its initial value, we need to
         # skip the the next.
         if db_num < 0:
             continue
 
-        """
+        
         #This test is to make sure that the pnfs filesystem we are going
         # to query has a database N (where N is pnfsid_db).  Otherwise
         # we hang querying a non-existant database.  If the pnfsid_db
@@ -1180,7 +1285,7 @@ def check_bit_file(bfid):
                 #This /pnfs/fs doesn't contain a database with the id we
                 # are looking for.
                 continue
-        """
+        
         
         #We don't need to determine the full path of the file
         # to know if it exists.  The path could be different
@@ -1213,49 +1318,59 @@ def check_bit_file(bfid):
                     errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
-                    #Update the global cache information.  
-                    if db_num != pnfsid_db:
-                        #We use db_pnfsid_cache instead of search_list,
-                        # becuase it is easier to search.
-                        if pnfsid_db in db_pnfsid_cache.values():
-                            #If we keep trying we will find a match.
-                            continue
-                            """
-                            pnfsid_mp = db_pnfsid_cache[pnfsid_db]
-                            #We get here if this is another top level db.
-                            afn = access_file(pnfsid_mp,
-                                              file_record['pnfsid'])
-                            layer1_bfid = __get_layer_1(afn)
-                            if layer1_bfid and \
-                               layer1_bfid == file_record['bfid']:
-                                last_db_tried = (pnfsid_db, pnfsid_mp)
-                            """
+                    p = pnfs.Pnfs()
+                    db_a_dirpath = pnfs.get_directory_name(afn)
+                    db_info = p.get_database(db_a_dirpath)
+
+                    #Update the global cache information.
+                    if database_info != db_info:
+
+                        #At this point the database that the file is in
+                        # doesn't match the one that returned a positive hit.
+                        # So, we first check if a known PNFS database is
+                        # a match...
+                        for item in search_list:
+                            if item[0] == db_info:
+                                pnfs_path = access_file(item[1][1],
+                                                        file_record['pnfsid'])
+                                layer1_bfid = __get_layer_1(pnfs_path)
+                                if layer1_bfid and \
+                                       layer1_bfid == file_record['bfid']:
+                                    last_db_tried = copy.copy(item)
+                                    break
                         else:
-                            #We get here if it is not mounted or it is
-                            # not a top level db.
-                            find_db = ("0000%s" % (hex(pnfsid_db)[2:],))[-4:]
-                            #The first seems to work for top level DBs.
-                            find_pnfsid_1 = "%s00000000000000001060" % find_db
-                            #The second seems to work for sub DBs.
-                            find_pnfsid_2 = "%s00000000000000001080" % find_db
-                            p = pnfs.Pnfs()
+                            #...if it is not a match then we have a database
+                            # not it our current cached list.  So we need
+                            # to find it.  This is going to be a resource
+                            # hog, but once we find it, we won't need to
+                            # do so for any more files.
+                            
+                            #If this p.get_path() fails, it is most likely,
+                            # because of permission problems of either
+                            # /pnfs/fs or /pnfs/fs/usr.  Especially for
+                            # new pnfs servers.
                             try:
-                                pnfsid_mp = p.get_path(find_pnfsid_1)
-                            except:
-                                try:
-                                    pnfsid_mp = p.get_path(find_pnfsid_2)
-                                except:
-                                    pnfsid_mp = None
+                                p = pnfs.Pnfs()
+                                pnfs_path = p.get_path(file_record['pnfsid'],
+                                                       mp)
+                                pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
+                            except (OSError, IOError), msg:
+                                pnfsid_mp = None
 
                             if pnfsid_mp != None:
+                                #This is just some paranoid checking.
                                 afn = access_file(pnfsid_mp,
                                                   file_record['pnfsid'])
                                 layer1_bfid = __get_layer_1(afn)
                                 if layer1_bfid and \
                                        layer1_bfid == file_record['bfid']:
-                                    last_db_tried = (pnfsid_db, pnfsid_mp)
+                                    last_db_tried = (db_info, (pnfsid_db, pnfsid_mp))
+                                    add_mtab(db_info, pnfsid_db, pnfsid_mp)
                             else:
-                                last_db_tried = (-1, "")
+                                last_db_tried = ("", (-1, ""))
+
+                    else:
+                        last_db_tried = (db_info, (pnfsid_db, mp))
 
                     #We found the file, set the pnfs path.
                     pnfs_path = afn
@@ -1858,6 +1973,8 @@ def main(intf_of_scanfiles, file_object, file_list):
     
     #number of threads to use for checking files.
     #AT_ONE_TIME = max(1, min(intf_of_scanfiles.file_threads, 10))
+
+    process_mtab() #Do this once to cache the mtab info.
 
     try:
 
