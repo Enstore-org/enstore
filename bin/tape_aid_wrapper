@@ -51,9 +51,7 @@ EOD
 	       echo "`date` $msg"
 	       if [ $ns -gt 0 -o $nf -gt 0 ] && [ ${debug:-0} -eq 0 ]; then
 		  enstore alarm --raise --severity "I" --root-error "$msg"
-		  if echo $script | grep 'flip_tab' > /dev/null; then
-		     echo "$msg" | mail -s "$gang tape aid work" ssa-group@fnal.gov
-		  fi
+		  echo "$msg" | mail -s "$gang tape aid work" ssa-group@fnal.gov
 	       fi
 	     }
 
@@ -234,9 +232,7 @@ else
    fi
    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
       if [ ${debug:-0} -eq 0 ]; then
-	 if echo $script | grep 'flip_tab' > /dev/null; then
-	    echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" ssa-group@fnal.gov
-	 fi
+	 echo "Starting $script $action $robot on $node." | mail -s "$gang tape aid work" ssa-group@fnal.gov
       else
 	 echo "Starting $script $action $robot on $node."
       fi
