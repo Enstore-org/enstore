@@ -151,13 +151,10 @@ def recover(backup_time=None):
     f.close()
     os.system("cat %s/recovery.conf"%(pgdb))
     
-    # disable archive_command
+    # comment our archive command 
     print "CWD",cwd
-    cmd = 'sed -e "s/archive_command/#archive_command/g w f.1" %s/postgresql.conf'% (pgdb,)
-    os.system(cmd)
-    cmd = "log_line_prefix = '<%t> '"
-    os.system('echo "%s" >> f.1'%(cmd,))
-    cmd = 'mv f.1 %s/postgresql.conf'%(pgdb,)
+    # cmd = 'sed -e "s/archive_command/#archive_command/g w f.1" %s/postgresql.conf'% (pgdb,)
+    cmd = 'cat %s/postgresql.conf | sed -e "s/archive_command/#archive_command/g" > %s/postgresql.conf.bak ; mv %s/postgresql.conf.bak  %s/postgresql.conf'% (pgdb,pgdb,pgdb,pgdb)
     os.system(cmd)
 
 
