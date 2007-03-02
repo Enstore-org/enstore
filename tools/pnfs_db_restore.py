@@ -109,14 +109,8 @@ def recover(backup_time=None):
 
     backup_file = get_backup(backup_host, backup_dir,  backup_name)
     # go to a proper directory
-    cdw=""
-    try:
-        os.chdir(os.path.dirname(pnfs_db))
-    except (OSError):
-        print "Directory ",os.path.dirname(pnfs_db), "does not seem to exist, creating";
-        os.makedirs(os.path.dirname(pnfs_db))
+    os.chdir(os.path.dirname(pnfs_db))
     
-
     cwd=os.getcwd()
     
     # clean directories if exist
