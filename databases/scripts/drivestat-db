@@ -2,8 +2,8 @@
 
 # To start, stop and restart postgres database server for drivestat-db.
 # It shall be installed in /etc/rc.d/init.d/drivestat-db and
-# linked from /etc/rc.d/rc3.d/S89drivestat-db and
-# /etc/rc.d/rc6.d/S89drivestat-db
+# linked from /etc/rc.d/rc3.d/S99zxbdrivestat-db and
+# /etc/rc.d/rc6.d/k01aacdrivestat-db
 
 port=8802
 
