@@ -35,6 +35,7 @@ clean:
 	if [ "$(ACI_DIR)_" != _ ] ; then \
 	swig -I$(ACI_DIR)/inc -shadow -python derrno.i ; \
 	mv derrno_wrap.c .. ; \
+	mv derrno.py .. ; \
 	fi
 
 ../derrno.py: ../derrno_wrap.c
