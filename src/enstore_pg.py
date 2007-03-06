@@ -13,7 +13,7 @@ def acc_encp_lines(csc, numEncps=100):
     acc = csc.get(enstore_constants.ACCOUNTING_SERVER)
     # connect to the db
     try:
-        db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'])
+        db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'], port=acc['dbport'])
     except pg.Error, detail:
         # could not connect to the db
         print " %s  %s"%(pg.Error, detail)
