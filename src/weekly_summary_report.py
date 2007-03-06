@@ -32,7 +32,7 @@ volume_clerk = csc.get('volume_clerk')
 
 # connections to the databases
 enstoredb = pg.DB(host=database['db_host'], port=database['db_port'], dbname=database['dbname'])
-accdb = pg.DB(host=accounting_server['dbhost'], port=accounting_server.get('db_port', 5432), dbname=accounting_server['dbname'])
+accdb = pg.DB(host=accounting_server['dbhost'], port=accounting_server.get('dbport', 5432), dbname=accounting_server['dbname'])
 
 
 def eprint(ff, s):
