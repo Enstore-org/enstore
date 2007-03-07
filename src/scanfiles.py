@@ -460,7 +460,7 @@ def get_layer_1(f):
                 else:
                     err.append('corrupted layer 1 metadata')
                 bfid = None
-        elif detail.args[0] in [errno.ENOENT]:
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
             bfid = None
         else:
             err.append('corrupted layer 1 metadata')
@@ -1512,6 +1512,15 @@ def check_bit_file(bfid, bfid_info = None):
         # 3) The file is renamed. (get_path() gives the new name)
         cur_pnfsid = get_pnfsid(use_name)[0]
         if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
+            #Since we have no idea in pnfs-land where we will be headed,
+            # lets set things so that we will be able to have access
+            # permissions set if possible.
+            if os.getuid() == 0 and os.geteuid() != 0:
+                try:
+                    os.seteuid(0)
+                    os.setegid(0)
+                except OSError:
+                    pass
             try:
                 tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
                 if tmp_name[0] == "/":
