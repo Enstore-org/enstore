@@ -13,7 +13,7 @@ csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_po
 
 acc = csc.get('accounting_server')
 
-db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'], port=acc['dbport']))
+db = pg.DB(host=acc['dbhost'], dbname=acc['dbname'], port=acc['dbport'])
 
 print db.query("select * from make_daily_xfer_size();")
 print db.query("select * from make_daily_xfer_size_by_mover();")
