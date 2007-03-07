@@ -40,7 +40,7 @@ if __name__ == '__main__':
 	f.write("Date this listing was generated: %s\n"%time.ctime(now))
 	f.write("\n%s\n\n"%(head))
 	f.close()
-	query = "select update as time, label as volume, \
+	query = "select update as time, label as volume, file_family, \
 			location_cookie, pnfs_path from file, volume \
 			where \
 				bfid >= '%s' and bfid < '%s' and \
