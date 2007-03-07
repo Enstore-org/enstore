@@ -274,10 +274,12 @@ def get_enstore_pnfs_path(filename):
     absolute_path = os.path.abspath(filename)
 
     #This is not automount safe.
-    if absolute_path[:13] == "/pnfs/fs/usr/":
-        return os.path.join("/pnfs/", absolute_path[13:])
-    elif absolute_path[:6] == "/pnfs/":
-        return absolute_path
+    if absolute_path.find("/pnfs/fs/usr/") >= 0:
+        return absolute_path.replace("/pnfs/fs/usr/", "/pnfs/", 1)
+    elif absolute_path.find("/pnfs/fnal.gov/usr/") >= 0:
+        return absolute_path.replace("/pnfs/fnal.gov/usr/", "/pnfs/", 1)
+    elif absolute_path.find("/pnfs/") >= 0:
+        return absolute_path.replace("/pnfs/", "/pnfs/", 1)
     else:
         return absolute_path
 
@@ -286,10 +288,12 @@ def get_dcache_pnfs_path(filename):
     absolute_path = os.path.abspath(filename)
 
     #This is not automount safe.
-    if absolute_path[:13] == "/pnfs/fs/usr/":
+    if absolute_path.find("/pnfs/fs/usr/") >= 0:
         return absolute_path
-    elif absolute_path[:6] == "/pnfs/":
-        return os.path.join("/pnfs/fs/usr/", absolute_path[6:])
+    elif absolute_path.find("/pnfs/fnal.gov/usr/") >= 0:
+        return absolute_path.replace("/pnfs/fnal.gov/usr/", "/pnfs/fs/usr/", 1)
+    elif absolute_path.find("/pnfs/") >= 0:
+        return absolute_path.replace("/pnfs/", "/pnfs/fs/usr/", 1)
     else:
         return absolute_path
     
@@ -359,7 +363,40 @@ def parent_file(f, pnfsid = None):
 def access_file(dn, pnfsid):
     return os.path.join(dn, ".(access)(%s)" % (pnfsid))
 
-def __get_layer_1(f):
+def database_file(directory):
+    return os.path.join(directory, ".(get)(database)")
+
+def get_database(f):
+    #p = pnfs.Pnfs()
+    db_a_dirpath = pnfs.get_directory_name(f)
+    database_path = database_file(db_a_dirpath)
+
+    try:
+        f1 = open(database_path)
+        database = f1.readline()
+        f1.close()
+    except (OSError, IOError), msg:
+        if msg.args[0] in [errno.EACCES, errno.EPERM]:
+            if os.getuid() == 0:
+                try:
+                    os.seteuid(0)
+                    os.setegid(0)
+                    try:
+                        f1 = open(database_path)
+                        database = f1.readline()
+                        f1.close()
+                    except (OSError, IOError):
+                        database = None
+                except OSError:
+                    database = None
+            else:
+                database = None
+        else:
+            database = None
+
+    return database
+                        
+def __get_layer_1(f):                            
     # get bfid from layer 1
     try:
         f1 = open(layer_file(f, 1))
@@ -367,7 +404,6 @@ def __get_layer_1(f):
         f1.close()
     except (OSError, IOError), msg:
         if msg.args[0] in [errno.EACCES, errno.EPERM]:
-            print os.strerror(msg.args[0]), f
             if os.getuid() == 0:
                 try:
                     os.seteuid(0)
@@ -411,7 +447,7 @@ def get_layer_1(f):
                         bfid = f1.readline()
                         f1.close()
                     except (OSError, IOError):
-                        if detail.errno in [ errno.EACCES, errno.EPERM]:
+                        if detail.errno in [errno.EACCES, errno.EPERM]:
                             err.append('no read permissions for layer 1')
                         else:
                             err.append('corrupted layer 1 metadata')
@@ -419,7 +455,7 @@ def get_layer_1(f):
                 except OSError:
                     bfid = None
             else:
-                if detail.errno in [ errno.EACCES, errno.EPERM]:
+                if detail.errno in [errno.EACCES, errno.EPERM]:
                     err.append('no read permissions for layer 1')
                 else:
                     err.append('corrupted layer 1 metadata')
@@ -494,9 +530,32 @@ def get_layer_4(f):
     
     # get xref from layer 4 (?)
     try:
-        f4 = open(layer_file(f, 4))
-        layer4 = f4.readlines()
-        f4.close()
+        try:
+            f4 = open(layer_file(f, 4))
+            layer4 = f4.readlines()
+            f4.close()
+        except (OSError, IOError), msg:
+            if msg.args[0] in [errno.EACCES, errno.EPERM]:
+                #If we get here and the real id is user root, we need to reset
+                # the effective user id back to that of root ...
+                if os.getuid() == 0 and os.geteuid() != 0:
+                    try:
+                        os.seteuid(0)
+                        os.setegid(0)
+                    except OSError:
+                        raise msg
+                        
+                    try:
+                        #... and try it again.
+                        f4 = open(layer_file(f, 4))
+                        layer4 = f4.readlines()
+                        f4.close()
+                    except (OSError, IOError), msg2:
+                        raise msg2
+                else:
+                    raise msg
+            else:
+                raise msg
 
         l4 = {}
         if layer4:
@@ -1296,9 +1355,10 @@ def check_bit_file(bfid, bfid_info = None):
                     errors_and_warnings(prefix, err, warn, info)
                     return
                 else:
-                    p = pnfs.Pnfs()
-                    db_a_dirpath = pnfs.get_directory_name(afn)
-                    db_info = p.get_database(db_a_dirpath)
+                    #p = pnfs.Pnfs()
+                    #db_a_dirpath = pnfs.get_directory_name(afn)
+                    #db_info = p.get_database(db_a_dirpath)
+                    db_info = get_database(afn)
 
                     #Update the global cache information.
                     if database_info != db_info:
@@ -1334,6 +1394,7 @@ def check_bit_file(bfid, bfid_info = None):
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
                             except (OSError, IOError):
                                 pnfsid_mp = None
+                                pnfs_path = afn
 
                             if pnfsid_mp != None:
                                 #This is just some paranoid checking.
@@ -1349,9 +1410,10 @@ def check_bit_file(bfid, bfid_info = None):
 
                     else:
                         last_db_tried = (db_info, (pnfsid_db, mp))
+                        #We found the file, set the pnfs path.
+                        pnfs_path = afn
 
-                    #We found the file, set the pnfs path.
-                    pnfs_path = afn
+                    #pnfs_path needs to be set correctly by this point.
                     break
 
             #If we found the right bfid brand, we know the right pnfs system
@@ -1392,18 +1454,22 @@ def check_bit_file(bfid, bfid_info = None):
     #
     #This won't help for the case of moved or renamed files.  We still
     # will bite the bullet of calling get_path() for those.
-    if db_num == 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
-        use_name = file_record['pnfs_name0'].replace("/pnfs/",
-                                                     "/pnfs/fs/usr/", 1)
+    if not is_access_name(pnfs_path):
+        #If we have already had to do a full path lookup to find the
+        # correct pnfs database/mountpoint, we don't need to worry about
+        # any of this path munging.
+        use_name = pnfs_path
+        use_mp = pnfsid_mp
+    elif db_num == 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
+        use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
         use_mp = mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
     elif mp.find("/pnfs/fs/usr/") >= 0 and \
              file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
-        use_name = file_record['pnfs_name0'].replace("/pnfs/",
-                                                     "/pnfs/fs/usr/", 1)
+        use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
         use_mp = mp
     elif mp.find("/pnfs/fs/usr/") == -1 and \
              file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
-        use_name = file_record['pnfs_name0'].replace("/fs/usr/", "/", 1)
+        use_name = get_enstore_pnfs_path(file_record['pnfs_name0'])
         use_mp = mp
     else:
         use_name = file_record['pnfs_name0']
@@ -1460,7 +1526,7 @@ def check_bit_file(bfid, bfid_info = None):
                     #The best we can do is use the .(access)() name.
                     pass
             except (OSError, IOError), detail:
-                if detail.errno == errno.ENOENT or detail.errno == errno.EIO:
+                if detail.errno  in [errno.ENOENT, errno.EIO]:
                     err = err + ["%s orphaned file"%(file_record['pnfsid'])]
                     errors_and_warnings(prefix, err, warn, info)
                 else:
