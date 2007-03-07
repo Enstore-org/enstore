@@ -892,7 +892,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     found_db_num = db_num
                     found_fname = pfn
                 except (OSError, IOError), msg:
-                    if msg.args[0] == errno.EIO:
+                    if msg.args[0] in [errno.EIO]:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
@@ -905,6 +905,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             raise OSError(errno.EIO,
                                           "Found unnamed orphan file: %s" % 
                                           pfn)
+                    if msg.args[0] in [errno.EPERM]:
+                        raise OSError(errno.EPERM,
+                                      "%s: %s" % (os.strerror(errno.EPERM),
+                                                  pfn))
                     continue
 
             if count == 0:
