@@ -28,7 +28,7 @@ class InquisitorPlots:
             # open a connection to the accounting db, the data is there
             acc = self.config_d.get(enstore_constants.ACCOUNTING_SERVER, {})
             if acc:
-                self.acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""))
+                self.acc_db = accounting_query.accountingQuery(acc.get('dbhost', ""), acc.get('dbname', ""), acc.get('dbport',5432))
 
     def close_db_connection(self):
         if self.acc_db:
