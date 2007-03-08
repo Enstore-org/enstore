@@ -130,6 +130,12 @@ sleep 10
 echo su $database_owner createuser -p $db_port -d -S -R -P enstore 
 su $database_owner -c "psql template1 -p $db_port -c \"create user enstore password 'enstore_user' createdb;\""
 
+# create user enstore_reader
+#
+# This is a little bit different in batch mode
+echo su $database_owner createuser -p $db_port -d -S -R -P enstore_reader
+su $database_owner -c "psql template1 -p $db_port -c \"create user enstore_reader password 'enstore_user';\""
+
 # create database enstoredb
 echo su $db_owner createdb -p $db_port $db_name
 su $db_owner -c "createdb -p $db_port $db_name"
