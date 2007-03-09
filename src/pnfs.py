@@ -847,7 +847,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                16)
         except (OSError, IOError):
             #We will need the pnfs database numbers.
-            #use_pnfsid_db=int(use_id[:4], 16)
+            use_pnfsid_db=int(id[:4], 16)
             count = 0
             found_db_num = None
             found_fname = None
@@ -856,7 +856,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             for db_num, mp in mp_dict.items():
                 #If the mountpoint doesn't know about our database fail now.
                 try:
-                    N(db_num, mp).get_databaseN(db_num)
+                    N(db_num, mp).get_databaseN(use_pnfsid_db)
                 except (OSError, IOError):
                     continue
                 
