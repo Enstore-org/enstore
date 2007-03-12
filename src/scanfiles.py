@@ -31,7 +31,7 @@ import e_errors
 import Trace
 import charset
 import encp
-#from encp import e_access  #for e_access().
+import enstore_constants
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
@@ -170,6 +170,8 @@ def errors_and_warnings(fname, error, warning, information):
 
     print_lock.release()
 
+###############################################################################
+
 #The os.access() and the access(2) C library routine use the real id when
 # testing for access.  This function does the same thing but for the
 # effective ID.
@@ -296,7 +298,9 @@ def get_dcache_pnfs_path(filename):
         return absolute_path.replace("/pnfs/", "/pnfs/fs/usr/", 1)
     else:
         return absolute_path
-    
+
+###############################################################################
+
 def is_new_database(d):
 
     dbname = os.path.join(d, ".(get)(database)")
@@ -334,6 +338,8 @@ def is_access_name(filepath):
 
     return False
 
+###############################################################################
+
 def layer_file(f, n):
     pn, fn = os.path.split(f)
     if is_access_name(fn):
@@ -366,62 +372,51 @@ def access_file(dn, pnfsid):
 def database_file(directory):
     return os.path.join(directory, ".(get)(database)")
 
+###############################################################################
+
 def get_database(f):
-    #p = pnfs.Pnfs()
+    #err = []
+    #warn = []
+    #info = []
+    
     db_a_dirpath = pnfs.get_directory_name(f)
     database_path = database_file(db_a_dirpath)
 
     try:
-        f1 = open(database_path)
-        database = f1.readline()
-        f1.close()
-    except (OSError, IOError), msg:
-        if msg.args[0] in [errno.EACCES, errno.EPERM]:
-            if os.getuid() == 0:
-                try:
-                    os.seteuid(0)
-                    os.setegid(0)
-                    try:
-                        f1 = open(database_path)
-                        database = f1.readline()
-                        f1.close()
-                    except (OSError, IOError):
-                        database = None
-                except OSError:
-                    database = None
-            else:
-                database = None
-        else:
-            database = None
+        database = get_layer(database_path)
+    except (OSError, IOError):
+        database = None
+        #if detail.errno in [errno.EACCES, errno.EPERM]:
+        #    err.append('no read permissions for .(get)(database)')
+        #elif detail.args[0] in [errno.ENOENT, errno.ENOTDIR]:
+        #    pass
+        #else:
+        #    err.append('corrupted .(get)(database) metadata')
 
     return database
-                        
-def __get_layer_1(f):                            
-    # get bfid from layer 1
-    try:
-        f1 = open(layer_file(f, 1))
-        bfid = f1.readline()
-        f1.close()
-    except (OSError, IOError), msg:
-        if msg.args[0] in [errno.EACCES, errno.EPERM]:
-            if os.getuid() == 0:
-                try:
-                    os.seteuid(0)
-                    os.setegid(0)
-                    try:
-                        f1 = open(layer_file(f, 1))
-                        bfid = f1.readline()
-                        f1.close()
-                    except (OSError, IOError):
-                        bfid = None
-                except OSError:
-                    bfid = None
-            else:
-                bfid = None
-        else:
-            bfid = None
 
-    return bfid
+def get_layer(layer_filename):
+
+    # get info from layer
+    try:
+        fl = open(layer_filename)
+        layer_info = fl.readline()
+        fl.close()
+    except (OSError, IOError), detail:
+        if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
+            #If we get here and the real id is user root, we need to reset
+            # the effective user id back to that of root ...
+            os.seteuid(0)
+            os.setegid(0)
+
+            #... and try it again.
+            fl = open(layer_filename)
+            layer_info = fl.readline()
+            fl.close()
+        else:
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+    return layer_info
 
 def get_layer_1(f):
     err = []
@@ -430,43 +425,18 @@ def get_layer_1(f):
 
     # get bfid from layer 1
     try:
-        f1 = open(layer_file(f, 1))
-        bfid = f1.readline()
-        f1.close()
+        bfid = get_layer(layer_file(f, 1))
     except (OSError, IOError), detail:
-        if detail.args[0] in [errno.EACCES, errno.EPERM]:
-            #If we get here and the real id is user root, we need to reset
-            # the effective user id back to that of root ...
-            if os.getuid() == 0:
-                try:
-                    os.seteuid(0)
-                    os.setegid(0)
-                    try:
-                        #... and try it again.
-                        f1 = open(layer_file(f, 1))
-                        bfid = f1.readline()
-                        f1.close()
-                    except (OSError, IOError):
-                        if detail.errno in [errno.EACCES, errno.EPERM]:
-                            err.append('no read permissions for layer 1')
-                        else:
-                            err.append('corrupted layer 1 metadata')
-                        bfid = None
-                except OSError:
-                    bfid = None
-            else:
-                if detail.errno in [errno.EACCES, errno.EPERM]:
-                    err.append('no read permissions for layer 1')
-                else:
-                    err.append('corrupted layer 1 metadata')
-                bfid = None
+        bfid = None
+        if detail.errno in [errno.EACCES, errno.EPERM]:
+            err.append('no read permissions for layer 1')
         elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
-            bfid = None
+            pass
         else:
             err.append('corrupted layer 1 metadata')
-            bfid = None
 
     return bfid, (err, warn, info)
+
 
 def get_layer_2(f):
 
@@ -476,13 +446,13 @@ def get_layer_2(f):
 
     # get dcache info from layer 2
     try:
-        f2 = open(layer_file(f, 2))
-        layer2 = f2.readlines()
-        f2.close()
+        layer2 = get_layer(layer_file(f, 2))
     except (OSError, IOError), detail:
         layer2 = None
-        if detail.errno == errno.EACCES or detail.errno == errno.EPERM:
+        if detail.errno in [errno.EACCES, errno.EPERM]:
             err.append('no read permissions for layer 2')
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
+            pass
         else:
             err.append('corrupted layer 2 metadata')
 
@@ -530,83 +500,56 @@ def get_layer_4(f):
     
     # get xref from layer 4 (?)
     try:
-        try:
-            f4 = open(layer_file(f, 4))
-            layer4 = f4.readlines()
-            f4.close()
-        except (OSError, IOError), msg:
-            if msg.args[0] in [errno.EACCES, errno.EPERM]:
-                #If we get here and the real id is user root, we need to reset
-                # the effective user id back to that of root ...
-                if os.getuid() == 0 and os.geteuid() != 0:
-                    try:
-                        os.seteuid(0)
-                        os.setegid(0)
-                    except OSError:
-                        raise msg
-                        
-                    try:
-                        #... and try it again.
-                        f4 = open(layer_file(f, 4))
-                        layer4 = f4.readlines()
-                        f4.close()
-                    except (OSError, IOError), msg2:
-                        raise msg2
-                else:
-                    raise msg
-            else:
-                raise msg
-
-        l4 = {}
-        if layer4:
-            try:
-                l4['volume'] = layer4[0].strip()
-            except IndexError:
-                pass
-            try:
-                l4['location_cookie'] = layer4[1].strip()
-            except IndexError:
-                pass
-            try:
-                l4['size'] = layer4[2].strip()
-            except IndexError:
-                pass
-            try:
-                l4['file_family'] = layer4[3].strip()
-            except IndexError:
-                pass
-            try:
-                l4['original_name'] = layer4[4].strip()
-            except IndexError:
-                pass
-            # map file no longer used
-            try:
-                l4['pnfsid'] = layer4[6].strip()
-            except IndexError:
-                pass
-            # map pnfsid no longer used
-            try:
-                l4['bfid'] = layer4[8].strip()
-            except IndexError:
-                pass
-            try:
-                l4['drive'] = layer4[9].strip() #optionally present
-            except IndexError:
-                pass
-            try:
-                l4['crc'] = layer4[10].strip() #optionally present
-            except IndexError:
-                pass
-
-    except (KeyboardInterrupt, SystemExit), msg:
-        raise msg
-    except (OSError, IOError), msg:
-        #pf = None
-        l4 = None
-        if msg.errno == errno.EACCES or msg.errno == errno.EPERM:
+        layer4 = get_layer(layer_file(f, 4))
+    except (OSError, IOError), detail:
+        layer4 = None
+        if detail.errno in [errno.EACCES, errno.EPERM]:
             err.append('no read permissions for layer 4')
+        elif detail.args[0] in [errno.ENOENT, errno.EISDIR]:
+            pass
         else:
             err.append('corrupted layer 4 metadata')
+
+    l4 = {}
+    if layer4:
+        try:
+            l4['volume'] = layer4[0].strip()
+        except IndexError:
+            pass
+        try:
+            l4['location_cookie'] = layer4[1].strip()
+        except IndexError:
+            pass
+        try:
+            l4['size'] = layer4[2].strip()
+        except IndexError:
+            pass
+        try:
+            l4['file_family'] = layer4[3].strip()
+        except IndexError:
+            pass
+        try:
+            l4['original_name'] = layer4[4].strip()
+        except IndexError:
+            pass
+        # map file no longer used
+        try:
+            l4['pnfsid'] = layer4[6].strip()
+        except IndexError:
+            pass
+        # map pnfsid no longer used
+        try:
+            l4['bfid'] = layer4[8].strip()
+        except IndexError:
+            pass
+        try:
+            l4['drive'] = layer4[9].strip() #optionally present
+        except IndexError:
+            pass
+        try:
+            l4['crc'] = layer4[10].strip() #optionally present
+        except IndexError:
+            pass
 
     return l4, (err, warn, info)
 
@@ -788,6 +731,8 @@ def get_all_ids(f):
     return (pnfs_id, parent_id, parent_dir_id), \
            (err + err1 + err2, warn + warn1 + warn2, info + info1 + info2)
 
+###############################################################################
+
 #Global cache.
 db_pnfsid_cache = {}
 
@@ -822,34 +767,6 @@ def parse_mtab():
         #db_datas[2] is the database (???)
         #db_datas[3] is the database enabled or disabled status
         #db_datas[4] is the database (???)
-
-        """
-        #Obtain the list of "files" in the top directory.
-        try:
-            dir_list = os.listdir(mp)
-        except (OSError, IOError):
-            continue
-
-        #If the list is empty, move on to the next.
-        if len(dir_list) == 0:
-            continue
-
-        #Unfortunately, it is possible to have files like:
-        # .(use)(1)(.(access)(0001000000000000000576C0)) in your pnfs
-        # area.  These are mostly from developers' testing, and it didn't
-        # work right.  So, keep looping passed these files until we find
-        # one that works.
-        for i in range(len(dir_list)):
-            try:
-                db_fp = open(os.path.join(mp, ".(id)(%s)" % dir_list[i]), "r")
-                break
-            except IOError:
-                continue
-        else:
-            continue
-        db_data = db_fp.readline()
-        db_fp.close()
-        """
 
         #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
@@ -894,18 +811,23 @@ def __db_cmp(x, y):
 
     #Always put /pnfs/fs last.
     if is_x_fs and not is_y_fs:
-        return -1
-    elif not is_x_fs and is_y_fs:
         return 1
+    elif not is_x_fs and is_y_fs:
+        return -1
 
     #Always put /pnfs/xyz first.
     elif is_x_fs_usr and not is_y_fs_usr:
-        return -1
-    elif not is_x_fs_usr and is_y_fs_usr:
         return 1
+    elif not is_x_fs_usr and is_y_fs_usr:
+        return -1
 
     #The are the same type of path.  Sort by db number.
-    return cmp(x[1][0], y[1][0])
+    if x[1][0] < y[1][0]:
+        return 1
+    elif x[1][0] > y[1][0]:
+        return -1
+
+    return 0
 
 def sort_mtab():
     global db_pnfsid_cache
@@ -915,7 +837,6 @@ def sort_mtab():
     #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
     # the list and it will be sorted to the end of the list.
     search_list.sort(lambda x, y: __db_cmp(x, y))
-    search_list.reverse()
 
     #import pprint
     #pprint.pprint(search_list)
@@ -928,160 +849,7 @@ def add_mtab(db_info, db_num, db_mp):
         db_pnfsid_cache[db_info] = (db_num, db_mp)
         sort_mtab()
 
-"""
-def __search_for_mount_point(pnfs_path):
-
-    #Determine if the path is a traditional path or an admin/dCache path.
-    pp_index = pnfs_path.find("/pnfs/fs/usr/")
-    if pp_index != -1:
-        is_admin_path = True
-    else:
-        is_admin_path = False
-
-    #Obtain the pnfs mount points with the /pnfs/fs mount point seperated
-    # out (if present).
-    traditional_paths = db_pnfsid_cache.items()
-    admin_paths = []
-    for i in range(len(traditional_paths)):
-        if traditional_paths[i][0] == 0:
-            #found /pnfs/fs path
-            admin_paths.append(traditional_paths[i])
-            del traditional_paths[i]
-            break
-
-    #Put the type of path we were searching for first.
-    if is_admin_path:
-        search_order = admin_paths + traditional_paths
-    else:
-        search_order = traditional_paths + admin_paths
-
-    for (dbnum, m_p) in search_order:
-        if dbnum == 0:
-            if not is_admin_path:
-                use_pnfs_path = os.path.join(pnfs_path[:pp_index + 7],
-                                             "fs/usr",
-                                             pnfs_path[pp_index + 7:])
-            else:
-                use_pnfs_path = pnfs_path
-
-        else:
-            if is_admin_path:
-                use_pnfs_path = os.path.join(pnfs_path[:pp_index + 7],
-                                             pnfs_path[pp_index + 8])
-            else:
-                use_pnfs_path = pnfs_path
-
-        index = use_pnfs_path.find(m_p)
-        if index != -1:
-            #Found it???
-            return m_p, pnfs_path[index:]
-
-        #mp_first_pnfs_index = m_p.find("/pnfs")
-        #print "mp_first_pnfs_index", mp_first_pnfs_index
-        #p_find_index = use_pnfs_path.find(m_p[mp_first_pnfs_index:])
-        #if p_find_index != -1:
-        #    #Found it???
-        #    return m_p, os.path.join(m_p,
-        #       pnfs_path[1 + p_find_index + len(item[mp_first_pnfs_index:]):])
-
-    return None, None
-
-# get_mount_point(p) -- get the first three component from a path
-def __get_mount_point(pnfs_path):
-    #Search to see if the entry is already found.
-    mp, path = __search_for_mount_point(pnfs_path)
-
-    if mp and path:
-        return (mp, path)
-
-    #If we get here, (re)process the mtab file.
-    parse_mtab()
-
-    #Check the cache again to see if it is now found.
-    return __search_for_mount_point(pnfs_path)
-
-def get_mount_point(pnfs_path):
-    return __get_mount_point(pnfs_path)[0]
-
-def get_file_path(pnfs_path):
-    return __get_mount_point(pnfs_path)[1]
-    
-
-def get_mount_point2(pnfs_id):
-    #Strip off just the database id part of the pnfs id.
-    try:
-        db_num = int(pnfs_id[:4], 16)
-    except ValueError:
-        return None
-
-    if not db_pnfsid_cache:
-        parse_mtab() #Process the mtab file.
-
-    #Check the cache to see if the entry is already found.
-    if db_pnfsid_cache.get(db_num, None):
-        return db_pnfsid_cache[db_num]
-
-    #Obtain the pnfs mount points with the /pnfs/fs mount point seperated
-    # out (if present).
-    traditional_paths = db_pnfsid_cache.items()
-    admin_paths = []
-    for i in range(len(traditional_paths)):
-        if traditional_paths[i][0] == 0:
-            #found /pnfs/fs path
-            admin_paths.append(traditional_paths[i])
-            del traditional_paths[i]
-            break
-
-    #If the /pnfs/fs path is found, find all directories in /pnfs/fs/usr/
-    # and add them to the search path.  We only need one pnfs area that
-    # is conected (does not need to be the correct one) to the proper
-    # pnfs database.  This is messy, but it gets the job done.
-    if admin_paths != []:
-        dbnum, mount_path = admin_paths[0]  #there should only be one...
-        mount_path = os.path.join(mount_path, "usr")
-        dir_list = os.listdir(mount_path)
-        for fname in dir_list:
-            f_path = os.path.join(mount_path, fname)
-            f_stat = os.lstat(f_path)
-            if stat.S_ISDIR(f_stat[stat.ST_MODE]):
-                p = pnfs.Pnfs(f_path)
-                db_num = p.get_database(f_path).split(":")[1]
-                admin_paths.append((db_num, f_path))
-
-    search_order = traditional_paths + admin_paths
-
-    #Search all of the paths looking for one that can tell us where
-    # the current pnfs location is.
-    for (dbnum, mount_path) in search_order:
-        if mount_path.find("/pnfs/fs") != -1:
-            use_mount_path = os.path.join(mount_path, "usr")
-        else:
-            use_mount_path = mount_path
-        try:
-            p = pnfs.Pnfs()
-            my_path = p.get_path(pnfs_id, use_mount_path)
-            this_path = p.get_mount_point(my_path)
-            this_database = p.get_database(this_path).split(":")[1]
-
-            #Before exiting we should put this back into the db_pnfsid_cache
-            # global cache to speed up future bfids that can reuse all
-            # of this lookup work.
-            db_pnfsid_cache[this_database] = this_path
-            return use_mount_path
-        except (OSError):
-            pass
-
-    #If we get here, (re)process the mtab file.
-    parse_mtab()
-
-    #Check the cache again to see if it is now found.
-    if db_pnfsid_cache.get(db_num, None):
-        return db_pnfsid_cache[db_num]
-
-    #Failed to find the mount point.
-    return None
-"""
-
+###############################################################################
 
 def check(f, f_stats = None):
 
@@ -1371,7 +1139,7 @@ def check_bit_file(bfid, bfid_info = None):
                             if item[0] == db_info:
                                 pnfs_path = access_file(item[1][1],
                                                         file_record['pnfsid'])
-                                layer1_bfid = __get_layer_1(pnfs_path)
+                                layer1_bfid, unused = get_layer_1(pnfs_path)
                                 if layer1_bfid and \
                                        layer1_bfid == file_record['bfid']:
                                     last_db_tried = copy.copy(item)
@@ -1400,7 +1168,7 @@ def check_bit_file(bfid, bfid_info = None):
                                 #This is just some paranoid checking.
                                 afn = access_file(pnfsid_mp,
                                                   file_record['pnfsid'])
-                                layer1_bfid = __get_layer_1(afn)
+                                layer1_bfid, unused = get_layer_1(afn)
                                 if layer1_bfid and \
                                        layer1_bfid == file_record['bfid']:
                                     last_db_tried = (db_info, (pnfsid_db, pnfsid_mp))
@@ -1436,7 +1204,7 @@ def check_bit_file(bfid, bfid_info = None):
         if file_record['deleted'] != 'yes':
             err = err + ["%s does not exist"%(file_record['pnfsid'])]
 
-        layer1_bfid = __get_layer_1(file_record['pnfs_name0'])
+        layer1_bfid, unused = get_layer_1(file_record['pnfs_name0'])
         if layer1_bfid and layer1_bfid != file_record['bfid']:
             #If this is the case that the bfids don't match,
             # also include this piece of information.
@@ -1947,6 +1715,8 @@ def check_parent(f):
         err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
 
     return err, warn, info
+
+###############################################################################
     
 def start_check(line):
     line = os.path.abspath(line.strip())
@@ -1970,6 +1740,8 @@ def start_check(line):
         a_thread.join()
         err_j, warn_j, info_j = a_thread.get_result()
         del ts_check[0]
+
+###############################################################################
     
 class ScanfilesInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
@@ -2109,7 +1881,8 @@ if __name__ == '__main__':
         if item[-16:] == ".library_manager":
             lm.append(item[:-16])
 
-    infc = info_client.infoClient(csc)
+    flags = enstore_constants.NO_LOG & enstore_constants.NO_ALARM
+    infc = info_client.infoClient(csc, flags = flags)
 
     if intf_of_scanfiles.profile:
         import profile
