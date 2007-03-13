@@ -214,7 +214,11 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
-        pass
+        Trace.log(e_errors.ERROR, "%s: %s",
+                  (os.strerror(sys.exc_info()[0]), sys.exc_info()[1]))
+        #If we get here, then when the uninitialized rtn variable is
+        # accessed causing the traceback, we will be able to see what
+        # the error was that got us here in the log file.
 
     if check_name_only:
         #If we get here we only want to determine if the filesystem is
@@ -224,7 +228,7 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     if rtn:
         return os.path.exists(filename)
 
-    return rtn  #Always Fals
+    return rtn  #Always False
 
 def __is_pnfs_remote_path(filename, check_name_only = None):
     if pnfs_agent_client_requested or pnfs_agent_client_allowed:
@@ -3916,16 +3920,18 @@ def mover_handshake(listen_socket, work_tickets, encp_intf):
 		control_socket, mover_address, ticket = open_control_socket(
 		    use_listen_socket, duration)
         except (socket.error, select.error, EncpError), msg:
+            """
             exc, msg, tb = sys.exc_info()
             try:
                 #3_21_2006: In theory this should never occur due to a
                 # fix in EncpError.__init__() to create self.args.
-                msg.args[0]
+                msg.args[0] = msg.args[0]
             except IndexError:
                 Trace.log(e_errors.INFO,"Covering IndexError from real error.")
                 Trace.handle_error(exc, msg, tb)
                 Trace.log(e_errors.INFO, "Encp crash about to occur...")
             del tb
+            """
             
             if msg.args[0] == errno.EINTR or msg.args[0] == errno.EAGAIN:
                 #If a select (or other call) was interupted,
@@ -7645,7 +7651,16 @@ def get_volume_clerk_info(volume_or_ticket, encp_intf=None):
 
     # Determine if the information returned is complete.
     
-    if vc_ticket == None or not e_errors.is_ok(vc_ticket):
+    if vc_ticket == None:
+        if type(volume_or_ticket) == types.StringType:
+            volume_name = volume_or_ticket
+        elif  type(volume_or_ticket) == types.DictType:
+            volume_name = volume_or_ticket.get('volume', "Unknown")
+        else:
+            volume_name = "UNKNOWN"
+        raise EncpError(None, "Unable to obtain volume information for %s" %
+                        volume_name, e_errors.NOVOLUME)
+    if not e_errors.is_ok(vc_ticket):
         vc_status = vc_ticket.get('status', (e_errors.EPROTO, None))
         vc_error_ticket = {'vc' : vc_ticket}
 
