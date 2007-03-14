@@ -16,10 +16,10 @@ import socket
 import select
 import errno
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_GETFL
-    fcntl.F_SETFL = FCNTL.F_SETFL
+#if sys.version_info < (2, 2, 0):
+#    import FCNTL #FCNTL is depricated in python 2.2 and later.
+#    fcntl.F_GETFL = FCNTL.F_GETFL
+#    fcntl.F_SETFL = FCNTL.F_SETFL
 import re
 
 # enstore imports

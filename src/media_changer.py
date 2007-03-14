@@ -29,12 +29,12 @@ import socket
 import hostaddr
 import struct
 import fcntl
-if sys.version_info < (2, 2, 0):
-    import FCNTL #FCNTL is depricated in python 2.2 and later.
-    fcntl.F_GETFL = FCNTL.F_SETLKW
-    fcntl.F_SETFL = FCNTL.F_WRLCK
-    fcntl.F_SETFL = FCNTL.F_RDLCK
-    fcntl.F_SETFL = FCNTL.F_UNLCK
+#if sys.version_info < (2, 2, 0):
+#    import FCNTL #FCNTL is depricated in python 2.2 and later.
+#    fcntl.F_GETFL = FCNTL.F_SETLKW
+#    fcntl.F_SETFL = FCNTL.F_WRLCK
+#    fcntl.F_SETFL = FCNTL.F_RDLCK
+#    fcntl.F_SETFL = FCNTL.F_UNLCK
 import pprint
 import re
 
