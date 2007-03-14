@@ -15,11 +15,11 @@ PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 # they do exist they will be included).  These mostly have to do with non-UNIX
 # OSes that won't have modules be there when running on UNIX.
 FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath
-FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray -x 
+FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray
 FREEZE_SKIP_MISC=-x MacOS -X sitecustomize -x _winreg -x ic -x rourl2path -x EasyDialogs -x msvcrt -x MACFS -x macfs -x SOCKS -x org.python.core -X org -X xreadlines -x Carbon.File -x Carbon.Folder -x Carbon.Folders -x os.path -x _emx_link
 
 FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
-FREEAE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HTML)
+FREEZE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HTML)
 
 # No static version for SunOS for now
 # No static version for any one any more ... since v3_0
@@ -53,6 +53,11 @@ check:
 	$(ENSTORE_DIR)/tools/mylint.py ./*.py
 	$(ENSTORE_DIR)/tools/check_pct.py -w ./*.py
 
+### The following groupings for for building the client side programs
+### intended for release to the general public.
+### 
+### The two commands of interest are "make encp" and "make encp_for_dcache".
+
 pre_encp_cmd:
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENCPBIN_TEMP
@@ -61,7 +66,6 @@ pre_encp_cmd:
 	mkdir ENCPBIN
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
-
 
 encp_cmd:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
@@ -103,6 +107,55 @@ ensync_cmd:
 encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd post_encp_cmd
 
 encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_cmd post_encp_cmd
+
+### The following groupings for for building the server side programs
+### intended for use by the Enstore administrators.
+### 
+### The command of interest is "make enstore".
+
+pre_enstore:
+	@ if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
+	@ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
+	(cd $(ENSTORE_DIR)/modules; make all)
+	- rm -rf ENSTORE_BIN
+	mkdir ENSTORE_BIN
+
+post_enstore:
+	mv ENSTORE_BIN/encp_admin ENSTORE_BIN/encp
+	mv ENSTORE_BIN/enstore_admin ENSTORE_BIN/enstore
+	mv ENSTORE_BIN/ensync_admin ENSTORE_BIN/ensync
+
+	cp ../modules/enroute2	ENSTORE_BIN
+	cp ../modules/ddencp	ENSTORE_BIN
+	cp ../modules/ecrc	ENSTORE_BIN
+	cp ../bin/en_check	ENSTORE_BIN
+
+SERVER_LIST=configuration_server log_server event_relay library_manager
+SERVER_HTMLGEN_LIST=alarm_server inquisitor ratekeeper monitor_server
+SERVER_SQL_LIST=file_clerk volume_clerk info_server accounting_server drivestat_server
+SERVER_LIB_LIST=media_changer mover
+
+FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST)
+FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin
+
+$(FULL_SERVER_LIST): $$@.py
+	- rm -rf SERVER_BIN_TEMP 
+	mkdir SERVER_BIN_TEMP
+	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
+	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/$@
+	rm -rf SERVER_BIN_TEMP
+
+$(FULL_CLIENT_LIST): $$@.py
+	- rm -rf CLIENT_BIN_TEMP
+	mkdir CLIENT_BIN_TEMP
+	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o CLIENT_BIN_TEMP $@.py
+	(cd CLIENT_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp CLIENT_BIN_TEMP/$@      ENSTORE_BIN/$@
+	rm -rf CLIENT_BIN_TEMP
+
+enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
+
 
 #- rm -rf ENMV_BIN_TEMP
 #mkdir ENMV_BIN_TEMP
