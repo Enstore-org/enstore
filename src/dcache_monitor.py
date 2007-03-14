@@ -34,12 +34,20 @@ def check_layer_1(l):
 
 def check_layer_2(l):
     if (len(l) == 0 ) : return False
-    size_match = re.compile("l=[0-9]+")
+#    size_match = re.compile("l=[0-9]+")
+#    line2 = l[1].strip()
+#    size = long(size_match.search(line2).group().split("=")[1])
+#    if ( size == 0L ) :
+#        return False
+    return True
+
+def is_volatile(l):
     line2 = l[1].strip()
-    size = long(size_match.search(line2).group().split("=")[1])
-    if ( size == 0L ) :
+    h = string.split(string.split(line2,("="))[1],';')[0]
+    if ( h == "yes" ) :
         return False
     return True
+
 
 def check_layer_4(l):
     if (len(l) == 0 ) : return False
@@ -57,17 +65,6 @@ def check_volatile_files(db_name):
         if not row:
             continue
         pnfsid_string=row[0]
-
-
-#        f=ope[n(os.path.join("/pnfs/fs/usr/%s"%(db_name,), ".(showid)(%s)"%(pnfsid_string,)));
-#        is_file=0
-#        for line in f.readlines():
-#            data = string.split(line[:-1],":")
-#            if ( is_file == 0 and data[0].strip(" ") == "Type" and data[1].strip(" ") == "--I---r----" ) :
-#                is_file=1
-#        f.close()
-#        if ( is_file == 1 ) :
-#                
         pnfsids.append(pnfsid_string)
 
     for pnfsid in pnfsids:
@@ -76,6 +73,11 @@ def check_volatile_files(db_name):
             l1=p.readlayer(1)
             l2=p.readlayer(2)
             l4=p.readlayer(4)
+            if ( check_layer_2(l2) ) :
+                if ( is_volatile(l2) ) :
+                    sql_txt = "delete from volatile_files where pnfsid_string='%s'"%(pnfsid,)
+                    r=db.query(sql_txt)
+                    continue
             if (check_layer_1(l1) and check_layer_4(l4) ) :
                 sql_txt = "delete from volatile_files where pnfsid_string='%s'"%(pnfsid,)
                 r=db.query(sql_txt)
@@ -148,8 +150,9 @@ def insert_into_volatile_files(db_name):
                         l2_str="n" 
                     if not check_layer_4(l4) :
                         l4_str="n"
-                    if ( db_name == "fermigrid" and p.pnfsFilenam.find("volatile") != -1 and check_layer_2(l2) ) :
-                        continue
+                    if ( check_layer_2(l2) ) :
+                        if ( is_volatile(l2) ) :
+                            continue
                     insert_query_txt="insert into volatile_files (date,unix_date,pnfsid_string,pnfsid,pnfs_path,layer1,layer2,layer4) "+\
                                       "values ('"+str(row[0])+"',"+\
                                       str(int(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S'))))+","+\
