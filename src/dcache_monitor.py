@@ -261,6 +261,10 @@ def do_mail(db_name) :
         os.system(cmd)
     now_time=int(now_time-24*3600)
     then_time=int(now_time-24*3600)
+    if (db_name=="minos") :
+        now_time=int(now_time-26*3600)
+        then_time=int(now_time-26*3600)
+        
     res=db.query("select count(*) from volatile_files where layer2='y' and (unix_date<%d and unix_date>%d)"%(now_time,then_time))
     count1=0
     for row in res.getresult():
