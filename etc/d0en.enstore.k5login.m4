@@ -56,6 +56,10 @@ enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, `d0ensrv2',
+enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `d0ensrv2',
+enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
@@ -74,4 +78,5 @@ petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 stan@FNAL.GOV
 timur@FNAL.GOV
+ifelse(HOSTNAME, `d0ensrv4', `vsergeev@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV

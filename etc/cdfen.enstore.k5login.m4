@@ -38,8 +38,13 @@ enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `cdfensrv1',
-enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV
+enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `cdfensrv1',
 enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `cdfensrv2',
+enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `cdfensrv2',
+enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
@@ -59,4 +64,5 @@ petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 stan@FNAL.GOV
 timur@FNAL.GOV
+ifelse(HOSTNAME, `cdfensrv4', `vsergeev@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV

@@ -3,15 +3,16 @@ enstore/cd/stkensrv3.fnal.gov@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 enstore/cd/fndca2a.fnal.gov@FNAL.GOV
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV
+enstore/cd/stkendca2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
 enstore/cd/cmspnfs1.fnal.gov@FNAL.GOV
 enstore/cd/cmspnfs2.fnal.gov@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1,
-enstore/cd/stkendca3a.fnal.gov@FNAL.GOV
-enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
 enstore/cd/cmsdcdr1.fnal.gov@FNAL.GOV
 enstore/cd/cmsdcdr2.fnal.gov@FNAL.GOV
-enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV,
+enstore/cd/cmssrv28.fnal.gov@FNAL.GOV
+enstore/cd/cmsdcmon1.fnal.gov@FNAL.GOV
+enstore/cd/stkendca3a.fnal.gov@FNAL.GOV,
 enstore/cd/eagpnfs1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv0.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv1.fnal.gov@FNAL.GOV
@@ -69,14 +70,18 @@ enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV))
 ifelse(HOSTNAME, `stkensrv1',
-enstore/cd/fndca3a.fnal.gov@FNAL.GOV
+enstore/cd/fndca3a.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
 bakken@FNAL.GOV
 berg@FNAL.GOV
 berman@FNAL.GOV
-ifelse(HOSTNAME, `stkendca12a', `crawdad@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `fagan@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `stkendca') == 0 || index(HOSTNAME, `fndca') == 0), 1,
 `fuhrmann@FNAL.GOV', `dnl')
@@ -103,6 +108,6 @@ stan@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tmesser@FNAL.GOV', `dnl')
-ifelse(HOSTNAME, `stkendca12a', `yocum@FNAL.GOV', `dnl')
+ifelse(HOSTNAME, `stkensrv4', `vsergeev@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `yujun@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV
