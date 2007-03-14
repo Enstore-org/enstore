@@ -105,6 +105,8 @@ def insert_into_volatile_files(db_name):
     #
     now_time       = time.time()-60*30
     start_time     = now_time-3600*25 # one hour is for safety
+    if ( db_name == "minos" ) :
+        start_time=now_time-3600*26
     str_now_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
     
@@ -188,7 +190,9 @@ def prepare_html(db_name):
         cmd = "su  enstore -c \'/usr/local/etc/setups.sh 1>>/dev/null 2>&1; cd /home/enstore/tmp; source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/\'"%(fname,)
 #        cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s  stkensrv2.fnal.gov:/diska/www_pages/dcache_monitor/"%(fname,)
         os.system(cmd)
-    delta_time     = 24*3600
+    delta_time     = 25*3600
+    if ( db_name == "minos" ) :
+        delta_time = 26*3600
     # now_time       = time.time()
     res=db.query("select count(*) from volatile_files where layer2='y' and unix_date<%d"%(int(now_time-delta_time),))
     count1=0
