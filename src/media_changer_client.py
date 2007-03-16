@@ -196,6 +196,15 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
+        option.VOLUME:{option.HELP_STRING:"",
+                       option.USER_LEVEL:option.ADMIN,
+                       option.VALUE_NAME:"volume",
+                       option.VALUE_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
+                                            option.VALUE_NAME:"media_type",
+                                            option.VALUE_TYPE:option.STRING}],
+                       },
         }
 
     def parse_options(self):
@@ -250,6 +259,15 @@ def do_work(intf):
         pprint.pprint(ticket)
     elif intf.show:
         ticket = mcc.robotQuery()
+        tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
+        try:
+            stat = ticket['status']
+            delta_t = string.split(stat[2])[-1:][0]
+            print tod, delta_t, stat
+        except:
+            print tod, -999, ticket
+    elif intf.volume:
+        ticket = mcc.viewvol(intf.volume, intf.media_type)
         tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
         try:
             stat = ticket['status']
