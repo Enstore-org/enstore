@@ -173,6 +173,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                               'max_work':self.max_work,
                               'worklist':result})
 
+    def viewdrive(self,ticket):
+        ticket["function"] = "getVolState"
+        return self.DoWork( self.getDriveState, ticket)
+
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
              external_label,    # volume external label
@@ -205,6 +209,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     # getVolState in the drive;  default overridden for other media changers - to replace above tgj1
     def getVolState(self, ticket):
         return (e_errors.OK, 0, None, 'O') # return 'O' - occupied aka unmounted
+
+    def getDriveState(self, ticket):
+        return (e_errors.OK, 0, None, '')
 
     # insert volume into the robot;  default overridden for other media changers
     def insert(self,ticket):
@@ -909,9 +916,10 @@ class STK_MediaLoader(MediaLoaderMethods):
         # async message start with a date:  2001-12-20 07:33:17     0    Drive   0, 0,10,12: Cleaned.
         # unfortunately, not just async messages start with a date.  Alas, each message has to be parsed.
         async_date=re.compile("20\d\d-\d\d-\d\d \d\d:\d\d:\d\d")  
-        while nlines<19 and ntries<3:
+        while nlines<4 and ntries<3:
 	  ntries=ntries+1
-          while blanks<2 and nread<maxread:
+          #while blanks<2 and nread<maxread:
+	  while nread<maxread:
             msg=os.read(c2pread,200)
             message = message+msg
             nread = nread+1
@@ -957,10 +965,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 
 	os.close(c2pread)
         size = len(response)
-        if size <= 19:
-            return -3,[], self.delta_t(mark)[0]
+        #if size <= 19:
+        #    return -3,[], self.delta_t(mark)[0]
         status = 0
-        for look in range(19,size): # 1st part of response is STK copyright information
+        for look in range(0,size): # 1st part of response is STK copyright information
             if string.find(response[look], cmd_lookfor, 0) == 0:
                 break
         if look == size:
