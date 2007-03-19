@@ -805,7 +805,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             current_path = os.path.dirname(current_path)
             try:
                 current_pnfs_database = self.get_database(current_path).strip()
-            except (OSError, IOError):
+            except (OSError, IOError), msg:
+                if msg.args[0] in [errno.ENOENT]:
+                    #We found the mount point.
+                    return old_path
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
             if initial_pnfs_database != current_pnfs_database:
