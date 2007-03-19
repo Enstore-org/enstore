@@ -45,8 +45,8 @@ def is_volatile(l):
     line2 = l[1].strip()
     try :
         h = string.split(string.split(line2,("="))[1],';')[0]
-    if ( h == "yes" ) :
-        return False
+        if ( h == "yes" ) :
+            return False
     except IndexError:
         return False
     return True
