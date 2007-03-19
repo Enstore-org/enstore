@@ -126,6 +126,7 @@ LONG = "long"
 STRING = "string"
 FLOAT = "float"
 RANGE = "range"
+LIST = "list" #List of strings
 
 #default action
 FORCE = 1
@@ -217,6 +218,7 @@ ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
 ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
+EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
 FILE = "file"                                #info
 FILE_FAMILY = "file-family"                  #pnfs, encp
@@ -444,7 +446,8 @@ valid_option_list = [
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE,
-    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
+    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
+    EXPORT, EXTERNAL_TRANSITIONS,
     FILE,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
@@ -546,6 +549,9 @@ def check_for_config_defaults():
         log_using_default('CONFIG HOST', DEFAULT_HOST)
     if used_default_config_port:
         log_using_default('CONFIG PORT', DEFAULT_PORT)
+
+def list2(value):
+    return [value]
 
 ############################################################################
 
@@ -1048,7 +1054,6 @@ class Interface:
             argv = self.argv[2:]
         else:
             argv = self.argv[1:]
-        self.some_args = argv #This is a second copy for next arg finding.
 
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
@@ -1056,47 +1061,53 @@ class Interface:
         # a VAX thing, and that dashes is the UNIX way of things.
         self.convert_underscores(argv)
 
-        #If the first thing is not an option (switch) place it with the
-        # non-processeced arguments and remove it from the list of args.
-        # This is done, because getopt.getopt() breaks if the first thing
-        # it sees does not begin with a "-" or "--".
-        while len(argv) and not self.is_option(argv[0]):
-            self.args.append(argv[0])
-            del argv[0]
+        while argv:
+            self.some_args = argv #This is a second copy for next arg finding.
 
-        #There is a major problem with this method. Multiple entries on the
-        # command line of the same command are not parsed properly.
-        try:
-            optlist, argv = getopt.getopt(argv, short_opts, long_opts)
-        except getopt.GetoptError, detail:
-            self.print_usage(detail.msg)
+            #If the first thing is not an option (switch) place it with the
+            # non-processeced arguments and remove it from the list of args.
+            # This is done, because getopt.getopt() breaks if the first thing
+            # it sees does not begin with a "-" or "--".
+            while len(argv) and not self.is_option(argv[0]):
+                self.args.append(argv[0])
+                del argv[0]
 
-        #copy in this way, to keep self.args out of a dir() listing.
-        for arg in argv:
-            self.args.append(arg)
+            #There is a major problem with this method. Multiple entries on the
+            # command line of the same command are not parsed properly.
+            try:
+                optlist, argv = getopt.getopt(argv, short_opts, long_opts)
+            except getopt.GetoptError, detail:
+                self.print_usage(detail.msg)
 
-        for arg in optlist:
-            opt = arg[0]
-            value = arg[1]
+            #copy in this way, to keep self.args out of a dir() listing.
+            #for arg in argv:
+            #    self.args.append(arg)
+            while len(argv) and not self.is_option(argv[0]):
+                self.args.append(argv[0])
+                del argv[0]
 
-            if self.user_level != ADMIN:
-                if self.is_admin_option(opt) or \
-                       (self.is_user2_option(opt) and \
-                        self.user_level in [USER]):
-                    #Deni access to admin commands if regular user.
-                    self.print_usage("option %s is an administrator option" %
-                                     (opt,))
+            for arg in optlist:
+                opt = arg[0]
+                value = arg[1]
 
-            if self.is_long_option(opt):
-                #Option is a long option.  This means that the option is
-                # preceded by two dashes and can be any length.
-                self.long_option(opt[2:], value)
+                if self.user_level != ADMIN:
+                    if self.is_admin_option(opt) or \
+                           (self.is_user2_option(opt) and \
+                            self.user_level in [USER]):
+                        #Deni access to admin commands if regular user.
+                        self.print_usage("option %s is an administrator option" %
+                                         (opt,))
 
-            elif self.is_short_option(opt):
-                #Option is a short option.  This means it is only
-                # one letter long and has one dash at the beginning
-                # of the option group.
-                self.short_option(opt[1:], value)
+                if self.is_long_option(opt):
+                    #Option is a long option.  This means that the option is
+                    # preceded by two dashes and can be any length.
+                    self.long_option(opt[2:], value)
+
+                elif self.is_short_option(opt):
+                    #Option is a short option.  This means it is only
+                    # one letter long and has one dash at the beginning
+                    # of the option group.
+                    self.short_option(opt[1:], value)
 
 ############################################################################
 
@@ -1462,6 +1473,8 @@ class Interface:
                 return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
                 return str  #str(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == LIST:
+                return list2 #private function
             else:
                 return None  #value
         except ValueError:
@@ -1483,6 +1496,8 @@ class Interface:
                 return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
                 return str  #str(value)
+            elif opt_dict.get(VALUE_TYPE, STRING) == LIST:
+                return list2 #Private function
             else:
                 return None  #value
         except ValueError:
@@ -1512,6 +1527,23 @@ class Interface:
         #Some options may require more than one value.
         self.set_extra_values(long_opt, value)
 
+    #Called from set_from_dictionary().
+    def __set_value(self, opt_name, opt_typed_value):
+
+        #Handle the LIST case specially.
+        if type(opt_typed_value) == types.ListType:
+            this_list = getattr(self, opt_name, None)
+            if type(this_list) != types.ListType:
+                print "Developer Error: type of this_list is %s" \
+                      % (type(this_list),)
+                sys.exit(1)
+            #Append the value to the list.
+            use_opt_typed_value = this_list + opt_typed_value
+        else:
+            use_opt_typed_value = opt_typed_value
+
+        setattr(self, opt_name, use_opt_typed_value)
+
     def set_from_dictionary(self, opt_dict, long_opt, value):
 
         #place this inside for some error reporting...
@@ -1539,7 +1571,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            setattr(self, opt_name, opt_typed_value)
+            self.__set_value(opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) and len(self.some_args) >= 3:
@@ -1574,7 +1606,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            setattr(self, opt_name, opt_typed_value)
+            self.__set_value(opt_name, opt_typed_value)
             
             #keep this list up to date for finding the next argument.
             self.some_args = self.some_args[1:]
@@ -1600,7 +1632,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            setattr(self, opt_name, opt_typed_value)
+            self.__set_value(opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) == None:
@@ -1625,7 +1657,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            setattr(self, opt_name, opt_typed_value)
+            self.__set_value(opt_name, opt_typed_value)
 
     def set_extra_values(self, opt, value):
         if self.is_short_option(opt):
