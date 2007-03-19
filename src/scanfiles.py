@@ -76,6 +76,7 @@ ONE_DAY = 24*60*60
 ts_check = []
 stop_threads_lock=threading.Lock()
 threads_stop = False
+external_transitions = {} #Ttranslate /pnfs/sam/lto to /pnfs/fs/usr/sam-lto
 
 #For cleanup_objects() to report problems.
 old_list = []
@@ -383,7 +384,7 @@ def get_database(f):
     database_path = database_file(db_a_dirpath)
 
     try:
-        database = get_layer(database_path)
+        database = get_layer(database_path)[0].strip()
     except (OSError, IOError):
         database = None
         #if detail.errno in [errno.EACCES, errno.EPERM]:
@@ -425,7 +426,7 @@ def get_layer_1(f):
 
     # get bfid from layer 1
     try:
-        bfid = get_layer(layer_file(f, 1))[0]
+        bfid = get_layer(layer_file(f, 1))[0].strip()
     except (OSError, IOError), detail:
         bfid = None
         if detail.errno in [errno.EACCES, errno.EPERM]:
@@ -573,11 +574,13 @@ def get_filedb_info(bfid):
     if e_errors.is_ok(fr):
         if fr.get('deleted', None) == "no":
             # Look for missing file database information.
-            if not fr.get('pnfs_name0', None):
+            filedb_pnfs_name0 = fr.get('pnfs_name0', "")
+            if filedb_pnfs_name0 in ["", None, "None"]:
                 err.append('no filename in db')
-            if not fr.get('pnfsid', None):
+            filedb_pnfsid = fr.get('pnfsid', "")
+            if filedb_pnfsid in ["", None, "None"]:
                 err.append('no pnfs id in db')
-            elif not pnfs.is_pnfsid(fr.get('pnfsid', "")):
+            elif not pnfs.is_pnfsid(filedb_pnfsid):
                 err.append('invalid pnfs id in db')
     elif fr['status'][0] == e_errors.NO_FILE:
         err.append('not in db')
@@ -1161,7 +1164,7 @@ def check_bit_file(bfid, bfid_info = None):
                                 pnfs_path = p.get_path(file_record['pnfsid'],
                                                        mp)
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
-                            except (OSError, IOError):
+                            except (OSError, IOError), msg:
                                 pnfsid_mp = None
                                 pnfs_path = afn
 
@@ -1253,6 +1256,10 @@ def check_bit_file(bfid, bfid_info = None):
     
     use_name = os.path.abspath(use_name)
     use_mp = os.path.abspath(use_mp)
+
+    ###
+    for old_value, new_value in external_transitions.items():
+        use_name = use_name.replace(old_value, new_value, 1)
 
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
@@ -1761,6 +1768,8 @@ class ScanfilesInterface(option.Interface):
         self.file_threads = 3
         self.directory_threads = 1
         self.profile = 0
+        self.old_path = []
+        self.new_path = []
 
         option.Interface.__init__(self, args=args, user_mode=user_mode)
 
@@ -1772,20 +1781,33 @@ class ScanfilesInterface(option.Interface):
     parameters = ["[target_path [target_path_2 ...]]"] 
 
     scanfile_options = {
-        option.INFILE:{option.HELP_STRING:"Use the contents of this file"
-                       " as a list of targets to scan.",
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_TYPE:option.STRING,
-                         option.USER_LEVEL:option.USER,},
-        option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_TYPE:option.INTEGER,
-                         option.USER_LEVEL:option.USER,},
         option.BFID:{option.HELP_STRING:"treat input as bfids",
                          option.VALUE_USAGE:option.IGNORED,
                          option.DEFAULT_VALUE:option.DEFAULT,
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.USER_LEVEL:option.USER},
+        option.EXTERNAL_TRANSITIONS:{option.HELP_STRING:
+                                     "User hints for directory searches. "
+                                     "ie. --external_transitions "
+                                     "sam/lto sam-lto",
+                                     option.VALUE_NAME:"old_path",
+                                     option.VALUE_USAGE:option.REQUIRED,
+                                     option.VALUE_TYPE:option.LIST,
+                                     option.USER_LEVEL:option.USER,
+
+                                     option.EXTRA_VALUES:[{option.VALUE_NAME:"new_path",
+                                          option.VALUE_TYPE:option.LIST,
+                                          option.VALUE_USAGE:option.REQUIRED,},
+                                         ],},
+        option.FILE_THREADS:{option.HELP_STRING:"Number of threads in files.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.INTEGER,
+                         option.USER_LEVEL:option.USER,},
+        option.INFILE:{option.HELP_STRING:"Use the contents of this file"
+                       " as a list of targets to scan.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.STRING,
+                         option.USER_LEVEL:option.USER,},
         option.PROFILE:{option.HELP_STRING:"Display profile info on exit.",
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN,},
@@ -1863,6 +1885,13 @@ if __name__ == '__main__':
     if intf_of_scanfiles.bfid and intf_of_scanfiles.vol:
         usage()
         sys.exit(0)
+
+    #For processing certain storage_groups/mount_points.  This allows
+    # the user to give scanfiles.py some hints to avoid performing
+    # get_path() calls for every file.
+    for i in range(len(intf_of_scanfiles.old_path)):
+        external_transitions[intf_of_scanfiles.old_path[i]] = \
+                                         intf_of_scanfiles.new_path[i]
 
     if intf_of_scanfiles.infile:
         file_object = open(intf_of_scanfiles.infile)
