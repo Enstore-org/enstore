@@ -43,8 +43,11 @@ def check_layer_2(l):
 
 def is_volatile(l):
     line2 = l[1].strip()
-    h = string.split(string.split(line2,("="))[1],';')[0]
+    try :
+        h = string.split(string.split(line2,("="))[1],';')[0]
     if ( h == "yes" ) :
+        return False
+    except IndexError:
         return False
     return True
 
