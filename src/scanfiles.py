@@ -400,7 +400,7 @@ def get_layer(layer_filename):
     # get info from layer
     try:
         fl = open(layer_filename)
-        layer_info = fl.readline()
+        layer_info = fl.readlines()
         fl.close()
     except (OSError, IOError), detail:
         if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
@@ -411,7 +411,7 @@ def get_layer(layer_filename):
 
             #... and try it again.
             fl = open(layer_filename)
-            layer_info = fl.readline()
+            layer_info = fl.readlines()
             fl.close()
         else:
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -425,7 +425,7 @@ def get_layer_1(f):
 
     # get bfid from layer 1
     try:
-        bfid = get_layer(layer_file(f, 1))
+        bfid = get_layer(layer_file(f, 1))[0]
     except (OSError, IOError), detail:
         bfid = None
         if detail.errno in [errno.EACCES, errno.EPERM]:
@@ -1072,6 +1072,7 @@ def check_bit_file(bfid, bfid_info = None):
         info = info + ["deleted"]
 
     #Loop over all found mount points.
+    possible_reused_pnfsid = 0
     for database_info, (db_num, mp)  in [last_db_tried] + search_list:
 
         #If last_db_tried is still set to its initial value, we need to
@@ -1192,7 +1193,11 @@ def check_bit_file(bfid, bfid_info = None):
                 if file_record['deleted'] == 'yes':
                     info.append("reused pnfsid")
                 else:
-                    err.append("reused pnfsid")
+                    #err.append("reused pnfsid")
+                    ## Need to keep trying in case the wrong pnfs systems
+                    ## pnfsid match was found.
+                    possible_reused_pnfsid = possible_reused_pnfsid + 1
+                    continue
                 errors_and_warnings(prefix, err, warn, info)
                 return
 
@@ -1202,7 +1207,10 @@ def check_bit_file(bfid, bfid_info = None):
             
     else:
         if file_record['deleted'] != 'yes':
-            err = err + ["%s does not exist"%(file_record['pnfsid'])]
+            err.append("%s does not exist" % (file_record['pnfsid'],))
+
+        if possible_reused_pnfsid > 0:
+            err.append("reused pnfsid")
 
         layer1_bfid, unused = get_layer_1(file_record['pnfs_name0'])
         if layer1_bfid and layer1_bfid != file_record['bfid']:
@@ -1460,6 +1468,7 @@ def check_file(f, file_info):
 
                 if not layer4.has_key('bfid'):
                     err.append('missing layer 4')
+                    return err, warn, info
 
                 if layer2.get('pools', None):
                     info.append("pools(%s)" % (layer2['pools'],))
