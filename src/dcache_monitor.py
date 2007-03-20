@@ -94,7 +94,7 @@ def check_volatile_files(db_name):
                     l2_str="n"
                 if not check_layer_4(l4) :
                     l4_str="n"
-                sql_txt = "update volatile_files set layer1='%s',layer2='%s',layer4='%s' where pnfsid_string='%s'"%(l1_str,l2_str,l4_str,pnfsid)
+                sql_txt = "update volatile_files set layer1='%s',layer2='%s',layer4='%s',pnfs_path='%s' where pnfsid_string='%s'"%(l1_str,l2_str,l4_str,p.pnfsFilename,pnfsid,)
                 r=db.query(sql_txt)
         except (OSError, IOError, AttributeError, ValueError):
             sql_txt = "delete from volatile_files where pnfsid_string='%s'"%(pnfsid,)
