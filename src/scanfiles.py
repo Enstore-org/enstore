@@ -426,7 +426,7 @@ def get_layer_1(f):
 
     # get bfid from layer 1
     try:
-        bfid = get_layer(layer_file(f, 1))[0].strip()
+        bfid = get_layer(layer_file(f, 1))
     except (OSError, IOError), detail:
         bfid = None
         if detail.errno in [errno.EACCES, errno.EPERM]:
@@ -435,6 +435,11 @@ def get_layer_1(f):
             pass
         else:
             err.append('corrupted layer 1 metadata')
+
+    try:
+        bfid = bfid[0].strip()
+    except:
+        bfid = ""
 
     return bfid, (err, warn, info)
 
@@ -1486,6 +1491,10 @@ def check_file(f, file_info):
                       get_dcache_pnfs_path(f)]:
             ffbp = infc.find_file_by_path(fname)
             if e_errors.is_ok(ffbp):
+                if ffbp['pnfsid'] in ["", None, "None"]:
+                    #err.append('no pnfs id in db')
+                    break
+                
                 try:
                     p = pnfs.Pnfs(f)
                     cur_pnfsid = p.get_id(f) #pnfs of current searched file
