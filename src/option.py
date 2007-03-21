@@ -98,6 +98,8 @@ import types
 
 #enstore imports
 import hostaddr
+import Trace
+import e_errors
 
 ############################################################################
 
@@ -119,6 +121,9 @@ IGNORED  = "ignored"
 USER = "user"
 USER2 = "user2"
 ADMIN = "admin"
+HIDDEN = "hidden" #Same as ADMIN, but is not included in help output.
+                  # This is a valid USER_LEVEL for options, but not for
+                  # the users actual user level.
 
 #variable type
 INTEGER = "integer"
@@ -216,7 +221,7 @@ ENABLE = "enable"                            #quota
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
-ERASE = "erase"                              #volume
+ERASE = "erase"                              #volume, file
 EXPORT = "export"                            #volume
 EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
@@ -535,8 +540,6 @@ def default_port():
     return val
 
 def log_using_default(var, default):
-    import Trace
-    import e_errors
     Trace.log(e_errors.INFO,
               "%s not set in environment or command line - reverting to %s"\
               %(var, default))
@@ -784,6 +787,9 @@ class Interface:
             if self.user_level in [USER2] and \
                option_level in [ADMIN]:
                 continue
+            if option_level in [HIDDEN]:
+                #Hidden options should never be visible.
+                continue
 
             #Snag all optional/required values that belong to this option.
             # Do this by getting the necessary fields from the dictionary.
@@ -891,6 +897,9 @@ class Interface:
                 continue
             if self.user_level in [USER2] and \
                option_level in [ADMIN]:
+                continue
+            if option_level in [HIDDEN]:
+                #Hidden options should never be visible.
                 continue
 
             #Deterimine if the option needs an "=" or "[=]" after it.
@@ -1013,10 +1022,10 @@ class Interface:
                 # skip over it.
                 option_level = self.options[opt].get(USER_LEVEL, USER)
                 if self.user_level in [USER] and \
-                       option_level in [ADMIN, USER2]:
+                       option_level in [ADMIN, HIDDEN, USER2]:
                     continue
                 if self.user_level in [USER2] and \
-                       option_level in [ADMIN]:
+                       option_level in [ADMIN, HIDDEN]:
                     continue
 
                 temp = temp + short_opt
@@ -1090,11 +1099,15 @@ class Interface:
                 opt = arg[0]
                 value = arg[1]
 
-                if self.user_level != ADMIN:
+                if self.user_level in [USER]:
                     if self.is_admin_option(opt) or \
-                           (self.is_user2_option(opt) and \
-                            self.user_level in [USER]):
-                        #Deni access to admin commands if regular user.
+                           self.is_user2_option(opt):
+                        #Deny access to admin commands if regular user.
+                        self.print_usage("option %s is an administrator option" %
+                                         (opt,))
+                elif self.user_level in [USER2]:
+                    if self.is_admin_option(opt):
+                        #Deny access to admin commands if regular user.
                         self.print_usage("option %s is an administrator option" %
                                          (opt,))
 
@@ -1401,12 +1414,24 @@ class Interface:
     def is_admin_option(self, opt):
         if self.is_long_option(opt):
             if self.options[self.trim_option(opt)].get(
-                USER_LEVEL, USER) == ADMIN:
+                USER_LEVEL, USER) in [ADMIN, HIDDEN]:
                 return 1
         elif self.is_short_option(opt):
             long_opt = self.short_to_long(opt)
             if self.options[self.trim_option(long_opt)].get(
-                USER_LEVEL, USER) == ADMIN:
+                USER_LEVEL, USER) in [ADMIN, HIDDEN]:
+                return 1
+        return 0
+
+    def is_hidden_option(self, opt):
+        if self.is_long_option(opt):
+            if self.options[self.trim_option(opt)].get(
+                USER_LEVEL, USER) in [HIDDEN]:
+                return 1
+        elif self.is_short_option(opt):
+            long_opt = self.short_to_long(opt)
+            if self.options[self.trim_option(long_opt)].get(
+                USER_LEVEL, USER) in [HIDDEN]:
                 return 1
         return 0
 
