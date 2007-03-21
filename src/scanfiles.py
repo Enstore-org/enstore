@@ -1708,7 +1708,10 @@ def check_file(f, file_info):
             if parent_id != None and parent_dir_id != None:
                 alt_path = os.path.join(os.path.dirname(f),
                                         ".(access)(%s)" % parent_id, fname)
-                alt_stats = os.stat(alt_path)
+                try:
+                    alt_stats = os.stat(alt_path)
+                except OSError:
+                    alt_stats = None
                 if f_stats != alt_stats:
                     err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
         
