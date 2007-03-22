@@ -4694,13 +4694,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # tape status is derived from this part:
                 # 'Mount: PRT982 mounted on   1, 1,10,12'
                 #
-                 t = tape_status[1]
-                 m = tape_status[2]
-                 d=''
-                 d=d.join((tape_status[-2], tape_status[-1]))
-                 if t == volume_label and m == 'mounted' and d == self.mc_device:
-                     # the requested tape was actually mouted in this drive
-                     status[0] = e_errors.OK
+                t = tape_status[1]
+                m = tape_status[2]
+                d=''
+                d=d.join((tape_status[-2], tape_status[-1]))
+                if t == volume_label and m == 'mounted' and d == self.mc_device:
+                    # the requested tape was actually mouted in this drive
+                    status[0] = e_errors.OK
                      
             
         if status[0] == e_errors.OK:
