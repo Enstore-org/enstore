@@ -4652,6 +4652,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             vi['system_inhibit'][1] = 'none'
             vi['user_inhibit'][1] = 'none'
         
+        mc_queue_full = 0
         while 1:
             mcc_reply = self.mcc.loadvol(vi, self.name, self.mc_device)
             status = mcc_reply.get('status')
@@ -4662,6 +4663,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 # reset self.time_in_state
                 self.time_in_state = time.time()
                 time.sleep(10)
+                mc_queue_full = 1
                 continue
             else:
                 break
@@ -4671,6 +4673,36 @@ class Mover(dispatching_worker.DispatchingWorker,
         #Do another query volume, just to make sure its status has not changed
         self.vol_info.update(self.vcc.inquire_vol(volume_label))
 
+        if status[0] != e_errors.OK and mc_queue_full:
+            # if mover has retried due to MC_QUEUE_FULL there can be a situation
+            # when the tape was actually mounted
+            # the next mount attempt will result then in the error message like this:
+            #
+            # ('ERROR',
+            #  13,
+            #  ['ACSSA> mount PRT982 1,1,10,12 readonly',
+            #  '.',
+            #  'Mount: PRT982 mounted on   1, 1,10,12',
+            #  'ACSSA> logoff',
+            #  ''],
+            # '',
+            # 'MOUNT 13: mount PRT982 1,1,10,12 readonly => 0,.'
+            # )
+            # We need to verify that the tape is actually in the drive
+            if status[0] == e_errors.ERROR and status[1] == 13:
+                tape_status=status[2][2].split(' ')
+                # tape status is derived from this part:
+                # 'Mount: PRT982 mounted on   1, 1,10,12'
+                #
+                 t = tape_status[1]
+                 m = tape_status[2]
+                 d=''
+                 d=d.join((tape_status[-2], tape_status[-1]))
+                 if t == volume_label and m == 'mounted' and d == self.mc_device:
+                     # the requested tape was actually mouted in this drive
+                     status[0] = e_errors.OK
+                     
+            
         if status[0] == e_errors.OK:
             self.vcc.update_counts(self.current_volume, mounts=1)
             self.asc.log_finish_mount(self.current_volume)
