@@ -12,6 +12,8 @@
 # Cmnd alias specification
 Cmnd_Alias	PYTHON  = /usr/bin/python, /usr/local/bin/python, \
 			  /local/ups/prd/python/*/bin/python, \
+                          /local/ups/prd/python/*/*/bin/python, \
+                          /fnal/ups/prd/python/*/*/bin/python, \
 			  /fnal/ups/prd/python/*/bin/python
 Cmnd_Alias	PIDKILL = /home/enstore/enstore/bin/pidkill, \
 			  /home/enstore/enstore/bin/pidkill_s, \
