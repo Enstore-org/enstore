@@ -88,8 +88,9 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         sys.stderr.write("%s does not exist\n"%(outputDir,))
         os.remove(fname)
         sys.exit(70)
-    
-    while 1:
+
+    retriable_error_count = 0
+    while retriable_error_count < 3:
         if verbose:
             vopt = "--verbose %s"%(verbose,)
         else:
@@ -104,7 +105,7 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         missingFiles = []
         pipeObj = popen2.Popen4(string.join(args),  0)
         if pipeObj is None:
-            print "could not fork off the process %s" % (args,)
+            print "Could not fork off the process %s" % (args,)
             os.remove(fname)
             return 1
 
@@ -139,11 +140,11 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
             break
 
         del(pipeObj)
-        print "missing files", missingFiles
+        print "Missing files:", missingFiles
         if missingFiles:
             old_fname = fname
             fname = tempfile.mktemp()
-            print "new list is", fname
+            print "New list is:", fname
             f = open(fname, "w")
             oldf = open(old_fname, "r")
             while 1:
@@ -160,7 +161,12 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
         else:
             break
 
-        print "will retry"
+        print "Sdsscp will retry."
+        retriable_error_count = retriable_error_count + 1
+
+    else:
+        #Too many retriable errors occured.
+        rc = 2
     
     #Cleanup the temporary file.
     os.remove(fname)
