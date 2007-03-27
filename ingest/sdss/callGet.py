@@ -59,11 +59,11 @@ def callGet(tapeLabel, files, pnfsDir, outputDir, verbose):
 
     try:
         enstore_path = os.path.join(os.getenv("ENSTORE_DIR"), "bin/get")
-    except TypeError:
+    except (TypeError, AttributeError):
         enstore_path = None
     try:
         sdsscp_path = os.path.join(os.getenv("SDSSCP_DIR"), "get")
-    except TypeError:
+    except (TypeError, AttributeError):
         sdsscp_path = None
 
     #Detemine which path(s) exists.
