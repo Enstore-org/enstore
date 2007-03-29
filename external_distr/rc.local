@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here if you don't
+# want to do the full Sys V style init stuff.
+
+. /etc/init.d/functions
+. /home/enstore/e1/enstore/external_distr/setup-enstore
+
+
+BOOT_CLEANUP="/home/enstore/enstore/sbin/boot_cleanup"
+if [ -x "$BOOT_CLEANUP" ]
+then
+  action "Enstore boot cleanup: " $BOOT_CLEANUP
+fi
+
+if [ "`grep -ic 'Attached devices: none' /proc/scsi/scsi`" == "0" ]
+then
+  (
+    [ "${FTT_DIR:-X}" != "X" ] || setup ftt
+    action "Making SCSI device files: " $FTT_DIR/etc/mkscsidev.Linux
+  )
+
+# Set write permission for tape drives only and eject if loaded
+
+  chmod -f 0666 /dev/rmt/*
+  (
+    for drive in /dev/rmt/tps*n
+    do
+      chmod -f 0666 /dev/sc/sc`echo $drive | sed -e 's/.*tps//' -e 's/n//'`
+      if [ "`mt -f $drive status | grep -ic ONLINE`" != "0" ]
+      then
+        action "Offlining $drive: " mt -f $drive offline
+      fi
+    done
+  ) 2>/dev/null
+fi
+
+#case `hostname` in
+  *ens01*)
+        action "Starting Web Server: " /usr/sbin/apachectl start
+        ;;
+esac
+touch /var/lock/subsys/local
