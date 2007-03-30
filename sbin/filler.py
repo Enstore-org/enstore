@@ -15,11 +15,7 @@
 import sys
 import time
 import pg
-import os
-import getopt, string
-import math
 import enstore_constants
-import enstore_functions
 import configuration_client
 
 PB=1024.*1024.*1024.*1024.*1024.
