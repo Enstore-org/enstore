@@ -41,9 +41,9 @@ cd $ENSTORE_DIR/etc
 
 # we need a config file to change
 if [ -z "${1-}"  ]; then abort  "you need to specify a config file"; fi
+if [ ! -r $config ]; then abort "can not read $config"; fi
 config=$1.conf
 config2=/tmp/$1.conf-check.py
-if [ ! -r $config ]; then abort "can not read $config"; fi
 
 # if the user wants a specific editor, use it
 # otherwise use vi since it is always there
@@ -64,27 +64,38 @@ echo
 cvs status $config
 echo
 
+# make a copy and edit it
+rm -f $config2
+cp $config $config2
+
 # edit the file allowing the user to make changes
-echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config"
-$edcmd $config
+#echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config"
+echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $confi2"
+#$edcmd $config
+$edcmd $config2
 if [ $? -ne 0 ]; then abort "Something wrong with editting. Investigate"; fi
 echo "success"
 echo
 
 # check if python file
-sed -n '1p' $config | grep python 
+#sed -n '1p' $config | grep python 
+sed -n '1p' $config2 | grep python 
 if [ $? -eq 0 ]; then
     # see if python finds any errors
-    echo "Checking $config by running python $config"
-    python $config
+    #echo "Checking $config by running python $config"
+    #python $config
+    echo "Checking $config2 by running python $config2"
+    python $config2
     if [ $? -ne 0 ]; then abort "Running python found errors."; fi
     echo "success"
     echo
 
     # overkill - run through lint too
-    echo "Checking $config by running python linter"
-    rm -f $config2
-    cp $config $config2
+    #echo "Checking $config by running python linter"
+    echo "Checking $config2 by running python linter"
+    #rm -f $config2
+    #cp $config $config2
+    #python $ENSTORE_DIR/tools/mylint.py $config
     python $ENSTORE_DIR/tools/mylint.py $config2
     if [ $? -ne 0 ]; then abort "Running lint found errors"; fi
     rm -f $config2
@@ -119,6 +130,9 @@ answer=`echo ${ans:-Y}|cut -c1 | tr [a-z] [A-Z]`
 if [ "$answer" != "Y" ]; then
    abort 'ok, aborting' 1 0
 fi
+
+# copy $config2 to $config before committing
+cp $config2 $config
 cvs commit $config
 if [ $? -ne 0 ]; then abort "Something wrong with commit. Investigate"; fi
 echo "success"
