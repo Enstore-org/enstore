@@ -98,7 +98,6 @@ if [ $? -eq 0 ]; then
     #python $ENSTORE_DIR/tools/mylint.py $config
     python $ENSTORE_DIR/tools/mylint.py $config2
     if [ $? -ne 0 ]; then abort "Running lint found errors"; fi
-    rm -f $config2
     echo "success"
     echo
 # check if it is an authorized volume file
@@ -133,6 +132,8 @@ fi
 
 # copy $config2 to $config before committing
 cp $config2 $config
+rm -f $config2
+
 cvs commit $config
 if [ $? -ne 0 ]; then abort "Something wrong with commit. Investigate"; fi
 echo "success"
