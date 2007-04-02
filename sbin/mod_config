@@ -41,8 +41,8 @@ cd $ENSTORE_DIR/etc
 
 # we need a config file to change
 if [ -z "${1-}"  ]; then abort  "you need to specify a config file"; fi
-if [ ! -r $config ]; then abort "can not read $config"; fi
 config=$1.conf
+if [ ! -r $config ]; then abort "can not read $config"; fi
 config2=/tmp/$1.conf-check.py
 
 # if the user wants a specific editor, use it
