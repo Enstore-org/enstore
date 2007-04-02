@@ -70,7 +70,7 @@ cp $config $config2
 
 # edit the file allowing the user to make changes
 #echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config"
-echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $confi2"
+echo "DISPLAY=${DISPLAY:-<notset>}, about to edit with command $edcmd $config2"
 #$edcmd $config
 $edcmd $config2
 if [ $? -ne 0 ]; then abort "Something wrong with editting. Investigate"; fi
