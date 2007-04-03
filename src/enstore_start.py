@@ -361,7 +361,8 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     else:
         print "Checking %s." % name
         # see if EPS returns config_server"
-        cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
+        #cmd = 'EPS | egrep "%s|%s" | grep python | grep -v %s'%(name,"configuration_server.py", "grep")
+        cmd = 'EPS | egrep "%s" | egrep -v "%s|%s"'%(name, "grep", "enstore st")
         pipeObj = popen2.Popen3(cmd, 0, 0)
         if pipeObj:
             #stat = pipeObj.wait()
@@ -557,12 +558,13 @@ def do_work(intf):
     check_user()
     #Get the python binary name.  If necessary, python options could
     # be specified here.
-    python_binary = "python"
+    #python_binary = "python"
 
     #Start the configuration server.
     if intf.should_start(enstore_constants.CONFIGURATION_SERVER):
-        check_config_server(intf, name='configuration_server', start_cmd="%s $ENSTORE_DIR/src/configuration_server.py "\
-                  "--config-file $ENSTORE_CONFIG_FILE" % (python_binary,))
+        check_config_server(intf, name='configuration_server',
+                            start_cmd="$ENSTORE_DIR/sbin/configuration_server "\
+                            "--config-file $ENSTORE_CONFIG_FILE")
 
     csc = get_csc()
     rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
@@ -586,8 +588,7 @@ def do_work(intf):
     #Start the event relay.
     if intf.should_start(enstore_constants.EVENT_RELAY):
         check_event_relay(csc, intf,
-                          "%s $ENSTORE_DIR/src/event_relay.py" %
-                          (python_binary,))
+                          "$ENSTORE_DIR/sbin/event_relay")
 
     #Start the servers.
     #
@@ -606,7 +607,7 @@ def do_work(intf):
                     enstore_constants.MONITOR_SERVER]:
         if intf.should_start(server):
             check_server(csc, server, intf,
-                         "%s $ENSTORE_DIR/src/%s.py" % (python_binary,server,))
+                         "$ENSTORE_DIR/sbin/%s" % (server,))
     #
     # Added by Dmitry and Michael to start pnfs_agent which needs to be run as user
     # root via sudo.
@@ -614,8 +615,8 @@ def do_work(intf):
     for server in [enstore_constants.PNFS_AGENT] :
         if intf.should_start(server):
             check_server(csc, server, intf,
-                         "%s %s $ENSTORE_DIR/src/%s.py" %
-                         (sudo, python_binary, server))
+                         "%s $ENSTORE_DIR/sbin/%s" %
+                         (sudo, server))
 
     #Start the Berkley DB dameons.
     #if intf.should_start(enstore_constants.VOLUME_CLERK) or \
@@ -634,8 +635,8 @@ def do_work(intf):
         if intf.should_start(enstore_constants.LIBRARY_MANAGER) or \
            intf.should_start(library_manager):
              check_server(csc, library_manager, intf,
-                          "%s $ENSTORE_DIR/src/library_manager.py %s" %
-                          (python_binary, library_manager,))
+                          "$ENSTORE_DIR/sbin/library_manager %s" %
+                          (library_manager,))
 
     #Media changers.
     for library_manager in libraries:
@@ -643,8 +644,8 @@ def do_work(intf):
         if intf.should_start(enstore_constants.MEDIA_CHANGER) or \
            intf.should_start(media_changer):
             check_server(csc, media_changer, intf,
-                         "%s $ENSTORE_DIR/src/media_changer.py %s" %
-                         (python_binary, media_changer,))
+                         "$ENSTORE_DIR/sbin/media_changer %s" %
+                         (media_changer,))
 
     #Movers.
     for library_manager in libraries:
@@ -653,8 +654,8 @@ def do_work(intf):
             if intf.should_start(enstore_constants.MOVER) or \
                intf.should_start(mover):
                 check_server(csc, mover, intf,
-                             "%s %s $ENSTORE_DIR/src/mover.py %s" %
-                             (sudo, python_binary, mover))
+                             "%s $ENSTORE_DIR/sbin/mover.py %s" %
+                             (sudo, mover))
             
     sys.exit(0)
 
