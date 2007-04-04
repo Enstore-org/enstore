@@ -139,6 +139,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "getVolState"
         return self.DoWork( self.getVolState, ticket)
 
+    def viewdrive(self, ticket):
+        ticket["function"] = "getDriveState"
+        return self.DoWork( self.getDriveState, ticket)
+
     # wrapper method for client - server communication
     def insertvol(self, ticket):
         ticket["function"] = "insert"
@@ -174,7 +178,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                               'worklist':result})
 
     def viewdrive(self,ticket):
-        ticket["function"] = "getVolState"
+        ticket["function"] = "getDriveState"
         return self.DoWork( self.getDriveState, ticket)
 
     # load volume into the drive;  default, overridden for other media changers
@@ -375,7 +379,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             sts=self.prepare( 'Unknown', ticket['drive_id'], ticket['vol_ticket']['media_type'])
             self.logdetail = 1 # back on
             Trace.trace(11,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
-        if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
+        if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState','getDriveState'):
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
             sts = function(ticket)
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
@@ -525,9 +529,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
         import aml2
         return self.retry_function(aml2.robotHome,arm)
 
-    def robotStatus(self):
+    def robotStatus(self, arm):
         import aml2
-        return self.retry_function(aml2.robotStatus)
+        return self.retry_function(aml2.robotStatus, arm)
 
     def robotStart(self, arm):
         import aml2
@@ -555,7 +559,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
     def getVolState(self, ticket):
         import aml2
-        "get current state of the tape"
         external_label = ticket['external_label']
         media_type = ticket['media_type']
         stat,volstate = aml2.view(external_label,media_type)
@@ -564,7 +567,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             return 'BAD', stat, 'aci_view return code', state
         if volstate == None:
             return 'BAD', stat, 'volume %s not found'%(external_label,),state
-        return (e_errors.OK, 0, "",volstate.attrib)
+        return (e_errors.OK, 0, "", volstate.attrib)
 
     def cleanCycle(self, inTicket):
         import aml2
@@ -660,9 +663,147 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.lastWorkTime = time.time()
 
     def robotQuery(self, ticket):
-        ticket['status'] = (e_errors.NOT_SUPPORTED, 0,
-                            "AML2 robot queury is not supported.")
+	ticket['status'] = self.query_robot()
         self.reply_to_caller(ticket)
+
+    def query_robot(self):
+        import aml2
+	#Name of the aci library function.
+	command = "aci_robstat"
+
+	t0 = time.time()
+	status, status_code, response = self.robotStatus(self.robotArm)
+	delta = time.time() - t0
+
+        # got response, parse it and put it into the standard form
+	if not e_errors.is_ok(status):
+		
+		E=19  #19 = ???
+		msg = "robot status %i: %s => %i,%s, %f" % \
+		      (E, command, status_code, response, delta)
+		Trace.log(e_errors.ERROR, msg)
+		return (status, E, response, '', msg)
+	
+        msg = "%s => %i,%s, %f" % (command, status_code, response, delta)	
+        Trace.log(e_errors.INFO, msg)
+        return (e_errors.OK, 0, msg)
+
+    def getDriveState(self, ticket):
+        import aml2
+	drive = ticket['drive']
+        stat, drivestate = aml2.drive_state(drive)
+
+        state='N' # unknown
+        if stat != 0:
+            return 'BAD', stat, "aci_drivestatus2 return code", state
+        if drivestate == None:
+            return 'BAD', stat, "drive %s not found" % (drive,), state
+
+        if drivestate.drive_state == aml2.ACI_DRIVE_UP:
+	    state = "U" #UP
+	elif drivestate.drive_state == aml2.ACI_DRIVE_DOWN:
+	    state = "D" #DOWN
+        return (e_errors.OK, 0, drivestate.volser, "%s %d" %
+		(state, drivestate.drive_state))
+
+    def list_drives(self, ticket):
+        import aml2
+        stat, drives = aml2.drives_states()
+	if stat != 0:
+	    ticket['status'] = 'BAD', stat, "aci_drivestatus2 return code"
+
+	drive_list = []
+	for drive in drives:
+	    if drive.drive_state == 1:
+	        use_state = "down"
+	    elif drive.drive_state == 2:
+	        use_state = "up"
+	    elif drive.drive_state == 3:
+	        use_state = "force down"
+	    elif drive.drive_state == 4:
+	        use_state = "force up"
+	    elif drive.drive_state == 5:
+	        use_state = "exclusive up"
+	    else:
+	        use_state = "unknown"
+
+	    if drive.type == "1":
+	        use_drive = "Colorado T1000"
+	    elif drive.type == "2":
+	        use_drive = "6380/7480"
+	    elif drive.type == "3":
+	        use_drive = "6390/7490"
+	    elif drive.type == "4":
+	        use_drive = "9840 Eagle"
+	    elif drive.type == "5":
+	        use_drive = "BVW 75p"
+	    #There is no 6.
+	    elif drive.type == "7":
+	        use_drive = "3480/3580"
+	    elif drive.type == "8":
+	        use_drive = "3480"
+	    elif drive.type == "9":
+	        use_drive = "5480/3590E/3580/3590/3480/3490"
+	    elif drive.type == "A":
+	        use_drive = "ER90/DST 310/DVR 2100"
+	    #There is no B.
+	    elif drive.type == "C":
+	        use_drive = "8205-8mm/7208 001/Mammoth/DC MK 13"
+	    #There is no D.
+	    elif drive.type == "E":
+	        use_drive = "DLT 2000/4000/7000"
+	    elif drive.type == "F":
+	        use_drive = "HP DD2-1/DDS-2"
+	    elif drive.type == "G":
+	        use_drive = "DLT 7000/8000"
+	    elif drive.type == "H":
+	        use_drive = "HP 1300"
+	    #There is no I.
+	    elif drive.type == "J":
+	        use_drive = "3995 Juckbox"
+	    elif drive.type == "K":
+	        use_drive = "4480"
+	    elif drive.type == "L":
+	        use_drive = "4490 Silerstone/9490 Timberline"
+	    #There is no M.
+	    elif drive.type == "N":
+	        use_drive = "3591/3590 Magstar/8590"
+	    elif drive.type == "O":
+	        use_drive = "RF7010E/RF7010X"
+	    elif drive.type == "P":
+	        use_drive = "OD 512"
+	    elif drive.type == "Q":
+	        use_drive = "3480/3490"
+	    elif drive.type == "R":
+	        use_drive = "Audio cassette deck"
+	    elif drive.type == "S":
+	        use_drive = "3480"
+	    elif drive.type == "T":
+	        use_drive = "5180"
+	    elif drive.type == "U":
+	        use_drive = "5190"
+	    elif drive.type == "V":
+	        use_drive = "RSP 2150 Mountaingate"
+	    elif drive.type == "W":
+	        use_drive = "CD-ROM"
+	    elif drive.type == "X":
+	        use_drive = "AKEBONO"
+	    #There is no Y.
+	    elif drive.type == "Z":
+	        use_drive = "M8100"
+	    else:
+	        use_drive = drive.type
+	    
+	    drive_list.append({"name" : drive.drive_name,
+			       "state" : use_state,
+			       "status" : 0, #Filler for AML2.
+			       "volume" : drive.volser,
+			       "type" : use_drive,
+			       })
+
+	ticket['drive_list'] = drive_list
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
@@ -715,7 +856,7 @@ class STK_MediaLoader(MediaLoaderMethods):
     # see how my good friend the robot is doing
     def robotQuery(self,ticket):
         # don't retry this query - want to know current status
-        ticket['status'] =  self.query_server()
+        ticket['status'] =  self.query_robot()
         self.reply_to_caller(ticket)
 
 
@@ -815,6 +956,11 @@ class STK_MediaLoader(MediaLoaderMethods):
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
     def timed_command(self,cmd,min_response_length=0,timeout=60):
+
+        message = ""
+        blanks=0
+        nread=0
+
         now=timeofday.tod()
         p2cread, p2cwrite = os.pipe()
         c2pread, c2pwrite = os.pipe()
@@ -875,7 +1021,14 @@ class STK_MediaLoader(MediaLoaderMethods):
                 p,r = os.waitpid(pid,os.WNOHANG)
                 if p!=0:
                     break
-                time.sleep(1)
+	        #We need to start reading this now for really long responses.
+		# Otherwise, the buffer fills up with the child waiting
+		# for the parent to read something from the full buffer.
+		# And the parent waits for the child to finish.
+	        msg=os.read(c2pread,200)
+		message = message+msg
+		if not msg:
+			time.sleep(1)
                 active=time.time()-start
             else:
                 msg="killing %d => %s" % (pid,cmd)
@@ -901,10 +1054,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    os.close(c2pread)
             return -2,[], self.delta_t(mark)[0]
 
-        # now read response from the pipe
-        message = ""
-        blanks=0
-        nread=0
+        # now read response from the pipe (Some of
 	if string.find(cmd,'mount') != -1:  # this is a mount or a dismount command
 	    maxread=100  # quick response on queries
 	else:
@@ -1182,7 +1332,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         return (e_errors.OK, 0,msg)
 
 
-    def query_server(self):
+    def query_robot(self):
 
         # build the command, and what to look for in the response
         command = "query server"
@@ -1202,13 +1352,61 @@ class STK_MediaLoader(MediaLoaderMethods):
         answer = string.strip(response[4])
         if string.find(answer, answer_lookfor,0) != 0:
             E=19
-            msg = "query_server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
+            msg = "query server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
             Trace.log(e_errors.ERROR, msg)
             return ("ERROR", E, response, '', msg)
         msg = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0,msg)
 
+    query_server = query_robot  #Backward compatiblity. (Still needed?)
+
+    def getDriveState(self, ticket):
+        import aml2
+	drive = ticket['drive']
+	rt = self.retry_function(self.query_drive, drive)
+	return rt[0], rt[1], rt[3], rt[4]
+
+    def list_drives(self, ticket):
+
+        # build the command, and what to look for in the response
+        command = "query drive ALL"
+        answer_lookfor = "query drive ALL"
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        drive_list = []
+        for line in response:
+	    if line[:2] != "  ":
+	        #This is some other information.
+	        continue
+
+	    name = line[2:13].strip()
+	    state = line[14:29].strip()
+	    status = line[30:41].strip()
+	    volume = line[42:52].strip()
+	    type = line[53:].strip()
+	    
+	    drive_list.append({"name" : name,
+			       "state" : state,
+			       "status" : status,
+			       "volume" : volume,
+			       "type" : type,
+			       })
+
+	ticket['drive_list'] = drive_list
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	    
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):

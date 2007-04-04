@@ -65,6 +65,9 @@ status_table = (
     ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
 
+ACI_DRIVE_UP = aci.ACI_DRIVE_UP
+ACI_DRIVE_DOWN = aci.ACI_DRIVE_DOWN
+
 def convert_status(int_status):
     status = int_status
     if status > len(status_table):  #invalid error code
@@ -102,6 +105,14 @@ def drive_state(drive,client=""):
             return stat,drives[d]
     Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
     return stat,None
+
+def drives_states():
+    stat, drives = aci.aci_drivestatus2("")
+    if stat!=0:
+        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
+        return stat, None
+
+    return stat, drives
 
 def drive_volume(drive):
     stat,drive=drive_state(drive)
@@ -186,8 +197,9 @@ def robotHome(arm):
     return status_table[status][0], status, status_table[status][1]
 
 # get status of robot
-def robotStatus():
-    status = aci.aci_robstat("\0","stat")
+def robotStatus(arm):
+    #status = aci.aci_robstat("\0","stat")
+    status = aci.aci_robstat(arm, "stat")
     return status_table[status][0], status, status_table[status][1]
 
 #start robot arm

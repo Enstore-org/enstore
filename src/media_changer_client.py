@@ -80,6 +80,19 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
+    def viewdrive(self, drive):
+        ticket = {'work' : 'viewdrive',
+                  'drive' : drive,
+                  }
+        rt = self.send(ticket)
+        return rt
+
+    def list_drives(self):
+        ticket = {'work' : 'list_drives',
+                  }
+        rt = self.send(ticket)
+        return rt
+
     def robotQuery(self):
         ticket = {'work' : 'robotQuery', }
         rt = self.send(ticket)
@@ -147,7 +160,9 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.dismount = 0
         self.viewattrib = 0
         self.drive = 0
-        self.show = 0
+        self.show_drive = 0
+        self.show_robot = 0
+        self.show_volume = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -174,6 +189,11 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
+        option.LIST_DRIVES:{option.HELP_STRING:"",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
         option.MAX_WORK:{option.HELP_STRING:"",
                          option.VALUE_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.REQUIRED,
@@ -191,19 +211,38 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
                       },
-        option.SHOW:{option.HELP_STRING:"",
+        option.SHOW:{option.HELP_STRING:"alias for --show-robot",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.DEFAULT_NAME:"show-robot",
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.SHOW_DRIVE:{option.HELP_STRING:"",
+                           option.DEFAULT_VALUE:option.DEFAULT,
+                           option.DEFAULT_TYPE:option.INTEGER,
+                           option.VALUE_USAGE:option.IGNORED,
+                           option.USER_LEVEL:option.ADMIN,
+                           option.VALUE_NAME:"drive",
+                           option.VALUE_TYPE:option.STRING,
+                           option.VALUE_USAGE:option.REQUIRED,
+                           option.FORCE_SET_DEFAULT:option.FORCE,
+                           },
+        option.SHOW_ROBOT:{option.HELP_STRING:"",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
-        option.VOLUME:{option.HELP_STRING:"",
-                       option.USER_LEVEL:option.ADMIN,
-                       option.VALUE_NAME:"volume",
-                       option.VALUE_TYPE:option.STRING,
-                       option.VALUE_USAGE:option.REQUIRED,
-                       option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
-                                            option.VALUE_NAME:"media_type",
-                                            option.VALUE_TYPE:option.STRING}],
+        option.SHOW_VOLUME:{option.HELP_STRING:"",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.USER_LEVEL:option.ADMIN,
+                            option.VALUE_NAME:"volume",
+                            option.VALUE_TYPE:option.STRING,
+                            option.VALUE_USAGE:option.REQUIRED,
+                            option.FORCE_SET_DEFAULT:option.FORCE,
+                            option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
+                                                  option.VALUE_NAME:"media_type",
+                                                  option.VALUE_TYPE:option.STRING}],
                        },
         }
 
@@ -257,7 +296,7 @@ def do_work(intf):
     elif intf.get_work:
         ticket=mcc.GetWork()
         pprint.pprint(ticket)
-    elif intf.show:
+    elif intf.show_robot:
         ticket = mcc.robotQuery()
         tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
         try:
@@ -266,15 +305,37 @@ def do_work(intf):
             print tod, delta_t, stat
         except:
             print tod, -999, ticket
-    elif intf.volume:
+    elif intf.show_volume:
+        t0 = time.time()
         ticket = mcc.viewvol(intf.volume, intf.media_type)
+        delta_t = time.time() - t0
         tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
         try:
             stat = ticket['status']
-            delta_t = string.split(stat[2])[-1:][0]
+            #delta_t = string.split(stat[2])[-1:][0]
             print tod, delta_t, stat
         except:
             print tod, -999, ticket
+    elif intf.show_drive:
+        t0 = time.time()
+        ticket = mcc.viewdrive(intf.drive)
+        delta_t = time.time() - t0
+        tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
+        try:
+            stat = ticket['status']
+            #delta_t = string.split(stat[2])[-1:][0]
+            print tod, delta_t, stat
+        except:
+            print tod, -999, ticket
+    elif intf.list_drives:
+        ticket = mcc.list_drives()
+        if e_errors.is_ok(ticket) and ticket.get("drive_list", None):
+            print "%12s %15s %15s %15s %8s" % ("name", "state", "status",
+                                              "type", "volume")
+            for drive in ticket['drive_list']:
+                print "%12s %15s %15s %15s %8s" % \
+                      (drive['name'], drive['state'], drive.get("status", ""),
+                       drive['type'], drive['volume'])
     else:
         intf.print_help()
         sys.exit(0)

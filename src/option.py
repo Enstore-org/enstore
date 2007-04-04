@@ -284,6 +284,7 @@ LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
 LIST_SG_COUNT = "ls-sg-count"                #volume
+LIST_DRIVES = "list-drives"                  #media
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 LOGFILE_DIR = "logfile-dir"                  #plotter
@@ -377,10 +378,13 @@ SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
 SHOW_BAD = "show-bad"                        #file
 SHOW_BY_LIBRARY = "show-by-library"          #quota
+SHOW_DRIVE = "show-drive"                    #media
+SHOWID = "showid"                            #pnfs
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
-SHOWID = "showid"                            #pnfs
+SHOW_ROBOT = "show-robot"                    #media
 SHOW_STATE = "show-state"                    #volume, file, info
+SHOW_VOLUME = "show-volume"                  #media
 SIZE = "size"                                #pnfs
 SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
@@ -471,8 +475,8 @@ valid_option_list = [
     IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
-    LS_ACTIVE, LIST_SG_COUNT,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
+    LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED,
@@ -494,9 +498,10 @@ valid_option_list = [
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
-    SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
-    SHOW_STATE,
-    SHOW_BAD, SIZE, SKIP_DELETED_FILES, SKIP_PNFS, SHOW_BY_LIBRARY,
+    SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, 
+    SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
+    SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
+    SIZE, SKIP_DELETED_FILES, SKIP_PNFS,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
