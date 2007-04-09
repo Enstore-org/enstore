@@ -168,7 +168,7 @@ class Ntuple:
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -251,7 +251,7 @@ class Plotter:
         if (  self.histogram_list[0].get_time_axis()) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
 
 #            if ( isinstance(hist,histogram.Histogram1D)) : 
@@ -846,7 +846,7 @@ class Histogram1D:
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -899,7 +899,7 @@ class Histogram1D:
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -964,7 +964,7 @@ class Histogram1D:
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -1154,7 +1154,7 @@ class Histogram2D(Histogram1D):
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
@@ -1217,7 +1217,7 @@ class Histogram2D(Histogram1D):
         if (  self.time_axis ) :
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
-                         "set timefmt \"%Y-%m-%d:%H:%M:%S\"\n"+ \
+                         "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \"%y-%m-%d\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
