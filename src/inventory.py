@@ -1008,7 +1008,8 @@ def inventory(output_dir, cache_dir):
 
         # can it be recycled?
         if (vv['system_inhibit'][1] == 'full' or \
-            vv['system_inhibit'][1] == 'migrated') and active == 0:
+            vv['system_inhibit'][1] == 'migrated') and active == 0 \
+            vv['media_type'] != "null" and vv['media_type'] != "8MM":
             rc_file.write("%s\t%8s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable = n_recyclable + 1
             recyclable_vol = 1
@@ -1016,7 +1017,7 @@ def inventory(output_dir, cache_dir):
             recyclable_vol = 0
 
         # can it be recycled?
-        if vv['system_inhibit'][1] == 'readonly' and active == 0:
+        if vv['system_inhibit'][1] == 'readonly' and active == 0 and vv['media_type'] != "null" and vv['media_type'] != '8MM':
             rc_file2.append("%s\t%8s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable2 = n_recyclable2 + 1
             recyclable_vol = 1
