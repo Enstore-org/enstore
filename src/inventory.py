@@ -720,10 +720,10 @@ def verify_volume_quotas(volume_data, volume, volumes_allocated):
     
 
 def is_b_library(lib):
-    return lib == 'eval-b' or lib[-5:] == '9940B' or lib[-9:] == 'Migration'
+    return lib.find('9940B') >= 0 or lib == 'eval-b' or lib[-9:] == 'Migration'
 
 def is_lto3_library(lib):
-    return lib[-4:] == 'LTO3'
+    return lib.find('LTO3') >= 0
 
 # write_protect_status -- check the write protect status of the volume
 def write_protect_status(vol, db):
@@ -820,6 +820,7 @@ def inventory(output_dir, cache_dir):
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
     rc_file = open(recyclable_volume, "w")
+    re_file2 = []
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
@@ -875,6 +876,7 @@ def inventory(output_dir, cache_dir):
     n_changed = 0
     n_migrated = 0
     n_recyclable = 0
+    n_recyclable2 = 0
 
     # read volume ... one by one
 
@@ -1009,6 +1011,14 @@ def inventory(output_dir, cache_dir):
             vv['system_inhibit'][1] == 'migrated') and active == 0:
             rc_file.write("%s\t%8s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable = n_recyclable + 1
+            recyclable_vol = 1
+        else:
+            recyclable_vol = 0
+
+        # can it be recycled?
+        if vv['system_inhibit'][1] == 'readonly' and active == 0:
+            rc_file2.append("%s\t%8s\t%d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], active, vv['media_type'], vv['library'], vv['volume_family']))
+            n_recyclable2 = n_recyclable2 + 1
             recyclable_vol = 1
         else:
             recyclable_vol = 0
@@ -1238,8 +1248,16 @@ def inventory(output_dir, cache_dir):
     mv_file.write("\n(%d volumes)"%(n_migrated))
     mv_file.close()
     # write out the count of recyclable volumes
+    rc_file2.append("\n(%d volumes)\n"%(n_recyclable2))
+    # open it for read
     rc_file.write("\n(%d volumes)"%(n_recyclable))
+    rc_file.write("\n\n\n\n")
+    rc_file.write("These volumes are readonly and have only deleted files.\n")
+    rc_file.write("They probably can be recycled.\n\n")
+    for l in rc_file2:
+        rc_file.write(l)
     rc_file.close()
+
     # make a html copy
     os.system('cp '+volumes_defined_file+' '+volumes_defined_file+'.html')
     os.system('sed -e "s/<font color=#FF0000>//g; s/<\/font>//g; s/<blink>//g; s/<\/blink>//g" '+volumes_defined_file+'.html > '+volumes_defined_file)
