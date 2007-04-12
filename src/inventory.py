@@ -820,7 +820,7 @@ def inventory(output_dir, cache_dir):
     de_file = open(declaration_error, "w")
     mv_file = open(migrated_volumes, "w")
     rc_file = open(recyclable_volume, "w")
-    re_file2 = []
+    rc_file2 = []
 
     vs_file.write("%10s %9s %9s %11s %9s %9s %9s %8s %8s %8s %s\n" % ("Label",
         "Actual", "Deleted", "Non-deleted", "Capacity", "Remaining",
