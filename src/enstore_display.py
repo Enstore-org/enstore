@@ -345,10 +345,11 @@ color_dict = {
     'client_wait_color' :   rgbtohex(100, 100, 100),  # grey
     'client_active_color' : rgbtohex(0, 255, 0), # green
     'client_outline_color' : rgbtohex(0, 0, 0), # black
-    'client_font_color' : rgbtohex(0, 0, 0), # white
+    'client_font_color' : rgbtohex(0, 0, 0), # black
     #mover colors
     'mover_color':          rgbtohex(0, 0, 0), # black
     'mover_error_color':    rgbtohex(255, 0, 0), # red
+    'mover_unknown_color':    rgbtohex(255, 255, 0), # yellow
     'mover_offline_color':  rgbtohex(169, 169, 169), # grey
     'mover_stable_color':   rgbtohex(0, 0, 0), # black
     'mover_label_color':    rgbtohex(255, 50, 50), # maroon
@@ -360,8 +361,10 @@ color_dict = {
     'state_idle_color':     rgbtohex(191, 239, 255), # lightblue
     'state_error_color':    rgbtohex(0, 0, 0), # black
     'state_offline_color':  rgbtohex(0, 0, 0), # black
+    'state_unknown_color':    rgbtohex(0, 0, 0), # black
     'timer_color':          rgbtohex(255, 255, 255), # white
     'timer_longtime_color': rgbtohex(255, 0, 0), # red
+    'timer_unknown_color': rgbtohex(0, 0, 0), # black
     #volume colors
     'tape_stable_color':    rgbtohex(0, 165, 255), # (royal?) blue
     'label_stable_color':   rgbtohex(255, 255, 255), # white (tape)
@@ -573,6 +576,25 @@ class Mover:
 
         #Draw the mover.
         self.draw()
+
+    #########################################################################
+
+    def if_dead(self):
+        if self.state in ['Unknown']:
+            #The "Unknown" state is the only state that we can
+            # use mover.timer_started this way.  All other states
+            # are/can have the time in state be seeded with an
+            # initial value from the mover.
+            now = time.time()
+            if now - self.timer_started < 5.0:
+                #Do a one time only check in 5 seconds.  #Don't use
+                # check_offline_reason() here, becuase it will
+                # schedule it for 1 minutes from now, not 5 seconds
+                # from now.
+                self.display.after(5000, self.display.check_offline_reason)
+            elif time.time() - self.timer_started >= 5.0:
+                self.update_offline_reason("")
+                
 
     #########################################################################
 
@@ -1110,6 +1132,7 @@ class Mover:
         now = time.time()
         self.timer_started = now - time_in_state
         self.update_timer(now)
+        self.update_timer_color()
 
         self.draw_mover() #Some state changes change the mover color.
         self.draw_state()
@@ -1155,6 +1178,13 @@ class Mover:
         #We know the offline reason needs to be removed.
         elif self.offline_reason_display:
             self.undraw_offline_reason()
+
+    #We don't want to reset the color everytime update_timer() gets called.
+    #  So, for those few cases, we have this stand alone function.
+    def update_timer_color(self):
+        if self.timer_display:
+            self.display.itemconfigure(self.timer_display,
+                                       fill = self.timer_color)
         
     def update_timer(self, now):
         seconds = int(now - self.timer_started)
@@ -1240,19 +1270,45 @@ class Mover:
     def update_offline_reason(self, offline_reason):
 
         if self.state in ['OFFLINE', 'Unknown', 'ERROR']:
-            if offline_reason:
-                self.offline_reason = offline_reason
-                self.draw_offline_reason()
-
-            else:
+            if offline_reason == None: # and not self.offline_reason:
                 #To avoid issues when all the movers are restared at once;
-                # reschedule the next offline check for 2 seconds from now
+                # reschedule the next offline check for 1 second from now
                 # to help batch all of them at once.
                 self.display.after_cancel(self.display.after_offline_reason_id)
-                self.display.after_offline_reason_id = self.display.after(2000,
+                self.display.after_offline_reason_id = self.display.after(1000,
                                           self.display.check_offline_reason)
+                return
+            elif offline_reason == self.offline_reason:
+                return
+            elif offline_reason:
+                self.offline_reason = offline_reason
+            
         else:
             self.undraw_offline_reason()
+            return
+
+        if self.state in ['OFFLINE']:
+            self.mover_color = colors('mover_offline_color')
+            self.state_color = colors('state_offline_color')
+            self.label_color = colors('state_offline_color')
+        elif self.state in ["Unknown"] and self.offline_reason:
+            self.mover_color = colors('mover_stable_color')
+            self.state_color = colors('state_idle_color')
+            self.label_color = colors('mover_label_color')
+            self.timer_color = colors('timer_color')
+        elif self.state in ["Unknown"] and not self.offline_reason:
+            self.mover_color = colors('mover_unknown_color')
+            self.state_color = colors('state_unknown_color')
+            self.label_color = colors('state_unknown_color')
+            self.timer_color = colors('timer_unknown_color')
+        elif self.state in ['ERROR']:
+            self.mover_color = colors('mover_error_color')
+            self.state_color = colors('state_error_color')
+            self.label_color = colors('state_error_color')
+
+        #Because of changing all the colors, we need to redraw everything
+        # and not just the offline_reason().
+        self.draw()
 
     def load_tape(self, volume_name, load_state):
         self.volume = volume_name
@@ -2630,10 +2686,14 @@ class Display(Tkinter.Canvas):
                     request_queue.put_queue(mover.name, system_name)
 
             elif mover.state in ['OFFLINE', 'Unknown']:
+                #Do some extra steps to see if we need to change the
+                # background color.
+                mover.if_dead()
+                
                 if system_name in already_requested:
                     #We've already asked this Enstore system's inquisitor.
                     pass
-                elif mover.offline_reason == None:
+                elif not mover.offline_reason:
                     request_queue.put_queue('inquisitor', system_name)
                     already_requested.append(system_name)
 
@@ -3091,7 +3151,9 @@ class Display(Tkinter.Canvas):
         mover.update_state(what_state, time_in_state)
 
     def error_command(self, command_list):
-
+        #In this case "error" is from the point of view of the
+        # inquisitor/schedular.  In entv it is the offline_reason.
+        
         mover = self.movers.get(command_list[1])
 
         what_error = string.join(command_list[2:])
@@ -3404,7 +3466,11 @@ class Display(Tkinter.Canvas):
                                                     self.process_messages)
         self.after_join_id = self.after(JOIN_TIME,
                                         self.join_thread)
-        self.after_offline_reason_id = self.after(5000, #5 seconds
+        #Always set this for a one time check right after starting.
+        self.after(5000, #5 seconds
+                   self.check_offline_reason)
+        #Also set up the periodic checks for the future.
+        self.after_offline_reason_id = self.after(OFFLINE_REASON_TIME,
                                                   self.check_offline_reason)
         self.after_reposition_id = None
 
