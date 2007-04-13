@@ -1722,11 +1722,13 @@ class Connection:
     #########################################################################
                 
     def update_rate(self, rate):
-        now                       = time.time()
-        self.segment_start_time   = now     #starting time at this rate
-        self.segment_stop_time    = now + 5 #let the animation run 5 seconds
-        #self.segment_start_offset = self.dashoffset
-        self.rate                 = rate
+        now                     = time.time()
+        # starting time at this rate
+        self.segment_start_time = now
+        # let the animation run 5 seconds
+        self.segment_stop_time  = now + enstore_constants.MAX_TRANSFER_TIME
+        # remember the rate
+        self.rate               = rate
 
     def update_color(self, color_type):
         if color_type == CLIENT_COLOR:
