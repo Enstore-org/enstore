@@ -121,15 +121,20 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             if type(params[2]) == types.StringType:
                 e_mail=params[2]
             else:
-                patterns_in_alarm=alarm_info['text'].get('patterns',
-                                                         {}).values()
-                for p in patterns_in_alarm:
-                    if p in params[2].keys():
-                        e_mail=params[2][p]
-                if (e_mail=="") :
-                    e_mail=params[2]['*']
-#            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
-            enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
+                try:
+                    patterns_in_alarm=alarm_info['text'].get('patterns',
+                                                             {}).values()
+                    for p in patterns_in_alarm:
+                        if p in params[2].keys():
+                            e_mail=params[2][p]
+                    if (e_mail=="") :
+                        e_mail=params[2]['*']
+                except:
+                    pass
+            if ( e_mail != "" ) : 
+                enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
+            else:
+                enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
         self.action_defaults(theAlarm, isNew, params)
 
     # in order to create a new alarm action, do -
