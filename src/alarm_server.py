@@ -130,6 +130,9 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                     if (e_mail=="") :
                         e_mail=params[2]['*']
                 except:
+                    Trace.log(e_errors.INFO,
+                              "Exception in send_mail_action alarm_info = %s "%(repr(alarm_info)),
+                              Trace.MSG_ALARM)
                     pass
             if ( e_mail != "" ) : 
                 enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
