@@ -131,7 +131,7 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
                         e_mail=params[2]['*']
                 except:
                     Trace.log(e_errors.INFO,
-                              "Exception in send_mail_action alarm_info = %s "%(repr(alarm_info)),
+                              "Exception in send_mail_action alarm_info = %s, parameters=%s "%(repr(alarm_info),rep(params)),
                               Trace.MSG_ALARM)
                     pass
             if ( e_mail != "" ) : 
