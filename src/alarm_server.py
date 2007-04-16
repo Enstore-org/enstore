@@ -10,6 +10,7 @@
 import sys
 import os
 import string
+import re
 
 # enstore imports
 #import setpath
@@ -120,24 +121,27 @@ class AlarmServerMethods(dispatching_worker.DispatchingWorker):
             e_mail=""
             if type(params[2]) == types.StringType:
                 e_mail=params[2]
+                enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
             else:
                 try:
                     patterns_in_alarm=alarm_info['text'].get('patterns',
                                                              {}).values()
-                    for p in patterns_in_alarm:
-                        if p in params[2].keys():
-                            e_mail=params[2][p]
-                    if (e_mail=="") :
-                        e_mail=params[2]['*']
+                    for k in params[2].keys():
+                        rp=re.compile(k)
+                        for p in patterns_in_alarm:
+                            if ( rp.match(p) ) :
+                                e_mail=e_mail+params[2][k]+","
+                    if (e_mail!=""):
+                        enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail[0:-1])
+                    else:
+                        Trace.log(e_errors.INFO,
+                                  "Fail to send mail alarm_ifo = %s, parameters=%s "%(repr(alarm_info),repr(params)),
+                                  Trace.MSG_ALARM)
                 except:
                     Trace.log(e_errors.INFO,
                               "Exception in send_mail_action alarm_info = %s, parameters=%s "%(repr(alarm_info),repr(params)),
                               Trace.MSG_ALARM)
                     pass
-            if ( e_mail != "" ) : 
-                enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", e_mail)
-            else:
-                enstore_mail.send_mail(MY_NAME, theAlarm, "Alarm raised", params[2])
         self.action_defaults(theAlarm, isNew, params)
 
     # in order to create a new alarm action, do -
