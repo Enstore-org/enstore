@@ -262,7 +262,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 
     if ((d->flags&FTT_FLAG_SUID_SCSI) == 0 || 0 == geteuid()) {
 	if (ftt_get_stat_ops(opbuf) & FTT_DO_MS_Px0f) {
-	    DEBUG2(stderr, "Using SCSI Mode sense 0x0f page to set compression\n");
+	    DEBUG2(stderr, "V25: Using SCSI Mode sense 0x0f page to set compression\n");
 	    res = ftt_open_scsi_dev(d);        
 	    if(res < 0) return res;
 	    res = ftt_do_scsi_command(d, "Mode sense", mod_sen0f, 6, buf, BD_SIZE+16, 5, 0);
@@ -274,10 +274,19 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    buf[BD_SIZE + 2] |= (compression << 7);
             buf[BD_SIZE + 2] |= (compression << 7);
 
-            if (0 != strncmp(d->prod_id,"ULT",3)){
-                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 120, 1);
+            if ((0 == strncmp(d->prod_id,"ULT",3))||
+	        (0 == strncmp(d->prod_id,"T9940",5))||
+                (0 == strncmp(d->prod_id,"9840",4))) {
+               res = ftt_set_compression(d,0);
+            }else{
+               res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
             }
 
+/*
+            if ((0 != strncmp(d->prod_id,"ULT",3))||(0 != strncmp(d->prod_id,"T9940B",6))){
+                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 120, 1);
+            }
+*/
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
 	    if(res < 0) return res;
@@ -295,10 +304,12 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
 	    /* buf[BD_SIZE] = d->devinfo[d->which_is_default].hwdens; */
  	    buf[BD_SIZE + 14] = compression;
 
-            if (0 == strncmp(d->prod_id,"ULT",3)){
+            if ((0 == strncmp(d->prod_id,"ULT",3))||
+	        (0 == strncmp(d->prod_id,"T9940",5))||
+	        (0 == strncmp(d->prod_id,"9840",4))) {
                res = ftt_set_compression(d,0);
             }else{
-	       res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 120, 1);
+	       res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 220, 1);
 	    }
 	    if(res < 0) return res;
 	    res = ftt_close_scsi_dev(d);
