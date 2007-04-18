@@ -10,8 +10,6 @@
     <center><h1>Removing Invalid Directory Entries</h1></center>
       <pre>
 
-Removing 'ghost' files:
-
 These files are those with a directory entry that points to an 
 invalid/nonexistent inode.  They can be found by doing (in bash):
 1) An ls of the specific file and getting "No such file or directory".
@@ -20,8 +18,13 @@ invalid/nonexistent inode.  They can be found by doing (in bash):
 Reminder:  You need to log onto the pnfs server, use the /pnfs/fs path
            and be user root for these commands to work.
 
+Notes: Taking the file /pnfs/fs/usr/mydir/myfile; &lt;basename&gt; refers to 
+       myfile in the following examples and &lt;directory&gt; refers to
+       /pnfs/fs/usr/mydir.
+
 To remove them (1st method):
   setup pnfs
+  cd &lt;directory&gt;
   $pnfs/tools/scandir.sh | grep &lt;basname&gt;
 
   Paste the results from scandir.sh as arguments to Sclient.
@@ -33,6 +36,7 @@ To remove them (1st method):
 
 To remove them (2nd method):
   setup pnfs
+  cd &lt;directory&gt;
   $pnfs/tools/scandir.sh | grep &lt;basname&gt;
 
   First output from scandir is the directory id, then the file id, then other
@@ -47,6 +51,7 @@ To remove them (3rd method):
   &lt;basename&gt; is the name of the 'broken' file.
 
   setup pnfs
+  cd &lt;directory&gt;
   $pnfs/tools/sclient rmdirentry $shmkey &lt;dirID&gt; &lt;basename&gt;
 
 
@@ -60,7 +65,7 @@ the file to clear up the problem.
     <hr>
 <!-- Created: Fri Sep  8 14:09:02 CDT 2006 -->
 <!-- hhmts start -->
-Last modified: Mon Oct  2 10:11:35 CDT 2006
+Last modified: Wed Apr 18 11:14:18 CDT 2007
 <!-- hhmts end -->
   </body>
 </html>
