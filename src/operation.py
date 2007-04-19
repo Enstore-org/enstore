@@ -154,9 +154,9 @@ def clean_up_temp_dir():
 	for i in os.listdir(TEMP_DIR):
 		os.remove(os.path.join(TEMP_DIR, i))
 
-DATABASEHOST = 'stkensrv6.fnal.gov'
+DATABASEHOST = 'stkensrv0.fnal.gov'
 #DATABASEHOST = 'localhost'
-DATABASEPORT = 5432;
+DATABASEPORT = 8800
 DATABASENAME = 'operation'
 
 # This is a hard wired configuration
