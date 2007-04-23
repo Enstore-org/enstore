@@ -46,3 +46,10 @@ def aci_list(clientname):
 def aci_view(clientname, type):
     stat, ptr = aci_shadow.aci_view(clientname, type)
     return stat, aci_shadow.aci_vol_desc(ptr)
+
+def aci_qvolsrange(start, end, max_count, clientname):
+    x = aci_shadow.aci_qvolsrange(start, end, max_count, clientname)
+    if type(x)==type([]):
+        return x[0], x[1], map(aci_shadow.aci_volserinfo, x[2:])
+    else:
+        return x, "",  []

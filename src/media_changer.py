@@ -51,6 +51,7 @@ import e_errors
 import volume_clerk_client
 import timeofday
 import event_relay_messages
+import callback
 
 def _lock(f, op):
         dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
@@ -714,96 +715,60 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
 	drive_list = []
 	for drive in drives:
-	    if drive.drive_state == 1:
-	        use_state = "down"
-	    elif drive.drive_state == 2:
-	        use_state = "up"
-	    elif drive.drive_state == 3:
-	        use_state = "force down"
-	    elif drive.drive_state == 4:
-	        use_state = "force up"
-	    elif drive.drive_state == 5:
-	        use_state = "exclusive up"
-	    else:
-	        use_state = "unknown"
-
-	    if drive.type == "1":
-	        use_drive = "Colorado T1000"
-	    elif drive.type == "2":
-	        use_drive = "6380/7480"
-	    elif drive.type == "3":
-	        use_drive = "6390/7490"
-	    elif drive.type == "4":
-	        use_drive = "9840 Eagle"
-	    elif drive.type == "5":
-	        use_drive = "BVW 75p"
-	    #There is no 6.
-	    elif drive.type == "7":
-	        use_drive = "3480/3580"
-	    elif drive.type == "8":
-	        use_drive = "3480"
-	    elif drive.type == "9":
-	        use_drive = "5480/3590E/3580/3590/3480/3490"
-	    elif drive.type == "A":
-	        use_drive = "ER90/DST 310/DVR 2100"
-	    #There is no B.
-	    elif drive.type == "C":
-	        use_drive = "8205-8mm/7208 001/Mammoth/DC MK 13"
-	    #There is no D.
-	    elif drive.type == "E":
-	        use_drive = "DLT 2000/4000/7000"
-	    elif drive.type == "F":
-	        use_drive = "HP DD2-1/DDS-2"
-	    elif drive.type == "G":
-	        use_drive = "DLT 7000/8000"
-	    elif drive.type == "H":
-	        use_drive = "HP 1300"
-	    #There is no I.
-	    elif drive.type == "J":
-	        use_drive = "3995 Juckbox"
-	    elif drive.type == "K":
-	        use_drive = "4480"
-	    elif drive.type == "L":
-	        use_drive = "4490 Silerstone/9490 Timberline"
-	    #There is no M.
-	    elif drive.type == "N":
-	        use_drive = "3591/3590 Magstar/8590"
-	    elif drive.type == "O":
-	        use_drive = "RF7010E/RF7010X"
-	    elif drive.type == "P":
-	        use_drive = "OD 512"
-	    elif drive.type == "Q":
-	        use_drive = "3480/3490"
-	    elif drive.type == "R":
-	        use_drive = "Audio cassette deck"
-	    elif drive.type == "S":
-	        use_drive = "3480"
-	    elif drive.type == "T":
-	        use_drive = "5180"
-	    elif drive.type == "U":
-	        use_drive = "5190"
-	    elif drive.type == "V":
-	        use_drive = "RSP 2150 Mountaingate"
-	    elif drive.type == "W":
-	        use_drive = "CD-ROM"
-	    elif drive.type == "X":
-	        use_drive = "AKEBONO"
-	    #There is no Y.
-	    elif drive.type == "Z":
-	        use_drive = "M8100"
-	    else:
-	        use_drive = drive.type
+	    use_state = aml2.drive_state_names.get(drive.drive_state,
+						   drive.drive_state)
+	    use_type = aml2.drive_names.get(drive.type, drive.type)
 	    
 	    drive_list.append({"name" : drive.drive_name,
 			       "state" : use_state,
 			       "status" : 0, #Filler for AML2.
 			       "volume" : drive.volser,
-			       "type" : use_drive,
+			       "type" : use_type,
 			       })
 
 	ticket['drive_list'] = drive_list
 	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
+
+    def list_volumes(self, ticket):
+
+        if not hostaddr.allow(ticket['callback_addr']):
+            return
+	    
+        import aml2
+        stat, volumes = aml2.list_volser()
+	if stat != 0:
+	    ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
+
+	volume_list = []
+	for volume in volumes:
+	    use_volume = aml2.media_names.get(volume.media_type, "UNKNOWN")
+		
+	    volume_list.append({'volume' : volume.volser,
+				'type' : use_volume,
+				'state' : volume.attrib,
+				'location' : "",
+				})
+
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	reply=ticket.copy()
+	reply['volume_list'] = volume_list
+	addr = ticket['callback_addr']
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(ticket['callback_addr'])
+            r = callback.write_tcp_obj(sock,reply)
+            sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,
+			 "Error calling write_tcp_obj. Callback addr. %s"
+			 % (addr,))
+            
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+        return
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
@@ -874,6 +839,42 @@ class STK_MediaLoader(MediaLoaderMethods):
                 state = rt[2]
         return (rt[0], rt[1], rt[2], state)
 
+    def list_volumes(self, ticket):
+        # build the command, and what to look for in the response
+        command = "query volume all"
+        answer_lookfor = "query volume all"
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status,response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        volume_list = []
+        for line in response:
+	    if line.find("Volume Status") >= 0 or line.find("Identifier") >= 0:
+	        #This is some other information.
+	        continue
+
+	    volume = line[1:13].strip()
+	    state = line[13:29].strip()
+	    location = line[31:45].strip()
+	    type = line[47:].strip()
+	    
+	    volume_list.append({"volume" : volume,
+			       "state" : state,
+			       "location" : location,
+			       "type" : type,
+			       })
+
+	ticket['volume_list'] = volume_list
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
 
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
@@ -1026,10 +1027,17 @@ class STK_MediaLoader(MediaLoaderMethods):
 		# for the parent to read something from the full buffer.
 		# And the parent waits for the child to finish.
 	        msg=os.read(c2pread,200)
-		message = message+msg
-		if not msg:
-			time.sleep(1)
-                active=time.time()-start
+		if msg:
+		    print msg,
+		    message = message+msg
+		    #Need to reset the timeout period.
+		    start = time.time()
+		    active = 0
+		else:
+		    if msg == '':
+		        blanks = blanks+1
+		    active = time.time() - start
+		    time.sleep(1)
             else:
                 msg="killing %d => %s" % (pid,cmd)
                 print timeofday.tod(),msg
@@ -1071,7 +1079,9 @@ class STK_MediaLoader(MediaLoaderMethods):
           #while blanks<2 and nread<maxread:
 	  while nread<maxread:
             msg=os.read(c2pread,200)
-            message = message+msg
+	    message = message + msg
+	    if msg:
+		    print msg,
             nread = nread+1
             if msg == '':
                 blanks = blanks+1
@@ -1396,7 +1406,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    volume = line[42:52].strip()
 	    type = line[53:].strip()
 	    
-	    drive_list.append({"name" : name,
+	    drive_list.append({"name" : name.replace(" ", ""),
 			       "state" : state,
 			       "status" : status,
 			       "volume" : volume,

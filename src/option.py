@@ -283,8 +283,9 @@ LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
-LIST_SG_COUNT = "ls-sg-count"                #volume
 LIST_DRIVES = "list-drives"                  #media
+LIST_SG_COUNT = "ls-sg-count"                #volume
+LIST_VOLUMES = "list-volumes"                #media
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 LOGFILE_DIR = "logfile-dir"                  #plotter
@@ -476,6 +477,7 @@ valid_option_list = [
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
+    LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
