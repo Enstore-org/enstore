@@ -67,7 +67,13 @@ if [ -d $krbdir ]; then
 
 else
    # we are not kerberized
-   rsh "$@"
+   set +u
+   if [ -n "$ENSSH" ];then
+	$ENSSH "$@" 
+   else
+	rsh "$@"
+   fi
+   set -u
 fi
 
 set +xv

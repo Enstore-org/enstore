@@ -75,7 +75,13 @@ if [ -d $krbdir ]; then
 
 else
    # we are not kerberized
-   rsync "$@"
+   set +u
+   if [ -n "$ENSCP" ];then
+	/usr/bin/rsync --rsh=$ENSCP "$@" 
+   else
+	rsync "$@"
+   fi
+   set -u
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi

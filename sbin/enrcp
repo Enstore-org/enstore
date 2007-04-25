@@ -86,7 +86,13 @@ if [ -d $krbdir ]; then
 
 else
    # we are not kerberized
-   do_rcp rcp "$@"
+   set +u
+   if [ -n "$ENSCP" ];then
+	do_rcp $ENSCP "$@" 
+   else
+	do_rcp rcp "$@"
+   fi
+   set -u
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi
