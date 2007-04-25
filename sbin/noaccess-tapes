@@ -1,8 +1,13 @@
 #!/bin/sh
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "" ] ; then
+    od=/fnal/ups/prd/www_pages/enstore/tape_inventory
+else
+    od=$1
+fi
 
-out=/fnal/ups/prd/www_pages/enstore/tape_inventory/VOLUMES
+out=$od/VOLUMES
 rm -f $out
 
 echo `date` >$out 2>&1
@@ -11,7 +16,7 @@ enstore info --vols >> $out 2>&1
 echo >> $out 2>&1
 echo `date` >>$out 2>&1
 
-out2=/fnal/ups/prd/www_pages/enstore/tape_inventory/NOACCESS
+out2=$od/NOACCESS
 rm -f $out2
 
 echo `date` >$out2 2>&1

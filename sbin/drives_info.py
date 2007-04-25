@@ -35,7 +35,7 @@ def match_mover_log_name(logname, movers):
     return rc
         
 
-def publish_results(report, out, config_host, system):
+def publish_results(report, out, config_host, system, server, web):
     import HTMLgen
     import enstore_html
     import enstore_functions2
@@ -84,15 +84,32 @@ def publish_results(report, out, config_host, system):
     
     
 
-    cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s %s:/fnal/ups/prd/www_pages/enstore/'%(out, 'stkensrv2.fnal.gov')
+    #cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp %s %s:/fnal/ups/prd/www_pages/enstore/'%(out, 'stkensrv2.fnal.gov')
+    cmd = '$ENSTORE_DIR/sbin/enrcp %s %s:%s'%(out, server, web)    
     print cmd
     os.system(cmd)
 
 
-systems=['stkensrv2.fnal.gov','d0ensrv2.fnal.gov','cdfensrv2.fnal.gov']
-config_port = 7500
+# get local config
+if len(sys.argv) > 1:
+    where_to_publish = sys.argv[1]
+else:
+    where_to_publish = 'stkensrv2.fnal.gov'
+server = os.getenv('ENSTORE_CONFIG_HOST')
+port = os.getenv('ENSTORE_CONFIG_PORT')
 
-for config_host in systems:
+local_config= get_config(server, int(port))
+systems=local_config.get('known_config_servers')
+del(systems['status'])
+
+web = local_config.get('inquisitor')['html_file']
+#systems=['stkensrv2.fnal.gov','d0ensrv2.fnal.gov','cdfensrv2.fnal.gov']
+#config_port = 7500
+
+for conf in systems.keys():
+    print "CONF",conf
+    config_host = systems[conf][0]
+    config_port = systems[conf][1]
     config_dict = get_config(config_host, config_port)
     db_host, db_port, db_name = get_db_refs(config_dict)
     movers=get_movers(config_dict)
@@ -153,6 +170,6 @@ for config_host in systems:
         system = config_dict['system'].get('name',config_host)
     else:
         system = config_host
-    publish_results(report_dict, out_file, config_host, system)
+    publish_results(report_dict, out_file, config_host, system, server, web)
     
 

@@ -1,5 +1,8 @@
 #!/bin/sh
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-
-python $ENSTORE_DIR/src/enstore_make_plot_page.py --plot cron --outofdate
+if [ "${1:-}" = "" ] ; then html_file="";
+else html_file=$1;shift;fi
+if [ "${1:-}" = "" ] ; then in_dir="";
+else in_dir=$1;shift;fi
+python $ENSTORE_DIR/src/enstore_make_plot_page.py --html-file $html_file --input_dir $in_dir --plot cron --outofdate

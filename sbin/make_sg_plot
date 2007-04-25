@@ -1,10 +1,14 @@
 #!/bin/sh
 
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+if [ "${1:-}" = "" ] ; then od="/local/ups/prd/www_pages/enstore";
+else od=$1;shift;fi
+if [ "${1:-}" = "" ] ; then log_d="/diska/enstore-log/enplot_sg";
+else log_d=$1;shift;fi
 
 lastNhours=`date --date "48 hours ago" +"%Y-%m-%d:%H"`
 now=`date +"%Y-%m-%d:%H:%M:%S"`
 
-python /home/enstore/enstore/src/plotter.py --sg --output_dir=/local/ups/prd/www_pages/enstore --start_time $lastNhours
+python /home/enstore/enstore/src/plotter.py --sg --output_dir=$od --start_time $lastNhours
 
-cp /local/ups/prd/www_pages/enstore/enplot_sg.ps /diska/enstore-log/enplot_sg/enplot_sg-$now.ps
+cp $od/enplot_sg.ps $log_d/enplot_sg-$now.ps
