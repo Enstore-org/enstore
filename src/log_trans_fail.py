@@ -5,6 +5,7 @@ import pprint
 import string
 import sys
 import time
+import configuration_client
 
 def cmd(command):
     print command
@@ -31,9 +32,20 @@ def get_failures(log,grepv='GONE|NUL|DSKMV|disk',grep=""):
         grepv_ = "JDE|"+grepv
     else:
         grepv_ = grepv
-    
+
+    # get log dir
+    config_host = os.getenv('ENSTORE_CONFIG_HOST')
+    config_port = os.getenv('ENSTORE_CONFIG_PORT')
+    log_dir = None
+    if config_host and config_port:
+        csc  = configuration_client.ConfigurationClient((config_host, int(config_port)))
+        log_server = csc.get('log_server')
+        if log_server:
+            log_dir =log_server.get('log_file_path', None)
+    if log_dir == None:
+        log_dir = '/diska/enstore-log'
     # just force the directory.
-    failed = cmd('cd /diska/enstore-log; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' %(log,grepv_,grep))
+    failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' %(log_dir, log,grepv_,grep))
     return failed
 
 def parse_failures(failed):
