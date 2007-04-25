@@ -2926,7 +2926,12 @@ class EnSGIngestPage(EnBaseHtmlDoc):
             
     def body(self):
         plots='burn-rate'
-        plots_dir="/local/ups/prd/www_pages/enstore/burn-rate"
+        www_dir = os.getenv('ENSTORE_WWW_DIR')
+        if www_dir:
+            plots_dir = os.path.join(www_dir, plots)
+        else:
+            plots_dir="/local/ups/prd/www_pages/enstore/burn-rate"
+        
         stamps=[]
         images=[]
         files=os.listdir(plots_dir)
