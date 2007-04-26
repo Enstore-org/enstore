@@ -8,14 +8,16 @@ if [ "${ENSTORE_DIR:-x}" = "x" ];
 then
 	# this is a very trivial way to check if enstore is set
 	# the usual location of enstore is /home/enstore
+	e_dir=`rpm -ql enstore_sa | head -1`
 
-	if [ -a "/home/enstore/enstore/external_distr/setup-enstore"  ]; then
-		. /home/enstore/enstore/external_distr/setup-enstore
+	if [ -a "${e_dir}/config/setup-enstore"  ]; then
+		. ${e_dir}/config/setup-enstore
+		return 0
 	else
     		echo '****'
     		echo '**** Unable to initialize the UPSII environment'
     		echo '****'
-		return
+		return 1
 	fi
 fi
 # fakes setup function
