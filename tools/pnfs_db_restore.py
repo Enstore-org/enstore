@@ -12,8 +12,10 @@ sys2host={'cdf': ('cdfensrv1','psql-data'),
           'cms': ('cmspnfs', 'psql-data'),
           'd0': ('d0ensrv1', 'data'),
           'stk':('stkensrv1','psql-data'),
+          'eag':('eagpnfs1','psql-data'),
           'sdss': ('?????', '?????'),
           }
+
 version2version={'v8_0_7' : '8.0',
                  'v8_1_3' : '8.1'
                  }
@@ -21,7 +23,7 @@ version2version={'v8_0_7' : '8.0',
 def usage(cmd):
 #    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
     print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
-    print "\t allowed systems: cms|cdf|d0|stk"
+    print "\t allowed systems: cms|cdf|d0|stk|eag"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
     print "\t allowed pnfs versions v8_0_7, v8_1_3"
 #    sys.exit(1)
@@ -208,17 +210,23 @@ if __name__ == "__main__" :
     uname = pwd.getpwuid(os.getuid())[0]
     backup_time      = None
     sysname          = None
+    emergency        = False
+    ourhost          = string.split(os.uname()[1],'.')[0]
+    
+    
     postgres_version = 'v8_1_3'
     if uname != 'root':
         print "Must be 'root' to run this program"
         sys.exit(1)
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:p:t:", ["help","system=","postgres_version=","backup_time="])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:p:t:es:", ["help","system=","postgres_version=","backup_time=","emergency"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
         sys.exit(2)
     for o, a in opts:
+        if o in ("-h", "--emergency") :
+            emergency=True
         if o in ("-h", "--help"):
             usage(sys.argv[0])
             sys.exit(1)
@@ -228,6 +236,12 @@ if __name__ == "__main__" :
             postgres_version = a
         if o in ("-t", "--backup_time"):
             backup_time = a
+    for value in sys2host.values():
+        if ourhost == value[0] and emergency == False :
+            print "You are running on production system - ",ourhost
+            print "Re-run specifying --emergency switch to proceed"
+            usage(sys.argv[0])
+            sys.exit(1)
     if (sysname == None or sysname=="") :
         print "Error: Must specify enstore system name"
         usage(sys.argv[0])
