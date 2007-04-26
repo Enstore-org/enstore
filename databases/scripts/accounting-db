@@ -22,7 +22,7 @@ case $host in
 	rip1)
 		db=/diska/postgres_db
 		;;
-	stkensrv0|cdfensrv0|d0ensrv0)
+	stkensrv0|cdfensrv0|d0ensrv0|ccfsrv1)
 		db=/diska/accounting-db
 		;;
 	*)
