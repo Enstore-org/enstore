@@ -42,4 +42,11 @@ echo "Removing /usr/local/etc/setups.sh"
 rm -rf /usr/local/etc/setups.sh 
 echo "removing $ENSTORE_DIR/config"
 rm -rf $ENSTORE_DIR/config
+
+echo "Deleting user 'enstore`"
+userdel -r enstore
+
+echo "Deleting group 'enstore`"
+groupdel enstore
+
 exit 0
