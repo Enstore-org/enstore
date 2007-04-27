@@ -55,6 +55,8 @@ pwd
 %post
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
+%preun
+$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 rm /tmp/enstore-setup
