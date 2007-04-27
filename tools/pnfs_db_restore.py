@@ -177,8 +177,6 @@ def recover(backup_time=None):
 
     # start postgres
     cmd='/etc/init.d/postgres-boot start'
-    #cmd='source /home/enstore/gettkt;. /usr/local/etc/setups.sh; setup pnfs; . /usr/etc/pnfsSetup; su enstore -c "$PNFS_DIR/tools/linux/pgsql/bin/postmaster -D $database_postgres >/diska/postgres-log/postgres.logfile 2>&1 &"'
-    #cmd='su enstore; source /usr/local/etc/setups.sh; setup pnfs; . /usr/etc/pnfsSetup; $PNFS_DIR/tools/linux/pgsql/bin/postmaster -D $database_postgres >/diska/postgres-log/postgres.logfile 2>&1 &'
     print "Starting DB server: %s"% (cmd,)
     time.sleep(360)
     os.system(cmd)
