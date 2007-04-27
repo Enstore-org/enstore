@@ -41,12 +41,12 @@ then
     done
   ) 2>/dev/null
 fi
-
-host=`hostname`
-if [ $host = $ENSTORE_CONFIG_HOST ]; then
-    web_server=`which apachectl`
-    if [ $? -eq 1 ]; then
-	# try this
-	 web_server=/usr/sbin/apachectl
-    fi
-    action "Starting Web Server: " $web_server start
+## we will setup the ssystem to run apache server on boot in the corresponding rpm
+## host=`hostname`
+## if [ $host = $ENSTORE_CONFIG_HOST ]; then
+##      web_server=`which apachectl`
+##      if [ $? -eq 1 ]; then
+##   	# try this
+##   	 web_server=/usr/sbin/apachectl
+##    fi
+##    action "Starting Web Server: " $web_server start
