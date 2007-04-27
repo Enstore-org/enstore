@@ -7,6 +7,7 @@ import string
 import pwd
 import getopt
 import time
+import types
 
 sys2host={'cdf': ('cdfensrv1','psql-data'),
           'cms': ('cmspnfs', 'psql-data'),
@@ -19,14 +20,19 @@ sys2host={'cdf': ('cdfensrv1','psql-data'),
 version2version={'v8_0_7' : '8.0',
                  'v8_1_3' : '8.1'
                  }
+def get_command_output(command):
+    child = os.popen(command)
+    data  = child.read()
+    err   = child.close()
+    if err:
+	raise RuntimeError, '%s failed w/ exit code %d' % (command, err)
+    return data[:-1] # (skip '\n' at the end)
 
 def usage(cmd):
-#    print "Usage: %s {cdf|cms|d0|stk|sdss} [timestamp]"%(cmd,)
     print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
     print "\t allowed systems: cms|cdf|d0|stk|eag"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
     print "\t allowed pnfs versions v8_0_7, v8_1_3"
-#    sys.exit(1)
     
 def get_config(host):
     print "get_config PNFS HOST ",host
@@ -63,7 +69,6 @@ def get_config(host):
     of.close()
     f.close()
     os.system("mv pnfsSetup.%s.tmp pnfsSetup.%s"%(host, host))
-#    os.system("chown root.root pnfsSetup.%s"%(host, ))
     os.system("cp -f pnfsSetup.%s /usr/etc/pnfsSetup"%(host, ))
     # get local pnfs directory
     pnfs_dir=os.popen('. /usr/local/etc/setups.sh; setup pnfs; echo $PNFS_DIR').readlines()[0][:-1]
@@ -78,21 +83,13 @@ def get_config(host):
         print "failed to ",cmd
         sys.exit(1)
     return pnfs_db, pgdb, trash, backup_host, backup_dir,pnfs_dir
-
-# get last backup
+#
+# get next to the last backup
+#
 def get_backup(backup_host, backup_dir,  backup_name):
-    cmd = 'rsh %s "ls -ltr %s/%s.*"'%(backup_host, backup_dir,  backup_name)
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    if pipeObj is None:
-        print "%s failed"%(cmd, )
-        sys.exit(1) 
-    stat = pipeObj.wait()
-    result = pipeObj.fromchild.readlines()  # result has returned string
-
-    # take a second to last backup
-    # as the last may not be completed yet
-    a = result[len(result)-1].split(' ')
-    return a[len(a)-1][:-1]
+    cmd='rsh %s  "ls -t %s/%s.*|head -n 2|tail -1"'%(backup_host, backup_dir,  backup_name)
+#    cmd='rsh %s  "ls -t %s/%s.*|head -n 1"'%(backup_host, backup_dir,  backup_name)
+    return get_command_output(cmd)
 
 def recover(backup_time=None):
     pnfs_db, pgdb, trash, backup_host, backup_dir, pnfs_dir = get_config(pnfs_host)
@@ -128,11 +125,13 @@ def recover(backup_time=None):
     os.system('rm -rf %s'% (d,))
     os.system('mkdir -p %s' %(d,)) 
 
-
     #copy a backup file
-    cmd = '/usr/bin/rsync -e rsh  %s:%s .'%(backup_host, backup_file)
+    cmd = "/usr/bin/rsync -e rsh  %s:%s . "%(backup_host, backup_file)
     print 'copying: %s'% (cmd,)
-    os.system(cmd)
+    err=os.system(cmd)
+    if err:
+	raise RuntimeError, '%s failed w/ exit code %d' % (cmd, err)
+        
 
     # untar the file
     cmd='tar xzvf %s --preserve-permissions --same-owner'%(os.path.basename(backup_file),)
