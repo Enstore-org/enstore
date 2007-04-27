@@ -40,5 +40,6 @@ find /etc/rc.d/rc6.d -name "*enstore-boot" | xargs rm -rf
 
 echo "Removing /usr/local/etc/setups.sh"
 rm -rf /usr/local/etc/setups.sh 
-
+echo "removing $ENSTORE_DIR/config"
+rm -rf $ENSTORE_DIR/config
 exit 0
