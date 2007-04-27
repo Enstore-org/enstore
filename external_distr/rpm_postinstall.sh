@@ -56,7 +56,7 @@ rm -f $ENSTORE_DIR/debugsources.list
 echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
 cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d
 echo "Configuring the system to start enstore on boot"
-`/etc/rc.d/init.d/enstore-boot install`
+/etc/rc.d/init.d/enstore-boot install
 echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
 cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
 echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
