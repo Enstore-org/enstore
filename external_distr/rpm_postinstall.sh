@@ -59,8 +59,8 @@ echo "Configuring the system to start enstore on boot"
 `/etc/rc.d/init.d/enstore-boot install`
 echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
 cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
-echo "Copying $ENSTORE_DIR/external_distr/rc.local to /etc/rc.d"
-cp -f $ENSTORE_DIR/external_distr/rc.local /etc/rc.d
+echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
+cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
 
 
 echo "To finish the installation you need to run $ENSTORE_DIR/external_distr/install.sh
