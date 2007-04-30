@@ -155,7 +155,8 @@ def recover(backup_time=None):
     # comment our archive command 
     print "CWD",cwd
     # cmd = 'sed -e "s/archive_command/#archive_command/g w f.1" %s/postgresql.conf'% (pgdb,)
-    cmd = 'cat %s/postgresql.conf | sed -e "s/archive_command/#archive_command/g" > %s/postgresql.conf.bak ; mv %s/postgresql.conf.bak  %s/postgresql.conf'% (pgdb,pgdb,pgdb,pgdb)
+    # cmd = 'cat %s/postgresql.conf | sed -e "s/archive_command/#archive_command/g" > %s/postgresql.conf.bak ; mv %s/postgresql.conf.bak  %s/postgresql.conf'% (pgdb,pgdb,pgdb,pgdb)
+    cmd = 'sed -i "s/archive_command/#archive_command/g" %s/postgresql.conf '% (pgdb,)
     os.system(cmd)
 
 
