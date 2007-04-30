@@ -44,10 +44,10 @@ fi
 echo "export ENSTORE_CONFIG_PORT=${REPLY}"
 echo "export ENSTORE_CONFIG_PORT=${REPLY}" >> $ENSTORE_DIR/config/setup-enstore
 
-read -p "Enter ENSTORE configuration file location [${ENSTORE_DIR}/config/enstore.conf]: " REPLY
+read -p "Enter ENSTORE configuration file location [${ENSTORE_DIR}/config/enstore_system.conf]: " REPLY
 if [ -z "$REPLY" ]
 then
-    REPLY=${ENSTORE_DIR}/config/enstore.conf
+    REPLY=${ENSTORE_DIR}/config/enstore_system.conf
 fi
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
 echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_DIR/config/setup-enstore
