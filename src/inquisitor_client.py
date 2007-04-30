@@ -475,7 +475,10 @@ def do_work(intf):
 
     elif intf.override and intf.saagstatus:
 	if intf.saagstatus in enstore_constants.SAAG_STATUS:
-	    ticket = iqc.override(intf.override, intf.saagstatus)
+            if intf.reason:
+	        ticket = iqc.override(intf.override, intf.saagstatus, reason = intf.reason)
+            else:
+	        ticket = iqc.override(intf.override, intf.saagstatus)
 	else:
 	    # we did not get legal status values
             try:
