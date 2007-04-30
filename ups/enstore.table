@@ -172,7 +172,7 @@ COMMON:
 
                 # the setup of python is tricky
                 # if user has python declared via ups, set that up (current) and use it
-                setupOptional("python -q enstore") 
+                setupOptional("python") 
                 # if no python from ups available, we need it from the user's path
                 exeAccess("python")
                 # if python from user's path, we need to set a ups-like PYTHON_DIR to point to python
@@ -244,24 +244,7 @@ COMMON:
 		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.py   $ENSTORE_DIR/bin/ensync; fi"',		       NO_UPS_ENV)
 		execute('sh -c "if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi"',		       NO_UPS_ENV)
 		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.py   $ENSTORE_DIR/sbin/quickquota; fi"',		       NO_UPS_ENV)
-		###
-		### Enstore server links.
-		###
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/configuration_server ];      then ln -s $ENSTORE_DIR/src/configuration_server.py   $ENSTORE_DIR/sbin/configuration_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/log_server ];      then ln -s $ENSTORE_DIR/src/log_server.py   $ENSTORE_DIR/sbin/log_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/alarm_server ];      then ln -s $ENSTORE_DIR/src/alarm_server.py   $ENSTORE_DIR/sbin/alarm_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/inquisitor ];      then ln -s $ENSTORE_DIR/src/inquisitor.py   $ENSTORE_DIR/sbin/inquisitor; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/ratekeeper ];      then ln -s $ENSTORE_DIR/src/ratekeeper.py   $ENSTORE_DIR/sbin/ratekeeper; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/event_relay ];      then ln -s $ENSTORE_DIR/src/event_relay.py   $ENSTORE_DIR/sbin/event_relay; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/info_server ];      then ln -s $ENSTORE_DIR/src/info_server.py   $ENSTORE_DIR/sbin/info_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/file_clerk ];      then ln -s $ENSTORE_DIR/src/file_clerk.py   $ENSTORE_DIR/sbin/file_clerk; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/volume_clerk ];      then ln -s $ENSTORE_DIR/src/volume_clerk.py   $ENSTORE_DIR/sbin/volume_clerk; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/accounting_server ];      then ln -s $ENSTORE_DIR/src/accounting_server.py   $ENSTORE_DIR/sbin/accounting_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/drivestat_server ];      then ln -s $ENSTORE_DIR/src/drivestat_server.py   $ENSTORE_DIR/sbin/drivestat_server; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/library_manager ];      then ln -s $ENSTORE_DIR/src/library_manager.py   $ENSTORE_DIR/sbin/library_manager; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/media_changer ];      then ln -s $ENSTORE_DIR/src/media_changer.py   $ENSTORE_DIR/sbin/media_changer; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/mover ];      then ln -s $ENSTORE_DIR/src/mover.py   $ENSTORE_DIR/sbin/mover; fi"',		       NO_UPS_ENV)
-		execute('sh -c "if [ ! -r $ENSTORE_DIR/sbin/monitor_server ];      then ln -s $ENSTORE_DIR/src/monitor_server.py   $ENSTORE_DIR/sbin/monitor_server; fi"',		       NO_UPS_ENV)
+
 
         ###The next 2 stanzas should be deleted shortly...
 
