@@ -52,6 +52,8 @@ echo $RPM_BUILD_ROOT
 pwd
 #chown -R enstore.enstore /home/enstore
 
+%pre
+$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 %post
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
