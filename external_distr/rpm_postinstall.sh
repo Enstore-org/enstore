@@ -10,16 +10,6 @@ then
 fi
 
 PATH=/usr/sbin:$PATH
-# check if user "enstore" and group "enstore "exist"
-
-echo 'Checking if group "enstore" exists' 
-grep enstore /etc/group
-if [ $? -ne 0 ]; then
-    echo 'Creating group "enstore"'
-    groupadd -g 6209 enstore
-fi
-echo 'Creating user "enstore"'
-useradd -u 6209 -g enstore enstore
 
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
