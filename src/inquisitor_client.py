@@ -120,12 +120,13 @@ class Inquisitor(generic_client.GenericClient):
 	return self.send({"work"    : "nooverride",
 			  "servers" : server_list}, rcv_timeout, tries)
 
-    def override (self, server_list, status, rcv_timeout=0, tries=0):
+    def override (self, server_list, status, reason="<no given reason>", rcv_timeout=0, tries=0):
 	# tell the inquisitor to mark the passed servers' status as to be set to
 	# the user specified value independent of what it really is
 	return self.send({"work"       : "override",
 			  "servers"    : server_list,
-			  "saagStatus" : status}, rcv_timeout, tries)
+			  "saagStatus" : status,
+                          "reason"     : reason}, rcv_timeout, tries)
 
     def show (self, rcv_timeout=0, tries=0):
 	# tell the inquisitor to return the outage/status of the servers in the 

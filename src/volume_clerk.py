@@ -1386,10 +1386,11 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
                         msg="Volume Clerk: (%s, %s) quota exceeded while drawing from common pool. Contact enstore admin."%(library, sg)
                         ticket["status"] = (e_errors.QUOTAEXCEEDED, msg)
                         Trace.alarm(e_errors.ERROR, e_errors.QUOTAEXCEEDED, msg)
-                        ic = inquisitor_client.Inquisitor(self.csc)
-                        ic.override(enstore_constants.ENSTORE, enstore_constants.RED, rcv_timeout=10, tries=1)
-                        # release ic
-                        del ic
+                        if not library+'.'+sg in self.ignored_sg:
+                            ic = inquisitor_client.Inquisitor(self.csc)
+                            ic.override(enstore_constants.ENSTORE, enstore_constants.RED, reason=msg, rcv_timeout=10, tries=1)
+                            # release ic
+                            del ic
                         self.reply_to_caller(ticket)
                         return
 
@@ -1434,7 +1435,7 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             # this is important so turn the enstore ball red
             if not library+'.'+sg in self.ignored_sg:
                 ic = inquisitor_client.Inquisitor(self.csc)
-                ic.override(enstore_constants.ENSTORE, enstore_constants.RED, rcv_timeout=10, tries=1)
+                ic.override(enstore_constants.ENSTORE, enstore_constants.RED, reason=msg, rcv_timeout=10, tries=1)
                 # release ic
                 del ic
         self.reply_to_caller(ticket)
