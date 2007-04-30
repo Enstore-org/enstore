@@ -53,7 +53,19 @@ pwd
 #chown -R enstore.enstore /home/enstore
 
 %pre
-$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
+PATH=/usr/sbin:$PATH
+# check if user "enstore" and group "enstore "exist"
+
+echo 'Checking if group "enstore" exists' 
+grep enstore /etc/group
+if [ $? -ne 0 ]; then
+    echo 'Creating group "enstore"'
+    groupadd -g 6209 enstore
+fi
+echo 'Creating user "enstore"'
+useradd -u 6209 -g enstore enstore
+
+#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 %post
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
