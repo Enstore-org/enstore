@@ -9109,7 +9109,7 @@ class EncpInterface(option.Interface):
                                     option.VALUE_USAGE:option.REQUIRED,
                                     option.VALUE_TYPE:option.STRING,
                                option.VALUE_NAME:"output_file_family_wrapper",
-                                    option.USER_LEVEL:option.ADMIN,},
+                                    option.USER_LEVEL:option.USER2,},
         option.FILE_FAMILY_WIDTH:{option.HELP_STRING:
                                   "Specify an alternative file family "
                                   "width to override the pnfs file family "
