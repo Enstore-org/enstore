@@ -22,10 +22,10 @@ DIR=$(DEFAULT_DIR)
 
             PROD=ftt
      PRODUCT_DIR=FTT_DIR
-            VERS=v2_25
+            VERS=v2_26
   TABLE_FILE_DIR=ups
       TABLE_FILE=$(PROD).table
-           CHAIN="lts41"
+           CHAIN="lts301"
       UPS_SUBDIR=ups
  ADDPRODUCT_HOST=fnkits.fnal.gov
 DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
@@ -35,7 +35,7 @@ DISTRIBUTIONFILE=$(DEFAULT_DISTRIBFILE)
       UPS_SUBDIR=ups
 # for Flavored products
          FLAVOR=$(DEFAULT_FLAVOR)
-          QUALS="x86_64"
+          QUALS=""
 # for NULL products
 #         FLAVOR=$(DEFAULT_NULL_FLAVOR)
 #          QUALS=""
