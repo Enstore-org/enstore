@@ -17,9 +17,10 @@ PYLIB=$(PYTHON_DIR)/lib/python2.*/lib-dynload
 FREEZE_SKIP_OS=-x ce -x dos -x mac -x nt -x os2 -x riscos -x riscosenviron -x riscospath
 FREEZE_SKIP_HTML=-x GimpGradientFile -x GimpPaletteFile -x Image -x ImageTk -x PaletteFile -x _imaging -x jarray
 FREEZE_SKIP_MISC=-x MacOS -X sitecustomize -x _winreg -x ic -x rourl2path -x EasyDialogs -x msvcrt -x MACFS -x macfs -x SOCKS -x org.python.core -X org -X xreadlines -x Carbon.File -x Carbon.Folder -x Carbon.Folders -x os.path -x _emx_link
+FREEZE_SKIP_POSTGRES=`if [ "_Linux" != _$(MACH_OS) ]; then echo "-x pg"; fi`
 
 FREEZE_ENCP_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC)
-FREEZE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HTML)
+FREEZE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HTML) $(FREEZE_SKIP_POSTGRES)
 
 # No static version for SunOS for now
 # No static version for any one any more ... since v3_0
