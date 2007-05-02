@@ -654,7 +654,7 @@ def do_work(intf):
             if intf.should_start(enstore_constants.MOVER) or \
                intf.should_start(mover):
                 check_server(csc, mover, intf,
-                             "%s $ENSTORE_DIR/sbin/mover.py %s" %
+                             "%s $ENSTORE_DIR/sbin/mover %s" %
                              (sudo, mover))
             
     sys.exit(0)
