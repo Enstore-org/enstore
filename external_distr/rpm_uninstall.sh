@@ -1,4 +1,10 @@
 #!/bin/sh
+###############################################################################
+#
+# $Id:
+#
+###############################################################################
+
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
