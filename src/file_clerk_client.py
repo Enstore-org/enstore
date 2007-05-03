@@ -678,7 +678,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.add = None
         self.modify = None
         self.show_state = None
-        self.erase = None
+        self.dont_try_this_at_home_erase = None
         self.find_copies = None
         self.find_all_copies = None
         self.find_original = None
@@ -720,11 +720,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"yes/no",
                         option.USER_LEVEL:option.ADMIN},
-        option.ERASE:{option.HELP_STRING:"permenantly erase a file",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"bfid",
-                      option.USER_LEVEL:option.HIDDEN},
+        option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"bfid",
+                         option.USER_LEVEL:option.ADMIN},
         option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -750,11 +750,6 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"file",
                      option.USER_LEVEL:option.ADMIN},
-        option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"bfid",
-                         option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -967,14 +962,11 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['copies']:
                 print i
-    elif intf.erase:
-        # Make this a hidden option -- this is too dangerous otherwise
-        ALLOW_ERASE = False
-        if ALLOW_ERASE:
-            ticket = fcc.del_bfid(intf.erase)
-        else:
-            ticket = {}
-            ticket['status'] = (e_errors.NOT_SUPPORTED, None)
+    elif intf.dont_try_this_at_home_erase:
+        # Comment out -- this is too dangerous
+        # ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
+        ticket = {}
+        ticket['status'] = (e_errors.OK, None)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
