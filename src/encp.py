@@ -1108,8 +1108,8 @@ def clear_layers_1_and_4(work_ticket):
                   "Clearing layers 1 and 4 for file %s (%s)." %
                   (pnfs_filename, work_ticket.get('unique_id', None)))
         
-        p.writelayer(1, " ", pnfs_filename)
-        p.writelayer(4, " ", pnfs_filename)
+        p.writelayer(1, "", pnfs_filename)
+        p.writelayer(4, "", pnfs_filename)
     except (IOError, OSError):
         return False
 
@@ -3062,14 +3062,61 @@ def outputfile_check(inputlist, outputlist, e):
                     # with this same filename.
                     layer1 = p.readlayer(1, outputlist[i])
                     layer4 = p.readlayer(4, outputlist[i])
-                    
+
+                    #This block of code will log information.  We should
+                    # never see this message, but I'm adding it because
+                    # it looks like there are cases we do.  The information
+                    # logged lists which layers contain only whitespace.
+                    if (len(layer1) > 0 and not layer1[0].strip()) or \
+                           (len(layer4) > 0 and not layer4[0].strip()):
+                        message = ""
+                        for layer in (1, 2, 3, 4, 5, 6, 7):
+                            try:
+                                #So what if we end up reading layers 1 and
+                                # 4 twice.
+                                layer_data = p.readlayer(layer, outputlist[i])
+                            except:
+                                continue
+                                                
+                            if layer_data and \
+                                   not layer_data[0].strip():
+                                message = "layer%s = %s  %s" % (layer,
+                                                                layer_data,
+                                                                message)
+                        Trace.log(e_errors.INFO,
+                                  "Detected whitspace in layers: %s" % message)
+
+                    layer1 = map(string.strip, layer1)
+                    layer4 = map(string.strip, layer4)
                     #Test if the layers are empty.
                     if layer1 != [] or layer4 != []:
-                        #The layers are not empty.
-                        raise EncpError(errno.EEXIST,
-                                        "Layer 1 and layer 4 are already set.",
-                                        e_errors.PNFS_ERROR,
-                                        {'outfile' : outputlist[i]})
+                        try:
+                            l1_bfid = layer1[0]
+                        except IndexError:
+                            l1_bfid = None
+                        try:
+                            l4_bfid = layer4[8]
+                        except IndexError:
+                            l4_bfid = None
+                        try:
+                            l4_line1 = layer4[0]
+                        except IndexError:
+                            l4_line1 = None
+                        if is_bfid(l1_bfid) or is_bfid(l4_bfid):
+                            #The layers are already set.
+                            raise EncpError(errno.EEXIST,
+                                       "Layer 1 and layer 4 are already set.",
+                                            e_errors.PNFS_ERROR,
+                                            {'outfile' : outputlist[i]})
+                        elif l1_bfid or l4_line1:
+                            #The layers are corrupted.
+                            raise EncpError(errno.EEXIST,
+                                       "Layer 1 and layer 4 are corrupted.",
+                                            e_errors.PNFS_ERROR,
+                                            {'outfile' : outputlist[i]})
+                        else:
+                            #We are ignoring the whitespace.
+                            outputlist.append(outputlist[i])
                     else:
                         #The layers are empty.
                         outputlist.append(outputlist[i])
