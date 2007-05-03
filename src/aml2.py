@@ -65,96 +65,6 @@ status_table = (
     ("ERROR",   "vcc.new_library error(s)"),                            #38
     )
 
-ACI_DRIVE_UP = aci.ACI_DRIVE_UP
-ACI_DRIVE_DOWN = aci.ACI_DRIVE_DOWN
-
-ACI_3480 = aci.ACI_3480
-ACI_OD_THICK = aci.ACI_OD_THICK
-ACI_OD_THIN = aci.ACI_OD_THIN
-ACI_DECDLT = aci.ACI_DECDLT
-ACI_8MM = aci.ACI_8MM
-ACI_4MM = aci.ACI_4MM
-ACI_D2 = aci.ACI_D2
-ACI_VHS = aci.ACI_VHS
-ACI_3590 = aci.ACI_3590
-ACI_CD = aci.ACI_CD
-ACI_TRAVAN = aci.ACI_TRAVAN
-ACI_DTF = aci.ACI_DTF
-ACI_BETACAM = aci.ACI_BETACAM
-ACI_AUDIO_TAPE = aci.ACI_AUDIO_TAPE
-ACI_BETACAML = aci.ACI_BETACAML
-ACI_SONY_AIT = aci.ACI_SONY_AIT
-ACI_LTO = aci.ACI_LTO
-ACI_DVCM = aci.ACI_DVCM
-ACI_DVCL = aci.ACI_DVCL
-ACI_NUMOF_MEDIA = aci.ACI_NUMOF_MEDIA
-ACI_MEDIA_AUTO = aci.ACI_MEDIA_AUTO
-
-media_names = {aci.ACI_3480 : '3480',
-               aci.ACI_OD_THICK : 'OD_THICK',
-               aci.ACI_OD_THIN : 'OD_THIN',
-               aci.ACI_DECDLT : 'DECDLT',
-               aci.ACI_8MM : '8MM',
-               aci.ACI_4MM : '4MM',
-               aci.ACI_D2 : 'D2',
-               aci.ACI_VHS : 'VHS',
-               aci.ACI_3590 : '3590',
-               aci.ACI_CD : 'CD',
-               aci.ACI_TRAVAN : 'TRAVAN',
-               aci.ACI_DTF : 'DTF',
-               aci.ACI_BETACAM : 'BETACAM',
-               aci.ACI_AUDIO_TAPE : 'AUDIO_TAPE',
-               aci.ACI_BETACAML : 'BETACAML',
-               aci.ACI_SONY_AIT : 'SONY_AIT',
-               aci.ACI_LTO : 'LTO',
-               aci.ACI_DVCM : 'DVCM',
-               aci.ACI_DVCL : 'DVCL',
-}               
-
-drive_state_names = { 1 : 'down',
-                2 : 'up',
-                3 : 'force_down',
-                4 : 'force_up',
-                5 : 'exclusive_up',
-                }
-
-drive_names = {'1' : "Colorado_T1000",
-               '2' : "6380/7480",
-               '3' : "6390/7490",
-               '4' : "9840_Eagle",
-               '5' : "BVW_75p",
-               #There is no 6.
-               '7' : "3480/3580",
-               '8' : "3480",
-               '9' : "5480/3590E/3580/3590/3480/3490",
-               'A' : "ER90/DST_310/DVR_2100",
-               #There is no B.
-               'C' : "8205-8mm/7208_001/Mammoth/DC_MK_13",
-               #There is no D.
-               'E' : "DLT_2000/4000/7000",
-               'F' : "HP_DD2-1/DDS-2",
-               'G' : "DLT_7000/8000",
-               'H' : "HP_1300",
-               #There is no I.
-               'J' : "3995_Juckbox",
-               'K' : "4480",
-               'L' : "4490_Silerstone/9490_Timberline",
-               #There is no M.
-               'N' : "3591/3590_Magstar/8590",
-               'O' : "RF7010E/RF7010X",
-               'P' : "OD 512",
-               'Q' : "3480/3490",
-               'R' : "3480/3490",
-               'S' : "3480",
-               'T' : "5180",
-               'U' : "5190",
-               'V' : "RSP_2150_Mountaingate",
-               'W' : "CD-ROM",
-               'X' : "AKEBONO",
-               #There is no Y.
-               'Z' : "M8100",
-               }
-
 def convert_status(int_status):
     status = int_status
     if status > len(status_table):  #invalid error code
@@ -167,7 +77,7 @@ def view(volume, media_type):
     if media_code is None:
         Trace.log(e_errors.ERROR, 'Media code is None. media_type=%s'%(media_type,))
         return (-1,None)
-
+    
     stat,volstate = aci.aci_view(volume,media_code)
     if stat!=0:
         Trace.log(e_errors.ERROR, 'aci_view returned status=%d'%(stat,))
@@ -178,26 +88,6 @@ def view(volume, media_type):
         return stat,None
 
     return stat,volstate
-
-def list_volser():
-    start = ""
-    end = ""
-    client = ""
-    all_volsers = []
-    stat = 1 #aci_qvolsrange() returns 0 when the last volser is retuned.
-    while stat:
-        stat, start, volsers = aci.aci_qvolsrange(start, end,
-                                                  aci.ACI_MAX_QUERY_VOLSRANGE,
-                                                  client)
-        if volsers:
-            all_volsers = all_volsers + volsers
-
-        if stat != 0 and aci.cvar.d_errno != derrno.EMOREDATA:
-            Trace.log(e_errors.ERROR,
-                      'aci_qvolsrange returned status=%d' % (stat,))
-            return stat,None
-
-    return stat, volsers
 
 def drive_state(drive,client=""):
     stat,drives = aci.aci_drivestatus2(client)
@@ -212,14 +102,6 @@ def drive_state(drive,client=""):
             return stat,drives[d]
     Trace.log(e_errors.ERROR, 'drive %s NOT found'%(drive,))
     return stat,None
-
-def drives_states():
-    stat, drives = aci.aci_drivestatus2("")
-    if stat!=0:
-        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
-        return stat, None
-
-    return stat, drives
 
 def drive_volume(drive):
     stat,drive=drive_state(drive)
@@ -304,9 +186,8 @@ def robotHome(arm):
     return status_table[status][0], status, status_table[status][1]
 
 # get status of robot
-def robotStatus(arm):
-    #status = aci.aci_robstat("\0","stat")
-    status = aci.aci_robstat(arm, "stat")
+def robotStatus():
+    status = aci.aci_robstat("\0","stat")
     return status_table[status][0], status, status_table[status][1]
 
 #start robot arm
