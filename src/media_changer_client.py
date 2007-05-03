@@ -18,7 +18,6 @@ import string
 import types
 import pprint
 import time
-import select
 
 #enstore imports
 #import udp_client
@@ -27,7 +26,6 @@ import generic_client
 import Trace
 import volume_clerk_client
 import e_errors
-import callback
 
 MY_NAME = ".MC"
 RCV_TIMEOUT = 0
@@ -79,46 +77,6 @@ class MediaChangerClient(generic_client.GenericClient):
                   'external_label' : volume,
                   'media_type' : m_type
                      }
-        rt = self.send(ticket)
-        return rt
-
-    def list_volumes(self):
-        host, port, listen_socket = callback.get_callback()
-        listen_socket.listen(4)
-        
-        ticket = {'work' : 'list_volumes',
-                  'callback_addr'  : (host,port)
-                  }
-        rt = self.send(ticket)
-        if not e_errors.is_ok(rt):
-            print "ERROR", rt
-            return rt
-        
-        r, w, x = select.select([listen_socket], [], [], 15)
-        if not r:
-            reply = {'status' : (e_errors.TIMEDOUT,
-                         "timeout waiting for media changer callback")}
-            return reply
-        control_socket, address = listen_socket.accept()
-        
-        try:
-            d = callback.read_tcp_obj(control_socket)
-        except e_errors.TCP_EXCEPTION:
-            d = {'status':(e_errors.TCP_EXCEPTION, e_errors.TCP_EXCEPTION)}
-        listen_socket.close()
-        control_socket.close()
-        return d
-        
-    def viewdrive(self, drive):
-        ticket = {'work' : 'viewdrive',
-                  'drive' : drive,
-                  }
-        rt = self.send(ticket)
-        return rt
-
-    def list_drives(self):
-        ticket = {'work' : 'list_drives',
-                  }
         rt = self.send(ticket)
         return rt
 
@@ -189,11 +147,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.dismount = 0
         self.viewattrib = 0
         self.drive = 0
-        self.show_drive = 0
-        self.show_robot = 0
-        self.show_volume = 0
-        self.list_drives = 0
-        self.list_volumes = 0
+        self.show = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -220,16 +174,6 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                          option.DEFAULT_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
-        option.LIST_DRIVES:{option.HELP_STRING:"",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.ADMIN},
-         option.LIST_VOLUMES:{option.HELP_STRING:"",
-                              option.DEFAULT_VALUE:option.DEFAULT,
-                              option.DEFAULT_TYPE:option.INTEGER,
-                              option.VALUE_USAGE:option.IGNORED,
-                              option.USER_LEVEL:option.ADMIN},
         option.MAX_WORK:{option.HELP_STRING:"",
                          option.VALUE_TYPE:option.INTEGER,
                          option.VALUE_USAGE:option.REQUIRED,
@@ -247,39 +191,19 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                                             option.VALUE_NAME:"drive",
                                             option.VALUE_TYPE:option.STRING}],
                       },
-        option.SHOW:{option.HELP_STRING:"alias for --show-robot",
-                     option.DEFAULT_VALUE:option.DEFAULT,
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     option.DEFAULT_NAME:"show-robot",
-                     option.VALUE_USAGE:option.IGNORED,
-                     option.USER_LEVEL:option.ADMIN},
-        option.SHOW_DRIVE:{option.HELP_STRING:"",
-                           option.DEFAULT_VALUE:option.DEFAULT,
-                           option.DEFAULT_TYPE:option.INTEGER,
-                           option.VALUE_USAGE:option.IGNORED,
-                           option.USER_LEVEL:option.ADMIN,
-                           option.VALUE_NAME:"drive",
-                           option.VALUE_TYPE:option.STRING,
-                           option.VALUE_USAGE:option.REQUIRED,
-                           option.FORCE_SET_DEFAULT:option.FORCE,
-                           },
-        option.SHOW_ROBOT:{option.HELP_STRING:"",
+        option.SHOW:{option.HELP_STRING:"",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
                      option.USER_LEVEL:option.ADMIN},
-        option.SHOW_VOLUME:{option.HELP_STRING:"Returns information about "
-                            "a volume.",
-                            option.DEFAULT_VALUE:option.DEFAULT,
-                            option.DEFAULT_TYPE:option.INTEGER,
-                            option.USER_LEVEL:option.ADMIN,
-                            option.VALUE_NAME:"volume",
-                            option.VALUE_TYPE:option.STRING,
-                            option.VALUE_USAGE:option.REQUIRED,
-                            option.FORCE_SET_DEFAULT:option.FORCE,
-                            option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
-                                                  option.VALUE_NAME:"media_type",
-                                                  option.VALUE_TYPE:option.STRING}],
+        option.VOLUME:{option.HELP_STRING:"",
+                       option.USER_LEVEL:option.ADMIN,
+                       option.VALUE_NAME:"volume",
+                       option.VALUE_TYPE:option.STRING,
+                       option.VALUE_USAGE:option.REQUIRED,
+                       option.EXTRA_VALUES:[{option.VALUE_USAGE:option.REQUIRED,
+                                            option.VALUE_NAME:"media_type",
+                                            option.VALUE_TYPE:option.STRING}],
                        },
         }
 
@@ -333,7 +257,7 @@ def do_work(intf):
     elif intf.get_work:
         ticket=mcc.GetWork()
         pprint.pprint(ticket)
-    elif intf.show_robot:
+    elif intf.show:
         ticket = mcc.robotQuery()
         tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
         try:
@@ -342,44 +266,15 @@ def do_work(intf):
             print tod, delta_t, stat
         except:
             print tod, -999, ticket
-    elif intf.show_volume:
-        t0 = time.time()
+    elif intf.volume:
         ticket = mcc.viewvol(intf.volume, intf.media_type)
-        delta_t = time.time() - t0
         tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
         try:
             stat = ticket['status']
-            #delta_t = string.split(stat[2])[-1:][0]
+            delta_t = string.split(stat[2])[-1:][0]
             print tod, delta_t, stat
         except:
             print tod, -999, ticket
-    elif intf.show_drive:
-        t0 = time.time()
-        ticket = mcc.viewdrive(intf.drive)
-        delta_t = time.time() - t0
-        tod = time.strftime("%Y-%m-%d:%H:%M:%S",time.localtime(time.time()))
-        try:
-            stat = ticket['status']
-            #delta_t = string.split(stat[2])[-1:][0]
-            print tod, delta_t, stat
-        except:
-            print tod, -999, ticket
-    elif intf.list_drives:
-        ticket = mcc.list_drives()
-        if e_errors.is_ok(ticket) and ticket.get("drive_list", None):
-            print "%12s %15s %15s %15s %8s" % ("name", "state", "status",
-                                              "type", "volume")
-            for drive in ticket['drive_list']:
-                print "%12s %15s %15s %15s %8s" % \
-                      (drive['name'], drive['state'], drive.get("status", ""),
-                       drive['type'], drive['volume'])
-    elif intf.list_volumes:
-        ticket = mcc.list_volumes()
-        if e_errors.is_ok(ticket) and ticket.get("volume_list", None):
-            print "%17s %10s %20s %20s" % ("volume", "type", "state", "location")
-            for volume in ticket['volume_list']:
-                print "%17s %10s %20s %20s" % (volume['volume'], volume['type'],
-                                         volume['state'], volume['location'])
     else:
         intf.print_help()
         sys.exit(0)

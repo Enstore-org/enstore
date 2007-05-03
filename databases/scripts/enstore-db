@@ -16,7 +16,7 @@ host=`uname -n | cut -d. -f1`
 
 # get db directory
 case $host in
-	rip1|gccensrv1)
+	rip1)
 		db=/diska/enstore-db
 		;;
 	stkensrv0|cdfensrv0|d0ensrv0|rip6)

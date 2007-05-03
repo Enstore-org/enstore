@@ -98,8 +98,6 @@ import types
 
 #enstore imports
 import hostaddr
-import Trace
-import e_errors
 
 ############################################################################
 
@@ -121,9 +119,6 @@ IGNORED  = "ignored"
 USER = "user"
 USER2 = "user2"
 ADMIN = "admin"
-HIDDEN = "hidden" #Same as ADMIN, but is not included in help output.
-                  # This is a valid USER_LEVEL for options, but not for
-                  # the users actual user level.
 
 #variable type
 INTEGER = "integer"
@@ -131,7 +126,6 @@ LONG = "long"
 STRING = "string"
 FLOAT = "float"
 RANGE = "range"
-LIST = "list" #List of strings
 
 #default action
 FORCE = 1
@@ -221,9 +215,8 @@ ENABLE = "enable"                            #quota
 ENCP = "encp"                                #plotter
 ENSTORE_STATE = "enstore-state"              #pnfs
 EPHEMERAL = "ephemeral"                      #encp
-ERASE = "erase"                              #volume, file
+ERASE = "erase"                              #volume
 EXPORT = "export"                            #volume
-EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
 FILE = "file"                                #info
 FILE_FAMILY = "file-family"                  #pnfs, encp
@@ -283,9 +276,7 @@ LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
-LIST_DRIVES = "list-drives"                  #media
 LIST_SG_COUNT = "ls-sg-count"                #volume
-LIST_VOLUMES = "list-volumes"                #media
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 LOGFILE_DIR = "logfile-dir"                  #plotter
@@ -379,13 +370,10 @@ SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
 SHOW_BAD = "show-bad"                        #file
 SHOW_BY_LIBRARY = "show-by-library"          #quota
-SHOW_DRIVE = "show-drive"                    #media
-SHOWID = "showid"                            #pnfs
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
-SHOW_ROBOT = "show-robot"                    #media
+SHOWID = "showid"                            #pnfs
 SHOW_STATE = "show-state"                    #volume, file, info
-SHOW_VOLUME = "show-volume"                  #media
 SIZE = "size"                                #pnfs
 SKIP_DELETED_FILES = "skip-deleted-files"    #get
 SKIP_PNFS = "skip-pnfs"                      #super_remove
@@ -456,8 +444,7 @@ valid_option_list = [
     DO_ALARM, DONT_ASK, DONT_ALARM, DO_LOG, DONT_LOG, DO_PRINT, DONT_PRINT,
     DONT_SHOW,
     DOWN, DUMP, DUPLICATE,
-    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
-    EXPORT, EXTERNAL_TRANSITIONS,
+    ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE, EXPORT,
     FILE,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
@@ -476,9 +463,8 @@ valid_option_list = [
     IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
-    LIST_VOLUMES,
-    LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LOAD, LOG, LOGFILE_DIR, LS,
+    LS_ACTIVE, LIST_SG_COUNT,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
     MESSAGE, MESSAGES_FILE, MIGRATED,
@@ -500,10 +486,9 @@ valid_option_list = [
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
-    SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, 
-    SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
-    SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
-    SIZE, SKIP_DELETED_FILES, SKIP_PNFS,
+    SHORTCUT, SHOW, SHOWID, SHOW_IGNORED_STORAGE_GROUPS, SHOW_QUOTA,
+    SHOW_STATE,
+    SHOW_BAD, SIZE, SKIP_DELETED_FILES, SKIP_PNFS, SHOW_BY_LIBRARY,
     START_DRAINING, START_TIME, STATUS, STOP_DRAINING, STOP_TIME,
     SET_SG_COUNT,
     SET_REQUESTED, SET_AUTHORIZED, SET_QUOTA,
@@ -547,6 +532,8 @@ def default_port():
     return val
 
 def log_using_default(var, default):
+    import Trace
+    import e_errors
     Trace.log(e_errors.INFO,
               "%s not set in environment or command line - reverting to %s"\
               %(var, default))
@@ -559,9 +546,6 @@ def check_for_config_defaults():
         log_using_default('CONFIG HOST', DEFAULT_HOST)
     if used_default_config_port:
         log_using_default('CONFIG PORT', DEFAULT_PORT)
-
-def list2(value):
-    return [value]
 
 ############################################################################
 
@@ -794,9 +778,6 @@ class Interface:
             if self.user_level in [USER2] and \
                option_level in [ADMIN]:
                 continue
-            if option_level in [HIDDEN]:
-                #Hidden options should never be visible.
-                continue
 
             #Snag all optional/required values that belong to this option.
             # Do this by getting the necessary fields from the dictionary.
@@ -904,9 +885,6 @@ class Interface:
                 continue
             if self.user_level in [USER2] and \
                option_level in [ADMIN]:
-                continue
-            if option_level in [HIDDEN]:
-                #Hidden options should never be visible.
                 continue
 
             #Deterimine if the option needs an "=" or "[=]" after it.
@@ -1029,10 +1007,10 @@ class Interface:
                 # skip over it.
                 option_level = self.options[opt].get(USER_LEVEL, USER)
                 if self.user_level in [USER] and \
-                       option_level in [ADMIN, HIDDEN, USER2]:
+                       option_level in [ADMIN, USER2]:
                     continue
                 if self.user_level in [USER2] and \
-                       option_level in [ADMIN, HIDDEN]:
+                       option_level in [ADMIN]:
                     continue
 
                 temp = temp + short_opt
@@ -1070,6 +1048,7 @@ class Interface:
             argv = self.argv[2:]
         else:
             argv = self.argv[1:]
+        self.some_args = argv #This is a second copy for next arg finding.
 
         #For backward compatibility, convert options with underscores to
         # dashes.  This must be done before the getopt since the getopt breaks
@@ -1077,57 +1056,47 @@ class Interface:
         # a VAX thing, and that dashes is the UNIX way of things.
         self.convert_underscores(argv)
 
-        while argv:
-            self.some_args = argv #This is a second copy for next arg finding.
+        #If the first thing is not an option (switch) place it with the
+        # non-processeced arguments and remove it from the list of args.
+        # This is done, because getopt.getopt() breaks if the first thing
+        # it sees does not begin with a "-" or "--".
+        while len(argv) and not self.is_option(argv[0]):
+            self.args.append(argv[0])
+            del argv[0]
 
-            #If the first thing is not an option (switch) place it with the
-            # non-processeced arguments and remove it from the list of args.
-            # This is done, because getopt.getopt() breaks if the first thing
-            # it sees does not begin with a "-" or "--".
-            while len(argv) and not self.is_option(argv[0]):
-                self.args.append(argv[0])
-                del argv[0]
+        #There is a major problem with this method. Multiple entries on the
+        # command line of the same command are not parsed properly.
+        try:
+            optlist, argv = getopt.getopt(argv, short_opts, long_opts)
+        except getopt.GetoptError, detail:
+            self.print_usage(detail.msg)
 
-            #There is a major problem with this method. Multiple entries on the
-            # command line of the same command are not parsed properly.
-            try:
-                optlist, argv = getopt.getopt(argv, short_opts, long_opts)
-            except getopt.GetoptError, detail:
-                self.print_usage(detail.msg)
+        #copy in this way, to keep self.args out of a dir() listing.
+        for arg in argv:
+            self.args.append(arg)
 
-            #copy in this way, to keep self.args out of a dir() listing.
-            #for arg in argv:
-            #    self.args.append(arg)
-            while len(argv) and not self.is_option(argv[0]):
-                self.args.append(argv[0])
-                del argv[0]
+        for arg in optlist:
+            opt = arg[0]
+            value = arg[1]
 
-            for arg in optlist:
-                opt = arg[0]
-                value = arg[1]
+            if self.user_level != ADMIN:
+                if self.is_admin_option(opt) or \
+                       (self.is_user2_option(opt) and \
+                        self.user_level in [USER]):
+                    #Deni access to admin commands if regular user.
+                    self.print_usage("option %s is an administrator option" %
+                                     (opt,))
 
-                if self.user_level in [USER]:
-                    if self.is_admin_option(opt) or \
-                           self.is_user2_option(opt):
-                        #Deny access to admin commands if regular user.
-                        self.print_usage("option %s is an administrator option" %
-                                         (opt,))
-                elif self.user_level in [USER2]:
-                    if self.is_admin_option(opt):
-                        #Deny access to admin commands if regular user.
-                        self.print_usage("option %s is an administrator option" %
-                                         (opt,))
+            if self.is_long_option(opt):
+                #Option is a long option.  This means that the option is
+                # preceded by two dashes and can be any length.
+                self.long_option(opt[2:], value)
 
-                if self.is_long_option(opt):
-                    #Option is a long option.  This means that the option is
-                    # preceded by two dashes and can be any length.
-                    self.long_option(opt[2:], value)
-
-                elif self.is_short_option(opt):
-                    #Option is a short option.  This means it is only
-                    # one letter long and has one dash at the beginning
-                    # of the option group.
-                    self.short_option(opt[1:], value)
+            elif self.is_short_option(opt):
+                #Option is a short option.  This means it is only
+                # one letter long and has one dash at the beginning
+                # of the option group.
+                self.short_option(opt[1:], value)
 
 ############################################################################
 
@@ -1421,24 +1390,12 @@ class Interface:
     def is_admin_option(self, opt):
         if self.is_long_option(opt):
             if self.options[self.trim_option(opt)].get(
-                USER_LEVEL, USER) in [ADMIN, HIDDEN]:
+                USER_LEVEL, USER) == ADMIN:
                 return 1
         elif self.is_short_option(opt):
             long_opt = self.short_to_long(opt)
             if self.options[self.trim_option(long_opt)].get(
-                USER_LEVEL, USER) in [ADMIN, HIDDEN]:
-                return 1
-        return 0
-
-    def is_hidden_option(self, opt):
-        if self.is_long_option(opt):
-            if self.options[self.trim_option(opt)].get(
-                USER_LEVEL, USER) in [HIDDEN]:
-                return 1
-        elif self.is_short_option(opt):
-            long_opt = self.short_to_long(opt)
-            if self.options[self.trim_option(long_opt)].get(
-                USER_LEVEL, USER) in [HIDDEN]:
+                USER_LEVEL, USER) == ADMIN:
                 return 1
         return 0
 
@@ -1505,8 +1462,6 @@ class Interface:
                 return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(VALUE_TYPE, STRING) == STRING:
                 return str  #str(value)
-            elif opt_dict.get(VALUE_TYPE, STRING) == LIST:
-                return list2 #private function
             else:
                 return None  #value
         except ValueError:
@@ -1528,8 +1483,6 @@ class Interface:
                 return self.parse_range  #self.parse_range(value)
             elif opt_dict.get(DEFAULT_TYPE, STRING) == STRING:
                 return str  #str(value)
-            elif opt_dict.get(VALUE_TYPE, STRING) == LIST:
-                return list2 #Private function
             else:
                 return None  #value
         except ValueError:
@@ -1559,23 +1512,6 @@ class Interface:
         #Some options may require more than one value.
         self.set_extra_values(long_opt, value)
 
-    #Called from set_from_dictionary().
-    def __set_value(self, opt_name, opt_typed_value):
-
-        #Handle the LIST case specially.
-        if type(opt_typed_value) == types.ListType:
-            this_list = getattr(self, opt_name, None)
-            if type(this_list) != types.ListType:
-                print "Developer Error: type of this_list is %s" \
-                      % (type(this_list),)
-                sys.exit(1)
-            #Append the value to the list.
-            use_opt_typed_value = this_list + opt_typed_value
-        else:
-            use_opt_typed_value = opt_typed_value
-
-        setattr(self, opt_name, use_opt_typed_value)
-
     def set_from_dictionary(self, opt_dict, long_opt, value):
 
         #place this inside for some error reporting...
@@ -1603,7 +1539,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            self.__set_value(opt_name, opt_typed_value)
+            setattr(self, opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) and len(self.some_args) >= 3:
@@ -1638,7 +1574,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            self.__set_value(opt_name, opt_typed_value)
+            setattr(self, opt_name, opt_typed_value)
             
             #keep this list up to date for finding the next argument.
             self.some_args = self.some_args[1:]
@@ -1664,7 +1600,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            self.__set_value(opt_name, opt_typed_value)
+            setattr(self, opt_name, opt_typed_value)
 
             #keep this list up to date for finding the next argument.
             if opt_dict.get(EXTRA_VALUES, None) == None:
@@ -1689,7 +1625,7 @@ class Interface:
                 msg = sys.exc_info()[1]
                 self.print_usage(str(msg))
 
-            self.__set_value(opt_name, opt_typed_value)
+            setattr(self, opt_name, opt_typed_value)
 
     def set_extra_values(self, opt, value):
         if self.is_short_option(opt):
