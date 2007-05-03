@@ -105,12 +105,12 @@ COMMON:
                 #execute('sh -c "chmod 777 /tmp/enstore/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
 
         ACTION=DECLARE
-                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!" || true', NO_UPS_ENV)
         ACTION=CONFIGURE
-                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!" || true', NO_UPS_ENV)
         ACTION=TAILOR
-                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!" || true', NO_UPS_ENV)
         ACTION=CURRENT
-                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!" || true', NO_UPS_ENV)
 
 END:
