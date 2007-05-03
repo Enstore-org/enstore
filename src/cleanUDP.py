@@ -29,10 +29,17 @@ import Trace
 import errno
 import time
 import select
-#import sys
+import os
+import sys
 
 # enstore imports
 import e_errors
+
+#Linux does not impliment a system wide UDP checksum (UDPCTL_CHECKSUM),
+# but rather does it on a per socket basis.
+if os.uname()[0] == "Linux":
+	socket.SO_NO_CHECK = 11
+
 
 def Select (R, W, X, timeout) :
 
@@ -77,6 +84,26 @@ class cleanUDP :
                 if kind != socket.SOCK_DGRAM :
                         raise e_errors.CLEANUDP_EXCEPTION
                 self.socket = socket.socket(protocol, kind)
+		if os.uname()[0] == "Linux":
+			#Enable UDP checksums.
+			#
+			# To see how to do this for non-Linux machines
+			# see page 498-499 of Unix Network Programming Volume
+			# 1 Third Edition.
+			# The main issue with using it here is that there
+			# is not an interface to the sysctl() system call
+			# from python.
+			try:
+				self.socket.setsockopt(socket.SOL_SOCKET,
+						       socket.SO_NO_CHECK, 1)
+				is_udp_checksum_on = self.socket.getsockopt(
+					socket.SOL_SOCKET, socket.SO_NO_CHECK)
+				if not is_udp_checksum_on:
+					sys.stderr.write(
+						"UDP checksum not enabled.\n")
+			except socket.error:
+				pass
+		
                 return
 
 	#def __del__(self):
