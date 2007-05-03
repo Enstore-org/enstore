@@ -277,7 +277,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
             if ((0 == strncmp(d->prod_id,"ULT",3))||
 	        (0 == strncmp(d->prod_id,"T9940",5))||
                 (0 == strncmp(d->prod_id,"9840",4))) {
-               res = ftt_set_compression(d,0);
+               res = ftt_set_compression(d,compression);
             }else{
                res = ftt_do_scsi_command(d, "Mode Select", mod_sel0f, 6, buf, BD_SIZE+16, 220, 1);
             }
@@ -307,7 +307,7 @@ ftt_scsi_set_compression(ftt_descriptor d, int compression) {
             if ((0 == strncmp(d->prod_id,"ULT",3))||
 	        (0 == strncmp(d->prod_id,"T9940",5))||
 	        (0 == strncmp(d->prod_id,"9840",4))) {
-               res = ftt_set_compression(d,0);
+               res = ftt_set_compression(d,compression);
             }else{
 	       res = ftt_do_scsi_command(d, "Mode Select", mod_sel10, 6, buf, BD_SIZE+16, 220, 1);
 	    }
