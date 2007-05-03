@@ -5,98 +5,91 @@ GROUP:
 
 FLAVOR=ANY
 QUALIFIERS=central_mass_store
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=stkensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=stken
+ _config_host=stkensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=stken:dcache
+ _config_host=stkensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=stken:x86_64
+ _config_host=stkensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=stken:dcache:x86_64
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, stkensrv2.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=stkensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=d0en
+ _config_host=d0ensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=d0en:x86_64
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, d0ensrv2.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=d0ensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=cdfen
+ _config_host=cdfensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=cdfen:dcache
+ _config_host=cdfensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=cdfen:x86_64
+ _config_host=cdfensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=cdfen:dcache:x86_64
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, cdfensrv2.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=cdfensrv2.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=rip
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, rip7.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=rip7.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=buffalo
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, buffalo.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=buffalo.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=happy
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, happy.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=happy.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=airedale
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, airedale.fnal.gov)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=airedaile.fnal.gov
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=sirius
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST, sirius)
-                exeActionRequired(COMMON_SETUP)
-
+ _config_host=sirius
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=""
+ _config_host=`$ENCP_DIR/chooseConfig`
+ _whine=false
 FLAVOR=ANY
 QUALIFIERS=x86_64
+ _config_host=`$ENCP_DIR/chooseConfig`
+ _whine=true
 FLAVOR=ANY
 QUALIFIERS=dcache
+ _config_host=`$ENCP_DIR/chooseConfig`
+ _whine=true
 FLAVOR=ANY
 QUALIFIERS="x86_64:dcache"
-        ACTION=SETUP
-                envSet(ENSTORE_CONFIG_HOST,`${UPS_PROD_DIR}/chooseConfig`)
-                exeActionRequired(COMMON_SETUP)
-        ACTION=DECLARE
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=CONFIGURE
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=TAILOR
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-        ACTION=CURRENT
-                execute('echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
-
-
+ _config_host=`$ENCP_DIR/chooseConfig`
+ _whine=true
 COMMON:
-        ACTION=COMMON_SETUP
 
+        ACTION=SETUP
+
+                prodDir()
+                envSet(ENSTORE_CONFIG_HOST, ${_config_host})
                 setupEnv()
-                proddir()
                 pathPrepend(PATH, "${UPS_PROD_DIR}")
 
                 # all systems use port 7500 for the well-know port to the configuration port
@@ -111,5 +104,13 @@ COMMON:
                 #execute("touch /tmp/enstore/hunt_port_lock",NO_UPS_ENV)
                 #execute('sh -c "chmod 777 /tmp/enstore/hunt_port_lock 2>/dev/null 1>/dev/null"',NO_UPS_ENV)
 
+        ACTION=DECLARE
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=CONFIGURE
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=TAILOR
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
+        ACTION=CURRENT
+                execute('${_whine} && echo "WARNING: Unless you know what you are doing, use a qualifier in your ups declare command!"',NO_UPS_ENV)
 
 END:
