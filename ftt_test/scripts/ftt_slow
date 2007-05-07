@@ -37,6 +37,17 @@ FTT_TAPE=${FTT_TAPE:?"No device specified"}
 #===============================================================================
 
 echo "==============================================================="
+echo "You are using OS $(uname -o) Kernel $(uname -r)"
+echo "              FTT Version $(ups list ftt -K VERSION)"
+echo "              FLAVOR      $(ups list ftt -K FLAVOR)"
+echo "              Qualifier   $(ups list ftt -K QUALIFIERS)"
+echo "              Modified    $(ups list ftt -K MODIFIED | cut -d':' -f1)"
+echo "              Modifier    $(ups list ftt -K MODIFIER)"
+echo "==============================================================="
+echo " $(ls -lR)"
+echo "==============================================================="
+
+echo "==============================================================="
 echo "doing all of the fast ftt tests using $FTT_TAPE. This will be "
 echo "VERY slow. It may take several hours"
 echo "==============================================================="
