@@ -146,6 +146,57 @@ class infoClient(generic_client.GenericClient):
 		r = self.send({"work" : "file_info", "bfid": bfid})
 		return r
 
+	# find_copies(bfid) -- find the first generation of copies
+	def find_copies(self, bfid, timeout=0, retry=0):
+		ticket = {'work': 'find_copies',
+				  'bfid': bfid}
+		return self.send(ticket, timeout, retry)
+
+	# find_all_copies(bfid) -- find all copies from this file
+	# This is done on the client side
+	def find_all_copies(self, bfid):
+		res = self.find_copies(bfid)
+		if res["status"][0] == e_errors.OK:
+			copies = union([[bfid], res["copies"]])
+			for i in res["copies"]:
+				res2 = self.find_all_copies(i)
+				if res2["status"][0] == e_errors.OK:
+					copies = union([copies, res2["copies"]])
+				else:
+					return res2
+			res["copies"] = copies
+		return res 
+
+	# find_original(bfid) -- find the immidiate original
+	def find_original(self, bfid, timeout=0, retry=0):
+		ticket = {'work': 'find_original',
+				  'bfid': bfid}
+		if bfid:
+			ticket = self.send(ticket, timeout, retry)
+		else:
+			ticket['status'] = (e_errors.OK, None)
+		return ticket
+
+	# find_the_original(bfid) -- find the altimate original of this file
+	# This is done on the client side
+	def find_the_original(self, bfid):
+		res = self.find_original(bfid)
+		if res['status'][0] == e_errors.OK:
+			if res['original']:
+				res2 = self.find_the_original(res['original'])
+				return res2
+			# this is actually the else part
+			res['original'] = bfid
+		return res
+
+	# find_duplicates(bfid) -- find all original/copies of this file
+	# This is done on the client side
+	def find_duplicates(self, bfid):
+		res = self.find_the_original(bfid)
+		if res['status'][0] == e_errors.OK:
+			return self.find_all_copies(res['original'])
+		return res
+
 	def find_file_by_path(self, pnfs_name0):
 		r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
 		if r.has_key('work'):

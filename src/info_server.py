@@ -356,6 +356,72 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.reply_to_caller(ticket)
 		return
 
+	# __find_copies(bfid) -- find all copies
+	def __find_copies(self, bfid):
+		q = "select alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+		bfids = []
+		try:
+			for i in self.db.query(q).getresult():
+				bfids.append(i[0])
+		except:
+			pass
+		return bfids
+
+	# find_copies(self, ticket) -- find all copies of bfid
+	# this might need recurrsion in the future!
+	def find_copies(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "find_copies(): key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		try:
+			bfids = self.__find_copies(bfid)
+			ticket["copies"] = bfids
+			ticket["status"] = (e_errors.OK, None)
+		except:
+			ticket["copies"] = []
+			ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
+		self.reply_to_caller(ticket)
+		return
+
+	# __find_original(bfid) -- find its original
+	# there should eb at most one original!
+	def __find_original(self, bfid):
+		q = "select bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
+		try:
+			res = self.db.query(q).getresult()
+			if len(res):
+				return res[0][0]
+		except:
+			pass
+		return None
+
+	# find_original(bfid) -- server version
+	def find_original(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "find_original(): key %s is missing" % (detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		try:
+			original = self.__find_original(bfid)
+			ticket["original"] = original
+			ticket["status"] = (e_errors.OK, None)
+		except:
+			ticket["original"] = None
+			ticket["status"] = (e_errors.FILE_CLERK_ERROR, "inquiry failed")
+		self.reply_to_caller(ticket)
+		return
+
 	# get the current database volume about a specific entry #### DONE
 	def inquire_vol(self, ticket):
 		try:
