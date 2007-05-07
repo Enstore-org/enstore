@@ -390,7 +390,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     #Convert a nameof filename to an access filename.
     def nameof_to_access(self, pfn):
         dirname, fname = os.path.split(pfn)
-        fname.replace(".(nameof)", ".(access)", 1)
+        fname = fname.replace(".(nameof)", ".(access)", 1)
         return os.path.join(dirname, fname)
 
     ##########################################################################
