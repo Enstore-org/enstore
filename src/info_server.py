@@ -196,7 +196,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			self.reply_to_caller(ticket)
 			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
 			return
-		ticket['file_info'] = res;
+		ticket['file_info'] = res[0];
 		ticket["status"] = (e_errors.OK, None)
 		self.reply_to_caller(ticket)
 		return
