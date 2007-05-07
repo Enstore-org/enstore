@@ -387,6 +387,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     ##########################################################################
 
+    #Convert a nameof filename to an access filename.
+    def nameof_to_access(self, pfn):
+        dirname, fname = os.path.split(pfn)
+        fname.replace(".(nameof)", ".(access)", 1)
+        return os.path.join(dirname, fname)
+
+    ##########################################################################
+
     # list what is in the current object
     def dump(self):
         #Trace.trace(14, repr(self.__dict__))
@@ -873,7 +881,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     if count:
                         try:
                             cur_mp_stat = os.stat(found_fname)
-                            found_mp_stat = os.stat(pfn)
+                            #If pfn is a .(nameof) file, the stat
+                            # results are inconclusive.  If necessary,
+                            # convert to an .(access) name.
+                            afn = self.nameof_to_access(pfn)
+                            found_mp_stat = os.stat(afn)
                         except (OSError, IOError):
                             continue
                         if cur_mp_stat[stat.ST_INO] == \
@@ -901,7 +913,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         # with their 'parent' directory missing them.
                         # If the directory is 
                         try:
-                            stat_info = os.stat(pfn)
+                            #If pfn is a .(nameof) file, the stat
+                            # results are inconclusive.  If necessary,
+                            # convert to an .(access) name.
+                            afn = self.nameof_to_access(pfn)
+                            stat_info = os.stat(afn)
                         except (OSError, IOError):
                             stat_info = None
                         if stat_info:
