@@ -142,6 +142,10 @@ class infoClient(generic_client.GenericClient):
 			del r['work']
 		return r
 
+	def file_info(self, bfid):
+		r = self.send({"work" : "file_info", "bfid": bfid})
+		return r
+
 	def find_file_by_path(self, pnfs_name0):
 		r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
 		if r.has_key('work'):

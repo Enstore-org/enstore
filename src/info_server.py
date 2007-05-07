@@ -177,6 +177,30 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		Trace.trace(10,"bfid_info bfid=%s"%(bfid,))
 		return
 
+	def file_info(self, ticket):
+		try:
+			bfid = ticket["bfid"]
+		except KeyError, detail:
+			msg = "File Clerk: key %s is missing"%(detail,)
+			ticket["status"] = (e_errors.KEYERROR, msg)
+			Trace.log(e_errors.ERROR, msg)
+			self.reply_to_caller(ticket)
+			return
+
+		q = "select * from file_info where bfid = '%s';"%(bfid)
+		res = self.db.query(q).dictresult()
+		if len(res) == 0:
+			ticket["status"] = (e_errors.NO_FILE,
+				"Info Clerk: bfid %s not found"%(bfid,))
+			Trace.log(e_errors.ERROR, "%s"%(ticket,))
+			self.reply_to_caller(ticket)
+			Trace.trace(10,"bfid_info %s"%(ticket["status"],))
+			return
+		ticket['file_info'] = res;
+		ticket["status"] = (e_errors.OK, None)
+		self.reply_to_caller(ticket)
+		return
+
 	# find_file_by_path() -- find a file using pnfs_path
 	def find_file_by_path(self, ticket):
 		try:
