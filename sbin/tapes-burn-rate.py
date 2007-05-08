@@ -8,6 +8,9 @@ import time
 import pprint
 
 
+import configuration_client
+import pg
+
 # tape capacity in GB
 CAP_9840=20
 CAP_9940=60
@@ -85,8 +88,6 @@ os.system(cmd)
 
 d1 = None
 d2 = None
-hosts = ("d0ensrv6.fnal.gov","stkensrv6.fnal.gov","cdfensrv6.fnal.gov")
-
 for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-%y"':
     d = os.popen(when,'r')
     dat=d.readlines()
@@ -99,17 +100,31 @@ for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-
        d2 = string.upper(d2)
 print 'Generating burn-rate plots from', d1, ' to ',d2
 
-query_cmd='psql -h %s -p 8076 -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0;" drivestat'
+hosts = ("d0ensrv6.fnal.gov","stkensrv6.fnal.gov","cdfensrv6.fnal.gov")
+intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 
-for host in hosts:
-    pipeObj = popen2.Popen3(query_cmd%(host, host, "'", d1, "'", "'", d2, "'"), 0, 0)
-    if pipeObj is None:
-        sys.exit(1) 
-    stat = pipeObj.wait()
-    result = pipeObj.fromchild.readlines()  # result has returned string
+servers=[]
+servers=csc.get('known_config_servers')
+query_cmd='psql -h %s -p %d -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0;" drivestat'
 
-for host in hosts:
-    os.system("cat drivestat.%s.txt >> dstat.txt"%(host,))
+
+for server in servers:
+    server_name,server_port = servers.get(server)
+    print  server_name,server_port
+    if ( server_port != None ):
+        config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
+        acc = config_server_client.get(enstore_constants.DRIVESTAT_SERVER)
+        db_server_name = acc.get('dbhost')
+        db_name        = acc.get('dbname')
+        db_port        = acc.get('dbport',5432)
+        name           = db_server_name.split('.')[0]
+        pipeObj = popen2.Popen3(query_cmd%(db_server_name,db_port,db_server_name,"'", d1, "'", "'", d2, "'"), 0, 0)
+        if pipeObj is None:
+            sys.exit(1) 
+        stat = pipeObj.wait()
+        result = pipeObj.fromchild.readlines()  # result has returned string
+        os.system("cat drivestat.%s.txt >> dstat.txt"%(db_server_name,))
 
     
 
