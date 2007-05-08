@@ -9,6 +9,7 @@ import pprint
 
 
 import configuration_client
+import enstore_constants
 import pg
 
 # tape capacity in GB
