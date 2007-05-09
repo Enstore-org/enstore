@@ -3,7 +3,8 @@
 
 # This script must be sourced from tape_aid_wrapper.
 
-if [ "$icap" != "$ocap" ]; then
+cap=`/usr/bin/rsh $sun -l acsss "echo q cap $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"`
+if echo $cap | grep manual >/dev/null; then
   /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
 fi
 
@@ -14,10 +15,13 @@ for i in `ls -vI \*.\*`; do
   echo
   echo
   if [ "$icap" = "$ocap" ]; then
-    /usr/bin/rsh $sun -l acsss "echo set cap mode automatic $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
     echo
     echo
-    /bin/echo -n "Press Enter when all tapes have been loaded with tabs in ${action}ed position"
+    if [ $action = reload ]; then
+      /bin/echo -n "Press Enter when all tapes have been reloaded"
+    else
+      /bin/echo -n "Press Enter when all tapes have been loaded with tabs in ${action}ed position"
+    fi
     read ans
     msgflag=
     while /bin/true; do
@@ -30,7 +34,6 @@ for i in `ls -vI \*.\*`; do
       fi
       sleep 5
     done
-    /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
     echo
     echo
   fi
@@ -42,19 +45,30 @@ for i in `ls -vI \*.\*`; do
   echo That cycle took $deltam minutes $deltas seconds.
   # extract the volumes about to be entered
   set `awk '{split($0,vols); for (v in vols) if (vols[v] ~ /^[[:upper:]]+[[:digit:]]+$/) print vols[v]}' $i | sort`
-  /bin/echo -n "Have $# tapes been loaded in cap $icap with tabs in ${action}ed position [y/n]? "
-  if read ans && expr "$ans" : '[Yy]' >/dev/null; then
-     echo "... success acknowledged"
-     echo
-     echo "Now updating write-protect status in enstore..."
-     # set the volumes successfully entered as write-protected or write-permitted
-     for vol; do
-       enstore vol --write-protect-$prot $vol
-     done
-     mv $i ${i}.done
+  if [ $action = reload ]; then
+    /bin/echo -n "Have $# tapes been reloaded in cap $icap [y/n]? "
+    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+       echo "... success acknowledged"
+       mv $i ${i}.done
+    else
+       echo "... failure acknowledged"
+       mv $i ${i}.fail
+    fi
   else
-     echo "... failure acknowledged"
-     mv $i ${i}.fail
+    /bin/echo -n "Have $# tapes been loaded in cap $icap with tabs in ${action}ed position [y/n]? "
+    if read ans && expr "$ans" : '[Yy]' >/dev/null; then
+       echo "... success acknowledged"
+       echo
+       echo "Now updating write-protect status in enstore..."
+       # set the volumes successfully entered as write-protected or write-permitted
+       for vol; do
+	 enstore vol --write-protect-$prot $vol
+       done
+       mv $i ${i}.done
+    else
+       echo "... failure acknowledged"
+       mv $i ${i}.fail
+    fi
   fi
   echo
   echo
@@ -90,5 +104,4 @@ if [ "$icap" != "$ocap" ]; then
     fi
     sleep 5
   done
-  /usr/bin/rsh $sun -l acsss "echo set cap mode manual $icap '\r' logoff | bin/cmd_proc -l -q 2>/dev/null"
 fi

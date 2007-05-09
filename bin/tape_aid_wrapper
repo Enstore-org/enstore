@@ -22,7 +22,7 @@ usage() { case $script in
 	       echo "       enter $script [[un]lock]"
 	       ;;
 	    *take_out)
-	       echo "       enter $script [remove|shelve]"
+	       echo "       enter $script [shelve|remove|reload]"
 	       ;;
 	  esac
 	}
@@ -43,6 +43,7 @@ lock  	${robot}_write_protect_work
 unlock	${robot}_write_permit_work
 shelve	${robot}_shelf_volumes_work
 remove	${robot}_purge_volumes_work
+reload	${robot}_refit_barcode_work
 EOD
 
 	       ns=`find $work -type f -name \*.done -daystart -mtime -1 -print | awk 'END {print NR}'`
@@ -200,6 +201,9 @@ case $script in
 	  work=$HOME/isa-tools/${robot}_purge_volumes_work
 	  . $HOME/gettkt
 	  ;;
+       reload)
+	  work=$HOME/isa-tools/${robot}_refit_barcode_work
+	  ;;
        *) usage
 	  exit 1
 	  ;;
@@ -247,6 +251,9 @@ if [ ${debug:-0} -gt 0 ]; then
 fi
 
 output=/tmp/${script}.${action}.${robot}.output
+
+# reload is advertised as a take_out function, but implemented by flip_tab
+[ $action = reload ] && script=flip_tab
 
 case $robot in
   9310 | 8500)
