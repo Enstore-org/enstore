@@ -285,6 +285,7 @@ LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
 LIST_DRIVES = "list-drives"                  #media
 LIST_SG_COUNT = "ls-sg-count"                #volume
+LIST_SLOTS = "list-slots"                    #media
 LIST_VOLUMES = "list-volumes"                #media
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
@@ -479,7 +480,7 @@ valid_option_list = [
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
-    LIST_VOLUMES,
+    LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,

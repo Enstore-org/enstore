@@ -53,3 +53,10 @@ def aci_qvolsrange(start, end, max_count, clientname):
         return x[0], x[1], map(aci_shadow.aci_volserinfo, x[2:])
     else:
         return x, "",  []
+
+def aci_getcellinfo(device, media_type, attrib):
+    x = aci_shadow.aci_getcellinfo(device, media_type, attrib)
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_media_info, x[1:])
+    else:
+        return x, []

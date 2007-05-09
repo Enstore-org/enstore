@@ -71,6 +71,15 @@ enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP,
 #define ACI_VOLSER_ATTRIB_TEMP_HERE         'T'
 #define ACI_VOLSER_ATTRIB_TEMP_AWAY         'A'
 
+/*---------- 3.11 -----------------------------*/
+#define ACI_MS_OCC     0x01
+#define ACI_MS_MKE     0x02
+#define ACI_MS_MNT     0x04
+#define ACI_MS_EJT     0x08
+#define ACI_MS_UNDEF   0x10
+#define ACI_MS_EMPTY   ACI_MS_MKE | ACI_MS_EJT
+#define ACI_MS_ALL     ACI_MS_OCC|ACI_MS_MNT|ACI_MS_UNDEF|ACI_MS_EMPTY
+
 /*-------------------------------------------------------------------------*/
 
 struct aci_vol_desc {
@@ -126,6 +135,11 @@ struct aci_volserinfo
        char            attrib;
 };
 
+struct  aci_media_info {
+         enum aci_media  eMediaType;
+         unsigned long   ulCount;
+};
+
 int aci_robhome (char *); 
 int aci_robstat (char *, char *); 
 
@@ -166,6 +180,11 @@ extern int aci_scratch_set (char *, enum aci_media , char * );
 extern int aci_scratch_get (char *, enum aci_media , char * );
 extern int aci_scratch_unset (char *, enum aci_media , char * );
 extern int aci_scratch_info (char *,  enum aci_media , long *, long *);
+
+/*   3.11   */
+extern int  aci_getcellinfo( char*, enum aci_media, unsigned int,
+			     int * nCount,
+			     struct aci_media_info * media_info);
 
 /*-------------------------------------------------------------------------*/
 

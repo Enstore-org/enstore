@@ -187,3 +187,32 @@ typedef int bool_t;
 	$target = return_list($target, PyString_FromString(ptr));
     }
 }
+
+
+/* aci_media_info */
+%typemap(python, ignore) struct aci_media_info* media_info {
+    static struct aci_media_info result[(ACI_MAX_MEDIATYPES)];
+    memset(result, 0, sizeof(result)); /* Insist this is cleared! */
+    $target = result;
+}
+
+%typemap(python, argout) struct aci_media_info* media_info {
+    /* Only aci_getcellinfo() in aci_shadow.i should have:
+          struct aci_media_info* media_info
+       as an argument. */
+    int i;
+    char ptr[128];
+    struct aci_media_info* media_info_ptr[(ACI_MAX_MEDIATYPES)];
+
+    /* For aci_getcellinfo(), we need to make dynamic copies of elements in
+       the static array.  Otherwise, when we return from this function
+       the information gets released and a segmentation fault occurs when
+       we finally do try and access it. */
+    for (i=0; i < ACI_MAX_MEDIATYPES && $source[i].eMediaType; ++i){
+        media_info_ptr[i] = malloc(sizeof(struct aci_media_info));
+        memcpy(media_info_ptr[i], &($source[i]),
+               sizeof(struct aci_media_info));
+        SWIG_MakePtr(ptr, media_info_ptr[i], "_struct_aci_media_info_p");
+	$target = return_list($target, PyString_FromString(ptr));
+    }
+}

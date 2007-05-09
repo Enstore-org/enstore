@@ -168,16 +168,30 @@ def view(volume, media_type):
         Trace.log(e_errors.ERROR, 'Media code is None. media_type=%s'%(media_type,))
         return (-1,None)
 
+    #aci_view() the old way of doing this.  Using aci_qvolsrange() gets
+    # us a little more functionality.  Using aci_view2() would get
+    # even more than that, if the time existed...
+    """
     stat,volstate = aci.aci_view(volume,media_code)
     if stat!=0:
         Trace.log(e_errors.ERROR, 'aci_view returned status=%d'%(stat,))
         return stat,None
-
-    if volstate == None:
+    """
+    
+    start = volume
+    end = volume
+    stat, start, volsers = aci.aci_qvolsrange(start, end, 1, "")
+    if volsers == None:
         Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
         return stat,None
 
-    return stat,volstate
+    if len(volsers) != 1:
+        Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
+        return stat,None
+
+    volstate = volsers[0]
+    
+    return stat, volstate
 
 def list_volser():
     start = ""
@@ -197,7 +211,7 @@ def list_volser():
                       'aci_qvolsrange returned status=%d' % (stat,))
             return stat,None
 
-    return stat, volsers
+    return stat, all_volsers
 
 def drive_state(drive,client=""):
     stat,drives = aci.aci_drivestatus2(client)
@@ -510,3 +524,45 @@ def eject(ticket, classTicket):
             return status_table[status][0], status, status_table[status][1]
     
     return status_table[status][0], status, status_table[status][1]
+
+def list_slots():
+    total = aci.ACI_MS_ALL
+    free = aci.ACI_MS_MKE | aci.ACI_MS_EJT #same as aci.ACI_MS_EMPTY
+    used = aci.ACI_MS_OCC | aci.ACI_MS_MNT
+    disabled = aci.ACI_MS_UNDEF
+    #The only way (free + used != total) is if there are undefined
+    # (aci.ACI_MS_UNDEF) slots in the robot.
+    media_list = []
+    for tower in range(6):
+        device = "ST%02d" % tower
+        stat, media_info_totals = aci.aci_getcellinfo(device, 0, total)
+        if stat!=0:
+            Trace.log(e_errors.ERROR,
+                      'aci_getcellinfo returned status=%d' % (stat,))
+            return stat,None
+        if len(media_info_totals) == 0:
+            continue
+        
+        stat, media_info_free = aci.aci_getcellinfo(device, 0, free)
+        if stat!=0:
+            Trace.log(e_errors.ERROR,
+                      'aci_getcellinfo returned status=%d' % (stat,))
+            return stat,None
+
+        stat, media_info_used = aci.aci_getcellinfo(device, 0, used)
+        if stat!=0:
+            Trace.log(e_errors.ERROR,
+                      'aci_getcellinfo returned status=%d' % (stat,))
+            return stat,None
+
+        stat, media_info_disabled = aci.aci_getcellinfo(device, 0, disabled)
+        if stat!=0:
+            Trace.log(e_errors.ERROR,
+                      'aci_getcellinfo returned status=%d' % (stat,))
+            return stat,None
+
+        for item in range(len(media_info_totals)):
+            media_list.append((device, media_info_totals, media_info_free,
+                               media_info_used, media_info_disabled))
+               
+    return stat, media_list
