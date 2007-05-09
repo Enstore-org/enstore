@@ -146,7 +146,23 @@
 131.225.13.144		stkenmvr114a.fnal.gov	stkenmvr114a
 #131.225.13.145		gccenmvr15a.fnal.gov	gccenmvr15a
 131.225.13.145		stkenmvr115a.fnal.gov	stkenmvr115a
-131.225.13.146		gccenmvr16a.fnal.gov	gccenmvr16a
+131.225.13.146	      	gccenmvr16a.fnal.gov	gccenmvr16a
+131.225.13.147		stkenmvr117a.fnal.gov	stkenmvr117a
+131.225.13.148		stkenmvr118a.fnal.gov	stkenmvr118a
+131.225.13.149		stkenmvr119a.fnal.gov	stkenmvr119a
+131.225.13.150		stkenmvr120a.fnal.gov	stkenmvr120a
+131.225.13.151		stkenmvr121a.fnal.gov	stkenmvr121a
+131.225.13.152		stkenmvr122a.fnal.gov	stkenmvr122a
+131.225.13.153		stkenmvr123a.fnal.gov	stkenmvr123a
+131.225.13.154		stkenmvr124a.fnal.gov	stkenmvr124a
+131.225.13.155		stkenmvr125a.fnal.gov	stkenmvr125a
+131.225.13.156		stkenmvr126a.fnal.gov	stkenmvr126a
+131.225.13.157		cdfenmvr127a.fnal.gov	cdfenmvr127a
+131.225.13.158		cdfenmvr128a.fnal.gov   cdfenmvr128a
+131.225.13.159		cdfenmvr129a.fnal.gov   cdfenmvr129a
+131.225.13.160		cdfenmvr130a.fnal.gov   cdfenmvr130a
+131.225.13.161		cdfenmvr131a.fnal.gov   cdfenmvr131a
+131.225.13.162		stkenmvr132a.fnal.gov	stkenmvr132a
 
 131.225.13.97		fndca2a.fnal.gov	fndca2a
 131.225.13.64		fndca3a.fnal.gov	fndca3a
@@ -257,7 +273,6 @@
 192.168.89.12		d0ensrv1raid
 192.168.89.13		d0ensrv2raid
 192.168.89.14		d0ensrv3raid
-192.168.89.17		d0ensrv6raid
 192.168.89.22	        d0encons1
 192.168.89.23	        d0encons2
 192.168.89.24	        d0encons3
@@ -273,7 +288,6 @@
 192.168.89.140		stkensrv1raid
 192.168.89.141		stkensrv2raid
 192.168.89.142		stkensrv3raid
-192.168.89.145		stkensrv6raid
 192.168.89.150	        stkencons1
 192.168.89.151	        stkencons2
 192.168.89.152	        stkencons3
@@ -297,7 +311,6 @@
 192.168.89.76	  	cdfensrv1raid
 192.168.89.77	  	cdfensrv2raid
 192.168.89.78	  	cdfensrv3raid
-192.168.89.81	  	cdfensrv6raid
 192.168.89.86	        cdfencons1
 192.168.89.87	        cdfencons2
 # address range 97-112	reserved for future use
