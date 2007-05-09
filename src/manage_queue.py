@@ -25,13 +25,14 @@ class Request:
         self.value = value
         #self.curpri = ticket.get(['encp']['curpri'], priority
         encp = ticket.get('encp','')
+        # by default priority grows by 1 every 1/2 hour
         if encp:
             self.delpri = encp.get('delpri',1)
-            self.agetime = encp.get('agetime',0)
+            self.agetime = encp.get('agetime',30)
             self.adminpri = encp.get('adminpri',-1)
         else:
             self.delpri = 1
-            self.agetime = 0
+            self.agetime = 30
             self.adminpri = -1
             
         self.unique_id = ticket.get('unique_id','')
