@@ -1044,6 +1044,15 @@ def check_bit_file(bfid, bfid_info = None):
 
     prefix = bfid
 
+    #If this gets set to True later on, then this bfid points to a multiple
+    # copy.  Some checks need to be skipped if true.
+    is_multile_copy = False
+
+    if not bfid:
+        err.append("no bifd given")
+        errors_and_warnings(prefix, err, warn, info)
+        return
+
     if bfid_info:
         file_record = bfid_info.get('file_record', None)
     else:
@@ -1169,7 +1178,7 @@ def check_bit_file(bfid, bfid_info = None):
                                 pnfs_path = p.get_path(file_record['pnfsid'],
                                                        mp)
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
-                            except (OSError, IOError), msg:
+                            except (OSError, IOError):
                                 pnfsid_mp = None
                                 pnfs_path = afn
 
@@ -1192,6 +1201,11 @@ def check_bit_file(bfid, bfid_info = None):
 
                     #pnfs_path needs to be set correctly by this point.
                     break
+            elif infc.find_original(file_record['bfid'])['original'] == \
+                     layer1_bfid:
+                pnfs_path = afn
+                is_multile_copy = True
+                break
 
             #If we found the right bfid brand, we know the right pnfs system
             # was found.
@@ -1378,7 +1392,8 @@ def check_bit_file(bfid, bfid_info = None):
     file_info = {"f_stats"       : f_stats,
                  "layer1"        : layer1_bfid,
                  "file_record"   : file_record,
-                 "pnfsid"        : file_record['pnfsid']}
+                 "pnfsid"        : file_record['pnfsid'],
+                 "is_multiple_copy" : is_multile_copy}
 
     e1, w1, i1 = check_file(pnfs_path, file_info)
     err = err + e1
@@ -1393,6 +1408,7 @@ def check_file(f, file_info):
     bfid = file_info.get('layer1', None)
     filedb = file_info.get('file_record', None)
     pnfs_id = file_info.get('pnfsid', None)
+    is_multiple_copy = file_info.get('is_multiple_copy', None)
 
     err = []
     warn = []
@@ -1564,24 +1580,29 @@ def check_file(f, file_info):
 
     # volume label
     try:
-        if layer4['volume'] != filedb['external_label']:
-            err.append('label(%s, %s)' % (layer4['volume'],
-                                          filedb['external_label']))
+        if not is_multiple_copy:
+            if layer4['volume'] != filedb['external_label']:
+                err.append('label(%s, %s)' % (layer4['volume'],
+                                              filedb['external_label']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted external_label')
         
     # location cookie
     try:
-        #The location cookie is split into three sections.  All but the eariest
-        # files use only the last of these three sections.  Thus, this check
-        # makes sure that (1) the length of both original strings are the same
-        # and (2) only the last section matches exactly.
-        p_lc = string.split(layer4['location_cookie'], '_')[2]
-        f_lc = string.split(filedb['location_cookie'], '_')[2]
-        if p_lc != f_lc or \
-               len(layer4['location_cookie']) != len(filedb['location_cookie']):
-            err.append('location_cookie(%s, %s)'%(layer4['location_cookie'],
-                                                  filedb['location_cookie']))
+        if not is_multiple_copy:
+            #The location cookie is split into three sections.  All but
+            # the eariest files use only the last of these three sections.
+            # Thus, this check makes sure that (1) the length of both
+            # original strings are the same and (2) only the last section
+            # matches exactly.
+            p_lc = string.split(layer4['location_cookie'], '_')[2]
+            f_lc = string.split(filedb['location_cookie'], '_')[2]
+            if p_lc != f_lc or \
+                   len(layer4['location_cookie']) != \
+                   len(filedb['location_cookie']):
+                err.append('location_cookie(%s, %s)' %
+                           (layer4['location_cookie'],
+                            filedb['location_cookie']))
     except (TypeError, ValueError, IndexError, AttributeError):
         #Before writting this off as an error, first determine if this
         # is a disk mover location cookie.
@@ -1631,26 +1652,29 @@ def check_file(f, file_info):
             vol_info[filedb['external_label']]['lm'] = library
 
         # File Family check.  Take care of MIGRATION, too.
-        if layer4['file_family'] != file_family and \
-            layer4['file_family'] + '-MIGRATION' != file_family:
-            info.append('file_family(%s, %s)' % (layer4['file_family'],
-                                                file_family))
+        if not is_multiple_copy:
+            if layer4['file_family'] != file_family and \
+                layer4['file_family'] + '-MIGRATION' != file_family:
+                info.append('file_family(%s, %s)' % (layer4['file_family'],
+                                                     file_family))
         # Library Manager check.
         if library not in lm:
-            if library.find("shelf") == -1: #Skip reporting on shelf libraries.
+            #Skip reporting on shelf libraries.
+            if library.find("shelf") == -1:
                 err.append('no such library (%s)' % (library))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted file_family')
         
     # drive
     try:
-        # some do not have this field
-        if filedb.has_key('drive') and layer4.has_key('drive'):
-            if layer4['drive'] != filedb['drive']:
-                if layer4['drive'] != 'imported' \
-                       and layer4['drive'] != "missing" \
-                       and filedb['drive'] != 'unknown:unknown':
-                    err.append('drive(%s, %s)' % (layer4['drive'],
+        if not is_multiple_copy:
+            # some do not have this field
+            if filedb.has_key('drive') and layer4.has_key('drive'):
+                if layer4['drive'] != filedb['drive']:
+                    if layer4['drive'] != 'imported' \
+                           and layer4['drive'] != "missing" \
+                           and filedb['drive'] != 'unknown:unknown':
+                        err.append('drive(%s, %s)' % (layer4['drive'],
                                                   filedb['drive']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted drive')
@@ -1724,6 +1748,9 @@ def check_file(f, file_info):
             err.append('deleted(%s)' % (filedb['deleted']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no deleted field')
+
+    if is_multiple_copy:
+        info.append("is multiple copy")
         
     return err, warn, info
 
