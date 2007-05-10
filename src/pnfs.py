@@ -3168,7 +3168,7 @@ class File:
 		if not self.bfid:
 			return
 		if not self.consistent():
-			raise 'INCONSISTENT'
+			raise ValueError('INCONSISTENT')
 		if self.exists():
 			# writing layer 1
 			f = open(self.layer_file(1), 'w')
