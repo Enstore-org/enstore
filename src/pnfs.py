@@ -865,6 +865,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             mp_dict = parse_mtab()
             #Search all of the pnfs mountpoints that are mounted.
             for db_num, mp in mp_dict.items():
+                #Allow /pnfs/fs (db_num == 0) to keep going.  Otherwise,
+                # the db_num needs to match what we are looking for.
+                if db_num != 0 and db_num != use_pnfsid_db:
+                    continue
+                
                 #If the mountpoint doesn't know about our database fail now.
                 try:
                     N(db_num, mp).get_databaseN(use_pnfsid_db)
