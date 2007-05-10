@@ -96,7 +96,7 @@ def show_volume(v):
 
 # bfid, storage_group, library, media_type, volume,
 # location_cookie, size, crc, pnfsid, pnfs_path
-show_file_format = "%20s %8s %8s %8s %8s %22s %3s %12d %12d %20s %s"
+show_file_format = "%20s %8s %8s %8s %8s %22s %7s %12d %12d %20s %s"
 def show_file(f, verbose=0):
 	print show_file_format%(
 		f['bfid'],
