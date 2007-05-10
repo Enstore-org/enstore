@@ -648,14 +648,19 @@ def do_work(intf):
                          (media_changer,))
 
     #Movers.
+    mover_names = []
     for library_manager in libraries:
-        for mover in csc.get_movers(library_manager):
-            mover = mover[enstore_constants.MOVER]
-            if intf.should_start(enstore_constants.MOVER) or \
-               intf.should_start(mover):
-                check_server(csc, mover, intf,
-                             "%s $ENSTORE_DIR/sbin/mover %s" %
-                             (sudo, mover))
+        for lm_mover in csc.get_movers(library_manager):
+            mover_name = lm_mover[enstore_constants.MOVER]
+            if mover_name not in mover_names:
+                #Check those already in the list to avoid duplicates.
+                mover_names.append(mover_name)
+    for mover_name in mover_names:
+        if intf.should_start(enstore_constants.MOVER) or \
+               intf.should_start(mover_name):
+            check_server(csc, mover_name, intf,
+                         "%s $ENSTORE_DIR/sbin/mover %s" %
+                         (sudo, mover_name))
             
     sys.exit(0)
 
