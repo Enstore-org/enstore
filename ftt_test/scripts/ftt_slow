@@ -38,11 +38,12 @@ FTT_TAPE=${FTT_TAPE:?"No device specified"}
 
 echo "==============================================================="
 echo "You are using OS $(uname -o) Kernel $(uname -r)"
-echo "              FTT Version $(ups list ftt -K VERSION)"
-echo "              FLAVOR      $(ups list ftt -K FLAVOR)"
-echo "              Qualifier   $(ups list ftt -K QUALIFIERS)"
-echo "              Modified    $(ups list ftt -K MODIFIED | cut -d':' -f1)"
-echo "              Modifier    $(ups list ftt -K MODIFIER)"
+FTT_VERS=$(cat ${FTT_DIR}/ups/Version | cut -d":" -f1)
+echo "              FTT Version $(cat ${FTT_DIR}/ups/Version | cut -d":" -f1)"
+echo "              FLAVOR      $(cat ${FTT_DIR}/ups/Version | cut -d":" -f2)"
+echo "              Qualifier   $(cat ${FTT_DIR}/ups/Version | cut -d":" -f3)"
+echo "              Modified    $(upd list -a ftt $VERS -K MODIFIED | tail -1)"
+echo "              Modifier    $(upd list -a ftt $VERS -K MODIFIER | tail -1)"
 echo "==============================================================="
 echo " $(ls -lR)"
 echo "==============================================================="
