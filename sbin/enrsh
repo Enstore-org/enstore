@@ -16,6 +16,13 @@ defaultDomain=".fnal.gov"
 # if we are a kerberized system, we need to do some pre rsh stuff.
 # if not, just do a normal rsh
 
+set +u
+if [ -n "$ENSSH" ];then
+    $ENSSH "$@" 
+    exit $?
+fi
+
+set -u
 if [ -d $krbdir ]; then
    # we are kerberized
 
@@ -36,6 +43,7 @@ if [ -d $krbdir ]; then
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
       ${krbdir}/rsh -F "$@"
+      rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -46,6 +54,7 @@ if [ -d $krbdir ]; then
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
       ${krbdir}/rsh -F "$@"
+      rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -61,19 +70,16 @@ if [ -d $krbdir ]; then
 	${krbdir}/kcron 2> /dev/null
       fi
       ${krbdir}/rsh -F "$@"
+      rc=$?
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
 
 else
    # we are not kerberized
-   set +u
-   if [ -n "$ENSSH" ];then
-	$ENSSH "$@" 
-   else
-	rsh "$@"
-   fi
-   set -u
+    rsh "$@"
+    rc=$?
 fi
 
 set +xv
+exit $rc
