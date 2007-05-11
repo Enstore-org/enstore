@@ -1,4 +1,10 @@
 #!/bin/sh
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
+
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
@@ -21,6 +27,8 @@ else
     exit 1
 fi
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+FTT_DIR=`rpm -ql ftt | head -1`
 
 PATH=/usr/sbin:$PATH
 
@@ -30,7 +38,13 @@ then
     mkdir -p $ENSTORE_DIR/config
 fi
 
-cp -rpf $ENSTORE_DIR/external_distr/setup-enstore $ENSTORE_DIR/config
+rm -rf /tmp/enstore_header
+echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
+echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
+echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
+
+rm -rf $ENSTORE_DIR/config/setup-enstore
+cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_DIR/config/setup-enstore
 
 echo "Finishing configuration of $ENSTORE_DIR/config/setup-enstore"
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}"
@@ -84,10 +98,15 @@ fi
 echo "
 Enstore install finished.
 Please check $ENSTORE_DIR/config/setup-enstore.
+In case you are going to use ssh for product distribution, updates and maintenance you need to add the following entries
+to $ENSTORE_DIR/config/setup-enstore:
+ENSSH=<path to ssh binary>
+ENSCP=<path scp bynary>
 
 Now you can proceed with enstore configuration.
 
 For the system recommendations and layout please read ${ENSTORE_DIR}/etc/configuration_recommendations.
 To create a system configuration file you can use ${ENSTORE_DIR}/etc/enstore_configuration_template
-or refer to one of real enstore configuration files, such as ${ENSTORE_DIR}/etc/stk.conf"
+or refer to one of real enstore configuration files, such as ${ENSTORE_DIR}/etc/stk.conf
+After the enstore configuration file has has been created you can proceed with ${ENSTORE_DIR}/external_distr/make_farmlets.sh"
  

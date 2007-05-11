@@ -40,7 +40,7 @@ def server_hosts(dict):
                 (i.find("media_changer")  != -1) or
                 (i.find("clerk") != -1) or
                 (i.find("server") != -1)):
-               o_d.append(dict[i]["host"])
+		    o_d.append(dict[i]["host"])
             
     o_d.sort()
     for i in o_d:
@@ -71,7 +71,7 @@ def mover_hosts(dict):
     for i in dict.keys():
         if (dict[i].has_key("host")) and (not dict[i]["host"] in o_d):
             try:
-                if i.split(".")[1] == "mover" :
+                if i.split(".")[1] == "mover":
                     o_d.append(dict[i]["host"])
             except IndexError:
                 pass
