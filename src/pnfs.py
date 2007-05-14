@@ -65,6 +65,14 @@ def is_access_name(filepath):
 
     return False
 
+def is_nameof_name(filepath):
+    #Determine if it is an ".(access)()" name.
+    nameof_match = re.compile("\.\(nameof\)\([0-9A-Fa-f]+\)")
+    if re.search(nameof_match, os.path.basename(filepath)):
+        return True
+
+    return False
+
 #Remove the /pnfs/ or /pnfs/fs/usr/ from the pnfs path.
 def strip_pnfs_mountpoint(pathname):
     tmp1 = pathname[pathname.find("/pnfs/"):]
@@ -77,8 +85,16 @@ def strip_pnfs_mountpoint(pathname):
 
 def is_pnfs_path(pathname, check_name_only = None):
 
-    #Expand the filename to the absolute path.
-    unused, filename, dirname, unused = fullpath(pathname)
+    if is_access_name(pathname) or is_pnfs_name(pathname):
+        #We don't want to call fullpath() for these special files.
+        # fullpath doesn't know how to protect from accessing an unknown
+        # database (which causes the mount point to hang).
+        basename = os.path.basename(pathname)
+        dirname = get_directory_name(pathname)
+        filename = os.path.join(dirname, basename)
+    else:
+        #Expand the filename to the absolute path.
+        unused, filename, dirname, unused = fullpath(pathname)
 
     #Some versions of python have gotten dirname wrong if filename was
     # already a directory.
@@ -158,9 +174,19 @@ def get_directory_name(filepath):
         #Since, we have the .(access)() name we need to split off the id.
         dirname, filename = os.path.split(filepath)
         pnfsid = filename[10:-1]  #len(".(access)(") == 10 and len ")" == 1
+        #We will need the pnfs database numbers.
+        use_pnfsid_db=int(pnfsid[:4], 16)
+
+        #If the mountpoint doesn't know about our database fail now.
+        try:
+            N(use_pnfsid_db, dirname).get_databaseN(use_pnfsid_db)
+        except (OSError, IOError):
+            raise OSError(errno.ENOENT,
+                          "No such database: (%s, %s)" % (use_pnfsid_db,
+                                                          dirname))
+
         #Create the filename to obtain the parent id.
         parent_id_name = os.path.join(dirname, ".(parent)(%s)" % pnfsid)
-
         #Read the parent id.
         f = open(parent_id_name)
         parent_id = f.readlines()[0].strip()
@@ -173,6 +199,8 @@ def get_directory_name(filepath):
         directory_name = os.path.dirname(filepath)
    
     return directory_name
+
+###############################################################################
 
 #Global cache.
 db_pnfsid_cache = {}
@@ -194,44 +222,104 @@ def parse_mtab():
         if fs_type != "nfs":
             continue
 
-        #Obtain the list of "files" in the top directory.
         try:
-            dir_list = os.listdir(mp)
-        except (OSError, IOError):
+            dataname = os.path.join(mp, ".(get)(database)")
+            db_fp = open(dataname, "r")
+            db_data = db_fp.readline().strip()
+            db_fp.close()
+        except IOError:
             continue
 
-        #If the list is empty, move on to the next.
-        if len(dir_list) == 0:
-            continue
-
-        #Unfortunately, it is possible to have files like:
-        # .(use)(1)(.(access)(0001000000000000000576C0)) in your pnfs
-        # area.  These are mostly from developers' testing, and it didn't
-        # work right.  So, keep looping passed these files until we find
-        # one that works.
-        for i in range(len(dir_list)):
-            try:
-                db_fp = open(os.path.join(mp, ".(id)(%s)" % dir_list[i]), "r")
-                break
-            except IOError:
-                continue
-        else:
-            continue
-        db_data = db_fp.readline()
-        db_fp.close()
-
-
-        #If the databases id is not in the cache, add it along with the
+        db_datas = db_data.split(":")
+        #db_datas[0] is the database name
+        #db_datas[1] is the database id
+        #db_datas[2] is the database (???)
+        #db_datas[3] is the database enabled or disabled status
+        #db_datas[4] is the database (???)
+        #If the database's id is not in the cache, add it along with the
         # mount point that goes with it.
-        db_pnfsid = int(db_data[:4], 16)
-        if db_pnfsid not in db_pnfsid_cache.keys():
-            db_pnfsid_cache[db_pnfsid] = mp
+        db_pnfsid = int(db_datas[1])
+        if db_data not in db_pnfsid_cache.keys():
+            db_pnfsid_cache[db_data] = (db_pnfsid, mp)
 
     fp.close()
 
-    return db_pnfsid_cache
+def process_mtab():
+    global db_pnfsid_cache
+    global search_list
+    
+    if not db_pnfsid_cache:
+        #Sets global db_pnfsid_cache.
+        parse_mtab()
+        
+    for database_info, (db_num, mp) in db_pnfsid_cache.items():
+        if db_num == 0 or os.path.basename(mp) == "fs":
+            #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
+            p = Pnfs()
+            use_path = os.path.join(mp, "usr")
+            for dname in os.listdir(use_path):
+                tmp_name = os.path.join(use_path, dname)
+                if not os.path.isdir(tmp_name):
+                    continue
+                tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
+                if tmp_db_info in db_pnfsid_cache.keys():
+                    continue
+                
+                tmp_db = int(tmp_db_info.split(":")[1])
+                db_pnfsid_cache[tmp_db_info] = (tmp_db, tmp_name)
 
-##############################################################################
+    return sort_mtab()
+
+def __db_cmp(x, y):
+    is_x_fs_usr = x[1][1].find("/fs/usr/") > 0
+    is_y_fs_usr = y[1][1].find("/fs/usr/") > 0
+
+    is_x_fs = x[1][0] == 0
+    is_y_fs = y[1][0] == 0
+
+    #Always put /pnfs/fs last.
+    if is_x_fs and not is_y_fs:
+        return 1
+    elif not is_x_fs and is_y_fs:
+        return -1
+
+    #Always put /pnfs/xyz first.
+    elif is_x_fs_usr and not is_y_fs_usr:
+        return 1
+    elif not is_x_fs_usr and is_y_fs_usr:
+        return -1
+
+    #The are the same type of path.  Sort by db number.
+    if x[1][0] < y[1][0]:
+        return 1
+    elif x[1][0] > y[1][0]:
+        return -1
+
+    return 0
+
+def sort_mtab():
+    global db_pnfsid_cache
+    global search_list
+
+    search_list = db_pnfsid_cache.items()
+    #By sorting and reversing, we can leave db number 0 (/pnfs/fs) in
+    # the list and it will be sorted to the end of the list.
+    search_list.sort(lambda x, y: __db_cmp(x, y))
+
+    #import pprint
+    #pprint.pprint(search_list)
+    #sys.exit(1)
+
+    return search_list
+
+def add_mtab(db_info, db_num, db_mp):
+    global db_pnfsid_cache
+
+    if db_info not in db_pnfsid_cache.keys():
+        db_pnfsid_cache[db_info] = (db_num, db_mp)
+        sort_mtab()
+
+###############################################################################
 
 class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # initialize - we will be needing all these things soon, get them now
@@ -279,10 +367,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 # than valid i-nodes that belonged in that directory.  With
                 # this type of database corruption, the is_pnfs_path() test
                 # still works correctly.
-                pnfsFilename = os.path.join(self.dir, ".(access)(%s)"%self.id)
+                self.dir, target = self._get_mount_point2(self.id,
+                                                             self.dir,
+                                                             ".(nameof)(%s)")
+                pnfsFilename = os.path.join(self.dir,
+                                            ".(access)(%s)" % self.id)
                 if not is_pnfs_path(pnfsFilename):
                     pnfsFilename = ""
-                    
+
         if pnfsFilename:
             (self.machine, self.filepath, self.directory, self.filename) = \
                            fullpath(pnfsFilename)
@@ -810,7 +902,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         #Strip off one directory segment at a time.  We are looking for
         # where the DB number changes.
         while 1:
-            current_path = os.path.dirname(current_path)
+            if is_access_name(current_path):
+                current_path = get_directory_name(current_path)
+            else:
+                current_path = os.path.dirname(current_path)
             try:
                 current_pnfs_database = self.get_database(current_path).strip()
             except (OSError, IOError), msg:
@@ -823,7 +918,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 #We found the change of DB.
                 return old_path
             old_path = current_path
-            
+
         return None
 
     #Get the mountpoint for the pnfs id.
@@ -843,9 +938,18 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             use_pnfsname = ".(access)(%s)" % id
 
+        #We will need the pnfs database numbers.
+        use_pnfsid_db=int(id[:4], 16)
+
         #Try the initial directory.
         pfn = os.path.join(directory, use_pnfsname)
         try:
+            #If the mountpoint doesn't know about our database fail now.
+            try:
+                N(use_pnfsid_db, directory).get_databaseN(use_pnfsid_db)
+            except (OSError, IOError):
+                raise OSError(errno.ENOENT, "Force PNFS search")
+                
             f = open(pfn, 'r')
             pnfs_value = f.readline()
             f.close()
@@ -853,31 +957,51 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             #Remember to truncate the original path to just the mount
             # point
             search_path = self.get_mount_point(directory)
-            
+
             found_db_num = int(self.get_database(search_path).split(":")[1],
                                16)
-        except (OSError, IOError):
-            #We will need the pnfs database numbers.
-            use_pnfsid_db=int(id[:4], 16)
+        except (OSError, IOError), msg:
+            if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
+               os.geteuid != 0:
+                #We don't have permission to obtain the information.
+                raise OSError(errno.EACCES,
+                              "%s: %s" % (os.strerror(errno.EACCES), pfn))
+            elif msg.args[0] != errno.ENOENT:
+                raise OSError(msg.args[0],
+                              "%s: %s" % (os.strerror(msg.args[0]), pfn))
+
+            #Only ENOENT should be able to get here.
+            
             count = 0
             found_db_num = None
             found_fname = None
-            mp_dict = parse_mtab()
+            found_db_info = None
+            mp_match_list = []
+            #mp_dict = parse_mtab()
+            search_list = process_mtab()
             #Search all of the pnfs mountpoints that are mounted.
-            for db_num, mp in mp_dict.items():
-                #Allow /pnfs/fs (db_num == 0) to keep going.  Otherwise,
-                # the db_num needs to match what we are looking for.
-                if db_num != 0 and db_num != use_pnfsid_db:
-                    continue
+            for db_info, (db_num, mp) in search_list:
                 
                 #If the mountpoint doesn't know about our database fail now.
                 try:
-                    N(db_num, mp).get_databaseN(use_pnfsid_db)
+                    cur_db_info = N(db_num, mp).get_databaseN(use_pnfsid_db)
                 except (OSError, IOError):
                     continue
-                
+
+                #If this is a top level PNFS db, we can jump to
+                # the correct info.
+                for search_db_info, (search_db_num, search_mp) in search_list:
+                    if cur_db_info == search_db_info:
+                        use_mp = search_mp
+                        break
+                else:
+                    use_mp = mp
+
                 #Check if the current mp knows about our specific pnfsid.
-                pfn = os.path.join(mp, use_pnfsname)
+                if os.path.basename(use_mp) == "fs":
+                    pfn = os.path.join(use_mp, "usr", use_pnfsname)
+                else:
+                    pfn = os.path.join(use_mp, use_pnfsname)
                 try:
                     f = open(pfn, 'r')
                     pnfs_value = f.readline()
@@ -885,7 +1009,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                     if count:
                         try:
-                            cur_mp_stat = os.stat(found_fname)
+                            #If found_fname is a .(nameof) file, the stat
+                            # results are inconclusive.  If necessary,
+                            # convert to an .(access) name.
+                            a_found_fname = self.nameof_to_access(found_fname)
+                            cur_mp_stat = os.stat(a_found_fname)
                             #If pfn is a .(nameof) file, the stat
                             # results are inconclusive.  If necessary,
                             # convert to an .(access) name.
@@ -905,30 +1033,72 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             # mountpoints being mounted.
                             continue
 
-                    count = count + 1
-                    #The next items are to remember what we found.
-                    # Hopefully we only get here once.
-                    search_path = mp
-                    found_db_num = db_num
-                    found_fname = pfn
+                    #Determine the correct mount point.  Different pnfs
+                    # database areas can respond for any database on
+                    # the same machine.  The current one knows about the
+                    # db we are looking for, now just need to find the
+                    # correctly matching mount point.
+                    afn2 = self.nameof_to_access(pfn)
+                    afn2_dir = get_directory_name(afn2)
+                    db_dir = self.get_pnfs_db_directory(afn2_dir)
+                    #The target_db_area step is necessary for databases like
+                    # /pnfs/sdss/db2.  The if below handles things for
+                    # locations like /pnfs/sdss.
+                    target_db_area = get_directory_name(db_dir)
+                    db_db_info = self.get_database(target_db_area)
+                    db_data = db_pnfsid_cache.get(db_db_info, None)
+                    #Determine if we found the admin database (db_data[0] == 0)
+                    # and we weren't explicitly looking for it
+                    if db_data[0] == 0 and db_num != 0:
+                        #In the event we were looking for the a top level
+                        # db (i.e. /pnfs/sdss) we want to not find the admin
+                        # db (/pnfs/fs).  This means skipping the
+                        # "target_db_area = get_directory_name(db_dir)"
+                        # step above, which would erroneously give
+                        # /pnfs/sdss/.(access)(000000000000000000001080)
+                        # (aka /pnfs/fs/usr) as the database we are looking
+                        # for.
+                        db_db_info = self.get_database(db_dir)
+                        db_data = db_pnfsid_cache.get(db_db_info, None)
+                    if db_data != None:
+                        if found_db_info != db_db_info:
+                            count = count + 1
+                            mp_match_list.append(db_data[1])
+
+                            if count == 1:
+                                #We just found the first one.  Remember this
+                                # to avoid catching it again.
+                                search_path = db_data[1]
+                                found_db_num = db_data[0]
+                                found_fname = pfn
+                                found_db_info = db_db_info
                 except (OSError, IOError), msg:
                     if msg.args[0] in [errno.EIO]:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
                         # If the directory is 
+                        
+                        #If pfn is a .(nameof) file, the stat
+                        # results are inconclusive.  If necessary,
+                        # convert to an .(access) name.
+                        afn = self.nameof_to_access(pfn)
                         try:
-                            #If pfn is a .(nameof) file, the stat
-                            # results are inconclusive.  If necessary,
-                            # convert to an .(access) name.
-                            afn = self.nameof_to_access(pfn)
                             stat_info = os.stat(afn)
                         except (OSError, IOError):
                             stat_info = None
+                        if is_nameof_name(pfn) and os.geteuid != 0 \
+                               and stat_info: #and msg.args[0] in [errno.EIO]
+                           #We don't have permission to obtain the information.
+                           raise OSError(errno.EACCES,
+                                         "%s: %s" % (os.strerror(errno.EACCES),
+                                                     pfn))
                         if stat_info:
+                            import traceback
+                            traceback.print_stack()
                             raise OSError(errno.EIO,
                                           "Found unnamed orphan file: %s" % 
-                                          pfn)
+                                          afn)
                     if msg.args[0] in [errno.EPERM]:
                         raise OSError(errno.EPERM,
                                       "%s: %s" % (os.strerror(errno.EPERM),
@@ -943,7 +1113,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
                 raise OSError(errno.ENODEV,
                               "%s: %s" % (os.strerror(errno.ENODEV),
-                                          "Too many matching mount points"))
+                                          "Too many matching mount points: %s"
+                                          % mp_match_list))
 
         #Small hack for the admin path.
         if found_db_num == 0:
