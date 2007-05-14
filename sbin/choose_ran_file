@@ -10,9 +10,17 @@ if [ "${1:-}" = "-F" ] ; then force_try=1; shift; else force_try=0; fi
 
 # script to return a random file name(s) for tapes in the current inventory
 
+if [ "$ENSTORE_CONFIG_HOST"x == x ]; then
+   source /usr/local/etc/setups.sh
+   if [ -f $HOME/enstore ]; then
+      setup -r `cd $HOME/enstore;pwd` enstore
+   else
+      setup enstore
+   fi
+fi
+
 #node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 #gang=`gang`
-
 #HTTP=http://${gang}srv2.fnal.gov
 #USE_WGET=1 #or 0 to do things with database values
 
@@ -131,11 +139,26 @@ while [ $done -gt 0 ]; do
   ran_pnfsid=`enstore info --bfid $ran_bfid | grep pnfsid | cut -c 13-36`
   first_pnfsid=`enstore info --bfid $first_bfid | grep pnfsid | cut -c 13-36`
   last_pnfsid=`enstore info --bfid $last_bfid | grep pnfsid | cut -c 13-36`
- 
+
   #...to get these.
   ran_file=`enstore pnfs --path $ran_pnfsid`
+  rc_r=$?
   first_file=`enstore pnfs --path $first_pnfsid`
+  rc_f=$?
   last_file=`enstore pnfs --path $last_pnfsid`
+  rc_l=$?
+
+  if [ $rc_r -ne 0 -o $rc_f -ne 0 -o $rc_l -ne 0 ]; then
+    #One likely reason that this step would fail, is that we have a pnfsid
+    # that exists in two different PNFSes.  (i.e. stkensrv1 and cmspnfs1)
+    #Another is that we don't have sufficient permissions to access the
+    # file in PNFS.
+    echo "Failed finding suitable files."
+    #  echo $ran_file
+    #  echo $first_file
+    #  echo $last_file
+    continue
+  fi
 
   # Make a list of what the user wants.  Valid values are:
   #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
