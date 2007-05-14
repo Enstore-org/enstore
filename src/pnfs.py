@@ -85,7 +85,7 @@ def strip_pnfs_mountpoint(pathname):
 
 def is_pnfs_path(pathname, check_name_only = None):
 
-    if is_access_name(pathname) or is_pnfs_name(pathname):
+    if is_access_name(pathname) or is_nameof_name(pathname):
         #We don't want to call fullpath() for these special files.
         # fullpath doesn't know how to protect from accessing an unknown
         # database (which causes the mount point to hang).
@@ -204,6 +204,7 @@ def get_directory_name(filepath):
 
 #Global cache.
 db_pnfsid_cache = {}
+search_list = []
 
 def parse_mtab():
     global db_pnfsid_cache
@@ -926,6 +927,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # 'id' is the pnfs id
     
     def _get_mount_point2(self, id, directory, pnfsname=None):
+        global search_list
+        
         if id != None:
             if not is_pnfsid(id):
                 raise ValueError("The pnfs id (%s) is not valid." % id)
