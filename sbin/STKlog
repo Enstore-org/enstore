@@ -45,6 +45,7 @@ tac $logfile >>$output
 
 cat << EOF >>$output
 </pre>
+</font>
 <h1><center>$robot Log MEssage Fetch Done : `date`</center><h1>
 <hr>
 EOF
