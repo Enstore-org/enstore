@@ -32,10 +32,11 @@ rm -f $logfile
 cat << EOF >>$output
 <html> <head> <title>$robot Recent Log Messages</title> </head>
 <body>
-<body bgcolor="#ffffff" text=#a0a0ff">
+<!-- <body bgcolor="#ffffff" text=#a0a0ff"> -->
 <meta http-equiv="Refresh" content="900">
-<h1><center>$robot Log Message Fetch Begin: `date`</center><h1>
+<h2><center>$robot Log Message Fetch Begin: `date`</center><h2>
 <hr>
+<font size="-1"> 
 <pre>
 EOF
 
