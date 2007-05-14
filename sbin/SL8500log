@@ -36,6 +36,7 @@ cat << EOF >>$output
 <meta http-equiv="Refresh" content="900">
 <h2><center>$robot Log Message Fetch Begin: `date`</center><h2>
 <hr>
+<font size="-1"> 
 <pre>
 EOF
 
