@@ -51,7 +51,7 @@ echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL" >> /etc/sudoers.e
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
 
-if [ $enstore_istalled -eq 0 ]; then
+if [ $enstore_installed -eq 0 ]; then
     echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
     if [ ! -d "/usr/local/etc" ]
     then
@@ -88,7 +88,7 @@ cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
 echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
 
-if [ $enstore_istalled -eq 0 ]; then
+if [ $enstore_installed -eq 0 ]; then
 echo "To finish the installation you need to run $ENSTORE_DIR/external_distr/install.sh
 as user root on the host where the enstore configuration server will be running and only on
 this host" 
