@@ -1052,7 +1052,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     db_data = db_pnfsid_cache.get(db_db_info, None)
                     #Determine if we found the admin database (db_data[0] == 0)
                     # and we weren't explicitly looking for it
-                    if db_data[0] == 0 and db_num != 0:
+                    if db_data == None or \
+                       (db_data != None and db_data[0] == 0 and db_num != 0):
                         #In the event we were looking for the a top level
                         # db (i.e. /pnfs/sdss) we want to not find the admin
                         # db (/pnfs/fs).  This means skipping the
