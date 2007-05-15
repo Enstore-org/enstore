@@ -158,7 +158,16 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
                 ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
                 self.reply_to_caller(ticket)
                 return
-        
+
+        count = ticket["fc"].get("copies", 0)
+        if count > 0:
+            if self.log_copies(bfid, count):
+                msg = "new_bit_file(copy): failed to log copy count %s, %d"%(bfid, count)
+                Trace.log(e_errors.ERROR, msg)
+                ticket["status"] = (e_errors.FILE_CLERK_ERROR, msg)
+                self.reply_to_caller(ticket)
+                return
+
         ticket["fc"]["bfid"] = bfid
         ticket["status"] = (e_errors.OK, None)
         self.reply_to_caller(ticket)
@@ -220,6 +229,11 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         if gid != None:
             record["gid"] = gid
         record["deleted"] = "no"
+
+        # take care of the copy count
+        original = self.__find_original(bfid)
+        if original:
+            self.made_copy(original)
 
         # record our changes
         self.dict[bfid] = record 
@@ -542,6 +556,41 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             res = self.dict.db.query(q)
         except:
             return 1
+        return
+
+    # log_copies(bfid, n) -- log number of copies to make
+    def log_copies(self, bfid, n):
+        Trace.log(e_errors.INFO,
+            "log_copies: %s, %d"%(bfid, n))
+        q = "insert into active_file_copying (bfid, remaining) \
+                values ('%s', %d);"%(bfid, n)
+        try:
+            res = self.dict.db.query(q)
+        except:
+            return 1
+        return
+
+    # made_copy(bfid) -- decrease copies count
+    #                    if the count becomes zero, delete the record
+    def made_copy(self, bfid):
+        q = "select * from active_file_copying where bfid = '%s;"%(bfid)
+        res = self.dict.db.query(q).dictresult()
+        if not res:
+            Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies"%(bfid))
+            return
+        if res[0]['remaining'] <= 1:
+            # all done, delete this entry
+            q = "delete from active_file_copying where bfid = '%s;"%(bfid)
+            try:
+                res = self.dict.db.query(q)
+            except:
+                return 1
+        else: # decrease the number
+            q = "update active_file_copying set remaining = %d where bfid = '%s';"%(res[0]['remaining'] - 1, bfid)
+            try:
+                res = self.dict.db.query(q)
+            except:
+                return 1
         return
 
     # __find_copies(bfid) -- find all copies
