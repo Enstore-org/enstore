@@ -154,9 +154,9 @@ while [ $done -gt 0 ]; do
     #Another is that we don't have sufficient permissions to access the
     # file in PNFS.
     echo "Failed finding suitable files."
-    #  echo $ran_file
-    #  echo $first_file
-    #  echo $last_file
+    #  echo $ran_bfid $ran_pnfsid $ran_file 
+    #  echo $first_bfid $first_pnfsid $first_file
+    #  echo $last_bfid $last_pnfsid $last_file
     continue
   fi
 
