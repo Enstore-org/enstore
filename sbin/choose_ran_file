@@ -1,5 +1,13 @@
 #!/bin/sh
+
+#
+# Script to return a random file name(s) for tapes in the current inventory.
+#  Optionaly, attempt to copy the files from tape using encp (see
+#  copy_ran_file).
+#
+
 set -u
+
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 if [ "${1:-}" = "-V" ] ; then verbose=1; shift; else verbose=0; fi
@@ -8,7 +16,9 @@ if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
 
 if [ "${1:-}" = "-F" ] ; then force_try=1; shift; else force_try=0; fi
 
-# script to return a random file name(s) for tapes in the current inventory
+#  $1 should be the number of tapes to list/copy.
+#  $2 should be one of: "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
+#                       or "onlyfirstlast" or "alsofirstlast" or "onlyran"
 
 if [ "$ENSTORE_CONFIG_HOST"x == x ]; then
    source /usr/local/etc/setups.sh
@@ -23,22 +33,22 @@ fi
 #gang=`gang`
 #HTTP=http://${gang}srv2.fnal.gov
 #USE_WGET=1 #or 0 to do things with database values
+#FORGET=${2:-CLN}  #Not used anymore.
+#MUSTHAVE=${3:-""} #Not used anymore.
+#EXTRA=${5:-""}    #Not used anymore.
+#echo $EXTRA | egrep "full|readonly|migrated"
+#if [ $? -eq 0 ] ; then
+#    override_ro="--override-ro-mount"
+#fi
 
 COUNT=${1:-1}
-FORGET=${2:-CLN}  #Not used anymore.
-MUSTHAVE=${3:-""} #Not used anymore
-EXTRA=${5:-""}
 # valid values are "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
 #  or "onlyfirstlast" or "alsofirstlast" or "onlyran"
-WHICH_FILE=${4:-"onlyran"}
-echo WHICH_FILE $WHICH_FILE
+WHICH_FILE=${2:-"onlyran"}
+
 here=`pwd`
 override_ro=""
 tmp_dir=/tmp
-echo $EXTRA | egrep "full|readonly|migrated"
-if [ $? -eq 0 ] ; then
-    override_ro="--override-ro-mount"
-fi
 
 #Get the list of suitable tapes for testing.
 enstore info --query "select label,library,media_type,wrapper,write_protected
@@ -80,22 +90,29 @@ while [ $done -gt 0 ]; do
   fi
 
   # choose a random volume from the list
-  ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
+  ran=`python -c "import random;print random.randint(1,"$N")"`
   tape=`head -n $ran /$tmp_dir/V_D|tail -n 1| awk '{print $1}'`
 
   # Get up to date information on the tape to make sure we have a chance 
   # to read a file.
-  if [ $verbose ]; then
+  if [ $verbose -eq 1 ]; then
     echo `date` enstore info --vol $tape
   fi
   tinfo=`enstore info --vol $tape`
-  if [ $verbose ]; then
+  if [ $verbose -eq 1 ]; then
     echo "$tinfo"
   fi
   if [ `echo $tinfo | egrep -c 'DELETED|NOTALLOWED|NOACCESS'` -ne 0 ]; then
     echo REJECTED $tape is DELETED/NOTALLOWED/NOACCESS
     continue
   fi
+  #MWZ: I'm not sure way choose_ran_file/copy_ran_file would need to test
+  # the write tab status of the tape?  Sasha agreed that it should not
+  # care.  (5-15-2007)
+  #if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
+  #   override_ro="--override-ro-mount"
+  #   echo "override $override"
+  #fi
 
   enstore info --list $tape | sed '1,2d' > $tmp_dir/$tape
 
@@ -115,16 +132,16 @@ while [ $done -gt 0 ]; do
   rm -f $tmp_dir/$tape
   NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
   if [ $NF -gt 0 ]; then 
-    echo `date`: $NF SUITABLE FILES on $tape
+    if [ $verbose -eq 1 ]; then echo `date`: $NF SUITABLE FILES on $tape; fi
   else
-    echo `date`: NO SUITABLE FILES on $tape
+    if [ $verbose -eq 1 ]; then echo `date`: NO SUITABLE FILES on $tape; fi
     rm -f $tmp_dir/${tape}_
     continue
   fi
 
   # Choose a random file and  1st and last non-deleted files on the 
   # random volume
-  ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
+  ran=`python -c "import random;print random.randint(1,"$NF")"`
   file_r=`head -n $ran $tmp_dir/${tape}_ | tail -n 1 | awk '{print $NF,$1,$3,$4,$2}'`
   file_f=`head -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
   file_l=`tail -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
@@ -171,7 +188,7 @@ while [ $done -gt 0 ]; do
     alsofirst)     thefiles="$ran_file $first_file"; thebfids="$ran_bfid $first_bfid";;
     alsolast)      thefiles="$ran_file $last_file"; thebfids="$ran_bfid $last_bfid";;
     alsofirstlast) thefiles="$ran_file $first_file $last_file"; thebfids="$ran_bfid $first_bfid $last_bfid";;
-    *)             thefiles=$ranfile; thebfids=$ran_bfid;;
+    *)             thefiles=$ran_file; thebfids=$ran_bfid;;
   esac
 
   # ok, just tell the user the name of the file and do another if needed
