@@ -112,8 +112,8 @@ case $command in
 #	aMAM2=`grep "type: I" $dinfo | grep -c  " UP "`
 	nLTO1=`grep "type: 3" $dinfo | grep 'drive: D[35]' | grep -vc "volser:   c"`
 	aLTO1=`grep "type: 3" $dinfo | grep 'drive: D[35]' | grep -c  " UP "`
-	nLTO2=`grep "type: 3" $dinfo | grep 'drive: D[24]' | grep -vc "volser:   c"`
-	aLTO2=`grep "type: 3" $dinfo | grep 'drive: D[24]' | grep -c  " UP "`
+	nLTO2=`grep "type: 3" $dinfo | grep 'drive: D[27]' | grep -v' drive: D31' | grep -vc "volser:   c"`
+	aLTO2=`grep "type: 3" $dinfo | grep 'drive: D[27]' | grep -v' drive: D31' | grep -c  " UP "`
 
 	echo "$now $nLTO1 $aLTO1 $nLTO2 $aLTO2" >>$busy
 
