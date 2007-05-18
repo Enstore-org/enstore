@@ -11,7 +11,7 @@ import os
 import traceback
 import checksum
 import sys
-import socket
+#import socket
 import signal
 #import string
 import copy
@@ -44,7 +44,6 @@ class DispatchingWorker(udp_server.UDPServer):
             
         #Deal with multiple interfaces.
 
-	self.server_socket.setsockopt(socket.SOL_SOCKET, 11, 0)
         # fds that the worker/server also wants watched with select
         self.read_fds = []    
         self.write_fds = []

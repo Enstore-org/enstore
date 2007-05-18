@@ -116,8 +116,7 @@ class UDPClient:
     def reinit(self):
         #Obtain necessary values.
         pid = self._os.getpid()
-        host, port, Socket = udp_common.get_default_callback()
-	Socket.setsockopt(socket.SOL_SOCKET, 11, 0)
+        host, port, socket = udp_common.get_default_callback()
         if thread_support:
             tid = thread.get_ident() #Obtain unique identifier.
         else:
@@ -126,7 +125,7 @@ class UDPClient:
         tsd = Container()
         tsd.host = host
         tsd.port = port
-        tsd.socket = Socket
+        tsd.socket = socket
         tsd.txn_counter = 0L
         tsd.reply_queue = {}
         tsd.ident = self._mkident(host, port, pid)
