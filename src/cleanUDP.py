@@ -85,7 +85,10 @@ class cleanUDP :
                         raise e_errors.CLEANUDP_EXCEPTION
                 self.socket = socket.socket(protocol, kind)
 		if os.uname()[0] == "Linux":
-			#Enable UDP checksums.
+			#Enable UDP checksums.  These should be on by default.
+			# Force them on by setting this value to 0.  (Note
+			# the name is SO_NO_CHECK the NO means that to disable
+			# checksums you pass setsockopt 1).
 			#
 			# To see how to do this for non-Linux machines
 			# see page 498-499 of Unix Network Programming Volume
@@ -95,10 +98,10 @@ class cleanUDP :
 			# from python.
 			try:
 				self.socket.setsockopt(socket.SOL_SOCKET,
-						       socket.SO_NO_CHECK, 1)
-				is_udp_checksum_on = self.socket.getsockopt(
+						       socket.SO_NO_CHECK, 0)
+				is_udp_checksum_off = self.socket.getsockopt(
 					socket.SOL_SOCKET, socket.SO_NO_CHECK)
-				if not is_udp_checksum_on:
+				if is_udp_checksum_off:
 					sys.stderr.write(
 						"UDP checksum not enabled.\n")
 			except socket.error:
