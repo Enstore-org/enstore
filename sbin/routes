@@ -34,11 +34,11 @@ lsKnownDown() { enstore sched --show |
 		done
 	      }
 
-# function to select critical nodes (servers *srv[0-246], mainly)
+# function to select critical nodes (servers *srv[0-24], mainly)
 #	fndca3a		dcache head node (fndca)
 #	stkendca2a	dcache door node (fndca1)
 criticalNode() { echo "$1" |
-		 egrep '(d0|stk|cdf)ensrv[0-246]|fndca3a|stkendca2a' > /dev/null
+		 egrep '(d0|stk|cdf)ensrv[0-24]|fndca3a|stkendca2a' > /dev/null
 	       }
 
 case $job in
