@@ -580,7 +580,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             return
         if res[0]['remaining'] <= 1:
             # all done, delete this entry
-            q = "delete from active_file_copying where bfid = '%s;"%(bfid)
+            q = "delete from active_file_copying where bfid = '%s';"%(bfid)
             try:
                 res = self.dict.db.query(q)
             except:
