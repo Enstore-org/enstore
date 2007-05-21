@@ -7925,6 +7925,7 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
         request = {}
         if e.volume and e.list:
             number, filename = list_of_files[i].split()[:2]
+            number = int(number)
             request['infile'] = os.path.join(e.input[0],
                                              os.path.basename(filename))
             request['vc'] = vc_reply.copy()
