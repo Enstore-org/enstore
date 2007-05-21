@@ -1643,7 +1643,8 @@ def check_file(f, file_info):
                 if vol['status'][0] == e_errors.NO_VOLUME:
                     err.append('missing vol ' + filedb['external_label'])
                 else:
-                    err.append('error finding vol' + filedb['external_label'])
+                    err.append("error finding vol %s: (%s)" %
+                               (filedb['external_label'], vol['status']))
                 return err, warn, info
             file_family = volume_family.extract_file_family(vol['volume_family'])
             library = vol['library']
