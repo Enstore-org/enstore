@@ -46,7 +46,7 @@ sdsscp:
 	cp $(ENSTORE_DIR)/src/GET_BIN/get SDSSCP_BIN
 	cp $(ENSTORE_DIR)/src/GET_BIN/enroute2 SDSSCP_BIN
 	cp $(ENSTORE_DIR)/ups/chooseConfig SDSSCP_BIN
-	sed -e 's/encp/sdsscp/g' $(ENSTORE_DIR)/ups/encp.table > SDSSCP_BIN/sdsscp.table
+	sed -e 's/encp/sdsscp/g' -e 's/ENCP/SDSSCP/' $(ENSTORE_DIR)/ups/encp.table > SDSSCP_BIN/sdsscp.table
 	- rm -rf SDSSCP_TEMP
 
 # This install never works!
