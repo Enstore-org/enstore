@@ -283,8 +283,9 @@ LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get
-LIST_SG_COUNT = "ls-sg-count"                #volume
 LIST_DRIVES = "list-drives"                  #media
+LIST_SG_COUNT = "ls-sg-count"                #volume
+LIST_VOLUMES = "list-volumes"                #media
 LOAD = "load"                                #configuration
 LOG = "log"                                  #medaia(s)
 LOGFILE_DIR = "logfile-dir"                  #plotter
@@ -378,7 +379,9 @@ SHORTCUT = "shortcut"                        #encp
 SHOW = "show"                                #configuration, inquisitor, media
 SHOW_BAD = "show-bad"                        #file
 SHOW_BY_LIBRARY = "show-by-library"          #quota
+SHOW_COPIES = "show-copies"                  #info
 SHOW_DRIVE = "show-drive"                    #media
+SHOW_FILE = "show-file"                      #info
 SHOWID = "showid"                            #pnfs
 SHOW_IGNORED_STORAGE_GROUPS = "show-ignored-storage-groups"   #volume
 SHOW_QUOTA = "show-quota"                    #volume
@@ -476,6 +479,7 @@ valid_option_list = [
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
     LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
+    LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,
@@ -498,7 +502,8 @@ valid_option_list = [
     RM, RM_ACTIVE_VOL, RM_SUSPECT_VOL, ROOT_ERROR,
     SAAG_STATUS, SENDTO, SEQUENTIAL_FILENAMES,
     SET_CRCS, SET_COMMENT, SEVERITY, SG,
-    SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, 
+    SHORTCUT, SHOW, SHOW_BAD, SHOW_BY_LIBRARY, SHOW_DRIVE, SHOW_FILE,
+    SHOW_COPIES,
     SHOWID, SHOW_IGNORED_STORAGE_GROUPS,
     SHOW_QUOTA, SHOW_ROBOT, SHOW_STATE, SHOW_VOLUME,
     SIZE, SKIP_DELETED_FILES, SKIP_PNFS,

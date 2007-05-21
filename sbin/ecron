@@ -108,19 +108,14 @@ quit() {
 # of errors happened, as specified by error_count.
 # if -c is omitted, -c 1 is assumed
 
-# Feb 13, 2007 Modifies again to add -need-enstore option
-# with -need-enstore option, ecron will not execute if the enstore
-# system is marked down
-
 # additional products
 
 products=
 job=
 cwd=`pwd`
 cntlimit=1
-need_enstore="no"
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ]
 do
 	case $1 in
 	-setup)
@@ -131,9 +126,6 @@ do
 			products=${products},$2
 		fi
 		shift
-		;;
-	-need-enstore)
-		need_enstore="yes"
 		;;
 	-D)
 		var=`echo $2 | cut -f 1 -d '='`
@@ -230,23 +222,10 @@ then
 fi
 
 shift
+echo  Executing: $procName $*
 
-if [ $need_enstore = "yes" ]
-then
-	if [ "`enstore inq --is-up enstore`" = "yes" ]
-	then
-		echo  Executing: $procName $*
-		eval $procName $*  >$procOutput 2>&1
-		problem=$?
-	else
-		echo  Enstore is down
-		problem=-3
-	fi
-else
-	echo  Executing: $procName $*
-	eval $procName $*  >$procOutput 2>&1
-	problem=$?
-fi
+eval $procName $*  >$procOutput 2>&1
+problem=$?
 
 if [ -n "${logit:-}" ]
 then

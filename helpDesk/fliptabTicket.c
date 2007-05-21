@@ -191,7 +191,7 @@ int main( int argc, char *argv[] )
    fields[7].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[8].fieldId = AR_FERMI_EMAIL;
-   fields[8].value.u.charVal = "isa-group@fnal.gov";
+   fields[8].value.u.charVal = "ssa-group@fnal.gov";
    fields[8].value.dataType = AR_DATA_TYPE_CHAR;
 
    fields[9].fieldId = AR_FERMI_CATEGORY;

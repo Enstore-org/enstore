@@ -1496,7 +1496,8 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		    elif func == NOOUTAGE:
 			delkey(key, outage_d)
 		    elif func == OVERRIDE:
-			override_d[key] = [ticket["saagStatus"], time.time()]
+			reason = ticket.get("reason", "<no given reason>")
+			override_d[key] = [ticket["saagStatus"], time.time(), reason]
 		    elif func == NOOVERRIDE:
 			delkey(key, override_d)
 	    if not sfile.write(outage_d, offline_d, override_d):

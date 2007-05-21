@@ -417,16 +417,6 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             self.reply_to_caller(ticket)
             return
 
-        # look up in our dictionary the request bit field id
-        finfo = self.dict[bfid] 
-        if not finfo:
-            ticket["status"] = (e_errors.NO_FILE, 
-                                "File Clerk: bfid %s not found"%(bfid,))
-            Trace.log(e_errors.INFO, "%s"%(ticket,))
-            self.reply_to_caller(ticket)
-            Trace.trace(10,"del_bfid %s"%(ticket["status"],))
-            return
-
         # now just delete the bfid
         del self.dict[bfid]
         Trace.log(e_errors.INFO, "bfid %s has been removed from DB"%(bfid,))

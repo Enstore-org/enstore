@@ -126,6 +126,11 @@ host/stkenmvr112a.fnal.gov@FNAL.GOV
 host/stkenmvr113a.fnal.gov@FNAL.GOV
 host/stkenmvr114a.fnal.gov@FNAL.GOV
 host/stkenmvr115a.fnal.gov@FNAL.GOV
+host/stkenmvr117a.fnal.gov@FNAL.GOV
+host/stkenmvr118a.fnal.gov@FNAL.GOV
+host/stkenmvr119a.fnal.gov@FNAL.GOV
+host/stkenmvr120a.fnal.gov@FNAL.GOV
+host/stkenmvr121a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `stkensrv3',
 host/stkendca6a.fnal.gov@FNAL.GOV
 host/stkendca7a.fnal.gov@FNAL.GOV
@@ -142,10 +147,6 @@ host/stkendca17a.fnal.gov@FNAL.GOV
 host/stkendca18a.fnal.gov@FNAL.GOV
 host/stkendca19a.fnal.gov@FNAL.GOV
 host/stkendca20a.fnal.gov@FNAL.GOV, `dnl')
-host/stkendm1a.fnal.gov@FNAL.GOV
-host/stkendm2a.fnal.gov@FNAL.GOV
-host/stkendm3a.fnal.gov@FNAL.GOV
-host/stkendm4a.fnal.gov@FNAL.GOV
 host/cdfensrv0.fnal.gov@FNAL.GOV
 host/cdfensrv1.fnal.gov@FNAL.GOV
 host/cdfensrv2.fnal.gov@FNAL.GOV
@@ -179,7 +180,16 @@ host/cdfenmvr101a.fnal.gov@FNAL.GOV
 host/cdfenmvr102a.fnal.gov@FNAL.GOV
 host/cdfenmvr104a.fnal.gov@FNAL.GOV
 host/cdfenmvr105a.fnal.gov@FNAL.GOV
-host/cdfenmvr110a.fnal.gov@FNAL.GOV))
+host/cdfenmvr110a.fnal.gov@FNAL.GOV
+host/cdfenmvr127a.fnal.gov@FNAL.GOV
+host/cdfenmvr128a.fnal.gov@FNAL.GOV
+host/cdfenmvr129a.fnal.gov@FNAL.GOV
+host/cdfenmvr130a.fnal.gov@FNAL.GOV
+host/cdfenmvr131a.fnal.gov@FNAL.GOV
+host/stkendm1a.fnal.gov@FNAL.GOV
+host/stkendm2a.fnal.gov@FNAL.GOV
+host/stkendm3a.fnal.gov@FNAL.GOV
+host/stkendm4a.fnal.gov@FNAL.GOV))
 ifelse(HOSTNAME, `stkensrv1',
 host/fndca3a.fnal.gov@FNAL.GOV
 host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')

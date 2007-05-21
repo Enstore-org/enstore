@@ -30,6 +30,14 @@ MY_SERVER = enstore_constants.INFO_SERVER   #"info_server"
 RCV_TIMEOUT = 10
 RCV_TRIES = 1
 
+# union(list_of_sets)
+def union(s):
+    res = []
+    for i in s:
+        for j in i:
+            if not j in res:
+                res.append(j)
+    return res
 
 # timestamp2time(ts) -- convert "YYYY-MM-DD HH:MM:SS" to time 
 def timestamp2time(s):
@@ -86,6 +94,23 @@ def show_volume(v):
 	else:
 		print
 
+# bfid, storage_group, library, media_type, volume,
+# location_cookie, size, crc, pnfsid, pnfs_path
+show_file_format = "%20s %8s %8s %8s %8s %22s %7s %12d %12d %20s %s"
+def show_file(f, verbose=0):
+	print show_file_format%(
+		f['bfid'],
+		f['storage_group'],
+		f['library'],
+		f['media_type'],
+		f['external_label'],
+		f['location_cookie'],
+		f['deleted'],
+		f['size'],
+		f['complete_crc'],
+		f['pnfsid'],
+		f['pnfs_name0'])
+
 class infoClient(generic_client.GenericClient):
 	def __init__(self, csc, logname='UNKNOWN', rcv_timeout = RCV_TIMEOUT,
 		     rcv_tries = RCV_TRIES, flags=0, logc=None, alarmc=None,
@@ -141,6 +166,61 @@ class infoClient(generic_client.GenericClient):
 		if r.has_key('work'):
 			del r['work']
 		return r
+
+	def file_info(self, bfid):
+		r = self.send({"work" : "file_info", "bfid": bfid})
+		return r
+
+	# find_copies(bfid) -- find the first generation of copies
+	def find_copies(self, bfid, timeout=0, retry=0):
+		ticket = {'work': 'find_copies',
+				  'bfid': bfid}
+		return self.send(ticket, timeout, retry)
+
+	# find_all_copies(bfid) -- find all copies from this file
+	# This is done on the client side
+	def find_all_copies(self, bfid):
+		res = self.find_copies(bfid)
+		if res["status"][0] == e_errors.OK:
+			copies = union([[bfid], res["copies"]])
+			for i in res["copies"]:
+				res2 = self.find_all_copies(i)
+				if res2["status"][0] == e_errors.OK:
+					copies = union([copies, res2["copies"]])
+				else:
+					return res2
+			res["copies"] = copies
+		return res 
+
+	# find_original(bfid) -- find the immidiate original
+	def find_original(self, bfid, timeout=0, retry=0):
+		ticket = {'work': 'find_original',
+				  'bfid': bfid}
+		if bfid:
+			ticket = self.send(ticket, timeout, retry)
+		else:
+			ticket['status'] = (e_errors.OK, None)
+		return ticket
+
+	# find_the_original(bfid) -- find the altimate original of this file
+	# This is done on the client side
+	def find_the_original(self, bfid):
+		res = self.find_original(bfid)
+		if res['status'][0] == e_errors.OK:
+			if res['original']:
+				res2 = self.find_the_original(res['original'])
+				return res2
+			# this is actually the else part
+			res['original'] = bfid
+		return res
+
+	# find_duplicates(bfid) -- find all original/copies of this file
+	# This is done on the client side
+	def find_duplicates(self, bfid):
+		res = self.find_the_original(bfid)
+		if res['status'][0] == e_errors.OK:
+			return self.find_all_copies(res['original'])
+		return res
 
 	def find_file_by_path(self, pnfs_name0):
 		r = self.send({"work" : "find_file_by_path", "pnfs_name0" : pnfs_name0})
@@ -737,6 +817,8 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 		self.query = ''
 		self.find_same_file = None
 		self.file = None
+		self.show_file = None
+		self.show_copies = None
 
 		generic_client.GenericClientInterface.__init__(self, args=args,
 													   user_mode=user_mode)
@@ -760,6 +842,16 @@ class InfoClientInterface(generic_client.GenericClientInterface):
 				option.VALUE_TYPE:option.STRING,
 				option.VALUE_USAGE:option.REQUIRED,
 				option.VALUE_LABEL:"path|pnfsid|bfid|vol:loc",
+				option.USER_LEVEL:option.USER},
+		option.SHOW_FILE:{option.HELP_STRING:"show info of a file",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"bfid",
+				option.USER_LEVEL:option.USER},
+		option.SHOW_COPIES:{option.HELP_STRING:"all copies of a file",
+				option.VALUE_TYPE:option.STRING,
+				option.VALUE_USAGE:option.REQUIRED,
+				option.VALUE_LABEL:"bfid",
 				option.USER_LEVEL:option.USER},
 		option.BFIDS:{option.HELP_STRING:"list all bfids on a volume",
 				option.VALUE_TYPE:option.STRING,
@@ -896,6 +988,16 @@ def do_work(intf):
 			del ticket['status']
 			pprint.pprint(ticket)
 			ticket['status'] = status
+
+	elif intf.show_file:
+		ticket = ifc.file_info(intf.show_file)
+		show_file(ticket['file_info'])
+
+	elif intf.show_copies:
+		ticket = ifc.find_all_copies(intf.show_copies)
+		for i in ticket["copies"]:
+			ticket = ifc.file_info(i)
+			show_file(ticket['file_info'])
 
 	elif intf.ls_active:
 		ticket = ifc.list_active(intf.ls_active)
@@ -1069,7 +1171,6 @@ def do_work(intf):
 	else:
 		intf.print_help()
 		sys.exit(0)
-
 	ifc.check_ticket(ticket)
 
 if __name__ == '__main__':

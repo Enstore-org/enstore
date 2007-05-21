@@ -781,37 +781,52 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             fname = self.filepath
 
-        #Check if we can get the database directly.  This only works
-        # for directories.
         try:
-            initial_pnfs_database = self.get_database(fname).strip()
+            #Getting the db from 
+            initial_pnfs_db = int(self.get_id(fname)[:4], 16)
             current_path = old_path = fname
         except (OSError, IOError), msg:
-            #If we need a directory, get it and try again.
-            if msg.args[0] == errno.ENOTDIR:
-                try:
-                    dname = get_directory_name(fname)
-                    initial_pnfs_database = self.get_database(dname).strip()
-                    current_path = old_path = dname
-                except (OSError, IOError):
-                    raise sys.exc_info()[0], sys.exc_info()[1], \
-                          sys.exc_info()[2]
-            else:
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            #Check if the file does not exist.
+            if not os.path.exists(fname):
+                raise OSError(errno.ENOENT,
+                              "%s: %s" % (os.strerror(errno.ENOENT), fname))
+
+            #Check if we can get the database directly.  This only works
+            # for directories.
+            try:
+                current_pnfs_db = int(self.get_database(fname).split(":")[1],
+                                      16)
+                #We were given the mount point as that starting point.
+                return fname
+            except (OSError, IOError), msg2:
+                if msg2.args[0] == errno.ENOENT:
+                    raise OSError(errno.ENOENT,
+                                  "%s: %s" % (os.strerror(errno.EINVAL),
+                                              "Not a valid pnfs directory"))
+
+            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
         #Strip off one directory segment at a time.  We are looking for
         # where the DB number changes.
         while 1:
             current_path = os.path.dirname(current_path)
             try:
-                current_pnfs_database = self.get_database(current_path).strip()
+                current_pnfs_db = int(self.get_id(current_path)[:4], 16)
             except (OSError, IOError), msg:
-                if msg.args[0] in [errno.ENOENT]:
-                    #We found the mount point.
-                    return old_path
-                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-
-            if initial_pnfs_database != current_pnfs_database:
+                if msg.args[0] == errno.ENOENT:
+                    #We've reached the top without hitting a change of DB.
+                    current_pnfs_db = int(self.get_database(old_path).split(":")[1],
+                                          16)
+                    if initial_pnfs_db == current_pnfs_db:
+                        #This check is here only as great paranoia.  If
+                        # getting the database id didn't through a traceback
+                        # then we should be good to go.
+                        return current_path
+                    else:
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+                else:
+                    raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            if initial_pnfs_db != current_pnfs_db:
                 #We found the change of DB.
                 return old_path
             old_path = current_path
@@ -850,7 +865,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                16)
         except (OSError, IOError):
             #We will need the pnfs database numbers.
-            use_pnfsid_db=int(id[:4], 16)
+            #use_pnfsid_db=int(use_id[:4], 16)
             count = 0
             found_db_num = None
             found_fname = None
@@ -859,7 +874,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             for db_num, mp in mp_dict.items():
                 #If the mountpoint doesn't know about our database fail now.
                 try:
-                    N(db_num, mp).get_databaseN(use_pnfsid_db)
+                    N(db_num, mp).get_databaseN(db_num)
                 except (OSError, IOError):
                     continue
                 
@@ -895,7 +910,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     found_db_num = db_num
                     found_fname = pfn
                 except (OSError, IOError), msg:
-                    if msg.args[0] in [errno.EIO]:
+                    if msg.args[0] == errno.EIO:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
@@ -908,10 +923,6 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                             raise OSError(errno.EIO,
                                           "Found unnamed orphan file: %s" % 
                                           pfn)
-                    if msg.args[0] in [errno.EPERM]:
-                        raise OSError(errno.EPERM,
-                                      "%s: %s" % (os.strerror(errno.EPERM),
-                                                  pfn))
                     continue
 
             if count == 0:

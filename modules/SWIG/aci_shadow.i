@@ -30,12 +30,10 @@
 enum aci_media { ACI_3480 = 1, ACI_OD_THICK, ACI_OD_THIN,
                  ACI_DECDLT, ACI_8MM, ACI_4MM, ACI_D2, ACI_VHS, ACI_3590,
                  ACI_CD, ACI_TRAVAN, ACI_DTF, ACI_BETACAM, ACI_AUDIO_TAPE
-                 ACI_BETACAML, ACI_SONY_AIT, ACI_LTO, ACI_DVCM, ACI_DVCL,
-                 ACI_NUMOF_MEDIA, ACI_MEDIA_AUTO=999 };
+                 };
 
 enum aci_command {ACI_ADD = 1, ACI_MODIFY, ACI_DELETE};
-enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP, ACI_DRIVE_FDOWN,
-     ACI_DRIVE_FUP, ACI_DRIVE_EXUP};
+enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP};
 
 /*-------------------------------------------------------------------------*/
 

@@ -18,8 +18,9 @@ Cmnd_Alias	PYTHON  = /usr/bin/python, /usr/local/bin/python, \
 Cmnd_Alias	PIDKILL = /home/enstore/enstore/bin/pidkill, \
 			  /home/enstore/enstore/bin/pidkill_s, \
 			  /bin/kill
+Cmnd_Alias      MOVER   = /home/enstore/enstore/sbin/mover
 
 # User privilege specification
 root		ALL = (ALL) ALL
 
-enstore		ALL = NOPASSWD:PYTHON, NOPASSWD:PIDKILL
+enstore		ALL = NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER

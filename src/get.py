@@ -376,7 +376,7 @@ def wait_for_final_dialog(control_socket, udp_socket, e):
 
     if not e_errors.is_ok(mover_udp_done_ticket):
         Trace.log(e_errors.ERROR, "MOVER_UDP_DONE_TICKET")
-        Trace.log(e_errors.ERROR, str(mover_udp_done_ticket))
+        Trace.log(e_errors.ERROR, pprint.pformat(mover_udp_done_ticket))
 
     return mover_done_ticket
 

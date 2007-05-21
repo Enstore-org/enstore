@@ -104,18 +104,9 @@ ensync_cmd:
 	cp ENSYNC_BIN_TEMP/ensync_user      ENCPBIN/ensync
 	rm -rf ENSYNC_BIN_TEMP
 
-enmv_cmd:
-	- rm -rf ENMV_BIN_TEMP
-	mkdir ENMV_BIN_TEMP
-	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv_user.py
-	(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENMV_BIN_TEMP/enmv_user      ENCPBIN
-	rm -rf ENMV_BIN_TEMP
+encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd post_encp_cmd
 
-
-encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd enmv_cmd post_encp_cmd
-
-encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_cmd enmv_cmd post_encp_cmd
+encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_cmd post_encp_cmd
 
 ### The following groupings for for building the server side programs
 ### intended for use by the Enstore administrators.
@@ -123,42 +114,36 @@ encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_
 ### The command of interest is "make enstore".
 
 pre_enstore:
-	 @ if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
-	 @ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
+	@ if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
+	@ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENSTORE_BIN
 	mkdir ENSTORE_BIN
-	mkdir ENSTORE_BIN/bin
-	mkdir ENSTORE_BIN/sbin
-	mkdir ENSTORE_BIN/etc
 
 post_enstore:
-	mv ENSTORE_BIN/bin/encp_admin ENSTORE_BIN/bin/encp
-	mv ENSTORE_BIN/bin/enstore_admin ENSTORE_BIN/bin/enstore
-	mv ENSTORE_BIN/bin/ensync_admin ENSTORE_BIN/bin/ensync
-	mv  ENSTORE_BIN/bin/enmv_admin ENSTORE_BIN/bin/enmv
+	mv ENSTORE_BIN/encp_admin ENSTORE_BIN/encp
+	mv ENSTORE_BIN/enstore_admin ENSTORE_BIN/enstore
+	mv ENSTORE_BIN/ensync_admin ENSTORE_BIN/ensync
 
-	cp ../modules/enroute2	ENSTORE_BIN/bin/
-	cp ../modules/ddencp	ENSTORE_BIN/bin/
-	cp ../modules/ecrc	ENSTORE_BIN/bin/
-	cp ../bin/en_check	ENSTORE_BIN/bin/
+	cp ../modules/enroute2	ENSTORE_BIN
+	cp ../modules/ddencp	ENSTORE_BIN
+	cp ../modules/ecrc	ENSTORE_BIN
+	cp ../bin/en_check	ENSTORE_BIN
 
-#These are the list breakdowns.
 SERVER_LIST=configuration_server log_server event_relay library_manager
 SERVER_HTMLGEN_LIST=alarm_server inquisitor ratekeeper monitor_server
 SERVER_SQL_LIST=file_clerk volume_clerk info_server accounting_server drivestat_server
 SERVER_LIB_LIST=media_changer mover
 
-#These are the full lists.
 FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST)
-FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin enmv_admin
+FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin
 
 $(FULL_SERVER_LIST): $$@.py
 	- rm -rf SERVER_BIN_TEMP 
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/sbin/$@
+	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/$@
 	rm -rf SERVER_BIN_TEMP
 
 $(FULL_CLIENT_LIST): $$@.py
@@ -166,10 +151,18 @@ $(FULL_CLIENT_LIST): $$@.py
 	mkdir CLIENT_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o CLIENT_BIN_TEMP $@.py
 	(cd CLIENT_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp CLIENT_BIN_TEMP/$@      ENSTORE_BIN/bin/$@
+	cp CLIENT_BIN_TEMP/$@      ENSTORE_BIN/$@
 	rm -rf CLIENT_BIN_TEMP
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
+
+
+#- rm -rf ENMV_BIN_TEMP
+#mkdir ENMV_BIN_TEMP
+#python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv.py
+#(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+#cp ENMV_BIN_TEMP/enmv      ENCPBIN
+#rm -rf ENMV_BIN_TEMP
 
 fileinfo:
 	- rm -rf FILEINFO_TEMP
