@@ -51,7 +51,18 @@ def Select (R, W, X, timeout) :
 	t0 = time.time()
 	timeout = max(0.0, timeout)
         while 1 :
-		r, w, x = select.select(R, W, X, timeout)
+		try:
+			r, w, x = select.select(R, W, X, timeout)
+		except select.error, msg:
+			#If a signal interupts our select, try again.
+			if msg.args[0] in [errno.EINTR]:
+				time.sleep(1)
+				timeout = timeout - (time.time() - t0)
+				timeout = max(0.0, timeout)
+				continue
+			else:
+				raise select.error, msg #all other errors
+		
 		timeout = timeout - (time.time() - t0)
 		timeout = max(0.0, timeout)
 
