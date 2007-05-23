@@ -2107,6 +2107,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             Trace.trace(33,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
             if self.tr_failed:
+                self.tape_driver.flush() # to empty buffer and to release devivice from this thread
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
             self.bytes_written_last = self.bytes_written

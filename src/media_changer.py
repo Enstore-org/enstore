@@ -51,7 +51,6 @@ import e_errors
 import volume_clerk_client
 import timeofday
 import event_relay_messages
-import callback
 
 def _lock(f, op):
         dummy = fcntl.fcntl(f.fileno(), fcntl.F_SETLKW,
@@ -140,10 +139,6 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         ticket["function"] = "getVolState"
         return self.DoWork( self.getVolState, ticket)
 
-    def viewdrive(self, ticket):
-        ticket["function"] = "getDriveState"
-        return self.DoWork( self.getDriveState, ticket)
-
     # wrapper method for client - server communication
     def insertvol(self, ticket):
         ticket["function"] = "insert"
@@ -179,7 +174,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                               'worklist':result})
 
     def viewdrive(self,ticket):
-        ticket["function"] = "getDriveState"
+        ticket["function"] = "getVolState"
         return self.DoWork( self.getDriveState, ticket)
 
     # load volume into the drive;  default, overridden for other media changers
@@ -380,7 +375,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
             sts=self.prepare( 'Unknown', ticket['drive_id'], ticket['vol_ticket']['media_type'])
             self.logdetail = 1 # back on
             Trace.trace(11,'mcDoWork> child prepare dismount for %s returned %s'%(msg,sts[2]))
-        if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState','getDriveState'):
+        if ticket['function'] in ('insert','eject','homeAndRestart','cleanCycle','getVolState'):
             Trace.trace(11, 'mcDoWork> child doing %s'%(msg,))
             sts = function(ticket)
             Trace.trace(11,'mcDoWork> child %s returned %s'%(msg,sts))
@@ -530,9 +525,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
         import aml2
         return self.retry_function(aml2.robotHome,arm)
 
-    def robotStatus(self, arm):
+    def robotStatus(self):
         import aml2
-        return self.retry_function(aml2.robotStatus, arm)
+        return self.retry_function(aml2.robotStatus)
 
     def robotStart(self, arm):
         import aml2
@@ -560,6 +555,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
     def getVolState(self, ticket):
         import aml2
+        "get current state of the tape"
         external_label = ticket['external_label']
         media_type = ticket['media_type']
         stat,volstate = aml2.view(external_label,media_type)
@@ -568,10 +564,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
             return 'BAD', stat, 'aci_view return code', state
         if volstate == None:
             return 'BAD', stat, 'volume %s not found'%(external_label,),state
-        #Return the correct media type.
-        ticket['media_type'] = aml2.media_names.get(volstate.media_type,
-						    "unknown")
-        return (e_errors.OK, 0, "", volstate.attrib)
+        return (e_errors.OK, 0, "",volstate.attrib)
 
     def cleanCycle(self, inTicket):
         import aml2
@@ -667,160 +660,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
             self.lastWorkTime = time.time()
 
     def robotQuery(self, ticket):
-	ticket['status'] = self.query_robot()
+        ticket['status'] = (e_errors.NOT_SUPPORTED, 0,
+                            "AML2 robot queury is not supported.")
         self.reply_to_caller(ticket)
-
-    def query_robot(self):
-        import aml2
-	#Name of the aci library function.
-	command = "aci_robstat"
-
-	t0 = time.time()
-	status, status_code, response = self.robotStatus(self.robotArm)
-	delta = time.time() - t0
-
-        # got response, parse it and put it into the standard form
-	if not e_errors.is_ok(status):
-		
-		E=19  #19 = ???
-		msg = "robot status %i: %s => %i,%s, %f" % \
-		      (E, command, status_code, response, delta)
-		Trace.log(e_errors.ERROR, msg)
-		return (status, E, response, '', msg)
-	
-        msg = "%s => %i,%s, %f" % (command, status_code, response, delta)	
-        Trace.log(e_errors.INFO, msg)
-        return (e_errors.OK, 0, msg)
-
-    def getDriveState(self, ticket):
-        import aml2
-	drive = ticket['drive']
-        stat, drivestate = aml2.drive_state(drive)
-
-        state='N' # unknown
-        if stat != 0:
-            return 'BAD', stat, "aci_drivestatus2 return code", state
-        if drivestate == None:
-            return 'BAD', stat, "drive %s not found" % (drive,), state
-
-        if drivestate.drive_state == aml2.ACI_DRIVE_UP:
-	    state = "U" #UP
-	elif drivestate.drive_state == aml2.ACI_DRIVE_DOWN:
-	    state = "D" #DOWN
-
-	#Update the ticket with additional information.
-	drive_info = {}
-	drive_info['state'] = aml2.drive_state_names.get(
-		drivestate.drive_state, "unknown")
-	drive_info['type'] = aml2.drive_names.get(str(drivestate.drive_state),
-						  "unknown")
-	drive_info['status'] = 0
-	drive_info['volume'] = drivestate.volser
-	ticket['drive_info'] = drive_info
-        return (e_errors.OK, 0, drivestate.volser, "%s %d" %
-		(state, drivestate.drive_state))
-
-    def list_drives(self, ticket):
-        import aml2
-        stat, drives = aml2.drives_states()
-	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_drivestatus2 return code"
-
-	drive_list = []
-	for drive in drives:
-	    use_state = aml2.drive_state_names.get(drive.drive_state,
-						   drive.drive_state)
-	    use_type = aml2.drive_names.get(drive.type, drive.type)
-	    
-	    drive_list.append({"name" : drive.drive_name,
-			       "state" : use_state,
-			       "status" : 0, #Filler for AML2.
-			       "volume" : drive.volser,
-			       "type" : use_type,
-			       })
-
-	ticket['drive_list'] = drive_list
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-
-    def list_volumes(self, ticket):
-
-        if not hostaddr.allow(ticket['callback_addr']):
-            return
-	    
-        import aml2
-        stat, volumes = aml2.list_volser()
-	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
-
-	volume_list = []
-	for volume in volumes:
-	    use_media_type = aml2.media_names.get(volume.media_type, "UNKNOWN")
-		
-	    volume_list.append({'volume' : volume.volser,
-				'type' : use_media_type,
-				'state' : volume.attrib,
-				'location' : "",
-				})
-
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-	reply=ticket.copy()
-	reply['volume_list'] = volume_list
-	addr = ticket['callback_addr']
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect(ticket['callback_addr'])
-            r = callback.write_tcp_obj(sock,reply)
-            sock.close()
-            if r:
-               Trace.log(e_errors.ERROR,
-			 "Error calling write_tcp_obj. Callback addr. %s"
-			 % (addr,))
-            
-        except:
-            Trace.handle_error()
-            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
-        return
-
-    def list_slots(self, ticket):
-	import aml2
-        stat, slots = aml2.list_slots()
-	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_getcellinfo return code"
-
-	slot_list = []
-	for slot_info in slots:
-	    location = slot_info[0]
-	    for i in range(len(slot_info[1])):
-	        media_type = slot_info[1][i].eMediaType
-		use_media_type = aml2.media_names.get(media_type,
-						      media_type)
-		slot_dict = {"location" : slot_info[0],
-			     "media_type" : use_media_type,
-			     }
-		try:
-		    slot_dict['total'] = slot_info[1][i].ulCount
-	        except IndexError:
-		    slot_dict['total'] = 0
-		try:
-		    slot_dict['free'] = slot_info[2][i].ulCount
-		except IndexError:
-		    slot_dict['free'] = 0
-		try:
-		    slot_dict['used'] = slot_info[3][i].ulCount
-		except IndexError:
-		    slot_dict['used'] = 0
-		try:
-		    slot_dict['disabled'] = slot_info[4][i].ulCount
-		except IndexError:
-		    slot_dict['disabled'] = 0
-
-		    slot_list.append(slot_dict)
-
-	ticket['slot_list'] = slot_list
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
@@ -873,7 +715,7 @@ class STK_MediaLoader(MediaLoaderMethods):
     # see how my good friend the robot is doing
     def robotQuery(self,ticket):
         # don't retry this query - want to know current status
-        ticket['status'] =  self.query_robot()
+        ticket['status'] =  self.query_server()
         self.reply_to_caller(ticket)
 
 
@@ -889,175 +731,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             state = rt[3]
             if not state and rt[2]:  # volumes not in the robot
                 state = rt[2]
-	#Return the correct media type.
-	try:
-	    ticket['media_type'] = rt[2].split()[-1]
-	except (IndexError, ValueError, TypeError, AttributeError):
-	    pass
-
         return (rt[0], rt[1], rt[2], state)
 
-    def list_volumes(self, ticket):
-        # build the command, and what to look for in the response
-        command = "query volume all"
-        answer_lookfor = "query volume all"
-
-        # execute the command and read the response
-        # FIXME - what if this hangs?
-        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
-        #status,response, delta = self.timed_command(command,4,10)
-        status,response, delta = self.timed_command(command,4,60)
-        if status != 0:
-            E=4
-            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, '', msg)
-
-        volume_list = []
-        for line in response:
-	    if line.find("Volume Status") >= 0 or line.find("Identifier") >= 0:
-	        #This is some other information.
-	        continue
-
-	    volume = line[1:13].strip()
-	    state = line[13:29].strip()
-	    location = line[31:45].strip()
-	    type = line[47:].strip()
-	    
-	    volume_list.append({"volume" : volume,
-			       "state" : state,
-			       "location" : location,
-			       "type" : type,
-			       })
-
-	ticket['volume_list'] = volume_list
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-
-    def list_slots(self, ticket):
-        # build the command, and what to look for in the response
-        command = "query lsm all"
-        answer_lookfor = "query lsm all"
-
-        # execute the command and read the response
-        # FIXME - what if this hangs?
-        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
-        #status,response, delta = self.timed_command(command,4,10)
-        status, response, delta = self.timed_command(command,4,60)
-        if status != 0:
-            E=4
-            msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, '', msg)
-
-        slot_list = []
-        for line in response:
-	    if line.find("ACSSA") >= 0 or line.find("LSM Status") >= 0 or \
-		   line.find("Identifier") >= 0 or line.find("Count") >= 0 \
-		   or len(line) == 0:
-	        #This is some other information.
-	        continue
-
-	    lsm = line[:13].strip().replace(" ", "")
-	    free = line[31:42].strip()
-
-	    slot_list.append({"location" : lsm,
-			      "media_type" : "all",
-			      "total" : "0",
-			      "free" : free,
-			      "used" : "0",
-			      "disabled" : "0",
-			      })
-
-	    #Obtain specific full cell/slot count.
-	    command2 = "display cell %s,*,*,* -status full -c" % lsm
-	    answer_lookfor2 = "display cell"
-	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
-	    if status == 0:
-	        for line2 in response2:
-		    if line2.find("ACSSA") >= 0 or \
-		       line2.find("display cell") >= 0 or \
-		       line2.find("Display Cell") >= 0 or \
-		       line2.find("Number of cells selected") >= 0 \
-		       or len(line2) == 0:
-		        #This is some other information.
-			continue
-
-		    try:
-		        used = int(line2)
-			slot_list[-1]['used'] = used
-			break
-		    except TypeError:
-			pass
-
-	    #Obtain specific total cell/slot count.
-	    command2 = "display cell %s,*,*,* -c" % lsm
-	    answer_lookfor2 = "display cell"
-	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
-	    if status == 0:
-	        for line2 in response2:
-		    if line2.find("ACSSA") >= 0 or \
-		       line2.find("display cell") >= 0 or \
-		       line2.find("Display Cell") >= 0 or \
-		       line2.find("Number of cells selected") >= 0 \
-		       or len(line2) == 0:
-		        #This is some other information.
-			continue
-
-		    try:
-		        total = int(line2)
-			slot_list[-1]['total'] = total
-			break
-		    except TypeError:
-			pass
-
-	    #Obtain specific inaccessable/disabled cell/slot count.
-	    command2 = "display cell %s,*,*,* -status inaccessible -c" % lsm
-	    answer_lookfor2 = "display cell"
-	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
-	    if status == 0:
-	        for line2 in response2:
-		    if line2.find("ACSSA") >= 0 or \
-		       line2.find("display cell") >= 0 or \
-		       line2.find("Display Cell") >= 0 or \
-		       line2.find("Number of cells selected") >= 0 \
-		       or len(line2) == 0:
-		        #This is some other information.
-			continue
-
-		    try:
-		        inaccessible = int(line2)
-			#This value is added to the reserved count.
-			break
-		    except TypeError:
-			pass
-
-	    #Obtain specific inaccessable/disabled cell/slot count.
-	    command2 = "display cell %s,*,*,* -status reserved -c" % lsm
-	    answer_lookfor2 = "display cell"
-	    status2, response2, delta2 = self.timed_command(command2, 4, 60)
-	    if status == 0:
-	        for line2 in response2:
-		    if line2.find("ACSSA") >= 0 or \
-		       line2.find("display cell") >= 0 or \
-		       line2.find("Display Cell") >= 0 or \
-		       line2.find("Number of cells selected") >= 0 \
-		       or len(line2) == 0:
-		        #This is some other information.
-			continue
-
-		    try:
-		        reserved = int(line2)
-			break
-		    except TypeError:
-			pass
-
-	    #Sum these two values for the disabled count.
-	    slot_list[-1]['disabled'] = reserved + inaccessible
-
-        ticket['slot_list'] = slot_list
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
 
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
@@ -1140,11 +815,6 @@ class STK_MediaLoader(MediaLoaderMethods):
     # execute a stk cmd_proc command, but don't wait forever for it to complete
     #mostly stolen from Demo/tkinter/guido/ShellWindow.py - spawn function
     def timed_command(self,cmd,min_response_length=0,timeout=60):
-
-        message = ""
-        blanks=0
-        nread=0
-
         now=timeofday.tod()
         p2cread, p2cwrite = os.pipe()
         c2pread, c2pwrite = os.pipe()
@@ -1205,23 +875,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                 p,r = os.waitpid(pid,os.WNOHANG)
                 if p!=0:
                     break
-	        #We need to start reading this now for really long responses.
-		# Otherwise, the buffer fills up with the child waiting
-		# for the parent to read something from the full buffer.
-		# And the parent waits for the child to finish.
-	        msg=os.read(c2pread,2000)
-		if msg:
-		    if self.DEBUG:
-		        print msg,
-		    message = message+msg
-		    #Need to reset the timeout period.
-		    start = time.time()
-		    active = 0
-		else:
-		    if msg == '':
-		        blanks = blanks+1
-		    active = time.time() - start
-		    time.sleep(1)
+                time.sleep(1)
+                active=time.time()-start
             else:
                 msg="killing %d => %s" % (pid,cmd)
                 print timeofday.tod(),msg
@@ -1246,7 +901,10 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    os.close(c2pread)
             return -2,[], self.delta_t(mark)[0]
 
-        # now read response from the pipe (Some of
+        # now read response from the pipe
+        message = ""
+        blanks=0
+        nread=0
 	if string.find(cmd,'mount') != -1:  # this is a mount or a dismount command
 	    maxread=100  # quick response on queries
 	else:
@@ -1262,11 +920,8 @@ class STK_MediaLoader(MediaLoaderMethods):
 	  ntries=ntries+1
           #while blanks<2 and nread<maxread:
 	  while nread<maxread:
-            msg=os.read(c2pread,2000)
-	    message = message + msg
-	    if msg:
-	        if self.DEBUG:
-		    print msg,
+            msg=os.read(c2pread,200)
+            message = message+msg
             nread = nread+1
             if msg == '':
                 blanks = blanks+1
@@ -1527,7 +1182,7 @@ class STK_MediaLoader(MediaLoaderMethods):
         return (e_errors.OK, 0,msg)
 
 
-    def query_robot(self):
+    def query_server(self):
 
         # build the command, and what to look for in the response
         command = "query server"
@@ -1547,68 +1202,13 @@ class STK_MediaLoader(MediaLoaderMethods):
         answer = string.strip(response[4])
         if string.find(answer, answer_lookfor,0) != 0:
             E=19
-            msg = "query server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
+            msg = "query_server %i: %s => %i,%s, %f" % (E,command,status,response,delta)
             Trace.log(e_errors.ERROR, msg)
             return ("ERROR", E, response, '', msg)
         msg = "%s => %i,%s, %f" % (command,status,answer[0:17],delta)
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0,msg)
 
-    query_server = query_robot  #Backward compatiblity. (Still needed?)
-
-    def getDriveState(self, ticket):
-        import aml2
-	drive = ticket['drive']
-	rt = self.retry_function(self.query_drive, drive)
-	#Update the ticket with additional information.
-	drive_info = {}
-	drive_info['state'] = rt[2][len(drive):len(drive)+16].strip()
-	drive_info['status'] = rt[2][len(drive)+16:len(drive)+16+11].strip()
-	drive_info['volume'] = rt[2][len(drive)+16+11:len(drive)+16+11+11].strip()
-	drive_info['type'] = rt[2][len(drive)+16+11+11:].strip()
-	ticket['drive_info'] = drive_info
-	return rt[0], rt[1], rt[3], rt[4]
-
-    def list_drives(self, ticket):
-
-        # build the command, and what to look for in the response
-        command = "query drive ALL"
-        answer_lookfor = "query drive ALL"
-
-        # execute the command and read the response
-        # FIXME - what if this hangs?
-        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
-        #status,response, delta = self.timed_command(command,4,10)
-        status,response, delta = self.timed_command(command,4,60)
-        if status != 0:
-            E=4
-            msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, '', msg)
-
-        drive_list = []
-        for line in response:
-	    if line[:2] != "  ":
-	        #This is some other information.
-	        continue
-
-	    name = line[2:13].strip()
-	    state = line[14:29].strip()
-	    status = line[30:41].strip()
-	    volume = line[42:52].strip()
-	    type = line[53:].strip()
-	    
-	    drive_list.append({"name" : name.replace(" ", ""),
-			       "state" : state,
-			       "status" : status,
-			       "volume" : volume,
-			       "type" : type,
-			       })
-
-	ticket['drive_list'] = drive_list
-	ticket['status'] = (e_errors.OK, 0, "")
-	self.reply_to_caller(ticket)
-	    
 # manual media changer
 class Manual_MediaLoader(MediaLoaderMethods):
     def __init__(self, medch, max_work=7, csc=None):

@@ -29,15 +29,11 @@
 
 enum aci_media { ACI_3480 = 1, ACI_OD_THICK, ACI_OD_THIN,
                  ACI_DECDLT, ACI_8MM, ACI_4MM, ACI_D2, ACI_VHS, ACI_3590,
-                 ACI_CD, ACI_TRAVAN, ACI_DTF, ACI_BETACAM, ACI_AUDIO_TAPE,
-		 /* From version 3.1.2 */
-                 ACI_BETACAML, ACI_SONY_AIT, ACI_LTO, ACI_DVCM, ACI_DVCL,
-                 ACI_NUMOF_MEDIA, ACI_MEDIA_AUTO=999 };
+                 ACI_CD, ACI_TRAVAN, ACI_DTF, ACI_BETACAM, ACI_AUDIO_TAPE
+                 };
 
 enum aci_command {ACI_ADD = 1, ACI_MODIFY, ACI_DELETE};
-enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP, 
-     /* From version 3.1.2 */
-     ACI_DRIVE_FDOWN, ACI_DRIVE_FUP, ACI_DRIVE_EXUP};
+enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP};
 
 /*-------------------------------------------------------------------------*/
 
@@ -59,26 +55,11 @@ enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP,
 #define ACI_MAX_VERSION_LEN 20   /*           including '\0'   */
 #define ACI_MAX_QUERY_VOLSRANGE 1000
 
+
 #define ACI_VOLSER_ATTRIB_MOUNTED   'M'
 #define ACI_VOLSER_ATTRIB_EJECTED   'E'
 #define ACI_VOLSER_ATTRIB_OCCUPIED  'O'
 #define ACI_VOLSER_ATTRIB_UNDEFINED 'U'
-/* From version 3.1.2 */
-#define ACI_VOLSER_ATTRIB_EMPTY             'Y'
-#define ACI_VOLSER_ATTRIB_REVERSSIDEMOUNTED 'R'
-#define ACI_VOLSER_ATTRIB_IN_JUKEBOX        'J'
-#define ACI_VOLSER_ATTRIB_INITIAL           'I'
-#define ACI_VOLSER_ATTRIB_TEMP_HERE         'T'
-#define ACI_VOLSER_ATTRIB_TEMP_AWAY         'A'
-
-/*---------- 3.11 -----------------------------*/
-#define ACI_MS_OCC     0x01
-#define ACI_MS_MKE     0x02
-#define ACI_MS_MNT     0x04
-#define ACI_MS_EJT     0x08
-#define ACI_MS_UNDEF   0x10
-#define ACI_MS_EMPTY   ACI_MS_MKE | ACI_MS_EJT
-#define ACI_MS_ALL     ACI_MS_OCC|ACI_MS_MNT|ACI_MS_UNDEF|ACI_MS_EMPTY
 
 /*-------------------------------------------------------------------------*/
 
@@ -135,11 +116,6 @@ struct aci_volserinfo
        char            attrib;
 };
 
-struct  aci_media_info {
-         enum aci_media  eMediaType;
-         unsigned long   ulCount;
-};
-
 int aci_robhome (char *); 
 int aci_robstat (char *, char *); 
 
@@ -169,22 +145,14 @@ extern int aci_view (char *, enum aci_media, struct aci_vol_desc *desc);
 extern int aci_initialize( void );
 
 extern int aci_qversion( version_string, version_string);
-/* We need to name nCount and volserinfo so that the mappings from
-   aci_typemaps.i only apply to aci_qvolsrange().  Otherwise, collisions
-   occur in the namespace. */
-extern int aci_qvolsrange( char *volser, char *, int, char *clientname,
-                           int * nCount, struct aci_volserinfo * volserinfo);
+extern int aci_qvolsrange( char *, char *, int, char *, int *,
+                           struct aci_volserinfo *               );
 extern int aci_partial_inventory( char *, char *);
 extern int aci_inventory( void );
 extern int aci_scratch_set (char *, enum aci_media , char * );
 extern int aci_scratch_get (char *, enum aci_media , char * );
 extern int aci_scratch_unset (char *, enum aci_media , char * );
 extern int aci_scratch_info (char *,  enum aci_media , long *, long *);
-
-/*   3.11   */
-extern int  aci_getcellinfo( char*, enum aci_media, unsigned int,
-			     int * nCount,
-			     struct aci_media_info * media_info);
 
 /*-------------------------------------------------------------------------*/
 
