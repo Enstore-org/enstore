@@ -158,7 +158,7 @@ def recover(backup_time=None):
     # cmd = 'cat %s/postgresql.conf | sed -e "s/archive_command/#archive_command/g" > %s/postgresql.conf.bak ; mv %s/postgresql.conf.bak  %s/postgresql.conf'% (pgdb,pgdb,pgdb,pgdb)
     cmd = 'sed -i "s/archive_command/#archive_command/g" %s/postgresql.conf '% (pgdb,)
     os.system(cmd)
-    cmd = 'sed -i "s% *shared_buffers*=*.*%shared_buffers = 100%" %s/postgresql.conf'% (pgdb,)
+    cmd = 'sed -i "s# *shared_buffers*=*.*#shared_buffers = 126976 #" %s/postgresql.conf'% (pgdb,)
     os.system(cmd)
 
 
