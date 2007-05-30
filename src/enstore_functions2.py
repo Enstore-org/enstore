@@ -394,6 +394,10 @@ def default_port():
     else:
         return DEFAULT_PORT
 
+def default_file():
+    name = os.environ.get("ENSTORE_CONFIG_FILE",
+                          enstore_constants.DEFAULT_CONF_FILE)
+    return name
 
 def expand_path(filename):
     #Expand the path to the complete absolute path.

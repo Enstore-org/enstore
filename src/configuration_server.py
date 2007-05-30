@@ -24,6 +24,7 @@ import generic_server
 import event_relay_client
 import event_relay_messages
 import enstore_constants
+import enstore_functions2
 import option
 import Trace
 import e_errors
@@ -51,8 +52,11 @@ class ConfigurationDict:
             return msg
         code = string.join(f.readlines(),'')
 
-        configdict={};
-        del configdict # Lint hack, otherwise lint can't see where configdict is defined.
+        # Lint hack, otherwise lint can't see where configdict is defined.
+        configdict={}
+        del configdict 
+        configdict = {}
+
         try:
             exec(code)
             ##I would like to do this in a restricted namespace, but
@@ -111,14 +115,6 @@ class ConfigurationDict:
                 return(e_errors.CONFLICT, "Configuration conflict detected. "
                        "Check configuration file")
 
-            # The other servers call the generic_server __init__ function
-            # to get this function called.  The configuration server does
-            # not use the generic_server __init__() function, so this must be
-            # done expliticly (after the configfile is loaded).
-            domains = self.configdict.get('domains', {})
-            domains['system_name'] = self._get_system_name()
-            hostaddr.update_domains(domains)
-
             #We have successfully loaded the config file.
             self.config_load_timestamp = time.time()
             return (e_errors.OK, None)
@@ -128,7 +124,104 @@ class ConfigurationDict:
             exc,msg=sys.exc_info()[:2]
             return str(exc), str(msg)
 
+    def get_movers_internal(self, ticket):
+        ret = []
+	if ticket.has_key('library'):
+	    # search for the appearance of this library manager
+	    # in all configured movers
+	    for srv in self.configdict.keys():
+		if string.find (srv, ".mover") != -1:
+		    item = self.configdict[srv]
+                    if not ticket['library']:
+                        #If no library was specified, return all movers.
+                        mv = {'mover' : srv,
+                              'address' : (item['hostip'], 
+                                           item['port'])
+                              }
+                        ret.append(mv)
+                        continue
+                    for key in ('library', 'libraries'):
+                        if item.has_key(key):
+                            if type(item[key]) == types.ListType:
+                                for i in item[key]:
+                                    if i == ticket['library']:
+                                        mv = {'mover' : srv,
+                                              'address' : (item['hostip'], 
+                                                          item['port'])
+                                              }
+                                        ret.append(mv)
+                            else:
+                                if item[key] == ticket['library']:
+                                    mv = {'mover' : srv,
+                                          'address' : (item['hostip'], 
+                                                       item['port'])
+                                          }
+                                    ret.append(mv)
+        return ret
 
+    def get_dict_entry(self, skeyValue):
+        slist = []
+        for key in self.configdict.keys():
+            if skeyValue in self.configdict[key].items():
+                slist.append(key)
+        return slist
+
+    #This function returns the key in the 'known_config_servers' sub-ticket
+    # that corresponds to this system.  If it is not there then a default
+    # based on the system name is returned.
+    def _get_system_name(self):
+        kcs = self.configdict.get('known_config_servers', {})
+        server_address = os.environ.get('ENSTORE_CONFIG_HOST', "default2")
+
+        for item in kcs.items():
+            if socket.getfqdn(item[1][0]) == \
+                   socket.getfqdn(server_address):
+                return item[0]
+        
+        return socket.getfqdn(server_address).split(".")[0]
+
+
+class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
+			  generic_server.GenericServer):
+
+    def __init__(self, server_address,
+                 #configfile = enstore_constants.DEFAULT_CONF_FILE):
+                 configfile = enstore_functions2.default_file()):
+	#self.running = 0
+	#self.print_id = MY_NAME
+        
+        # make a configuration dictionary
+        #cd = ConfigurationDict()
+        ConfigurationDict.__init__(self)
+        # load the config file user requested
+        self.load_config(configfile)
+        #self.running = 1
+        # The other servers call the generic_server __init__() function
+        # to get this function(s) called.  The configuration server does
+        # not use the generic_server __init__() function, so this must be
+        # done expliticly (after the configfile is loaded).
+        domains = self.configdict.get('domains', {})
+        domains['system_name'] = self._get_system_name()
+        hostaddr.update_domains(domains)
+        
+        # default socket initialization - ConfigurationDict handles requests
+        dispatching_worker.DispatchingWorker.__init__(self, server_address)
+        self.request_dict_ttl = 10 # Config server is stateless,
+                                   # duplicate requests don't hurt us.
+        
+	# set up for sending an event relay message whenever we get a
+        # new config loaded
+	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(
+            server_address[0],
+            server_address[1])
+	self.new_config_message.encode()
+
+	# start our heartbeat to the event relay process
+	self.erc = event_relay_client.EventRelayClient(self)
+	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
+				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
+
+        
     # just return the current value for the item the user wants to know about
     def lookup(self, ticket):
         # everything is based on lookup - make sure we have this
@@ -172,6 +265,7 @@ class ConfigurationDict:
 
     # return a list of the dictionary keys back to the user
     def get_keys(self, ticket):
+        __pychecker__ = "unusednames=ticket"
 
         skeys = self.configdict.keys()
         skeys.sort()
@@ -250,8 +344,6 @@ class ConfigurationDict:
             Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
         return
             
-
-
     # reload the configuration dictionary, possibly from a new file
     def load(self, ticket):
         out_ticket = {"status":(e_errors.OK, None)}
@@ -289,34 +381,9 @@ class ConfigurationDict:
 	ret = self.get_movers_internal(ticket)
 	self.reply_to_caller(ret)
 
-    def get_movers_internal(self, ticket):
-        ret = []
-	if ticket.has_key('library'):
-	    # search for the appearance of this library manager
-	    # in all configured movers
-	    for srv in self.configdict.keys():
-		if string.find (srv, ".mover") != -1:
-		    item = self.configdict[srv]
-                    for key in ('library', 'libraries'):
-                        if item.has_key(key):
-                            if type(item[key]) == types.ListType:
-                                for i in item[key]:
-                                    if i == ticket['library']:
-                                        mv = {'mover' : srv,
-                                              'address' : (item['hostip'], 
-                                                          item['port'])
-                                              }
-                                        ret.append(mv)
-                            else:
-                                if item[key] == ticket['library']:
-                                    mv = {'mover' : srv,
-                                          'address' : (item['hostip'], 
-                                                       item['port'])
-                                          }
-                                    ret.append(mv)
-        return ret
-
     def get_media_changer(self, ticket):
+        #__pychecker__ = "unusednames=ticket"
+        
         movers = self.get_movers_internal(ticket)
         ##print "get_movers_internal %s returns %s" % (ticket, movers)
         ret = ''
@@ -329,6 +396,8 @@ class ConfigurationDict:
         
     #get list of library managers
     def get_library_managers(self, ticket):
+        __pychecker__ = "unusednames=ticket"
+        
         ret = {}
         for key in self.configdict.keys():
             index = string.find (key, ".library_manager")
@@ -339,38 +408,32 @@ class ConfigurationDict:
 				     'name': key}
         self.reply_to_caller(ret)
 
-    def reply_serverlist( self, ticket ):
+    def get_media_changers(self, ticket):
+        __pychecker__ = "unusednames=ticket"
+        
+        ret = {}
+        for key in self.configdict.keys():
+            index = string.find (key, ".media_changer")
+            if index != -1:
+                media_changer_name = key[:index]
+                item = self.configdict[key]
+                ret[media_changer_name] = {'address':(item['host'],
+                                                      item['port']),
+                                           'name': key}
+        self.reply_to_caller(ret)
+
+    def reply_serverlist( self, ticket):
+        __pychecker__ = "unusednames=ticket"
+        
         out_ticket = {"status" : (e_errors.OK, None), 
                       "server_list" : self.serverlist }
         self.reply_to_caller(out_ticket)
  
-        
-    def get_dict_entry(self, skeyValue):
-        slist = []
-        for key in self.configdict.keys():
-            if skeyValue in self.configdict[key].items():
-                slist.append(key)
-        return slist
-
     def get_dict_element(self, ticket):
         ret = {"status" : (e_errors.OK, None)}
         ret['servers'] = self.get_dict_entry(ticket['keyValue'])
         self.reply_to_caller(ret)
-
-    #This function returns the key in the 'known_config_servers' sub-ticket
-    # that corresponds to this system.  If it is not there then a default
-    # based on the system name is returned.
-    def _get_system_name(self):
-        kcs = self.configdict.get('known_config_servers', {})
-        server_address = os.environ.get('ENSTORE_CONFIG_HOST', "default2")
-
-        for item in kcs.items():
-            if socket.getfqdn(item[1][0]) == \
-                   socket.getfqdn(server_address):
-                return item[0]
-        
-        return socket.getfqdn(server_address).split(".")[0]
-
+    
     # turn on / off threaded implementation
     def thread_on(self, ticket):
         key = ticket.get('on', 0)
@@ -384,36 +447,6 @@ class ConfigurationDict:
         
         
 
-class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorker,
-			  generic_server.GenericServer):
-
-    def __init__(self, server_address,
-                 configfile = enstore_constants.DEFAULT_CONF_FILE):
-	self.running = 0
-	#self.print_id = MY_NAME
-        
-        # make a configuration dictionary
-        #cd = ConfigurationDict()
-        ConfigurationDict.__init__(self)
-        # default socket initialization - ConfigurationDict handles requests
-        dispatching_worker.DispatchingWorker.__init__(self, server_address)
-        self.request_dict_ttl = 10 # Config server is stateless,
-                                   # duplicate requests don't hurt us.
-        # load the config file user requested
-        self.load_config(configfile)
-        self.running = 1
-
-	# set up for sending an event relay message whenever we get a
-        # new config loaded
-	self.new_config_message = event_relay_messages.EventRelayNewConfigFileMsg(
-            server_address[0],
-            server_address[1])
-	self.new_config_message.encode()
-
-	# start our heartbeat to the event reyeslay process
-	self.erc = event_relay_client.EventRelayClient(self)
-	self.erc.start_heartbeat(enstore_constants.CONFIG_SERVER, 
-				 enstore_constants.CONFIG_SERVER_ALIVE_INTERVAL)
 
         
 
