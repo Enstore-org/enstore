@@ -387,7 +387,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     # For this error we keep going, but for all others
                     # re-raise the traceback.
                     if msg.args[0] not in [errno.ENODEV]:
-                        raise sys.exc_info[0], sys.exc_info[1], sys.exc_info[2]
+                        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
 
                 if not is_pnfs_path(pnfsFilename):
                     pnfsFilename = ""
