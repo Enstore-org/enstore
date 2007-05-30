@@ -5986,12 +5986,12 @@ def set_pnfs_settings(ticket, intf_encp):
                     p = get_pac()
                     path = p.get_path(pnfsid,
                      get_directory_name(ticket['wrapper']['pnfsFilename']),
-                                      shortcut = intf_encp.shortcut)
+                                      shortcut = intf_encp.shortcut)[0]
                 else:   # HSMFILE
                     p = pnfs.Pnfs(pnfsid,
                      get_directory_name(ticket['wrapper']['pnfsFilename']),
                                   shortcut = intf_encp.shortcut)
-                    path = p.get_path()  #Find the new path.
+                    path = p.get_path()[0]  #Find the new path.
                 Trace.log(e_errors.INFO,
                           "File %s was moved to %s." %
                           (ticket['wrapper']['pnfsFilename'], path))
@@ -6378,8 +6378,17 @@ def create_write_request(work_ticket, file_number,
                 # a /.(access)(<pnfsid>) style filename.
                 ofullname = e.override_path
             else:
-                ofullname = p.get_path(e.put_cache, e.pnfs_mount_point,
-                                       shortcut=e.shortcut)
+                ofullname_list = p.get_path(e.put_cache, e.pnfs_mount_point,
+                                            shortcut=e.shortcut)
+
+                if len(ofullname_list) == 1:
+                    ofullname = ofullname_list[0]
+                else:
+                    EncpError(errno.ENOENT,
+                              "Unable to find correct PNFS file.",
+                              e_errors.PNFS_ERROR,
+                              {'onfile' : ofullname_list})
+                
 
             unused, ifullname, unused, unused = fullpath(e.input[0])
             istatinfo = os.stat(ifullname)
@@ -6562,9 +6571,10 @@ def create_write_request(work_ticket, file_number,
                             #
                             #To avoid an error with the mover, perform a full
                             # pnfs pathname lookup.
-                            ofullname = p.get_path(e.put_cache,
-                                                   e.pnfs_mount_point,
-                                                   shortcut=False)
+                            ofullname_list = p.get_path(e.put_cache,
+                                                        e.pnfs_mount_point,
+                                                        shortcut=False)
+                            ofullname = ofullname_list[0]
                             wrapper['pnfsFilename'] = ofullname
                             break
 
@@ -8112,7 +8122,15 @@ def create_read_request(request, file_number,
                     orignal_directory = get_directory_name(pnfs_name0)
                     #Try to obtain the file name and path that the
                     # file currently has.
-                    ifullname = p.get_path(pnfsid, orignal_directory)
+                    ifullname_list = p.get_path(pnfsid, orignal_directory)
+                    for cur_fname in ifullname_list:
+                        if p.get_bit_file_id(cur_fname) == e.get_bfid:
+                            ifullname = cur_fname
+                    else:
+                        EncpError(errno.ENOENT,
+                                  "Unable to find correct PNFS file.",
+                                  e_errors.PNFS_ERROR,
+                                  {'infile' : ifullname_list})
                 except (OSError, KeyError, AttributeError, ValueError):
                     sys.stdout.write("Location %s is active, but the "
                                      "file has been deleted.\n" % lc)
@@ -8179,8 +8197,16 @@ def create_read_request(request, file_number,
                     use_mount_point = e.pnfs_mount_point
                 else:
                     use_mount_point = os.path.dirname(fc_reply['pnfs_name0'])
-                ifullname = p.get_path(pnfsid, use_mount_point,
-                                       shortcut = e.shortcut)
+                ifullname_list = p.get_path(pnfsid, use_mount_point,
+                                            shortcut = e.shortcut)
+                for cur_fname in ifullname_list:
+                    if p.get_bit_file_id(cur_fname) == e.get_bfid:
+                        ifullname = cur_fname
+                else:
+                    EncpError(errno.ENOENT,
+                              "Unable to find correct PNFS file.",
+                              e_errors.PNFS_ERROR,
+                              {'infile' : ifullname_list})
 
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
@@ -8221,9 +8247,17 @@ def create_read_request(request, file_number,
                 # a /.(access)(<pnfsid>) style filename.
                 ifullname = e.override_path
             else:
-                ifullname = p.get_path(e.get_cache, e.pnfs_mount_point,
-                                       shortcut=e.shortcut)
-            
+                ifullname_list = p.get_path(e.get_cache, e.pnfs_mount_point,
+                                            shortcut = e.shortcut)
+                for cur_fname in ifullname_list:
+                    if p.get_bit_file_id(cur_fname) == e.get_bfid:
+                        ifullname = cur_fname
+                else:
+                    EncpError(errno.ENOENT,
+                              "Unable to find correct PNFS file.",
+                              e_errors.PNFS_ERROR,
+                              {'infile' : ifullname_list})
+
             #Grab the stat info.
             istatinfo = p.get_stat(ifullname)
             
@@ -9720,7 +9754,7 @@ def log_encp_start(tinfo, intf):
 
             shortcut_name = p.get_path(intf.put_cache,
                                        intf.pnfs_mount_point,
-                                       shortcut = True)
+                                       shortcut = True)[0]
             shortcut_dname = get_directory_name(shortcut_name)
             if intf.outtype == RHSMFILE:
                 t = p

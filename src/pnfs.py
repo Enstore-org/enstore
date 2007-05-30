@@ -53,6 +53,12 @@ def print_results(result):
             print line, #constains a '\012' at the end.
     else:
         print result
+def print_results2(result):
+    if type(result) == types.ListType:
+         for line in result:
+            print line #no '\012' at the end.
+    else:
+        print result
 
 #Make this shortcut so there is less to type.
 fullpath = enstore_functions2.fullpath
@@ -368,11 +374,21 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 # than valid i-nodes that belonged in that directory.  With
                 # this type of database corruption, the is_pnfs_path() test
                 # still works correctly.
-                self.dir, target = self._get_mount_point2(self.id,
-                                                             self.dir,
-                                                             ".(nameof)(%s)")
-                pnfsFilename = os.path.join(self.dir,
-                                            ".(access)(%s)" % self.id)
+                try:
+                    dir_list, target = self._get_mount_point2(self.id,
+                                                              self.dir,
+                                                              ".(nameof)(%s)")
+                    self.dir = dir_list[0]
+                    pnfsFilename = os.path.join(self.dir,
+                                                ".(access)(%s)" % self.id)
+                except OSError, msg:
+                    #If we got the ENODEV errno, it means that the same
+                    # pnfsid was found under two different pnfs mount points.
+                    # For this error we keep going, but for all others
+                    # re-raise the traceback.
+                    if msg.args[0] not in [errno.ENODEV]:
+                        raise sys.exc_info[0], sys.exc_info[1], sys.exc_info[2]
+
                 if not is_pnfs_path(pnfsFilename):
                     pnfsFilename = ""
 
@@ -480,10 +496,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
     ##########################################################################
 
-    #Convert a nameof filename to an access filename.
-    def nameof_to_access(self, pfn):
+    #Convert a nameof, parent or showid filename to an access filename.
+    def convert_to_access(self, pfn):
         dirname, fname = os.path.split(pfn)
         fname = fname.replace(".(nameof)", ".(access)", 1)
+        fname = fname.replace(".(parent)", ".(access)", 1)
+        fname = fname.replace(".(showid)", ".(access)", 1)
         return os.path.join(dirname, fname)
 
     ##########################################################################
@@ -694,7 +712,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
         search_path, showid = self._get_mount_point2(use_id, use_dir,
                                                      ".(showid)(%s)")
-
+        showid = showid[0]
         if not id:
             self.showid = showid
         return id
@@ -782,9 +800,39 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         else:
             raise ValueError("No valid pnfs id.")
 
-        search_path, target = self._get_mount_point2(use_id, use_dir,
-                                                     ".(nameof)(%s)")
-        filepath = target[0].replace("\n", "")
+        try:
+            search_path, target = self._get_mount_point2(use_id, use_dir,
+                                                         ".(nameof)(%s)",
+                                                         return_all = True)
+            search_paths = search_path
+            targets = target
+        except OSError, msg:
+            if msg.args[0] in [errno.ENODEV]:
+                if msg.filename:
+                    search_paths = msg.filename
+                elif len(msg.args) >= 3 and msg.args[2]:
+                    search_paths = msg.args[2]
+                else:
+                    search_paths = []
+                targets = msg.args[3]
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+
+        rtn_filepaths = []
+        for i in range(len(search_paths)):
+            rtn_filepaths.append(self.__get_path(use_id, search_paths[i],
+                                                 targets[i], shortcut))
+
+        if len(rtn_filepaths) == 1:
+            return rtn_filepaths
+        else:
+            raise OSError(errno.ENODEV,
+                          "%s: %s" % (os.strerror(errno.ENODEV),
+                                      "Too many matching mount points",),
+                          rtn_filepaths)
+        
+    def __get_path(self, use_id, search_path, target, shortcut):
+        filepath = target.replace("\n", "")
 
         #At this point 'filepath' contains just the basename of the file
         # with the "use_id" pnfs id.
@@ -926,7 +974,8 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     # As a side effect also get the first
     # 'id' is the pnfs id
     
-    def _get_mount_point2(self, id, directory, pnfsname=None):
+    def _get_mount_point2(self, id, directory, pnfsname=None,
+                          return_all = False):
         global search_list
         
         if id != None:
@@ -952,9 +1001,15 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 N(use_pnfsid_db, directory).get_databaseN(use_pnfsid_db)
             except (OSError, IOError):
                 raise OSError(errno.ENOENT, "Force PNFS search")
-                
+
+            #
+            # Get the requested information from PNFS.
+            #
             f = open(pfn, 'r')
-            pnfs_value = f.readline()
+            if pfn.find("showid") > -1:
+                pnfs_value = f.readlines()
+            else:
+                pnfs_value = f.readline()
             f.close()
 
             #Remember to truncate the original path to just the mount
@@ -963,6 +1018,9 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
             found_db_num = int(self.get_database(search_path).split(":")[1],
                                16)
+
+            mp_match_list = [search_path]
+            pnfs_value_match_list = [pnfs_value]
         except (OSError, IOError), msg:
             if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
                os.geteuid != 0:
@@ -977,9 +1035,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             
             count = 0
             found_db_num = None
-            found_fname = None
+            #found_fname = None
             found_db_info = None
             mp_match_list = []
+            pnfs_value_match_list = []
             #mp_dict = parse_mtab()
             search_list = process_mtab()
             #Search all of the pnfs mountpoints that are mounted.
@@ -1010,22 +1069,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     pnfs_value = f.readline()
                     f.close()
 
+                    #Get the directory of the current file.
+                    afn = self.convert_to_access(pfn)
+                    afn_dir = get_directory_name(afn)
+
                     if count:
-                        try:
-                            #If found_fname is a .(nameof) file, the stat
-                            # results are inconclusive.  If necessary,
-                            # convert to an .(access) name.
-                            a_found_fname = self.nameof_to_access(found_fname)
-                            cur_mp_stat = os.stat(a_found_fname)
-                            #If pfn is a .(nameof) file, the stat
-                            # results are inconclusive.  If necessary,
-                            # convert to an .(access) name.
-                            afn = self.nameof_to_access(pfn)
-                            found_mp_stat = os.stat(afn)
-                        except (OSError, IOError):
-                            continue
-                        if cur_mp_stat[stat.ST_INO] == \
-                               found_mp_stat[stat.ST_INO]:
+                        fn_db_info = self.get_database(afn_dir)
+                        if fn_db_info == found_db_info:
                             #If we get here then we found two mountpoints
                             # that map to the same file.  Since these
                             # two paths point to the same file,
@@ -1041,9 +1091,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     # the same machine.  The current one knows about the
                     # db we are looking for, now just need to find the
                     # correctly matching mount point.
-                    afn2 = self.nameof_to_access(pfn)
-                    afn2_dir = get_directory_name(afn2)
-                    db_dir = self.get_pnfs_db_directory(afn2_dir)
+                    db_dir = self.get_pnfs_db_directory(afn_dir)
                     #The target_db_area step is necessary for databases like
                     # /pnfs/sdss/db2.  The if below handles things for
                     # locations like /pnfs/sdss.
@@ -1068,13 +1116,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         if found_db_info != db_db_info:
                             count = count + 1
                             mp_match_list.append(db_data[1])
+                            pnfs_value_match_list.append(pnfs_value)
 
                             if count == 1:
                                 #We just found the first one.  Remember this
                                 # to avoid catching it again.
                                 search_path = db_data[1]
                                 found_db_num = db_data[0]
-                                found_fname = pfn
+                                #found_fname = pfn
                                 found_db_info = db_db_info
                 except (OSError, IOError), msg:
                     if msg.args[0] in [errno.EIO]:
@@ -1086,7 +1135,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                         #If pfn is a .(nameof) file, the stat
                         # results are inconclusive.  If necessary,
                         # convert to an .(access) name.
-                        afn = self.nameof_to_access(pfn)
+                        afn = self.convert_to_access(pfn)
                         try:
                             stat_info = os.stat(afn)
                         except (OSError, IOError):
@@ -1113,12 +1162,11 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 raise OSError(errno.ENOENT,
                               "%s: %s" % (os.strerror(errno.ENOENT),
                                           "Not a valid pnfs id"))
-            elif count > 1:
-
+            elif count > 1 and not return_all:
                 raise OSError(errno.ENODEV,
                               "%s: %s" % (os.strerror(errno.ENODEV),
-                                          "Too many matching mount points: %s"
-                                          % mp_match_list))
+                                          "Too many matching mount points",),
+                              mp_match_list)  #, pnfs_value_match_list)
 
         #Small hack for the admin path.
         if found_db_num == 0:
@@ -1128,7 +1176,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         # function used readlines().  However, for performance reasons,
         # readline() is a better choice.  Returning a list is just a
         # historical note from having used readlines() previously.
-        return search_path, [pnfs_value]
+        return mp_match_list, pnfs_value_match_list
 
     ##########################################################################
 
@@ -1699,7 +1747,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.writelayer(intf.named_layer, intf.text)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         
     def prm(self, intf):
@@ -1707,7 +1755,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.writelayer(intf.named_layer, "")
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
 
     def pcp(self, intf):
@@ -1725,7 +1773,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
 
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
 
     def psize(self, intf):
@@ -1733,7 +1781,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             self.set_file_size(intf.filesize)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
     
     def pio(self):  #, intf):
@@ -1748,7 +1796,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.id)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         
     def pshowid(self):  #, intf):
@@ -1757,10 +1805,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.showid)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         except (AttributeError, ValueError), detail:
-            print "A valid pnfs id was not entered."
+            sys.stderr.write("A valid pnfs id was not entered.\n")
             return 1
     
     def pconst(self):  #, intf):
@@ -1769,7 +1817,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.const)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         
     def pnameof(self):  #, intf):
@@ -1778,22 +1826,25 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.nameof)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         except (AttributeError, ValueError), detail:
-            print "A valid pnfs id was not entered."
+            sys.stderr.write("A valid pnfs id was not entered.\n")
             return 1
         
     def ppath(self):  #, intf):
         try:
-            self.get_path()
-            print_results(self.path)
+            rtn_results = self.get_path()
+            print_results2(rtn_results)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
+            if detail.args[0] in [errno.ENODEV]:
+                print_results2(detail.filename)
             return 1
         except (AttributeError, ValueError), detail:
-            print "A valid pnfs id was not entered."
+            print detail
+            sys.stderr.write("A valid pnfs id was not entered.\n")
             return 1
 
     def pmount_point(self):
@@ -1801,10 +1852,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.get_mount_point())
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         except (AttributeError, ValueError), detail:
-            print "A valid pnfs id was not entered."
+            sys.stderr.write("A valid pnfs id was not entered.\n")
             return 1
         
     def pparent(self):  #, intf):
@@ -1813,10 +1864,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.parent)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         except (AttributeError, ValueError), detail:
-            print "A valid pnfs id was not entered."
+            sys.stderr.write("A valid pnfs id was not entered.\n")
             return 1
     
     def pcounters(self):  #, intf):
@@ -1825,7 +1876,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.counters)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         
     def pcursor(self):  #, intf):
@@ -1834,7 +1885,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.cursor)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
             
     def pposition(self):  #, intf):
@@ -1843,7 +1894,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.position)
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
         
     def pdatabase(self, intf):
@@ -1851,7 +1902,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             print_results(self.get_database(intf.file))
             return 0
         except (OSError, IOError), detail:
-            print str(detail)
+            sys.stderr.write("%s\n" % str(detail))
             return 1
 
 
