@@ -28,6 +28,8 @@ import Trace
 import volume_clerk_client
 import e_errors
 import callback
+import configuration_client
+import enstore_functions2
 
 MY_NAME = ".MC"
 RCV_TIMEOUT = 0
@@ -202,6 +204,7 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.list_drives = 0
         self.list_volumes = 0
         self.list_slots = 0
+        self.list = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -229,6 +232,12 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
                          option.VALUE_USAGE:option.IGNORED,
                          option.USER_LEVEL:option.ADMIN},
         option.LIST_DRIVES:{option.HELP_STRING:"List all drives.",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.LIST:{option.HELP_STRING: "list all media changers in "
+                     "configuration",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
@@ -303,6 +312,8 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
             pass
         elif len(self.argv) <= 1: #if only "enstore media" is specified.
             self.print_help()
+        elif self.list:
+            self.print_media_changers()
         elif len(self.args) < 1: #if a valid switch doesn't have the MC.
             self.print_usage("expected media changer parameter")
         else:
@@ -315,6 +326,21 @@ class MediaChangerClientInterface(generic_client.GenericClientInterface):
         self.media_changer = self.complete_server_name(self.media_changer,
                                                        "media_changer")
 
+    def print_media_changers(self):
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        csc.dump_and_save()
+        msg_spec = "%25s %15s %20s"
+        print msg_spec % ("media changer", "host", "type")
+        mc_dict = csc.get_media_changers(timeout=5, retry=3)
+        for mc_name in mc_dict.values():
+            mc_info = csc.get(mc_name['name'])
+            print msg_spec % (mc_name['name'], mc_info['host'],
+                              mc_info['type'])
+            
+        sys.exit(0)
 
 def do_work(intf):
     # get a media changer client

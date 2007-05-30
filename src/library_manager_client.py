@@ -21,6 +21,8 @@ import option
 import generic_client
 import Trace
 import e_errors
+import configuration_client
+import enstore_functions2
 
 MY_NAME = ".LM"
 RCV_TIMEOUT = 20
@@ -340,6 +342,7 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
         self.rm_active_vol = 0
         self.unique_id = ''
         self.print_queue = 0
+        self.list = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -357,6 +360,8 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                 pass
         elif len(self.argv) <= 1: #if only "enstore library" is specified.
             self.print_help()
+        elif self.list:
+            self.print_library_managers()
         elif len(self.args) < 1: #if a valid switch doesn't have the LM.
             self.print_usage("expected library parameter")
         else:
@@ -367,6 +372,22 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                 self.name = ""
                 
         self.name = self.complete_server_name(self.name, "library_manager")
+
+    def print_library_managers(self):
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        csc.dump_and_save()
+        msg_spec = "%25s %15s"
+        print msg_spec % ("media changer", "host")
+        lm_dict = csc.get_library_managers(timeout=5, retry=3)
+        for lm_name in lm_dict.values():
+            lm_info = csc.get(lm_name['name'])
+            print msg_spec % (lm_name['name'], lm_info['host'])
+            
+        sys.exit(0)
+
 
     library_options = {
         option.DELETE_WORK:{option.HELP_STRING:
@@ -398,6 +419,12 @@ class LibraryManagerClientInterface(generic_client.GenericClientInterface) :
                                 option.DEFAULT_TYPE:option.INTEGER,
                                 option.VALUE_USAGE:option.IGNORED,
                                 option.USER_LEVEL:option.USER},
+        option.LIST:{option.HELP_STRING: "list all library managers in "
+                     "configuration",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
         option.PRINT_QUEUE:{option.HELP_STRING:
                            "cause LM to output queue to stdio",
                                 option.DEFAULT_TYPE:option.INTEGER,

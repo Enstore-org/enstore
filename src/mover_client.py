@@ -23,6 +23,8 @@ import pprint
 import option
 import generic_client
 import Trace
+import configuration_client
+import enstore_functions2
 
 R_TO = 30
 R_T = 3
@@ -83,6 +85,7 @@ class MoverClientInterface(generic_client.GenericClientInterface):
         self.dump = 0
         self.mover_dump = 0
         self.warm_restart = 0
+        self.list = 0
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
 
@@ -104,6 +107,11 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                      option.USER_LEVEL:option.ADMIN},
         option.DUMP:{option.HELP_STRING:
                      "get the tape drive dump (used only with M2 movers)",
+                     option.DEFAULT_VALUE:option.DEFAULT,
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     option.VALUE_USAGE:option.IGNORED,
+                     option.USER_LEVEL:option.ADMIN},
+        option.LIST:{option.HELP_STRING: "list all movers in configuration",
                      option.DEFAULT_VALUE:option.DEFAULT,
                      option.DEFAULT_TYPE:option.INTEGER,
                      option.VALUE_USAGE:option.IGNORED,
@@ -178,6 +186,8 @@ class MoverClientInterface(generic_client.GenericClientInterface):
             pass
         elif len(self.argv) <= 1: #if only "enstore mover" is specified.
             self.print_help()
+        elif self.list:
+            self.print_movers()
         elif len(self.args) < 1: #if a valid switch doesn't have the mover.
             self.print_usage("expected mover parameter")
         else:
@@ -188,6 +198,23 @@ class MoverClientInterface(generic_client.GenericClientInterface):
                 self.mover = ""
 
         self.mover = self.complete_server_name(self.mover, "mover")
+
+    def print_movers(self):
+        config_host = enstore_functions2.default_host()
+        config_port = enstore_functions2.default_port()
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        csc.dump_and_save()
+        msg_spec = "%15s %15s %9s %10s %15s"
+        print msg_spec % ("mover", "host", "mc_device", "driver", "library")
+        movers_list = csc.get_movers(None, timeout=5, retry=3)
+        for mover_name in movers_list:
+            mover_info = csc.get(mover_name['mover'])
+            print msg_spec % (mover_name['mover'], mover_info['host'],
+                              mover_info['mc_device'], mover_info['driver'],
+                              mover_info['library'])
+        
+        sys.exit(0)
 
 def do_work(intf):
     # get a mover client
