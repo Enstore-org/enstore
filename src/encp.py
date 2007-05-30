@@ -8126,6 +8126,7 @@ def create_read_request(request, file_number,
                     for cur_fname in ifullname_list:
                         if p.get_bit_file_id(cur_fname) == e.get_bfid:
                             ifullname = cur_fname
+                            break
                     else:
                         EncpError(errno.ENOENT,
                                   "Unable to find correct PNFS file.",
@@ -8202,6 +8203,12 @@ def create_read_request(request, file_number,
                 for cur_fname in ifullname_list:
                     if p.get_bit_file_id(cur_fname) == e.get_bfid:
                         ifullname = cur_fname
+                        break
+                    elif get_fcc().find_original(e.get_bfid).get("original",
+                                                                 None) == \
+                                                 p.get_bit_file_id(cur_fname):
+                        ifullname = cur_fname
+                        break
                 else:
                     EncpError(errno.ENOENT,
                               "Unable to find correct PNFS file.",
@@ -8249,9 +8256,8 @@ def create_read_request(request, file_number,
             else:
                 ifullname_list = p.get_path(e.get_cache, e.pnfs_mount_point,
                                             shortcut = e.shortcut)
-                for cur_fname in ifullname_list:
-                    if p.get_bit_file_id(cur_fname) == e.get_bfid:
-                        ifullname = cur_fname
+                if len(ifullname_list) == 1:
+                    ifullname = ifullname_list[0]
                 else:
                     EncpError(errno.ENOENT,
                               "Unable to find correct PNFS file.",
