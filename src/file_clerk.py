@@ -573,7 +573,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
     # made_copy(bfid) -- decrease copies count
     #                    if the count becomes zero, delete the record
     def made_copy(self, bfid):
-        q = "select * from active_file_copying where bfid = '%s;"%(bfid)
+        q = "select * from active_file_copying where bfid = '%s';"%(bfid)
         res = self.dict.db.query(q).dictresult()
         if not res:
             Trace.log(e_errors.ERROR, "made_copy(): %s does not have copies"%(bfid))
