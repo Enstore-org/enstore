@@ -1128,15 +1128,18 @@ def check_bit_file(bfid, bfid_info = None):
             if layer1_bfid == file_record['bfid']:
                 if file_record['deleted'] == 'yes':
                     try:
-                        tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
-                        err.append("pnfs entry exists")
+                        tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                        #Deal with multiple possible matches.
+                        if len(tmp_name_list) == 1:
+                            err.append("pnfs entry exists")
+                        else:
+                            err.append("to many matches %s" % tmp_name_list)
                     except (OSError, IOError), detail:
                         if detail.errno == errno.ENOENT or \
                                detail.errno == errno.EIO:
                             err.append("%s orphaned file" % (file_record['pnfsid'],))
                         else:
                             err.append("%s error accessing file"%(file_record['pnfsid'],))
-                            return
                         
                     errors_and_warnings(prefix, err, warn, info)
                     return
@@ -1175,8 +1178,16 @@ def check_bit_file(bfid, bfid_info = None):
                             # new pnfs servers.
                             try:
                                 p = pnfs.Pnfs()
-                                pnfs_path = p.get_path(file_record['pnfsid'],
-                                                       mp)
+                                pnfs_path_list = p.get_path(
+                                    file_record['pnfsid'], mp)
+                                #Deal with multiple possible matches.
+                                if len(pnfs_path_list) == 1:
+                                    pnfs_path = pnfs_path_list[0]
+                                else:
+                                    err.append("to many matches %s" %
+                                               (pnfs_path_list,))
+                                    errors_and_warnings(prefix, err, warn, info)
+                                    return
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
                             except (OSError, IOError):
                                 pnfsid_mp = None
@@ -1324,7 +1335,15 @@ def check_bit_file(bfid, bfid_info = None):
                 except OSError:
                     pass
             try:
-                tmp_name = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                #Deal with multiple possible matches.
+                if len(tmp_name_list) == 1:
+                    tmp_name = tmp_name_list[0]
+                else:
+                    err.append("to many matches %s" % (tmp_name_list,))
+                    errors_and_warnings(prefix, err, warn, info)
+                    return
+                
                 if tmp_name[0] == "/":
                     #Make sure the path is a absolute path.
                     pnfs_path = tmp_name
@@ -1516,6 +1535,12 @@ def check_file(f, file_info):
                     cur_pnfsid = p.get_id(f) #pnfs of current searched file
                     unused = p.get_path(ffbp['pnfsid'],
                                         os.path.dirname(f))
+
+                    #Deal with multiple possible matches.
+                    if len(unused) != 1:
+                        err.append("to many matches %s" % (unused,))
+                        return err, warn, info
+
                     rm_pnfs = False
                 except (OSError, IOError), msg:
                     if msg.args[0] == errno.ENOENT:
