@@ -18,9 +18,11 @@
 %define _unpackaged_files_terminate_build 0
 
 #If this is a dcache build, we need to handle naming the rpm accordingly.
-%define is_dcache %(test -e `echo %{upsflags} | grep dcache > /dev/null` && echo 1 || echo 0)
-%if %{is_dcache}
+%define is_dcache %(echo "%{upsflags}" | grep dcache > /dev/null && echo 1 || echo 0)
+%if %is_dcache
 %define opt_dcache_name -dcache
+%else
+%define opt_dcache_name %{nil}
 %endif
 
 #
@@ -44,7 +46,7 @@ ENCP utility
 %build
 
 %install
-echo UPSVERSION %{upsversion}
+echo UPSVERSION %{upsversion} UPSFLAGS %{upsflags}
 if [ -d $RPM_BUILD_ROOT%{prefix} ]; then
     chmod -fR u+wx $RPM_BUILD_ROOT%{prefix}
 fi
