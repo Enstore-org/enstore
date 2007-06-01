@@ -874,6 +874,10 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         elif os.access(os.path.join(search_path, filepath.split("/", 1)[1]),
                        os.F_OK):
             filepath = os.path.join(search_path, filepath.split("/", 1)[1])
+        #If the path is "/pnfs/fs" try inserting "usr".
+        elif os.path.basename(search_path) == "fs" and \
+             os.access(os.path.join(search_path, "usr", filepath), os.F_OK):
+            filepath = os.path.join(search_path, "usr", filepath)
         else:
             #If we get here then a mount point exists that belongs to
             # a pnfs server that knows about the file, but it is not the
