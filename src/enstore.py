@@ -47,6 +47,7 @@ import enstore_stop
 import enstore_restart
 import backup
 import pnfs_agent_client
+import scanfiles
 try:
 	import quota
 except:
@@ -131,6 +132,8 @@ server_functions = {
                  enstore_restart.do_work, option.ADMIN],
     "backup" : [backup.BackupInterface,
                 backup.do_work, option.ADMIN],
+    "scanfiles" : [scanfiles.ScanfilesInterface,
+		   scanfiles.do_work, option.ADMIN],
     }
 
 def get_farmlet(default):

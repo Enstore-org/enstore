@@ -1883,6 +1883,17 @@ class ScanfilesInterface(option.Interface):
                          option.USER_LEVEL:option.USER},
         }
 
+    def parse_options(self):
+        # normal parsing of options
+        option.Interface.parse_options(self)
+
+        #Process these at the beginning.
+        if hasattr(self, "help") and self.help:
+            self.print_help()
+        if hasattr(self, "usage") and self.usage:
+            self.print_usage()
+
+
 def handle_signal(sig, frame):
     __pychecker__ = "unusednames=sig,frame"
     global threads_stop
@@ -1935,21 +1946,12 @@ def main(intf_of_scanfiles, file_object, file_list):
         pass
 
     
-if __name__ == '__main__':
+def do_work(intf_of_scanfiles):
+    global infc
+    global lm
 
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
-
-    intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
-
-    if intf_of_scanfiles.help:
-        usage()
-        sys.exit(0)
-
-    # only --bfid or --vol is allowed
-    if intf_of_scanfiles.bfid and intf_of_scanfiles.vol:
-        usage()
-        sys.exit(0)
 
     #For processing certain storage_groups/mount_points.  This allows
     # the user to give scanfiles.py some hints to avoid performing
@@ -1995,3 +1997,10 @@ if __name__ == '__main__':
         p.sort_stats('cumulative').print_stats(100)
     else:
         main(intf_of_scanfiles, file_object, file_list)
+
+
+if __name__ == '__main__':
+
+    intf_of_scanfiles = ScanfilesInterface(sys.argv, 0) # zero means admin
+
+    do_work(intf_of_scanfiles)
