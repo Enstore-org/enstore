@@ -128,7 +128,7 @@ while [ $done -gt 0 ]; do
   # We don't want to read these files.  If there aren't any files left, 
   # start over with a new tape.  gnore hidden files and sort the filelist 
   # according to location on the tape.
-  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
+  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
   rm -f $tmp_dir/$tape
   NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
   if [ $NF -gt 0 ]; then 
@@ -157,12 +157,35 @@ while [ $done -gt 0 ]; do
   first_pnfsid=`enstore info --bfid $first_bfid | grep pnfsid | cut -c 13-36`
   last_pnfsid=`enstore info --bfid $last_bfid | grep pnfsid | cut -c 13-36`
 
+  #...with help from this function...
+  check_files()
+  {
+     #This function takes the second argument through the last argument and
+     # finds the file whos bfid matches that of the first argument.  When
+     # the match is found, 0 (success) is returned and the matching
+     # filename is echo-ed to stdout.
+     file_bfid=$1; shift
+     file_list=$*
+
+     for filename in `echo "$file_list"`; do
+        pnfs_bfid=`enstore pnfs --bfid $filename`
+	if [ "$pnfs_bfid" = "$file_bfid" ]; then
+	   echo $filename
+	   return 0
+	fi
+    done
+    return 1
+  }
+
   #...to get these.
-  ran_file=`enstore pnfs --path $ran_pnfsid`
+  ran_file=`enstore pnfs --path $ran_pnfsid 2> /dev/null`
+  ran_file=`check_files $ran_bfid "$ran_file"`
   rc_r=$?
-  first_file=`enstore pnfs --path $first_pnfsid`
+  first_file=`enstore pnfs --path $first_pnfsid 2> /dev/null`
+  first_file=`check_files $first_bfid "$first_file"`
   rc_f=$?
-  last_file=`enstore pnfs --path $last_pnfsid`
+  last_file=`enstore pnfs --path $last_pnfsid 2> /dev/null`
+  last_file=`check_files $last_bfid "$last_file"`
   rc_l=$?
 
   if [ $rc_r -ne 0 -o $rc_f -ne 0 -o $rc_l -ne 0 ]; then
@@ -170,10 +193,13 @@ while [ $done -gt 0 ]; do
     # that exists in two different PNFSes.  (i.e. stkensrv1 and cmspnfs1)
     #Another is that we don't have sufficient permissions to access the
     # file in PNFS.
-    echo "Failed finding suitable files."
-    #  echo $ran_bfid $ran_pnfsid $ran_file 
-    #  echo $first_bfid $first_pnfsid $first_file
-    #  echo $last_bfid $last_pnfsid $last_file
+    if [ $verbose -eq 1 ]; then
+       echo "Failed finding suitable files."
+    fi
+    #These are useful for debugging.
+    #  echo $rc_r $ran_bfid $ran_pnfsid $ran_file 
+    #  echo $rc_f $first_bfid $first_pnfsid $first_file
+    #  echo $rc_l $last_bfid $last_pnfsid $last_file
     continue
   fi
 
