@@ -168,12 +168,16 @@ def is_threshold_passed(bytes_transfered, bytes_notified, bytes_to_transfer,
     return 0
 
 class Buffer:
-    def __init__(self, blocksize, min_bytes = 0, max_bytes = 1*MB):
+    def __init__(self, blocksize, min_bytes = 0, max_bytes = 1*MB, crc_seed=1L):
         self.blocksize = blocksize
         self.min_bytes = min_bytes
         self.max_bytes = max_bytes
-        self.complete_crc = 0L
-        self.sanity_crc = 0L
+        if crc_seed == 1L:
+           self.complete_crc = crc_seed
+           self.sanity_crc = crc_seed
+        else:
+            self.complete_crc = 0L
+            self.sanity_crc = 0L
         self.sanity_bytes = 0L
         self.header_size = None
         self.trailer_size = 0L
@@ -676,6 +680,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         # LMs across systems
 
         self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
+        self.crc_seed = 1L        # adler 32 default seed
         
         
     def __setattr__(self, attr, val):
@@ -750,7 +755,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.buffer:
             self.buffer.clear()
             del(self.buffer)
-        self.buffer = Buffer(0, self.min_buffer, self.max_buffer)
+        self.buffer = Buffer(0, self.min_buffer, self.max_buffer, crc_seed=self.crc_seed)
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
@@ -3090,6 +3095,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         self.t0 = time.time()
+        self.crc_seed = long(self.config.get("crc_seed", 1L))
 
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
@@ -3210,6 +3216,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.mode == READ:
             self.files = (pnfs_filename, client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
+            seed = self.crc_seed
+            self.crc_seed = fc.get('crc_seed', seed)
+            
             self.buffer.header_size = None
         elif self.mode == WRITE:
             self.files = (client_filename, pnfs_filename)
@@ -3842,6 +3851,10 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         fc_ticket['gid'] = self.gid
         fc_ticket['uid'] = self.uid
+        copies = self.file_info.get('copies')
+        if copies:
+           fc_ticket['copies'] = copies
+           
         # if it is a copy, make sure that original_bfid is passed along
         if self.current_work_ticket.has_key('copy'):
             original_bfid = self.file_info.get('original_bfid')
@@ -5206,7 +5219,8 @@ class DiskMover(Mover):
         self.files_written_cnt = 0
         self.max_time_in_state = self.config.get('max_time_in_state', 600) # maximal time allowed in a certain states
 
-        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3) 
+        self.max_in_state_cnt = self.config.get('max_in_state_cnt', 3)
+        
         dispatching_worker.DispatchingWorker.__init__(self, self.address)
         self.add_interval_func(self.update_lm, self.update_interval) #this sets the period for messages to LM.
         self.add_interval_func(self.need_update, 1) #this sets the period for checking if child thread has asked for update.
@@ -5731,6 +5745,7 @@ class DiskMover(Mover):
             return
 
         self.t0 = time.time()
+        self.crc_seed = long(self.config.get("crc_seed", 1L))
 
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
@@ -5838,6 +5853,8 @@ class DiskMover(Mover):
                                 
         if self.mode == READ:
             self.file = fc['location_cookie']
+            seed = self.crc_seed
+            self.crc_seed = fc.get('crc_seed', seed)
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
         elif self.mode == WRITE:
