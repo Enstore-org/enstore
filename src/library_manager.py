@@ -904,10 +904,10 @@ class LibraryManagerMethods:
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
                             format = "access delayed for %s : library=%s family=%s requester:%s"
-                            Trace.log(e_errors.INFO, format%(rq.ticket['wrapper']['pnfsFilename'],
-                                                             rq.ticket["vc"]["library"],
-                                                             rq.ticket["vc"]["volume_family"],
-                                                             rq.ticket["wrapper"]["uname"]))
+                            Trace.trace(20, format%(rq.ticket['wrapper']['pnfsFilename'],
+                                                    rq.ticket["vc"]["library"],
+                                                    rq.ticket["vc"]["volume_family"],
+                                                    rq.ticket["wrapper"]["uname"]))
 
                             rq.ticket["reject_reason"] = ("RESTRICTED_ACCESS",None)
                             Trace.trace(222,"PW4")
