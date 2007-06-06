@@ -2112,7 +2112,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         while self.state in (ACTIVE, DRAINING) and self.bytes_written<self.bytes_to_write:
             Trace.trace(33,"total_bytes %s total_bytes_written %s"%(self.bytes_to_write, self.bytes_written))
             if self.tr_failed:
-                self.tape_driver.flush() # to empty buffer and to release devivice from this thread
+                self.tape_driver.flush() # to empty buffer and to release device from this thread
                 Trace.trace(27,"write_tape: tr_failed %s"%(self.tr_failed,))
                 break
             self.bytes_written_last = self.bytes_written
@@ -3095,7 +3095,9 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         self.t0 = time.time()
-        self.crc_seed = long(self.config.get("crc_seed", 1L))
+        encp_dict = self.config.get('encp', None)
+        if encp_dict:
+            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
@@ -3926,7 +3928,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             # in case of tape reads do not close them
             try:
                 self.control_socket.close()
-                self.listen_socket.close()
+                if self.listen_socket:
+                    self.listen_socket.close()
             except:
                 exc, detail, tb = sys.exc_info()
                 Trace.log(e_errors.ERROR, "error closing control and listen sockets: %s" % (detail,))
@@ -5745,7 +5748,9 @@ class DiskMover(Mover):
             return
 
         self.t0 = time.time()
-        self.crc_seed = long(self.config.get("crc_seed", 1L))
+        encp_dict = self.config.get('encp', None)
+        if encp_dict:
+            self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
