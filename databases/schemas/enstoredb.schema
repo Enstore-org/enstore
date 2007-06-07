@@ -520,8 +520,7 @@ CREATE TABLE file (
     size bigint DEFAULT 0,
     uid integer DEFAULT -1,
     gid integer DEFAULT -1,
-    "update" timestamp without time zone,
-    crc_seed int DEFAULT 0
+    "update" timestamp without time zone
 );
 
 
