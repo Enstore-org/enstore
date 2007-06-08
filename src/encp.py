@@ -83,6 +83,7 @@ import volume_family
 import enstore_constants
 import enstore_functions2
 import pnfs_agent_client
+import checksum
 
 
 #Add these if missing.
@@ -401,6 +402,7 @@ def generate_unique_id():
 def generate_location_cookie(number):
     return "0000_000000000_%07d" % int(number)
 
+"""
 def convert_0_adler32_to_1_adler32(crc, filesize):
     #Convert to long ingeter types, and determine other values.
     crc = long(crc)
@@ -415,6 +417,7 @@ def convert_0_adler32_to_1_adler32(crc, filesize):
     s2 = (size + s2) % BASE
     #Return the 1 seeded adler32 crc.
     return (s2 << 16) + s1
+"""
 
 #Used to turn off logging when the --check option is enabled.
 def check_log_func(dummy_self, time, pid, name, args):
@@ -4596,9 +4599,10 @@ def check_crc(done_ticket, encp_intf, fd=None):
     mover_crc = done_ticket['fc'].get('complete_crc', None)
     encp_crc = done_ticket['exfer'].get('encp_crc', None)
 
-    Trace.log(e_errors.INFO,
-              "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc))
-    
+    #Trace.log(e_errors.INFO,
+    #          "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc))
+    #print "Mover CRC: %s  ENCP CRC: %s" % (mover_crc, encp_crc)
+
     #Check this just to be safe.
     if mover_crc == None:
         msg =   "warning: mover did not return CRC; skipping CRC check\n"
@@ -4619,10 +4623,20 @@ def check_crc(done_ticket, encp_intf, fd=None):
         #done_ticket['status'] = (e_errors.NO_CRC_RETURNED, msg)
         return
 
+    #Enstore at FNAL historically uses a zero seeded adler32.  The adler32
+    # standard says that it should be seed with 1 not 0.  Convert the zero
+    # seeded value to a one seeded value for comparison, if necessary.
+    #
+    #The variable encp_crc_1_seeded is what is used to check the CRC in
+    # layer 2, this always needs to be checked as a 1 seeded adler32.
+    encp_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+            encp_crc, done_ticket['file_size'])
+
     # Check the CRC
     if encp_intf.chk_crc:
-        if mover_crc != encp_crc:
-            msg = "CRC mismatch: %d mover != %d encp" % (mover_crc, encp_crc)
+        if mover_crc != encp_crc and mover_crc != encp_crc_1_seeded:
+            msg = "CRC mismatch: %d mover != %d (or %s) encp" % \
+                (mover_crc, encp_crc_1_seeded, encp_crc)
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
 
@@ -4638,13 +4652,17 @@ def check_crc(done_ticket, encp_intf, fd=None):
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, str(msg))
                 return
 
+            #Convert this to a one seeded alder32 CRC.
+            readback_crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+                readback_crc, done_ticket['file_size'])
             #Put the ecrc value into the ticket.
             done_ticket['ecrc'] = readback_crc
 
             #If we have a valid crc value returned, compare it.
-            if readback_crc != mover_crc:
-                msg = "CRC readback mismatch: %d mover != %d encp" % \
-                      (mover_crc, readback_crc)
+            if readback_crc != mover_crc and \
+                   readback_crc_1_seeded != mover_crc:
+                msg = "CRC readback mismatch: %d mover != %d (or %s) encp" % \
+                      (mover_crc, readback_crc_1_seeded, readback_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
 
@@ -4667,21 +4685,17 @@ def check_crc(done_ticket, encp_intf, fd=None):
         for line in data:
             result = crc_match.search(line)
             if result != None:
-                #First convert the 0 seeded adler32 crc used by enstore
-                # to the 1 seeded adler32 crc used by dcache.
-                fixed_encp_crc = convert_0_adler32_to_1_adler32(encp_crc,
-                                                     done_ticket['file_size'])
                 #Get the hex strings of the two CRCs.
                 hex_dcache_string = "0x" + result.group().split(":")[1]
-                hex_encp_string = hex(fixed_encp_crc)
+                hex_encp_string = hex(encp_crc_1_seeded)
                 #Convert to long integers for safety.  (padding of zero's)
-                dcache_crc = long(hex_dcache_string, 16)
-                encp_crc = long(hex_encp_string, 16)
+                dcache_crc_long = long(hex_dcache_string, 16)
+                encp_crc_long = long(hex_encp_string, 16)
                 #Test to make sure they are the same.
-                if dcache_crc != encp_crc:
+                if dcache_crc_long != encp_crc_long:
                     msg = "CRC dcache mismatch: %s (%s) != %s (%s)" % \
-                          (dcache_crc, hex(dcache_crc),
-                           encp_crc, hex(encp_crc))
+                          (dcache_crc_long, hex(dcache_crc_long),
+                           encp_crc_long, hex(encp_crc_long))
                     done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
                     return
 
@@ -6082,6 +6096,8 @@ def set_pnfs_settings(ticket, intf_encp):
     if mover_ticket['driver'] == "NullDriver":
         crc = 0
     else:
+        #This crc should come from the mover, so it should match whichever
+        # crc seed encp told it to use.
         crc = ticket['fc']['complete_crc']
 
     try:
@@ -6502,6 +6518,9 @@ def create_write_request(work_ticket, file_number,
             file_size = long(istatinfo[stat.ST_SIZE])
         file_inode = istatinfo[stat.ST_INO]
 
+        #Get the crc seed to use.
+        encp_dict = csc.get('encp', 5, 5)
+        crc_seed = encp_dict.get('crc_seed', 1)
         
         #Get the data aquisition information.
         encp_daq = get_dinfo()
@@ -6586,6 +6605,7 @@ def create_write_request(work_ticket, file_number,
         #work_ticket = {}
         work_ticket['callback_addr'] = callback_addr
         work_ticket['client_crc'] = e.chk_crc
+        work_ticket['crc_seed'] = crc_seed
         work_ticket['encp'] = encp_el
         work_ticket['encp_daq'] = encp_daq
         work_ticket['fc'] = file_clerk
@@ -8379,10 +8399,15 @@ def create_read_request(request, file_number,
         csc = get_csc()
         resend = max_attempts(csc, vc_reply['library'], e)
 
+        #Get the crc seed to use.
+        #encp_dict = csc.get('encp', 5, 5)
+        #crc_seed = encp_dict.get('crc_seed', 1)
+
         #request = {}
         request['bfid'] = bfid
         request['callback_addr'] = callback_addr
         request['client_crc'] = e.chk_crc
+        #request['crc_seed'] = crc_seed #Only for writes?
         request['encp'] = encp_el
         request['encp_daq'] = encp_daq
         request['fc'] = fc_reply
