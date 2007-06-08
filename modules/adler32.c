@@ -46,3 +46,22 @@ uLong adler32(adler, buf, len)
     }
     return (s2 << 16) | s1;
 }
+
+#include <sys/types.h>
+uLong convert_0_adler32_to_1_adler32(uLong crc,
+				     long long filesize)
+{
+    unsigned long size;
+    unsigned long s1, s2;
+    
+    /* Modulo the size with the largest 16 bit prime number. */
+    size = (size_t)(filesize % BASE);
+    /* Extract existing s1 and s2 from the 0 seeded adler32 crc. */
+    s1 = (crc & 0xffff);
+    s2 = ((crc >> 16) &  0xffff);
+    /* Modify to reflect the corrected crc. */
+    s1 = (s1 + 1) % BASE;
+    s2 = (size + s2) % BASE;
+    /* Return the 1 seeded adler32 crc. */
+    return (s2 << 16) + s1;
+}

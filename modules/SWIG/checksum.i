@@ -40,7 +40,16 @@ typedef char * cptr;
 %typemap(in) cptr{
         $1= PyString_AsString($input);
 }
-
+%typemap(in) off_t {
+    if (PyLong_Check($input))
+        $1 = (unsigned long) PyLong_AsLongLong($input);
+    else if (PyInt_Check($input))
+        $1 = (unsigned long) PyInt_AsLong($input);
+    else {
+        PyErr_SetString(PyExc_TypeError, "expected integral type");
+        return NULL;
+    }
+}
 #else
 /* No SWIG_VERSION defined means a version older than 1.3.11.  Here we only
  * care to differentiate between 1.3.x and 1.1.y, though an issue exists
@@ -65,9 +74,20 @@ typedef char * cptr;
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
-
+%typemap(python,in) off_t {
+    if (PyLong_Check($source))
+	$target= (long long) PyLong_AsLongLong($source);
+    else if (PyInt_Check($source))
+	$target= (long long) PyInt_AsLong($source);
+    else {
+	PyErr_SetString(PyExc_TypeError, "expected integral type");
+	return NULL;
+    }
+}
 #endif
 
 zint adler32(zint, cptr, int);
 
 zint adler32_o(zint, cptr, int, int);
+
+zint convert_0_adler32_to_1_adler32(zint crc, off_t filesize);

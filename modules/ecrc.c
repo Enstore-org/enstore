@@ -22,6 +22,7 @@
 
 extern unsigned int adler32(unsigned int, char *, unsigned int);
 
+#if 0
 unsigned int convert_0_adler32_to_1_adler32(unsigned int crc, off_t filesize)
 {
     size_t size;
@@ -38,6 +39,7 @@ unsigned int convert_0_adler32_to_1_adler32(unsigned int crc, off_t filesize)
     /* Return the 1 seeded adler32 crc. */
     return (s2 << 16) + s1;
 }
+#endif /* 0 */
 
 int main(int argc, char **argv)
 {
