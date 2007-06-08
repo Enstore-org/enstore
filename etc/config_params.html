@@ -673,7 +673,7 @@ Uses only general keys (along with database keys which are the same
 <th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
 </th>
 </tr>
-<tr><td><a NAME="log_file_path">log_file_path</a><td>patt to the log
+<tr><td><a NAME="log_file_path">log_file_path</a><td>path to the log
 	      files directory</td>
 	   <td>Mandatory</td><td>None</td>
 <tr><td><a NAME="msg_type_logs">msg_type_logs</a><td>log extractions
@@ -706,10 +706,29 @@ Uses only general keys (along with database keys which are the same
 </tr>
 </table>
 
+<h2>Encp Keys</h2>
+<table border="1" cellpadding="2" cellspacing="5" bgcolor="#DFF0FF">
+<tr><th align="CENTER"><strong><font color="#770000" size="+1">Key</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Description</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Presence</font></strong>
+</th>
+<th align="CENTER"><strong><font color="#770000" size="+1">Default</font></strong>
+</th>
+</tr>
+
+<tr><td><a NAME="crc_seed">crc_seed</a><td>value of the initial adler32 seed.
+	      the standard says this should be one, but some institutions
+	      have decided to use zero.</td>
+	   <td>Optional</td><td>1</td>
+</tr>
+</table>
+
 <p>  
 <!-- Created: Thu May  6 09:12:39 CDT 2004 -->
 <!-- hhmts start -->
-Last modified: Tue Apr 10 14:57:01 CDT 2007
+Last modified: Tue Jun  5 14:05:33 CDT 2007
 <!-- hhmts end -->
   </body>
 </html>
