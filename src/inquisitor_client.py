@@ -431,11 +431,13 @@ def do_work(intf):
 	ticket = iqc.show(rcv_timeout=30, tries=1)
 	if e_errors.is_ok(ticket):
             outage = ticket['outage']
+            offline = ticket['offline']
             server = intf.is_up.upper()
-            for i in outage.keys():
+            for i in outage.keys()+offline.keys():
                 if server == i.upper():
                     print "no"
                     sys.exit(1)
+
             print "yes"
             sys.exit(0)
         else:
