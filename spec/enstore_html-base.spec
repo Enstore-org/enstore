@@ -23,11 +23,11 @@ echo "Pre"
 #
 %post
 echo "installing %{name}-%{version}"
-cd %{prefix}
+cd %{prefix}/%{name}-%{version}
 ./deploy_enstore_html
 #
 %preun
-cd %{prefix}
+cd %{prefix}/%{name}-%{version}
 ./undeploy_enstore_html
 #
 %files
