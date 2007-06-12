@@ -12,6 +12,7 @@ export PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 export ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 export PYTHONINC=`ls -d ${PYTHON_DIR}/include/python*`
 export PYTHONLIB=`ls -d ${PYTHON_DIR}/lib/python*`
+export PATH=${PYTHON_DIR}/bin:${PATH}
 set PYTHONPATH="./"
 for p in ${ENSTORE_DIR}/src \
 	 ${ENSTORE_DIR}/modules \
@@ -21,6 +22,9 @@ do
 done
 
 export PYTHONPATH
+
+chmod +x web_server.py 
+chmod +x make_enstore_system.py 
 
 ./web_server.py 
 
@@ -39,5 +43,6 @@ then
 fi
 
 /sbin/chkconfig httpd on
+/sbin/service httpd start 
 
 exit 0 
