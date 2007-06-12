@@ -284,6 +284,9 @@ LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get, MC, LM, M
 LIST_DRIVES = "list-drives"                  #media
+LIST_LIBRARY_MANAGERS = "list-library-managers" #configuration
+LIST_MEDIA_CHANGERS = "list-media-changers"  #configuration
+LIST_MOVERS = "list-movers"                  #configuration
 LIST_SG_COUNT = "ls-sg-count"                #volume
 LIST_SLOTS = "list-slots"                    #media
 LIST_VOLUMES = "list-volumes"                #media
@@ -479,8 +482,9 @@ valid_option_list = [
     IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES, LIST_SG_COUNT,
-    LIST_SLOTS, LIST_VOLUMES,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES,
+    LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
+    LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,
     MAKE_HTML, MARK_BAD,
     MAX_ENCP_LINES, MAX_RESUBMIT, MAX_RETRY, MAX_WORK,

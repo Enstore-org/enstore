@@ -333,6 +333,9 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.summary = 0
         self.timestamp = 0
         self.threaded_impl = None
+        self.list_library_managers = 0
+        self.list_media_changers = 0
+        self.list_movers = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -371,6 +374,26 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                             option.VALUE_USAGE:option.REQUIRED,
                             option.DEFAULT_TYPE:option.STRING,
 			    option.USER_LEVEL:option.ADMIN},
+        option.LIST_LIBRARY_MANAGERS:{option.HELP_STRING:
+                                      "list all library managers in "
+                                      "configuration",
+                                      option.DEFAULT_VALUE:option.DEFAULT,
+                                      option.DEFAULT_TYPE:option.INTEGER,
+                                      option.VALUE_USAGE:option.IGNORED,
+                                      option.USER_LEVEL:option.ADMIN},
+        option.LIST_MEDIA_CHANGERS:{option.HELP_STRING:
+                                    "list all media changers in "
+                                    "configuration",
+                                    option.DEFAULT_VALUE:option.DEFAULT,
+                                    option.DEFAULT_TYPE:option.INTEGER,
+                                    option.VALUE_USAGE:option.IGNORED,
+                                    option.USER_LEVEL:option.ADMIN},
+        option.LIST_MOVERS:{option.HELP_STRING:
+                            "list all movers in configuration",
+                            option.DEFAULT_VALUE:option.DEFAULT,
+                            option.DEFAULT_TYPE:option.INTEGER,
+                            option.VALUE_USAGE:option.IGNORED,
+                            option.USER_LEVEL:option.ADMIN},
         option.TIMESTAMP:{option.HELP_STRING:
                           "last time configfile was reloaded",
                           option.DEFAULT_TYPE:option.INTEGER,
@@ -447,6 +470,66 @@ def do_work(intf):
         result = csc.threaded(intf.threaded_impl, intf.alive_rcv_timeout,
                                       intf.alive_retries)
         print result
+    elif intf.list_library_managers:
+        try:
+            result = csc.get_library_managers(
+                timeout = intf.alive_rcv_timeout, retry = intf.alive_retries)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        if result.get("status", None) == None or e_errors.is_ok(result):
+            msg_spec = "%25s %15s"
+            print msg_spec % ("media changer", "host")
+            for lm_name in result.values():
+                lm_info = csc.get(lm_name['name'])
+                print msg_spec % (lm_name['name'], lm_info['host'])
+
+    elif intf.list_media_changers:
+        try:
+            result = csc.get_media_changers(
+                timeout = intf.alive_rcv_timeout, retry = intf.alive_retries)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        if result.get("status", None) == None or e_errors.is_ok(result):
+            msg_spec = "%25s %15s %20s"
+            print msg_spec % ("media changer", "host", "type")
+            for mc_name in result.values():
+                mc_info = csc.get(mc_name['name'])
+                print msg_spec % (mc_name['name'], mc_info['host'],
+                                  mc_info['type'])
+
+    elif intf.list_movers:
+        try:
+            movers_list = csc.get_movers(None,
+                timeout = intf.alive_rcv_timeout, retry = intf.alive_retries)
+            result = {'status' : (e_errors.OK, None)}
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        if type(movers_list) == types.ListType:
+            msg_spec = "%15s %15s %9s %10s %15s"
+            print msg_spec % ("mover", "host", "mc_device", "driver", "library")
+            for mover_name in movers_list:
+                mover_info = csc.get(mover_name['mover'])
+                print msg_spec % (mover_name['mover'], mover_info['host'],
+                                  mover_info['mc_device'], mover_info['driver'],
+                                  mover_info['library'])
     
     else:
 	intf.print_help()
