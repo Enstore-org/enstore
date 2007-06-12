@@ -1,6 +1,6 @@
 %module checksum
 %{
-/* $Id */
+/* $Id$ */
 #include "zlib.h"
 
 unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
@@ -19,10 +19,12 @@ unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nb
 /* Include in the generated wrapper file */
 typedef unsigned long int zint;
 typedef char * cptr;
+typedef long long off_t_2;
 %}
 /* Tell SWIG about it */
 typedef unsigned long int zint;
 typedef char * cptr;
+typedef long long off_t_2;
 
 %typemap(in) zint {
     if (PyLong_Check($input))
@@ -40,11 +42,11 @@ typedef char * cptr;
 %typemap(in) cptr{
         $1= PyString_AsString($input);
 }
-%typemap(in) off_t {
+%typemap(in) off_t_2 {
     if (PyLong_Check($input))
-        $1 = (unsigned long) PyLong_AsLongLong($input);
+        $1 = (long long) PyLong_AsLongLong($input);
     else if (PyInt_Check($input))
-        $1 = (unsigned long) PyInt_AsLong($input);
+        $1 = (long long) PyInt_AsLongLong($input);
     else {
         PyErr_SetString(PyExc_TypeError, "expected integral type");
         return NULL;
@@ -57,6 +59,7 @@ typedef char * cptr;
 
 %typedef unsigned long int zint;
 %typedef char * cptr;
+%typedef double off_t_2; /*Swig 1.1 doesn't have "long long" */
 
 %typemap(python,in) zint {
     if (PyLong_Check($source))
@@ -74,11 +77,22 @@ typedef char * cptr;
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
 }
-%typemap(python,in) off_t {
-    if (PyLong_Check($source))
-	$target= (long long) PyLong_AsLongLong($source);
-    else if (PyInt_Check($source))
-	$target= (long long) PyInt_AsLong($source);
+%typemap(python,in) off_t_2 {
+    long long temp;
+    /* Since SWIG 1.1 doesn't recognize "long long" as a data type, we
+     * need to play some trickery to get it to work with large files.
+     * Pretend it is a double, then pack the double with the bits from
+     * the long long we really want.  When the double, which is really
+     * the long long, is passed to convert_0_adler32_to_1_adler32 we get
+     * the desired effect. */
+    if (PyLong_Check($source)) {
+	temp = (long long) PyLong_AsLongLong($source);
+        memcpy(&($target), &temp, sizeof(long long));
+    }	
+    else if (PyInt_Check($source)) {
+	temp = (long long) PyInt_AsLong($source);
+        memcpy(&($target), &temp, sizeof(long long));
+    }
     else {
 	PyErr_SetString(PyExc_TypeError, "expected integral type");
 	return NULL;
@@ -90,4 +104,4 @@ zint adler32(zint, cptr, int);
 
 zint adler32_o(zint, cptr, int, int);
 
-zint convert_0_adler32_to_1_adler32(zint crc, off_t filesize);
+zint convert_0_adler32_to_1_adler32(zint crc, off_t_2 filesize);
