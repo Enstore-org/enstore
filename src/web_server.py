@@ -162,17 +162,17 @@ if __name__ == "__main__":
             print "Failed to read httpd.conf"
             sys.exit(1)
         if not os.path.exists(os.path.dirname(server.get_document_root())):
-            os.mkdirs(os.path.dirname(server.get_document_root()))
+            os.makedirs(os.path.dirname(server.get_document_root()))
         if not os.path.exists(os.path.dirname(server.get_pid_file())):
-            os.mkdirs(os.path.dirname(server.get_pid_file()))
+            os.makedirs(os.path.dirname(server.get_pid_file()))
         if not os.path.exists(os.path.dirname(server.get_error_log())):
-            os.mkdirs(os.path.dirname(server.get_error_log()))
+            os.makedirs(os.path.dirname(server.get_error_log()))
         if not os.path.exists(os.path.dirname(server.get_custom_log('combined'))):
-            os.mkdirs(os.path.dirname(server.get_custom_log('combined')))
+            os.makedirs(os.path.dirname(server.get_custom_log('combined')))
         if not os.path.exists(os.path.dirname(server.get_custom_log('referer'))):
-            os.mkdirs(os.path.dirname(server.get_custom_log('referer')))
+            os.makedirs(os.path.dirname(server.get_custom_log('referer')))
         if not os.path.exists(os.path.dirname(server.get_custom_log('agent'))):
-            os.mkdirs(os.path.dirname(server.get_custom_log('agent')))
+            os.makedirs(os.path.dirname(server.get_custom_log('agent')))
         if server.generate_top_index_html():
             print "Failed to create index.html"
             sys.exit(1)
