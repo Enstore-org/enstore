@@ -3,7 +3,7 @@ Name: enstore_html
 Version: %{MajVersion}.%{MinVersion}
 License:  FNAL/DOE (BSD-like Open Source licensing)
 Group: Applications/System
-URL: 
+URL: https://plone4.fnal.gov/P0/Enstore_and_Dcache/
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_topdir}/BUILD/%{name}-%{version}
 Prefix: /opt/%{name}
