@@ -77,7 +77,7 @@ cd ${tmpdir}
 mkdir "$package"
 cp enstore/etc/*.gif "$package"
 cp enstore/etc/*.html "$package"
-cp enstore/etc/make_enstore_system.py "$package"
+cp enstore/sbin/make_enstore_system.py "$package"
 cp enstore/src/web_server.py "$package"
 cp enstore/www/conf/httpd.conf "$package"
 cp enstore/sbin/deploy_enstore_html "$package"
