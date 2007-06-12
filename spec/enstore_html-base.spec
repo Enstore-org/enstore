@@ -6,7 +6,7 @@ Group: Applications/System
 URL: https://plone4.fnal.gov/P0/Enstore_and_Dcache/
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_topdir}/BUILD/%{name}-%{version}
-Prefix: /opt/%{name}-%{version}
+Prefix: /opt/%{name}
 Requires: Python-enstore,  enstore_sa, httpd
 %description
 Fermilab enstore html 
@@ -26,15 +26,15 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-%{prefix}-%{version}
+%{prefix}
 
 %post
 echo "installing %{name}-%{version}"
-cd %{prefix}-%{version}
+cd %{prefix}
 ./deploy_enstore_html
 #
 %preun
-cd %{prefix}-%{version}
+cd %{prefix}
 ./undeploy_enstore_html
 
 
