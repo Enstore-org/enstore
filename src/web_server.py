@@ -53,7 +53,7 @@ class WebServer:
         if not self.is_ok :
             return 1
         self.lines=[]
-        f=open("/etc/httpd/conf/httpd.conf","r")
+        f=open("httpd.conf","r")
         try:
             for line in f:
                 self.lines.append(line)
@@ -67,7 +67,7 @@ class WebServer:
         if not self.is_ok :
             return 1
         print self.server_dict.keys()
-        f=open("/etc/httpd/conf/httpd.conf_test","w")
+        f=open("/etc/httpd/conf/httpd.conf","w")
         try: 
             for line in self.lines:
                 txt = line
