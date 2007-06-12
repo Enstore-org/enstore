@@ -91,6 +91,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         # added by Dmitry, subdirectory displays encp rates per storage group
         # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, ENCP_RATE)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -103,6 +105,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                                           enstore_files.plot_html_file_name()),
                                  "Encp rates per Storage Group Plots"))
 	dir = "%s/%s"%(self.html_dir, FILE_FAMILY_USAGE)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -115,6 +119,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                                           enstore_files.plot_html_file_name()),
                                  "Tape occupancies per Storage Group Plots"))
         dir = "%s/%s"%(self.html_dir, inquisitor_plots.XFER_SIZE)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp size plots")
@@ -128,6 +134,8 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
                                  "Xfer size per Storage Group Plots"))
         # --------------------------------------------------
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
+        if not os.access(dir, os.F_OK):
+            os.makedirs(dir)
 	if os.path.isdir(dir):
 	    Trace.trace(enstore_constants.PLOTTING,
                         "adding links to burn rate plots")
