@@ -19,17 +19,24 @@ elif host[:3] == "cdf":
 else:
 	cluster = "unknown"
 
-special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED.html', 'VOLUMES_TOO_MANY_MOUNTS', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS', 'CLEANING', 'VOLUME_CROSS_CHECK', 'COMPLETE_FILE_LISTING', 'DECLARATION_ERROR', 'MIGRATED_VOLUMES', 'MIGRATION_STATUS', 'RECYCLABLE_VOLUMES', 'QUOTA_ALERT', 'WRITE_PROTECTION_ALERT', 'WEEKLY_SUMMARY', 'TAB_FLIPPING_WATCH']
+special = ['TOTAL_BYTES_ON_TAPE', 'VOLUMES', 'VOLUMES_DEFINED.html', 'VOLUMES_TOO_MANY_MOUNTS', 'VOLUME_QUOTAS', 'VOLUME_SIZE', 'LAST_ACCESS', 'NOACCESS', 'CLEANING', 'VOLUME_CROSS_CHECK', 'COMPLETE_FILE_LISTING', 'DECLARATION_ERROR', 'MIGRATED_VOLUMES', 'RECYCLABLE_VOLUMES', 'WRITE_PROTECTION_ALERT', 'WEEKLY_SUMMARY', 'TAB_FLIPPING_WATCH']
 
 if cluster == "d0en":
+	special.append('TAB_FLIPPING_WATCH-samlto2')
 	special.append('AML2-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
 elif cluster == "stken":
-	special.append('VOLUME_QUOTAS_UPDATE')
+	special.append('TAB_FLIPPING_WATCH-CD-LTO3')
+	special.append('SL8500-VOLUMES.html')
 	special.append('AML2-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
+	special.append('MIGRATION_STATUS')
+	special.append('QUOTA_ALERT')
+	special.append('VOLUME_QUOTAS_UPDATE')
 	special.append('CMS_VOLUMES_WITH_ONLY_DELETED_FILES')
 elif cluster == "cdfen":
+	special.append('TAB_FLIPPING_WATCH-CDF-LTO3')
+	special.append('SL8500-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
 
 # in the beginning ...
