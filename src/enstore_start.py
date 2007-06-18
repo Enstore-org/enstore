@@ -639,6 +639,15 @@ def do_work(intf):
                           (library_manager,))
 
     #Media changers.
+    media_changers = csc.get_media_changers()
+    for media_changer_info in media_changers.values():
+        media_changer_name = media_changer_info['name']
+        if intf.should_start(enstore_constants.MEDIA_CHANGER) or \
+           intf.should_start(media_changer_name):
+            check_server(csc, media_changer_name, intf,
+                         "$ENSTORE_DIR/sbin/media_changer %s" %
+                         (media_changer_name,))
+    """
     for library_manager in libraries:
         media_changer = csc.get_media_changer(library_manager)
         if intf.should_start(enstore_constants.MEDIA_CHANGER) or \
@@ -646,8 +655,18 @@ def do_work(intf):
             check_server(csc, media_changer, intf,
                          "$ENSTORE_DIR/sbin/media_changer %s" %
                          (media_changer,))
+    """
 
     #Movers.
+    movers = csc.get_movers(None)
+    for mover_info in movers:
+        mover_name = mover_info['mover']
+        if intf.should_start(enstore_constants.MOVER) or \
+           intf.should_start(mover_name):
+            check_server(csc, mover_name, intf,
+                         "$ENSTORE_DIR/sbin/mover %s" %
+                         (mover_name,))
+    """
     mover_names = []
     for library_manager in libraries:
         for lm_mover in csc.get_movers(library_manager):
@@ -661,7 +680,8 @@ def do_work(intf):
             check_server(csc, mover_name, intf,
                          "%s $ENSTORE_DIR/sbin/mover %s" %
                          (sudo, mover_name))
-            
+    """
+        
     sys.exit(0)
 
 if __name__ == '__main__':
