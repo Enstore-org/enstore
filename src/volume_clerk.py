@@ -66,6 +66,7 @@ MIN_LEFT=long(0) # for now, this is disabled.
 
 
 MY_NAME = enstore_constants.VOLUME_CLERK   #"volume_clerk"
+MAX_CONNECTION_FAILURE = 5
 
 class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.GenericServer):
 
@@ -81,10 +82,12 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.ignored_sg_file = None
         self.set_error_handler(self.vol_error_handler)
         self.common_blank_low = {'warning':100, 'alarm':10}
+        self.connection_failure = 0
         return
 
     def vol_error_handler(self, exc, msg, tb):
-        if exc == edb.pg.Error or msg == "no connection to the server":
+        # handle pg.* error
+        if str(exc)[:3] == "pg.":
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
@@ -100,8 +103,15 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
-        Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
-        self.dict.reconnect()
+        try:
+            self.dict.reconnect()
+            Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
+            self.connection_failure = 0
+        except:
+            Trace.alarm(e_errors.Error, "RECONNECTION FAILURE", "fail to reconnect to database for "+str(msg))
+            self.connection_failure += 1
+            if self.connection_failure > MAX_CONNECTION_FAILURE:
+                pass	# place holder for future RED BALL
 
     # change_state(type, value) -- change a state
     def change_state(self, volume, type, value):
