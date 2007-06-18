@@ -252,6 +252,44 @@ def move_file(input_filename, output_filename):
         os.setreuid(os.getuid(), p.pstat[stat.ST_UID])
     except OSError:
         pass
+
+    #If the original file is set read-only and the target file is within
+    # the same pnfs database area, then the outputfile at this point will
+    # also be read-only (because rename() would succed).  Thus, we need to
+    # turn on the write bits.
+    try:
+        #The 'other' bits don't help with reading/writing to the layers.
+        # Thus we need to ignore this as a safe possiblity.
+        #
+        #The 'group' bits don't give you the ability to chmod() a file.
+
+        if os.geteuid() == 0:
+            pass
+        elif os.geteuid() == p.pstat[stat.ST_UID]:
+             if not (p.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
+                  not (p.pstat[stat.ST_MODE] & stat.S_IWUSR):
+                 os.chmod(output_filename,
+                          p.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
+        elif os.getegid() == p.pstat[stat.ST_GID] \
+             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
+             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
+            #Since, we don't need to change the permissions in this case,
+            # we should be okay to proceed.
+            pass
+        elif p.pstat[stat.ST_GID] in os.getgroups() \
+             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
+             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
+            #Since, we don't need to change the permissions in this case,
+            # we should be okay to proceed.
+            pass
+        else:
+            print_error(e_errors.USERERROR,
+                        "Insufficent permissions to move file")
+            sys.exit(1)
+    except OSError, msg:
+        print_error(e_errors.OSERROR,
+                    "Unable to set temporary permissions: %s" % str(msg))
+        sys.exit(1)
                         
     try:
         #Attempt to rename the file.  This can work if the input and
@@ -334,38 +372,6 @@ def move_file(input_filename, output_filename):
     #fc_ticket['fc']['drive'] = new_drive
     fc_ticket['fc']['uid'] = p.pstat[stat.ST_UID]
     fc_ticket['fc']['gid'] = p.pstat[stat.ST_GID]
-
-    #If the original file is set read-only and the target file is within
-    # the same pnfs database area, then the outputfile at this point will
-    # also be read-only (because rename() would succed).  Thus, we need to
-    # turn on the write bits.
-    try:
-        #The 'other' bits don't help with reading/writing to the layers.
-        # Thus we need to ignore this as a safe possiblity.
-        #
-        #The 'group' bits don't give you the ability to chmod() a file.
-
-        if os.geteuid() == 0:
-            pass
-        elif os.geteuid() == p.pstat[stat.ST_UID]:
-             if not (p.pstat[stat.ST_MODE] & stat.S_IRUSR) or \
-                  not (p.pstat[stat.ST_MODE] & stat.S_IWUSR):
-                 os.chmod(output_filename,
-                          p.pstat[stat.ST_MODE] | stat.S_IRUSR | stat.S_IWUSR)
-        elif os.getegid() == p.pstat[stat.ST_GID] \
-             and (p.pstat[stat.ST_MODE] & stat.S_IRGRP) and \
-             (p.pstat[stat.ST_MODE] & stat.S_IWGRP):
-            #Since, we don't need to change the permissions in this case,
-            # we should be okay to proceed.
-            pass
-        else:
-            print_error(e_errors.USERERROR,
-                        "Insufficent permissions to move file")
-            sys.exit(1)
-    except OSError, msg:
-        print_error(e_errors.OSERROR,
-                    "Unable to set temporary permissions: %s" % str(msg))
-        sys.exit(1)
 
     try:
         #Update file's layer 1 information.
