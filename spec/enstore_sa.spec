@@ -47,9 +47,6 @@ make clean
 make
 
 %install
-echo INSTALL
-echo $RPM_BUILD_ROOT
-pwd
 #chown -R enstore.enstore /home/enstore
 
 %pre
@@ -66,8 +63,8 @@ echo 'Creating user "enstore"'
 useradd -u 6209 -g enstore enstore
 
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
-%post
-$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
+#%post
+#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
 %preun
 $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh

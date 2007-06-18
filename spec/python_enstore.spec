@@ -40,7 +40,7 @@ pwd
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 %files
-%defattr(-,enstore,enstore,-)
+%defattr(-,root,root,-)
 #/python.2.4.3-enstore
 /%{prefix}/python.2.4.3-enstore
 #/opt/python/python.2.4.3-enstore
