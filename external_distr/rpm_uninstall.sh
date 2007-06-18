@@ -17,7 +17,20 @@ fi
 
 PATH=/usr/sbin:$PATH
 
-. /usr/local/etc/setups.sh
+# do as much as possible
+if [ -f /usr/local/etc/setups.sh ]
+then
+    source /usr/local/etc/setups.sh
+fi
+
+echo "Creating backup of $ENSTORE_HOME to /tmp/enstore_home.tgz"
+cd /
+tar czf /tmp/enstore_home.tgz $ENSTORE_HOME
+
+
+echo "creating backup of /usr/local/etc to /tmp/enstore_etc.tgz"
+cd /
+tar czf /tmp/enstore_etc.tgz /usr/local/etc 
 echo "Removing farmlets"
 rm -rf $FARMLETS_DIR
 
@@ -49,10 +62,10 @@ rm -rf /usr/local/etc/setups.sh
 echo "removing $ENSTORE_DIR/config"
 rm -rf $ENSTORE_DIR/config
 
-echo "Deleting user 'enstore'"
-userdel -r enstore
+#echo "Deleting user 'enstore'"
+#userdel -r enstore
 
-echo "Deleting group 'enstore'"
-groupdel enstore
+#echo "Deleting group 'enstore'"
+#groupdel enstore
 
 exit 0

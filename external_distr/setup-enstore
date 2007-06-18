@@ -2,6 +2,7 @@
 export ENSTORE_DIR
 export PYTHON_DIR
 export FTT_DIR
+export ENSTORE_HOME
 #. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
 

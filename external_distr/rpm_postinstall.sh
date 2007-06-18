@@ -15,26 +15,12 @@ then
     echo You need to run this script as user "root"
     exit 1
 fi
-enstore_istalled=0
 
 PATH=/usr/sbin:$PATH
 
-if [ -f /usr/local/etc/setups.sh ]; then
-    # enstore is installed
-    source /usr/local/etc/setups.sh
-    enstore_istalled=1
-fi
-if [ -z $PYTHON_DIR ]; then
-    PYTHON_DIR=`rpm -ql Python-enstore | head -1`
-fi
-
-if [ -z $ENSTORE_DIR ]; then
-    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
-fi
-
-if [ -z $FTT_DIR ]; then
-    FTT_DIR=`rpm -ql ftt | head -1`
-fi
+PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+FTT_DIR=`rpm -ql ftt | head -1`
 
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
@@ -51,33 +37,30 @@ echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL" >> /etc/sudoers.e
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
 
-if [ $enstore_installed -eq 0 ]; then
-    echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
-    if [ ! -d "/usr/local/etc" ]
-    then
-	mkdir -p /usr/local/etc
-    fi
-    
-    sed -e "s?e_dir=?e_dir=$ENSTORE_DIR?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups.sh
-    #cp -rpf $ENSTORE_DIR/external_distr/setups.sh /usr/local/etc
-
-    echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_DIR/config"
-    if [ ! -d $ENSTORE_DIR/config ]
-    then
-	mkdir -p $ENSTORE_DIR/config
-    fi
-
-    rm -rf /tmp/enstore_header
-    echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
-    echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
-    echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
-
-    rm -rf $ENSTORE_DIR/config/setup-enstore
-    cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_DIR/config/setup-enstore
-
-    rm -f $ENSTORE_DIR/debugfiles.list
-    rm -f $ENSTORE_DIR/debugsources.list
+echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
+if [ ! -d "/usr/local/etc" ]
+then
+    mkdir -p /usr/local/etc
 fi
+    
+sed -e "s?e_dir=?e_dir=$ENSTORE_DIR?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups.sh
+
+echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to ~enstore/config"
+if [ ! -d ~enstore/config ]
+then
+    mkdir -p ~enstore/config
+fi
+
+rm -rf /tmp/enstore_header
+echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
+echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
+echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
+
+rm -rf ~enstore/config/setup-enstore
+cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > ~enstore/config/setup-enstore
+
+rm -f $ENSTORE_DIR/debugfiles.list
+rm -f $ENSTORE_DIR/debugsources.list
 
 echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
 cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d

@@ -56,6 +56,8 @@ echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
 if [ ! -d "/usr/local/etc" ]
 then
     mkdir -p /usr/local/etc
+else
+    cp -rf /usr/local/etc/setups.sh /usr/local/etc/setups.sh.sav
 fi
     
 sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups.sh

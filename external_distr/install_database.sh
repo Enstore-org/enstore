@@ -24,7 +24,7 @@ fi
 
 PATH=/usr/sbin:$PATH
 config_host=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
-this_host=`uname -n`
+this_host=`uname -n | cut -f1 -d\.`
 
 echo "This script will create all enstore databases that will be served by one postmaster.
 If you want a different configuration you can use this script as a guide."
@@ -142,15 +142,10 @@ databases="${dbname} ${acc_dbname} ${ds_dbname}"
 
 # find the host
 host=`uname -n | cut -d. -f1`
+hostip=`host tundra | cut -f4 -d" "`
 
-case $host in
-	stkensrv0|cdfensrv0|d0ensrv0)
-		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-$host
-		;;
-	*)
-		hba_file=$enstore_dir/databases/control_files/pg_hba.conf-stkensrv0
-		;;
-esac
+# add this line to hba_file
+hba_file="host    all         enstore     $hostip     255.255.255.255   trust"
 
 
 echo "The following variables will be used:"
@@ -214,8 +209,8 @@ echo su $database_owner -c \"initdb -D $database_area\"
 su $database_owner -c "initdb -D $database_area"
 
 #  modify create pg_hba.conf
-echo su $database_owner cp \"$hba_file $database_area/pg_hba.conf\"
-su $database_owner -c "cp $hba_file $database_area/pg_hba.conf"
+echo su $database_owner cat \"$hba_file >> $database_area/pg_hba.conf\"
+su $database_owner -c "cat $hba_file >> $database_area/pg_hba.conf"
 
 # bring up database server
 echo su $database_owner -c \"postmaster -D $database_area -p $db_port -i \&\"
