@@ -46,7 +46,7 @@ typedef long long off_t_2;
     if (PyLong_Check($input))
         $1 = (long long) PyLong_AsLongLong($input);
     else if (PyInt_Check($input))
-        $1 = (long long) PyInt_AsLongLong($input);
+        $1 = (long long) PyInt_AsLong($input);
     else {
         PyErr_SetString(PyExc_TypeError, "expected integral type");
         return NULL;
