@@ -51,10 +51,17 @@ if __name__ == "__main__":
         html_dir=server.inq_d["html_file"]
     else:
         html_dir = enstore_files.default_dir
+    if not os.path.exists(html_dir):
+        os.makedirs(html_dir)
     f=open(os.path.join(html_dir,"enstore_system.html"),"w");
     for line in lines:
         f.write(line)
     f.close()
+    os.chmod(os.path.join(html_dir,"enstore_system.html"),0644)
+    if os.path.exists( os.path.join(html_dir,"index.html")):
+        os.symlink(os.path.join(html_dir,"enstore_system.html"), os.path.join(html_dir,"index.html"));
+    os.system("cp *.gif %s"%html_dir);
+    os.system("cp *.html %s"%html_dir);
     
     
            

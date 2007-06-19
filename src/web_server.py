@@ -11,6 +11,8 @@
 ###############################################################################
 
 WEB_SERVER = "web_server"
+HTTPD_CONF="/etc/httpd/conf/httpd.conf"
+SUFFIX=".orig"
 
 import errno
 import configuration_client
@@ -19,6 +21,9 @@ import sys
 import types
 import os
 import e_errors
+import getopt
+import string
+import socket
 
 class WebServer:
     def __init__(self,timeout=1,retry=0):
@@ -31,10 +36,28 @@ class WebServer:
             self.server_dict = csc.get(WEB_SERVER, timeout, retry)
             config_dict = csc.dump(timeout, retry)
             self.config_dict = config_dict['dump']
-            self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
         else:
-            print "Failed to connect to config server"
-            self.is_ok=False
+            print "Failed to connect to config server, using the file pointed at by ENSTORE_CONFIG_FILE"
+            try: 
+                configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+                f = open(configfile,'r')
+                code = string.join(f.readlines(),'')
+                configdict={}
+                exec(code)
+                self.config_dict=configdict
+                ret =configdict['known_config_servers']
+ 		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
+			    int(os.environ['ENSTORE_CONFIG_PORT']))
+                for item in ret.items():
+                    if socket.getfqdn(item[1][0]) == socket.getfqdn(def_addr[0]):
+                        self.system_name = item[0]
+               
+            except:
+                print "Config file ",configfile," does not exist"
+                self.is_ok=False
+                sys.exit(1)
+                
+        self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
 
     def get_ok(self):
         return self.is_ok
@@ -62,12 +85,22 @@ class WebServer:
         f.close()
         return rc
 
+    def move_httpd_conf(self,src,dest):
+        if os.access(src, os.F_OK):
+            try: 
+                os.rename(src,dest)
+            except:
+                print "Failed to move original httpd.conf file"
+                return 1
+        return 0
+    
     def write_httpd_conf(self) :
         rc=0
         if not self.is_ok :
             return 1
-        print self.server_dict.keys()
-        f=open("/etc/httpd/conf/httpd.conf","w")
+        if self.move_httpd_conf(HTTPD_CONF,"%s%s"%(HTTPD_CONF,SUFFIX)) :
+            return 1
+        f=open(HTTPD_CONF,"w")
         try: 
             for line in self.lines:
                 txt = line
@@ -148,21 +181,22 @@ class WebServer:
             f.write(body)
             f.close()
         except:
+            print "failed to open ",file_name
             rc=1
         return rc
 
-
-if __name__ == "__main__":
+def install():
     server = WebServer()
-    try: 
+    rc=0
+    try:
         if server.read_httpd_conf():
             print "Failed to read httpd.conf"
-            sys.exit(1)
+            return 1
         if server.write_httpd_conf():
-            print "Failed to read httpd.conf"
-            sys.exit(1)
-        if not os.path.exists(os.path.dirname(server.get_document_root())):
-            os.makedirs(os.path.dirname(server.get_document_root()))
+            print "Failed to write httpd.conf"
+            return 1
+        if not os.path.exists(server.get_document_root()):
+            os.makedirs(server.get_document_root())
         if not os.path.exists(os.path.dirname(server.get_pid_file())):
             os.makedirs(os.path.dirname(server.get_pid_file()))
         if not os.path.exists(os.path.dirname(server.get_error_log())):
@@ -175,20 +209,59 @@ if __name__ == "__main__":
             os.makedirs(os.path.dirname(server.get_custom_log('agent')))
         if server.generate_top_index_html():
             print "Failed to create index.html"
-            sys.exit(1)
-        #
-        # directory wehere all the stuff goes (usually /diska/www_pages) is
-        # linked to  DocumentRoot/enstore
-        #
+            return 1
         html_dir=None
         if server.inq_d.has_key("html_file"):
             html_dir=server.inq_d["html_file"]
         else:
             html_dir = enstore_files.default_dir
-        os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
+        if not os.path.exists(os.path.join(server.get_document_root(),"enstore")):
+            os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
 
     except (KeyboardInterrupt, IOError, OSError):
-        sys.exit(1)
+        return 1
+    except:
+        return 1
+    return 0
+
+def erase():
+    server = WebServer()
+    rc=0
+    move_httpd_conf(HTTPD_CONF,"%s%s"%(HTTPD_CONF,SUFFIX))
+        
+def usage(cmd):
+    print "Usage: %s -i [--install] -e [erase] -h [--help]"%(cmd,)
+
+if __name__ == "__main__":
+    try:
+        do_erase=False
+        do_install=False
+        opts, args = getopt.getopt(sys.argv[1:], "hs:is:es:", ["help","install","erase"])
+        for o, a in opts:
+            if o in ("-h", "--help"):
+                usage(sys.argv[0])
+                sys.exit(1)
+            if o in ("-i", "--install"):
+                do_install=True
+            if o in ("-e", "--erase"):
+                do_erase=True
+        if do_erase and do_install :
+            print "One switch at a time is supported \"-i\" or \"-e\" "
+            sys.exit(1)
+        if do_erase :
+            if erase() :
+                print "Failed to erase directories"
+                sys.exit(1)
+        if do_install :
+            if install() :
+                print "Failed to install directories"
+                sys.exit(1)
+        
+    except getopt.GetoptError:
+        print "Failed to process arguments"
+        usage(sys.argv[0])
+        sys.exit(2)
+
         
         
 
