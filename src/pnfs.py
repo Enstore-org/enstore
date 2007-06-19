@@ -217,9 +217,22 @@ def parse_mtab():
     
     #Clear this out to remove stale entries.
     db_pnfsid_cache = {}
-    
-    fp = open("/etc/mtab", "r")
-    for line in fp.readlines():
+
+    for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
+        try:
+            fp = open(mtab_file, "r")
+            mtab_data = fp.readlines()
+            fp.close()
+        except OSError, msg:
+            if msg.args[0] in [errno.ENOENT]:
+                continue
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    else:
+        #Should this raise an error?
+        mtab_data = []
+        
+    for line in mtab_data:
         #The 2nd and 3rd items in the list are important to us here.
         data = line[:-1].split()
         mp = data[1]
@@ -248,8 +261,6 @@ def parse_mtab():
         db_pnfsid = int(db_datas[1])
         if db_data not in db_pnfsid_cache.keys():
             db_pnfsid_cache[db_data] = (db_pnfsid, mp)
-
-    fp.close()
 
 def process_mtab():
     global db_pnfsid_cache
