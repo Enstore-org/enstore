@@ -223,6 +223,7 @@ def parse_mtab():
             fp = open(mtab_file, "r")
             mtab_data = fp.readlines()
             fp.close()
+            break
         except OSError, msg:
             if msg.args[0] in [errno.ENOENT]:
                 continue
