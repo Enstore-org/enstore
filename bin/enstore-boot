@@ -95,6 +95,17 @@ case "$1" in
         . /usr/local/etc/setups.sh
         setup enstore
 
+	# check if configure server is running
+	if [ "`enstore config --alive --timeout=30`" == "BAD STATUS ('TIMEDOUT', 'configuration_server')" ]
+	then
+		echo "Can not talk to config server ..."
+		echo "Stopping everything by default ..."
+		# Just call "enstore stop" to stop everything
+		enstore stop
+		exit 0
+	fi
+		
+
 	# Got to figure these out before shutting down enstore
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
 	# should we start enstoredb?
