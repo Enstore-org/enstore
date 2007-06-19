@@ -27,8 +27,8 @@ then
 	e_dir=
 	#e_dir=`rpm -ql enstore_sa | head -1`
 
-	if [ -a "${e_dir}/config/setup-enstore"  ]; then
-		source ${e_dir}/config/setup-enstore
+	if [ -a "${e_dir}/site_specific/config/setup-enstore"  ]; then
+		source ${e_dir}/site_specific/config/setup-enstore
 		return 0
 	else
     		echo '****'
