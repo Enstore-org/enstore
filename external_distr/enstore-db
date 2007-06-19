@@ -65,7 +65,7 @@ fi
 if [ -z $POSTGRES_DIR ]
 then
     echo "Postgres is not installed on this host. Please istall postgres 
-or modify $ENSTORE_DIR/config/setup-enstore"
+or modify $ENSTORE_DIR/site_specific/config/setup-enstore"
     exit 1
 fi
 
