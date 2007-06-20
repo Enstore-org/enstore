@@ -714,7 +714,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         # LMs across systems
 
         self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
-        self.crc_seed = 1L        # adler 32 default seed
+        self.initial_crc_seed = 1L        # adler 32 default seed
+        self.crc_seed = self.initial_crc_seed
         
         
     def __setattr__(self, attr, val):
@@ -3138,7 +3139,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             return
 
         self.t0 = time.time()
-        encp_dict = self.config.get('encp', None)
+        self.crc_seed = self.initial_crc_seed
+        encp_dict = self.csc.get('encp', None)
         if encp_dict:
             self.crc_seed = long(encp_dict.get("crc_seed", 1L))
         if ticket.has_key('crc_seed'):
@@ -3234,7 +3236,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.mode = self.setup_mode
         if self.mode == READ:
             # for reads alwas set crc_seed to 0
-            # crc will be automatically cheched against seed 1
+            # crc will be automatically checked against seed 1
             # in case if seed 0 crc check fails
             self.buffer.set_crc_seed(0L)
             
@@ -5801,7 +5803,8 @@ class DiskMover(Mover):
             return
 
         self.t0 = time.time()
-        encp_dict = self.config.get('encp', None)
+        self.crc_seed = self.initial_crc_seed
+        encp_dict = self.csc.get('encp', None)
         if encp_dict:
             self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
@@ -5893,6 +5896,12 @@ class DiskMover(Mover):
         pnfs_filename = self.current_work_ticket['wrapper'].get('pnfsFilename', '?')
 
         self.mode = self.setup_mode
+        if self.mode == READ:
+            # for reads alwas set crc_seed to 0
+            # crc will be automatically checked against seed 1
+            # in case if seed 0 crc check fails
+            self.buffer.set_crc_seed(0L)
+        
         self.bytes_to_transfer = long(fc['size'])
         self.bytes_to_write = self.bytes_to_transfer
         self.bytes_to_read = self.bytes_to_transfer
@@ -5911,8 +5920,6 @@ class DiskMover(Mover):
                                 
         if self.mode == READ:
             self.file = fc['location_cookie']
-            seed = self.crc_seed
-            self.crc_seed = fc.get('crc_seed', seed)
             self.files = (pnfs_filename, client_filename)
             self.buffer.header_size = None
         elif self.mode == WRITE:
