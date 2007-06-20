@@ -1815,6 +1815,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                         self.nowork({})
                                         if not msg:
                                             msg = "%s sending to %s"%(e_errors.TIMEDOUT, addr)
+                                        Trace.log(e_errors.INFO, "ENCP_GONE1 %s"%(msg,)) # remove after fixing ENCP_GONE
                                         self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                                         if self.method and self.method == 'read_next':
                                             self.nowork({})
@@ -1995,6 +1996,8 @@ class Mover(dispatching_worker.DispatchingWorker,
             except:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
+                Trace.log(e_errors.INFO, "ENCP_GONE2 exc %s detail %s. bytes_read %s"%(exc, detail, bytes_read)) # remove after fixing ENCP_GONE
+                
                 self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
                 return
             Trace.trace(34, "read_client: bytes read %s"%(bytes_read,))
@@ -2096,10 +2099,12 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                   0,
                                                   1) # just 1 byte
         except generic_driver.DriverError, detail:
+            Trace.log(e_errors.INFO, "ENCP_GONE3 detail %s. bytes_written %s"%(detail, bytes_written)) # remove after fixing ENCP_GONE
             self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
             return
         except:
             exc, detail = sys.exc_info()[:2]
+            Trace.log(e_errors.INFO, "ENCP_GONE4 exc %s detail %s. bytes_written %s"%(exc, detail, bytes_written)) # remove after fixing ENCP_GONE
             self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
             return
         
@@ -2895,6 +2900,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #Trace.handle_error(exc, detail, tb)
                     #if self.state is not DRAINING: self.state = HAVE_BOUND
                     # if state is DRAINING transfer_failed will set it to OFFLINE
+                    Trace.log(e_errors.INFO, "ENCP_GONE5 exc %s detail %s. bytes_written %s"%(exc, detail)) # remove after fixing ENCP_GONE
                     self.transfer_failed(e_errors.ENCP_GONE, detail)
                     failed = 1
                     break
