@@ -172,9 +172,10 @@ class Buffer:
         self.blocksize = blocksize
         self.min_bytes = min_bytes
         self.max_bytes = max_bytes
-        if crc_seed == 1L:
-           self.complete_crc = crc_seed
-           self.sanity_crc = crc_seed
+        self.crc_seed = crc_seed
+        if self.crc_seed == 1L:
+           self.complete_crc = self.crc_seed
+           self.sanity_crc = self.crc_seed
         else:
             self.complete_crc = 0L
             self.sanity_crc = 0L
@@ -247,8 +248,12 @@ class Buffer:
         self._writing_block = None
         self._read_ptr = 0
         self._write_ptr = 0
-        self.complete_crc = 0L
-        self.sanity_crc = 0L
+        if self.crc_seed == 1L:
+           self.complete_crc = self.crc_seed
+           self.sanity_crc = self.crc_seed
+        else:
+            self.complete_crc = 0L
+            self.sanity_crc = 0L
         self.sanity_bytes = 0L
         self.header_size = None
         self.trailer_size = 0L
@@ -321,6 +326,15 @@ class Buffer:
         self._buf_bytes = self._buf_bytes - len(data)
         self._lock.release()
         return data
+        
+    def set_crc_seed(self, crc_seed):
+        self.crc_seed = crc_seed
+        if self.crc_seed == 1L:
+           self.complete_crc = self.crc_seed
+           self.sanity_crc = self.crc_seed
+        else:
+            self.complete_crc = 0L
+            self.sanity_crc = 0L
         
     def nonzero(self):
         return self.nbytes() > 0
@@ -407,17 +421,27 @@ class Buffer:
                     #             self.sanity_bytes))
                 else:
                     # compare sanity crc
+                    crc_error = 0
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
-                        Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, actual (%s,%s)" %
-                                  (self.sanity_cookie, self.sanity_bytes, self.sanity_crc)) 
-                        if self.sanity_cookie != (None, None): # special case to fix bfid db
-                            crc_error = 1   
+                        if self.sanity_cookie != (None, None):
+                            # (None, None) is a special case to fix bfid db
+                            crc_error = 1
+                            if self.crc_seed == 0:
+                                # try 1 based crc
+                                crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.sanity_crc,
+                                                                                       self.sanity_cookie[0])
+                                if crc_1_seeded == self.sanity_cookie[1]:
+                                    self.sanity_crc = crc_1_seeded
+                                    crc_error = 0
+                        
                 data_ptr = data_ptr + bytes_for_cs
             except:
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 Trace.handle_error()
                 raise CRC_ERROR
             if crc_error:
+                Trace.log(e_errors.ERROR, "CRC Error: CRC sanity cookie %s, actual (%s,%s)" %
+                          (self.sanity_cookie, self.sanity_bytes, self.sanity_crc)) 
                 Trace.log(e_errors.ERROR,"block_read: CRC_ERROR")
                 raise CRC_ERROR
                 
@@ -579,9 +603,19 @@ class Buffer:
                     #            (self.sanity_cookie, self.sanity_crc,self.sanity_bytes))
                     # compare sanity crc
                     if self.sanity_cookie and self.sanity_crc != self.sanity_cookie[1]:
-                        Trace.log(e_errors.ERROR,
-                                  "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" % (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
-                        raise CRC_ERROR
+                        crc_error = 1
+                        if self.crc_seed == 0:
+                            # try 1 based crc
+                            crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.sanity_crc,
+                                                                                   self.sanity_cookie[0])
+                            if crc_1_seeded == self.sanity_cookie[1]:
+                                self.sanity_crc = crc_1_seeded
+                                crc_error = 0
+                        if crc_error:
+                            Trace.log(e_errors.ERROR,
+                                      "CRC Error: CRC sanity cookie %s, sanity CRC %s writing %s bytes. Written %s bytes" %
+                                      (self.sanity_cookie[1],self.sanity_crc, bytes_to_write, nbytes)) 
+                            raise CRC_ERROR
         else:
             bytes_written = bytes_to_write #discarding header stuff
         self._write_ptr = self._write_ptr + bytes_written
@@ -2695,8 +2729,6 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, complete_crc))
             if self.buffer.complete_crc != complete_crc:
-                Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
-                          (self.buffer.complete_crc, complete_crc))
                 # this is to fix file db
                 if complete_crc == None:
                     sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
@@ -2763,16 +2795,27 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
                     if self.tr_failed:
+                        Trace.log(e_errors.ERROR,"read_tape: calculated CRC %s File DB CRC %s"%
+                                  (self.buffer.complete_crc, complete_crc))
                         self.read_tape_running = 0
                         return  # do not raise alarm if net thead detected a failed transfer
-                    Trace.alarm(e_errors.ERROR, "read_tape CRC error",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.read_tape_running = 0
-                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
-                    return
+                    crc_error = 1
+                    # try 1 based crc
+                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.sanity_crc,
+                                                                               self.bytes_read)
+                    if crc_1_seeded == complete_crc:
+                        self.buffer.complete_crc = crc_1_seeded
+                        crc_error = 0
+                        
+                    if crc_error:
+                        Trace.alarm(e_errors.ERROR, "read_tape CRC error",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        self.read_tape_running = 0
+                        self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                        return
         self.bytes_read_last = self.bytes_read
         # if data is tranferred slowly
         # the false "too long in state.." may be generated
@@ -3098,7 +3141,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         encp_dict = self.config.get('encp', None)
         if encp_dict:
             self.crc_seed = long(encp_dict.get("crc_seed", 1L))
-
+        if ticket.has_key('crc_seed'):
+            crc_seed = int(ticket['crc_seed'])
+            if crc_seed == 1 or crc_seed == 0:
+                self.crc_seed = crc_seed
+            
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
         vc = ticket['vc']
@@ -3185,6 +3232,12 @@ class Mover(dispatching_worker.DispatchingWorker,
         pnfs_filename = self.current_work_ticket['wrapper'].get('pnfsFilename', '?')
 
         self.mode = self.setup_mode
+        if self.mode == READ:
+            # for reads alwas set crc_seed to 0
+            # crc will be automatically cheched against seed 1
+            # in case if seed 0 crc check fails
+            self.buffer.set_crc_seed(0L)
+            
         bytes = fc.get('size', None)
         if bytes == None:
             self.bytes_to_transfer = None
@@ -3218,8 +3271,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.mode == READ:
             self.files = (pnfs_filename, client_filename)
             self.target_location = cookie_to_long(fc['location_cookie'])
-            seed = self.crc_seed
-            self.crc_seed = fc.get('crc_seed', seed)
+            #seed = self.crc_seed
+            #self.crc_seed = fc.get('crc_seed', seed)
             
             self.buffer.header_size = None
         elif self.mode == WRITE:
