@@ -1993,12 +1993,17 @@ class Mover(dispatching_worker.DispatchingWorker,
             bytes_read = 0
             try:
                 bytes_read = self.buffer.stream_read(nbytes, driver)
-            except:
+                #raise exceptions.MemoryError # to test this thread
+            except MemoryError:
                 exc, detail, tb = sys.exc_info()
                 #Trace.handle_error(exc, detail, tb)
-                Trace.log(e_errors.INFO, "ENCP_GONE2 exc %s detail %s. bytes_read %s"%(exc, detail, bytes_read)) # remove after fixing ENCP_GONE
-                
-                self.transfer_failed(e_errors.ENCP_GONE, detail, error_source=NETWORK)
+                self.transfer_failed(e_errors.MEMORY_ERROR, detail, error_source=NETWORK,dismount_allowed=1)
+                return
+            except:
+                exc, detail, tb = sys.exc_info()
+                msg ="ENCP_GONE(2) exc %s detail %s. bytes_read %s"%(exc, detail, bytes_read)  
+                #Trace.handle_error(exc, detail, tb)
+                self.transfer_failed(e_errors.ENCP_GONE, msg, error_source=NETWORK)
                 return
             Trace.trace(34, "read_client: bytes read %s"%(bytes_read,))
             if bytes_read <= 0:  #  The client went away!
@@ -3554,7 +3559,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(98, "calling nowork")
             self.nowork({})
 
-        if exc not in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG):
+        if exc not in (e_errors.ENCP_GONE, e_errors.ENCP_STUCK, e_errors.READ_VOL1_WRONG, e_errors.WRITE_VOL1_WRONG, e_errors.MEMORY_ERROR):
             if msg.find("FTT_EBUSY") != -1:
                 # tape thread stuck in D state - offline mover
                 after_dismount_function = self.offline
@@ -3702,6 +3707,11 @@ class Mover(dispatching_worker.DispatchingWorker,
             # action for tape
             self.set_volume_noaccess(volume_label) 
         if dism_allowed:
+            if exc == e_errors.MEMORY_ERROR:
+                Trace.log(e_errors.ERROR, "Memory error, restarting mover")
+                self.log_state(logit=1)
+                self.dump_vars()
+                self.run_in_thread('media_thread', self.dismount_volume, after_function=self.restart) 
             if save_state == DRAINING:
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
 
