@@ -173,12 +173,11 @@ class Buffer:
         self.min_bytes = min_bytes
         self.max_bytes = max_bytes
         self.crc_seed = crc_seed
+        self.complete_crc = 0L
+        self.sanity_crc = 0L
         if self.crc_seed == 1L:
            self.complete_crc = self.crc_seed
            self.sanity_crc = self.crc_seed
-        else:
-            self.complete_crc = 0L
-            self.sanity_crc = 0L
         self.sanity_bytes = 0L
         self.header_size = None
         self.trailer_size = 0L
@@ -650,11 +649,11 @@ def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stu
     if type(cookie) != type(''):
         raise TypeError, "expected string or integer, got %s %s" % (cookie, type(cookie))
     if '_' in cookie:
-        part, block, file = string.split(cookie, '_')
+        part, block, filename = string.split(cookie, '_')
     else:
-        file = cookie
-    if file[-1]=='L':
-        file = file[:-1]
+        filename = cookie
+    if filename[-1]=='L':
+        filename = file[:-1]
     return long(file)
 
 def loc_to_cookie(loc):
@@ -735,29 +734,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.__dict__[attr] = val
 
     def dump(self, ticket):
-        out_ticket = {'status':(e_errors.OK,None)}
-        d=os.environ.get("ENSTORE_TMP","/tmp")
-        f = open("%s/mover_dump-%s"%(d,time.time(),), "w")
-        self.reply_to_caller(out_ticket)
-        f.write("%s\n"%(time.ctime(),))
-        if self.buffer:
-            f.write("dumping Buffer\n")
-            self.buffer.dump(f)
-        for name, value in self.__class__.__dict__.items( ) + self.__dict__.items( ):
-            v = value
-            try:
-                l = len(value)
-            except (TypeError, AttributeError):
-                l = None
-            if l:
-                if l < 100:
-                    v = value
-                else:
-                    v = ">100"
-                
-            f.write("%s = %s, len = %s\n"%(name, v, l))
-        f.close()
-    def dump(self, ticket):
+        x = ticket
         out_ticket = {'status':(e_errors.OK,None)}
         self.reply_to_caller(out_ticket)
         self.dump_vars()
@@ -794,7 +771,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.log_mover_state:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
-            if pipeObj is None:
+            if pipeObj == None:
                 return
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
@@ -810,7 +787,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.log_mover_state or logit:
             cmd = "EPS | grep %s"%(self.name,)
             pipeObj = popen2.Popen3(cmd, 0, 0)
-            if pipeObj is None:
+            if pipeObj == None:
                 return
             stat = pipeObj.wait()
             result = pipeObj.fromchild.readlines()  # result has returned string
@@ -904,11 +881,11 @@ class Mover(dispatching_worker.DispatchingWorker,
     def check_sched_down(self):
 	inq = self.csc.get('inquisitor')
 	host = inq.get('host')
-	dir = inq.get('html_file')
-	file = enstore_constants.OUTAGEFILE
+	dirname = inq.get('html_file')
+	filename = enstore_constants.OUTAGEFILE
 	if not host:
 	    return 0
-	cmd = 'enrsh -n %s cat %s/%s ' % (host, dir, file)
+	cmd = 'enrsh -n %s cat %s/%s ' % (host, dirname, filename)
 	p = os.popen(cmd, 'r')
 	r = p.read()
         # when mover restarts by 'at' p.close generates IOerror no child process
@@ -1189,7 +1166,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         mc_keys = self.csc.get(self.mcc.media_changer)
         # STK robot can eject tape by either sending command directly to drive or
         # by pushing a corresponding button
-        if mc_keys.has_key('type') and mc_keys['type'] is 'STK_MediaLoader':
+        if mc_keys.has_key('type') and mc_keys['type'] == 'STK_MediaLoader':
             self.can_force_eject = 1
         else:
             self.can_force_eject = 0
@@ -1783,9 +1760,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self._last_state = self.state
                 # only main thread is allowed to send messages to LM
                 # exception is a mover_busy and mover_error works
-                if ((thread_name is 'MainThread') and
-                    (ticket['work'] is not 'mover_busy') and
-                    (ticket['work'] is not 'mover_error')):
+                if ((thread_name == 'MainThread') and
+                    (ticket['work'] != 'mover_busy') and
+                    (ticket['work'] != 'mover_error')):
                     ## XXX Sasha - this is an experiment - not sure this is a good idea!
                     if addr != self.lm_address and self.state == HAVE_BOUND:
                         ticket['work'] = 'mover_busy'
@@ -1841,7 +1818,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                               (method,request_from_lm)) 
                 # if work is mover_busy or mover_error
                 # send no_wait message
-                if (ticket['work'] is 'mover_busy') or (ticket['work'] is 'mover_error'):
+                if (ticket['work'] == 'mover_busy') or (ticket['work'] == 'mover_error'):
                     if ticket['work'] == 'mover_busy' and addr == self.udp_control_address:
                         #do not send mover_busy to get
                         set_cm_sent = 0
@@ -1919,7 +1896,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             thread_name = None
         # if running in the main thread update lm
-        if thread_name is 'MainThread':
+        if thread_name == 'MainThread':
             self.update_lm() 
         else: # else just set the update flag
             self.need_lm_update = (1, None, 0, None)
@@ -1933,7 +1910,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         else:
             thread_name = None
         # if running in the main thread update lm
-        if thread_name is 'MainThread':
+        if thread_name == 'MainThread':
             self.update_lm() 
         else: # else just set the update flag
             self.need_lm_update = (1, None, 0, None)
@@ -2812,7 +2789,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return  # do not raise alarm if net thead detected a failed transfer
                     crc_error = 1
                     # try 1 based crc
-                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.sanity_crc,
+                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.sanity_crc,
                                                                                self.bytes_read)
                     if crc_1_seeded == complete_crc:
                         self.buffer.complete_crc = crc_1_seeded
@@ -2905,8 +2882,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                     #Trace.handle_error(exc, detail, tb)
                     #if self.state is not DRAINING: self.state = HAVE_BOUND
                     # if state is DRAINING transfer_failed will set it to OFFLINE
-                    Trace.log(e_errors.INFO, "ENCP_GONE5 exc %s detail %s. bytes_written %s"%(exc, detail)) # remove after fixing ENCP_GONE
-                    self.transfer_failed(e_errors.ENCP_GONE, detail)
+                    msg="exc %s detail %s"%(exc, detail)
+                    self.transfer_failed(e_errors.ENCP_GONE, msg)
                     failed = 1
                     break
                 if bytes_written < 0:
@@ -5325,7 +5302,7 @@ class DiskMover(Mover):
         else:
             thread_name = None
         # if running in the main thread update lm
-        if thread_name is 'MainThread':
+        if thread_name == 'MainThread':
             self.update_lm() 
         else: # else just set the update flag
             self.need_lm_update = (1, None, 0, None)
@@ -5453,7 +5430,7 @@ class DiskMover(Mover):
                 header_size = self.buffer.header_size
                 # setup buffer for reads
                 saved_wrapper = self.buffer.wrapper
-                saved_sanity_bytes = self.buffer.sanity_bytes
+                #saved_sanity_bytes = self.buffer.sanity_bytes
                 saved_complete_crc = self.buffer.complete_crc
                 self.buffer.reset((self.buffer.sanity_bytes, self.buffer.sanity_crc), client_crc_on=1)
                 self.buffer.set_wrapper(saved_wrapper)
@@ -5595,7 +5572,7 @@ class DiskMover(Mover):
                         header_size = self.wrapper.header_size(b0)
                     except (TypeError, ValueError), msg:
                         Trace.log(e_errors.ERROR,"Invalid header %s" %(b0[:self.wrapper.min_header_size]))
-                        self.transfer_failed(e_errors.READ_ERROR, "Invalid file header", error_source=TAPE)
+                        self.transfer_failed(e_errors.READ_ERROR, "Invalid file header %s"%(msg,), error_source=TAPE)
                         ##XXX NB: the client won't necessarily see this message since it's still trying
                         ## to recieve data on the data socket
                         failed = 1
@@ -5943,10 +5920,10 @@ class DiskMover(Mover):
             t = "%s"%(int(time.time()),)
             import statvfs
             max_fn_len = os.statvfs(self.config['device'])[statvfs.F_NAMEMAX]
-            dir,filename = os.path.split(pnfs_filename)
+            directory,filename = os.path.split(pnfs_filename)
             if len(filename) > max_fn_len-len(t)-1: #truncate filename
                 filename = filename[0:max_fn_len-len(t)-1]
-            fullname = os.path.join(dir,filename)
+            fullname = os.path.join(directory,filename)
             f = string.join((fullname,t),':')
             self.file = string.join((self.config['device'],self.config['ip_map'],f),'/')  
             if self.wrapper:
@@ -5963,8 +5940,8 @@ class DiskMover(Mover):
         Trace.trace(29,"FILE NAME %s"%(self.file,))
         self.position_media(self.file)
         
-    def position_media(self, file):
-        x = file # to trick pychecker
+    def position_media(self, filename):
+        x = filename # to trick pychecker
         have_tape = 0
         err = None
         Trace.trace(10, "position media")
@@ -6297,7 +6274,6 @@ class DiskMover(Mover):
         return ticket
 
     def dismount_volume(self, after_function=None):
-        broken = ""
         self.dismount_time = None
         self.state = DISMOUNT_WAIT
         self.tape_driver.close()
