@@ -2790,7 +2790,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     crc_error = 1
                     # try 1 based crc
                     crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
-                                                                               self.bytes_read)
+                                                                               self.self.file_info['size'])
                     if crc_1_seeded == complete_crc:
                         self.buffer.complete_crc = crc_1_seeded
                         crc_error = 0
@@ -2800,7 +2800,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                     {'outfile':self.current_work_ticket['outfile'],
                                      'infile':self.current_work_ticket['infile'],
                                      'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                                     'external_label':self.current_work_ticket['vc']['external_label'],
+                                     'complete_crc':complete_crc, 'buffer_crc':self.buffer.complete_crc,
+                                     '_bytes_read':self.file_info['size']})
                         self.read_tape_running = 0
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
