@@ -2789,7 +2789,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         return  # do not raise alarm if net thead detected a failed transfer
                     crc_error = 1
                     # try 1 based crc
-                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.sanity_crc,
+                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
                                                                                self.bytes_read)
                     if crc_1_seeded == complete_crc:
                         self.buffer.complete_crc = crc_1_seeded
