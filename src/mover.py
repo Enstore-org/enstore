@@ -653,8 +653,8 @@ def cookie_to_long(cookie): # cookie is such a silly term, but I guess we're stu
     else:
         filename = cookie
     if filename[-1]=='L':
-        filename = file[:-1]
-    return long(file)
+        filename = filename[:-1]
+    return long(filename)
 
 def loc_to_cookie(loc):
     if type(loc) is type(""):
