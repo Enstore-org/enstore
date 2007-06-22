@@ -48,7 +48,7 @@ def r_eval(message_to_decode):
         #  been used by doing: return eval(message_to_decode)
         return _eval(message_to_decode)
     except (KeyboardInterrupt, SystemExit):
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         exc, msg = sys.exc_info()[:2]
         logmsg="udp_common.r_reply %s %s"%(exc, msg)
@@ -57,7 +57,7 @@ def r_eval(message_to_decode):
         elif exc == exceptions.TypeError:
             logmsg = logmsg + ": " + message_to_decode
         Trace.log(e_errors.ERROR, logmsg)
-        raise sys.exc_info()
+        raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     #return number, out, t
 
 def r_repr(message_to_encode):
