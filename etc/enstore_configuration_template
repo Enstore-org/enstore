@@ -11,6 +11,8 @@ host3: media_changer(s), library_manager(s)
 host4: postrres DB server, file_clerk, volume_clerk, info_server, accounting_server, drivestat_server
 
 one host per mover with at least 2GB of memory.
+You can find more informatiom in Enstore Users Guide"
+http://computing.fnal.gov/docs/products/enstore/
 '''
 
 # all constants defined here are optional and used just for the
@@ -24,7 +26,7 @@ PB=KB*TB
 EB=KB*PB
 
 # maximal transfer rates for different types of tape drives
-# used in movers
+# 
 ait1_rate =    2.7 * MB
 ait2_rate =    9.5 * MB
 mam1_rate =    2.8 * MB
@@ -41,7 +43,7 @@ null_rate =   11.5 * MB
 legal_encp_version = 'v3_6c'
 
 # frequency of read back CRC checks
-# 
+# used in movers to randomly check written files. See mover section for more details.
 mvr_check_f = 10
 #mvr_check_f = 30
 b_mvr_check_f = 10
@@ -73,7 +75,7 @@ low_level_diag_pattern = 'sense|st[0-9]'
 
 configdict = {}
 
-# know configuration servers
+# known configuration servers
 # syntax:
 configdict['known_config_servers'] = {'d0en'  :             # enstore instance system name
                                       ('d0ensrv2.fnal.gov', # configuration server host
@@ -81,6 +83,11 @@ configdict['known_config_servers'] = {'d0en'  :             # enstore instance s
 				      }
 
 
+
+# allowed_down dictionary defining how many times a server is allowed down
+# before it is marked with a red ball by the 'enstore system' command. each
+# server has a list associated with it that has the followinw format - [number
+# of  consecutive times when checked and no alive message rcvd, timeout]
 configdict['system'] = { 'allowed_down' : {'log_server' :           [1, 10],
 					   'alarm_server' :         [1, 10],
 					   'configuration_server' : [1, 10],
@@ -135,7 +142,7 @@ configdict['discipline'] = {
     }
 
 '''
-# Block sizes for different types ot media
+# Block sizes for different types ot media in bytes
 configdict['blocksizes'] = { '8MM'       : 131072,
 			     'DECDLT'    : 131072,
 			     '9840'      : 131072,
@@ -160,6 +167,7 @@ configdict['domains']      = {
     }
 
 # inventory configuration
+# places for tape inventory
 configdict['inventory']    = { 'inventory_dir'		: '/diskc/db-inventory',
 			       'inventory_tmp_dir'	: '/diskc/db-inventory/tmp',
 			       'inventory_cache_dir'	: '/diskc/db-inventory_cache',
@@ -182,7 +190,7 @@ configdict['tape_mount_limit'] = {
 	'9940B':  (2000, 5000),
 	'LTO3':   (2000, 5000) }
 
-# ratekeeper measures enstore nodes transfer rates and sends alarms (e-mail messages)
+# ratekeeper measures enstore nodes transfer rates and builds graphs
 configdict['ratekeeper'] = {
     'host'		: 'stkensrv2',			#node ratekeeper is running on
     'port'		: 55511,			#port ratekeeper is running on
@@ -197,7 +205,6 @@ configdict['ratekeeper'] = {
     'jpg'		: '/local/ups/prd/www_pages/enstore/*rates.jpg',
     'stamp'		: '/local/ups/prd/www_pages/enstore/*rates_stamp.jpg'}
 
-# too many name server failures - use the numeric ip - 131.225.13.3 is stkensrv3
 # backup server
 configdict['backup']       = {
     'host':'131.225.13.3',
@@ -205,6 +212,10 @@ configdict['backup']       = {
     'extract_dir':'/diska/check-db-tmp' }
 
 # event relay
+# The Event Relay (ER) is a server that forwards messages based on subscription.
+# All the Enstore servers send messages to the ER.
+#Any server may "subscribe" to the ER in order to have messages of particular types forwarded to it.
+
 configdict['event_relay']  = {
     'host':'stkensrv2',
     'port':55510 }
@@ -221,6 +232,10 @@ configdict['database']     = {
     }
 
 # file clerk
+# The File Clerk (FC) is a server that tracks files in the system.
+# It manages a database of metadata for each data file in the Enstore system.
+# The metadata includes the file's name, its unique identifier (the bit file ID, or bfid,
+# that the FC itself assigns to each new file ), the volume on which it resides, and so on.
 configdict['file_clerk']   = {
     'host':'stkensrv0',
     'port':7501,
@@ -230,6 +245,7 @@ configdict['file_clerk']   = {
     }
 
 # volume clerk
+# The Volume Clerk (VC) is a server that stores and administers storage volume (tape) information.
 configdict['volume_clerk'] = {
     'host':'stkensrv0',
     'port':7502,
@@ -238,6 +254,7 @@ configdict['volume_clerk'] = {
     'max_noaccess_cnt' : vol_max_noaccess_cnt # maximal number of volumes squentially set to noaccess to mark the library broken
     }
 
+# info server is the read-only server that is supposed to ease a load on file and volume clerks
 configdict['info_server'] = {
     'host': 'stkensrv0',
     'port': 7777,
@@ -247,6 +264,7 @@ configdict['info_server'] = {
     'dbname': 'enstoredb'}
 
 # accounting server
+#maintains statistical information on a running system. 
 configdict['accounting_server'] = {
     'host': 'stkensrv0',
     'port': 7580,
@@ -256,6 +274,7 @@ configdict['accounting_server'] = {
     'dbport': 8800,
     'dbname': 'enstore'}
 
+#
 configdict['drivestat_server'] = {
     'host': 'stkensrv6',
     'port': 7590,
@@ -267,6 +286,8 @@ configdict['drivestat_server'] = {
 
 
 # alarm server
+# The Alarm Server maintains a record of alarms raised by other servers,
+# and creates a report available online
 configdict['alarm_server'] = {
     'host':'stkensrv2',
     'port':7503,
@@ -274,6 +295,8 @@ configdict['alarm_server'] = {
     'norestart':'INQ', }
 
 # log server
+# The Log Server receives messages from enstore components and logs them into
+# formatted log files available online
 configdict['log_server']   = {
     'host':'stkensrv2',
     'port':7504,
@@ -287,7 +310,8 @@ configdict['log_server']   = {
 
 
 # inquisitor
-# monitors the state of enstore servers
+#The Inquisitor monitors the Enstore servers, obtains information from them,
+# and creates reports at regular intervals that can be viewed on the web
 configdict['inquisitor']   = { 'host':'stkensrv2',
                                'port':7505,
                                'logname':'INQSRV',
