@@ -56,7 +56,7 @@ count_vols() {
 		if ($5 ~ /^IA/) i="lto3CDF"; else
 		if ($5 >= "VOD000" && $5 <= "VOD499") i="lto3CMS"; else
 		if ($5 >= "VOD550" && $5 <= "VOD789") i="lto3CMS"; else
-		if ($5 >= "VOE190" && $5 <= "VOE689") i="lto3CMS"; else
+		if ($5 >= "VOE190" && $5 <= "VOE739") i="lto3CMS"; else
 		i="lto3Other"
 		Count[i]++}
 	      END {for (i in Count) printf "%s=%d;", i, Count[i]}'
