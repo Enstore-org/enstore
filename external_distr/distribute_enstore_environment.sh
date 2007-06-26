@@ -41,10 +41,11 @@ echo this host $this_host
 source /usr/local/etc/setups.sh
 tot_rc=0
 cat $node_list | while read remote_node; do
+    rc=0
     if [ $remote_node != $this_host ]; then
 	echo "Copying setup-enstore to $remote_node:$ENSTORE_HOME"
- 	enrsh ${remote_node} "mkdir $ENSTORE_HOME/config"
-	enrcp $ENSTORE_HOME/config/* ${remote_node}:$ENSTORE_HOME/config
+ 	enrsh ${remote_node} "mkdir -p $ENSTORE_HOME/site_specific/config"
+	enrcp $ENSTORE_HOME/site_specific/config/* ${remote_node}:$ENSTORE_HOME/site_specific/config
 	rc=$?
 	if [ $rc -eq 0 ]; then
 	    echo "completing enstore environment distribution on $remote_node"

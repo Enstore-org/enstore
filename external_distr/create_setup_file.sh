@@ -95,6 +95,15 @@ then
     mkdir -p ${REPLY}
 fi
 
+if [ -n ${ENSSH} ]
+then
+echo "export ENSSH=${ENSSH}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+fi
+if [ -n ${ENSCP} ]
+then
+echo "export ENSCP=${ENSCP}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+fi
+    
 
 chown enstore.enstore  $ENSTORE_HOME/site_specific/config/*
 

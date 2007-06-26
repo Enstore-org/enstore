@@ -24,12 +24,12 @@ ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 ENSTORE_HOME=`ls -d ~enstore`
 
-if [ ! -r $ENSTORE_HOME/config/setup-enstore ]
+if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
 then
     # this allows to not run this script on remote nodes.
     $ENSTORE_DIR/external_distr/create_setup_file.sh
 else
-    source $ENSTORE_HOME/config/setup-enstore
+    source $ENSTORE_HOME/site_specific/config/setup-enstore
     
 fi
 
