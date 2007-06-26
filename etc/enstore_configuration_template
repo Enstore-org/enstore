@@ -224,11 +224,16 @@ configdict['event_relay']  = {
 # used by file, volume clerks and info server
 # it is better to run them on the same host where this DB server runs.
 configdict['database']     = {
-    'db_dir':'/diskb/enstore-database', # database directory
+    'dbarea': /diskb/enstore-database, # database directory
+    'db_dir':'/diskb/enstore-database_backup', # backup database directory
     'jou_dir':'/diska/enstore-journal', # journal files directory 
-    'db_host':'stkensrv0.fnal.gov',     # data base host
-    'dbname':'enstoredb',               # database name
-    'db_port':8888                      # data base port
+    'db_host':'stkensrv0.fnal.gov',     # data base host - obsolete, replaced with dbhost
+    'dbhost':'stkensrv0.fnal.gov',     # data base host
+    'dbname':'enstoredb',               # database name 
+    'db_port':8888,                     # data base port - obsolete, replaced with dbport 
+    'dbport':8888,                     # data base port
+    'dbuser': 'enstore',                # enstore database account
+    'dbserverowner': 'products',        # owner of enstore database server process
     }
 
 # file clerk
@@ -272,7 +277,12 @@ configdict['accounting_server'] = {
     'norestart':'INQ',
     'dbhost': 'stkensrv0.fnal.gov',
     'dbport': 8800,
-    'dbname': 'enstore'}
+    'dbname': 'accounting',
+    'dbarea': /diskb/enstore-database, # database directory
+    'dbuser': 'enstore',                # enstore database account
+    'dbserverowner': 'products',        # owner of enstore database server process
+    
+    }
 
 #
 configdict['drivestat_server'] = {
@@ -282,7 +292,11 @@ configdict['drivestat_server'] = {
     'norestart':'INQ',
     'dbhost': 'stkensrv6.fnal.gov',
     'dbport': 8076,
-    'dbname': 'drivestat'}
+    'dbname': 'drivestat',
+    'dbarea': /diskb/enstore-database, # database directory
+    'dbuser': 'enstore',                # enstore database account
+    'dbserverowner': 'products',        # owner of enstore database server process
+    }
 
 
 # alarm server
@@ -360,6 +374,26 @@ configdict['www_server'] = { 'system_tag' : "STKEN: Enstore for the Masses",
 					'2' : 'CMS Mezzanine Powderhorn',
 					'3' : 'D0 ADIC AML/2 (for SDSS)',},
 			     'inq_ignore' : 1 }
+
+
+configdict['web_server'] = {
+    'ServerHost'     : 'gccensrv1.fnal.gov', #name of the host running http server
+    'port'           : 80,
+    'ServerName'     : 'www-gccen.fnal.gov', # name of web server
+    'DocumentRoot'   : '/local/ups/prd/httpd/servers/gccen/html', #top level web directory
+    'ScoreBoardFile' : '/var/adm/www/gccen/apache_status', # ScoreBoardFile
+    'PidFile'   : '/var/adm/www/gccen/httpd.pid', # full path to httpd pid file
+    'ErrorLog'  : '/var/adm/www/gccen/error.log', # full path to httpd error log file
+    'CustomLog' : { 'combined' : '/var/adm/www/gccen/access.log', # full path to combined log file 
+                    'referer'  : '/var/adm/www/gccen/referer.log', #  full path to referer log file
+                    'agent'    : '/var/adm/www/gccen/agent.log' #  full path to agent log file
+                    },
+    'ServerRoot' : '/etc/httpd' , # location of httpd.conf (e.g. /etc/httpd)
+    'ScriptAlias' : {'fake' : '/cgi-bin/', #  e.g. /cgi-bin/ 
+                     'real' : '/local/ups/prd/httpd/servers/gccen/cgi-bin/' #  real path to cgi scripts
+                     }
+    }
+
 
 '''
 LIBRARY MANAGER KEYS
