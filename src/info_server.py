@@ -33,6 +33,7 @@ import edb
 import esgdb
 
 MY_NAME = enstore_constants.INFO_SERVER   #"info_server"
+MAX_CONNECTION_FAILURE = 5
 
 default_host = 'stkensrv0.fnal.gov'
 
@@ -55,7 +56,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		generic_server.GenericServer.__init__(self, csc, MY_NAME,
 						function = self.handle_er_msg)
 		Trace.init(self.log_name)
-
+		self.connection_failure = 0
 		att = self.csc.get(MY_NAME)
 		dispatching_worker.DispatchingWorker.__init__(self,
 			(att['hostip'], att['port']))
@@ -100,19 +101,33 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	def info_error_handler(self, exc, msg, tb):
 		__pychecker__ = "unusednames=tb"
-		if exc == edb.pg.Error or msg == "no connection to the server":
+		print str(exc), str(msg), str(msg)[:13] == 'no connection'
+		# handle pg.* error
+		if issubclass(exc, edb.pg.Error):
+			self.reconnect(msg)
+		elif exc == TypeError and str(msg)[:10] == 'Connection':
+			self.reconnect(msg)
+		elif exc == ValueError and str(msg)[:13] == 'no connection':
 			self.reconnect(msg)
 		self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
 			'exc_type':str(exc), 'exc_value':str(msg)} )
 
-
 	# reconnect() -- re-establish connection to database
 	def reconnect(self, msg="unknown reason"):
-		Trace.alarm(e_errors.WARNING, "reconnect to database due to "+str(msg))
-		self.file.reconnect()
-		self.db = self.file.db
-		self.volume.db = self.db
-		self.sgdb.db = self.db
+		try:
+			self.file.reconnect()
+			Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
+			self.connection_failure = 0
+			self.db = self.file.db
+			self.volume.db = self.db
+			self.sgdb.db = self.db
+		except:
+			Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
+				"Is database server running on %s:%d?"%(self.file.host,
+				self.file.port))
+			self.connection_failure += 1
+			if self.connection_failure > MAX_CONNECTION_FAILURE:
+				pass	# place holder for future RED BALL
 
 	# The following are local methods
 
@@ -156,6 +171,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
 			Trace.log(e_errors.ERROR, "bfid_info() exception: %s %s"%(status, ticket,))
+			self.reconnect(msg)
 			self.reply_to_caller(ticket)
 			return
 

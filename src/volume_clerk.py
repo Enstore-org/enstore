@@ -83,8 +83,6 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         self.set_error_handler(self.vol_error_handler)
         self.common_blank_low = {'warning':100, 'alarm':10}
         self.connection_failure = 0
-        self.db_host = ''
-        self.db_port = -1
         return
 
     def vol_error_handler(self, exc, msg, tb):
@@ -92,6 +90,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
         if issubclass(exc, edb.pg.Error):
             self.reconnect(msg)
         elif exc == TypeError and str(msg)[:10] == 'Connection':
+            self.reconnect(msg)
+        elif exc == ValueError and str(msg)[:13] == 'no connection':
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
@@ -113,8 +113,8 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
             self.connection_failure = 0
         except:
             Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
-                "Is database server running on %s:%d?"%(self.db_host,
-                self.db_port))
+                "Is database server running on %s:%d?"%(self.dict.host,
+                self.dict.port))
             self.connection_failure += 1
             if self.connection_failure > MAX_CONNECTION_FAILURE:
                 pass	# place holder for future RED BALL
@@ -2584,8 +2584,6 @@ class VolumeClerk(VolumeClerkMethods):
 
         db_host = dbInfo['db_host']
         db_port = dbInfo['db_port']
-        self.db_host = db_host
-        self.db_port = db_port
 
         Trace.log(e_errors.INFO,"opening volume database using edb.VolumeDB")
         try:

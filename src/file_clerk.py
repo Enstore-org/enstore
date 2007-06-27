@@ -29,6 +29,7 @@ import hostaddr
 import event_relay_messages
 
 MY_NAME = enstore_constants.FILE_CLERK   #"file_clerk"
+MAX_CONNECTION_FAILURE = 5
 
 class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
@@ -36,18 +37,33 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         dispatching_worker.DispatchingWorker.__init__(self, csc)
         self.dict = None
         self.set_error_handler(self.file_error_handler)
+        self.connection_failure = 0
         return
 
     def file_error_handler(self, exc, msg, tb):
-        if exc == edb.pg.Error or msg == "no connection to the server":
+        # handle pg.* error
+        if issubclass(exc, edb.pg.Error):
+            self.reconnect(msg)
+        elif exc == TypeError and str(msg)[:10] == 'Connection':
+            self.reconnect(msg)
+        elif exc == ValueError and str(msg)[:13] == 'no connection':
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg)} )
 
     # reconnect() -- re-establish connection to database
     def reconnect(self, msg="unknown reason"):
-        Trace.alarm(e_errors.WARNING, "reconnect to database due to "+str(msg))
-        self.dict.reconnect()
+        try:
+            self.dict.reconnect()
+            Trace.alarm(e_errors.WARNING, "RECONNECT", "reconnect to database due to "+str(msg))
+            self.connection_failure = 0
+        except:
+            Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
+                "Is database server running on %s:%d?"%(self.dict.host,
+                self.dict.port))
+            self.connection_failure += 1
+            if self.connection_failure > MAX_CONNECTION_FAILURE:
+                pass	# place holder for future RED BALL
 
     # set_brand(brand) -- set brand
 
@@ -560,8 +576,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
 
     # log_copies(bfid, n) -- log number of copies to make
     def log_copies(self, bfid, n):
-        Trace.log(e_errors.INFO,
-            "log_copies: %s, %d"%(bfid, n))
+        Trace.log(e_errors.INFO, "log_copies: %s, %d"%(bfid, n))
         q = "insert into active_file_copying (bfid, remaining) \
                 values ('%s', %d);"%(bfid, n)
         try:
