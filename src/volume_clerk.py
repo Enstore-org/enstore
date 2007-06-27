@@ -89,7 +89,9 @@ class VolumeClerkMethods(dispatching_worker.DispatchingWorker, generic_server.Ge
 
     def vol_error_handler(self, exc, msg, tb):
         # handle pg.* error
-        if str(exc)[:3] == "pg." or str(msg) == "Connection is not valid":
+        if issubclass(exc, edb.pg.Error):
+            self.reconnect(msg)
+        elif exc == TypeError and str(msg)[:10] == 'Connection':
             self.reconnect(msg)
         self.reply_to_caller({'status':(str(exc),str(msg), 'error'),
             'exc_type':str(exc), 'exc_value':str(msg), 'traceback':str(tb)} )
