@@ -41,8 +41,14 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
         return
 
     def file_error_handler(self, exc, msg, tb):
-        # handle pg.* error
-        if issubclass(exc, edb.pg.Error):
+        __pychecker__ = "unusednames=tb"
+        # is it PostgreSQL connection error?
+        #
+        # This is indeed a OR condition implemented in if-elif-elif-...
+        # so that each one can be specified individually
+        if exc == edb.pg.ProgrammingError and str(msg)[:13] == 'server closed':
+            self.reconnect(msg)
+        elif exc == ValueError and str(msg)[:13] == 'server closed':
             self.reconnect(msg)
         elif exc == TypeError and str(msg)[:10] == 'Connection':
             self.reconnect(msg)
