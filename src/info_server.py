@@ -167,7 +167,6 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
 			exc, msg = sys.exc_info()[:2]
 			status = str(exc), str(msg)
-			Trace.log(e_errors.ERROR, "bfid_info() execption: %s"%(status,))
 			ticket["status"] = (e_errors.NO_FILE,
 				"Info Clerk: bfid %s not found"%(bfid,))
 			Trace.log(e_errors.ERROR, "bfid_info() exception: %s %s"%(status, ticket,))
