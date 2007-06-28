@@ -67,7 +67,7 @@ class FileClerkMethods(dispatching_worker.DispatchingWorker):
             Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
                 "Is database server running on %s:%d?"%(self.dict.host,
                 self.dict.port))
-            self.connection_failure += 1
+            self.connection_failure = self.connection_failure + 1
             if self.connection_failure > MAX_CONNECTION_FAILURE:
                 pass	# place holder for future RED BALL
 

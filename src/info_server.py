@@ -129,7 +129,7 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			Trace.alarm(e_errors.ERROR, "RECONNECTION FAILURE",
 				"Is database server running on %s:%d?"%(self.file.host,
 				self.file.port))
-			self.connection_failure += 1
+			self.connection_failure = self.connection_failure + 1
 			if self.connection_failure > MAX_CONNECTION_FAILURE:
 				pass	# place holder for future RED BALL
 
