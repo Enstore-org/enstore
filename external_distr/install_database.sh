@@ -24,7 +24,7 @@ fi
 
 PATH=/usr/sbin:$PATH
 config_host=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
-this_host=`uname -n | cut -f1 -d\.`
+this_host=`uname -n`
 
 echo "This script will create all enstore databases that will be served by one postmaster.
 If you want a different configuration you can use this script as a guide."
@@ -37,6 +37,8 @@ echo Database Host: ${db_host}
 echo Database Port: ${db_port}
 echo Database Directory: ${dbarea}
 echo Database Name: ${dbname}
+echo Database Backup area: ${db_dir}
+echo Database Journal Area: ${jou_dir}
 echo Database Base Server Owner: $dbserverowner
 echo Data Base User: $dbuser
 
@@ -142,11 +144,7 @@ databases="${dbname} ${acc_dbname} ${ds_dbname}"
 
 # find the host
 host=`uname -n | cut -d. -f1`
-hostip=`host tundra | cut -f4 -d" "`
-
-# add this line to hba_file
-hba_file="host    all         enstore     $hostip     255.255.255.255   trust"
-
+hostip=`host $host | cut -f4 -d" "`
 
 echo "The following variables will be used:"
 echo "enstore_dir: $enstore_dir"
@@ -176,29 +174,31 @@ fi
 
 # create database owner account
 
-echo 'Checking if group ${database_owner} exists' 
+echo "Checking if group ${database_owner} exists" 
 grep ${database_owner} /etc/group
 if [ $? -ne 0 ]; then
-    echo 'Creating group ${database_owner}'
+    echo "Creating group ${database_owner}"
     groupadd -g 4525 ${database_owner}
 fi
-echo 'Creating user ${database_owner}'
+echo "Creating user ${database_owner}"
 useradd -u 1342 -g ${database_owner} ${database_owner}
 
 # create database user account
 
-echo 'Checking if group ${db_owner} exists' 
+echo "Checking if group ${db_owner} exists" 
 grep ${db_owner} /etc/group
 if [ $? -ne 0 ]; then
-    echo 'Creating group ${db_owner}'
+    echo "Creating group ${db_owner}"
     groupadd -g 6209 ${database_owner}
 fi
-echo 'Creating user ${database_owner}'
-useradd -u 6209 -g ${database_owner} ${database_owner}
-
+id ${db_owner}
+if [ $? -ne 0 ]; then
+	echo 'Creating user ${db_owner}'
+    useradd -u 6209 -g ${db_owner} ${db_owner}
+fi
 
 # create initial database area
-echo create database area $database_area
+echo Create database area $database_area
 echo mkdir -p $database_area
 mkdir -p $database_area
 echo chown $database_owner.$database_owner $database_area
@@ -208,9 +208,27 @@ chmod go-rwx $database_area
 echo su $database_owner -c \"initdb -D $database_area\"
 su $database_owner -c "initdb -D $database_area"
 
+echo Create DB backup area $db_dir
+echo mkdir -p $db_dir
+mkdir -p $db_dir
+echo chown $db_owner.$db_owner $db_dir
+chown $db_owner.$db_owner $db_dir
+
+echo Create DB journal area $jou_dir
+echo mkdir -p $jou_dir
+mkdir -p $jou_dir
+echo chown $db_owner.$db_owner $jou_dir
+chown $db_owner.$db_owner $jou_dir
+
 #  modify create pg_hba.conf
-echo su $database_owner cat \"$hba_file >> $database_area/pg_hba.conf\"
-su $database_owner -c "cat $hba_file >> $database_area/pg_hba.conf"
+# add this line to hba_file
+hba_file="host    all         $db_owner     $hostip     255.255.255.255   trust"
+
+echo modifying ${database_area}/pg_hba.conf
+su $database_owner -c "cp $database_area/pg_hba.conf $database_area/pg_hba.conf.sav"
+
+# add entry for DB host to pg_hba.conf
+su $database_owner -c "echo $hba_file >> $database_area/pg_hba.conf" 
 
 # bring up database server
 echo su $database_owner -c \"postmaster -D $database_area -p $db_port -i \&\"
