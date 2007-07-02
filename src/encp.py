@@ -8001,7 +8001,32 @@ def create_read_requests(callback_addr, udp_callback_addr, tinfo, e):
                     }
             use_infile = request['fc']['pnfs_name0']  #used for error reporting
         elif e.volume:
-            request['fc'] = tape_ticket['tape_list'][i].copy()
+            try:
+                request['fc'] = tape_ticket['tape_list'][i].copy()
+            except IndexError:
+                if i == 0 and number_of_files == 1:
+                    number = 1
+                else:
+                    number = i
+                location = generate_location_cookie(number)
+                request['fc'] = {
+                    'address' : fcc.server_address,
+                    'bfid' : None,
+                    'complete_crc' : None,
+                    'deleted' : None,
+                    'drive' : None,
+                    'external_label' : e.volume,
+                    'location_cookie':location,
+                    'pnfs_mapname': None,
+                    'pnfs_name0':os.path.join(e.input[0], location),
+                    #'pnfs_name0': os.path.join(e.input[0],
+                    #                    generate_location_cookie(number)),
+                    'pnfsid': None,
+                    'pnfsvid': None,
+                    'sanity_cookie': None,
+                    'size': None,
+                    'status' : (e_errors.OK, None)
+                    }
             request['fc']['address'] = fcc.server_address
             request['vc'] = vc_reply.copy()
             use_infile = request['fc']['pnfs_name0']  #used for error reporting
