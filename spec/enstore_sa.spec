@@ -59,8 +59,12 @@ if [ $? -ne 0 ]; then
     echo 'Creating group "enstore"'
     groupadd -g 6209 enstore
 fi
-echo 'Creating user "enstore"'
-useradd -u 6209 -g enstore enstore
+echo 'Checking if user "enstore" exists'
+id enstore
+if [ $? -ne 0 ]; then
+	echo 'Creating user "enstore"'
+	useradd -u 6209 -g enstore enstore
+fi
 
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
