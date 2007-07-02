@@ -58,7 +58,7 @@ quickcheck)
     # test srv4 nodes on the control network from d0ensrv3
     [ $gang = d0en ] && peers="${peers}d0ensrv4p\nstkensrv4p\ncdfensrv4p\n"
 
-    # test public dcache nodes and data mover nodes from stken
+    # test public dcache and data mover nodes from stkensrv3
     [ $gang = stken ] && extra="/usr/local/etc/farmlets/stkendca /usr/local/etc/farmlets/stkendm"
 
     NODES=`awk -v omit="$omit" -v host="$host" -v peers="$peers" \
@@ -116,9 +116,16 @@ quickcheck)
 </tr>
 EOF
 
+    # lookup movers in enstore config to determine production status
+    config="/tmp/quickcheck.config"
+    enstore conf --show > $config
+
     for node in $NODES; do
       CF=/tmp/routes_quickcheck_$node
       production=1
+      if echo $node | grep enmvr > /dev/null; then
+	grep $node $config || production=0
+      fi
       if [ $production -ne 0 ]; then
 	 color=$blue
 	 prod=Yes
