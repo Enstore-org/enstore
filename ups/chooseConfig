@@ -162,6 +162,7 @@ case $node in
 #	    complain=0
 #	    ;;
   gccen*)
+            ENSTORE_MAIL=moibenko@fnal.gov,zalokar@fnal.gov,huangch@fnal.gov,litvinse@fnal.gov
 	    ENSTORE_CONFIG_HOST=$gccen
 	    ENSTORE_CONFIG_FILE=gccen.conf
 	    complain=0
