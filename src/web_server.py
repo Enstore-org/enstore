@@ -13,6 +13,7 @@
 WEB_SERVER = "web_server"
 HTTPD_CONF="/etc/httpd/conf/httpd.conf"
 SUFFIX=".orig"
+SERVER_ROOT="ServerRoot"
 
 import errno
 import configuration_client
@@ -37,27 +38,30 @@ class WebServer:
             config_dict = csc.dump(timeout, retry)
             self.config_dict = config_dict['dump']
         else:
-            print "Failed to connect to config server, using the file pointed at by ENSTORE_CONFIG_FILE"
             try: 
                 configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+                print "Failed to connect to config server, using configuration file %s"%(configfile,)
                 f = open(configfile,'r')
                 code = string.join(f.readlines(),'')
                 configdict={}
                 exec(code)
                 self.config_dict=configdict
+                self.server_dict = self.config_dict.get(WEB_SERVER, {})
                 ret =configdict['known_config_servers']
  		def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
 			    int(os.environ['ENSTORE_CONFIG_PORT']))
                 for item in ret.items():
                     if socket.getfqdn(item[1][0]) == socket.getfqdn(def_addr[0]):
                         self.system_name = item[0]
+                self.web_server = self.config_dict.get(WEB_SERVER, {})
                
             except:
                 print "Config file ",configfile," does not exist"
                 self.is_ok=False
                 sys.exit(1)
-                
         self.inq_d = self.config_dict.get(enstore_constants.INQUISITOR, {})
+        self.Root = self.server_dict.get(SERVER_ROOT,'/etc/httpd')
+        self.config_file = "%s/conf/httpd.conf"%(self.Root)
 
     def get_ok(self):
         return self.is_ok
@@ -98,9 +102,9 @@ class WebServer:
         rc=0
         if not self.is_ok :
             return 1
-        if self.move_httpd_conf(HTTPD_CONF,"%s%s"%(HTTPD_CONF,SUFFIX)) :
+        if self.move_httpd_conf(self.config_file,"%s%s"%(self.config_file,SUFFIX)) :
             return 1
-        f=open(HTTPD_CONF,"w")
+        f=open(self.config_file,"w")
         try: 
             for line in self.lines:
                 txt = line
@@ -135,32 +139,58 @@ class WebServer:
     def get_document_root(self):
         if not self.is_ok :
             return None
-        return self.server_dict['DocumentRoot']
+        if self.server_dict.has_key('DocumentRoot'):
+            return self.server_dict['DocumentRoot']
+        else:
+            print 'DocumentRoot is not defined in the configuration'
+            return None
 
     def get_pid_file(self):
         if not self.is_ok :
             return None
-        return self.server_dict['PidFile']
+        if self.server_dict.has_key('PidFile'):
+            return self.server_dict['PidFile']
+        else:
+            print 'PidFile is not defined in the configuration'
+            return None
 
     def get_server_name(self):
         if not self.is_ok :
             return None
-        return self.server_dict['ServerName']
+        if self.server_dict.has_key('ServerName'):
+            return self.server_dict['ServerName']
+        else:
+            print 'ServerName is not defined in the configuration'
+            return None
 
     def get_server_root(self):
         if not self.is_ok :
             return None
-        return self.server_dict['ServerRoot']
+        if self.server_dict.has_key('ServerRoot'):
+            return self.server_dict['ServerRoot']
+        else:
+            print 'ServerRoot is not defined in the configuration'
+            return None
 
     def get_error_log(self):
         if not self.is_ok :
             return None
-        return self.server_dict['ErrorLog']
+        if self.server_dict.has_key('ErrorLog'):
+            return self.server_dict['ErrorLog']
+        else:
+            print 'ErrorLog is not defined in the configuration'
+            return None
 
     def get_custom_log(self,name):
         if not self.is_ok :
             return None
-        return self.server_dict['CustomLog'][name]
+        if not self.is_ok :
+            return None
+        if self.server_dict.has_key('CustomLog'):
+            return self.server_dict['CustomLog'][name]
+        else:
+            print 'CustomLog is not defined in the configuration'
+            return None
 
     def generate_top_index_html(self):
         rc=0
@@ -195,18 +225,42 @@ def install():
         if server.write_httpd_conf():
             print "Failed to write httpd.conf"
             return 1
-        if not os.path.exists(server.get_document_root()):
-            os.makedirs(server.get_document_root())
-        if not os.path.exists(os.path.dirname(server.get_pid_file())):
-            os.makedirs(os.path.dirname(server.get_pid_file()))
-        if not os.path.exists(os.path.dirname(server.get_error_log())):
-            os.makedirs(os.path.dirname(server.get_error_log()))
-        if not os.path.exists(os.path.dirname(server.get_custom_log('combined'))):
-            os.makedirs(os.path.dirname(server.get_custom_log('combined')))
-        if not os.path.exists(os.path.dirname(server.get_custom_log('referer'))):
-            os.makedirs(os.path.dirname(server.get_custom_log('referer')))
-        if not os.path.exists(os.path.dirname(server.get_custom_log('agent'))):
-            os.makedirs(os.path.dirname(server.get_custom_log('agent')))
+        doc_root = server.get_document_root()
+        if doc_root:
+            if not os.path.exists(doc_root):
+                os.makedirs(doc_root)
+        else:
+            return 1
+        pid_file = server.get_pid_file()
+        if pid_file:
+            if not os.path.exists(os.path.dirname(pid_file)):
+                os.makedirs(os.path.dirname(pid_file))
+        else:
+            return 1
+        error_log = server.get_error_log()
+        if error_log:
+            if not os.path.exists(os.path.dirname(error_log)):
+                os.makedirs(os.path.dirname(error_log))
+        else:
+            return 1
+        combined = server.get_custom_log('combined')
+        if combined:
+            if not os.path.exists(os.path.dirname(combined)):
+                os.makedirs(os.path.dirname(combined))
+        else:
+            return 1
+        referer = server.get_custom_log('referer')
+        if referer:
+            if not os.path.exists(os.path.dirname(referer)):
+                os.makedirs(os.path.dirname(referer))
+        else:
+            return 1
+        agent = server.get_custom_log('agent')
+        if agent:
+            if not os.path.exists(os.path.dirname(agent)):
+                os.makedirs(os.path.dirname(agent))
+        else:
+            return 1
         if server.generate_top_index_html():
             print "Failed to create index.html"
             return 1
@@ -215,19 +269,26 @@ def install():
             html_dir=server.inq_d["html_file"]
         else:
             html_dir = enstore_files.default_dir
+        print "exists",os.path.exists(os.path.join(server.get_document_root(),"enstore")),os.path.join(server.get_document_root(),"enstore")
+        if not os.path.exists(html_dir):
+            os.makedirs(html_dir)
         if not os.path.exists(os.path.join(server.get_document_root(),"enstore")):
             os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
 
     except (KeyboardInterrupt, IOError, OSError):
+        exc, msg, tb = sys.exc_info()
+        import traceback
+        for l in traceback.format_exception( exc, msg, tb ):
+            print l
         return 1
-    except:
-        return 1
+    #except:
+    #    return 1
     return 0
 
 def erase():
     server = WebServer()
     rc=0
-    move_httpd_conf(HTTPD_CONF,"%s%s"%(HTTPD_CONF,SUFFIX))
+    move_httpd_conf(server.config_file,"%s%s"%(server.config_file,SUFFIX))
         
 def usage(cmd):
     print "Usage: %s -i [--install] -e [erase] -h [--help]"%(cmd,)
