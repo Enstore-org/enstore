@@ -7280,6 +7280,9 @@ def verify_read_request_consistancy(requests_per_vol, e):
                 if e_errors.is_ok(fcc_response):
                     if fcc_response['original'] != None:
                         is_copy = True
+            #If copy N was specifically requested, then this is a copy.
+            elif e.copy:
+                is_copy = True
 
             if request['infile'] not in ["/dev/zero",
                                          "/dev/random", "/dev/urandom"]:
@@ -8343,7 +8346,24 @@ def create_read_request(request, file_number,
 
             ofullname = get_oninfo(ifullname, e.output[0], e)
 
-            bfid = p.get_bit_file_id(ifullname)
+            original_bfid = p.get_bit_file_id(ifullname)
+            if e.copy == 0:
+                bfid = original_bfid
+            else:
+                fcc = get_fcc(original_bfid)
+                copy_info = fcc.find_copies(original_bfid)
+                if e_errors.is_ok(copy_info):
+                    copy_list = copy_info['copies']
+                    try:
+                        #We need to subtract one here, becuause e.copy
+                        # considers 0 to be the origianal, but this
+                        # list considers the first copy to be at index 0.
+                        bfid = copy_list[e.copy - 1]
+                    except IndexError:
+                        raise EncpError(errno.EINVAL,
+                                 "File does not contain copy %s." % e.copy,
+                                        e_errors.USERERROR,
+                            {'infile' : ifullname, 'outfile' : ofullname,})
             
             vc_reply, fc_reply = get_clerks_info(bfid, e)
 
@@ -9047,6 +9067,8 @@ class EncpInterface(option.Interface):
         self.verbose = 0           # higher the number the more is output
         self.version = 0           # print out the encp version
         self.copies = None         # number of copies to write to tape
+        self.copy = 0              # copy number to read from tape
+                                   # (0 = original)
 
         #EXfer optimimazation options
         self.buffer_size = 262144  # 256K: the buffer size
@@ -9194,6 +9216,11 @@ class EncpInterface(option.Interface):
                       option.VALUE_USAGE:option.IGNORED,
                       option.DEFAULT_TYPE:option.INTEGER,
                       option.USER_LEVEL:option.USER,},
+        option.COPY:{option.HELP_STRING:
+                     "Read copy N of the file.  (0 = original)",
+                     option.VALUE_USAGE:option.REQUIRED,
+                     option.VALUE_TYPE:option.INTEGER,
+                     option.USER_LEVEL:option.USER,},
         option.COPIES:{option.HELP_STRING:"Write N copies of the file.",
                        option.VALUE_USAGE:option.REQUIRED,
                        option.VALUE_TYPE:option.INTEGER,
