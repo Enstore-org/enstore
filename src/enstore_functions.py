@@ -134,8 +134,12 @@ def get_enstore_tmp_dir():
         return rtn_dir
 
     #Next, use 'tmp' under ENSTORE_DIR.
+    tmp_dir = os.environ.get('ENSTORE_HOME',None)
+    if tmp_dir == None:
+        tmp_dir = os.environ.get('ENSTORE_DIR','')
+    
     try:
-        rtn_dir = os.path.join(os.environ['ENSTORE_DIR'], "tmp")
+        rtn_dir = os.path.join(tmp_dir, "tmp")
     except (OSError, KeyError):
         rtn_dir = "/tmp/enstore/"
 

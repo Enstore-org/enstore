@@ -83,8 +83,12 @@ def is_on_host(host):
 
 def output(server_name):
     #Determine where to redirect the output.
+    tmp_dir = os.environ.get('ENSTORE_HOME',None)
+    if tmp_dir == None:
+        tmp_dir = os.environ.get('ENSTORE_DIR','')
+        
     try:
-        output_dir_base = os.path.join(os.environ['ENSTORE_DIR'], "tmp")
+        output_dir_base = os.path.join(tmp_dir, "tmp")
     except:
         output_dir_base = "/tmp/enstore/"
         try:
