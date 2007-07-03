@@ -48,6 +48,10 @@ cat $node_list | while read remote_node; do
 	enrcp $ENSTORE_HOME/site_specific/config/* ${remote_node}:$ENSTORE_HOME/site_specific/config
 	rc=$?
 	if [ $rc -eq 0 ]; then
+	    enrsh $remote_node "chown -R enstore.enstore $ENSTORE_HOME/site_specific"
+	    rc=$?
+	fi
+	if [ $rc -eq 0 ]; then
 	    echo "completing enstore environment distribution on $remote_node"
 	    enrsh $remote_node "$ENSTORE_DIR/external_distr/create_enstore_environment.sh"
 	    rc=$?

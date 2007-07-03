@@ -57,10 +57,12 @@ if [ ! -d "/usr/local/etc" ]
 then
     mkdir -p /usr/local/etc
 else
-    cp -rf /usr/local/etc/setups.sh /usr/local/etc/setups.sh.sav
+    d=`date +%F.%R`
+    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
 fi
     
-sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups.sh
+sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
+ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
