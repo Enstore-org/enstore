@@ -532,3 +532,18 @@ def fullpath2(filename):
         dirname, basename = os.path.split(filepath)
 
     return protocol, machine, portnumber, filepath, dirname, basename
+
+###########################################################################
+##
+###########################################################################
+
+def this_host():
+    rtn = socket.gethostbyname_ex(socket.getfqdn())
+
+    return [rtn[0]] + rtn[1] + rtn[2]
+
+def is_on_host(host):
+    if host in this_host():
+        return 1
+
+    return 0
