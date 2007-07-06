@@ -21,6 +21,7 @@ MAX_REG_PRIORITY = 1000001
 class PriSelector:
 
     def read_config(self):
+        Trace.log(e_errors.INFO, "(Re)loading priority")
         self.exists = 0
 
         dict=self.csc.get('priority',{})
@@ -64,7 +65,7 @@ class PriSelector:
         
 
     def priority(self, ticket):
-        self.read_config()
+        #self.read_config()
         if not self.exists:  # no priority configuration info
             return ticket['encp']['basepri'], ticket['encp']['adminpri']
         # make a "flat" copy of ticket

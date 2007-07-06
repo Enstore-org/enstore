@@ -2952,7 +2952,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 self.suspect_volumes.remove(vol)
                 Trace.log(e_errors.INFO, "%s removed from suspect volume list"%(vol,))
         self.reply_to_caller(ticket)
-            
+
+    # overrides GEnericServer reinit when received notification of new configuration file.
+    def reinit(self):
+        Trace.log(e_errors.INFO, "(Re)loading allowed to write")
+        self.allow_access = self.keys.get('allow', None)
+        self.pri_sel.read_config()
+        self.restrictor.read_config()
 
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
