@@ -1039,10 +1039,14 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             pnfs_value_match_list = [pnfs_value]
         except (OSError, IOError), msg:
             if is_nameof_name(pfn) and msg.args[0] == errno.EIO and \
-               os.geteuid != 0:
+               os.geteuid() != 0:
                 #We don't have permission to obtain the information.
                 raise OSError(errno.EACCES,
                               "%s: %s" % (os.strerror(errno.EACCES), pfn))
+            #elif msg.args[0] in [errno.EACCES, errno.EPERM] and \
+            #         os.geteuid() == 0:
+            #    #If we found the non-admin path and are user root.
+            #    pass
             elif msg.args[0] != errno.ENOENT:
                 raise OSError(msg.args[0],
                               "%s: %s" % (os.strerror(msg.args[0]), pfn))
