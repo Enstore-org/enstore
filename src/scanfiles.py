@@ -76,6 +76,7 @@ ONE_DAY = 24*60*60
 ts_check = []
 stop_threads_lock=threading.Lock()
 threads_stop = False
+alarm_lock=threading.Lock()
 external_transitions = {} #Ttranslate /pnfs/sam/lto to /pnfs/fs/usr/sam-lto
 
 #For cleanup_objects() to report problems.
@@ -397,25 +398,31 @@ def get_database(f):
     return database
 
 def get_layer(layer_filename):
-
-    # get info from layer
-    try:
-        fl = open(layer_filename)
-        layer_info = fl.readlines()
-        fl.close()
-    except (OSError, IOError), detail:
-        if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
-            #If we get here and the real id is user root, we need to reset
-            # the effective user id back to that of root ...
-            os.seteuid(0)
-            os.setegid(0)
-
-            #... and try it again.
+    
+    i = 0
+    while i < 3:
+        # get info from layer
+        try:
             fl = open(layer_filename)
             layer_info = fl.readlines()
             fl.close()
-        else:
-            raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+            break
+        except (OSError, IOError), detail:
+            if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
+                #If we get here and the real id is user root, we need to reset
+                # the effective user id back to that of root ...
+                os.seteuid(0)
+                os.setegid(0)
+            else:
+                #If the problem wasn't permissions, lets give the system a
+                # moment to catch up.
+                time.sleep(0.1)
+
+            i = i + 1
+            continue
+
+    else:
+        raise detail
 
     return layer_info
 
@@ -601,28 +608,43 @@ def get_stat(f):
     warn = []
     info = []
 
+    #Since alarm() signals are only recieved by the main thread (python
+    # restriction), and only one SIGALRM exists for all threads, we can
+    # have them all share using locks in this stat() abstraction function.
+    #### Unfortunatly, as of python 2.4.3 there is a bug with signals in
+    #### multithreaded python programs.
+    #The reason for attempting to use alarm() at all, is that it has been
+    # found that the in memory copy of the database in the dbserver process
+    # can become corrupted.  When it does, the PNFS filesystems responds
+    # with garbage entries until it hangs.  Thus, the thought of using
+    # alarm() to address the problem.
+    ##alarm_lock.acquire()
+    ##signal.alarm(10)
+
     ### We need to try a few times.  There are situations where the server
     ### is busy and the lack of responce looks like a 'does not exist' responce.
     ### This can lead 'invalid directory entry' situation, but in reality
     ### it is a false negative.
     
     #Do one stat() for each file instead of one for each os.path.isxxx() call.
-    #for i in range(1):
     for i in range(2):
-        if i != 0:
-            time.sleep(0.1) #Sleep for a tenth of a second.
-
         try:
             f_stats = os.lstat(f)
 
+            ##signal.alarm(0)
+            ##alarm_lock.release()
+            
             #On success return immediatly.
             return f_stats, (err, warn, info)
         except OSError, msg:
             if msg.args[0] in [errno.EBUSY, errno.ENOENT]:
-                continue
+                time.sleep(0.1) #Sleep for a tenth of a second.
             else:
                 break
 
+    ##signal.alarm(0)
+    ##alarm_lock.release()
+    
     if msg.errno == errno.ENOENT:
 
         #Before blindly returning this error, first check the directory
@@ -886,6 +908,8 @@ def check(f, f_stats = None):
     info = []
 
     if type(f_stats) != types.DictType:
+        #PNFS is not that stable.  Different databases can hang, which
+        # causes things like this stat() to hang.
         f_stats, (err, warn, info) = get_stat(f)
 
     if err or warn:
@@ -1147,8 +1171,7 @@ def check_bit_file(bfid, bfid_info = None):
                         else:
                             err.append("to many matches %s" % tmp_name_list)
                     except (OSError, IOError), detail:
-                        if detail.errno == errno.ENOENT or \
-                               detail.errno == errno.EIO:
+                        if detail.errno in [errno.EBADFD, errno.EIO]:
                             err.append("%s orphaned file" % (file_record['pnfsid'],))
                         else:
                             err.append("%s error accessing file"%(file_record['pnfsid'],))
@@ -1347,7 +1370,7 @@ def check_bit_file(bfid, bfid_info = None):
                 except OSError:
                     pass
             try:
-                tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
+                tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], use_mp)
                 #Deal with multiple possible matches.
                 if len(tmp_name_list) == 1:
                     tmp_name = tmp_name_list[0]
@@ -1368,9 +1391,10 @@ def check_bit_file(bfid, bfid_info = None):
                     #The best we can do is use the .(access)() name.
                     pass
             except (OSError, IOError), detail:
-                if detail.errno  in [errno.ENOENT, errno.EIO]:
+                if detail.errno  in [errno.EBADFD, errno.EIO]:
                     err = err + ["%s orphaned file"%(file_record['pnfsid'])]
                     errors_and_warnings(prefix, err, warn, info)
+                    return
                 else:
                     err = err + ["%s error accessing file"%(file_record['pnfsid'])]
                     errors_and_warnings(prefix, err, warn, info)
@@ -1998,7 +2022,7 @@ def do_work(intf_of_scanfiles):
         if item[-16:] == ".library_manager":
             lm.append(item[:-16])
 
-    flags = enstore_constants.NO_LOG & enstore_constants.NO_ALARM
+    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
     infc = info_client.infoClient(csc, flags = flags)
 
     if intf_of_scanfiles.profile:
