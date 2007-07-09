@@ -1046,6 +1046,23 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             elif msg.args[0] != errno.ENOENT:
                 raise OSError(msg.args[0],
                               "%s: %s" % (os.strerror(msg.args[0]), pfn))
+            elif msg.args[0] == errno.ENOENT:
+                #We need to determine if the file is orphaned.  At this
+                # point the target returned "no such file or directory",
+                # so if the parent returns successful here, then we know
+                # it is a orphan.
+                try:
+                    parent_fn = os.path.join(directory, ".(parent)(%s)" % id)
+                    parent_fp = open(parent_fn, "r")
+                    parent_id = parent_fp.readlines()
+                    parent_fp.close()
+                    if parent_id:
+                        #orphaned file
+                        raise OSError(errno.EBADFD,
+                              "%s: orphaned file" % os.strerror(errno.EBADFD),
+                                      pfn)
+                except (OSError, IOError):
+                    pass
 
             #Only ENOENT should be able to get here.
             
@@ -1142,36 +1159,29 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                                 #found_fname = pfn
                                 found_db_info = db_db_info
                 except (OSError, IOError), msg:
-                    if msg.args[0] in [errno.EIO]:
+                    if msg.args[0] in [errno.EIO, errno.ENOENT]:
                         #This block of code is to report if an orphaned file
                         # was requested.  This will only apply to orphans
                         # with their 'parent' directory missing them.
-                        # If the directory is 
-                        
-                        #If pfn is a .(nameof) file, the stat
-                        # results are inconclusive.  If necessary,
-                        # convert to an .(access) name.
-                        afn = self.convert_to_access(pfn)
                         try:
-                            stat_info = os.stat(afn)
+                            if os.path.basename(use_mp) == "fs":
+                                parent_fn = os.path.join(use_mp, "usr",
+                                                   ".(parent)(%s)" % id)
+                            else:
+                                parent_fn = os.path.join(use_mp,
+                                                         ".(parent)(%s)" % id)
+                            parent_fp = open(parent_fn, "r")
+                            parent_id = parent_fp.readlines()
+                            parent_fp.close()
                         except (OSError, IOError):
-                            stat_info = None
-                        if is_nameof_name(pfn) and os.geteuid != 0 \
-                               and stat_info: #and msg.args[0] in [errno.EIO]
-                           #We don't have permission to obtain the information.
-                           raise OSError(errno.EACCES,
-                                         "%s: %s" % (os.strerror(errno.EACCES),
-                                                     pfn))
-                        if stat_info:
-                            import traceback
-                            traceback.print_stack()
-                            raise OSError(errno.EIO,
-                                          "Found unnamed orphan file: %s" % 
-                                          afn)
-                    if msg.args[0] in [errno.EPERM]:
-                        raise OSError(errno.EPERM,
-                                      "%s: %s" % (os.strerror(errno.EPERM),
-                                                  pfn))
+                            parent_id = None
+
+
+                        if parent_id:
+                            #orphaned file
+                            raise OSError(errno.EBADFD,
+                                          "%s: orphaned file" % os.strerror(errno.EBADFD), pfn)
+                        
                     continue
 
             if count == 0:
