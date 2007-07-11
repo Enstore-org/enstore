@@ -24,6 +24,8 @@ import getopt
 import histogram
 import configuration_client
 import enstore_constants
+import socket
+import enstore_files
 
 def usage(cmd):
     print "Usage: %s -s [--sleep=] "%(cmd,)
