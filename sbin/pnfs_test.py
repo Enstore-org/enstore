@@ -17,12 +17,13 @@ import sys
 import string
 import pg
 import time
-import pnfs
 import os
 import re
 import pnfsidparser
 import getopt
 import histogram
+import configuration_client
+import enstore_constants
 
 def usage(cmd):
     print "Usage: %s -s [--sleep=] "%(cmd,)
@@ -63,16 +64,57 @@ if __name__ == '__main__':
             sys.exit(1)
         if o in ("-s", "--sleep"):
             interval = a
+            
 
-    so=0
-    sn=0
-    now_time    = time.time()
+    #
+    # get info from config server
+    #
+    intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    retry=0
+    timeout=1
+    system_name = csc.get_enstore_system(1,retry)
+    config_dict={}
+    if system_name:
+        config_dict = csc.dump(timeout, retry)
+        config_dict = config_dict['dump']
+    else:
+        configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+        f = open(configfile,'r')
+        code = string.join(f.readlines(),'')
+        configdict={}
+        exec(code)
+        config_dict=configdict
+        ret =configdict['known_config_servers']
+        def_addr = (os.environ['ENSTORE_CONFIG_HOST'],
+                    int(os.environ['ENSTORE_CONFIG_PORT']))
+        for item in ret.items():
+            if socket.getfqdn(item[1][0]) == socket.getfqdn(def_addr[0]):
+                system_name = item[0]
 
-    ntuple = histogram.Ntuple("transactions","transactions per second")
+    inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
+
+    html_dir=None
+    if inq_d.has_key("html_file"):
+        html_dir=inq_d["html_file"]
+    else:
+        html_dir = enstore_files.default_dir
+    
+
+    html_host=None
+    if inq_d.has_key("host"):
+        html_host=inq_d["host"]
+    else:
+        html_host = enstore_files.default_dir
+    
+
+    ntuple = histogram.Ntuple("transactions_on_%s"%system_name,"transactions per second on %s"%system_name)
     ntuple.set_time_axis()
     ntuple.set_line_color(1)
     ntuple.set_line_width(2)
     ntuple.set_marker_type("lines")
+    so=0
+    sn=0
     n=0
     try:
         while 1:
@@ -87,6 +129,10 @@ if __name__ == '__main__':
                 ntuple.get_data_file().close()
                 ntuple.plot("1:3")
                 ntuple.data_file=open(ntuple.get_data_file_name(),"w");
+                cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp transactions_on_*  %s.fnal.gov:%s"%(html_host,html_dir)
+                if os.system(cmd):
+                    print "failed ", cmd
+                    sys.exit(1)
             if n%5000 == 0:
                 os.system("rm -f %s"%(ntuple.get_data_file_name()))
                 ntuple.data_file=open(ntuple.get_data_file_name(),"w");
