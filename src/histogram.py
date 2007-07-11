@@ -39,6 +39,7 @@ class Ntuple:
         self.xlabel=""
         self.logy=False
         self.logx=False
+        self.time_axis_format="%y-%m-%d"
 
     #
     # setters 
@@ -71,6 +72,9 @@ class Ntuple:
 
     def set_time_axis(self,yes=True):
         self.time_axis=yes
+
+    def set_time_axis_format(self,txt):
+        self.time_axis_format=txt
 
     def set_opt_stat(self,yes=True):
         self.opt_stat=yes
@@ -123,6 +127,9 @@ class Ntuple:
     def get_time_axis(self):
         return self.time_axis
 
+    def get_time_axis_format(self):
+        return self.time_axis_format
+
     def get_opt_stat(self):
         return self.opt_stat
 
@@ -169,7 +176,7 @@ class Ntuple:
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
-                         "set format x \"%y-%m-%d\"\n"
+                         "set format x \""+self.time_axis_format+"\"\n"
             if ( self.get_logy() ) :
                 long_string=long_string+"set logscale y\n"
                 long_string=long_string+"set yrange [ 0.99  : ]\n"
