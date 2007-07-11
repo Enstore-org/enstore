@@ -68,22 +68,34 @@ if __name__ == '__main__':
     sn=0
     now_time    = time.time()
 
-    ntuple = histogram.Ntuple("transactions","transactions")
+    ntuple = histogram.Ntuple("transactions","transactions per second")
     ntuple.set_time_axis()
+    ntuple.set_line_color(1)
+    ntuple.set_line_width(2)
+    ntuple.set_marker_type("lines")
+    n=0
     try:
         while 1:
             so=sn
             sn=do_work("template1","enstore")
             sd=(sn-so+interval/2)/interval
             if so != 0:
-                print time.ctime(), sd," trans/sec"
+                #print time.ctime(), sd," trans/sec"
                 ntuple.get_data_file().write("%s %f\n"%(time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()),sd))
+            n=n+1
+            if n%10 == 0:
+                ntuple.get_data_file().close()
+                ntuple.plot("1:3")
+                ntuple.data_file=open(ntuple.get_data_file_name(),"w");
+            if n%5000 == 0:
+                os.system("rm -f %s"%(ntuple.get_data_file_name()))
+                ntuple.data_file=open(ntuple.get_data_file_name(),"w");
             time.sleep(interval)
     except (KeyboardInterrupt, SystemExit):
         ntuple.get_data_file().close()
-        ntuple.set_line_color(2)
-        ntuple.set_line_width(5)
-        ntuple.set_marker_type("points pt 1 ps 10 ")        
+        ntuple.set_line_color(1)
+        ntuple.set_line_width(1)
+        ntuple.set_marker_type("lines")        
         ntuple.plot("1:3")
         sys.exit(0)
             
