@@ -130,7 +130,7 @@ if __name__ == '__main__':
             if n%10 == 0:
                 ntuple.get_data_file().close()
                 ntuple.plot("1:3")
-                ntuple.data_file=open(ntuple.get_data_file_name(),"w");
+                ntuple.data_file=open(ntuple.get_data_file_name(),"a");
                 cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp transactions_on_*  %s.fnal.gov:%s"%(html_host,html_dir)
                 if os.system(cmd):
                     print "failed ", cmd
