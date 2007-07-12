@@ -115,7 +115,9 @@ if __name__ == '__main__':
     ntuple.set_line_color(1)
     ntuple.set_line_width(2)
     ntuple.set_marker_type("lines")
-    ntuple.set_time_axis_format("%m-%d-%H");
+    ntuple.set_time_axis_format("%d-%H-%M");
+    ntuple.set_ylabel("Transactions per second") 
+    ntuple.set_xlabel("(day-hour-minute)") 
     so=0
     sn=0
     n=0
