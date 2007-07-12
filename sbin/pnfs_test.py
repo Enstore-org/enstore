@@ -138,7 +138,7 @@ if __name__ == '__main__':
                 if os.system(cmd):
                     print "failed ", cmd
                     sys.exit(1)
-            if n%5000 == 0:
+            if n%8640 == 0:
                 os.system("rm -f %s"%(ntuple.get_data_file_name()))
                 ntuple.data_file=open(ntuple.get_data_file_name(),"w");
             time.sleep(interval)
