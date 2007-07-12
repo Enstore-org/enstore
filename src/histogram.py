@@ -72,6 +72,7 @@ class Ntuple:
 
     def set_time_axis(self,yes=True):
         self.time_axis=yes
+        self.xlabel="(year-month-day)"
 
     def set_time_axis_format(self,txt):
         self.time_axis_format=txt
@@ -173,7 +174,7 @@ class Ntuple:
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if (  self.time_axis ) : 
-            long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
+            long_string=long_string+"set xlabel '%s'\n"%(self.xlabel)+ \
                          "set xdata time\n"+ \
                          "set timefmt \"%Y-%m-%d %H:%M:%S\"\n"+ \
                          "set format x \""+self.time_axis_format+"\"\n"
