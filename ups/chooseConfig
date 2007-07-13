@@ -216,7 +216,7 @@ then
     complain=0
 fi
 
-if [ $dont_complain == 1 ]; then
+if [ $dont_complain -eq 1 ]; then
   #We want to override this warning message.
   complain=0;
 fi
