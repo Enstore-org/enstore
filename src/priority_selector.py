@@ -46,6 +46,7 @@ class PriSelector:
         self.max_reg_pri = max_reg_pri
         self.library_manager = library_manager
         self.csc = csc
+        self.read_config()
 
 
     def ticket_match(self, ticket, pri_key, conf_key):
