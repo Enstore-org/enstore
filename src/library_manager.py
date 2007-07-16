@@ -1742,6 +1742,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                        self.max_suspect_volumes)
         self.init_postponed_requests(self.keys.get('rq_wait_time',3600))
         self.restrictor = discipline.Restrictor(self.csc, self.name)
+        self.reinit()
+
         self.set_udp_client()
 
         self.volume_assert_list = []
@@ -2955,7 +2957,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     # overrides GEnericServer reinit when received notification of new configuration file.
     def reinit(self):
-        Trace.log(e_errors.INFO, "(Re)loading allowed to write")
+        Trace.log(e_errors.INFO, "(Re)loading configuration")
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
         self.restrictor.read_config()
