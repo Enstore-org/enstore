@@ -68,7 +68,7 @@ setup upd
 rm -rf /tmp/ups2rpm
 mkprd /tmp/ups2rpm
 
-# put package files in $RBPM_BUILD_ROOT%{prefix}...
+# put package files in $RPM_BUILD_ROOT%{prefix}...
 upd install -z /tmp/ups2rpm/db -j -r $RPM_BUILD_ROOT%{prefix} %{upsproduct} %{upsversion} %{upsflags} -G "%{upsflags}"
 # making sure they are owned by the user makes for modifying things easier
 chmod u+w $RPM_BUILD_ROOT%{prefix}/*
