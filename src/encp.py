@@ -364,7 +364,7 @@ __pychecker__ = ""  #Reset __pychecker__ after class Pnfs.
 def encp_client_version():
     ##this gets changed automatically in {enstore,encp}Cut
     ##You can edit it manually, but do not change the syntax
-    version_string = "v3_6g  CVS $Revision$ "
+    version_string = "v3_6h  CVS $Revision$ "
     encp_file = globals().get('__file__', "")
     if encp_file: version_string = version_string + os.path.basename(encp_file)
     #If we end up longer than the current version length supported by the
