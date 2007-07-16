@@ -741,6 +741,12 @@ class EnAlarmFile(EnFile):
     # open the file, if no mode is passed in, try opening for append and
     # then write
     def open(self, mode=""):
+        if not os.path.exists(self.file_name):
+            d = os.path.dirname(self.file_name)
+            if not os.path.exists(d):
+                os.makedirs(d)
+            EnFile.open(self, "w")
+            EnFile.close(self)
         if mode:
             EnFile.open(self, mode)
         else:
