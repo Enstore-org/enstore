@@ -25,6 +25,7 @@ import e_errors
 import getopt
 import string
 import socket
+import pwd
 
 class WebServer:
     def __init__(self,timeout=1,retry=0):
@@ -145,6 +146,32 @@ class WebServer:
             print 'DocumentRoot is not defined in the configuration'
             return None
 
+
+    def get_server_user(self):
+        if not self.is_ok :
+            return None
+        if self.server_dict.has_key('User'):
+            return self.server_dict['User']
+        else:
+            print 'DocumentRoot is not defined in the configuration'
+            return None
+
+    def get_server_getpwuid(self):
+        user=self.get_server_user()
+        if user :
+            return pwd.getpwnam(user)
+        else:
+            return None
+
+    def get_server_group(self):
+        if not self.is_ok :
+            return None
+        if self.server_dict.has_key('Group'):
+            return self.server_dict['Group']
+        else:
+            print 'DocumentRoot is not defined in the configuration'
+            return None
+
     def get_pid_file(self):
         if not self.is_ok :
             return None
@@ -218,6 +245,9 @@ class WebServer:
 def install():
     server = WebServer()
     rc=0
+    if not server.get_server_user() :
+        print "Failed to determine user name under which web server is running "
+        return 1
     try:
         if server.read_httpd_conf():
             print "Failed to read httpd.conf"
