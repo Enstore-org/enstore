@@ -1,11 +1,13 @@
 i pkginfo
 !default 0755 root bin
 d none volume_import=volume_import ? ? ?
+d none /etc
+d none /etc/profile.d
 f none encp=encp
 f none enstore=enstore
 f none ddencp=ddencp
 f none ecrc=ecrc
-#f none en_check=en_check
+f none en_check=en_check
 f none enroute2=enroute2
 f none ensync=ensync
 f none /etc/profile.d/encp.sh=../../etc/profile.d/encp.sh

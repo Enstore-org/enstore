@@ -383,7 +383,8 @@ for try in list doit; do
               check_status $? "cd $ENSTORE_DIR/src"
 	      #If the 'dcache' qualifier was specified do a slightly
 	      # different build.
-	      if [ `echo "$QUALIFIERS" | tr ": " "\n" | grep dcache`x = dcachex ]; then
+	      echo "$QUALIFIERS" | tr ": " "\n" | grep dcache > /dev/null
+	      if [ $? -eq 0 ]; then
 		make clean encp_for_dcache
 		check_status $? "make clean encp_for_dcache"
 	      else
@@ -466,6 +467,7 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
                 copyit $ENSTORE_DIR/src/ENCPBIN/enroute2        $INSTALLDIR/enroute2
                 copyit $ENSTORE_DIR/src/ENCPBIN/ddencp          $INSTALLDIR/ddencp
 		copyit $ENSTORE_DIR/src/ENCPBIN/ecrc		$INSTALLDIR/ecrc
+		copyit $ENSTORE_DIR/src/ENCPBIN/en_check	$INSTALLDIR/en_check
 # So far, make setuid installation manual
 #		chmod u+s $INSTALLDIR/enroute2
 #               copyit $ENSTORE_DIR/src/ENCPBIN/enmonitor       $INSTALLDIR/enmonitor
@@ -600,13 +602,52 @@ compileall.compile_dir(os.environ["ENSTORE_DIR"])
               fi
            fi
            ;;
-	15) echo "Step $Step:  rpmbuild -ba --macros ~/.rpmmacros -D 'upsflags $QUALIFIERS' -D 'upsversion $REV' $ENSTORE_DIR/spec/encp.spec   `starting`"
+	15) echo "Step $Step:  rpmbuild -ba --macros ~/.rpmmacros -D 'upsflags $QUALIFIERS' -D 'upsversion $REV' $ENSTORE_DIR/spec/encp.spec   (or pgkmk -o -d /tmp -f $ENSTORE_DIR/spec/prototype -a `uname -p` -v $REV)`starting`"
            if [ "$try" = "doit" ] ; then
-		if [ `uname` != "Linux" ]; then
-		     check_status 1 "This step is only for Linux machines."
-		else
+		if [ `uname` = "Linux" ]; then
 		     rpmbuild -ba --macros $ENSTORE_DEVEL_DIR/../COMMON/rpmmacros -D "upsflags $QUALIFIERS" -D "upsversion $REV" $ENSTORE_DIR/spec/encp.spec
 		     check_status $? "rpmbuild"
+		elif [ `uname` = "SunOS" ]; then
+		     #Make a temporary ups installations.
+		     rm -rf /tmp/ups2rpm
+		     install_base=/tmp/ups2rpm/prd
+		     mkprd /tmp/ups2rpm $install_base
+		     prefix=/opt/encp
+		     upd install -z /tmp/ups2rpm/db -j -r $install_base/${prefix} $product $REV $QUALIFIERS -G "$QUALIFIERS"
+
+		     # make .csh setup
+		     mkdir -p $install_base/etc/profile.d
+		     UPS_SHELL=sh; export UPS_SHELL
+		     tf=`ups setup -z /tmp/ups2rpm/db $product $REV $QUALIFIERS`
+		     sed -e "s|$install_base||g" -e "s|^/bin/rm -f $tf|#&|" -e "s|chooseConfig|chooseConfig -c|" < $tf >  $install_base/etc/profile.d/${product}.$UPS_SHELL
+		     rm -f $tf
+
+		     # ditto for .csh setup
+		     UPS_SHELL=csh; export UPS_SHELL
+		     tf=`ups setup -z /tmp/ups2rpm/db $product $REV $QUALIFIERS`
+		     sed -e "s|$install_base||g" -e "s|^/bin/rm -f $tf|#&|" -e "s|chooseConfig|chooseConfig -c|" < $tf >  $install_base/etc/profile.d/${product}.$UPS_SHELL
+		     rm -f $tf
+
+		     #Get some key values.
+		     ARCH=`uname -p`
+		     PKG=$product
+		     echo "$QUALIFIERS" | tr ": " "\n" | grep dcache > /dev/null
+		     if [ $? -ne 0 ]; then
+			PKGFILE=$ENSTORE_DEVEL_DIR/pkgmk/$PKG-$REV-$ARCH.pkg
+		     else
+			PKGFILE=$ENSTORE_DEVEL_DIR/pkgmk/$PKG-dcache-$REV-$ARCH.pkg
+		     fi
+
+		     #Make the package file.
+		     mkdir -p `dirname $PKGFILE`
+		     pkgmk -o -d /tmp -f $ENSTORE_DIR/spec/prototype -a $ARCH -v $REV -r $install_base/$prefix
+		     touch $PKGFILE
+		     pkgtrans -s /tmp $PKGFILE $PKG
+		     rtn_save=$?
+		     rm -r /tmp/$PKG
+		     check_status $rtn_save "pkgmk"
+		else
+		     check_status 1 "Step 15 does not support `uname`."
 		fi
 	   fi	
            ;;
