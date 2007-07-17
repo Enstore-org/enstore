@@ -20,13 +20,6 @@ fi
 krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
 
-set +u
-if [ -n "$ENSCP" ];then
-    /usr/bin/rsync --rsh=$ENSCP "$@"
-    exit $?
-fi
-set -u
-
 # if we are a kerberized system, we need to do some pre rcp stuff
 # for the root user. if not, just do a normal rcp
 
@@ -50,7 +43,6 @@ if [ -d $krbdir ]; then
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
       /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
-      rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -61,7 +53,6 @@ if [ -d $krbdir ]; then
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
       /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
-      rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
       if [ $OLDKRB5CCNAME != "NONE" ]; then KRB5CCNAME=$OLDKRB5CCNAME; fi
@@ -78,16 +69,20 @@ if [ -d $krbdir ]; then
         ${krbdir}/kcron 2> /dev/null
       fi
       /usr/bin/rsync --rsh=${krbdir}/rsh "$@"
-      rc=$?
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
 
 else
    # we are not kerberized
-    rsync "$@"
-    rc=$?
+   set +u
+   if [ -n "$ENSCP" ];then
+	/usr/bin/rsync --rsh=$ENSCP "$@" 
+   else
+	rsync "$@"
+   fi
+   set -u
 fi
 
 if [ $debug -eq 1 ]; then set +xv; fi
-exit $rc
+
