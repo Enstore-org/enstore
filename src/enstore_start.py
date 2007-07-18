@@ -668,8 +668,8 @@ def do_work(intf):
         if intf.should_start(enstore_constants.MOVER) or \
            intf.should_start(mover_name):
             check_server(csc, mover_name, intf,
-                         "$ENSTORE_DIR/sbin/mover %s" %
-                         (mover_name,))
+                         "%s $ENSTORE_DIR/sbin/mover %s" %
+                         (sudo, mover_name,))
     """
     mover_names = []
     for library_manager in libraries:
