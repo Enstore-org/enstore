@@ -1388,14 +1388,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         
 
-    def restart(self):
+    def restart(self, force=0):
         cur_thread = threading.currentThread()
         if cur_thread:
             cur_thread_name = cur_thread.getName()
         else:
             cur_thread_name = None
         Trace.log(e_errors.INFO, "Current thread %s"%(cur_thread_name,))
-        if cur_thread_name != 'MainThread':
+        if cur_thread_name != 'MainThread' and force == 0:
             self.restart_flag = 1
             return
         # to avoid restart while restarting get lock from a file
@@ -1414,21 +1414,22 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Can not restart there is a lock file %s preventing restart"%(self.restart_lockfile_name(),))
             sys.exit(-1)
         Trace.log(e_errors.INFO, "Getting restart lock")
-        self.restart_lock()   
-        if cur_thread_name:
-            if cur_thread_name in ('net_thread', 'MainThread'):
-                # check if tape_thread is active before allowing dismount
-                thread = getattr(self, 'tape_thread', None)
-                if thread and thread.isAlive():
-                    Trace.log(e_errors.INFO,"waiting for tape thread to finish")
-                    
-                for wait in range(60):
+        self.restart_lock()
+        if force == 0:
+            if cur_thread_name:
+                if cur_thread_name in ('net_thread', 'MainThread'):
+                    # check if tape_thread is active before allowing dismount
+                    thread = getattr(self, 'tape_thread', None)
                     if thread and thread.isAlive():
-                        time.sleep(2)
-                    else:
-                        break
-            elif cur_thread_name == 'tape_thread':
-                Trace.log(e_errors.INFO,"restart was called from tape thread")
+                        Trace.log(e_errors.INFO,"waiting for tape thread to finish")
+
+                    for wait in range(60):
+                        if thread and thread.isAlive():
+                            time.sleep(2)
+                        else:
+                            break
+                elif cur_thread_name == 'tape_thread':
+                    Trace.log(e_errors.INFO,"restart was called from tape thread")
 
         # release data buffer
         #Trace.log(e_errors.INFO, "releasing data buffer")
@@ -2075,6 +2076,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         buffer_empty_t = time.time()   #time when buffer empty has been detected
         buffer_empty_cnt = 0 # number of times buffer was cosequtively empty
         nblocks = 0L
+        bytes_written = 0
         # send a trigger message to the client
         try:
             bytes_written = self.net_driver.write("B", # write anything
@@ -2566,6 +2568,13 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(33,"bytes read %s"%(bytes_read,))
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
+                #raise exceptions.MemoryError # to test this thread
+            except MemoryError:
+                exc, detail, tb = sys.exc_info()
+                #Trace.handle_error(exc, detail, tb)
+                self.transfer_failed(e_errors.MEMORY_ERROR, detail, error_source=MOVER,dismount_allowed=1)
+                return
+                
             except CRC_ERROR:
                 Trace.alarm(e_errors.ERROR, "CRC error reading tape",
                             {'outfile':self.current_work_ticket['outfile'],
@@ -3473,6 +3482,14 @@ class Mover(dispatching_worker.DispatchingWorker,
             # transfer failed should not get called in OFFLINE state
             return
         #self.init_data_buffer() # reset buffer
+        # if memory error restart immediately, do not do anything else
+        if exc == e_errors.MEMORY_ERROR:
+            Trace.log(e_errors.ERROR, "Memory error, restarting mover")
+            self.log_state(logit=1)
+            #self.dump_vars()
+            self.restart(force=1)
+            return
+        
         self.timer('transfer_time')
         after_dismount_function = None
         volume_label = self.current_volume
@@ -3686,14 +3703,15 @@ class Mover(dispatching_worker.DispatchingWorker,
             # action for tape
             self.set_volume_noaccess(volume_label) 
         if dism_allowed:
+            '''
             if exc == e_errors.MEMORY_ERROR:
                 Trace.log(e_errors.ERROR, "Memory error, restarting mover")
                 self.log_state(logit=1)
                 self.dump_vars()
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.restart) 
+            '''
             if save_state == DRAINING:
                 self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
-
                 #self.dismount_volume(after_function=self.offline)
             else:
                 if not after_dismount_function:
