@@ -353,6 +353,7 @@ class DispatchingWorker(udp_server.UDPServer):
 
         # call the user function
         t = time.time()
+        Trace.trace(5,"process_request: function %s"%(function_name, ))
         apply(function, (ticket,))
         Trace.trace(5,"process_request: function %s time %s"%(function_name,time.time()-t))
 
