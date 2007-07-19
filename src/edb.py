@@ -35,8 +35,6 @@ default_database = 'enstoredb'
 def timestamp2time(s):
 	if s == '1969-12-31 17:59:59':
 		return -1
-	if s == '1970-01-01 00:59:59':
-		return -1
 	else:
 		# take care of daylight saving time
 		tt = list(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
