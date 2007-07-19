@@ -3484,6 +3484,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         #self.init_data_buffer() # reset buffer
         # if memory error restart immediately, do not do anything else
         if exc == e_errors.MEMORY_ERROR:
+            self.send_error_msg(error_info = (exc, msg),error_source=error_source)
             Trace.log(e_errors.ERROR, "Memory error, restarting mover")
             self.log_state(logit=1)
             #self.dump_vars()
