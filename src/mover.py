@@ -2568,7 +2568,6 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(33,"bytes read %s"%(bytes_read,))
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
-                raise exceptions.MemoryError # to test this thread
             except MemoryError:
                 #raise exceptions.MemoryError # to test this thread
                 exc, detail, tb = sys.exc_info()
