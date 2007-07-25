@@ -715,6 +715,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.dont_update_lm = 0   # if this flag is set do not update LM to avoid mover restart
         self.initial_crc_seed = 1L        # adler 32 default seed
         self.crc_seed = self.initial_crc_seed
+        self.memory_error = 0 # to flag memory error
         
         
     def __setattr__(self, attr, val):
@@ -2567,6 +2568,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.trace(33,"bytes read %s"%(bytes_read,))
                 nblocks = nblocks + 1
                 self.media_transfer_time = self.media_transfer_time + (time.time()-t1)
+                raise exceptions.MemoryError # to test this thread
             except MemoryError:
                 #raise exceptions.MemoryError # to test this thread
                 exc, detail, tb = sys.exc_info()
@@ -3479,6 +3481,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.state == OFFLINE:
             # transfer failed should not get called in OFFLINE state
             return
+        if exc == e_errors.MEMORY_ERROR:
+            self.memory_error = 1
+        else:
+            self.memory_error = 0
+
         #self.init_data_buffer() # reset buffer
         self.timer('transfer_time')
         after_dismount_function = None
@@ -3784,6 +3791,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.need_lm_update = (1, None, 1, None)
             
     def maybe_clean(self):
+        if self.memory_error:
+            return
         Trace.log(e_errors.INFO, "maybe_clean")
         cur_thread = threading.currentThread()
         if cur_thread:
@@ -4440,7 +4449,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.method = None
         Trace.log(e_errors.INFO, "Updating stats")
         try:
-            self.update_stat()
+            if self.memory_error == 0:
+                self.update_stat()
         except TypeError:
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "in update_stat: %s %s" % (exc, msg))
