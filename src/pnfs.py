@@ -376,7 +376,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 if shortcut:
                     raise ValueError, "Applying filename shortcut"
 
-                pnfsFilename = self.get_path(self.id)
+                pnfsFilename_list = self.get_path(self.id)
+                if len(pnfsFilename_list) == 1:
+                    pnfsFilename = pnfsFilename_list[0]
+                else:
+                    sys.stderr.write("Found %d file matches instead of just 1.\n"
+                                     % (len(pnfsFilename_list),))
+                    sys.exit(1)
             except (OSError, IOError, AttributeError, ValueError):
                 #No longer do just the following: pnfsFilename = ""
                 # on an exception.  Attempt to get the ".(access)(<pnfs id>)"
