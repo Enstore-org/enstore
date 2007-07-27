@@ -1,7 +1,7 @@
 #!/bin/sh
 ###############################################################################
 #
-# $Id:
+# $Id$
 #
 # Assuming that enstore account was created do the following
 # 
