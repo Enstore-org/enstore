@@ -21,7 +21,8 @@ POSIX4=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lposix4"; else echo ""; fi`
 RT=`if [ "_OSF1" = _$(MACH_OS) ]; then echo "-lrt"; else echo ""; fi`
 LIBSOCKETNSL=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-lsocket -lnsl"; else echo ""; fi`
 LIBGEN=`if [ "_IRIX" = _$(MACH_OS) ]; then echo "-lgen"; else echo ""; fi`
-LIBDL=`if [ "OSF1" = _(MACH_OS) ]; then echo ""; else echo -ldl; fi`
+LIBDL=`if [ "_OSF1" = _$(MACH_OS) ]; then echo ""; else echo -ldl; fi`
+PIC=`if [ "_x86_64" = _\`uname -p\` ]; then echo "-fPIC"; fi`
 XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
 XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib64 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm
 FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
@@ -66,7 +67,7 @@ Modules:
 	fi
 
 adler32.a: adler32.c
-	$(CC) -c adler32.c
+	$(CC) -c $(PIC) adler32.c
 	ar cr $@ adler32.o
 
 tape_copy: tape_copy.c
