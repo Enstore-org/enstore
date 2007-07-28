@@ -21,7 +21,7 @@ water=131.225.84.1
 rain=rain.fnal.gov
 woodlawn=woodlawn.fnal.gov
 airedale=airedale.fnal.gov
-#odyssey=odyssey,fnal,gov
+#odyssey=odyssey.fnal.gov
 #sirius=sirius
 #lancs=192.9.200.103 # THE UK lancaster group on bulk1.ukwork
 gccen=gccensrv1.fnal.gov
@@ -36,25 +36,25 @@ get_logname()
     if [ $? -eq 0 ]; then
 	the_logname=`logname 2> /dev/null`
 	if [ $? -eq 0 ]; then
-            echo $the_logname
-            return 0
-        fi
+	    echo $the_logname
+	    return 0
+	fi
     fi
     which whoami > /dev/null 2>&1
     if [ $? -eq 0 ]; then
 	the_logname=`whoami 2> /dev/null`
-        if [ $? -eq 0 ]; then
-            echo $the_logname
-            return 0
-        fi
+	if [ $? -eq 0 ]; then
+	    echo $the_logname
+	    return 0
+	fi
     fi
     which id > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-        the_logname=`id -nu 2> /dev/null`
-        if [ $? -eq 0 ]; then
-            echo $the_logname
-            return 0
-        fi
+	the_logname=`id -nu 2> /dev/null`
+	if [ $? -eq 0 ]; then
+	    echo $the_logname
+	    return 0
+	fi
     fi
     return 1
 }
@@ -66,113 +66,132 @@ if [ `get_logname`x = 'dcache'x ]; then ENSTORE_MAIL=dcache-auto@fnal.gov;fi
 case $node in
 
   stkenscan*)
-            ENSTORE_CONFIG_HOST=stkenscan1.fnal.gov
-            ENSTORE_CONFIG_FILE=offline.conf
-            complain=0
-            ;;
+	    ENSTORE_CONFIG_HOST=stkenscan1.fnal.gov
+	    ENSTORE_CONFIG_FILE=offline.conf
+	    complain=0
+	    ;;
 
-  stken*|cmspnfs1*|eagpnfs1*)
-            ENSTORE_CONFIG_HOST=$stken
+# these 2 movers are on loan to CDF
+  stkenmvr118a | stkenmvr119a)
+	    ENSTORE_CONFIG_HOST=$cdfen
+	    ENSTORE_CONFIG_FILE=cdf.conf
+	    qualifier=cdfen
+	    complain=0
+	    ;;
+
+  stken*|cmspnfs*|eagpnfs*)
+	    ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
 	    qualifier=stken
-            complain=0
-            ;;
-  rip*)
-	    ENSTORE_MAIL=huangch@fnal.gov
+	    complain=0
+	    ;;
+
+  rip*)     ENSTORE_MAIL=huangch@fnal.gov
 	    ENSTORE_CONFIG_HOST=$rip
 	    ENSTORE_CONFIG_FILE=rip.conf
 	    qualifier=rip
-            complain=0
-            ;;
-  cachen*)
-            ENSTORE_CONFIG_HOST=$stken
-            ENSTORE_CONFIG_FILE=stk.conf
+	    complain=0
+	    ;;
+
+  cachen*)  ENSTORE_CONFIG_HOST=$stken
+	    ENSTORE_CONFIG_FILE=stk.conf
 	    qualifier=stken
-            complain=0
-            ;;
+	    complain=0
+	    ;;
+
   d0en*)    ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
 	    qualifier=d0en
-            complain=0
-            ;;
+	    complain=0
+	    ;;
+
   cdfen*)   ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
 	    qualifier=cdfen
-            complain=0
-            ;;
+	    complain=0
+	    ;;
+
   *minos*)  ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
 	    qualifier=stken
-            complain=0
-            ;;
+	    complain=0
+	    ;;
+
   *sam*|*d0*)
-            ENSTORE_CONFIG_HOST=$d0en
+	    ENSTORE_CONFIG_HOST=$d0en
 	    ENSTORE_CONFIG_FILE=sam.conf
 	    qualifier=d0en
-            ;;
+	    ;;
+
   *cdf*|*b0*)
 	    ENSTORE_CONFIG_HOST=$cdfen
 	    ENSTORE_CONFIG_FILE=cdf.conf
 	    qualifier=cdfen
-            ;;
+	    ;;
+
   happy)    #Sasha Moibenko's Desktop
 	    ENSTORE_MAIL=moibenko@fnal.gov
 	    ENSTORE_CONFIG_HOST=$happy
 	    ENSTORE_CONFIG_FILE=happy.conf
 	    qualifier=happy
-            complain=0
-            ;;
+	    complain=0
+	    ;;
+
   water|rain)
 	    #Michael Zalokar's Desktop
 	    ENSTORE_MAIL=zalokar@fnal.gov
 	    ENSTORE_CONFIG_HOST=$water
 	    ENSTORE_CONFIG_FILE=water.conf
-            complain=0
-            ;;
-  fndapr)
+	    complain=0
+	    ;;
+
+  fndapr)   #Eileen Berman's Desktop
 	    ENSTORE_MAIL=berman@fnal.gov
 	    ENSTORE_CONFIG_HOST=$fndapr
 	    ENSTORE_CONFIG_FILE=berman.conf
-            complain=0
-            ;;
-#  odyssey)  complain=0
-#            ;;
+	    complain=0
+	    ;;
+
   woodlawn) #Chih-Hao Huang's Desktop
 	    ENSTORE_MAIL=huangch@fnal.gov
-            ENSTORE_CONFIG_HOST=$woodlawn
-            ENSTORE_CONFIG_FILE=woodlawn.conf
-            complain=0
-            ;;
+	    ENSTORE_CONFIG_HOST=$woodlawn
+	    ENSTORE_CONFIG_FILE=woodlawn.conf
+	    complain=0
+	    ;;
+
   airedale) #Jon Bakken's Desktop
 	    ENSTORE_MAIL=bakken@fnal.gov
 	    ENSTORE_CONFIG_HOST=$airedale
 	    ENSTORE_CONFIG_FILE=airedale.conf
-            complain=0
-            ;;
-#  odyssey)  complain=0
-#            ;;
-#  sirius)   ENSTORE_CONFIG_HOST=$sirius
+	    complain=0
+	    ;;
+
+# odyssey)
+#	    complain=0
+#           ;;
+
+# sirius)   ENSTORE_CONFIG_HOST=$sirius
 #	    ENSTORE_CONFIG_FILE=sirius.conf
-#            complain=0
-#            ;;
-#  lancs)
+#	    complain=0
+#           ;;
+
+# lancs)    ENSTORE_MAIL=enstore
 #	    ENSTORE_CONFIG_HOST=$lancs
 #	    ENSTORE_CONFIG_FILE=lancs.conf
-#	    ENSTORE_MAIL=enstore
 #	    complain=0
 #	    ;;
-  gccen*)
-            ENSTORE_MAIL=moibenko@fnal.gov,zalokar@fnal.gov,huangch@fnal.gov,litvinse@fnal.gov
+
+  gccen*)   ENSTORE_MAIL=moibenko@fnal.gov,zalokar@fnal.gov,huangch@fnal.gov,litvinse@fnal.gov
 	    ENSTORE_CONFIG_HOST=$gccen
 	    ENSTORE_CONFIG_FILE=gccen.conf
 	    complain=0
 	    ;;
-	    
+
   *)        ENSTORE_CONFIG_HOST=$stken
 	    ENSTORE_CONFIG_FILE=stk.conf
 	    qualifier=stken
-            ;;
-  
+	    ;;
+
 esac
 
 # ENSTORE_USER_DEFINED_CONFIG_FILE allows user to override default
@@ -198,20 +217,20 @@ then
     # for now)
     if [ "${ENSTORE_USER_DEFINED_CONFIG_FILE:-x}" = "x" ]
     then
-        case $ENSTORE_CONFIG_HOST in
-            stken*)
-                ENSTORE_CONFIG_FILE=stk.conf
-                ;;
-            d0en*)
-                ENSTORE_CONFIG_FILE=sam.conf
-                ;;
-            cdfen*)
-                ENSTORE_CONFIG_FILE=cdf.conf
-                ;;
-            *)
-                ENSTORE_CONFIG_FILE=stk.conf
-                ;;
-        esac
+	case $ENSTORE_CONFIG_HOST in
+	    stken*)
+		ENSTORE_CONFIG_FILE=stk.conf
+		;;
+	    d0en*)
+		ENSTORE_CONFIG_FILE=sam.conf
+		;;
+	    cdfen*)
+		ENSTORE_CONFIG_FILE=cdf.conf
+		;;
+	    *)
+		ENSTORE_CONFIG_FILE=stk.conf
+		;;
+	esac
     fi
     complain=0
 fi
@@ -254,4 +273,3 @@ elif [ "${1:-x}" = "qualifier" ]; then
   # need to feed this back up to the en*.table file on stdout to set it in the users's environment
   echo $qualifier
 fi
-
