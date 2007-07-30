@@ -186,7 +186,7 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 
     def __init__(self, server_address,
                  #configfile = enstore_constants.DEFAULT_CONF_FILE):
-                 configfile = enstore_functions2.default_file()):
+                 configfile = None): #enstore_functions2.default_file()):
 	#self.running = 0
 	#self.print_id = MY_NAME
         
@@ -194,6 +194,8 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         #cd = ConfigurationDict()
         ConfigurationDict.__init__(self)
         # load the config file user requested
+        if configfile == None:
+            configfile = enstore_functions2.default_file()
         self.load_config(configfile)
         #self.running = 1
         # The other servers call the generic_server __init__() function

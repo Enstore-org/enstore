@@ -19,6 +19,7 @@ import stat
 import re
 import errno
 import socket
+import pwd
 
 import enstore_constants
 
@@ -377,27 +378,233 @@ def get_status(dict):
     else:
         return status[0]
 
-DEFAULT_HOST = 'localhost'
-DEFAULT_PORT = 7500
+###########################################################################
+##
+###########################################################################
+
+def __get_wormhole(lname):
+    if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
+                     "ENSTORE_CONFIG_FILE"]:
+        raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
+                         " or ENSTORE_CONFIG_FILE")
+
+    #Read in the /etc/mtab file.
+    for mtab_file in ["/etc/mtab", "/etc/mnttab"]:
+        try:
+            fp = open(mtab_file, "r")
+            mtab_data = fp.readlines()
+            fp.close()
+            break
+        except (OSError, IOError), msg:
+            if msg.args[0] in [errno.ENOENT]:
+                continue
+            else:
+                raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+    else:
+        #Should this raise an error?
+        mtab_data = []
+
+    list_of_enstore_files = []
+    for line in mtab_data:
+        #The 2nd and 3rd items in the list are important to us here.
+        data = line[:-1].split()
+        mp = data[1]
+        fs_type = data[2]
+
+        #If the filesystem is not an NFS filesystem, skip it.
+        if fs_type != "nfs":
+            continue
+
+        en_info_filename = os.path.join(mp, ".(config)(enstore)", "enstorerc")
+        list_of_enstore_files.append(en_info_filename)
+
+
+    remember_en_data = []
+    #Loop over these files looking for the config info.
+    for filename in list_of_enstore_files:
+        result = __read_enstore_conf(filename, lname)
+        if result and result not in remember_en_data:
+            #We need to keep track of how many different systems we find.
+            remember_en_data.append(result)
+
+    if len(remember_en_data) == 1:
+        return remember_en_data[0]
+    elif len(remember_en_data) > 1:
+        #We have already looked at environmental variables and the .enstorerc
+        # file.  If we get here, then we don't know which 
+        raise ValueError("%s value not set or not unique" % lname)
+
+    return None
+
+#Copied find_config_file() from host_config.py.
+def __find_config_file():
+    config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
+    if config_host:
+        filename = '/etc/'+config_host+'.enstore.conf'
+    	if not os.path.exists(filename):
+            filename = '/etc/enstore.conf'
+    else:
+        filename = '/etc/enstore.conf'
+    filename = os.environ.get("ENSTORE_CONF", filename)
+    #Make sure that the specified file exists and is a regular file.
+    #Note: If the $ENSTORE_CONF environmental variable specifies a file
+    # that exists and is not an actual enstore.conf file, there will be
+    # some serious problems later on.
+    if os.path.exists(filename) and os.path.isfile(filename):
+        return filename
+    return None
+
+def __get_enstorerc(lname):
+    if lname not in ["ENSTORE_CONFIG_HOST", "ENSTORE_CONFIG_PORT",
+                     "ENSTORE_CONFIG_FILE"]:
+        raise ValueError("Expected ENSTORE_CONFIG_HOST, ENSTORE_CONFIG_PORT"
+                         " or ENSTORE_CONFIG_FILE")
+
+    list_of_enstore_files = []
+
+    #
+    #First obtain the location of the home area for this user.
+    #
+    try:
+        user_login_info = pwd.getpwuid(os.geteuid())
+        enstorerc_filename = os.path.join(user_login_info[5], ".enstorerc")
+        #Append the file to the list of places to look at.
+        list_of_enstore_files.append(enstorerc_filename)
+    except KeyError:
+        pass
+    except (OSError, IOError):
+        pass
+
+    #
+    #Second obtain the location of the enstore.conf file.
+    #
+    enstore_conf_filename = __find_config_file()
+    if enstore_conf_filename:
+        list_of_enstore_files.append(enstore_conf_filename)
+
+    #Loop over these files looking for the config info.
+    for filename in list_of_enstore_files:
+        result = __read_enstore_conf(filename, lname)
+        if result:
+            return result
+
+    return None
+
+def __read_enstore_conf(filename, line_target):
+    #Next read in (if present) the next enstore config file.
+    try:
+        enstore_conf_file = open(filename, "r")
+        enstore_conf_data = enstore_conf_file.readlines()
+        enstore_conf_file.close()
+    except (OSError, IOError):
+        return None
+
+    #Look for lines beginning with the string in lname.
+    for line in enstore_conf_data:
+        line = line.strip()
+        if line[:len(line_target)] == line_target:
+            #If there happens
+            equals_index = line[len(line_target):].find("=")
+            if equals_index == -1:
+                rtn_val = line[len(line_target):].strip()
+            else:
+                #If we found an equals sign, we need to skip 1 past it.
+                rtn_val = line[len(line_target):][equals_index + 1:].strip()
+            return rtn_val
+
+    return None
+            
+#DEFAULT_HOST = 'localhost'
+#DEFAULT_PORT = 7500
+
+used_default_config_host = None
+used_default_config_port = None
+used_default_config_file = None
+
+#First look for the ENSTORE_CONFIG_HOST/PORT/FILE values in environmental
+# variables.  Failing that try looking for a ~/.enstorerc file.  If that
+# still doesn't work try looking for a wormhole file in PNFS.  Lastly,
+# just return the default constants.
+def _get_value(requested_val, default_val):
+    val = os.environ.get(requested_val)
+    if val:
+        return val, False
+    else:
+        val2 = __get_enstorerc(requested_val)
+        if val2:
+            return val2, False
+        else:
+            val3 = __get_wormhole(requested_val)
+            if val3:
+                return val3, False
+            else:
+                return default_val, True
+
+    return None, False  #Impossible to get here.
+
+def used_default_host():
+    global used_default_config_host
+    if used_default_config_host == None:
+        #If we haven't called default_host() yet, we need to call _get_env()
+        # directly to return the correct info.
+        unsued, used_default_config_host = _get_value(
+            "ENSTORE_CONFIG_HOST", enstore_constants.DEFAULT_CONF_HOST)
+        return used_default_config_host
+    else:
+        return used_default_config_host
 
 def default_host():
-    val = os.environ.get('ENSTORE_CONFIG_HOST')
-    if val:
-        return val
+    global used_default_config_host
+    #Besides returning the ip/hostname, set used_default_config_host if
+    # to false if this value was configured or true if we are using
+    # enstore_constants.DEFAULT_HOST.
+    rtn_val, used_default_config_host = _get_value(
+        "ENSTORE_CONFIG_HOST", enstore_constants.DEFAULT_CONF_HOST)
+    return rtn_val
+
+def used_default_port():
+    global used_default_config_port
+    if used_default_config_port == None:
+        #If we haven't called default_port() yet, we need to call _get_env()
+        # directly to return the correct info.
+        unsued, used_default_config_port = _get_value(
+            "ENSTORE_CONFIG_PORT", enstore_constants.DEFAULT_CONF_PORT)
+        return used_default_config_port
     else:
-        return DEFAULT_HOST
+        return used_default_config_port
 
 def default_port():
-    val = os.environ.get('ENSTORE_CONFIG_PORT')
-    if val:
-        return int(val)
+    global used_default_config_port
+    #Besides returning the ip/hostname, set used_default_config_host if
+    # to false if this value was configured or true if we are using
+    # enstore_constants.DEFAULT_HOST.
+    rtn_val, used_default_config_port = _get_value(
+        "ENSTORE_CONFIG_PORT", enstore_constants.DEFAULT_CONF_PORT)
+    return int(rtn_val)
+
+def used_default_file():
+    global used_default_config_file
+    if used_default_config_file == None:
+        #If we haven't called default_FILE() yet, we need to call _get_env()
+        # directly to return the correct info.
+        unsued, used_default_config_file = _get_value(
+            "ENSTORE_CONFIG_FILE", enstore_constants.DEFAULT_CONF_FILE)
+        return used_default_config_file
     else:
-        return DEFAULT_PORT
+        return used_default_config_file
 
 def default_file():
-    name = os.environ.get("ENSTORE_CONFIG_FILE",
-                          enstore_constants.DEFAULT_CONF_FILE)
-    return name
+    global used_default_config_file
+    #Besides returning the ip/hostname, set used_default_config_host if
+    # to false if this value was configured or true if we are using
+    # enstore_constants.DEFAULT_HOST.
+    rtn_val, used_default_config_file = _get_value(
+        "ENSTORE_CONFIG_FILE", enstore_constants.DEFAULT_CONF_FILE)
+    return rtn_val
+
+###########################################################################
+##
+###########################################################################
 
 def expand_path(filename):
     #Expand the path to the complete absolute path.

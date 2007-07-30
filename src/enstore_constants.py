@@ -9,6 +9,8 @@
 ###############################################################################
 
 DEFAULT_CONF_FILE = "/pnfs/enstore/.(config)(flags)/enstore.conf"
+DEFAULT_CONF_HOST = "localhost"
+DEFAULT_CONF_PORT = 7500
 
 NETWORKFILE = "active_monitor.html"
 

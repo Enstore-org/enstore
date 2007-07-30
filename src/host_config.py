@@ -32,6 +32,7 @@ import runon
 # The following three functions read in the enstore.conf file.
 ##############################################################################
 
+#Note: find_config_file() is duplicated in enstore_function2.py.
 def find_config_file():
     config_host = os.environ.get("ENSTORE_CONFIG_HOST", None)
     if config_host:

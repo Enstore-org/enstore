@@ -100,11 +100,13 @@ import types
 import hostaddr
 import Trace
 import e_errors
+import enstore_constants
+import enstore_functions2
 
 ############################################################################
 
-DEFAULT_HOST = 'localhost'
-DEFAULT_PORT = '7500'
+#DEFAULT_HOST = 'localhost'
+#DEFAULT_PORT = '7500'
 
 #default value
 DEFAULT = 1
@@ -527,7 +529,7 @@ valid_option_list = [
     ]
 
 ############################################################################
-
+"""
 used_default_config_host = 0
 used_default_config_port = 0
 
@@ -554,7 +556,7 @@ def default_port():
         global used_default_config_port
         used_default_config_port = 1
     return val
-
+"""
 def log_using_default(var, default):
     Trace.log(e_errors.INFO,
               "%s not set in environment or command line - reverting to %s"\
@@ -564,10 +566,10 @@ def check_for_config_defaults():
     # check if we are using the default host and port.  if this is true
     # then nothing was set in the environment or passed on the command
     # line. warn the user.
-    if used_default_config_host:
-        log_using_default('CONFIG HOST', DEFAULT_HOST)
-    if used_default_config_port:
-        log_using_default('CONFIG PORT', DEFAULT_PORT)
+    if enstore_functions2.used_default_host():
+        log_using_default('CONFIG HOST', enstore_constants.DEFAULT_CONF_HOST)
+    if enstore_functions2.used_default_port():
+        log_using_default('CONFIG PORT', enstore_constants.DEFAULT_CONF_PORT)
 
 def list2(value):
     return [value]
@@ -604,10 +606,14 @@ class Interface:
         
         self.parse_options()
 
-        self.config_host = default_host()
-        self.config_port = default_port()
+        try:
+            self.config_host = enstore_functions2.default_host()
+            self.config_port = enstore_functions2.default_port()
+        except ValueError, msg:
+            sys.stderr.write("%s\n" % str(msg))
+            sys.exit(1)
 
-	if self.config_host == DEFAULT_HOST:
+	if self.config_host == enstore_constants.DEFAULT_CONF_HOST:
 	    self.check_host(hostaddr.gethostinfo()[0])
 	else:            
 	    self.check_host(self.config_host)
