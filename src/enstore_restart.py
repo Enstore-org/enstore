@@ -12,7 +12,7 @@
 #
 import sys
 #import re
-import os
+#import os
 import string
 #import errno
 #import socket
@@ -21,6 +21,7 @@ import string
 import generic_client
 import option
 import enstore_start
+import enstore_stop
 import Trace
 
 MY_NAME = "ENSTORE_RESTART"
@@ -107,23 +108,18 @@ class EnstoreRestartInterface(generic_client.GenericClientInterface):
         }
 
 def do_work(intf):
+    __pychecker__ = "unusednames=intf"
 
     Trace.init(MY_NAME)
 
     enstore_start.check_user()
 
-    start = "python %s/src/enstore_start.py" % (os.environ['ENSTORE_DIR'],)
-    stop = "python %s/src/enstore_stop.py" % (os.environ['ENSTORE_DIR'],)
+    intf_stop = enstore_stop.EnstoreStopInterface(user_mode=0)
+    intf_start = enstore_start.EnstoreStartInterface(user_mode=0,
+                                                     nocheck = True)
 
-    if intf.all:
-        os.system("%s --all" % (stop,))
-        os.system("%s --nocheck --all" % (start,))
-    elif intf.just:
-        os.system("%s --just %s" % (stop, intf.just))
-        os.system("%s --nocheck --just %s" % (start, intf.just))
-    else:
-        os.system("%s" % (stop,))
-        os.system("%s --nocheck" % (start,))
+    enstore_stop.do_work(intf_stop)
+    enstore_start.do_work(intf_start)
 
 
 if __name__ == '__main__':

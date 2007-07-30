@@ -463,11 +463,11 @@ def check_server(csc, name, intf, cmd):
 
 class EnstoreStartInterface(generic_client.GenericClientInterface):
 
-    def __init__(self, args=sys.argv, user_mode=1):
+    def __init__(self, args=sys.argv, user_mode=1, nocheck = None):
         self.name = "START"
         self.just = None
         self.all = 0 #False
-        self.nocheck = None
+        self.nocheck = nocheck  #We need nocheck for enstore_restart.
 
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
