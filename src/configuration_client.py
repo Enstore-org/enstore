@@ -16,6 +16,7 @@ import socket
 import select
 import types
 import time
+import imp
 
 # enstore imports
 import generic_client
@@ -536,6 +537,16 @@ def do_work(intf):
         sys.exit(0)
 
     csc.check_ticket(result)
+
+# configdict_from_file() -- make configdict from config file
+def configdict_from_file(config_file = None):
+    # if no config_file, get it from ENSTORE_CONFIG_FILE
+    if not config_file:
+        config_file = os.environ['ENSTORE_CONFIG_FILE']
+    f = open(config_file)
+    res = imp.load_module("fake config", f, 'config-file', ('.py', 'r', imp.PY_SOURCE))
+    f.close()
+    return res.configdict
 
 if __name__ == "__main__":
     Trace.init(MY_NAME)
