@@ -1336,7 +1336,7 @@ def check_bit_file(bfid, bfid_info = None):
         #           If we can detect that we need to remove the "/sam/"
         #           part we can save the time of a full get_path() lookup.
         just_pnfs_path_part = pnfs.strip_pnfs_mountpoint(file_record['pnfs_name0'])
-        dir_list = just_pnfs_path_part.split("/", 2) #Don't check everything...
+        dir_list = just_pnfs_path_part.split("/", 5) #Don't check everything...
         for i in range(len(dir_list[:-1])):
             single_dir = os.path.join(use_mp, dir_list[i])
             try:
