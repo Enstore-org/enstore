@@ -13,10 +13,6 @@ pid_file = dbserver_cmd+'.pid'
 # db_stop_cmd = 'pg_ctl stop -m f -D '
 db_servers = ['database', 'accounting_server', 'drivestat_server']
 
-def init():
-	global db_command
-	db_command = get_db_command()
-
 # find_pid(cmd, arg) -- find pid based on cmd and argument
 def find_pid(cmd, arg):
 	res = os.popen('ps -axw').readlines()
