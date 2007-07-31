@@ -613,7 +613,7 @@ class Histogram1D:
 
     def fill(self,x,w=1.):
         bin = self.find_bin(x)
-        if bin:
+        if bin != None :
             self.sum=self.sum+x
             self.sum2=self.sum2+x*x
             self.entries=self.entries+1
@@ -1113,7 +1113,7 @@ class Histogram2D(Histogram1D):
     def fill(self,x,y,w=1.):
         binx = self.find_bin_x(x)
         biny = self.find_bin_y(y)
-        if (binx and biny) :
+        if (binx != None and biny != None) :
             bin = self.nbins_x*biny+binx
             self.entries=self.entries+1
             count=self.binarray[bin]
