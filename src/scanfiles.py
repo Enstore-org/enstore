@@ -398,29 +398,37 @@ def get_database(f):
     return database
 
 def get_layer(layer_filename):
+    RETRY_COUNT = 2
     
     i = 0
-    while i < 3:
+    while i < RETRY_COUNT:
         # get info from layer
         try:
             fl = open(layer_filename)
-            layer_info = fl.readlines()
+            layer_info = fl.readline()
             fl.close()
             break
         except (OSError, IOError), detail:
+            #Increment the retry count before it is needed to determine if
+            # we should sleep or not sleep.
+            i = i + 1
+            
             if detail.args[0] in [errno.EACCES, errno.EPERM] and os.getuid() == 0:
                 #If we get here and the real id is user root, we need to reset
                 # the effective user id back to that of root ...
                 os.seteuid(0)
                 os.setegid(0)
-            else:
+            elif i < RETRY_COUNT:
                 #If the problem wasn't permissions, lets give the system a
                 # moment to catch up.
-                time.sleep(0.1)
+                #Skip the sleep if we are not going to try again.
+                ##time.sleep(0.1)
 
-            i = i + 1
-            continue
-
+                ##It is known that stat() can return and incorrect ENOENT
+                ## if pnfs is really loaded.  Is this true for open() or
+                ## readline()?  Skipping the time.sleep() makes the scan
+                ## much faster.
+                raise detail
     else:
         raise detail
 
@@ -572,17 +580,18 @@ def get_layers(f):
 
     return (bfid, layer4), (err + err1, warn + warn1, info + info1)
 
-def get_filedb_info(bfid):
-    
+def verify_filedb_info(fr):
     err = []
     warn = []
     info = []
 
-    if not bfid:
-        return None, (err, warn, info)
-    
-    # Get file database information.
-    fr = infc.bfid_info(bfid)
+    if type(fr) != types.DictType:
+        err.append("%s not a dictionary" % (fr,))
+        return (err, warn, info)
+
+    if not fr.has_key("status"):
+        fr['status'] = (e_errors.OK, None)
+
     if e_errors.is_ok(fr):
         if fr.get('deleted', None) == "no":
             # Look for missing file database information.
@@ -599,6 +608,21 @@ def get_filedb_info(bfid):
     else:  #elif not e_errors.is_ok(fr):
         err.append('file db error (%s)' % (fr['status'],))
     
+    return (err, warn, info)
+    
+def get_filedb_info(bfid):
+    
+    err = []
+    warn = []
+    info = []
+
+    if not bfid:
+        return None, (err, warn, info)
+    
+    # Get file database information.
+    fr = infc.bfid_info(bfid)
+    (err, warn, info) = verify_filedb_info(fr)
+
     return fr, (err, warn, info)
 
 def get_stat(f):
@@ -1095,11 +1119,18 @@ def check_bit_file(bfid, bfid_info = None):
         file_record = None
 
     if not file_record:
-        file_record, (err, warn, info) = get_filedb_info(bfid)
-        if err or warn:
-            errors_and_warnings(prefix, err, warn, info)
+        #If we don't have the file record already, to get it.
+        file_record, (err1, warn1, info1) = get_filedb_info(bfid)
+        if err1 or warn1:
+            errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
             return
-
+    else:
+        #Verify the file record is correct.  (From volume tape_list().)
+        (err1, warn1, info1) = verify_filedb_info(file_record)
+        if err1 or warn1:
+            errors_and_warnings(prefix, err + err1, warn + warn1, info + info1)
+            return
+        
     prefix = string.join([prefix, "...", file_record['external_label'],
                           file_record['location_cookie']], " ")
 
