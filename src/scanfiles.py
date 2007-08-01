@@ -1191,8 +1191,15 @@ def check_bit_file(bfid, bfid_info = None):
             errors_and_warnings(prefix, err, warn, info)
             return
         if layer1_bfid:
-            #Make sure this is the correct file.
-            if layer1_bfid == file_record['bfid']:
+            #Make sure this is the correct file or copy thereof.
+            if layer1_bfid == file_record['bfid'] or \
+                   layer1_bfid == \
+                   infc.find_original(file_record['bfid'])['original']:
+                
+                if layer1_bfid != file_record['bfid']:
+                    #Must be a multiple copy to get to this point.
+                    is_multile_copy = True
+
                 if file_record['deleted'] == 'yes':
                     try:
                         tmp_name_list = pnfs.Pnfs(shortcut = True).get_path(file_record['pnfsid'], mp)
@@ -1281,11 +1288,6 @@ def check_bit_file(bfid, bfid_info = None):
                     #pnfs_path and pnfsid_mp needs to be set correctly by
                     # this point.
                     break
-            elif infc.find_original(file_record['bfid'])['original'] == \
-                     layer1_bfid:
-                pnfs_path = afn
-                is_multile_copy = True
-                break
 
             #If we found the right bfid brand, we know the right pnfs system
             # was found.
