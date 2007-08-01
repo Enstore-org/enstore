@@ -405,7 +405,7 @@ def get_layer(layer_filename):
         # get info from layer
         try:
             fl = open(layer_filename)
-            layer_info = fl.readline()
+            layer_info = fl.readlines()
             fl.close()
             break
         except (OSError, IOError), detail:
