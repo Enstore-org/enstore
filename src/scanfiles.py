@@ -826,16 +826,16 @@ def process_mtab():
         #Sets global db_pnfsid_cache.
         parse_mtab()
         
+    p = pnfs.Pnfs()
     for database_info, (db_num, mp) in db_pnfsid_cache.items():
         if db_num == 0 or os.path.basename(mp) == "fs":
             #For /pnfs/fs we need to find all of the /pnfs/fs/usr/* dirs.
-            p = pnfs.Pnfs()
             use_path = os.path.join(mp, "usr")
             for dname in os.listdir(use_path):
                 tmp_name = os.path.join(use_path, dname)
                 if not os.path.isdir(tmp_name):
                     continue
-                tmp_db_info = p.get_database(os.path.join(use_path, dname)).strip()
+                tmp_db_info = p.get_database(tmp_name).strip()
                 if tmp_db_info in db_pnfsid_cache.keys():
                     continue
                 
@@ -1199,6 +1199,7 @@ def check_bit_file(bfid, bfid_info = None):
                                 if layer1_bfid and \
                                        layer1_bfid == file_record['bfid']:
                                     last_db_tried = copy.copy(item)
+                                    pnfsid_mp = item[1][1]
                                     break
                         else:
                             #...if it is not a match then we have a database
@@ -1244,8 +1245,10 @@ def check_bit_file(bfid, bfid_info = None):
                         last_db_tried = (db_info, (pnfsid_db, mp))
                         #We found the file, set the pnfs path.
                         pnfs_path = afn
+                        pnfsid_mp = mp
 
-                    #pnfs_path needs to be set correctly by this point.
+                    #pnfs_path and pnfsid_mp needs to be set correctly by
+                    # this point.
                     break
             elif infc.find_original(file_record['bfid'])['original'] == \
                      layer1_bfid:
@@ -1306,25 +1309,25 @@ def check_bit_file(bfid, bfid_info = None):
         use_mp = pnfsid_mp
     elif db_num == 0 and file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
         use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
-        use_mp = mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
+        use_mp = pnfsid_mp.replace("/pnfs/fs", "/pnfs/fs/usr/", 1)
     elif mp.find("/pnfs/fs/usr/") >= 0 and \
              file_record['pnfs_name0'].find("/pnfs/fs/usr") == -1:
         use_name = get_dcache_pnfs_path(file_record['pnfs_name0'])
-        use_mp = mp
+        use_mp = pnfsid_mp
     elif mp.find("/pnfs/fs/usr/") == -1 and \
              file_record['pnfs_name0'].find("/pnfs/fs/usr") >= 0:
         use_name = get_enstore_pnfs_path(file_record['pnfs_name0'])
-        use_mp = mp
+        use_mp = pnfsid_mp
     else:
         use_name = file_record['pnfs_name0']
-        use_mp = mp
+        use_mp = pnfsid_mp
     
     use_name = os.path.abspath(use_name)
     use_mp = os.path.abspath(use_mp)
 
     ###
-    for old_value, new_value in external_transitions.items():
-        use_name = use_name.replace(old_value, new_value, 1)
+    #for old_value, new_value in external_transitions.items():
+    #    use_name = use_name.replace(old_value, new_value, 1)
 
     cur_pnfsid = get_pnfsid(use_name)[0]
     if not cur_pnfsid or cur_pnfsid != file_record['pnfsid']:
@@ -1335,8 +1338,17 @@ def check_bit_file(bfid, bfid_info = None):
         #           current use path begins /pnfs/fs/usr/dzero/...
         #           If we can detect that we need to remove the "/sam/"
         #           part we can save the time of a full get_path() lookup.
-        just_pnfs_path_part = pnfs.strip_pnfs_mountpoint(file_record['pnfs_name0'])
-        dir_list = just_pnfs_path_part.split("/", 5) #Don't check everything...
+        just_pnfs_path_part = pnfs.strip_pnfs_mountpoint(
+            file_record['pnfs_name0'])
+        #Skip element zero in dir_list since we already tried it.  No use
+        # wasting time trying something we know will fail.
+        #Also, there are cases were the directory we should skip, just happens
+        # to have another directory with the same name underneath were we
+        # are looking.  The false positive is known to slow D0 down a lot
+        # if we don't avoid it.
+        #Don't check everything... limit this to the first 5 minux 1
+        # directories.
+        dir_list = just_pnfs_path_part.split("/", 5)[1:]
         for i in range(len(dir_list[:-1])):
             single_dir = os.path.join(use_mp, dir_list[i])
             try:
