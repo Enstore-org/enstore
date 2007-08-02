@@ -3041,9 +3041,9 @@ def outputfile_check(inputlist, outputlist, e):
                     #If the platform supports EFSCORRUPTED use it.
                     # Otherwise use the generic EIO.
                     if hasattr(errno, 'EFSCORRUPTED'):
-                        error = errno['EFSCORRUPTED'] #Not widely supported.
+                        error = errno.EFSCORRUPTED #Not widely supported.
                     else:
-                        error = errno['EIO']
+                        error = errno.EIO
                     raise EncpError(error, "Filesystem is corrupt.",
                                     e_errors.FILESYSTEM_CORRUPT,
                                     {'outfile' : outputlist[i]})
