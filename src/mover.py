@@ -5086,7 +5086,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
         self.create_lockfile()
-        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state)}
         self.reply_to_caller(out_ticket)
         if save_state is HAVE_BOUND and self.state is DRAINING:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
