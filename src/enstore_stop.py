@@ -42,7 +42,7 @@ import configuration_client
 #import library_manager_client
 import log_client
 #import media_changer_client
-#import mover_client
+import mover_client
 #import monitor_client
 #import volume_clerk_client
 #import ratekeeper_client
@@ -239,7 +239,20 @@ def stop_server(gc, servername):
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
     if servername.find("mover"):
-        rtn2 = kill_root_process(rtn['pid'])
+        r = gc.quit()
+        print r
+        time.sleep(5)
+        if detect_process(pid):
+            # still running
+            # check the process status
+            if r['state'] == 'DRAINING':
+                print "%s will stop when transfer is finished"%(server,)
+                rtn = 0
+            else:
+                print "killing % is state %s"%(server, r['state'])
+                rtn2 = kill_root_process(rtn['pid'])
+        else:
+            rtn2 = 0
     else:
         rtn2 = kill_process(rtn['pid'])
     if rtn2:
