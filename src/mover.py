@@ -5086,7 +5086,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
         self.create_lockfile()
-        out_ticket = {'status':(e_errors.OK,None)}
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
         self.reply_to_caller(out_ticket)
         if save_state is HAVE_BOUND and self.state is DRAINING:
             self.run_in_thread('media_thread', self.dismount_volume, after_function=self.offline)
@@ -5127,9 +5127,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                 Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
         
     def quit(self, ticket):
+        Trace.log(e_errors.INFO, "Mover has received a quit command")
         self.start_draining(ticket)
-        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
-        self.reply_to_caller(out_ticket)
+        #self.reply_to_caller(out_ticket)
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket, do_restart=0)
