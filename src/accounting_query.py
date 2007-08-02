@@ -1,9 +1,16 @@
-
+##############################################################################
+#
+# Utility class providing some standard queries used in inquisitor_plots.py
+# History:
+#          08/02/07 - removed seemingly irrelevant subclassinbg of accounting.accDB
+#
+# $Id$
+# $Aurhor$
+###############################################################################
 import os
 import pg
 import time
 
-import accounting
 import enstore_functions2
 
 SELECT = "select"
@@ -24,17 +31,17 @@ GREATEROREQUAL = ">="
 OPENCLAUSE = ' ('
 CLOSECLAUSE = ') '
 
-class accountingQuery(accounting.accDB):
+#class accountingQuery(accounting.accDB):
+class accountingQuery:
 	
-    	def __init__(self, host, dbname, port=5432, logname='ACC_QUERY'):
-	    accounting.accDB.__init__(self, host, dbname, port=port, logname=logname)
+        def __init__(self, host, dbname, port=5432, user='enstore', logname='ACC_QUERY'):
+            self.db=pg.DB(host=host, dbname=dbname, port=port, user=user)
             self.tables_cache = self.db.get_tables()
-
-        def query(self, qstr):
+		
+	def query(self, qstr):
             return self.db.query(qstr)
-
+	
         def setup_query(self, tableName, cols):
-            # make sure this is a supported table
             if not tableName in self.tables_cache:
                 return None
             return "%s %s %s %s"%(SELECT, cols, FROM, tableName)
