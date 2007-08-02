@@ -206,7 +206,9 @@ def quit_process(gc):
 
     #Send the quit message.
     try:
-        rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
+        #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
+        rtn = gc.quit(SEND_TO, SEND_TM)
+        print "RTN", rtn
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
 
@@ -230,7 +232,12 @@ def stop_server(gc, servername):
         remove_pid_file(servername)
         print "Stopped %s." % (servername,)
         return 0
-
+    if servername.find("mover"):
+        rtn = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+        if rtn['state'] == 'DRAINING':
+            print "%s will stop when transfer is finished"%(server,)
+            return 0
+        
     if not e_errors.is_ok(rtn):
         return 1
 
@@ -239,20 +246,8 @@ def stop_server(gc, servername):
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
     if servername.find("mover"):
-        r = gc.quit()
-        print r
-        time.sleep(5)
-        if detect_process(pid):
-            # still running
-            # check the process status
-            if r['state'] == 'DRAINING':
-                print "%s will stop when transfer is finished"%(server,)
-                rtn = 0
-            else:
-                print "killing % is state %s"%(server, r['state'])
-                rtn2 = kill_root_process(rtn['pid'])
-        else:
-            rtn2 = 0
+        print "killing % is state %s"%(server, r['state'])
+        rtn2 = kill_root_process(rtn['pid'])
     else:
         rtn2 = kill_process(rtn['pid'])
     if rtn2:
