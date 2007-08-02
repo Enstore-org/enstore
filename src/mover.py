@@ -1389,7 +1389,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         
 
-    def restart(self):
+    def restart(self, do_restart=1):
         cur_thread = threading.currentThread()
         if cur_thread:
             cur_thread_name = cur_thread.getName()
@@ -1437,13 +1437,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         #    self.buffer.clear()
         #    del(self.buffer)
         #    self.buffer = None
-
-        Trace.log(e_errors.INFO, "sending restart command")
-        cmd = '/usr/bin/at now+1minute'
-        ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name) 
-        p=os.popen(cmd, 'w')
-        p.write(ecmd)
-        p.close()
+        if do_restart:
+            Trace.log(e_errors.INFO, "sending restart command")
+            cmd = '/usr/bin/at now+1minute'
+            ecmd = "enstore Estart %s '--just %s > /dev/null'\n"%(self.config['host'],self.name) 
+            p=os.popen(cmd, 'w')
+            p.write(ecmd)
+            p.close()
         sys.exit(0)
         Trace.alarm(e_errors.ALARM, "Could not exit! Sys.exit did not work")
         
@@ -5095,7 +5095,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             #self.state = OFFLINE
         return
 
-    def stop_draining(self, ticket):        # put itself into draining state
+    def stop_draining(self, ticket, do_restart=1):        # put itself into draining state
         x = ticket # to trick pychecker
         if self.state != OFFLINE:
             out_ticket = {'status':("EPROTO","Not OFFLINE")}
@@ -5108,8 +5108,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
         self.remove_lockfile()
         Trace.trace(11,"check lockfile %s"%(self.check_lockfile(),))
-        Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
-        self.restart()
+        if do_restart:
+            Trace.log(e_errors.INFO,"restarting %s"% (self.name,))
+        self.restart(do_restart)
         #self.idle()
 
     def warm_restart(self, ticket):
@@ -5119,6 +5120,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         while 1:
             if self.state == OFFLINE:
                 self.stop_draining(ticket)
+            elif self.state != ERROR:
+                time.sleep(2)
+                Trace.trace(11,"waiting in state %s for OFFLINE" % (self.state,))
+            else:
+                Trace.alarm(e_errors.ERROR, "can not restart. State: %s" % (self.state,))
+        
+    def quit(self, ticket):
+        self.start_draining(ticket)
+        out_ticket = {'status':(e_errors.OK,None),'state':self.state}
+        self.reply_to_caller(out_ticket)
+        while 1:
+            if self.state == OFFLINE:
+                self.stop_draining(ticket, do_restart=0)
             elif self.state != ERROR:
                 time.sleep(2)
                 Trace.trace(11,"waiting in state %s for OFFLINE" % (self.state,))
