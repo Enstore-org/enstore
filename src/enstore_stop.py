@@ -251,7 +251,7 @@ def stop_server(gc, servername):
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
     if servername.find("mover"):
-        print "killing %s in state %s"%(server, rtn1['state'])
+        print "killing %s in state %s"%(servername, rtn1['state'])
         rtn2 = kill_root_process(rtn['pid'])
     else:
         rtn2 = kill_process(rtn['pid'])
