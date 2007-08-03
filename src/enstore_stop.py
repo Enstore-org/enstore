@@ -206,7 +206,6 @@ def quit_process(gc):
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
         rtn = gc.quit(SEND_TO, SEND_TM)
-        print "RTN", rtn
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
 
@@ -232,7 +231,10 @@ def stop_server(gc, servername):
         return 0
     if servername.find("mover"):
         u = udp_client.UDPClient()
-        rtn = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+	try:
+            rtn = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            rtn = {'status':(e_errors.TIMEDOUT, None)}
         if rtn['state'] == 'DRAINING':
             print "%s will stop when transfer is finished"%(server,)
             return 0
