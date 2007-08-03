@@ -1,5 +1,4 @@
 #!/bin/sh
-#!/bin/sh
 ###############################################################################
 #
 # $Id:
@@ -72,10 +71,5 @@ cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
 echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
 
-if [ $enstore_installed -eq 0 ]; then
-echo "To finish the installation you need to run $ENSTORE_DIR/external_distr/install.sh
-as user root on the host where the enstore configuration server will be running and only on
-this host" 
-fi
 
 exit 0
