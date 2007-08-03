@@ -4,8 +4,17 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Starts enstore after a machine boots
 
+# setup enstore first
+. /usr/local/etc/setups.sh
+setup enstore
+
+# set ENSTORE_HOME properly
+if [ "$ENSTORE_HOME" = "" ]; then
+	ENSTORE_HOME=/home/enstore
+fi
+
 timeout=4
-output=/home/enstore/`hostname`.startup
+output=$ENSTORE_HOME/`hostname`.startup
 touch $output
 chown enstore.enstore $output
 estat=0
@@ -14,12 +23,6 @@ case "$1" in
 
   start)
         echo Starting enstore 2>&1 | tee /dev/console >>$output
-
-	find /tmp/enstore -name "*pids" -exec rm {} \;
-	find /tmp/enstore -name "trace*key" -exec rm {} \;
-
-        . /usr/local/etc/setups.sh
-        setup enstore 
 
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
@@ -54,7 +57,7 @@ case "$1" in
 
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root) if we are a server
-          if [ "`whoami`" = "root" -a `echo $n2 | grep -c mvr` -eq 0 ] ; then
+          if [ "`whoami`" = "root" ]; then
 	    echo "`date`: su-ing to enstore and doing an enstore Estart $n2" 2>&1 | tee /dev/console >>$output
             # su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
             su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start"  
@@ -69,8 +72,6 @@ case "$1" in
 
   stop)
         echo Stopping enstore 2>&1 | tee /dev/console >>$output
-        . /usr/local/etc/setups.sh
-        setup enstore
 
 	# check if configure server is running
 	if [ "`enstore config --alive --timeout=30`" == "BAD STATUS ('TIMEDOUT', 'configuration_server')" ]
@@ -91,8 +92,6 @@ case "$1" in
         ;;
 
   install)
-        . /usr/local/etc/setups.sh
-        setup enstore
         x=/etc/rc.d/init.d/enstore-boot
         rm -f $x; cp $ENSTORE_DIR/bin/enstore-boot $x
         cd /etc/rc.d/rc3.d
