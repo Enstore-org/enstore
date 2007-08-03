@@ -202,8 +202,6 @@ def quit_process(gc):
     if not is_on_host(gc.server_address[0]):
         return None
 
-    u = udp_client.UDPClient()
-
     #Send the quit message.
     try:
         #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
@@ -233,6 +231,7 @@ def stop_server(gc, servername):
         print "Stopped %s." % (servername,)
         return 0
     if servername.find("mover"):
+        u = udp_client.UDPClient()
         rtn = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
         if rtn['state'] == 'DRAINING':
             print "%s will stop when transfer is finished"%(server,)
