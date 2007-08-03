@@ -236,9 +236,12 @@ def stop_server(gc, servername):
             rtn1 = {'status':(e_errors.TIMEDOUT, None)}
             if not e_errors.is_ok(rtn1):
                 return 1
-        if rtn1['state'] == 'DRAINING':
-            print "%s will stop when transfer is finished"%(server,)
-            return 0
+        try:
+            if rtn1['state'] == 'DRAINING':
+                print "%s will stop when transfer is finished"%(servername,)
+                return 0
+        except KeyError:
+            rtn1['state'] = "Unknown"
         
     if not e_errors.is_ok(rtn):
         return 1
@@ -248,7 +251,7 @@ def stop_server(gc, servername):
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
     if servername.find("mover"):
-        print "killing % is state %s"%(server, r['state'])
+        print "killing %s in state %s"%(server, rtn1['state'])
         rtn2 = kill_root_process(rtn['pid'])
     else:
         rtn2 = kill_process(rtn['pid'])
