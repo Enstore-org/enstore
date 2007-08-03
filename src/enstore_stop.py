@@ -208,7 +208,6 @@ def quit_process(gc):
         rtn = gc.quit(SEND_TO, SEND_TM)
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
-
     if e_errors.is_ok(rtn):
         time.sleep(1)
         return detect_process(rtn['pid'])
@@ -224,6 +223,7 @@ def stop_server(gc, servername):
     #Get this information for the pid.
     rtn = gc.alive(servername, SEND_TO, SEND_TM)
     #Try to kill the process nicely.
+    print "RTN", rtn
     if not quit_process(gc):
         #Success, the process is dead.
         remove_pid_file(servername)
@@ -232,10 +232,12 @@ def stop_server(gc, servername):
     if servername.find("mover"):
         u = udp_client.UDPClient()
 	try:
-            rtn = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+            rtn1 = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
         except errno.errorcode[errno.ETIMEDOUT]:
-            rtn = {'status':(e_errors.TIMEDOUT, None)}
-        if rtn['state'] == 'DRAINING':
+            rtn1 = {'status':(e_errors.TIMEDOUT, None)}
+            if not e_errors.is_ok(rtn1):
+                return 1
+        if rtn1['state'] == 'DRAINING':
             print "%s will stop when transfer is finished"%(server,)
             return 0
         
