@@ -223,7 +223,6 @@ def stop_server(gc, servername):
     #Get this information for the pid.
     rtn = gc.alive(servername, SEND_TO, SEND_TM)
     #Try to kill the process nicely.
-    print "RTN", rtn
     if not quit_process(gc):
         #Success, the process is dead.
         remove_pid_file(servername)
