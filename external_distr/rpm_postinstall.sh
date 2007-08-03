@@ -3,6 +3,8 @@
 #
 # $Id:
 #
+# This file is not used anymore in a general enstore installation 
+# its functions are moded to create_enstore_environment.sh
 ###############################################################################
 
 #set -u  # force better programming and ability to use check for not set
