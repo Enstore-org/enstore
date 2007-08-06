@@ -73,21 +73,15 @@ def stop_database(dbarea, dbserverowner):
 
 # get_db_command() -- get postmaster from the shell
 def get_db_command():
-	return os.path.join(
-		os.popen('pg_config --bindir').readline().strip(),
-		'postmaster')
+	return os.popen('which postmaster').readline().strip()
 
 # get_db_stop_command() -- get pg_ctl to stop the database
 def get_db_stop_command():
-	return os.path.join(
-		os.popen('pg_config --bindir').readline().strip(),
-		'pg_ctl stop -m f -D ')
+	return os.popen('which pg_ctl').readline().strip()+"  stop -m f -D "
 
 # get_psql() -- get psql
 def get_psql():
-	return os.path.join(
-		os.popen('pg_config --bindir').readline().strip(),
-		'psql')
+	return os.popen('which psql').readline().strip()
 
 # usage()
 def usage():
