@@ -42,7 +42,7 @@ import configuration_client
 #import library_manager_client
 import log_client
 #import media_changer_client
-#import mover_client
+import mover_client
 #import monitor_client
 #import volume_clerk_client
 #import ratekeeper_client
@@ -202,14 +202,12 @@ def quit_process(gc):
     if not is_on_host(gc.server_address[0]):
         return None
 
-    u = udp_client.UDPClient()
-
     #Send the quit message.
     try:
-        rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
+        #rtn = u.send({'work':"quit"}, gc.server_address, SEND_TO, SEND_TM)
+        rtn = gc.quit(SEND_TO, SEND_TM)
     except errno.errorcode[errno.ETIMEDOUT]:
         rtn = {'status':(e_errors.TIMEDOUT, None)}
-
     if e_errors.is_ok(rtn):
         time.sleep(1)
         return detect_process(rtn['pid'])
@@ -230,7 +228,21 @@ def stop_server(gc, servername):
         remove_pid_file(servername)
         print "Stopped %s." % (servername,)
         return 0
-
+    if servername.find("mover"):
+        u = udp_client.UDPClient()
+	try:
+            rtn1 = u.send({'work':"status"}, gc.server_address, SEND_TO, SEND_TM)
+        except errno.errorcode[errno.ETIMEDOUT]:
+            rtn1 = {'status':(e_errors.TIMEDOUT, None)}
+            if not e_errors.is_ok(rtn1):
+                return 1
+        try:
+            if rtn1['state'] == 'DRAINING':
+                print "%s will stop when transfer is finished"%(servername,)
+                return 0
+        except KeyError:
+            rtn1['state'] = "Unknown"
+        
     if not e_errors.is_ok(rtn):
         return 1
 
@@ -239,6 +251,7 @@ def stop_server(gc, servername):
     # succeds, but another process with the same pid is started
     # before kill_process, the new process will wrongfully be killed.
     if servername.find("mover"):
+        print "killing %s in state %s"%(servername, rtn1['state'])
         rtn2 = kill_root_process(rtn['pid'])
     else:
         rtn2 = kill_process(rtn['pid'])

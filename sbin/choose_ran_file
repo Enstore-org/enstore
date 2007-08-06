@@ -1,63 +1,50 @@
 #!/bin/sh
-
-#
-# Script to return a random file name(s) for tapes in the current inventory.
-#  Optionaly, attempt to copy the files from tape using encp (see
-#  copy_ran_file).
-#
-
 set -u
-
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-
-if [ "${1:-}" = "-V" ] ; then verbose=1; shift; else verbose=0; fi
 
 if [ "${1:-}" = "-C" ] ; then copyit=1; shift; else copyit=0; fi
 
 if [ "${1:-}" = "-F" ] ; then force_try=1; shift; else force_try=0; fi
 
-#  $1 should be the number of tapes to list/copy.
+# script to return a random file name(s) for tapes in the current inventory
+
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
+
+HTTP=http://${gang}srv2.fnal.gov
+USE_WGET=1 #or 0 to do things with database values
+
 COUNT=${1:-1}
-#  $2 should be one of: "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
-#                       or "onlyfirstlast" or "alsofirstlast" or "onlyran"
-WHICH_FILE=${2:-"onlyran"}
-
-if [ "$ENSTORE_CONFIG_HOST"x == x ]; then
-   source /usr/local/etc/setups.sh
-   if [ -f $HOME/enstore ]; then
-      setup -r `cd $HOME/enstore;pwd` enstore
-   else
-      setup enstore
-   fi
-fi
-
+FORGET=${2:-CLN}
+MUSTHAVE=${3:-""}
+EXTRA=${5:-""}
+WHICH_FILE=${4:-"onlyran"} # valid values are "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" or "onlyfirstlast" or "alsofirstlast" or "onlyran"
 here=`pwd`
-override_ro="" #Not used anymore.
-tmp_dir=/tmp
-
-#Get the list of suitable tapes for testing.
-enstore info --query "select label,library,media_type,wrapper,write_protected
-from volume where 
-    label not like '%.deleted' and 
-    label not like 'CLN%' and 
-    label not like '%:%' and
-    system_inhibit_0 = 'none' and
-    user_inhibit_0 = 'none' and
-    last_access <> -1 and
-    media_type <> 'null' and
-    library not like '%shelf%'
-order by label;" \
-    | sed '1,2d' > $tmp_dir/V_D
-
-N=`wc /$tmp_dir/V_D| awk '{print $1}'`
-
-if [ $verbose -eq 1 ]; then
-    echo "Found $N suitable tapes."
-    cat /$tmp_dir/V_D
+override_ro=""
+echo $EXTRA | egrep "full|readonly|migrated"
+if [ $? -eq 0 ] ; then
+    override_ro="--override-ro-mount"
 fi
-   
+# Get the volumes that are defined in the inventory
+if [ $USE_WGET -eq 1 ] ; then
+   echo `date` wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED
+   rm -f VOLUMES_DEFINED; wget $HTTP/enstore/tape_inventory/VOLUMES_DEFINED 2>/dev/null
+   rc=$?; if [ $rc -ne 0 ]; then echo "wget VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it; fi
+else
+   echo "`date` enstore info --vols > VOLUMES_DEFINED"
+   rm -f VOLUMES_DEFINED; enstore info --vols > VOLUMES_DEFINED 2>/dev/null
+   rc=$?; if [ $rc -ne 0 ]; then echo "enstore info --vols > VOLUMES_DEFINED FAILED"l exit $rc;else echo `date` got it; fi
+fi
+
+# get rid of all the entries that won't work (deleted, noaccess, notallowed, headers, trailers, null...)
+# get rid of all the entries that the user explicitly told us to forget ($FORGET)
+# look for all the entries that the user explicitly told us we must have
+egrep -v "$FORGET|CLN|NUL|^Date|^label|DELETED|NOTALLOWED|NOACCESS|\.none\$" VOLUMES_DEFINED | egrep "$MUSTHAVE" | egrep "$EXTRA" >V_D
+
+N=`wc V_D| awk '{print $1}'`
 if [ $N -eq 0 ]; then
-   rm /$tmp_dir/V_D
+   echo "NO files found after excluding \"$FORGET\"  and then searching for \"$MUSTHAVE\""
+   rm V_D
    exit 1
 fi
 
@@ -69,137 +56,94 @@ while [ $done -gt 0 ]; do
 
   cd $here
   loops=`expr $loops + 1`
-  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; 
-    rm -f $tmp_dir/V_D;
-    exit 1; 
-  fi
+  if [ $loops -ge 1000 ]; then echo "TOO MANY LOOPS = $loops, EXIT"; rm -f V_D;exit 1; fi
 
   # choose a random volume from the list
-  ran=`python -c "import random;print random.randint(1,"$N")"`
-  tape=`head -n $ran /$tmp_dir/V_D|tail -n 1| awk '{print $1}'`
+  ran=`python -c "import whrandom;print whrandom.randint(1,"$N")"`
+  tape=`head -n $ran V_D|tail -n 1| awk '{print $1}'`
 
-  # Get up to date information on the tape to make sure we have a chance 
-  # to read a file.
-  if [ $verbose -eq 1 ]; then
-    echo `date` enstore info --vol $tape
-  fi
+  # get up to date information on the tape to make sure we have a chance to read a file
+  echo `date` enstore info --vol $tape
   tinfo=`enstore info --vol $tape`
-  if [ $verbose -eq 1 ]; then
-    echo "$tinfo"
-  fi
+  echo "$tinfo"
   if [ `echo $tinfo | egrep -c 'DELETED|NOTALLOWED|NOACCESS'` -ne 0 ]; then
     echo REJECTED $tape is DELETED/NOTALLOWED/NOACCESS
     continue
   fi
-  #MWZ: I'm not sure way choose_ran_file/copy_ran_file would need to test
-  # the write tab status of the tape?  Sasha agreed that it should not
-  # care.  (5-15-2007)
-  #if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
-  #   override_ro="--override-ro-mount"
-  #   echo "override $override"
-  #fi
 
-  enstore info --list $tape | sed '1,2d' > $tmp_dir/$tape
+  # get the files list for that volume
+  if [ $USE_WGET -eq 1 ] ; then
+     echo `date` wget $HTTP/enstore/tape_inventory/$tape
+     rm -f $tape; wget $HTTP/enstore/tape_inventory/$tape  2>/dev/null
+     rc=$?; if [ $rc -ne 0 ]; then echo "wget $tape FAILED "; exit $rc;else echo `date` got it; fi
+  else
+     echo `date` "enstore file --list $tape > $tape"
+     rm -f $tape; enstore file --list > $tape  2>/dev/null
+     rc=$?; if [ $rc -ne 0 ]; then echo "enstore file --list $tape FAILED "; exit $rc;else echo `date` got it; fi
+     echo `date` "enstore info --vol $tape >> $tape"
+     enstore info --vol $tape >> $tape  2>/dev/null
+     rc=$?; if [ $rc -ne 0 ]; then echo "enstore info --vol $tape FAILED "; exit $rc;else echo `date` got it; fi
+  fi
 
   # make sure this volume is still on the readable list.
-  if [ `egrep -c 'DELETED|NOACCESS|NOTALLOWED' /$tmp_dir/$tape` -ne 0 ]; then 
-	echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED
-	rm -f /$tmp_dir/$tape
-	continue
-  fi
+  if [ `egrep -c 'DELETED|NOACCESS|NOTALLOWED' $tape` -ne 0 ]; then echo `date` REJECTED $tape is DELETED/NOACCESS/NOTALLOED; rm -f $tape; continue; fi
 
-  # Get rid of volume information - we already processed that and don't 
-  # need it anymore. #Get rid of all files the user already deleted. 
-  # We don't want to read these files.  If there aren't any files left, 
-  # start over with a new tape.  gnore hidden files and sort the filelist 
-  # according to location on the tape.
-  grep /pnfs $tmp_dir/$tape | egrep -v 'deleted|  yes /' | grep active | grep -v '\/\.' | sort -k4 > $tmp_dir/${tape}_
-  rm -f $tmp_dir/$tape
-  NF=`wc $tmp_dir/${tape}_| awk '{print $1}'`
-  if [ $NF -gt 0 ]; then 
-    if [ $verbose -eq 1 ]; then echo `date`: $NF SUITABLE FILES on $tape; fi
-  else
-    if [ $verbose -eq 1 ]; then echo `date`: NO SUITABLE FILES on $tape; fi
-    rm -f $tmp_dir/${tape}_
-    continue
-  fi
+  # get rid of volume information - we already processed that and don't need it anymore.
+  # get rid of all files the user already deleted. We don't want to read these files.
+  # if there aren't any files left, start over with a new tape.
+  grep /pnfs $tape | egrep -v 'deleted|  yes /' > ${tape}_
+  rm -f $tape
+  NF=`wc ${tape}_| awk '{print $1}'`
+  if [ $NF -le 0 ]; then echo `date` REJECTED NO SUITABLE FILES on $tape; rm  ${tape}_; continue; fi
 
-  # Choose a random file and  1st and last non-deleted files on the 
-  # random volume
-  ran=`python -c "import random;print random.randint(1,"$NF")"`
-  file_r=`head -n $ran $tmp_dir/${tape}_ | tail -n 1 | awk '{print $NF,$1,$3,$4,$2}'`
-  file_f=`head -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
-  file_l=`tail -n 1 $tmp_dir/${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
-  rm -f $tmp_dir/${tape}_
+  # ignore hidden files and sort the filelist according to location on the tape
+  grep -v '\/\.' ${tape}_ | sort -k4 > ${tape}__
+  mv  ${tape}__  ${tape}_
 
-  #We are going to need these...
-  ran_bfid=`echo $file_r | awk '{print $5}'`
-  first_bfid=`echo $file_f | awk '{print $5}'`
-  last_bfid=`echo $file_l |awk '{print $5}'`
-   
-  #...and these...
-  ran_pnfsid=`enstore info --bfid $ran_bfid | grep pnfsid | cut -c 13-36`
-  first_pnfsid=`enstore info --bfid $first_bfid | grep pnfsid | cut -c 13-36`
-  last_pnfsid=`enstore info --bfid $last_bfid | grep pnfsid | cut -c 13-36`
+  # choose a random file and  1st and last non-deleted files on the random volume
+  ran=`python -c "import whrandom;print whrandom.randint(1,"$NF")"`
+  file=`head -n $ran ${tape}_|tail -n 1| awk '{print $NF,$1,$3,$4,$2}'`
+  file1=`head -n 1 ${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
+  filel=`tail -n 1 ${tape}_ | awk '{print $NF,$1,$3,$4,$2}'`
+  rm -f ${tape}_
 
-  #...with help from this function...
-  check_files()
-  {
-     #This function takes the second argument through the last argument and
-     # finds the file whos bfid matches that of the first argument.  When
-     # the match is found, 0 (success) is returned and the matching
-     # filename is echo-ed to stdout.
-     file_bfid=$1; shift
-     file_list=$*
+  # user could have renamed it - find current name using pnfsid
+  files=""
+  for thefile in "$file" "$file1" "$filel"; do
+      F=`echo $thefile | awk '{print $1}'`
+      R=`echo $thefile | awk '{print $2,$3,$4,$5}'`
+      if [ ! -r $F ]; then
+        bfid=`echo $file | awk '{print $NF}'`
+        info=`enstore file --bfid $bfid 2>/dev/null`
+        if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND BFID $bfid on $tape; continue 2; fi
+        pnfsid=`echo $info | sed -e "s/.*pnfsid': '//" -e "s/'.*//"`
+        D=`dirname $F`
+        cd $D 2>/dev/null
+        if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND DIRECTORY $D from $tape; continue 2; fi
+        FN=`cat ".(nameof)($pnfsid)" 2>/dev/null`
+        if [ $? -ne 0 ]; then echo `date` REJECTED CAN NOT FIND FILENAME from pnfsid $pnfsid  from $tape;  continue 2; fi
+        if [ ! -r $FN ]; then echo `date` REJECTED CAN NOT READ FILE $FN from $tape;  continue 2; fi
+        file="$FN $R"
+        F=$FN
+      fi
+      files="$files $F"
+  done
+  ran_file=`echo $files |awk '{print $1}'`
+  first_file=`echo $files |awk '{print $2}'`
+  last_file=`echo $files |awk '{print $3}'`
 
-     for filename in `echo "$file_list"`; do
-        pnfs_bfid=`enstore pnfs --bfid $filename`
-	if [ "$pnfs_bfid" = "$file_bfid" ]; then
-	   echo $filename
-	   return 0
-	fi
-    done
-    return 1
-  }
 
-  #...to get these.
-  ran_file=`enstore pnfs --path $ran_pnfsid 2> /dev/null`
-  ran_file=`check_files $ran_bfid "$ran_file"`
-  rc_r=$?
-  first_file=`enstore pnfs --path $first_pnfsid 2> /dev/null`
-  first_file=`check_files $first_bfid "$first_file"`
-  rc_f=$?
-  last_file=`enstore pnfs --path $last_pnfsid 2> /dev/null`
-  last_file=`check_files $last_bfid "$last_file"`
-  rc_l=$?
-
-  if [ $rc_r -ne 0 -o $rc_f -ne 0 -o $rc_l -ne 0 ]; then
-    #One likely reason that this step would fail, is that we have a pnfsid
-    # that exists in two different PNFSes.  (i.e. stkensrv1 and cmspnfs1)
-    #Another is that we don't have sufficient permissions to access the
-    # file in PNFS.
-    if [ $verbose -eq 1 ]; then
-       echo "Failed finding suitable files."
-    fi
-    #These are useful for debugging.
-    #  echo $rc_r $ran_bfid $ran_pnfsid $ran_file 
-    #  echo $rc_f $first_bfid $first_pnfsid $first_file
-    #  echo $rc_l $last_bfid $last_pnfsid $last_file
-    continue
-  fi
-
-  # Make a list of what the user wants.  Valid values are:
-  #  "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" 
-  #  or "onlyfirstlast" or "alsofirstlast" or "onlyran"
+  # make a list of what the user wants:
+  # valid values are "onlylast" or "alsolast" or "onlyfirst" or "alsofirst" or "onlyfirstlast" or "alsofirstlast" or "onlyran"
   case $WHICH_FILE in
-    onlyran)       thefiles=$ran_file; thebfids=$ran_bfid;;
-    onlyfirst)     thefiles=$first_file; thebfids=$first_bfid;;
-    onlylast)      thefiles=$last_file; thebfids=$last_bfid;;
-    onlyfirstlast) thefiles="$first_file $last_file"; thebfids="$first_bfid $last_bfid";;
-    alsofirst)     thefiles="$ran_file $first_file"; thebfids="$ran_bfid $first_bfid";;
-    alsolast)      thefiles="$ran_file $last_file"; thebfids="$ran_bfid $last_bfid";;
-    alsofirstlast) thefiles="$ran_file $first_file $last_file"; thebfids="$ran_bfid $first_bfid $last_bfid";;
-    *)             thefiles=$ran_file; thebfids=$ran_bfid;;
+    onlyran)       thefiles=$ran_file ;;
+    onlyfirst)     thefiles=$first_file ;;
+    onlylast)      thefiles=$last_file ;;
+    onlyfirstlast) thefiles="$first_file $last_file" ;;
+    alsofirst)     thefiles="$ran_file $first_file" ;;
+    alsolast)      thefiles="$ran_file $last_file" ;;
+    alsofirstlast) thefiles="$ran_file $first_file $last_file" ;;
+    *)             thefiles=$ranfile ;;
   esac
 
   # ok, just tell the user the name of the file and do another if needed
@@ -209,17 +153,15 @@ while [ $done -gt 0 ]; do
   else
     echo
     echo Random volume = $tape 
-    echo Random file = $file_r
-    echo First  file = $file_f
-    echo Last   file = $file_l
+    echo Random file = $file
+    echo First  file = $file1 
+    echo Last   file = $filel
     echo 
-
-    #Obtain the library that this tape belongs too.
-    library=`enstore info  --vol $tape | grep library | cut -d' ' -f3`
-    library=`echo $library | tr ",'" "  " | sed "s/ //g"`
 
     #List the number of active volumes.  This will give more meaningful
     # output for the administrators.
+    library=`enstore info  --vol $tape | grep library | cut -d' ' -f3`
+    library=`echo $library | tr ",'" "  " | sed "s/ //"`
     cmd="enstore lib --vols $library"
     echo $cmd
     vols_at_movers=`eval $cmd`
@@ -228,61 +170,24 @@ while [ $done -gt 0 ]; do
     busy_movers=`echo "$vols_at_movers" | wc -l`
     #Subract the title line of output.
     busy_movers=`expr $busy_movers - 1`
-
-    #Determine the number of total drives for this library.
-    cmd2="enstore mov --list | grep ${library}.library_manager"
-    echo $cmd2
-    configured_movers=`eval $cmd2`
-    #Now count the number of lines.
-    total_movers=`echo "$configured_movers" | wc -l`
-    
-    down_movers=0
-    #Obtain the list of down movers.  Remove headers and empty lines.
-    servers_down=`enstore sched --show | egrep -v " Enstore | -----|^$"`
-    #Pull out just the server names.
-    echo "$servers_down" | awk '{print $1}' > /tmp/copy_ran_file_servers_down
-    #Loop over the configured movers looking for a match to a down mover.
-    for mover_line in "$configured_movers"; do
-	mover_name=`echo $mover_line | awk '{print $1'}`
-	grep $mover_name /tmp/copy_ran_file_servers_down > /dev/null
-	if [ $? -eq 0 ]; then
-            #If the grep returns success (0), increase the down movers
-            # count by one.
-            down_movers=`expr $down_movers + 1`
-        fi
-    done
-    #Determine the number of drives available right now.
-    online_movers=`expr $total_movers - $down_movers`
-
     #This test should compare this number to the number of drives in the
     # library.  I don't know of a good way from bash to get the number of
     # drives in a library, so for now using the value 6.  If -F was specified
     # on the command line (force_try = 1), we will force choose_ran_file to 
     # skip this test and force it to run the encp(s).
-    mover_threshold=`expr $online_movers - 1` #Leave one idle.
-    if [ $busy_movers -gt $mover_threshold -a $force_try -eq 0 ]; then
-        echo
-	#Report the number of drives that are busy and those that exist.
-	echo "Busy Drives: $busy_movers  Total Drives: $total_movers  Down Drives: $down_movers  Online Drives: $online_movers"
-	echo
-	echo "Aborting early from high mover usage."
-	echo
-	#5 seems like a good number. Its greater than 3 indicating 3 failures.
-	# It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
-	#9-10-2002: Edited to return 0 instead of 5.  Emails were being 
-	# generated that make this the simpliest solution.
-	exit 0
+    if [ $busy_movers -gt 6 -a $force_try -eq 0 ]; then
+      echo
+      echo "Aborting early from high mover usage."
+      echo
+      #5 seems like a good number. Its greater than 3 indicating 3 failures.
+      #  It is not -1, -2, 0, 10 or 7 which have special meaning in the plots.
+      #9-10-2002: Edited to return 0 instead of 5.  Emails were being 
+      # generated that make this the simpliest solution.
+      exit 0
     fi
 
-    #for f in $thefiles; do
-    #  cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro $f /dev/null"
-    #  echo $cmd
-    #  eval $cmd
-    #  rc=$?
-    #  RC=`expr $RC + $rc`
-    #done
-    for b in $thebfids; do
-      cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro --get-bfid $b /dev/null"
+    for f in $thefiles; do
+      cmd="encp --verbose 10 --bypass-filesystem-max-filesize-check --max-resubmit 7 --delayed-dismount 1 $override_ro $f /dev/null"
       echo $cmd
       eval $cmd
       rc=$?
@@ -292,7 +197,7 @@ while [ $done -gt 0 ]; do
   done=`expr $done - 1`
 done
 
-rm -f $tmp_dir/V_D
+rm -f V_D
 cd $here
 
 exit $RC

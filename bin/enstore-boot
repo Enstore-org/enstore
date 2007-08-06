@@ -10,12 +10,6 @@ touch $output
 chown enstore.enstore $output
 estat=0
 
-# startup scripts
-rc_dir=/etc/init.d
-accounting_db=$rc_dir/accounting-db
-drivestat_db=$rc_dir/drivestat-db
-enstore_db=$rc_dir/enstore-db
-
 case "$1" in
 
   start)
@@ -43,40 +37,7 @@ case "$1" in
                 break
               fi
             done
-	else
-	    # start config server
-	    echo "`date`: su-ing to enstore and doing an enstore start --just config" 2>&1 | tee /dev/console >>$output
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start --just config"  
-            estat=$?
-            if [ $estat -ne 0 ] ; then
-                echo "`date`: can not start config server ... can not continue..." 2>&1 | tee /dev/console >>$output
-                break
-            fi
         fi
-
-	# shall we start database servers?
-
-	# should we start enstoredb?
-	n3=`enstore config --show database | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		echo "`date`: starting enstore db server" 2>&1 | tee /dev/console >>$output
-		$enstore_db start
-	fi
-
-	# should we start accounting db?
-	n3=`enstore config --show accounting_server | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		echo "`date`: starting accounting db server" 2>&1 | tee /dev/console >>$output
-		$accounting_db start
-	fi
-
-	# should we start drivestat db?
-	n3=`enstore config --show drivestat_server | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		echo "`date`: starting drivestat db server" 2>&1 | tee /dev/console >>$output
-		$drivestat_db start
-	fi
-
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root) if we are a server
           if [ "`whoami`" = "root" -a `echo $n2 | grep -c mvr` -eq 0 ] ; then
@@ -94,57 +55,7 @@ case "$1" in
         echo Stopping enstore 2>&1 | tee /dev/console >>$output
         . /usr/local/etc/setups.sh
         setup enstore
-
-	# check if configure server is running
-	if [ "`enstore config --alive --timeout=30`" == "BAD STATUS ('TIMEDOUT', 'configuration_server')" ]
-	then
-		echo "Can not talk to config server ..."
-		echo "Stopping everything by default ..."
-		# Just call "enstore stop" to stop everything
-		enstore stop
-		exit 0
-	fi
-		
-
-	# Got to figure these out before shutting down enstore
-        n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
-	# should we start enstoredb?
-	n3=`enstore config --show database | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		enstore_db_stop="yes"
-	fi
-
-	# should we stop accounting db?
-	n3=`enstore config --show accounting_server | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		accounting_db_stop="yes"
-	fi
-
-	# should we stop drivestat db?
-	n3=`enstore config --show drivestat_server | grep dbhost | cut -d\' -f4 | cut -d\. -f1`
-	if [ "$n3" == "$n2" ]; then
-		drivestat_db_stop="yes"
-	fi
-
-	enstore stop
-
-	# should we shut down database servers?
-
-	if [ "$enstore_db_stop" == "yes" ]; then
-		echo "`date`: stopping enstore db server" 2>&1 | tee /dev/console >>$output
-		$enstore_db stop
-	fi
-
-	if [ "$accounting_db_stop" == "yes" ]; then
-		echo "`date`: stopping accounting db server" 2>&1 | tee /dev/console >>$output
-		$accounting_db stop
-	fi
-
-	if [ "$drivestat_db_stop" == "yes" ]; then
-		echo "`date`: stopping drivestat db server" 2>&1 | tee /dev/console >>$output
-		$drivestat_db stop
-	fi
-
+        enstore stop
         ;;
 
   install)

@@ -4,6 +4,7 @@
 # $Id$
 #
 # Assuming that enstore account was created do the following
+#
 # 
 ###############################################################################
 
@@ -48,7 +49,8 @@ chmod 740 /etc/sudoers.e
 
 echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
 echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
-echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL" >> /etc/sudoers.e
+echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
+echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER" >> /etc/sudoers.e
 cp /etc/sudoers.e /etc/sudoers
 chmod 440 /etc/sudoers
 
