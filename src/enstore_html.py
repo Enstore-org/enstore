@@ -16,11 +16,7 @@ import e_errors
 import enstore_constants
 import mover_constants
 import volume_family
-
-import rexec
-_rexec = rexec.RExec()
-def eval(stuff):
-    return _rexec.r_eval(stuff)
+from en_eval import en_eval
 
 YES = 1
 NO = 0
@@ -2154,7 +2150,7 @@ class EnAlarmSearchPage(EnBaseHtmlDoc):
 	akeys = sort_keys(alarms)
 	for akey in akeys:
 	    alarm = alarms[akey].list_alarm()
-	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions2.format_time(time.mktime(eval(alarm[0]))))))
+	    tr = HTMLgen.TR((HTMLgen.TD(enstore_functions2.format_time(time.mktime(en_eval(alarm[0]))))))
 	    # remove .fnal.gov
 	    alarm[2] = enstore_functions2.strip_node(alarm[2])
 	    for item in alarm[2:8]:

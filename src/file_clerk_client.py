@@ -14,12 +14,6 @@ import socket
 import select
 import os
 
-import rexec
-_rexec = rexec.RExec()
-
-def eval(stuff):
-    return _rexec.r_eval(stuff)
-
 # enstore imports
 import generic_client
 import option
@@ -34,6 +28,7 @@ import volume_family
 import pnfs
 import info_client
 import enstore_constants
+from en_eval import en_eval
 
 MY_NAME = enstore_constants.FILE_CLERK_CLIENT   #"FILE_C_CLIENT"
 MY_SERVER = enstore_constants.FILE_CLERK        #"file_clerk"
@@ -922,7 +917,7 @@ def do_work(intf):
         for s in intf.args:
             k,v=string.split(s,'=')
             try:
-                v=eval(v) #numeric args
+                v=en_eval(v) #numeric args
             except:
                 pass #yuk...
             d[k]=v
@@ -936,7 +931,7 @@ def do_work(intf):
             k,v=string.split(s,'=')
             if k != 'bfid': # nice try, can not modify bfid
                 try:
-                    v=eval(v) #numeric args
+                    v=en_eval(v) #numeric args
                 except:
                     pass #yuk...
                 d[k]=v
@@ -982,9 +977,9 @@ def do_work(intf):
                                                  `ticket["complete_crc"]`) #keep L suffix
     elif intf.set_crcs:
         bfid,sanity_size,sanity_crc,complete_crc=string.split(intf.set_crcs,',')
-        sanity_crc=eval(sanity_crc)
-        sanity_size=eval(sanity_size)
-        complete_crc=eval(complete_crc)
+        sanity_crc=en_eval(sanity_crc)
+        sanity_size=en_eval(sanity_size)
+        complete_crc=en_eval(complete_crc)
         sanity_cookie=(sanity_size,sanity_crc)
         ticket=fcc.set_crcs(bfid,sanity_cookie,complete_crc)
         sanity_cookie = ticket['sanity_cookie']

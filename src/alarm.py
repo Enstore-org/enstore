@@ -5,17 +5,12 @@ import string
 import errno
 import os
 
-import rexec
-_rexec = rexec.RExec()
-
-def eval(text):
-    return _rexec.r_eval(text)
-
 # enstore imports
 import enstore_functions2
 import enstore_constants
 import e_errors
 import Trace
+from en_eval import en_eval
 
 # key to get at a server supplied short text string
 SHORT_TEXT = "short_text"
@@ -202,7 +197,7 @@ class AsciiAlarm(GenericAlarm):
 	# if the alarm file has junk in it. protect against that
         try:
             [self.id, self.host, self.pid, self.uid, sev,
-             self.source, self.root_error, self.alarm_info] = eval(text)
+             self.source, self.root_error, self.alarm_info] = en_eval(text)
             self.severity, self.num_times_raised = self.split_severity(sev)
             self.timedate_last = float(self.id)
         except ValueError:
@@ -211,7 +206,7 @@ class AsciiAlarm(GenericAlarm):
                 [self.id, self.host, self.pid, self.uid, sev,
                  self.source, self.root_error,
                  self.condition, self.type,
-                 self.ticket_generated, self.alarm_info] = eval(text)
+                 self.ticket_generated, self.alarm_info] = en_eval(text)
                 self.severity, self.num_times_raised = self.split_severity(sev)
                 self.timedate_last = float(self.id)
             except ValueError:
@@ -220,7 +215,7 @@ class AsciiAlarm(GenericAlarm):
                     [self.id, self.timedate_last, self.host, self.pid, self.uid, sev,
                      self.source, self.root_error,
                      self.condition, self.type,
-                     self.ticket_generated, self.alarm_info] = eval(text)
+                     self.ticket_generated, self.alarm_info] = en_eval(text)
                     self.severity, self.num_times_raised = self.split_severity(sev)
                     self.timedate_last = float(self.timedate_last)
                 except (TypeError, ValueError):
@@ -271,7 +266,7 @@ class LogFileAlarm(GenericAlarm):
 	# text may be only a dictionary or it may be of the following format -
 	#       root-error, {...} (severity : n)
 	if text[0] == "{":
-	    aDict = eval(text)
+	    aDict = en_eval(text)
 	    # split up the dictionary into components
 	    self.unpack_dict(aDict)
 	else:
@@ -291,7 +286,7 @@ class LogFileAlarm(GenericAlarm):
 		    self.severity = e_errors.ALARM
 		    self.alarm_info = text[index:]
 		else:
-		    aDict = eval(text[index:end_index+1])
+		    aDict = en_eval(text[index:end_index+1])
 		    self.alarm_info = aDict
 		    # now get the severity
 		    index = string.rfind(text, ")")

@@ -7,17 +7,13 @@ import os
 import stat
 import types
 
-import rexec
-_rexec = rexec.RExec()
-def eval(stuff):
-    return _rexec.r_eval(stuff)
-
 # enstore imports
 import Trace
 import e_errors
 import enstore_constants
 import enstore_functions2
 import mover_constants
+from en_eval import en_eval
 
 FILE_FAMILY = 'file_family'
 FILE_FAMILY_WIDTH = 'file_family_width'
@@ -42,7 +38,7 @@ def get_dict(text):
             # we have a start and an end curly brace, assume that all inbetween
             # are part of the dictionaries
             try:
-                dicts = eval(text[start:end+1])
+                dicts = en_eval(text[start:end+1])
 		if type(dicts) == types.DictType:
                     # dicts is a dictionary, we want to return a list
                     dicts = [dicts,]

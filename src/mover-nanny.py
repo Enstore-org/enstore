@@ -8,13 +8,10 @@ import os
 import string
 import time
 import pprint
-import rexec
-_rexec = rexec.RExec()
-def eval(stuff):
-    return _rexec.r_eval(stuff)
+from en_eval import en_eval
 
 mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
-config = eval(os.popen("enstore config --show",'r').read())
+config = en_eval(os.popen("enstore config --show",'r').read())
 
 prog = sys.argv[0]
 thishost = os.uname()[1]
@@ -84,7 +81,7 @@ def is_mover(s):
 
 def get_movers():
     print 'Getting configuration'
-    config = eval(os.popen("enstore config --show",'r').read())
+    config = en_eval(os.popen("enstore config --show",'r').read())
     movers = filter(is_mover, config.keys())
     movers.sort()
     print 'Found movers:',pprint.pprint(movers)
@@ -146,7 +143,7 @@ def get_status(mover):
         l=l[1:]
     d={}
     try:
-        d=eval(e)
+        d=en_eval(e)
     except:
         pass
     return d

@@ -10,13 +10,13 @@
 import socket
 import sys
 import exceptions
-import rexec
 
 # enstore imports
 import host_config
 import cleanUDP
 import Trace
 import e_errors
+from en_eval import en_eval
 
 # try to get a port from a range of possibilities
 def get_default_callback(use_port=0):
@@ -40,13 +40,11 @@ def get_callback(use_host=None, use_port=0):
 ### These function deal with encoding and decoding the raw bytes from
 ### udp messages.
 
-_eval = rexec.RExec().r_eval
-
 def r_eval(message_to_decode):
     try:
         #This is uses the restricted eval.  The unstricted eval could have
         #  been used by doing: return eval(message_to_decode)
-        return _eval(message_to_decode)
+        return en_eval(message_to_decode)
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:

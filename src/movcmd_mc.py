@@ -6,10 +6,7 @@ import os
 import string
 import sys
 
-import rexec
-_rexec = rexec.RExec()
-def eval(stuff):
-    return _rexec.r_eval(stuff)
+from en_eval import en_eval
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -21,7 +18,7 @@ def dict_eval(data):
     ## dictionary; any trailing junk will be ignored.
     last_brace = string.rindex(data, '}')
     try:
-        d = eval(data[:last_brace+1])
+        d = en_eval(data[:last_brace+1])
     except:
         print "Error", data,
         d = {}
