@@ -2289,7 +2289,8 @@ class EnPlotPage(EnBaseHtmlDoc):
             day_secs = 26.*60.*60.
             self.yesterday = today - day_secs
             if stamp[1] < self.yesterday:
-                trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA, html_escape='OFF')))
+                #trps.append(HTMLgen.TD(HTMLgen.Font(text, color=FUSCHIA, html_escape='OFF')))
+                trps.append(HTMLgen.TD(HTMLgen.Font(text, html_escape='OFF'),bgcolor=FUSCHIA))
             else:
                 trps.append(HTMLgen.TD(text, html_escape='OFF'))
 	    if ps:
