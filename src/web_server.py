@@ -18,6 +18,7 @@ SERVER_ROOT="ServerRoot"
 import errno
 import configuration_client
 import enstore_constants
+import enstore_files
 import sys
 import types
 import os
