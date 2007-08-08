@@ -8,7 +8,7 @@
 # Apache Configurator
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 06/08/07
 #
-###############################################################################
+#############[##################################################################
 
 WEB_SERVER = "web_server"
 HTTPD_CONF="/etc/httpd/conf/httpd.conf"
@@ -100,6 +100,7 @@ class WebServer:
         return 0
     
     def write_httpd_conf(self) :
+        print "Writing file ",self.config_file, " Root ",self.Root 
         rc=0
         if not self.is_ok :
             return 1
