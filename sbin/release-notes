@@ -57,7 +57,7 @@ get_file_changes()
 
   #Write out the output.
   /bin/echo -n "========== $file ===================================================================================="
-  changes=`cvs log -N -r$major1.$next1:$major2.$minor2 $file|egrep -v '^revision |^date:|^RCS file:|^Working file:|^head:|^branch:|^locks:|^access list:|^keyword substitution:|^total revisions:|^selected revisions:|^description:'`
+  changes=`cvs log -N -r$major1.$next1:$major2.$minor2 $file|egrep -v '^revision |^date:|^RCS file:|^Working file:|^head:|^branch:|^locks:|^access list:|^keyword substitution:|^total revisions:|^selected revisions:|^description:|*** empty log message ***'`
   echo $changes|sed -e 's/---------------------------- /\
 \
 /g'| sed -e 's/=============================================================================//'
