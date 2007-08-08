@@ -320,7 +320,7 @@ def install():
 def erase():
     server = WebServer()
     rc=0
-    move_httpd_conf(server.config_file,"%s%s"%(server.config_file,SUFFIX))
+    server.move_httpd_conf("%s%s"%(server.config_file,SUFFIX), server.config_file)
         
 def usage(cmd):
     print "Usage: %s -i [--install] -e [erase] -h [--help]"%(cmd,)
