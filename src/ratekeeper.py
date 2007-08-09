@@ -198,6 +198,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         N = 1L
         bytes_read_dict = {} # = 0L
         bytes_written_dict = {} #0L
+
+        intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+        acc   = csc.get(enstore_constants.ACCOUNTING_SERVER)
+        acc_db = pg.DB(host  = acc.get('dbhost', "localhost"),
+                       port  = acc.get('dbport', 5432),
+                       dbname= acc.get('dbname', "accounting"),
+                       user  = acc.get('dbuser', "enstore"))
+                        
+        
         while 1:
             now = time.time()
 
@@ -220,6 +230,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                          bytes_written_dict.get("REAL", 0),
                                          bytes_read_dict.get("NULL", 0),
                                          bytes_written_dict.get("NULL", 0),))
+
+                    q="insert into rate (time, read, write, read_null, write_null) values \
+                       ('%s-0%d', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
+                                                              time.localtime(now)),
+                                                       time.altzone/3600,
+                                                       bytes_read_dict.get("REAL", 0),
+                                                       bytes_written_dict.get("REAL", 0),
+                                                       bytes_read_dict.get("NULL", 0),
+                                                       bytes_written_dict.get("NULL", 0),)
+                    acc_db.query(q)
                     self.outfile.flush()
                     rate_lock.release()
                 except:
@@ -285,6 +305,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             else:
                 self.count_bytes(words, bytes_read_dict,
                                  bytes_written_dict,"REAL")
+        acc_db.close()
             
                 
 class RatekeeperInterface(generic_server.GenericServerInterface):
