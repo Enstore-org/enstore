@@ -13,7 +13,9 @@ import select
 import string
 import time
 import threading
+import pg
 
+import configuration_client
 import dispatching_worker
 import generic_server
 #import configuration_client
