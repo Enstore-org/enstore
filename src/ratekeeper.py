@@ -234,12 +234,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                          bytes_written_dict.get("NULL", 0),))
 
                     q="insert into rate (time, read, write, read_null, write_null) values \
-                       ('%s-0%d', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
-                                                              time.localtime(now)),
-                                                       time.altzone/3600,
-                                                       bytes_read_dict.get("REAL", 0),
-                                                       bytes_written_dict.get("REAL", 0),
-                                                       bytes_read_dict.get("NULL", 0),
+                       ('%s', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
+                                                                 time.localtime(now)),
+                                                   bytes_read_dict.get("REAL", 0),
+                                                   bytes_written_dict.get("REAL", 0),
+                                                   bytes_read_dict.get("NULL", 0),
                                                        bytes_written_dict.get("NULL", 0),)
                     acc_db.query(q)
                     self.outfile.flush()
