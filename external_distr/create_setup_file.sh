@@ -8,6 +8,7 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
+if [ "${1:-x}" = "fnal" ]; then export fnal=1; shift; else fnal=0;fi
 
 echo "Creating setup-enstore file"
 if [ "`whoami`" != 'root' ]
@@ -16,20 +17,25 @@ then
     exit 1
 fi
 
-echo " 
-You need to run this script only on the enstore configuration server host."
-
-read -p "Are you on this host?[y/N]: " REPLY
-echo $REPLY
-if [ "$REPLY" = "y" -o "$REPLY" = "Y" ] 
-then
-    ENSTORE_CONFIG_HOST=`uname -n`
-else
-    exit 1
-fi
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
+
+if [ $fnal -eq 0 ]; then
+    echo " 
+    You need to run this script only on the enstore configuration server host."
+
+    read -p "Are you on this host?[y/N]: " REPLY
+    echo $REPLY
+    if [ "$REPLY" = "y" -o "$REPLY" = "Y" ] 
+    then
+    ENSTORE_CONFIG_HOST=`uname -n`
+    else
+    exit 1
+    fi
+else
+   ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+fi
 
 PATH=/usr/sbin:$PATH
 ENSTORE_HOME=`ls -d ~enstore`
@@ -37,7 +43,8 @@ ENSTORE_HOME=`ls -d ~enstore`
 echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_HOME/site_specific/config"
 if [ ! -d $ENSTORE_HOME/site_specific/config ]
 then
-    su enstore -c "mkdir -p $ENSTORE_HOME/site_specific/config"
+    su enstore -c "cp -rp $ENSTORE_DIR/site_specific $ENSTORE_HOME"
+    rm -rf $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
 
 rm -rf /tmp/enstore_header
@@ -57,14 +64,21 @@ if [ -z "$REPLY" ]
 then 
 	REPLY=7500
 fi
+    
 echo "export ENSTORE_CONFIG_PORT=${REPLY}"
 echo "export ENSTORE_CONFIG_PORT=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
-read -p "Enter ENSTORE configuration file location [${ENSTORE_HOME}/site_specific/config/enstore_system.conf]: " REPLY
-if [ -z "$REPLY" ]
-then
-    REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
+if [ $fnal -eq 0 ]; then
+    read -p "Enter ENSTORE configuration file location [${ENSTORE_HOME}/site_specific/config/enstore_system.conf]: " REPLY
+    if [ -z "$REPLY" ]
+    then
+	REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
+    fi
+else
+    REPLY=${ENSTORE_HOME}/site_specific/config/`$ENSTORE_DIR/ups/chooseConfig file`
+    su enstore -c "cvs update $REPLY"
 fi
+
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
 echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
