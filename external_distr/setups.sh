@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# specify bash not sh to run on SunOS
 # Fermilab internal enstore system use ups / upd product installation and setup
 # utilities
 # outside fermilab we do not have this environment
