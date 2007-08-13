@@ -38,12 +38,16 @@ abort() { cd $place
         }
 
 # all the action is here
-cd $ENSTORE_DIR/etc
+#cd $ENSTORE_DIR/etc
+cd
 
 # we need a config file to change
 if [ -z "${1-}"  ]; then
  echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
- dir=`dirname $ENSTORE_CONFIG_FILE`
+    d=`dirname $ENSTORE_CONFIG_FILE`
+    cp -rp $d
+    cp -rp $ENSTORE_CONFIG_FILE .
+    dir=`basename $d`
  config=`basename $ENSTORE_CONFIG_FILE`;
  
 else
