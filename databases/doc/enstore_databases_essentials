@@ -1,9 +1,9 @@
 [Preface]
 
 Enstore database has three components: (1) back-end database server,
-which is served by PostgreSQL, (2) python interface to back-en database,
-which is PyGreSQL and (3) enstore servers, file_clerk.py,
-volume_clerk.py and info_server.py..
+which is served by PostgreSQL, (2) python interface to back-end
+database server, which is PyGreSQL and (3) enstore servers,
+file_clerk.py, volume_clerk.py and info_server.py..
 
 [Software Building and Installation]
 
@@ -94,6 +94,10 @@ volume_clerk.py and info_server.py..
     $ enstore start --just file_clerk
     $ enstore start --just info_server
 
+[The following sections about accounting and drivestat dbs are OLD.
+ They are only true for CDFEN. The NEW configuration is in the next
+ section. STKEN and D0EN have already been using new configuration]
+
 [Create accounting db from scratch]
 
 Similar to above procedure, except:
@@ -112,6 +116,30 @@ db_port: 8076
 db_name: drivestat
 database_area: /diska/drivestat_db
 rc script: /etc/rc.d/init.d/enstore-drivestat
+schema: $ENSTORE_DIR/databases/schemas/drivestat.schema
+
+[New configuration for accounting and drivestat databases.
+ The configuration parameters are in ENSTORE configuration file,
+ available through config server]
+
+[Create accounting db from scratch]
+
+Similar to above procedure, except:
+database server: *srv0
+db_port: 8800
+db_name: accounting
+database_area: /diska/accounting-db
+rc script: /etc/rc.d/init.d/accounting-db
+schema: $ENSTORE_DIR/databases/schemas/accounting.schema
+
+[Create drivestat db from scratch]
+
+Similar to above procedure, except:
+database server: *srv0
+db_port: 8802
+db_name: drivestat
+database_area: /diska/drivestat-db
+rc script: /etc/rc.d/init.d/drivestat-db
 schema: $ENSTORE_DIR/databases/schemas/drivestat.schema
 
 
