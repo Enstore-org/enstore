@@ -45,8 +45,8 @@ cd
 if [ -z "${1-}"  ]; then
  echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
     d=`dirname $ENSTORE_CONFIG_FILE`
-    cp -rp $d
-    cp -rp $ENSTORE_CONFIG_FILE .
+    cp -rpf $d
+    cp -rpf $ENSTORE_CONFIG_FILE .
     dir=`basename $d`
  config=`basename $ENSTORE_CONFIG_FILE`;
  
