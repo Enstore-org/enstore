@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_sa
 Version: 1.0.1
-Release: 5
+Release: 6
 Copyright: GPL
 Group: System Environment/Base
 Source: enstore_sa.tgz
@@ -115,7 +115,7 @@ rm -f $ENSTORE_DIR/debugsources.list
 rm /tmp/enstore-setup
 
 %preun
-#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
+$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
