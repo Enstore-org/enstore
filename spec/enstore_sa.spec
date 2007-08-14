@@ -85,7 +85,7 @@ echo export FTT_DIR >> /tmp/enstore-setup
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
 #chown -R enstore.enstore /home/enstore
-ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
 echo "Creating sudoers file"
 echo "The original is saved into /etc/sudoers.enstore_save"
 if [ ! -f /etc/sudoers.enstore_save ]; then
