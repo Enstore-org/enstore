@@ -71,6 +71,18 @@ fi
 
 %post
 echo "POSTINSTALL"
+rm -rf /tmp/enstore-setup
+PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+echo PYTHON_DIR=`rpm -ql Python-enstore | head -1`> /tmp/enstore-setup
+echo export PYTHON_DIR >> /tmp/enstore-setup
+echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
+echo export PYTHONINC >> /tmp/enstore-setup
+echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
+echo export PYTHONLIB >> /tmp/enstore-setup
+echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
+echo export FTT_DIR >> /tmp/enstore-setup
+
+echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 . /tmp/enstore-setup
 #chown -R enstore.enstore /home/enstore
 ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
