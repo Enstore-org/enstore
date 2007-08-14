@@ -59,10 +59,14 @@ cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOM
 echo "Finishing configuration of $ENSTORE_HOME/site_specific/config/setup-enstore"
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
-read -p "Enter ENSTORE configuration server port [7500]: " REPLY
-if [ -z "$REPLY" ]
-then 
-	REPLY=7500
+if [ $fnal -eq 0 ]; then
+    read -p "Enter ENSTORE configuration server port [7500]: " REPLY
+    if [ -z "$REPLY" ]
+    then 
+	    REPLY=7500
+    fi
+else
+    REPLY=7500
 fi
     
 echo "export ENSTORE_CONFIG_PORT=${REPLY}"
@@ -100,11 +104,16 @@ echo "export ENSTORE_MAIL=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-
 #    mkdir -p ${REPLY}
 #fi
 
-read -p "Enter ENSTORE farmlets dir [/usr/local/etc/farmlets]: " REPLY
-if [ -z "$REPLY" ]
-then
+if [ $fnal -eq 0 ]; then
+    read -p "Enter ENSTORE farmlets dir [/usr/local/etc/farmlets]: " REPLY
+    if [ -z "$REPLY" ]
+    then
         REPLY="/usr/local/etc/farmlets"
+    fi
+else
+    REPLY="/usr/local/etc/farmlets"
 fi
+
 echo "export FARMLETS_DIR=${REPLY}"
 echo "export FARMLETS_DIR=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 if [ ! -d ${REPLY} ]
