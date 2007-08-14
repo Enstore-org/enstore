@@ -100,12 +100,12 @@ echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
 cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
 rm -f $ENSTORE_DIR/debugfiles.list
 rm -f $ENSTORE_DIR/debugsources.list
+rm /tmp/enstore-setup
 
 %preun
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
-rm /tmp/enstore-setup
 
 %files
 %defattr(-,enstore,enstore,-)
