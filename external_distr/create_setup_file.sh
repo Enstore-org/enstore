@@ -76,13 +76,17 @@ if [ $fnal -eq 0 ]; then
     fi
 else
     REPLY=${ENSTORE_HOME}/etc/`$ENSTORE_DIR/ups/chooseConfig file`
-    su enstore -c "cvs update $REPLY"
+    su enstore -c "cd `dirname $REPLY`; cvs update `basename $REPLY`"
 fi
 
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
 echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
-read -p "Enter ENSTORE mail address: " REPLY
+if [ $fnal -eq 0 ]; then
+    read -p "Enter ENSTORE mail address: " REPLY
+else
+    REPLY=${ENSTORE_HOME}/etc/`$ENSTORE_DIR/ups/chooseConfig mail`
+fi
 
 echo "export ENSTORE_MAIL=${REPLY}"
 echo "export ENSTORE_MAIL=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore

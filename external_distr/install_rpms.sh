@@ -16,11 +16,11 @@ then
     echo You need to run this script as user "root"
     exit 1
 fi
-if [ -z $ENSTORE_INSTALL_DIR ] 
+if [ -z $ENSTORE_RPM_REPOSITORY ] 
 then
     install_dir=/tmp/enstore_install
 else
-    install_dir=$ENSTORE_INSTALL_DIR
+    install_dir=$ENSTORE_RPM_REPOSITORY
 fi
 
 if [ -n "${1:-}" ]; then
@@ -58,7 +58,7 @@ cat $node_list | while read remote_node; do
 	    enstore=`ls $install_dir/enstore*`
 	    # what to do about postgres?
 	    # for rsh do not use " - double quotes
- 	    # dirty way, but I do not corrently have time to make it better
+ 	    # dirty way, but I do not currently have time to make it better
 	    ###echo -n "rpm -qp ${python};" > /tmp/enstore_cmd
 	    #echo -n 'if [ $? -ne 0 ];'>> /tmp/enstore_cmd
 	    #echo -n "then rpm -Uvh ${python};fi" >> /tmp/enstore_cmd

@@ -10,6 +10,7 @@
 #set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
+if [ "${1:-x}" = "fnal" ]; then export fnal="fnal"; shift; else fnal="";fi
 
 if [ "`whoami`" != 'root' ]
 then
@@ -53,7 +54,7 @@ cat $node_list | while read remote_node; do
 	fi
 	if [ $rc -eq 0 ]; then
 	    echo "completing enstore environment distribution on $remote_node"
-	    enrsh $remote_node "$ENSTORE_DIR/external_distr/create_enstore_environment.sh"
+	    enrsh $remote_node "$ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal"
 	    rc=$?
 	fi
 

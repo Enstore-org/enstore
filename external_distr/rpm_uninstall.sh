@@ -23,16 +23,16 @@ then
     source /usr/local/etc/setups.sh
 fi
 
-echo "Creating backup of $ENSTORE_HOME to /tmp/enstore_home.tgz"
-cd /
-tar czf /tmp/enstore_home.tgz $ENSTORE_HOME
+#echo "Creating backup of $ENSTORE_HOME to /tmp/enstore_home.tgz"
+#cd /
+#tar czf /tmp/enstore_home.tgz $ENSTORE_HOME
 
 
-echo "creating backup of /usr/local/etc to /tmp/enstore_etc.tgz"
-cd /
-tar czf /tmp/enstore_etc.tgz /usr/local/etc 
-echo "Removing farmlets"
-rm -rf $FARMLETS_DIR
+#echo "creating backup of /usr/local/etc to /tmp/enstore_etc.tgz"
+#cd /
+#tar czf /tmp/enstore_etc.tgz /usr/local/etc 
+#echo "Removing farmlets"
+#rm -rf $FARMLETS_DIR
 
 echo "Restoring /etc/rc.d/rc.local"
 cp -pf /etc/rc.d/rc.local.enstore_save /etc/rc.d/rc.local
@@ -46,9 +46,9 @@ echo "Removing /etc/rc.d/init.d/enstore-boot"
 /etc/rc.d/init.d/enstore-boot stop
 rm -rf /etc/rc.d/init.d/enstore-boot
 
-echo "Removing /etc/rc.d/init.d/enstore-db"
-/etc/rc.d/init.d/enstore-db stop
-rm -rf /etc/rc.d/init.d/enstore-db
+#echo "Removing /etc/rc.d/init.d/enstore-db"
+#/etc/rc.d/init.d/enstore-db stop
+#rm -rf /etc/rc.d/init.d/enstore-db
 
 echo "Cleaning /etc/rc.d/rc3.d and /etc/rc.d/rc6.d"
 find /etc/rc.d/rc3.d -name "*enstore-db" | xargs rm -rf
@@ -57,10 +57,10 @@ find /etc/rc.d/rc3.d -name "*enstore-boot" | xargs rm -rf
 find /etc/rc.d/rc6.d -name "*enstore-boot" | xargs rm -rf
 
 
-echo "Removing /usr/local/etc/setups.sh"
+#echo "Removing /usr/local/etc/setups.sh"
 rm -rf /usr/local/etc/setups.sh 
-echo "removing $ENSTORE_HOME/site_specific/config"
-rm -rf $ENSTORE_HOME/site_specific/config
+#echo "removing $ENSTORE_HOME/site_specific/config"
+#rm -rf $ENSTORE_HOME/site_specific/config
 
 #echo "Deleting user 'enstore'"
 #userdel -r enstore

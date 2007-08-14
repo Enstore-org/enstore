@@ -42,22 +42,6 @@ echo "Creating .bashrc"
 cp $ENSTORE_DIR/external_distr/.bashrc $ENSTORE_HOME
 chown enstore.enstore $ENSTORE_HOME/.bashrc
  
-echo "Creating sudoers file"
-echo "The original is saved into /etc/sudoers.enstore_save"
-if [ ! -f /etc/sudoers.enstore_save ]; then
-    cp /etc/sudoers /etc/sudoers.enstore_save
-fi
-cp /etc/sudoers.enstore_save /etc/sudoers.e
-chmod 740 /etc/sudoers.e
-
-
-echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
-echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
-echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
-echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER" >> /etc/sudoers.e
-cp /etc/sudoers.e /etc/sudoers
-chmod 440 /etc/sudoers
-
 echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
 if [ ! -d "/usr/local/etc" ]
 then
@@ -69,18 +53,5 @@ fi
     
 sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
 ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
-
-rm -f $ENSTORE_DIR/debugfiles.list
-rm -f $ENSTORE_DIR/debugsources.list
-
-echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
-cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d
-echo "Configuring the system to start enstore on boot"
-/etc/rc.d/init.d/enstore-boot install
-echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
-cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
-echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
-cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
-
 
 exit 0

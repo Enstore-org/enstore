@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_sa
-Version: 1.0.0
-Release: 1
+Version: 1.0.1
+Release: 5
 Copyright: GPL
 Group: System Environment/Base
 Source: enstore_sa.tgz
@@ -47,7 +47,6 @@ make clean
 make
 
 %install
-#chown -R enstore.enstore /home/enstore
 
 %pre
 PATH=/usr/sbin:$PATH
@@ -70,8 +69,40 @@ fi
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
 
+%post
+echo "POSTINSTALL"
+. /tmp/enstore-setup
+#chown -R enstore.enstore /home/enstore
+ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
+echo "Creating sudoers file"
+echo "The original is saved into /etc/sudoers.enstore_save"
+if [ ! -f /etc/sudoers.enstore_save ]; then
+    cp /etc/sudoers /etc/sudoers.enstore_save
+fi
+cp /etc/sudoers.enstore_save /etc/sudoers.e
+chmod 740 /etc/sudoers.e
+
+
+echo "Cmnd_Alias      PYTHON  = ${PYTHON_DIR}/bin/python" >> /etc/sudoers.e
+echo "Cmnd_Alias      PIDKILL = ${ENSTORE_DIR}/bin/pidkill, ${ENSTORE_DIR}/bin/pidkill_s, /bin/kill" >> /etc/sudoers.e
+echo "Cmnd_Alias      MOVER = ${ENSTORE_DIR}/sbin/mover" >> /etc/sudoers.e
+echo "enstore ALL=NOPASSWD:PYTHON, NOPASSWD:PIDKILL, NOPASSWD:MOVER" >> /etc/sudoers.e
+cp /etc/sudoers.e /etc/sudoers
+chmod 440 /etc/sudoers
+
+echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
+cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d
+echo "Configuring the system to start enstore on boot"
+/etc/rc.d/init.d/enstore-boot install
+echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
+cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
+echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
+cp -f $ENSTORE_DIR/sbin/rc.local /etc/rc.d
+rm -f $ENSTORE_DIR/debugfiles.list
+rm -f $ENSTORE_DIR/debugsources.list
+
 %preun
-$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
+#$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 rm /tmp/enstore-setup
@@ -80,6 +111,10 @@ rm /tmp/enstore-setup
 %defattr(-,enstore,enstore,-)
 %doc
 /%{prefix}
+#/etc/rc.d/init.d/enstore-boot
+#/etc/sudoers
+%config /etc/sudoers
+%config /etc/rc.d/init.d/enstore-boot
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
