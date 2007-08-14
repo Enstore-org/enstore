@@ -11,7 +11,7 @@
 #set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
-if [ "${1:-x}" = "fnal" ]; then export fnal="fnal"; shift; else fnal="";fi
+if [ "${1:-x}" = "fnal" ]; then export fnal=$1; shift; else fnal="";fi
 if [ "`whoami`" != 'root' ]
 then
     echo You need to run this script as user "root"
