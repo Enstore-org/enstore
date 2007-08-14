@@ -113,8 +113,6 @@ rm /tmp/enstore-setup
 /%{prefix}
 #/etc/rc.d/init.d/enstore-boot
 #/etc/sudoers
-%config /etc/sudoers
-%config /etc/rc.d/init.d/enstore-boot
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
