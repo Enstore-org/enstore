@@ -75,7 +75,7 @@ if [ $fnal -eq 0 ]; then
 	REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
     fi
 else
-    REPLY=${ENSTORE_HOME}/site_specific/config/`$ENSTORE_DIR/ups/chooseConfig file`
+    REPLY=${ENSTORE_HOME}/etc/`$ENSTORE_DIR/ups/chooseConfig file`
     su enstore -c "cvs update $REPLY"
 fi
 

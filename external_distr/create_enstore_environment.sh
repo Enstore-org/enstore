@@ -11,7 +11,7 @@
 #set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
-
+if [ "${1:-x}" = "fnal" ]; then export fnal="fnal"; shift; else fnal="";fi
 if [ "`whoami`" != 'root' ]
 then
     echo You need to run this script as user "root"
@@ -25,10 +25,14 @@ ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 ENSTORE_HOME=`ls -d ~enstore`
 
+if [ -n $fnal ]; then
+    rm -rf $ENSTORE_HOME/enstore
+    ln -s $ENSTORE_DIR $ENSTORE_HOME/enstore
+fi
 if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
 then
     # this allows to not run this script on remote nodes.
-    $ENSTORE_DIR/external_distr/create_setup_file.sh
+    $ENSTORE_DIR/external_distr/create_setup_file.sh $fnal
 else
     source $ENSTORE_HOME/site_specific/config/setup-enstore
     
