@@ -32,16 +32,21 @@ if [ "$ENSTORE_CONFIG_HOST"x == x ]; then
 fi
 
 here=`pwd`
-override_ro="" #Not used anymore.
+override_ro="" #Used to audit the state of the write protect tab.
 tmp_dir=/tmp
 
 #Get the list of suitable tapes for testing.
-enstore info --query "select label,library,media_type,wrapper,write_protected
+###8-16-2007: The 'or' of the system_inhibit_1 values to readonly and full
+###           should have a third condition.  If the last_access time is
+###           older than three months, allow the tape for consideration.
+enstore info --retries 3 --timeout 30 --query \
+"select label,library,media_type,wrapper,write_protected
 from volume where 
     label not like '%.deleted' and 
     label not like 'CLN%' and 
     label not like '%:%' and
     system_inhibit_0 = 'none' and
+    ( system_inhibit_1 = 'readonly' or system_inhibit_1 = 'full' ) and
     user_inhibit_0 = 'none' and
     last_access <> -1 and
     media_type <> 'null' and
@@ -91,13 +96,13 @@ while [ $done -gt 0 ]; do
     echo REJECTED $tape is DELETED/NOTALLOWED/NOACCESS
     continue
   fi
-  #MWZ: I'm not sure way choose_ran_file/copy_ran_file would need to test
-  # the write tab status of the tape?  Sasha agreed that it should not
-  # care.  (5-15-2007)
-  #if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
-  #   override_ro="--override-ro-mount"
+  #We need to tell encp to tell the mover to load the tape for read-write
+  # mode (full or readonly; migrated too???).  This is so that we can audit 
+  # the state of the write_protect tab.
+  if [ `echo $tinfo | egrep -c "full|readonly|migrated"` -ne 0 ]; then
+     override_ro="--override-ro-mount"
   #   echo "override $override"
-  #fi
+  fi
 
   enstore info --list $tape | sed '1,2d' > $tmp_dir/$tape
 
@@ -295,4 +300,5 @@ done
 rm -f $tmp_dir/V_D
 cd $here
 
+echo "The combined exit code for all encps executed is $RC."
 exit $RC
