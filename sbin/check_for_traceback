@@ -25,7 +25,7 @@ if [ $? -eq 0 ]; then
    echo "For more details check $LOGFILE" >> $MAILFILE
    subject="Traceback found. Please investigate!"
    if [ `uname` = "Linux" ]; then
-      /bin/mail -s $subject $MAILTO <$MAILFILE
+      /bin/mail -s "$subject" $MAILTO <$MAILFILE
       rm $MAILFILE
    else
       echo "Subject: $subject" > $MAILFILE_s
