@@ -34,7 +34,7 @@ if [ $fnal -eq 0 ]; then
     exit 1
     fi
 else
-   ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+   ENSTORE_CONFIG_HOST="\`\$ENSTORE_DIR/ups/chooseConfig\`"
 fi
 
 PATH=/usr/sbin:$PATH
@@ -79,14 +79,15 @@ if [ $fnal -eq 0 ]; then
 	REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
     fi
 else
-    REPLY=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
+    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
     # change permissions for credentials file
     cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
     if [ $? -eq 0 ]; then
 	chmod 666 $cred_f
     fi
     
-    su enstore -c "cd `dirname $REPLY`; cvs update `basename $REPLY`"
+    su enstore -c "cd `dirname $R`; cvs update `basename $R`"
+    REPLY="\$ENSTORE_HOME/enstore/etc/\`\$ENSTORE_DIR/ups/chooseConfig file\`"
 fi
 
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
@@ -95,7 +96,7 @@ echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config
 if [ $fnal -eq 0 ]; then
     read -p "Enter ENSTORE mail address: " REPLY
 else
-    REPLY=`$ENSTORE_DIR/ups/chooseConfig mail`
+    REPLY="\`\$ENSTORE_DIR/ups/chooseConfig mail\`"
 fi
 
 echo "export ENSTORE_MAIL=${REPLY}"
