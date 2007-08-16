@@ -64,7 +64,7 @@ if [ $? -ne 0 ]; then
 	echo 'Creating user "enstore"'
 	useradd -u 6209 -g enstore enstore
 fi
-
+chmod 775 ~enstore
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
@@ -106,6 +106,10 @@ echo "Copying $ENSTORE_DIR/bin/enstore-boot to /etc/rc.d/init.d"
 cp -f $ENSTORE_DIR/bin/enstore-boot /etc/rc.d/init.d
 echo "Configuring the system to start enstore on boot"
 /etc/rc.d/init.d/enstore-boot install
+echo "Copying $ENSTORE_DIR/bin/monitor_server-boot to /etc/rc.d/init.d"
+cp -f $ENSTORE_DIR/bin/monitor_server-boot /etc/rc.d/init.d
+echo "Configuring the system to start monitor server on boot"
+/etc/rc.d/init.d/monitor_server-boot install
 echo "Saving /etc/rc.d/rc.local to /etc/rc.d/rc.local.enstore_save"
 cp -pf /etc/rc.d/rc.local /etc/rc.d/rc.local.enstore_save
 echo "Copying $ENSTORE_DIR/sbin/rc.local to /etc/rc.d"
@@ -130,3 +134,6 @@ rm -rf $RPM_BUILD_ROOT/*
 %changelog
 * Wed Feb 21 2007  <moibenko@fnal.gov> - 
 - Initial build.
+* Thu Aug 16 2007  <moibenko@fnal.gov> -
+- Moved creation of system files from create_enstore_environment.sh here
+- Added enstore_monitor-boot
