@@ -15,12 +15,12 @@ case "$1" in
 
   start)
         echo "Starting monitor server"
-        monitor_server start
+        $ENSTORE_DIR/bin/monitor_server start
         ;;
 
   stop)
         echo "Stoping monitor server"
-        monitor_server stop
+        $ENSTORE_DIR/bin/monitor_server stop
         ;;
 
   install)
