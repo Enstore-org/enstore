@@ -80,6 +80,12 @@ if [ $fnal -eq 0 ]; then
     fi
 else
     REPLY=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
+    # change permissions for credentials file
+    cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
+    if [ $? -eq 0 ]; then
+	chmod 666 $cred_f
+    fi
+    
     su enstore -c "cd `dirname $REPLY`; cvs update `basename $REPLY`"
 fi
 
@@ -89,7 +95,7 @@ echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config
 if [ $fnal -eq 0 ]; then
     read -p "Enter ENSTORE mail address: " REPLY
 else
-    REPLY=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig mail`
+    REPLY=`$ENSTORE_DIR/ups/chooseConfig mail`
 fi
 
 echo "export ENSTORE_MAIL=${REPLY}"
@@ -122,19 +128,18 @@ then
     mkdir -p ${REPLY}
 fi
 
-if [ -n ${ENSSH} ]
+if [ "${ENSSH:-x}" != "x" ]
 then
-echo "export ENSSH=${ENSSH}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+  echo "export ENSSH=${ENSSH}"
+  echo "export ENSSH=${ENSSH}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
-if [ -n ${ENSCP} ]
+if [ "${ENSCP:-x}" != "x" ]
 then
-echo "export ENSCP=${ENSCP}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+  echo "export ENSCP=${ENSCP}"
+  echo "export ENSCP=${ENSCP}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
-    
 
 chown enstore.enstore  $ENSTORE_HOME/site_specific/config/*
-
-if 
 
 echo "
 Please check $ENSTORE_HOME/site_specific/config/setup-enstore.
