@@ -132,8 +132,8 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
-* Wed Feb 21 2007  <moibenko@fnal.gov> - 
-- Initial build.
 * Thu Aug 16 2007  <moibenko@fnal.gov> -
 - Moved creation of system files from create_enstore_environment.sh here
 - Added enstore_monitor-boot
+* Wed Feb 21 2007  <moibenko@fnal.gov> - 
+- Initial build.
