@@ -3,9 +3,11 @@
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Starts monitor server after a machine boots
-
-. /usr/local/etc/setups.sh
-setup enstore
+if [ -f /usr/local/etc/setups.sh ]; then
+    # this check is required by current rpm build process, do not remove!!!!
+    . /usr/local/etc/setups.sh
+    setup enstore
+fi
 
 estat=0
 
