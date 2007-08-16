@@ -5,11 +5,14 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 # Starts enstore after a machine boots
 
 # setup enstore first
-. /usr/local/etc/setups.sh
-setup enstore
+if [ -f /usr/local/etc/setups.sh ]; then
+    # this check is required by current rpm build process, do not remove!!!!
+    . /usr/local/etc/setups.sh
+    setup enstore
+fi
 
 # set ENSTORE_HOME properly
-if [ "$ENSTORE_HOME" = "" ]; then
+if [ "${ENSTORE_HOME:-}" = "" ]; then
 	ENSTORE_HOME=/home/enstore
 fi
 
