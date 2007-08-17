@@ -78,7 +78,9 @@ if [ $fnal -eq 0 ]; then
 else
     REPLY=7500
 fi
-    
+
+copy_conf=""
+config_file=""    
 echo "export ENSTORE_CONFIG_PORT=${REPLY}"
 echo "export ENSTORE_CONFIG_PORT=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
@@ -88,6 +90,9 @@ if [ $fnal -eq 0 ]; then
     then
 	REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
     fi
+    config_file=$REPLY
+    read -p "Copy config file from another location [path or CR] :" copy_conf
+    
 else
     R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
     # change permissions for credentials file
@@ -150,6 +155,12 @@ then
   echo "export ENSCP=${ENSCP}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
 
+if [ -n $copy_conf ]
+then
+    echo "Creating config file from $copy_conf"
+    cp -f $copy_conf $config_file
+fi
+    
 chown enstore.enstore  $ENSTORE_HOME/site_specific/config/*
 
 echo "
