@@ -16,6 +16,16 @@ vols = []
 def get_trash():
     if os.environ.has_key('TRASH_CAN'):
         return os.environ['TRASH_CAN']
+    elif os.path.exists('/usr/etc/pnfsSetup.sh'):
+        f=open('/usr/etc/pnfsSetup.sh', 'r')
+        while 1:
+            l = f.readline()
+            if l:
+                l=l[:-1]
+                if l.find('trash') == 0 # initial position
+                return os.path.join(l.split('=')[1],'4')
+            else:
+                break
     else:
         if os.uname()[1][:3] == 'rip':
             return '/rip6a/pnfs/trash/4'
