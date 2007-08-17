@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_sa
 Version: 1.0.1
-Release: 6
+Release: 7
 Copyright: GPL
 Group: System Environment/Base
 Source: enstore_sa.tgz
@@ -132,6 +132,9 @@ rm -rf $RPM_BUILD_ROOT/*
 #/home/enstore/debugfiles.list
 #/home/enstore/debugsources.list
 %changelog
+* Fri Aug 17 2007  <moibenko@fnal.gov> -
+- Copy enstore-setup file from config host if it exists there
+- If "server" is specified, install additional rpms
 * Thu Aug 16 2007  <moibenko@fnal.gov> -
 - Moved creation of system files from create_enstore_environment.sh here
 - Added enstore_monitor-boot
