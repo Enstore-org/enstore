@@ -10,7 +10,7 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-}" = "64" ] ; then export x_64="_x64"; shift; else x_64=""; fi
 if [ "${1:-}" = "server" ] ; then export server=1; shift; else server=0; fi
-#if [ "${1:-x}" = "fnal" ]; then export fnal=1; shift; else fnal=0;fi
+if [ "${1:-x}" = "fnal" ]; then export fnal=$1; shift; else fnal="";fi
 
 echo "Installing enstore rpm and required products"
 echo "This is a fermilab specific installation"
@@ -35,7 +35,7 @@ echo "configuring enstore"
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 
 rm -f ~enstore/site_specific/config/setup-enstore
-$ENSTORE_DIR/external_distr/create_enstore_environment.sh fnal
+$ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
 $ENSTORE_DIR/sbin/copy_farmlets.sh
 if [ $server eq 1 ]
 then
