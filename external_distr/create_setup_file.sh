@@ -16,7 +16,7 @@ then
     echo You need to run this script as user "root"
     exit 1
 fi
-
+this_host=`uname -n`
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
@@ -39,6 +39,16 @@ fi
 
 PATH=/usr/sbin:$PATH
 ENSTORE_HOME=`ls -d ~enstore`
+
+if [ $this_host != $ENSTORE_CONFIG_HOST ];
+then
+    echo "trying to get setup-enstore from enstore configuration host"
+    scp -rp $ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
+    if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
+    then
+	exit 0
+    fi
+fi
 
 echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_HOME/site_specific/config"
 if [ ! -d $ENSTORE_HOME/site_specific/config ]
