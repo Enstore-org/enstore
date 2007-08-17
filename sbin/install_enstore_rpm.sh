@@ -39,6 +39,5 @@ $ENSTORE_DIR/external_distr/create_enstore_environment.sh fnal
 $ENSTORE_DIR/sbin/copy_farmlets.sh
 if [ $server eq 1 ]
 then
-    echo "installing enstore_html"
-    rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/enstore_html-1.0-0.i386.rpm
+    $ENSTORE_DIR/complete_server_install.sh
 fi
