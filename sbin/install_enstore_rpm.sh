@@ -39,5 +39,5 @@ $ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
 $ENSTORE_DIR/sbin/copy_farmlets.sh
 if [ $server -eq 1 ]
 then
-    $ENSTORE_DIR/complete_server_install.sh
+    $ENSTORE_DIR/sbin/finish_server_install.sh
 fi
