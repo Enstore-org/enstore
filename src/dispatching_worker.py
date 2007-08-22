@@ -62,9 +62,25 @@ class DispatchingWorker(udp_server.UDPServer):
         
         self.custom_error_handler = None
 
-    def add_interval_func(self, func, interval, one_shot=0):
+    def add_interval_func(self, func, interval, one_shot=0,
+                          align_interval = None):
         now = time.time()
-        self.interval_funcs[func] = [interval, now, one_shot]
+        if align_interval:
+            #Set this so that we start the intervals at prealigned times.
+            # For example: if we want the interval to be 15 minutes and
+            # the current time is 16:11::41; then set last_called to be
+            # 11 minutes and 41 seconds ago.
+            (year, month, day, hour, minutes, seconds, unsed, unused, unused) \
+                   = time.localtime(now)
+            day_begin = time.mktime((year, month, day, 0, 0, 0, -1 , -1 , -1))
+            day_now = now - day_begin
+
+            last_called = day_now + day_begin - \
+                 (((day_now / interval) - int(day_now / interval)) * interval)
+            
+        else:
+            last_called = now
+        self.interval_funcs[func] = [interval, last_called, one_shot]
 
     def set_interval_func(self, func,interval):
         #Backwards-compatibilty
