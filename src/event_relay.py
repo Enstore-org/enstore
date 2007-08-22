@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os
+#import os
 import socket
 import select
 import time
@@ -10,9 +10,10 @@ import sys
 import enstore_constants
 import Trace
 import log_client
-import option
+#import option
 import e_errors
 import cleanUDP
+import enstore_functions2
 
 DEFAULT_PORT = enstore_constants.EVENT_RELAY_PORT
 heartbeat_interval = enstore_constants.EVENT_RELAY_HEARTBEAT
@@ -66,7 +67,8 @@ class Relay:
         self.listen_socket.bind(my_addr)
         self.alive_msg = 'alive %s %s %s' % (my_ip, my_port, my_name)
 	### debugger messages
-	csc = (option.default_host(), option.default_port())
+	csc = (enstore_functions2.default_host(),
+               enstore_functions2.default_port())
 	self.logc = log_client.LoggerClient(csc, LOG_NAME, 'log_server')
 	self.do_print = 0
 	Trace.init(LOG_NAME)
