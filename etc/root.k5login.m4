@@ -83,7 +83,6 @@ host/stkensrv5.fnal.gov@FNAL.GOV
 host/stkensrv6.fnal.gov@FNAL.GOV
 host/stkensrv7.fnal.gov@FNAL.GOV
 host/stkensrv8.fnal.gov@FNAL.GOV
-host/stkenscan1.fnal.gov@FNAL.GOV
 host/stkenmvr5a.fnal.gov@FNAL.GOV
 host/stkenmvr6a.fnal.gov@FNAL.GOV
 host/stkenmvr7a.fnal.gov@FNAL.GOV
@@ -186,6 +185,7 @@ host/cdfenmvr128a.fnal.gov@FNAL.GOV
 host/cdfenmvr129a.fnal.gov@FNAL.GOV
 host/cdfenmvr130a.fnal.gov@FNAL.GOV
 host/cdfenmvr131a.fnal.gov@FNAL.GOV
+host/stkenscan1.fnal.gov@FNAL.GOV
 host/stkendm1a.fnal.gov@FNAL.GOV
 host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV

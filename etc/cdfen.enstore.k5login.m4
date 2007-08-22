@@ -40,6 +40,7 @@ enstore/cd/cdfenmvr128a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr129a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr130a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr131a.fnal.gov@FNAL.GOV
+enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
 enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
