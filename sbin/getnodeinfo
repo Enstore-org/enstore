@@ -4,10 +4,14 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
-if [ $gang = "rip" ]; then
-    gangfile=/usr/local/etc/farmlets/ripe
-else
-    gangfile=/usr/local/etc/farmlets/${gang}-alla
+gangfile=/usr/local/etc/farmlets/${gang}-alla
+
+if [ ! -f "$gangfile" ]; then
+   echo "Farmlet $gangfile not found." >&2
+   exit 1
+elif [ ! -r "$gangfile" ]; then
+   echo "Farmlet $gangfile not readable." >&2
+   exit 1
 fi
 
 output=${1:-/dev/tty}
@@ -52,7 +56,7 @@ cat << EOF >>$output
 <td align=center><b><font color="$color">Nodename</font></b></td>
 <td align=center><b><font color="$color">In<br>Production?</font></b></td>
 <td align=center><b><font color="$color">Bogomips</font></b></td>
-<td align=center><b><font color="$color">Memory<br>Free/Total</font></b></td>
+<td align=center><b><font color="$color">Memory (MB)<br>Free/Total</font></b></td>
 <td align=center><b><font color="$color">Time<br>of Day</font></b></td>
 <td align=center><b><font color="$color">Uptime</font></b></td>
 <td align=center><b><font color="$color">Users</font></b></td>
