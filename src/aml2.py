@@ -321,6 +321,8 @@ def robotHome(arm):
 def robotStatus(arm):
     #status = aci.aci_robstat("\0","stat")
     status = aci.aci_robstat(arm, "stat")
+    if status < 0:
+        status = aci.cvar.d_errno #Give correct error message
     return status_table[status][0], status, status_table[status][1]
 
 #start robot arm
