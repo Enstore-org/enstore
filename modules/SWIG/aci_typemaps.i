@@ -106,6 +106,40 @@
 
 }
 
+/* aci_ext_drive_entry */
+%typemap(python, ignore) struct aci_ext_drive_entry* [ANY] {
+    static struct aci_ext_drive_entry *result[$dim0];
+    $target = result;
+}
+
+%typemap(python, argout) struct aci_ext_drive_entry* [ANY]{
+    int i;
+    char ptr[128];
+
+    for (i=0; i<$dim0 && $source[i]->drive_name[0]; ++i){
+	SWIG_MakePtr(ptr, $source[i], "_struct_aci_ext_drive_entry_p");
+	$target = return_list($target, PyString_FromString(ptr));
+    }
+
+}
+
+/* aci_ext_drive_entry4 */
+%typemap(python, ignore) struct aci_ext_drive_entry4* [ANY] {
+    static struct aci_ext_drive_entry4 *result[$dim0];
+    $target = result;
+}
+
+%typemap(python, argout) struct aci_ext_drive_entry4* [ANY]{
+    int i;
+    char ptr[128];
+
+    for (i=0; i<$dim0 && $source[i]->drive_name[0]; ++i){
+	SWIG_MakePtr(ptr, $source[i], "_struct_aci_ext_drive_entry4_p");
+	$target = return_list($target, PyString_FromString(ptr));
+    }
+
+}
+
 /* aci_vol_desc */
 
 %typemap(python, ignore) struct aci_vol_desc *desc {

@@ -228,7 +228,8 @@ def drive_state(drive,client=""):
     return stat,None
 
 def drives_states():
-    stat, drives = aci.aci_drivestatus2("")
+    stat, drives = aci.aci_drivestatus3("")
+    #stat, drives = aci.aci_drivestatus2("")
     if stat!=0:
         Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
         return stat, None

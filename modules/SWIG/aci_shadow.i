@@ -55,6 +55,7 @@ enum aci_drive_status {ACI_DRIVE_DOWN = 1, ACI_DRIVE_UP,
 #define ACI_MAX_REQ_ENTRIES 15  /* should match das.h setting */
 #define ACI_MAX_DRIVE_ENTRIES 15 /* should match das.h setting */
 #define ACI_MAX_DRIVE_ENTRIES2 250 /* should match das.h setting */
+#define ACI_MAX_DRIVE_ENTRIES4 380 /* should match das.h setting */
 
 #define ACI_MAX_VERSION_LEN 20   /*           including '\0'   */
 #define ACI_MAX_QUERY_VOLSRANGE 1000
@@ -106,6 +107,35 @@ struct aci_drive_entry {
     short clean_count;
 };
 
+struct aci_ext_drive_entry {
+        char                   drive_name[ACI_DRIVE_LEN];
+        char                   amu_drive_name[ACI_AMU_DRIVE_LEN];
+        enum aci_drive_status  drive_state;
+        char                   type;
+        char                   system_id[ACI_NAME_LEN];
+        char                   clientname[ACI_NAME_LEN];
+        char                   volser[ACI_VOLSER_LEN];
+        bool_t                 cleaning;
+        short                  clean_count;
+        int                    mount;
+        int                    keep;
+};
+
+struct aci_ext_drive_entry4 {
+        char                   drive_name[ACI_DRIVE_LEN];
+        char                   amu_drive_name[ACI_AMU_DRIVE_LEN];
+        enum aci_drive_status  drive_state;
+        char                   type;
+        char                   system_id[ACI_NAME_LEN];
+        char                   clientname[ACI_NAME_LEN];
+        char                   volser[ACI_VOLSER_LEN];
+        bool_t                 cleaning;
+        short                  clean_count;
+        int                    mount;
+        int                    keep;
+        char                   serial_number[ACI_SERIAL_NUMBER_LEN];
+};
+
 struct in_addr {
 	unsigned int s_addr;
 };
@@ -151,6 +181,8 @@ extern int aci_dismount (char *, enum aci_media);
 extern int aci_driveaccess (char *, char *, enum aci_drive_status);
 extern int aci_drivestatus (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES]);
 extern int aci_drivestatus2 (char *, struct aci_drive_entry *[ACI_MAX_DRIVE_ENTRIES2]);
+extern int aci_drivestatus3 (char *, struct aci_ext_drive_entry *[ACI_MAX_DRIVE_ENTRIES2]);
+extern int aci_drivestatus4 (char *, char *, struct aci_ext_drive_entry4 *[ACI_MAX_DRIVE_ENTRIES4], int *);
 extern int aci_eject (char *, char *, enum aci_media);
 extern int aci_eject_complete( char *, char *, enum aci_media );
 extern int aci_force (char *);

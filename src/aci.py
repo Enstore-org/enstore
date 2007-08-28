@@ -36,6 +36,20 @@ def aci_drivestatus2(clientname):
     else:
         return x, []
 
+def aci_drivestatus3(clientname):
+    x = aci_shadow.aci_drivestatus3(clientname)
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_ext_drive_entry, x[1:])
+    else:
+        return x, []
+
+def aci_drivestatus4(clientname, drivename):
+    x = aci_shadow.aci_drivestatus4(clientname, drivename)
+    if type(x)==type([]):
+        return x[0], map(aci_shadow.aci_ext_drive_entry4, x[1:])
+    else:
+        return x, []
+
 def aci_list(clientname):
     x = aci_shadow.aci_list(clientname)
     if type(x)==type([]):

@@ -731,10 +731,22 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    use_state = aml2.drive_state_names.get(drive.drive_state,
 						   drive.drive_state)
 	    use_type = aml2.drive_names.get(drive.type, drive.type)
+
+	    ##This doesn't seem to work.
+	    #if int(drive.mount) == 1:
+	    #	    use_status = "mounted"
+	    #elif int(drive.mount) == 0:
+	    #	    use_status = "empty"
+	    #else:
+	    #	    use_status = "unknown"
+	    if drive.volser:
+		    use_status = "mounted"
+	    else:
+		    use_status = "empty"
 	    
 	    drive_list.append({"name" : drive.drive_name,
 			       "state" : use_state,
-			       "status" : 0, #Filler for AML2.
+			       "status" : use_status, #Filler for AML2.
 			       "volume" : drive.volser,
 			       "type" : use_type,
 			       })
