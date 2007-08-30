@@ -20,6 +20,7 @@ fndapr=fndapr.fnal.gov
 water=131.225.84.1
 rain=rain.fnal.gov
 woodlawn=woodlawn.fnal.gov
+kenwood=kenwood.fnal.gov
 airedale=airedale.fnal.gov
 #odyssey=odyssey.fnal.gov
 #sirius=sirius
@@ -156,6 +157,13 @@ case $node in
 	    ENSTORE_MAIL=huangch@fnal.gov
 	    ENSTORE_CONFIG_HOST=$woodlawn
 	    ENSTORE_CONFIG_FILE=woodlawn.conf
+	    complain=0
+	    ;;
+
+   kenwood) #Chih-Hao Huang's Desktop
+	    ENSTORE_MAIL=huangch@fnal.gov
+	    ENSTORE_CONFIG_HOST=$kenwood
+	    ENSTORE_CONFIG_FILE=kenwood.conf
 	    complain=0
 	    ;;
 
