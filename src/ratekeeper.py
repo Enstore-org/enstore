@@ -13,9 +13,11 @@ import select
 import string
 import time
 import threading
+import types
 import pg
 
-import configuration_client
+
+#import configuration_client
 import dispatching_worker
 import generic_server
 #import configuration_client
@@ -28,11 +30,18 @@ import enstore_constants
 import event_relay_messages
 import Trace
 import e_errors
+import media_changer_client
 
 
 MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
 
 rate_lock = threading.Lock()
+
+THREE_MINUTES_TTL = 180 #time forked ratekeepers are allowed to live
+
+#Note: These intervals should probably come from the configuration file.
+DRVBUSY_INTERVAL = 900 #15 minutes
+SLOTS_INTERVAL = 21600 #6 hours
 
 def endswith(s1,s2):
     return s1[-len(s2):] == s2
@@ -68,8 +77,20 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                               )
         Trace.init(self.log_name)
 
+        #We need to obtain access to the accounting DB.  Don't define
+        # the interface object to the acounting DB here.  Only get the
+        # information to contact it here.  The access to the DBs needs to
+        # be done locally in the code to avoid threading/forking releated
+        # problems.
+        self.acc_conf = self.csc.get(enstore_constants.ACCOUNTING_SERVER)
+        #acc_db   = pg.DB(host   = acc_conf.get('dbhost', "localhost"),
+        #                 port   = acc_conf.get('dbport', 5432),
+        #                 dbname = acc_conf.get('dbname', "accounting"),
+        #                 user   = acc_conf.get('dbuser', "enstore"))
+
         #Get the configuration from the configuration server.
-        ratekeep = self.csc.get('ratekeeper', timeout=15, retry=3)
+        ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
+                                timeout=15, retry=3)
         
         ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
         ratekeeper_host = ratekeep.get('hostip',ratekeep.get('host','MISSING'))
@@ -113,6 +134,13 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         # must be removed from the list.
         self.remove_select_fd(self.erc.sock)
 
+        
+        self.add_interval_func(self.DRVBusy_interval_func, DRVBUSY_INTERVAL,
+                               one_shot=0, align_interval = True)
+        self.add_interval_func(self.slots_interval_func, SLOTS_INTERVAL,
+                               one_shot=0, align_interval = True)
+		
+
     def reinit(self):
         rate_lock.acquire()
 
@@ -128,6 +156,141 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
     
     def subscribe(self):
         self.erc.subscribe()
+
+    # Do update the DB every 15 minutes.
+    def DRVBusy_interval_func(self):
+        #Get the list of media changers from the config server.
+        mcs = self.csc.get_media_changers2(timeout = 3, retry = 10)
+        for mc in mcs:
+            mcc = media_changer_client.MediaChangerClient(
+                self.csc, name = mc['name'],
+                rcv_timeout = 3, rcv_tries = 3
+                )
+
+            if self.fork(THREE_MINUTES_TTL):
+                #Parent
+                continue
+
+            #child
+            self.update_DRVBusy(mcc)
+            sys.exit(0)
+
+    # Do update the DB every 6 hours.
+    def slots_interval_func(self):
+        #Get the list of media changers from the config server.
+        mcs = self.csc.get_media_changers2(timeout = 3, retry = 10)
+        for mc in mcs:
+            mcc = media_changer_client.MediaChangerClient(
+                self.csc, name = mc['name'],
+                rcv_timeout = 3, rcv_tries = 3
+                )
+
+            
+            if self.fork(THREE_MINUTES_TTL):
+                #Parent
+                continue
+            
+            #child
+            self.update_slots(mcc)
+            sys.exit(0)
+
+    def update_DRVBusy(self, mcc):
+        busy_count = {}
+        total_count = {}
+        drives_list = []
+
+        now = time.time()
+
+        #Get the drives from the media changer.
+        drives_dict = mcc.list_drives(10, 6)
+        if e_errors.is_ok(drives_dict):
+            drives_list = drives_dict['drive_list']
+
+        #Gather the list of movers listed in the configuration.
+        valid_drives = []
+        config_dict = self.csc.dump_and_save()
+        for conf_key in config_dict.keys():
+            if conf_key[-6:] == ".mover":
+                if config_dict[conf_key].has_key("mc_device"):
+                    valid_drives.append(config_dict[conf_key]['mc_device'])
+
+        for drive in drives_list:
+            if drive['name'] not in valid_drives:
+                #If the drive isn't attached to a configured mover,
+                # skip its count.  It probably belongs to another instance
+                # of Enstore.
+                continue
+			
+            try:
+                total_count[drive['type']] = \
+                                           total_count[drive['type']] + 1
+            except:
+                total_count[drive['type']] = 1
+                #If the total did not have this type yet, then just the
+                # busy counts cant have it yet.
+                busy_count[drive['type']] = 0
+                
+            if drive['volume']:
+                try:
+                    busy_count[drive['type']] = \
+                                              busy_count[drive['type']] + 1
+                except:
+                    busy_count[drive['type']] = 1
+
+            ## Put the information into the accounting DB.
+            acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
+                           port  = self.acc_conf.get('dbport', 5432),
+                           dbname= self.acc_conf.get('dbname', "accounting"),
+                           user  = self.acc_conf.get('dbuser', "enstore"))
+
+        for drive_type in total_count.keys():
+
+            q="insert into drive_utilization (time, type, total, busy) values \
+            ('%s', '%s',  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
+                                                  time.localtime(now)),
+                                    drive_type,
+                                    total_count[drive_type],
+                                    busy_count[drive_type])
+        
+            acc_db.query(q)
+        return (busy_count, total_count)
+
+    def update_slots(self, mcc):
+        slots_list = []
+
+        now = time.time()
+
+        #First get the name of the tape library.
+        tape_library = self.csc.get(mcc.server_name, 5, 5).get('tape_library',
+                                                               None)
+        if tape_library == None:
+            return
+        
+        slots_dict = mcc.list_slots(10, 18)
+        if e_errors.is_ok(slots_dict):
+            slots_list = slots_dict['slot_list']
+
+        ## Put the information into the accounting DB.
+        acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
+                       port  = self.acc_conf.get('dbport', 5432),
+                       dbname= self.acc_conf.get('dbname', "accounting"),
+                       user  = self.acc_conf.get('dbuser', "enstore"))
+
+        for slot_info in slots_list:
+            q="insert into tape_library_slots_usage (time, tape_library, \
+            location, media_type, total, free, used, disabled) values \
+            ('%s', '%s', '%s', '%s', %d, %d, %d, %d)" % \
+               (time.strftime("%m-%d-%Y %H:%M:%S", time.localtime(now)),
+                tape_library,
+                slot_info['location'],
+                slot_info['media_type'],
+                slot_info['total'],
+                slot_info['free'],
+                slot_info['used'],
+                slot_info['disabled'])
+        
+            acc_db.query(q)
+        return slots_list
 
     def check_outfile(self, now=None):
         if now is None:
@@ -189,7 +352,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         if num == denom:
             num_0 = denom_0 = 0
 
-    
+    #main() runs in its own thread.
     def main(self):
         now = time.time()
         self.start_time = next_minute(now)
@@ -201,18 +364,20 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         bytes_read_dict = {} # = 0L
         bytes_written_dict = {} #0L
 
-        intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-        acc   = csc.get(enstore_constants.ACCOUNTING_SERVER)
-        acc_db = pg.DB(host  = acc.get('dbhost', "localhost"),
-                       port  = acc.get('dbport', 5432),
-                       dbname= acc.get('dbname', "accounting"),
-                       user  = acc.get('dbuser', "enstore"))
+        #Instantiate clients for the servers we need to talk to.
+        #intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+        #csc   = configuration_client.ConfigurationClient((intf.config_host,
+        #                                                  intf.config_port))
+        #acc   = csc.get(enstore_constants.ACCOUNTING_SERVER)
+        acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
+                       port  = self.acc_conf.get('dbport', 5432),
+                       dbname= self.acc_conf.get('dbname', "accounting"),
+                       user  = self.acc_conf.get('dbuser', "enstore"))
                         
-        
         while 1:
             now = time.time()
 
+            #Handle resubscription to the event relay.
             rate_lock.acquire()
             self.check_outfile(now)
             if now - self.subscribe_time > self.resubscribe_interval:
@@ -223,8 +388,11 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             end_time = self.start_time + N * self.interval
             remaining = end_time - now
             if remaining <= 0:
+
+                rate_lock.acquire()
+
+                # [DEPRICATED] Write the rate data to the rate log file.
                 try:
-                    rate_lock.acquire()
                     self.outfile.write( "%s %d %d %d %d\n" %
                                         (time.strftime("%m-%d-%Y %H:%M:%S",
                                                        time.localtime(now)),
@@ -232,23 +400,31 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                          bytes_written_dict.get("REAL", 0),
                                          bytes_read_dict.get("NULL", 0),
                                          bytes_written_dict.get("NULL", 0),))
-
+                    self.outfile.flush()
+                except:
+                    try:
+                        sys.stderr.write("Can not write to output file.\n")
+                        sys.stderr.flush()
+                    except IOError:
+                        pass
+                # Insert the rate data into the DB.
+                try:
                     q="insert into rate (time, read, write, read_null, write_null) values \
                        ('%s', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
                                                                  time.localtime(now)),
                                                    bytes_read_dict.get("REAL", 0),
                                                    bytes_written_dict.get("REAL", 0),
                                                    bytes_read_dict.get("NULL", 0),
-                                                       bytes_written_dict.get("NULL", 0),)
+                                                   bytes_written_dict.get("NULL", 0),)
                     acc_db.query(q)
-                    self.outfile.flush()
-                    rate_lock.release()
                 except:
                     try:
-                        sys.stderr.write("Can't write to output file\n")
+                        sys.stderr.write("Can not update DB.\n")
                         sys.stderr.flush()
                     except IOError:
                         pass
+
+                rate_lock.release()
 
                 for key in bytes_read_dict.keys():
                     bytes_read_dict[key] = 0L
