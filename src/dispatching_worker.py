@@ -132,10 +132,13 @@ class DispatchingWorker(udp_server.UDPServer):
             Trace.log(e_errors.ERROR, "Cannot fork from child process!")
             return os.getpid()
         
+        pid = os.fork()
+        ### The incrementing of the number of childern should occur after
+        ### the os.fork() call.  If it is before and os.fork() throws
+        ### an execption, then we have a discrepencey.
         self.n_children = self.n_children + 1
         Trace.trace(6,"fork: n_children = %d"%(self.n_children,))
-        pid = os.fork()
-        
+
         if pid != 0:  #We're in the parent process
             if ttl is not None:
                 self.kill_list.append(pid)
