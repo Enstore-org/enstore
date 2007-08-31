@@ -18,6 +18,7 @@ import option		        # to get default host and port
 import e_errors                 # error information
 import log_client               # for getting info into the log
 import hostaddr
+import enstore_functions2
 
 journal_backup = 'JOURNALS'     # for journal file backup
 
@@ -167,8 +168,8 @@ def do_work(intf):
 
     try:
 	dbInfo = configuration_client.ConfigurationClient(
-			(option.default_host(),
-			 option.default_port())).get('database')
+			(enstore_functions2.default_host(),
+			 enstore_functions2.default_port())).get('database')
         dbHome = dbInfo['db_dir']
 	jouHome = dbInfo['jou_dir']
     except:
@@ -185,8 +186,8 @@ def do_work(intf):
 	sys.exit(1)
 
     backup_config = configuration_client.ConfigurationClient(
-                        (option.default_host(),
-			 option.default_port())).get('backup')
+                        (enstore_functions2.default_host(),
+			 enstore_functions2.default_port())).get('backup')
 
     print "backup_config =", `backup_config`
 

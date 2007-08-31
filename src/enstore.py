@@ -393,8 +393,8 @@ class Enstore:
     # try to get the configuration information from the config server
     def get_config_from_server(self):
         rtn = 0
-	port = option.default_port()
-	host = option.default_host()
+	port = enstore_functions2.default_port()
+	host = enstore_functions2.default_host()
         if port and host:
 	    csc = configuration_client.ConfigurationClient((host, port))
 	    try:

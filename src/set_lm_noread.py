@@ -5,7 +5,7 @@ import library_manager_client
 import configuration_client
 import volume_family
 import log_client
-#import enstore_functions
+import enstore_functions2
 import option
 import Trace
 import e_errors
@@ -39,8 +39,8 @@ def parse_queue(queue, ff_d, ff_k):
 	    ff_d[ff] = ff_d[ff] + 1
 
 Trace.init(MY_NAME)
-config_host = option.default_host()
-config_port = option.default_port()
+config_host = enstore_functions2.default_host()
+config_port = enstore_functions2.default_port()
 
 if config_host and config_port:
     logc = log_client.LoggerClient((config_host, config_port), MY_NAME)

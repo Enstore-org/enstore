@@ -72,8 +72,8 @@ def get_html_dir():
 
 # return a dictionary of the configuration server host and port
 def get_config_server_info():
-    dictionary = {'port' : option.default_port()}
-    dictionary['host'] = option.default_host()
+    dictionary = {'port' : enstore_functions2.default_port()}
+    dictionary['host'] = enstore_functions2.default_host()
     return dictionary
 
 def get_www_host():
