@@ -291,6 +291,10 @@ class ConfigurationClient(generic_client.GenericClient):
     #def alive(self, server, rcv_timeout=0, tries=0):
     #    return self.send({'work':'alive'}, rcv_timeout, tries)
 
+    ### get_library_managers(), get_media_changers() and get_movers() are
+    ### not thread safe on the configuration server side.  It is possible
+    ### to get a reply that should have gone to anther process.
+
     # get list of the Library manager movers
     def get_movers(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_movers' ,  'library' : library_manager }
@@ -301,16 +305,46 @@ class ConfigurationClient(generic_client.GenericClient):
         request = {'work' : 'get_media_changer' ,
                    'library' : library_manager }
         return  self.send(request, timeout, retry)
-	
+
     #get list of library managers
+    ### Not thread safe!
     def get_library_managers(self, timeout=0, retry=0):
         request = {'work': 'get_library_managers'}
         return self.send(request, timeout, retry)
 
+    # get list of library managers with full config info
+    def get_library_managers2(self, timeout=0, retry=0):
+        library_manager_list = []
+        
+        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if e_errors.is_ok(conf_dict):
+            for item in conf_dict.items():
+                if item[0][-16:] == ".library_manager":
+                    item[1]['name'] = item[0]
+                    item[1]['library_manager'] = item[0][:-16]
+                    library_manager_list.append(item[1])
+
+        return library_manager_list
+
     #get list of media changers
+    ### Not thread safe!
     def get_media_changers(self, timeout=0, retry=0):
         request = {'work': 'get_media_changers'}
         return self.send(request, timeout, retry)
+
+    # get list of media changers with full config info
+    def get_media_changers2(self, timeout=0, retry=0):
+        media_changer_list = []
+        
+        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if e_errors.is_ok(conf_dict):
+            for item in conf_dict.items():
+                if item[0][-14:] == ".media_changer":
+                    item[1]['name'] = item[0]
+                    item[1]['media_changer'] = item[0][:-14]
+                    media_changer_list.append(item[1])
+
+        return media_changer_list
 
     # get the configuration dictionary element(s) that contain the specified
     # key, value pair
