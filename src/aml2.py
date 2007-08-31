@@ -3,19 +3,20 @@
 #
 #  Python replacement for aml2.so built on top of the aci module
 #
-#
+######################################################################
 
-#system imports
-import types
+# system imports
+#import types
 import string
 import time
-import whrandom
-import popen2
-import string
-import sys
+#import whrandom
+import random
+#import popen2
+#import sys
+#import os
 import aml2_log
 
-#enstore imports
+# enstore imports
 import aci
 import derrno
 import volume_clerk_client
@@ -59,11 +60,31 @@ status_table = (
     ("DRIVE",   "drive in cleaning"),		        		#33
     ("BAD",	"The aci request timed out"),		        	#34
     ("DRIVE",   "the robot has a problem with handling the device"),	#35
-    ("notused", "not used"),                                            #36
+    #New errors from ADIC.  Added here 8-30-2007.
+    ("BAD",     "Poolname not defined"),                                #36
+    ("BAD",     "Area is full"),                                        #37
+    ("BAD",     "Robot is not ready because of a HICAP request"),       #38
+    ("TAPE",    "The volser has no two sides"),                         #39
+    ("DRIVE",   "The drive is EXUP for another client"),                #40
+    ("BAD",     "the robot has a problem with handling the device"),    #41
+    ("BAD",     "one or more coordinates are wrong"),                   #42
+    ("BAD",     "area is empty"),                                       #43
+    ("BAD",     "Barcode read error"),                                  #44
+    ("TAPE",    "Client tries to allocate volsers that are already allocated"),
+    ("BAD",     "Not supported host command"),                          #46
+    ("BAD",     "Database error"),                                      #47
+    ("BAD",     "Robot is not configured"),                             #48
+    ("BAD",     "The device is invalid"),                               #49
+    ("BAD",     "Request was already sent to robot"),                   #50
+    ("BAD",     "No long drive names"),                                 #51
+    ("notused", "not used"),                                            #52
     # non aci errors:
-    ("ERROR",   "command error"),                                       #37
-    ("ERROR",   "vcc.new_library error(s)"),                            #38
+    ("ERROR",   "command error"),                                       #53
+    ("ERROR",   "vcc.new_library error(s)"),                            #54
     )
+
+COMMAND_ERROR = 53        #formerly 37
+NEW_LIBRARY_ERROR = 54    #formerly 38
 
 ACI_DRIVE_UP = aci.ACI_DRIVE_UP
 ACI_DRIVE_DOWN = aci.ACI_DRIVE_DOWN
@@ -228,8 +249,13 @@ def drive_state(drive,client=""):
     return stat,None
 
 def drives_states():
-    stat, drives = aci.aci_drivestatus3("")
-    #stat, drives = aci.aci_drivestatus2("")
+    try:
+        #clientname = os.environ["DAS_CLIENT"]
+        clientname = ""
+    except KeyError:
+        clientname= ""
+    stat, drives = aci.aci_drivestatus3(clientname)
+    #stat, drives = aci.aci_drivestatus2(clientname)
     if stat!=0:
         Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
         return stat, None
@@ -334,7 +360,7 @@ def robotStart(arm):
 # home and start robot arm
 def robotHomeAndRestart(ticket, classTicket):
     arm = ticket["robotArm"]
-    status = 37
+    status = COMMAND_ERROR
     if arm=='R1' or arm=='Both':
         st1,status,st2 = robotHome('R1')
         if not status:
@@ -370,7 +396,7 @@ def insert(ticket, classTicket):
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
     else:
-        status = 37
+        status = COMMAND_ERROR
         mcSelf.workQueueClosed = 0
         Trace.trace(e_errors.ERROR, 'aml2 no mcSelf field found in ticket.')
         return status_table[status][0], status, 'aml2 no mcSelf field found in ticket.'
@@ -427,7 +453,7 @@ def insert(ticket, classTicket):
         ofile.close()
 
         if len(Irecord) == 0:
-            status = 37
+            status = COMMAND_ERROR
             mcSelf.workQueueClosed = 0
             Trace.trace(e_errors.ERROR, 'aml2 no INVT records found.')
             return status_table[status][0], status, 'aml2 no INVT records found.'
@@ -472,7 +498,7 @@ def insert(ticket, classTicket):
             ret = vcc.new_library(info[0],ticket["newlib"])
 	    if ret['status'][0] != 'ok':
                 Trace.log(e_errors.ERROR, 'aml2 NewLib-InsertVol failed %s' % (ret,))
-                status = 38
+                status = NEW_LIBRARY_ERROR
 	    else:
                 Trace.trace(e_errors.INFO, 'aml2 NewLib-InsertVol sucessful %s' % (vol_label,))
 
@@ -483,7 +509,7 @@ def eject(ticket, classTicket):
     if classTicket.has_key("mcSelf"):
         mcSelf = classTicket["mcSelf"]
     else:
-        status = 37
+        status = COMMAND_ERROR
         mcSelf.workQueueClosed = 0
         Trace.trace(e_errors.ERROR, 'aml2 no mcSelf field found in ticket.')
         return status_table[status][0], status, 'aml2 no mcSelf field found in ticket.'
@@ -506,7 +532,9 @@ def eject(ticket, classTicket):
 	    status = derrno.EINVALID
 	    return status_table[status][0], status, status_table[status][1]
     else:
-        box = whrandom.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
+        #whrandom() is depricated.
+        #box = whrandom.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
+        box = random.randint(0,len(mediaAssgn["ACI_"+media_type])-1)
         IOarea_name = mediaAssgn["ACI_"+media_type][box]
     
     if ticket.has_key("volList"):
@@ -564,8 +592,9 @@ def list_slots():
                       'aci_getcellinfo returned status=%d' % (stat,))
             return stat,None
 
+        #What does this loop do?  I don't remember anymore...
         for item in range(len(media_info_totals)):
             media_list.append((device, media_info_totals, media_info_free,
                                media_info_used, media_info_disabled))
-               
+                
     return stat, media_list
