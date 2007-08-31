@@ -534,7 +534,7 @@ def do_work(intf):
 
         if result.get("status", None) == None or e_errors.is_ok(result):
             msg_spec = "%25s %15s"
-            print msg_spec % ("media changer", "host")
+            print msg_spec % ("library manager", "host")
             for lm_name in result.values():
                 lm_info = csc.get(lm_name['name'])
                 print msg_spec % (lm_name['name'], lm_info['host'])
