@@ -84,14 +84,14 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
-    def list_volumes(self):
+    def list_volumes(self, rcv_timeout = 0, rcv_tries = 0):
         host, port, listen_socket = callback.get_callback()
         listen_socket.listen(4)
         
         ticket = {'work' : 'list_volumes',
                   'callback_addr'  : (host,port)
                   }
-        rt = self.send(ticket)
+        rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
             print "ERROR", rt
             return rt
@@ -118,10 +118,10 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
-    def list_drives(self):
+    def list_drives(self, rcv_timeout = 0, rcv_tries = 0):
         ticket = {'work' : 'list_drives',
                   }
-        rt = self.send(ticket)
+        rt = self.send(ticket, rcv_timeout, rcv_tries)
         return rt
 
     def robotQuery(self):
@@ -129,10 +129,10 @@ class MediaChangerClient(generic_client.GenericClient):
         rt = self.send(ticket)
         return rt
 
-    def list_slots(self):
+    def list_slots(self, rcv_timeout = 0, rcv_tries = 0):
         ticket = {'work' : 'list_slots',
                   }
-        rt = self.send(ticket)
+        rt = self.send(ticket, rcv_timeout, rcv_tries)
         return rt
 
     def doCleaningCycle(self, moverConfig):
