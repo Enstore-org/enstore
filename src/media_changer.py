@@ -731,6 +731,36 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    use_state = aml2.drive_state_names.get(drive.drive_state,
 						   drive.drive_state)
 	    use_type = aml2.drive_names.get(drive.type, drive.type)
+	    ##################################################
+	    # The aml2 is not very good and knowning the difference between
+	    # an LTO1 and LTO2 drive.  Ask the mover for the correct
+	    # drive type.
+	    movers = self.csc.get_movers2(3, 2)
+	    for mover in movers:
+		    if mover['mc_device'] == drive.drive_name:
+			    import mover_client
+			    flags = enstore_constants.NO_LOG | enstore_constants.NO_ALARM
+		            mc = mover_client.MoverClient(self.csc,
+							  mover['name'],
+							  flags = flags,
+							  rcv_timeout = 3,
+							  rcv_tries = 2)
+			    status = mc.status(3, 2) #Get the status.
+			    del mc #Hope this helps with resource leaks!
+			    if e_errors.is_ok(status):
+				    #use_type = "%s=%s" % (status['drive_id'],
+				    #			  use_type)
+				    use_type = status['drive_id']
+			    #Regardless of an error or not, we found the
+			    # mover we were looking for.  Give up.
+			    break
+	    ### Without an explicit collection here, even the "del mc" above
+	    ### does not work until python runs the garbage collector.
+	    ### If python takes to long we run out of FDs, so force python
+	    ### to reclain those resources.
+	    import gc
+	    gc.collect()
+	    ##################################################
 
 	    ##This doesn't seem to work.
 	    #if int(drive.mount) == 1:
@@ -796,6 +826,25 @@ class AML2_MediaLoader(MediaLoaderMethods):
         return
 
     def list_slots(self, ticket):
+	# A bug in aci_getcellinfo() requires forking in list_slots().
+	# If we are the parent, just return and keep on going.  This isn't
+	# the best solution because we loose keeping the reply in the
+	# udp_server in case the client didn't receive the reply.  If
+	# a better solution is needed, then look at timed_command() in the
+	# STK implementation.
+	#
+	# The bug is that for every call to aci_getcellinfo() three file
+	# descriptors (that are sockets) are leaked.
+	#
+	# By using self.fork() instead of os.fork() we get automatic process
+	# tracking and termination (if needed).
+	    
+	pid = self.fork()
+	if pid != 0: # parent
+	    return
+
+	# ... else this is the child.
+
 	import aml2
         stat, slots = aml2.list_slots()
 	if stat != 0:
@@ -828,11 +877,12 @@ class AML2_MediaLoader(MediaLoaderMethods):
 		except IndexError:
 		    slot_dict['disabled'] = 0
 
-		    slot_list.append(slot_dict)
+		slot_list.append(slot_dict)
 
 	ticket['slot_list'] = slot_list
 	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
+	sys.exit(0)  #Remember we are the child here.
 
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
@@ -971,7 +1021,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 	        continue
 
 	    lsm = line[:13].strip().replace(" ", "")
-	    free = line[31:42].strip()
+	    free = int(line[31:42].strip())
 
 	    slot_list.append({"location" : lsm,
 			      "media_type" : "all",
