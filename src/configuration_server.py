@@ -397,6 +397,9 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
         self.reply_to_caller(ret)
         
     #get list of library managers
+    ### Not thread safe.  The ticket['r_a'] value isn't passed to
+    ### reply_to_caller() via ret, so the reply the client asked for may
+    ### not be what they get.
     def get_library_managers(self, ticket):
         __pychecker__ = "unusednames=ticket"
         
@@ -410,6 +413,10 @@ class ConfigurationServer(ConfigurationDict, dispatching_worker.DispatchingWorke
 				     'name': key}
         self.reply_to_caller(ret)
 
+    #get list of media changers
+    ### Not thread safe.  The ticket['r_a'] value isn't passed to
+    ### reply_to_caller() via ret, so the reply the client asked for may
+    ### not be what they get.
     def get_media_changers(self, ticket):
         __pychecker__ = "unusednames=ticket"
         
