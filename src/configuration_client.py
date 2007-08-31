@@ -296,9 +296,24 @@ class ConfigurationClient(generic_client.GenericClient):
     ### to get a reply that should have gone to anther process.
 
     # get list of the Library manager movers
+    ### Not thread safe!
     def get_movers(self, library_manager, timeout=0, retry=0):
         request = {'work' : 'get_movers' ,  'library' : library_manager }
         return self.send(request, timeout, retry)
+
+    # get list of the Library manager movers with full config info
+    def get_movers2(self, library_manager, timeout=0, retry=0):
+        mover_list = []
+        
+        conf_dict = self.dump_and_save(timeout = timeout, retry = retry)
+        if e_errors.is_ok(conf_dict):
+            for item in conf_dict.items():
+                if item[0][-6:] == ".mover":
+                    item[1]['name'] = item[0]
+                    item[1]['mover'] = item[0][:-6]
+                    mover_list.append(item[1])
+
+        return mover_list
 
     # get media changer associated with a library manager
     def get_media_changer(self, library_manager, timeout=0, retry=0):
