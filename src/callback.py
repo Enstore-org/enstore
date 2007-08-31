@@ -16,8 +16,13 @@ import select
 #import errno
 import socket
 import cPickle
+import rexec
 import errno
 import fcntl
+
+_rexec = rexec.RExec()
+def _eval(stuff):
+    return _rexec.r_eval(stuff)
 
 # enstore imports
 import Trace
@@ -25,7 +30,6 @@ import e_errors
 import checksum
 #import hostaddr
 import host_config
-from en_eval import en_eval
 
 def hex8(x):
     s=hex(x)[2:]  #kill the 0x
@@ -322,7 +326,7 @@ def read_tcp_obj(sock, timeout=15*60) :
     except (cPickle.PickleError, cPickle.PicklingError,
             cPickle.UnpickleableError, cPickle.UnpicklingError):
         try:
-            obj = en_eval(s)
+            obj = _eval(s)
         except SyntaxError:
             obj = None
     

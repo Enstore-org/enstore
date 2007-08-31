@@ -11,17 +11,10 @@ if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
     exit 1
 fi
 
-# we need enstore to be setup
-if [ -z "${ENSTORE_DIR-}"  ]; then
-   . /usr/local/etc/setups.sh
-   setup enstore
-fi
-
-#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-node=`uname -n`
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
 case $node in
-   $ENSTORE_CONFIG_HOST) 
+   stkensrv2|d0ensrv2|cdfensrv2)
           loadit=1
           ;;
    *)     loadit=0
@@ -37,28 +30,20 @@ abort() { cd $place
           exit ${2:-1}
         }
 
+# we need enstore to be setup
+if [ -z "${ENSTORE_DIR-}"  ]; then
+   . /usr/local/etc/setups.sh
+   setup enstore
+fi
+
 # all the action is here
-#cd $ENSTORE_DIR/etc
-cd
+cd $ENSTORE_DIR/etc
 
 # we need a config file to change
-if [ -z "${1-}"  ]; then
- echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
-    d=`dirname $ENSTORE_CONFIG_FILE`
-    cp -rpf $d .
-    cp -rpf $ENSTORE_CONFIG_FILE .
-    dir=`basename $d`
- config=`basename $ENSTORE_CONFIG_FILE`;
- 
-else
-    dir=$ENSTORE_DIR/etc
-    config=$1.conf
-fi
-echo DIR $dir
-cd $dir
-
-#if [ ! -r $config ]; then abort "can not read $config"; fi
-config2=/tmp/$config.conf-check.py
+if [ -z "${1-}"  ]; then abort  "you need to specify a config file"; fi
+config=$1.conf
+if [ ! -r $config ]; then abort "can not read $config"; fi
+config2=/tmp/$1.conf-check.py
 
 # if the user wants a specific editor, use it
 # otherwise use vi since it is always there
@@ -79,7 +64,6 @@ echo
 cvs status $config
 echo
 
-if [ ! -r $config ]; then abort "can not read $config"; fi
 # make a copy and edit it
 rm -f $config2
 cp $config $config2
@@ -170,7 +154,7 @@ if [ `echo $config | cut -c1-4` = "auth" ]; then
     # authority config files do not need to be loaded.
     echo
 elif [ $loadit -ne 1 ]; then
-  abort "Not on configuration server. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
+  abort "Not on stkensrv2, cdfensrv2 or d0ensrv2. Do not know how to load config file.  Try: enstore config --load --config_file=$ENSTORE_DIR/etc/$config" 0 0
 fi
 
 # all is good, load the config file.

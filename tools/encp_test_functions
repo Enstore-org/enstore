@@ -875,13 +875,6 @@ volume_read_test()
     section="VOLUME READ"
     print_test_name $section
 
-    #Test the version of encp.
-    is_admin_encp
-    if [ $? -eq 0 ]; then
-        echo "Encp is cut version.  Skipping test and continuting."
-        return
-    fi 
-
     truncate_encp_output
 
     #Snag a volume_read_test volume.
@@ -989,15 +982,10 @@ multiple_copies_read_write_test()
 
 	rm -f $outname
 
-	#Now read back the copy via bfid.
+	#Now read back the copy.
 	bfid=`enstore pnfs --bfid $pnfsname`
 	get_bfid="--get-bfid `enstore file --find-copies $bfid`"
 	transfer encp '$get_bfid' '$outname' '$pnfsname $outname' "" "$section" READ
-
-	rm -f $outname
-
-	#Now read back the copy via copy number.
-	transfer "encp --copy 1" '$pnfsname' '$outname' '$pnfsname $outname' "" "$Section" READ
 
 	rm -f $outname
 	rm -f $pnfsname

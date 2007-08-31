@@ -9,24 +9,16 @@ v=`uname -v`
 oldIFS=$IFS
 IFS="
 "
-
 #b="bogo:"
 b=""
 for i in `cat /proc/cpuinfo | grep bogo`; do
  b="$b `echo $i|awk '{ print \$NF; }'`"
 done
 
-#f=free memory
-#t=total memory
 for i in `cat /proc/meminfo| grep "^Mem:"`; do
  t=`echo $i|awk '{ print $2/1024/1024 }'|cut -f1 -d.`
  f=`echo $i|awk '{ print $4/1024/1024 }'|cut -f1 -d.`
 done
-if [ -z "$t" -a -z "$f" ]; then
-    #Linux 2.6 kernels do this differently now.
-    t=`grep "^MemTotal:" /etc/meminfo | awk { $2/1024 }
-    t=`grep "^MemFree:" /etc/meminfo | awk { $2/1024 }
-fi
 
 IFS=$oldIFS
 

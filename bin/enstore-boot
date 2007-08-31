@@ -4,20 +4,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # Starts enstore after a machine boots
 
-# setup enstore first
-if [ -f /usr/local/etc/setups.sh ]; then
-    # this check is required by current rpm build process, do not remove!!!!
-    . /usr/local/etc/setups.sh
-    setup enstore
-fi
-
-# set ENSTORE_HOME properly
-if [ "${ENSTORE_HOME:-}" = "" ]; then
-	ENSTORE_HOME=/home/enstore
-fi
-
 timeout=4
-output=$ENSTORE_HOME/`hostname`.startup
+output=/home/enstore/`hostname`.startup
 touch $output
 chown enstore.enstore $output
 estat=0
@@ -26,6 +14,12 @@ case "$1" in
 
   start)
         echo Starting enstore 2>&1 | tee /dev/console >>$output
+
+	find /tmp/enstore -name "*pids" -exec rm {} \;
+	find /tmp/enstore -name "trace*key" -exec rm {} \;
+
+        . /usr/local/etc/setups.sh
+        setup enstore 
 
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
@@ -43,31 +37,15 @@ case "$1" in
                 break
               fi
             done
-	else
-	    # start config server
-	    echo "`date`: su-ing to enstore and doing an enstore start --just config" 2>&1 | tee /dev/console >>$output
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start --just config"  
-            estat=$?
-            if [ $estat -ne 0 ] ; then
-                echo "`date`: can not start config server ... can not continue..." 2>&1 | tee /dev/console >>$output
-                break
-            fi
         fi
-
-	# start database servers if it is necessary
-
-	$ENSTORE_DIR/bin/enstore_database_server.py start
-
         if [ $estat -eq 0 ]; then
           # we should be enstore when we start this up (at least not root) if we are a server
-          if [ "`whoami`" = "root" ]; then
+          if [ "`whoami`" = "root" -a `echo $n2 | grep -c mvr` -eq 0 ] ; then
 	    echo "`date`: su-ing to enstore and doing an enstore Estart $n2" 2>&1 | tee /dev/console >>$output
-            # su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
-            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore start"  
+            su enstore -c ". /usr/local/etc/setups.sh ; setup enstore; enstore Estart $n2"  
           else
             echo "`date`: doing enstore Estart $n2" 2>&1 | tee /dev/console >>$output
-            # enstore Estart $n2 
-            enstore start
+            enstore Estart $n2 
           fi
        
         fi
@@ -75,26 +53,14 @@ case "$1" in
 
   stop)
         echo Stopping enstore 2>&1 | tee /dev/console >>$output
-
-	# check if configure server is running
-	if [ "`enstore config --alive --timeout=30`" == "BAD STATUS ('TIMEDOUT', 'configuration_server')" ]
-	then
-		echo "Can not talk to config server ..."
-		echo "Stopping everything by default ..."
-		# Just call "enstore stop" to stop everything
-		enstore stop
-		exit 0
-	fi
-		
-	enstore stop
-
-	# should we shut down database servers?
-
-	$ENSTORE_DIR/bin/enstore_database_server.py stop
-
+        . /usr/local/etc/setups.sh
+        setup enstore
+        enstore stop
         ;;
 
   install)
+        . /usr/local/etc/setups.sh
+        setup enstore
         x=/etc/rc.d/init.d/enstore-boot
         rm -f $x; cp $ENSTORE_DIR/bin/enstore-boot $x
         cd /etc/rc.d/rc3.d

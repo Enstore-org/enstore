@@ -18,6 +18,7 @@ import errno
 import socket
 import select
 import pprint
+import rexec
 import os
 import stat
 import Trace
