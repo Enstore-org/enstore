@@ -16,6 +16,7 @@ then
     echo You need to run this script as user "root"
     exit 1
 fi
+
 this_host=`uname -n`
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
@@ -34,7 +35,7 @@ if [ $fnal -eq 0 ]; then
     exit 1
     fi
 else
-   ENSTORE_CONFIG_HOST="\`\$ENSTORE_DIR/ups/chooseConfig\`"
+   ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
 fi
 
 PATH=/usr/sbin:$PATH
@@ -94,7 +95,19 @@ if [ $fnal -eq 0 ]; then
     read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
+    kdestroy
+    KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
+    defaultDomain=".fnal.gov"
+
+    # we need the full domain name, if no domain is there, add default one on
+
+    if expr $this_host : '.*\.' >/dev/null;then 
+       thisHost=$this_host;
+    else 
+       thisHost=${this_host}${defaultDomain};
+    fi
     R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
+    kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
     # change permissions for credentials file
     cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
     if [ $? -eq 0 ]; then
@@ -102,6 +115,7 @@ else
     fi
     
     su enstore -c "cd `dirname $R`; cvs update `basename $R`"
+    kdestroy
     REPLY="\$ENSTORE_HOME/enstore/etc/\`\$ENSTORE_DIR/ups/chooseConfig file\`"
 fi
 
