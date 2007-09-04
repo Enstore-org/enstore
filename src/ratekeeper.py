@@ -201,6 +201,12 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         now = time.time()
 
+        #First get the name of the tape library.
+        tape_library = self.csc.get(mcc.server_name, 5, 5).get('tape_library',
+                                                               None)
+        if tape_library == None:
+            return
+
         #Get the drives from the media changer.
         drives_dict = mcc.list_drives(10, 6)
         if e_errors.is_ok(drives_dict):
@@ -245,12 +251,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
         for drive_type in total_count.keys():
 
-            q="insert into drive_utilization (time, type, total, busy) values \
-            ('%s', '%s',  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
-                                                  time.localtime(now)),
-                                    drive_type,
-                                    total_count[drive_type],
-                                    busy_count[drive_type])
+            q="insert into drive_utilization \
+            (time, tape_library, type, total, busy) values \
+            ('%s', '%s', '%s',  %d,  %d)" % \
+            (time.strftime("%m-%d-%Y %H:%M:%S",
+                           time.localtime(now)),
+             tape_library,
+             drive_type,
+             total_count[drive_type],
+             busy_count[drive_type],
+             )
         
             acc_db.query(q)
         return (busy_count, total_count)
