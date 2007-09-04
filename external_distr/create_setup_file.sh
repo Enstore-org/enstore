@@ -47,7 +47,6 @@ else
     else 
        thisHost=${this_host}${defaultDomain};
     fi
-    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
     kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
     # change permissions for credentials file
     cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
@@ -113,6 +112,7 @@ if [ $fnal -eq 0 ]; then
     read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
+    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
     su enstore -c "cd `dirname $R`; cvs update `basename $R`"
     REPLY="\$ENSTORE_HOME/enstore/etc/\`\$ENSTORE_DIR/ups/chooseConfig file\`"
 fi
