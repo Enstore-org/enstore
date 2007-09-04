@@ -61,7 +61,7 @@ ENSTORE_HOME=`ls -d ~enstore`
 if [ $this_host != $ENSTORE_CONFIG_HOST ];
 then
     echo "trying to get setup-enstore from enstore configuration host"
-    scp -l enstore -rp $ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
+    scp -rp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
     if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
     then
 	exit 0
