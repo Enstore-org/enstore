@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore_sa
 Version: 1.0.1
-Release: 7
+Release: 8
 Copyright: GPL
 Group: System Environment/Base
 Source: enstore_sa.tgz

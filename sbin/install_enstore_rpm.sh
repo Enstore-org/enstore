@@ -29,7 +29,7 @@ yum install tk
 echo "Installing python"
 rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/Python-enstore-1.0.0-3.i386.rpm
 echo "Installing enstore"
-rpm -Uvh --force ftp://ssasrv1/en/enstore_related/enstore_sa-1.0.1-7.i386.rpm
+rpm -Uvh --force ftp://ssasrv1/en/enstore_related/enstore_sa-1.0.1-r8.i386.rpm
 echo "configuring enstore"
 
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
