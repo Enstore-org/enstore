@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 ###############################################################################
 #
 # $Id$
@@ -35,7 +35,25 @@ if [ $fnal -eq 0 ]; then
     exit 1
     fi
 else
-   ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+    ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
+    kdestroy
+    KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
+    defaultDomain=".fnal.gov"
+
+    # we need the full domain name, if no domain is there, add default one on
+
+    if expr $this_host : '.*\.' >/dev/null;then 
+       thisHost=$this_host;
+    else 
+       thisHost=${this_host}${defaultDomain};
+    fi
+    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
+    kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+    # change permissions for credentials file
+    cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
+    if [ $? -eq 0 ]; then
+	chmod 666 $cred_f
+    fi
 fi
 
 PATH=/usr/sbin:$PATH
@@ -44,7 +62,7 @@ ENSTORE_HOME=`ls -d ~enstore`
 if [ $this_host != $ENSTORE_CONFIG_HOST ];
 then
     echo "trying to get setup-enstore from enstore configuration host"
-    scp -rp $ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
+    scp -l enstore -rp $ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
     if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
     then
 	exit 0
@@ -95,27 +113,7 @@ if [ $fnal -eq 0 ]; then
     read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
-    kdestroy
-    KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
-    defaultDomain=".fnal.gov"
-
-    # we need the full domain name, if no domain is there, add default one on
-
-    if expr $this_host : '.*\.' >/dev/null;then 
-       thisHost=$this_host;
-    else 
-       thisHost=${this_host}${defaultDomain};
-    fi
-    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
-    kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-    # change permissions for credentials file
-    cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
-    if [ $? -eq 0 ]; then
-	chmod 666 $cred_f
-    fi
-    
     su enstore -c "cd `dirname $R`; cvs update `basename $R`"
-    kdestroy
     REPLY="\$ENSTORE_HOME/enstore/etc/\`\$ENSTORE_DIR/ups/chooseConfig file\`"
 fi
 
@@ -169,14 +167,17 @@ then
   echo "export ENSCP=${ENSCP}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
 
-if [ -n $copy_conf ]
+if [ "${copy_conf:-x}" != "x" ]
 then
     echo "Creating config file from $copy_conf"
     cp -f $copy_conf $config_file
 fi
     
 chown enstore.enstore  $ENSTORE_HOME/site_specific/config/*
-
+if [ $fnal -ne 0 ]
+then
+    kdestroy
+fi
 echo "
 Please check $ENSTORE_HOME/site_specific/config/setup-enstore.
 In case you are going to use ssh for product distribution, updates and maintenance you need to add the following entries
