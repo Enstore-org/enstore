@@ -34,7 +34,6 @@ echo "configuring enstore"
 
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 
-rm -f ~enstore/site_specific/config/setup-enstore
 $ENSTORE_DIR/external_distr/create_enstore_environment.sh $fnal
 $ENSTORE_DIR/sbin/copy_farmlets.sh
 if [ $server -eq 1 ]
