@@ -20,6 +20,17 @@ then
     exit 1
 fi
 
+if [ -x /etc/rc.d/init.d/enstore-boot ]
+then
+    echo "stopping enstore"
+    /etc/rc.d/init.d/enstore-boot stop
+fi
+if [ -x /etc/rc.d/init.d/monitor_server-boot ]
+then
+    /etc/rc.d/init.d/monitor_server-boot stop
+fi
+
+
 echo "Installing ftt"
 rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/ftt-2.26-1.i386.rpm 
 echo "Installing tcl"
