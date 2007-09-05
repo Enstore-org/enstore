@@ -220,10 +220,12 @@ ALL_9940 = open('ALL_9940.tapes','a')
 ALL_9940B = open('ALL_9940B.tapes', 'a')
 ALL_LTO3 = open('ALL_LTO3.tapes', 'a')
 CD_9940B = open('CD-9940B.tapes', 'a')
+CD_LTO3 = open('CD-LTO3.tapes', 'a')
 group_fd['ALL_9940'] = ALL_9940
 group_fd['ALL_9940B'] = ALL_9940B
 group_fd['CD-9940B'] = CD_9940B
 group_fd['ALL_LTO3'] = ALL_LTO3
+group_fd['CD-LTO3'] = CD_LTO3
 
 
 print 'sorting drivestat into storage group and library'
@@ -236,11 +238,13 @@ all_lto3_mb = 0L
 all_9940_mb = 0L
 all_9940b_mb = 0L
 cd_9940b_mb = 0L
+cd_lto3_mb = 0L
 all_lto3_v = {}
 all_9940_v = {}
 all_9940b_v = {}
 cd_9940b_v = {}
 cd_9940b_v = {}
+cd_lto3_v = {}
 while 1:
     line = f.readline()
     if not line: break
@@ -287,10 +291,11 @@ while 1:
     ol = string.join((do.upper(),v,mb),'\t')
     if not g in ['ALL_9940B', 'ALL_9940']: 
         o.write('%s\n' % (ol,))
-    #if g=='cdf.cdf':
-        #print "WWW",ol
-    #print "LLLLL",l
     if l in ['CD-LTO3', 'CDF-LTO3', 'D0-LTO3']:
+        if l == 'CD-LTO3' :
+            cd_lto3_mb = cd_lto3_mb + long(mb)
+            CD_LTO3.write('%s\n' % (ol,))
+            cd_lto3_v[v] = 1
         all_lto3_mb = all_lto3_mb +  long(mb)
         all_lto3_v[v] = 1
         ALL_LTO3.write('%s\n' % (ol,))
@@ -346,6 +351,9 @@ cd_9940b_su = 0.
 all_lto3_wv = all_lto3_bv = 0
 all_lto3_su = 0.
 
+cd_lto3_wv = cd_lto3_bv = 0
+cd_lto3_su = 0.
+
 rpt=open('report','w')
 for g in group_fd.keys():
     print "make plot for %s"%(g,)
@@ -356,6 +364,8 @@ for g in group_fd.keys():
     elif g == 'ALL_LTO3':
         pass
     elif g == 'CD-9940B':
+        pass
+    elif g == 'CD-LTO3':
         pass
     print "GOT HERE"
     if QUOTAS.has_key(g):
@@ -390,6 +400,15 @@ for g in group_fd.keys():
           all_lto3_wv = all_lto3_wv + int(wv)
           all_lto3_bv = all_lto3_bv + int(bv)
           all_lto3_su = all_lto3_su + su
+          if l == 'CD-LTO3' :
+              temp_su=0.0
+              try:
+                  temp_su = float(su.split("G")[0])
+              except:
+                  temp_su = float(su)
+              cd_lto3_wv = cd_lto3_wv + int(wv)
+              cd_lto3_bv = cd_lto3_bv + int(bv)
+              cd_lto3_su = cd_lto3_su + temp_su
         
 
     elif g == "CD-9840":
@@ -413,22 +432,23 @@ for g in group_fd.keys():
         pass
     elif g == 'ALL_LTO3':
         pass
-        #wv = len(all_9940_v)
-        #su="%.2f%s"%(all_9940_mb / 1024.,"GB")
     elif g == 'ALL_9940B':
         pass
-        #wv = len(all_9940b_v)
-        #su="%.2f%s"%(all_9940b_mb / 1024.,"GB")
     else:
         print 'What group is this',g
         (wv,bv,su) = ('?','?','?')
-    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B', 'ALL_LTO3']:
+    if g in ['ALL_9940', 'ALL_9940B', 'CD-9940B', 'ALL_LTO3', 'CD-LTO3']:
         pass
     else:
         sort_the_file('%s.tapes'%(g,))
         cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % (g,d1,d2,wv,bv,su, cap)
         print cmd
         os.system(cmd)
+
+sort_the_file('CD-LTO3.tapes')
+cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('CD-LTO3',d1,d2,cd_lto3_wv,cd_lto3_bv,cd_lto3_su, 400)
+os.system(cmd)
+
 sort_the_file('ALL_LTO3.tapes')
 cmd = "$ENSTORE_DIR/sbin/tapes-plot-sg.py %s %s %s %s %s %s %s" % ('ALL_LTO3',d1,d2,all_lto3_wv,all_lto3_bv,all_lto3_su, 400)
 print cmd
