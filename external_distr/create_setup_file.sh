@@ -21,6 +21,15 @@ this_host=`uname -n`
 ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
+PATH=/usr/sbin:$PATH
+ENSTORE_HOME=`ls -d ~enstore`
+
+if [ -s $ENSTORE_HOME/site_specific/config/setup-enstore ]
+then 
+    echo $ENSTORE_HOME/site_specific/config/setup-enstore exists.
+    echo If you want to recreate it you need to delete existing file before running this script
+    exit 0
+fi
 
 if [ $fnal -eq 0 ]; then
     echo " 
@@ -55,8 +64,6 @@ else
     fi
 fi
 
-PATH=/usr/sbin:$PATH
-ENSTORE_HOME=`ls -d ~enstore`
 
 if [ $this_host != $ENSTORE_CONFIG_HOST ];
 then
