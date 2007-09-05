@@ -26,8 +26,8 @@ ENSTORE_HOME=`ls -d ~enstore`
 
 if [ -s $ENSTORE_HOME/site_specific/config/setup-enstore ]
 then 
-    echo $ENSTORE_HOME/site_specific/config/setup-enstore exists.
-    echo If you want to recreate it you need to delete existing file before running this script
+    echo "$ENSTORE_HOME/site_specific/config/setup-enstore exists."
+    echo "If you want to recreate it you need to delete existing file before running this script"
     exit 0
 fi
 
