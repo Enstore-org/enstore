@@ -1709,7 +1709,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.max_file_size = self.keys.get('max_file_size', 2*GB - 2*KB)
         self.max_suspect_movers = self.keys.get('max_suspect_movers',3) # maximal number of movers in the suspect volume list
         self.max_suspect_volumes = self.keys.get('max_suspect_volumes', 100) # maximal number of suspected volumes for alarm generation
-        self.blank_error_increment = self.keys.get('blank_error_increment', 5) # this + max_suspect_movers shuold not be more than total number of movers 
+        self.blank_error_increment = self.keys.get('blank_error_increment', 5) # this + max_suspect_movers shuold not be more than total number of movers
+        self.max_requests = self.keys.get('max_requests', 1000) # maximal number of requests in the queue
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
@@ -1748,6 +1749,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         self.volume_assert_list = []
 
+    def accept_request(self, ticket):
+        if self.pending_work.queue_length > self.max_requests:
+            # allow only adminpri
+            if ticket['encp']['basepri'] > -1:
+                return 1
+            return 0
+        return 1
+    
+        
     # check startup flag
     def is_starting(self):
         if self.startup_flag:
@@ -1879,6 +1889,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                                 "You have no permission to write from this host")
             self.reply_to_caller(ticket)
             return
+            
+        # have we exceeded the number of allowed requests?
+        if self.accept_request(ticket) == 0:
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
             
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
@@ -2079,6 +2095,12 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
             self.reply_to_caller(ticket)
             return
+        # have we exceeded the number of allowed requests?
+        if self.accept_request(ticket) == 0:
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
+
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):

@@ -674,6 +674,7 @@ class Request_Queue:
         # mounted volume
         self.adm_pri_to = adm_pri_to
         self.adm_pri_t0 = 0.
+        self.queue_length = 0
 
     def start_cycle(self):
         self.process_admin_queue = 1
@@ -700,6 +701,8 @@ class Request_Queue:
         ticket['encp']['basepri'] = basepri
         ticket['encp']['adminpri'] = adm_pri
         rq, stat = queue.put(basepri, ticket,t_time)
+        self.queue_length = self.queue_length + 1 
+        
         return rq, stat
     
     # delete the record
@@ -709,6 +712,8 @@ class Request_Queue:
         else:
             queue = self.regular_queue
         queue.delete(record)
+        if self.queue_length > 0:
+           self.queue_length = self.queue_length - 1 
 
     def get_admin_request(self, label='',location='', next=0):
         rq = self.admin_queue.get(label=label, location= location, next=next)
