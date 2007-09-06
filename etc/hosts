@@ -1,4 +1,4 @@
-127.0.0.1		localhost localhost.localdomain
+127.0.0.1		localhost		localhost.localdomain
 #
 # There is nothing like running your own nameserver.  Unfortunately
 # this list of hosts and ips is necessary to prevent failures due to
@@ -14,7 +14,7 @@
 131.225.164.23		d0ensrv3.fnal.gov	d0ensrv3
 131.225.164.84		d0ensrv4.fnal.gov	d0ensrv4
 131.225.164.85		d0ensrv5.fnal.gov	d0ensrv5
-131.225.164.83		d0ensrv6.fnal.gov	d0ensrv6
+#131.225.164.83		d0ensrv6.fnal.gov	d0ensrv6
 131.225.164.49		d0ensrv7.fnal.gov	d0ensrv7
 131.225.164.24		d0enmvr1a.fnal.gov	d0enmvr1a
 131.225.164.25		d0enmvr2a.fnal.gov	d0enmvr2a
@@ -63,15 +63,15 @@
 131.225.164.120		d0enmvr58a.fnal.gov	d0enmvr58a
 131.225.164.121		d0enmvr59a.fnal.gov	d0enmvr59a
 131.225.164.62		d0enload.fnal.gov	d0enload
-131.225.164.1		rip1.fnal.gov		rip1
-131.225.164.2		rip2.fnal.gov		rip2
-131.225.164.3		rip3.fnal.gov		rip3
-131.225.164.4		rip4.fnal.gov		rip4
-131.225.164.5		rip5.fnal.gov		rip5
-131.225.164.6		rip6.fnal.gov		rip6
-131.225.164.7		rip7.fnal.gov		rip7
-131.225.164.8		rip8.fnal.gov		rip8
-131.225.164.16		ripsgi.fnal.gov		ripsgi
+#131.225.164.1		rip1.fnal.gov		rip1
+#131.225.164.2		rip2.fnal.gov		rip2
+#131.225.164.3		rip3.fnal.gov		rip3
+#131.225.164.4		rip4.fnal.gov		rip4
+#131.225.164.5		rip5.fnal.gov		rip5
+#131.225.164.6		rip6.fnal.gov		rip6
+#131.225.164.7		rip7.fnal.gov		rip7
+#131.225.164.8		rip8.fnal.gov		rip8
+#131.225.164.16		ripsgi.fnal.gov		ripsgi
 
 131.225.13.59		stkensrv0.fnal.gov	stkensrv0
 131.225.13.1		stkensrv1.fnal.gov	stkensrv1
@@ -188,9 +188,9 @@
 131.225.13.84		stkendm3a.fnal.gov	stkendm3a
 131.225.13.88		stkendm4a.fnal.gov	stkendm4a
 131.225.13.76		stkenload.fnal.gov	stkenload
-131.225.13.18		stkentst1.fnal.gov	stkentst1
-131.225.13.20		rip9.fnal.gov		rip9
-131.225.13.22		rip10.fnal.gov		rip10
+#131.225.13.18		stkentst1.fnal.gov	stkentst1
+#131.225.13.20		rip9.fnal.gov		rip9
+#131.225.13.22		rip10.fnal.gov		rip10
 
 131.225.13.39		eagpnfs1.fnal.gov	eagpnfs1
 
@@ -269,6 +269,12 @@
 192.168.89.3		d0ensrv2p
 192.168.89.4		d0ensrv3p
 192.168.89.5		d0ensrv4p
+# .6 - .14 are the new d0en stack - SJN
+192.168.89.6		d0ensrv0np
+192.168.89.7		d0ensrv1np
+192.168.89.8		d0ensrv2np
+192.168.89.9		d0ensrv3np
+192.168.89.10		d0ensrv4np
 192.168.89.11		d0ensrv0raid
 192.168.89.12		d0ensrv1raid
 192.168.89.13		d0ensrv2raid
