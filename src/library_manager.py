@@ -2988,7 +2988,9 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
         self.restrictor.read_config()
-
+        self.max_requests = self.keys.get('max_requests', 2000) # maximal number of requests in the queue
+        
+        
 class LibraryManagerInterface(generic_server.GenericServerInterface):
 
     def __init__(self):
