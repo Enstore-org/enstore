@@ -41,7 +41,14 @@ fi
 echo "Creating .bashrc"
 cp $ENSTORE_DIR/external_distr/.bashrc $ENSTORE_HOME
 chown enstore.enstore $ENSTORE_HOME/.bashrc
- 
+
+if [ ! -d $ENSTORE_HOME/CRON ]
+then
+    echo "Creating $ENSTORE_HOME/CRON"
+    mkdir $ENSTORE_HOME/CRON
+    chown enstore.enstore $ENSTORE_HOME/CRON
+fi
+
 echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
 if [ ! -d "/usr/local/etc" ]
 then
