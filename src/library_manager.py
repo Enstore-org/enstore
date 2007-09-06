@@ -1756,7 +1756,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             if ticket['encp']['adminpri'] > -1:
                 rc= 1
             rc = 0
-        rc = 1
+        else:
+            rc = 1
         Trace.trace(201, "rc %s"%(rc,))
         return rc
     
