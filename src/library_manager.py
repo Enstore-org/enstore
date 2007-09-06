@@ -1754,9 +1754,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         if self.pending_work.queue_length > self.max_requests:
             # allow only adminpri
             if ticket['encp']['adminpri'] > -1:
-                return 1
-            return 0
-        return 1
+                rc= 1
+            rc = 0
+        rc = 1
+        Trace.trace(201, "rc %s"%(rc,))
+        return rc
     
         
     # check startup flag
