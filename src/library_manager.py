@@ -1899,7 +1899,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
             #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
-            
+            return
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         # mangle file family for file copy request
@@ -2104,7 +2104,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket["status"] = (e_errors.OK, None)
             self.reply_to_caller(ticket)
             #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
-
+            return
+        
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         if ticket.has_key('version'):
