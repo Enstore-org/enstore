@@ -1750,10 +1750,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.volume_assert_list = []
 
     def accept_request(self, ticket):
-        Trace.trace(201,"queue %s max rq %s"%(self.pending_work.queue_length, self.max_requests)) 
+        Trace.trace(201,"queue %s max rq %s priority %s"%(self.pending_work.queue_length, self.max_requests, ticket['encp']['adminpri'])) 
         if self.pending_work.queue_length > self.max_requests:
             # allow only adminpri
-            if ticket['encp']['basepri'] > -1:
+            if ticket['encp']['adminpri'] > -1:
                 return 1
             return 0
         return 1
