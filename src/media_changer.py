@@ -99,9 +99,10 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
         self.acls_host  =  self.mc_config.get('acls_host', 'UNKNOWN')
 	self.acls_uname =  self.mc_config.get('acls_uname','UNKNOWN')
 
-        self.alive_interval = monitored_server.get_alive_interval(self.csc, medch, self.mc_config)
-        dispatching_worker.DispatchingWorker.__init__(self,
-                                                      (self.mc_config['hostip'], self.mc_config['port']))
+        self.alive_interval = monitored_server.get_alive_interval(
+		self.csc, medch, self.mc_config)
+        dispatching_worker.DispatchingWorker.__init__(
+		self, (self.mc_config['hostip'], self.mc_config['port']))
         self.idleTimeLimit = 600  # default idle time in seconds
         self.lastWorkTime = time.time()
         self.robotNotAtHome = 1
@@ -178,9 +179,9 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
                               'max_work':self.max_work,
                               'worklist':result})
 
-    def viewdrive(self,ticket):
-        ticket["function"] = "getDriveState"
-        return self.DoWork( self.getDriveState, ticket)
+    #def viewdrive(self,ticket):
+    #    ticket["function"] = "getDriveState"
+    #    return self.DoWork( self.getDriveState, ticket)
 
     # load volume into the drive;  default, overridden for other media changers
     def load(self,
@@ -963,6 +964,8 @@ class STK_MediaLoader(MediaLoaderMethods):
         # build the command, and what to look for in the response
         command = "query volume all"
         answer_lookfor = "query volume all"
+	#command = "query volume VOF111"
+        #answer_lookfor = "query volume VOF111"
 
         # execute the command and read the response
         # FIXME - what if this hangs?
@@ -977,24 +980,41 @@ class STK_MediaLoader(MediaLoaderMethods):
 
         volume_list = []
         for line in response:
-	    if line.find("Volume Status") >= 0 or line.find("Identifier") >= 0:
+	    if line.find("ACSSA") >= 0 or line.find("Volume Status") >= 0 or \
+		   line.find("Identifier") >= 0 or len(line) == 0:
 	        #This is some other information.
 	        continue
 
 	    volume = line[1:13].strip()
 	    state = line[13:29].strip()
 	    location = line[31:45].strip()
-	    type = line[47:].strip()
+	    media_type = line[47:].strip()
 	    
 	    volume_list.append({"volume" : volume,
 			       "state" : state,
 			       "location" : location,
-			       "type" : type,
+			       "type" : media_type,
 			       })
 
-	ticket['volume_list'] = volume_list
 	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
+	reply=ticket.copy()
+	reply['volume_list'] = volume_list
+	addr = ticket['callback_addr']
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(ticket['callback_addr'])
+            r = callback.write_tcp_obj(sock,reply)
+            sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,
+			 "Error calling write_tcp_obj. Callback addr. %s"
+			 % (addr,))
+            
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+        return
 
     def list_slots(self, ticket):
         # build the command, and what to look for in the response
@@ -1658,13 +1678,13 @@ class STK_MediaLoader(MediaLoaderMethods):
 	    state = line[14:29].strip()
 	    status = line[30:41].strip()
 	    volume = line[42:52].strip()
-	    type = line[53:].strip()
+	    drive_type = line[53:].strip()
 	    
 	    drive_list.append({"name" : name.replace(" ", ""),
 			       "state" : state,
 			       "status" : status,
 			       "volume" : volume,
-			       "type" : type,
+			       "type" : drive_type,
 			       })
 
 	ticket['drive_list'] = drive_list
@@ -2091,7 +2111,7 @@ class MediaLoaderInterface(generic_server.GenericServerInterface):
         # bomb out if we don't have a media_changer
         if len(self.args) < 1 :
             self.missing_parameter(self.parameters())
-            self.print_help(),
+            self.print_help()
             sys.exit(1)
         else:
             self.name = self.args[0]
