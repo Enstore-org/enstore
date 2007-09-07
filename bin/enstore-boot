@@ -98,7 +98,7 @@ case "$1" in
         x=/etc/rc.d/init.d/enstore-boot
         rm -f $x; cp $ENSTORE_DIR/bin/enstore-boot $x
         cd /etc/rc.d/rc3.d
-        x=S99zzzenstore-boot
+        x=S99yyyenstore-boot
         rm -f $x; ln -s ../init.d/enstore-boot $x
         cd /etc/rc.d/rc6.d
         x=K01aaaenstore-boot
