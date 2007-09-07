@@ -2,7 +2,7 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+node=`hostname -s`
 gang=`gang`
 gangfile=/usr/local/etc/farmlets/${gang}-alla
 
@@ -57,6 +57,7 @@ cat << EOF >>$output
 <td align=center><b><font color="$color">In<br>Production?</font></b></td>
 <td align=center><b><font color="$color">Bogomips</font></b></td>
 <td align=center><b><font color="$color">Memory (MB)<br>Free/Total</font></b></td>
+<td align=center><b><font color="$color">Swap (MB)<br>Free/Total</font></b></td>
 <td align=center><b><font color="$color">Time<br>of Day</font></b></td>
 <td align=center><b><font color="$color">Uptime</font></b></td>
 <td align=center><b><font color="$color">Users</font></b></td>
@@ -78,5 +79,5 @@ cat << EOF >>$output
 <hr>
 <h1><center>Done: `date`</center></h1>
 <hr>
-</body>
+</body></html>
 EOF
