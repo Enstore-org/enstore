@@ -12,6 +12,7 @@
 #include <X11/Xatom.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 /* These are used as arguments to nearly every Xlib routine, so it saves 
  * routine arguments to declare them global.  If there were 
