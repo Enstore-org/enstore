@@ -75,7 +75,6 @@ then
     if [ $fnal -ne 0 ]
     then
 	scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.k5login $ENSTORE_HOME
-	scp -p root\@$ENSTORE_CONFIG_HOST:/root/.k5login /root
     fi
     if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
     then
