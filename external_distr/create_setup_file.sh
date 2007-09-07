@@ -69,11 +69,12 @@ if [ $this_host != $ENSTORE_CONFIG_HOST ];
 then
     echo "trying to get setup-enstore from enstore configuration host"
     scp -rp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
-    if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
+    if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
     then
 	exit 0
     fi
-    if [ $fnal -ne 0 ]
+    echo "FNAL $fnal"
+    if [ $fnal -ne 0 ];
     then
 	echo "trying to get .bashrc and .bash_profile from enstore configuration host"
 	scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME

@@ -29,7 +29,7 @@ if [ $fnal = "fnal" ]; then
     rm -rf $ENSTORE_HOME/enstore
     ln -s $ENSTORE_DIR $ENSTORE_HOME/enstore
 fi
-if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
+if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
 then
     # this allows to not run this script on remote nodes.
     $ENSTORE_DIR/external_distr/create_setup_file.sh $fnal
@@ -43,7 +43,7 @@ then
 fi
 chown enstore.enstore $ENSTORE_HOME/.bashrc
 
-if [ ! -d $ENSTORE_HOME/CRON ]
+if [ ! -d $ENSTORE_HOME/CRON ];
 then
     echo "Creating $ENSTORE_HOME/CRON"
     mkdir $ENSTORE_HOME/CRON
@@ -51,7 +51,7 @@ then
 fi
 
 echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
-if [ ! -d "/usr/local/etc" ]
+if [ ! -d "/usr/local/etc" ];
 then
     mkdir -p /usr/local/etc
 else
