@@ -1881,6 +1881,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
         
     def write_to_hsm(self, ticket):
+        Trace.trace(112, "write_to_hasm: ticket %s"%(ticket))
         key = encp_ticket.write_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
@@ -2083,6 +2084,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             
 
     def read_from_hsm(self, ticket):
+        Trace.trace(112, "read_from_hasm: ticket %s"%(ticket))
+
         key = encp_ticket.read_request_ok(ticket)
         if key:
             ticket['status'] = (e_errors.MALFORMED,
