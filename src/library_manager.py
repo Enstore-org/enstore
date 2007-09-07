@@ -1895,12 +1895,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.reply_to_caller(ticket)
             return
             
-        # have we exceeded the number of allowed requests?
-        if self.accept_request(ticket) == 0:
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
-            return
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
         # mangle file family for file copy request
@@ -1921,6 +1915,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
+
+
         if ticket.has_key('version'):
             version=ticket['version'].split()[0]
         else:
@@ -1965,6 +1961,14 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'write'
         ff = ticket['vc']['file_family']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+
+        # have we exceeded the number of allowed requests?
+        if self.accept_request(ticket) == 0:
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
+            return
+
         if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOWRITE, e_errors.BROKEN):
             if self.lm_lock in  (e_errors.LOCKED, e_errors.NOWRITE):
                 ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
@@ -2102,12 +2106,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             ticket['status'] = (e_errors.USERERROR, "Wrong method used %s"%(method,))
             self.reply_to_caller(ticket)
             return
-        # have we exceeded the number of allowed requests?
-        if self.accept_request(ticket) == 0:
-            ticket["status"] = (e_errors.OK, None)
-            self.reply_to_caller(ticket)
-            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
-            return
         
         if ticket.has_key('vc') and ticket['vc'].has_key('file_family_width'):
             ticket['vc']['file_family_width'] = int(ticket['vc']['file_family_width']) # ff width must be an integer
@@ -2141,6 +2139,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         work = 'read'
         vol = ticket['fc']['external_label']
         #if self.lm_lock == 'locked' or self.lm_lock == 'ignore':
+        # have we exceeded the number of allowed requests?
+        if self.accept_request(ticket) == 0:
+            ticket["status"] = (e_errors.OK, None)
+            self.reply_to_caller(ticket)
+            #Trace.notify("client %s %s %s %s" % (host, work, ff, self.lm_lock))
+            return
+
         if self.lm_lock in (e_errors.LOCKED, 'ignore', 'pause', e_errors.NOREAD, e_errors.BROKEN):
             if self.lm_lock in (e_errors.LOCKED, e_errors.NOREAD):
                 ticket["status"] = (self.lm_lock, "Library manager is locked for external access")
