@@ -75,8 +75,9 @@ then
     fi
     if [ $fnal -ne 0 ]
     then
-	scp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME
-	scp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bash_profile $ENSTORE_HOME
+	echo "trying to get .bashrc and .bash_profile from enstore configuration host"
+	scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME
+	scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bash_profile $ENSTORE_HOME
     fi
 
 fi
