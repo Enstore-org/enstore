@@ -28,6 +28,17 @@ ENSTORE_HOME=`ls -d ~enstore`
 if [ $fnal = "fnal" ]; then
     rm -rf $ENSTORE_HOME/enstore
     ln -s $ENSTORE_DIR $ENSTORE_HOME/enstore
+fi
+if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
+then
+    # this allows to not run this script on remote nodes.
+    $ENSTORE_DIR/external_distr/create_setup_file.sh $fnal
+fi
+source $ENSTORE_HOME/site_specific/config/setup-enstore
+
+echo "Creating .bashrc"
+if [ $fnal = "fnal" ];
+then 
     ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
     kdestroy
     KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
@@ -46,17 +57,6 @@ if [ $fnal = "fnal" ]; then
     if [ $? -eq 0 ]; then
 	chmod 666 $cred_f
     fi
-fi
-if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ]
-then
-    # this allows to not run this script on remote nodes.
-    $ENSTORE_DIR/external_distr/create_setup_file.sh $fnal
-fi
-source $ENSTORE_HOME/site_specific/config/setup-enstore
-
-echo "Creating .bashrc"
-if [ $fnal = "fnal" ];
-then 
     echo "trying to get .bashrc configuration host"
     scp -rp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME
 else
