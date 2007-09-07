@@ -62,7 +62,7 @@ echo 'Checking if user "enstore" exists'
 id enstore
 if [ $? -ne 0 ]; then
 	echo 'Creating user "enstore"'
-	useradd -u 6209 -g enstore enstore
+	useradd -u 5744 -g enstore enstore
 fi
 chmod 775 ~enstore
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
