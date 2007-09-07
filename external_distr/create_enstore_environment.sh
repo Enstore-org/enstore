@@ -36,30 +36,8 @@ then
 fi
 source $ENSTORE_HOME/site_specific/config/setup-enstore
 
-echo "Creating .bashrc"
-if [ $fnal = "fnal" ];
-then 
-    ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
-    kdestroy
-    KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
-    defaultDomain=".fnal.gov"
-
-    # we need the full domain name, if no domain is there, add default one on
-
-    if expr $this_host : '.*\.' >/dev/null;then 
-       thisHost=$this_host;
-    else 
-       thisHost=${this_host}${defaultDomain};
-    fi
-    kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-    # change permissions for credentials file
-    cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
-    if [ $? -eq 0 ]; then
-	chmod 666 $cred_f
-    fi
-    echo "trying to get .bashrc configuration host"
-    scp -rp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME
-else
+if [ $fnal != "fnal" ];
+then
     echo "Creating .bashrc"
     cp $ENSTORE_DIR/external_distr/.bashrc $ENSTORE_HOME
 fi
