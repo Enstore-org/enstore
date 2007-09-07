@@ -73,7 +73,7 @@ then
     then
 	exit 0
     fi
-    if [ $ fnal -ne 0 ]
+    if [ $fnal -ne 0 ]
     then
 	scp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bashrc $ENSTORE_HOME
 	scp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bash_profile $ENSTORE_HOME
