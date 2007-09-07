@@ -6,29 +6,18 @@ n=`uname -n`
 r=`uname -r`
 v=`uname -v`
 
-oldIFS=$IFS
-IFS="
-"
-
 #b="bogo:"
-b=""
-for i in `cat /proc/cpuinfo | grep bogo`; do
- b="$b `echo $i|awk '{ print \$NF; }'`"
-done
+b=`awk '/bogo/ {printf "%.0f ", $NF}' /proc/cpuinfo`
 
 #f=free memory
 #t=total memory
-for i in `cat /proc/meminfo| grep "^Mem:"`; do
- t=`echo $i|awk '{ print $2/1024/1024 }'|cut -f1 -d.`
- f=`echo $i|awk '{ print $4/1024/1024 }'|cut -f1 -d.`
-done
+t=`awk '/^MemTotal:/ {printf "%.0f", $2/1024}' /proc/meminfo`
+f=`awk '/^MemFree:/  {printf "%.0f", $2/1024}' /proc/meminfo`
 if [ -z "$t" -a -z "$f" ]; then
-    #Linux 2.6 kernels do this differently now.
-    t=`grep "^MemTotal:" /etc/meminfo | awk { $2/1024 }
-    t=`grep "^MemFree:" /etc/meminfo | awk { $2/1024 }
+    # Linux 2.4 kernels did this differently
+    t=`awk '/^Mem:/ {printf "%.0f", $2/1024/1024}' /proc/meminfo`
+    f=`awk '/^Mem:/ {printf "%.0f", $4/1024/1024}' /proc/meminfo`
 fi
-
-IFS=$oldIFS
 
 upt=`uptime`
 #echo $upt
@@ -62,9 +51,6 @@ coral=#FF7F50
 teal=#008080
 turquoise=#40E0D0
 navy=#000080
-
-bgcolor=$white
-text=$navy
 
 if [ -r /PRODUCTION ]; then
    color=$blue
