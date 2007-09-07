@@ -11,7 +11,7 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-}" = "64" ] ; then export x_64="_x64"; shift; else x_64=""; fi
 if [ "${1:-}" = "server" ] ; then export server=1; shift; else server=0; fi
 if [ "${1:-}" = "fnal" ]; then export fnal=$1; shift; else fnal="";fi
-fnal="fnal"
+
 echo "Installing enstore rpm and required products"
 echo "This is a fermilab specific installation"
 if [ "`whoami`" != 'root' ]
