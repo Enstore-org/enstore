@@ -180,7 +180,7 @@ then
     cp -f $copy_conf $config_file
 fi
     
-chown enstore.enstore  $ENSTORE_HOME/site_specific/config/*
+chown -R enstore.enstore  $ENSTORE_HOME
 if [ $fnal -ne 0 ]
 then
     kdestroy
