@@ -5,6 +5,7 @@ import os
 import time
 import tempfile
 import string
+import sys
 
 import enstore_plotter_framework
 import enstore_plotter_module
