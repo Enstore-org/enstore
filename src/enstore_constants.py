@@ -33,6 +33,12 @@ NO_DEBUG_LOG = "no_debug_log"
 IS_ALIVE = 1
 IS_DEAD = 0
 
+KB=1024L
+MB=KB*KB
+GB=KB*MB
+TB=KB*GB
+PB=KB*TB
+
 
 EXTRA_LINKS = "extra_links"
 ENSTORE_PLOTS = "enstore_plots"

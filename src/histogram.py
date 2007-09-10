@@ -43,12 +43,14 @@ class Attribute:
         self.time_axis_format="%y-%m-%d"
         self.opt_stat=False
         self.profile=False
-        
-
+        self.delete_data_file=True
 
     #
     # setters 
     #
+
+    def set_delete_data_file(self,yes=True):
+        self.delete_data_file=yes
                 
     def set_title(self,txt):
         self.title=txt
@@ -105,6 +107,9 @@ class Attribute:
     #
     # getters
     #
+
+    def is_delete_data_file(self):
+        return self.delete_data_file
 
     def get_text(self):
         return self.additional_text
@@ -187,7 +192,8 @@ class BasicHistogram(Attribute):
         
      def fill(self,command=""):
          print "Fill function is not implemented by BasicHistogram"
-       
+
+
 
 class Ntuple(BasicHistogram):
 
@@ -240,7 +246,8 @@ class Ntuple(BasicHistogram):
 
 
     def __del__(self):
-        os.system("rm -rf %s"%(self.data_file_name,))
+        if self.is_delete_data_file() == True:
+            os.system("rm -rf %s"%(self.data_file_name,))
        
     def dump(self):
         print repr(self.__dict__)
@@ -326,7 +333,8 @@ class Plotter:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         for hist in self.histogram_list:
             full_file_name=dir+hist.data_file_name
-            os.system("rm -f %s"%full_file_name) # remove pts file
+            if hist.is_delete_data_file() == True:
+                os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
         
 class Histogram1D(BasicHistogram):
@@ -840,7 +848,8 @@ class Histogram1D(BasicHistogram):
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        os.system("rm -f %s"%full_file_name) # remove pts file
+        if self.is_delete_data_file() == True:
+            os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
     def plot2(self, h,reflect=False,dir="./"):
@@ -902,6 +911,8 @@ class Histogram1D(BasicHistogram):
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
+        if self.is_delete_data_file() == True:
+            os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%full_file_name1) # remove pts file
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
