@@ -702,7 +702,7 @@ class Request_Queue:
         ticket['encp']['adminpri'] = adm_pri
         rq, stat = queue.put(basepri, ticket,t_time)
         self.queue_length = self.queue_length + 1 
-        Trace.trace(201, "PUT %s"%(self.queue_length,)
+        Trace.trace(201, "PUT %s"%(self.queue_length,))
         return rq, stat
     
     # delete the record
@@ -714,7 +714,7 @@ class Request_Queue:
         queue.delete(record)
         if self.queue_length > 0:
            self.queue_length = self.queue_length - 1 
-           Trace.trace(201, "DELETE %s"%(self.queue_length,)
+           Trace.trace(201, "DELETE %s"%(self.queue_length,))
 
     def get_admin_request(self, label='',location='', next=0):
         rq = self.admin_queue.get(label=label, location= location, next=next)
