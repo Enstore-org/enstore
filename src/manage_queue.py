@@ -701,8 +701,9 @@ class Request_Queue:
         ticket['encp']['basepri'] = basepri
         ticket['encp']['adminpri'] = adm_pri
         rq, stat = queue.put(basepri, ticket,t_time)
-        self.queue_length = self.queue_length + 1 
-        Trace.trace(201, "PUT %s"%(self.queue_length,))
+        if stat == e_errors.OK:
+            self.queue_length = self.queue_length + 1 
+            Trace.trace(201, "PUT %s"%(self.queue_length,))
         return rq, stat
     
     # delete the record
