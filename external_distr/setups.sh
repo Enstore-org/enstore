@@ -27,7 +27,7 @@ setup() {
                 . `$UPS_DIR/bin/ups setup $last`
 		fi
         fi
-}	return 0
+	return 0
 }
 
 # fakes ups function for products enstore, python and ftt for anything else uses ups
