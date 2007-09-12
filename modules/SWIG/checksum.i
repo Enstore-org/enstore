@@ -2,6 +2,7 @@
 %{
 /* $Id$ */
 #include "zlib.h"
+#include <stdint.h>
 
 unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
 	return adler32(crc, buf+offset, nbytes);
@@ -9,20 +10,27 @@ unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nb
 
 %}
 
+/* Include in the generated wrapper file */
 %include "typemaps.i"
-
 
 #ifdef SWIG_VERSION
 /* SWIG_VERSION was first used in swig 1.3.11 and has hex value 0x010311. */
 
 %{
-/* Include in the generated wrapper file */
-typedef unsigned long int zint;
+#ifdef UINT32_MAX
+   typedef uint32_t zint;
+#else
+   typedef unsigned int zint;
+#endif
 typedef char * cptr;
 typedef long long off_t_2;
 %}
 /* Tell SWIG about it */
-typedef unsigned long int zint;
+#ifdef UINT32_MAX
+   typedef uint32_t zint;
+#else
+   typedef unsigned int zint;
+#endif
 typedef char * cptr;
 typedef long long off_t_2;
 
@@ -37,7 +45,7 @@ typedef long long off_t_2;
     }
 }
 %typemap(out) zint {
-        $result = PyLong_FromUnsignedLong((unsigned long)$1);
+        $result = PyLong_FromUnsignedLong((zint)$1);
 }
 %typemap(in) cptr{
         $1= PyString_AsString($input);
@@ -72,7 +80,7 @@ typedef long long off_t_2;
     }
 }
 %typemap(python,out) zint {
-	$target= PyLong_FromUnsignedLong((unsigned long)$source);
+	$target= PyLong_FromUnsignedLong((zint)$source);
 }
 %typemap(python, in) cptr{
         $target= PyString_AsString($source);
