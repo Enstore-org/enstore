@@ -1,24 +1,50 @@
 #!/bin/bash
+# $Id$
 # specify bash not sh to run on SunOS
 # Fermilab internal enstore system use ups / upd product installation and setup
 # utilities
 # outside fermilab we do not have this environment
-# this is to replace the functionality, provided by corresponding utility tha uses ups/upd
+# this is to replace the functionality, provided by corresponding utility that uses ups/upd
 # the default place os this utility is /usr/local/etc/setups.sh
-# fakes setup function
+# fakes setup function for products enstore, python and ftt for anything else uses ups
+
+if [ -f /fnal/ups/etc/setups.sh ]
+then
+        . /fnal/ups/etc/setups.sh
+elif [ -f /local/ups/etc/setups.sh ]
+then
+        . /local/ups/etc/setups.sh
+fi
+
 setup() {
-	return 0
+        last=${!#}
+        if [ $last = "enstore" -o $last = "python" -o $last = "ftt" ]
+        then
+                return 0
+        else
+		if [ "${UPS_DIR:-x}" != "x" ]
+		then
+                . `$UPS_DIR/bin/ups setup $last`
+		fi
+        fi
+}	return 0
 }
 
-# fake ups function
+# fakes ups function for products enstore, python and ftt for anything else uses ups
 ups() {
 	last=${!#}
 	if [ $last == "enstore" ];
 		then
 		echo $ENSTORE_DIR
-	else
-		return
+        elif [ $last = "enstore" -o $last = "python" -o $last = "ftt" ]
+        then
+                return
 		#echo `type $last`
+	else
+		if [ "${UPS_DIR:-x}" != "x" ]
+		then
+		    $UPS_DIR/bin/ups "$@"
+		fi
 	fi 
 }
 if [ "${ENSTORE_DIR:-x}" = "x" ];
