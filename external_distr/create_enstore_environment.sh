@@ -40,10 +40,22 @@ if [ $fnal != "fnal" ];
 then
     echo "Creating .bashrc"
     cp $ENSTORE_DIR/external_distr/.bashrc $ENSTORE_HOME
-    ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
-    chown enstore.enstore $ENSTORE_HOME/gettkt
 fi
 chown enstore.enstore $ENSTORE_HOME/.bashrc
+
+if [ $fnal = "fnal" ];
+then
+    ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
+    chown enstore.enstore $ENSTORE_HOME/gettkt
+    if [ -f $ENSTORE_DIR/etc/xinetd.conf ]
+    then
+	cp -f $ENSTORE_DIR/etc/xinetd.conf /etc/xinetd.conf
+    fi
+    if [ -f $ENSTORE_DIR/etc/ntp.conf ]
+    then 
+	cp -f $ENSTORE_DIR/etc/ntp.conf /etc/ntp.conf 
+    fi
+
 if [ ! -f $ENSTORE_HOME/.forward ]
 then 
     echo "Creating $ENSTORE_HOME/.forward"
