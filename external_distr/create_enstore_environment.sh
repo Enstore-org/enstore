@@ -40,8 +40,22 @@ if [ $fnal != "fnal" ];
 then
     echo "Creating .bashrc"
     cp $ENSTORE_DIR/external_distr/.bashrc $ENSTORE_HOME
+    ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
+    chown enstore.enstore $ENSTORE_HOME/gettkt
 fi
 chown enstore.enstore $ENSTORE_HOME/.bashrc
+if [ ! -f $ENSTORE_HOME/.forward ]
+then 
+    echo "Creating $ENSTORE_HOME/.forward"
+    echo $ENSTORE_MAIL > $ENSTORE_HOME/.forward
+    chown enstore.enstore $ENSTORE_HOME/.forward
+fi
+if [ ! -f /root/.forward ]
+then 
+    echo "Creating /root/.forward"
+    echo $ENSTORE_MAIL > /root/.forward
+fi
+
 
 if [ ! -d $ENSTORE_HOME/CRON ];
 then
@@ -49,6 +63,12 @@ then
     mkdir $ENSTORE_HOME/CRON
     chown enstore.enstore $ENSTORE_HOME/CRON
 fi
+if [ ! -d /root/CRON ];
+then
+    echo "Creating /root/CRON"
+    mkdir /root/CRON
+fi
+
 
 echo "Copying $ENSTORE_DIR/external_distr/setups.sh to /usr/local/etc"
 if [ ! -d "/usr/local/etc" ];
