@@ -1,0 +1,1 @@
+10 * * * * enstore /home/enstore/enstore/sbin/ecron -p backup enstore backup > /dev/null 2> /dev/null
