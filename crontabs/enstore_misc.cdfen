@@ -1,0 +1,11 @@
+14 9,14,19 * * * enstore /home/enstore/enstore/sbin/ecron -p silocheck  /home/enstore/enstore/sbin/silo-check > /dev/null 2>/dev/null
+0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p helpDeskTicket  /home/enstore/enstore/bin/do_helpDeskTicket > /dev/null 2> /dev/null
+#
+#
+15 * * * * root sh -c 'chown  -R enstore.enstore /home/enstore/enstore; cd /home/enstore/enstore; chmod g+w etc etc/*.conf etc/CVS etc/CVS/Entries*'
+0-59/10 * * * * root /home/enstore/enstore/sbin/ntpset -q >/dev/null 2>/dev/null
+#03 00 * * 1 root /local/ups/prd/apache/v1_3_26/ups/monthlystats
+#0 * * * * root /home/enstore/enstore/sbin/ecron -p STKDrvBusy  /home/enstore/enstore/sbin/STKDrvBusy plot > /dev/null 2> /dev/null
+17 00 * * * root /home/enstore/enstore/sbin/ecron -p cppnfsFastBackupHISTOGRAM enrcp cdfensrv1:/root/CRON/pnfsFastBackupHISTOGRAM /tmp >/dev/null 2>/dev/null
+#30 06 14 04 * root /usr/local/bin/drain >/tmp/drainout 2> /tmp/drainout
+03 00 * * 1 root /fnal/ups/prd/apache/v1_3_31/Linux-2/ups/monthlystats

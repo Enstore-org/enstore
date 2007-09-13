@@ -1,0 +1,6 @@
+30 0 * * * enstore /bin/cp /home/enstore/enstore/etc/*.gif   /fnal/ups/prd/www_pages/enstore/
+10 * * * * enstore /home/enstore/enstore/etc/make_enstore_system_html /home/enstore/enstore/etc/enstore_system_html_cdfensrv2;/bin/cp /home/enstore/enstore/etc/*.html  /fnal/ups/prd/www_pages/enstore/; /home/enstore/enstore/sbin/ecron -p fix_url python /home/enstore/enstore/bin/fix_cgi_url.py --web_dir=/fnal/ups/prd/www_pages/enstore --cgi_url=http://www-cdfen.fnal.gov/cgi-bin > /dev/null 2> /dev/null
+5,20,35,50 * * * * enstore /home/enstore/enstore/sbin/ecron -p user_bytes python /home/enstore/enstore/src/get_total_bytes_counter.py /fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html cdf /fnal/ups/prd/www_pages/enstore/tape_inventory/VOLUME_QUOTAS_FORMATED > /dev/null 2> /dev/null
+#11 * * * * enstore /home/enstore/enstore/sbin/ecron -p fix_url python /home/enstore/enstore/bin/fix_cgi_url.py --web_dir=/fnal/ups/prd/www_pages/enstore --cgi_url=http://www-cdfen.fnal.gov/cgi-bin > /dev/null 2> /dev/null
+0-59/5 * * * * enstore /home/enstore/enstore/sbin/ecron -p enstoreSystem enstore system> /dev/null 2> /dev/null
+1-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p enstoreNetwork enstore network> /dev/null 2> /dev/null
