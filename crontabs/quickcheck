@@ -1,0 +1,1 @@
+0-59/10 * * * * root /home/enstore/enstore/sbin/ecron -p quickcheck routes quickcheck >/dev/null 2>/dev/null
