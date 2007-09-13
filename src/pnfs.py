@@ -1394,6 +1394,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
     def set_bit_file_id(self,value,filepath=None):
         if filepath:
             self.writelayer(enstore_constants.BFID_LAYER, value, filepath)
+            self.get_bit_file_id(filepath)
         else:
             self.writelayer(enstore_constants.BFID_LAYER, value)
             self.get_bit_file_id()
@@ -1420,6 +1421,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
         Trace.trace(11,'value='+value)
         if filepath:
             self.writelayer(enstore_constants.XREF_LAYER, value, filepath)
+            self.get_xreference(filepath)
         else:
             self.writelayer(enstore_constants.XREF_LAYER, value)
             self.get_xreference()
