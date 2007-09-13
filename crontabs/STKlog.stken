@@ -1,0 +1,1 @@
+0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p STKlog STKlog /home/enstore/STK-LOG.html >/dev/null 2>/dev/null
