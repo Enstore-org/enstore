@@ -1,0 +1,1 @@
+50 * * * * root /home/enstore/enstore/sbin/ecron -p chkcrons nice -n 20 chkcrons  >/dev/null 2>/dev/null
