@@ -1,0 +1,6 @@
+30 0 * * * enstore /bin/cp /home/enstore/enstore/etc/*.gif   /fnal/ups/prd/www_pages/enstore/
+55,36 * * * * enstore /home/enstore/enstore/etc/make_enstore_system_html /home/enstore/enstore/etc/enstore_system_html_d0ensrv2;/bin/cp /home/enstore/enstore/etc/*.html  /fnal/ups/prd/www_pages/enstore/
+5,20,35,50 * * * * enstore /home/enstore/enstore/sbin/ecron -p user_bytes python /home/enstore/enstore/src/get_total_bytes_counter.py /fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html d0 /fnal/ups/prd/www_pages/enstore/tape_inventory/VOLUME_QUOTAS_FORMATED > /dev/null 2> /dev/null
+0-59/5 * * * * enstore /home/enstore/enstore/sbin/ecron -p enstoreSystem enstore system> /dev/null 2> /dev/null
+1-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p enstoreNetwork enstore network> /dev/null 2> /dev/null
+#4-59/5 * * * * root /home/enstore/enstore/sbin/ecron -p enstore_overall_status python /home/enstore/enstore/src/enstore_overall_status.py  > /dev/null 2> /dev/null
