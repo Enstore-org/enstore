@@ -23,6 +23,7 @@ Makefile.modules
 *_wrap.c
 *wrap_thread.c
 aci_shadow.py
+derrno.py
 checksum.py
 enroute.py
 ftt2.py
