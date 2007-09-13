@@ -1,0 +1,2 @@
+35 * * * * enstore /home/enstore/enstore/sbin/ecron -p make_tape_ingest_page /home/enstore/enstore/src/make_ingest_rates_html_page.py > /dev/null 2> /dev/null
+30 10,12,16,22 * * * enstore /home/enstore/isa-tools/bin/migration-summary > /diska/tape-inventory/MIGRATION_STATUS 2> /dev/null
