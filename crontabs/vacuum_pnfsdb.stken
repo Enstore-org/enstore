@@ -1,0 +1,1 @@
+45 4 * * * enstore /usr/bin/vacuumdb -z -a -U enstore > /dev/null 2> /dev/null
