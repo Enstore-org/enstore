@@ -1,0 +1,1 @@
+0-55/5 * * * * root /home/enstore/enstore/sbin/ecron -q -p delfile -D TRASH_CAN=/diska/pnfs/trash/4 delfile.py >/dev/null 2>/dev/null
