@@ -1,0 +1,2 @@
+#15 0-23/4 * * * root /home/enstore/enstore/sbin/ecron -p pnfsFastBackup -setup pnfs nice -n 20 psqlBackup  >/dev/null 2>/dev/null
+15 0,12 * * * root /home/enstore/enstore/sbin/ecron -p pnfsFastBackup -setup pnfs nice -n 20 psqlBackupV8  >/dev/null 2>/dev/null
