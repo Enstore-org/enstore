@@ -1,0 +1,1 @@
+50 * * * * enstore /home/enstore/enstore/sbin/ecron -p offline_inventory -c 2 nice -n 20 python /home/enstore/enstore/src/inventory.py > /dev/null 2> /dev/null
