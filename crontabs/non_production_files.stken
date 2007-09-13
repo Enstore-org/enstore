@@ -1,0 +1,1 @@
+35 15 * * * enstore /home/enstore/enstore/sbin/ecron -p non_production_files non_production_files  > /dev/null 2>&1

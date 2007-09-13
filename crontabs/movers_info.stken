@@ -1,0 +1,1 @@
+#0-59/5 * * * * enstore /home/moibenko/enstore/tools/get_movers_info.sh > /dev/null 2 > /dev/null

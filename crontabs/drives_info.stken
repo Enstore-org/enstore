@@ -1,0 +1,1 @@
+48 06 * * * enstore /home/enstore/enstore/sbin/ecron -p drives_info drives_info.py  > /dev/null 2> /dev/null
