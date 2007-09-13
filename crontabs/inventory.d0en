@@ -1,0 +1,2 @@
+0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p noaccess  /home/enstore/enstore/sbin/noaccess-tapes > /dev/null 2> /dev/null
+30 0 * * * enstore /home/enstore/enstore/sbin/ecron -p cleaning_report '/home/enstore/enstore/bin/cleaning_report.py | tee /fnal/ups/prd/www_pages/enstore/tape_inventory/CLEANING| mail -s "D0EN Drive Cleaning Summary" enstore-admin@fnal.gov' >/dev/null 2> /dev/null
