@@ -1,0 +1,15 @@
+14 9,14,19 * * * enstore /home/enstore/enstore/sbin/ecron -p silocheck  /home/enstore/enstore/sbin/silo-check > /dev/null 2>/dev/null
+0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p helpDeskTicket  /home/enstore/enstore/bin/do_helpDeskTicket > /dev/null 2> /dev/null
+#
+#
+#10 * * * * enstore /home/joes/vc/production/aaacron.ksh > /dev/null 2> /dev/null
+#01 10 1-7 * 2 enstore /home/enstore/.bashrc ; /fnal/ups/prd/python/v2_2_3_E_1/bin/python /home/enstore/isa-tools/bin/RedBallAlarm.py > /tmp/redballalarm.log 2> /tmp/redballalarm.log
+#0 0 * * * enstore /home/enstore/enstore/sbin/ecron -p check_multiple /home/enstore/check_multiple > /dev/null 2> /dev/null
+#
+#
+#
+15 * * * * root sh -c 'chown  -R enstore.enstore /home/enstore/enstore; cd /home/enstore/enstore; chmod g+w etc etc/*.conf etc/CVS etc/CVS/Entries*'
+0-59/10 * * * * root /home/enstore/enstore/sbin/ntpset -q >/dev/null 2>/dev/null
+#10 9,14,19 * * * root /home/enstore/enstore/sbin/enrcp d0ensrv2:/diska/tape-inventory/VOLUMES_DEFINED /tmp/d0-VOLUMES_DEFINED >/dev/null 2>/dev/null
+#03 00 * * 1 root /local/ups/prd/apache/v1_3_26/ups/monthlystats
+17 00 * * * root /home/enstore/enstore/sbin/ecron -p cppnfsFastBackupHISTOGRAM enrcp stkensrv1:/root/CRON/pnfsFastBackupHISTOGRAM /tmp >/dev/null 2>/dev/null
