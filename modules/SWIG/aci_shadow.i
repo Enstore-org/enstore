@@ -146,7 +146,7 @@ struct aci_client_entry {
         bool_t avc;
         bool_t complete_access;
         bool_t dismount;
-        aci_range volser_range;
+	char volser_range[ACI_MAX_RANGES][ACI_RANGE_LEN];
         char drive_range [ACI_RANGE_LEN];
 };
 
