@@ -45,8 +45,11 @@ chown enstore.enstore $ENSTORE_HOME/.bashrc
 
 if [ $fnal = "fnal" ];
 then
-    ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
-    chown enstore.enstore $ENSTORE_HOME/gettkt
+    if [ ! -r $ENSTORE_HOME/gettkt ]
+    then
+	ln -s $ENSTORE_DIR/sbin/gettkt $ENSTORE_HOME/gettkt
+	chown enstore.enstore $ENSTORE_HOME/gettkt
+    fi
     if [ -f $ENSTORE_DIR/etc/xinetd.conf ]
     then
 	cp -f $ENSTORE_DIR/etc/xinetd.conf /etc/xinetd.conf
