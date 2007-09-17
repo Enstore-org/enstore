@@ -183,7 +183,7 @@ def int32(v):
 
 def __is_pnfs_local_path(filename, check_name_only = None):
     if os.uname()[0] == "SunOS":
-        mtab_filename = "/etc/mntab"
+        mtab_filename = "/etc/mnttab"
     else:
         mtab_filename = "/etc/mtab"
 
@@ -215,8 +215,8 @@ def __is_pnfs_local_path(filename, check_name_only = None):
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
-        Trace.log(e_errors.ERROR, "%s: %s",
-                  (os.strerror(sys.exc_info()[0]), sys.exc_info()[1]))
+        Trace.log(e_errors.ERROR, "%s: %s" %
+                  (str(sys.exc_info()[0]), str(sys.exc_info()[1])))
         #If we get here, then when the uninitialized rtn variable is
         # accessed causing the traceback, we will be able to see what
         # the error was that got us here in the log file.
