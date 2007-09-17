@@ -131,9 +131,10 @@ if [ $fnal -eq 0 ]; then
     read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
-    R=${ENSTORE_HOME}/enstore/etc/`$ENSTORE_DIR/ups/chooseConfig file`
+    ff=`$ENSTORE_DIR/ups/chooseConfig file`
+    R=${ENSTORE_HOME}/enstore/etc/${ff}
     su enstore -c "cd `dirname $R`; cvs update `basename $R`"
-    REPLY="\$ENSTORE_HOME/enstore/etc/\`\$ENSTORE_DIR/ups/chooseConfig file\`"
+    REPLY="\$ENSTORE_HOME/enstore/etc/${ff}"
 fi
 
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
@@ -142,7 +143,8 @@ echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config
 if [ $fnal -eq 0 ]; then
     read -p "Enter ENSTORE mail address: " REPLY
 else
-    REPLY="\`\$ENSTORE_DIR/ups/chooseConfig mail\`"
+    mm=`$ENSTORE_DIR/ups/chooseConfig mail`
+    REPLY="$mm"
 fi
 
 echo "export ENSTORE_MAIL=${REPLY}"
