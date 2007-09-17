@@ -23,7 +23,7 @@ PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 PATH=/usr/sbin:$PATH
 ENSTORE_HOME=`ls -d ~enstore`
-`rpm -q aci`
+rpm -q aci
 if [ $? -eq 0 ];
 then
     ACI_DIR=`rpm -ql aci | head -1`
