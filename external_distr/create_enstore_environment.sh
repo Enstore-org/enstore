@@ -58,6 +58,7 @@ then
     then 
 	cp -f $ENSTORE_DIR/etc/ntp.conf /etc/ntp.conf 
     fi
+fi
 
 if [ ! -f $ENSTORE_HOME/.forward ]
 then 
