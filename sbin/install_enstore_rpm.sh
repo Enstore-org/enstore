@@ -39,6 +39,10 @@ echo "Installing tk"
 yum install tk
 echo "Installing python"
 rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/Python-enstore-1.0.0-3.i386.rpm
+if [ "${fnal:-x}" = "fnal" ]
+then
+ rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/aci-3.1.2-1.i386.rpm
+fi
 echo "Installing enstore"
 rpm -Uvh --force ftp://ssasrv1/en/enstore_related/enstore_sa-1.0.1-8.i386.rpm
 echo "configuring enstore"
