@@ -5,6 +5,16 @@ export FTT_DIR
 export ENSTORE_HOME
 #. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
+rpm -q aci
+if [ $? -eq 0 ];
+then
+    ACI_DIR=`rpm -ql aci | head -1`
+    export ACI_DIR
+    PATH=$ACI_DIR/admin:$PATH
+    export DAS_SERVER="192.168.89.56"
+    export DAS_CLIENT=`hostname-s`p
+fi
+
 
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
 
