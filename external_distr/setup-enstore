@@ -12,7 +12,7 @@ then
     export ACI_DIR
     PATH=$ACI_DIR/admin:$PATH
     export DAS_SERVER="192.168.89.56"
-    export DAS_CLIENT=`hostname-s`p
+    export DAS_CLIENT=`hostname -s`p
 fi
 
 
