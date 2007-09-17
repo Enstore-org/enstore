@@ -23,6 +23,11 @@ PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 PATH=/usr/sbin:$PATH
 ENSTORE_HOME=`ls -d ~enstore`
+`rpm -q aci`
+if [ $? -eq 0 ];
+then
+    ACI_DIR=`rpm -ql aci | head -1`
+fi
 
 if [ -s $ENSTORE_HOME/site_specific/config/setup-enstore ]
 then 
@@ -74,7 +79,10 @@ then
     scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.bash_profile $ENSTORE_HOME
     if [ $fnal -ne 0 ]
     then
-	scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.k5login $ENSTORE_HOME
+	if [ ! -f $ENSTORE_HOME/.k5login ]
+	then
+	    scp -p enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/.k5login $ENSTORE_HOME
+	fi
     fi
     if [ -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
     then
@@ -94,6 +102,7 @@ rm -rf /tmp/enstore_header
 echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
 echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
 echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
+    
 echo "ENSTORE_HOME=$ENSTORE_HOME" >> /tmp/enstore_header
 
 rm -rf $ENSTORE_HOME/site_specific/config/setup-enstore
@@ -101,6 +110,12 @@ cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOM
 
 echo "Finishing configuration of $ENSTORE_HOME/site_specific/config/setup-enstore"
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+if [ "${ACI_DIR:-x}" != "x" ]
+then
+    echo "export ACI_DIR=${ACI_DIR}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+    echo "PATH=${ACI_DIR}/admin:$PATH" >> $ENSTORE_HOME/site_specific/config/setup-enstore
+fi
+
 
 if [ $fnal -eq 0 ]; then
     read -p "Enter ENSTORE configuration server port [7500]: " REPLY
