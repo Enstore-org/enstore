@@ -5,7 +5,7 @@ export FTT_DIR
 export ENSTORE_HOME
 #. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
-rpm -q aci
+rpm -q aci > /dev/null
 if [ $? -eq 0 ];
 then
     ACI_DIR=`rpm -ql aci | head -1`
