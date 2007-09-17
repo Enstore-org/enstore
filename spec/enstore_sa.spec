@@ -32,8 +32,11 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
-echo export ACI_DIR >> /tmp/enstore-setup
+rpm -q aci
+if [ $? -eq 0 ]; then
+	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
+	echo export ACI_DIR >> /tmp/enstore-setup
+fi
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 #++++++++++++
