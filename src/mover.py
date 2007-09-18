@@ -940,9 +940,36 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.driver_type != 'FTTDriver': return
         if self.stats_on and self.tape_driver and self.tape_driver.ftt:
             stats = self.tape_driver.get_stats()
-            Trace.log(e_errors.INFO, "volume %s write protection %s  override_ro_mount %s"%(self.current_volume,
-                                                                       stats[self.ftt.WRITE_PROT],
-                                                                       self.override_ro_mount))
+            Trace.log(e_errors.INFO,
+                      "volume %s write protection %s  override_ro_mount %s" % \
+                      (self.current_volume,
+                       stats[self.ftt.WRITE_PROT],
+                       self.override_ro_mount))
+            #### Added by MZ #################
+            try:
+                #Get the true/false value if write tab if flipped or not
+                # from the drive and the volume DB.
+                drive_write_tab_status = int(stats[self.ftt.WRITE_PROT])
+                if self.current_work_ticket['vc']['write_protected'] == 'y':
+                    volume_db_write_tab_status = 1 #DB says it is flipped
+                else:
+                    volume_db_write_tab_status = 0 #DB says it is not flipped
+                #Compare the two values.  If they don't match raise an alarm.
+                if self.override_ro_mount and \
+                   drive_write_tab_status != volume_db_write_tab_status:
+                    #Raise an alarm if the DB and the tape values don't
+                    # match.
+                    Trace.alarm(e_errors.ALARM,
+                              "%s write protection tab inconsistency: tape %s != db %s" % \
+                              (self.current_volume,
+                               stats[self.ftt.WRITE_PROT],
+                               volume_db_write_tab_status))
+            except:
+                exc, msg, tb = sys.exc_info()
+                Trace.log(e_errors.ERROR,
+                          "update_stat(): %s: %s" % (str(exc), str(msg)))
+            #### Added by MZ #################
+            
             try: 
                 user_read = long(stats[self.ftt.USER_READ])/1024.
             except TypeError, detail:
