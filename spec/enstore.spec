@@ -1,10 +1,10 @@
 Summary: Enstore: Mass Storage System
-Name: enstore_sa
+Name: enstore
 Version: 1.0.1
 Release: 8
 Copyright: GPL
 Group: System Environment/Base
-Source: enstore_sa.tgz
+Source: enstore.tgz
 BuildRoot: /usr/src/redhat/BUILD
 AutoReqProv: no
 AutoProv: no
@@ -15,6 +15,7 @@ Requires: Python-enstore, ftt
 %description
 Standalone Enstore. Enstore is a Distributed Mass Storage System. 
 The main storage media it uses is magnetic tape, although the new media can be added.
+This rpm has more functionality such as ADIC robot interface.
 For the postinstallation and configuration instructions please see enstore/README
 
 %prep
@@ -32,6 +33,11 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
+rpm -q aci
+if [ $? -eq 0 ]; then
+	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
+	echo export ACI_DIR >> /tmp/enstore-setup
+fi
 
 echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 #++++++++++++
