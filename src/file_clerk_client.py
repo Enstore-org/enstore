@@ -14,6 +14,12 @@ import socket
 import select
 import os
 
+import rexec
+_rexec = rexec.RExec()
+
+def eval(stuff):
+    return _rexec.r_eval(stuff)
+
 # enstore imports
 import generic_client
 import option
@@ -28,7 +34,6 @@ import volume_family
 import pnfs
 import info_client
 import enstore_constants
-from en_eval import en_eval
 
 MY_NAME = enstore_constants.FILE_CLERK_CLIENT   #"FILE_C_CLIENT"
 MY_SERVER = enstore_constants.FILE_CLERK        #"file_clerk"
@@ -673,7 +678,7 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
         self.add = None
         self.modify = None
         self.show_state = None
-        self.erase = None
+        self.dont_try_this_at_home_erase = None
         self.find_copies = None
         self.find_all_copies = None
         self.find_original = None
@@ -715,11 +720,11 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                         option.VALUE_USAGE:option.REQUIRED,
                         option.VALUE_LABEL:"yes/no",
                         option.USER_LEVEL:option.ADMIN},
-        option.ERASE:{option.HELP_STRING:"permenantly erase a file",
-                      option.VALUE_TYPE:option.STRING,
-                      option.VALUE_USAGE:option.REQUIRED,
-                      option.VALUE_LABEL:"bfid",
-                      option.USER_LEVEL:option.HIDDEN},
+        option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
+                         option.VALUE_TYPE:option.STRING,
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_LABEL:"bfid",
+                         option.USER_LEVEL:option.ADMIN},
         option.FIND_COPIES:{option.HELP_STRING:"find the immediate copies of this file",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -745,11 +750,6 @@ class FileClerkClientInterface(generic_client.GenericClientInterface):
                      option.VALUE_USAGE:option.REQUIRED,
                      option.VALUE_LABEL:"file",
                      option.USER_LEVEL:option.ADMIN},
-        option.GET_CRCS:{option.HELP_STRING:"get crc of a file",
-                         option.VALUE_TYPE:option.STRING,
-                         option.VALUE_USAGE:option.REQUIRED,
-                         option.VALUE_LABEL:"bfid",
-                         option.USER_LEVEL:option.ADMIN},
         option.LIST:{option.HELP_STRING:"list the files in a volume",
                      option.VALUE_TYPE:option.STRING,
                      option.VALUE_USAGE:option.REQUIRED,
@@ -917,7 +917,7 @@ def do_work(intf):
         for s in intf.args:
             k,v=string.split(s,'=')
             try:
-                v=en_eval(v) #numeric args
+                v=eval(v) #numeric args
             except:
                 pass #yuk...
             d[k]=v
@@ -931,7 +931,7 @@ def do_work(intf):
             k,v=string.split(s,'=')
             if k != 'bfid': # nice try, can not modify bfid
                 try:
-                    v=en_eval(v) #numeric args
+                    v=eval(v) #numeric args
                 except:
                     pass #yuk...
                 d[k]=v
@@ -962,14 +962,11 @@ def do_work(intf):
         if ticket['status'][0] == e_errors.OK:
             for i in ticket['copies']:
                 print i
-    elif intf.erase:
-        # Make this a hidden option -- this is too dangerous otherwise
-        ALLOW_ERASE = False
-        if ALLOW_ERASE:
-            ticket = fcc.del_bfid(intf.erase)
-        else:
-            ticket = {}
-            ticket['status'] = (e_errors.NOT_SUPPORTED, None)
+    elif intf.dont_try_this_at_home_erase:
+        # Comment out -- this is too dangerous
+        # ticket = fcc.del_bfid(intf.dont_try_this_at_home_erase)
+        ticket = {}
+        ticket['status'] = (e_errors.OK, None)
     elif intf.get_crcs:
         bfid=intf.get_crcs
         ticket = fcc.get_crcs(bfid)
@@ -977,9 +974,9 @@ def do_work(intf):
                                                  `ticket["complete_crc"]`) #keep L suffix
     elif intf.set_crcs:
         bfid,sanity_size,sanity_crc,complete_crc=string.split(intf.set_crcs,',')
-        sanity_crc=en_eval(sanity_crc)
-        sanity_size=en_eval(sanity_size)
-        complete_crc=en_eval(complete_crc)
+        sanity_crc=eval(sanity_crc)
+        sanity_size=eval(sanity_size)
+        complete_crc=eval(complete_crc)
         sanity_cookie=(sanity_size,sanity_crc)
         ticket=fcc.set_crcs(bfid,sanity_cookie,complete_crc)
         sanity_cookie = ticket['sanity_cookie']
