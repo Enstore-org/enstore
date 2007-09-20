@@ -25,7 +25,13 @@ then
 else
     exit 1
 fi
-ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+rpm -q enstore > /dev/null
+if [ $? -eq 0 ]; 
+then
+    ENSTORE_DIR=`rpm -ql enstore | head -1`
+else
+    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+fi
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 
