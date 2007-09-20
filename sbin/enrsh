@@ -16,13 +16,11 @@ defaultDomain=".fnal.gov"
 # if we are a kerberized system, we need to do some pre rsh stuff.
 # if not, just do a normal rsh
 
-set +u
 if [ "${ENSSH:-x}" = "x" ];then
     $ENSSH "$@" 
     exit $?
 fi
 
-set -u
 if [ -d $krbdir ]; then
    # we are kerberized
 
