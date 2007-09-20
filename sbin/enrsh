@@ -17,7 +17,7 @@ defaultDomain=".fnal.gov"
 # if not, just do a normal rsh
 
 set +u
-if [ -n "$ENSSH" ];then
+if [ "${ENSSH:-x}" = "x" ];then
     $ENSSH "$@" 
     exit $?
 fi

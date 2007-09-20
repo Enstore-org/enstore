@@ -34,7 +34,7 @@ krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
 
 set +u
-if [ -n "$ENSCP" ];then
+if [ "${ENSCP:-x}" = "x" ];then
     rc=do_rcp $ENSCP "$@"
     exit $?
 fi
