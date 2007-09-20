@@ -97,6 +97,14 @@ class Logger(  dispatching_worker.DispatchingWorker
 	    self.logfile_dir_path = tmp
 	else:
 	    self.logfile_dir_path =  keys["log_file_path"]
+        if not os.path.exists(self.logfile_dir_path):
+            try:
+                os.makedirs(self.logfile_dir_path)
+            except:
+                exc, msg, tb = sys.exc_info()
+                print "Can not create %s. %s %s"%(self.logfile_dir_path, exc, msg)
+                sys.exit(1)
+
 	self.test = test
 
         # get the value for max size of a log file
