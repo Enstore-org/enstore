@@ -1,27 +1,48 @@
 #!/bin/sh
+
+# $Id $
+
+#Make the VOLUMES and NOACCESS tape inventory pages.
+
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-if [ "${1:-}" = "" ] ; then
-    od=/fnal/ups/prd/www_pages/enstore/tape_inventory
-else
-    od=$1
+
+#First obtain the directory to write the output.
+inventory_dir=`enstore conf --show crons html_dir`/tape_inventory
+if [ ! -d $inventory_dir ]; then
+    echo Inventory directory $inventory_dir not found.
+    exit 1
 fi
 
-out=$od/VOLUMES
-rm -f $out
 
-echo `date` >$out 2>&1
-echo >> $out 2>&1
-enstore info --vols >> $out 2>&1
-echo >> $out 2>&1
-echo `date` >>$out 2>&1
+#Get our variables for VOLUMES filenames.
+outfile_volumes=$inventory_dir/VOLUMES
+outfile_volumes_temp=${outfile_volumes}.tmp
+#rm -f $outfile_volumes
 
-out2=$od/NOACCESS
-rm -f $out2
+#Output the data to the VOLUMES temp file.
+echo `date` > $outfile_volumes_temp 2>&1
+echo >> $outfile_volumes_temp 2>&1
+enstore info --vols >> $outfile_volumes_temp 2>&1
+echo >> $outfile_volumes_temp 2>&1
+echo `date` >> $outfile_volumes_temp 2>&1
 
-echo `date` >$out2 2>&1
-echo >> $out2 2>&1
-grep \(NO $out | grep -v 'migrated' >> $out2 2>&1
-echo >> $out2 2>&1
-echo `date` >>$out2 2>&1
+#Make the temp file the real VOLUMES file.
+mv $outfile_volumes_temp $outfile_volumes
 
+
+
+#Get our variables for NOACCESS filenames.
+outfile_noaccess=$inventory_dir/NOACCESS
+outfile_noaccess_temp=${outfile_noaccess}.temp
+#rm -f $outfile_noaccess
+
+#Output the data to the NOACCESS temp file.
+echo `date` > $outfile_noaccess_temp 2>&1
+echo >> $outfile_noaccess_temp 2>&1
+egrep "NOACCESS|NOTALLOWED" $outfile_volumes | grep -v 'migrated' >> $outfile_noaccess_temp 2>&1
+echo >> $outfile_noaccess_temp 2>&1
+echo `date` >> $outfile_noaccess_temp 2>&1
+
+#Make the temp file the real NOACCESS file.
+mv $outfile_noaccess_temp $outfile_noaccess

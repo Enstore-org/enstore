@@ -1,7 +1,10 @@
 #!/bin/sh
 
-#Dump the cleaning tape information to a cleaning report.
+# $Id $
 
+#Dump the cleaning tape information to the tape inventory cleaning report.
+
+#First obtain the directory to write the output.
 inventory_dir=`enstore conf --show crons html_dir`/tape_inventory
 if [ ! -d $inventory_dir ]; then
     echo Inventory directory $inventory_dir not found.
@@ -16,7 +19,7 @@ temp_file=$output_file.tmp
 rm -f $temp_file
 
 #Make sure we know how up-to-date this is.
-echo -e Cleaning Report: `date` "\n" | tee $temp_file
+echo -e Cleaning Report: `date` "\n" >> $temp_file 2>&1
 
 #Loop over all the media changers (remember to delete the header line).
 enstore conf --list-media-changers | sed '1d' |
@@ -38,9 +41,9 @@ while read line; do
     fi
 
     #Write out the cleaning information.
-    echo -e "Tape Library:" $tape_library "\n" | tee -a $temp_file
-    enstore media --list-clean $mc | tee -a $temp_file
-    echo -e "\n" | tee -a $temp_file
+    echo -e "Tape Library:" $tape_library "\n" >> $temp_file 2>&1
+    enstore media --list-clean $mc  >> $temp_file 2>&1
+    echo -e "\n" >> $temp_file 2>&1
 done
 
-mv $temp_file $output_file
+mv $temp_file $output_file    #Do the temp file swap.
