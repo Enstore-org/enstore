@@ -212,7 +212,16 @@ then
     # what he/she is doing
     complain=0
 fi
-
+# ENSTORE_USER_DEFINED_MAIL allows user to override default
+# If ENSTORE_USER_DEFINED_MAIL is set, ENSTORE_MAIL will
+# be assigned by $ENSTORE_USER_DEFINED_MAIL
+if [ "${ENSTORE_USER_DEFINED_MAIL:-x}" != "x" ]
+then
+    ENSTORE_MAIL=${ENSTORE_USER_DEFINED_MAIL}
+    # assuming the user who sets ENSTORE_USER_DEFINED_CONFIG_FILE knows
+    # what he/she is doing
+    complain=0
+fi
 # ENSTORE_USER_DEFINED_CONFIG_HOST allows user to override default
 # If ENSTORE_USER_DEFINED_CONFIG_HOST is set, ENSTORE_CONFIG_HOST will
 # be assigned by $ENSTORE_USER_DEFINED_CONFIG_HOST
