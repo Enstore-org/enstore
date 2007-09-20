@@ -1,0 +1,4 @@
+#!/bin/sh
+date
+echo
+psql -p 8888 -h stkensrv0 enstoredb -c "select * from quota_alert();"
