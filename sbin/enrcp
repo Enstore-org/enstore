@@ -33,7 +33,7 @@ fi
 krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
 
-if [ "${ENSCP:-x}" = "x" ];then
+if [ "${ENSCP:-x}" != "x" ];then
     rc=do_rcp $ENSCP "$@"
     exit $?
 fi
@@ -97,7 +97,7 @@ if [ -d $krbdir ]; then
 
 else
    # we are not kerberized
-    if [ "${ENSCP:-x}" = "x" ];then
+    if [ "${ENSCP:-x}" != "x" ];then
 	do_rcp $ENSCP "$@" 
    else
 	do_rcp rcp "$@"
