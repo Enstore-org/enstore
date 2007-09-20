@@ -1010,7 +1010,7 @@ def inventory(output_dir, cache_dir):
         if (vv['system_inhibit'][1] == 'full' or \
             vv['system_inhibit'][1] == 'migrated') and active == 0 \
             and vv['media_type'] != "null" and vv['media_type'] != "8MM":
-            rc_file.write("%s\t%8s\t%6d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
+            rc_file.write("%s\t%8s %6d %8s %10s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable = n_recyclable + 1
             recyclable_vol = 1
         else:
@@ -1018,7 +1018,7 @@ def inventory(output_dir, cache_dir):
 
         # can it be recycled?
         if vv['system_inhibit'][1] == 'readonly' and active == 0 and vv['media_type'] != "null" and vv['media_type'] != '8MM':
-            rc_file2.append("%s\t%8s\t%6d\t%s\t%s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
+            rc_file2.append("%s\t%8s %6d %8s %10s\t%s\n"%(vv['external_label'], vv['system_inhibit'][1], vv['sum_mounts'], vv['media_type'], vv['library'], vv['volume_family']))
             n_recyclable2 = n_recyclable2 + 1
             recyclable_vol = 1
         else:
