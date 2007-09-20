@@ -286,6 +286,7 @@ LABELS = "labels"                            #volume
 LAYER = "layer"                              #pnfs
 LIBRARY = "library"                          #pnfs, encp
 LIST = "list"                                #volume, file, get, MC, LM, M
+LIST_CLEAN = "list-clean"                    #media
 LIST_DRIVES = "list-drives"                  #media
 LIST_LIBRARY_MANAGERS = "list-library-managers" #configuration
 LIST_MEDIA_CHANGERS = "list-media-changers"  #configuration
@@ -485,7 +486,7 @@ valid_option_list = [
     IMPORT, INFILE, INFO, INPUT_DIR, IO, IS_UP,
     JOUHOME, JUST,
     KEEP, KEEP_DIR, KEEP_VOL, KEEP_DECLARATION_TIME,
-    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_DRIVES,
+    LABEL, LABELS, LAYER, LIBRARY, LIST, LIST_CLEAN, LIST_DRIVES,
     LIST_LIBRARY_MANAGERS, LIST_MEDIA_CHANGERS, LIST_MOVERS,
     LIST_SG_COUNT, LIST_SLOTS, LIST_VOLUMES,
     LOAD, LOG, LOGFILE_DIR, LS, LS_ACTIVE,

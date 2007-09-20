@@ -885,6 +885,85 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	self.reply_to_caller(ticket)
 	sys.exit(0)  #Remember we are the child here.
 
+    def list_clean(self, ticket):
+	vcc = volume_clerk_client.VolumeClerkClient(self.csc,
+						    logc = self.logc,
+						    alarmc = self.alarmc,
+						    rcv_timeout=5,
+						    rcv_tries=12)
+	#volume_list = vcc.get_vol_list()
+	volume_info = vcc.get_vol_list()
+	
+	if e_errors.is_ok(volume_info):
+	    volumes_list = volume_info['volumes']
+	else:
+	    volumes_list = []
+
+	clean_list = []
+        for volume in volumes_list:
+
+	    if volume[0:2] != "CL":
+	        #############################################
+	        #Assuming cleaning tapes begin with CL is an unfortunate
+		# part of this implimentation.
+		#############################################
+	        continue
+
+	    volume_ticket = {'external_label' : volume,
+			     'media_type' : "",
+			     }
+	    result = self.getVolState(volume_ticket)
+	    if not e_errors.is_ok(result):
+	        #make sure this belongs to this media changers robot.
+	        continue
+
+	    vol_info = vcc.inquire_vol(volume, timeout = 5, retry = 12)
+	    if e_errors.is_ok(vol_info):
+	        location = "N/A"
+		max_usage = "N/A"
+		current_usage = "N/A"
+		remaining_usage = vol_info['remaining_bytes']
+		status = "N/A"
+		media_type = vol_info['media_type']
+	    else:
+	        location = "N/A"
+		max_usage = "N/A"
+		current_usage = "N/A"
+		remaining_usage = "Unknown"
+		status = "N/A"
+		media_type = "Unknown"
+
+	    clean_list.append({"volume" : volume,
+			       "location" : location,
+			       "max_usage" : max_usage,
+			       "current_usage" : current_usage,
+			       "remaining_usage" : remaining_usage,
+			       "status" : status,
+			       "media_type" : media_type,
+			       })
+	
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	reply=ticket.copy()
+	reply['clean_list'] = clean_list
+	addr = ticket['callback_addr']
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(ticket['callback_addr'])
+            r = callback.write_tcp_obj(sock,reply)
+            sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,
+			 "Error calling write_tcp_obj. Callback addr. %s"
+			 % (addr,))
+            
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+        return
+
+	
+
 # STK robot loader server
 class STK_MediaLoader(MediaLoaderMethods):
 
@@ -1140,6 +1219,68 @@ class STK_MediaLoader(MediaLoaderMethods):
         ticket['slot_list'] = slot_list
 	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
+
+    def list_clean(self, ticket):
+        # build the command, and what to look for in the response
+        command = "query clean all"
+        answer_lookfor = "query clean all"
+
+        # execute the command and read the response
+        # FIXME - what if this hangs?
+        # efb (dec 22, 2005) - up timeout from 10 to 60 as the queries are hanging
+        #status,response, delta = self.timed_command(command,4,10)
+        status, response, delta = self.timed_command(command,4,60)
+        if status != 0:
+            E=4
+            msg = "QUERY_CLEAN %i: %s => %i,%s" % (E,command,status,response)
+            Trace.log(e_errors.ERROR, msg)
+            return ("ERROR", E, response, '', msg)
+
+        clean_list = []
+        for line in response:
+	    if line.find("ACSSA") >= 0 or \
+		   line.find("Cleaning Cartridge Status") >= 0 or \
+		   line.find("Identifier") >= 0 \
+		   or len(line) == 0:
+	        #This is some other information.
+	        continue
+
+	    volume = line[1:13].strip()
+	    location = line[13:29].strip()
+	    max_usage = int(line[30:39].strip())
+	    current_usage = int(line[41:55].strip())
+	    status = line[56:66].strip()
+	    media_type = line[67:].strip()
+
+	    remaining_usage = max_usage - current_usage #AML2 compatibility
+	    clean_list.append({"volume" : volume,
+			       "location" : location,
+			       "max_usage" : max_usage,
+			       "current_usage" : current_usage,
+			       "remaining_usage" : remaining_usage,
+			       "status" : status,
+			       "type" : media_type,
+			       })
+
+	ticket['status'] = (e_errors.OK, 0, "")
+	self.reply_to_caller(ticket)
+	reply=ticket.copy()
+	reply['clean_list'] = clean_list
+	addr = ticket['callback_addr']
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            sock.connect(ticket['callback_addr'])
+            r = callback.write_tcp_obj(sock,reply)
+            sock.close()
+            if r:
+               Trace.log(e_errors.ERROR,
+			 "Error calling write_tcp_obj. Callback addr. %s"
+			 % (addr,))
+            
+        except:
+            Trace.handle_error()
+            Trace.log(e_errors.ERROR,"Callback address %s"%(addr,)) 
+        return
 
     def cleanCycle(self, inTicket):
         #do drive cleaning cycle
