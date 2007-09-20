@@ -1,0 +1,33 @@
+#!/bin/sh
+
+inventory_dir=`enstore conf --show inventory inventory_dir`
+if [ ! -d $inventory_dir ]; then
+    echo Inventory directory $inventory_dir not found.
+    exit 1
+fi
+output_file=$inventory_dir/CLEANING
+
+#Loop over all the media changers (remember to delete the header line).
+enstore conf --list-media-changers | sed '1d' |
+while read line; do
+    mc=`echo $line | awk '{print $1}'`
+
+    #Skip Manual and RDD (aka null) media changers.
+    echo $line | egrep "Manual|RDD" > /dev/null 2> /dev/null
+    if [ $? -eq 0 ]; then
+        continue
+    fi
+
+    #Get the name of the tape library.
+    tape_library=`enstore conf --show $mc tape_library 2> /dev/null`
+    if [ $? -ne 0 ]; then
+        #Use the entire line from the --list-media-changers command if
+	# the tape_library was not found in the media_changer configuration.
+        tape_library=$line
+    fi
+
+    #Write out the cleaning information.    
+    echo "Tape Library:" $tape_library "\n" > $output_file
+    enstore media --list-clean $mc > $output_file
+    echo "\n" > $output_file
+done
