@@ -19,15 +19,11 @@ host=`uname -n | cut -d. -f1`
 
 # get db directory
 case $host in
-	rip1)
-		db=/diska/postgres_db
-		;;
 	stkensrv0|cdfensrv0|d0ensrv0|gccensrv1)
 		db=/diska/accounting-db
 		;;
 	*)
-		echo no accounting-db for this node: $host
-		exit 0
+		db=/diska/accounting-db
 		;;
 esac
 

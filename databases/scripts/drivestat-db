@@ -23,8 +23,7 @@ case $host in
 		db=/diska/drivestat-db
 		;;
 	*)
-		echo no drivestat-db for this node: $host
-		exit 0
+		db=/diska/drivestat-db
 		;;
 esac
 
