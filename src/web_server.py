@@ -270,7 +270,7 @@ def install():
         if server.write_httpd_conf():
             print "Failed to write httpd.conf"
             return 1
-        if self.this_host_name != self.get_server_host():
+        if server.this_host_name != self.get_server_host():
             print "You are installing RPM on host which is not intended to run apache server "
             return 0
         doc_root = server.get_document_root()
