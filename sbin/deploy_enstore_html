@@ -37,12 +37,18 @@ fi
 
 ./make_enstore_system.py 
 
-if [ $? != 0 ];
-then
-	exit 1 
+rc=$?
+
+if [ ${rc} == 2 ]; then
+    /sbin/chkconfig httpd off
+    exit 0
+elif  [ ${rc} == 0 ]; then
+    /sbin/chkconfig httpd on
+    /sbin/service httpd start 
+    exit 0
+else 
+    exit 1
 fi
 
-/sbin/chkconfig httpd on
-/sbin/service httpd start 
 
 exit 0 

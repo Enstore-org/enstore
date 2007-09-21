@@ -33,7 +33,8 @@ class WebServer:
         self.is_ok=True
         intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
         csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-        self.system_name = csc.get_enstore_system(timeout,retry)
+        self.this_host_name=socket.gethostname()
+        self.system_name = csc.get_enstore_system(timeout,retry)        
         self.server_dict={}
         if self.system_name:
             self.server_dict = csc.get(WEB_SERVER, timeout, retry)
@@ -130,6 +131,8 @@ class WebServer:
                                 for k in self.server_dict[key].keys():
                                     txt = key + " " + str(self.server_dict[key]['fake'])+" "+ str(self.server_dict[key]['real']) +"\n"
                                     break
+                            elif key == "ServerHost" :
+                                txt = key + " " + self.this_host_name +"\n";
                             else:
                                 txt = key + " " + str(self.server_dict[key]) +"\n"
                                 break
@@ -188,6 +191,16 @@ class WebServer:
             return None
         if self.server_dict.has_key('ServerName'):
             return self.server_dict['ServerName']
+        else:
+            print 'ServerName is not defined in the configuration'
+            return None
+
+
+    def get_server_host(self):
+        if not self.is_ok :
+            return None
+        if self.server_dict.has_key('ServerHost'):
+            return self.server_dict['ServerHost']
         else:
             print 'ServerName is not defined in the configuration'
             return None
@@ -257,6 +270,9 @@ def install():
         if server.write_httpd_conf():
             print "Failed to write httpd.conf"
             return 1
+        if self.this_host_name != self.get_server_host():
+            print "You are installing RPM on host which is not intended to run apache server "
+            return 0
         doc_root = server.get_document_root()
         if doc_root:
             if not os.path.exists(doc_root):
