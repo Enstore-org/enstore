@@ -83,7 +83,15 @@ then
     then
 	exit 0
     fi
+else
+    if [ $fnal -ne 0 ]
+    then
+	echo "installing .bashrc and bash_profile from cvs"
+	cp -p $ENSTORE_DIR/etc/enstore.bashrc $ENSTORE_HOME/.bashrc
+	cp -p $ENSTORE_DIR/etc/enstore.bash_profile $ENSTORE_HOME/.bash_profile
+    fi
 
+    
 fi
 
 echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_HOME/site_specific/config"
