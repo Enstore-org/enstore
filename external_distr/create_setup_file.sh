@@ -86,9 +86,14 @@ then
 else
     if [ $fnal -ne 0 ]
     then
-	echo "installing .bashrc and bash_profile from cvs"
-	cp -p $ENSTORE_DIR/etc/enstore.bashrc $ENSTORE_HOME/.bashrc
-	cp -p $ENSTORE_DIR/etc/enstore.bash_profile $ENSTORE_HOME/.bash_profile
+	if ! -n $ENSTORE_HOME/.bashrc ];
+	    echo "installing .bashrc from $ENSTORE_DIR/etc/enstore.bashrc"
+	    cp -p $ENSTORE_DIR/etc/enstore.bashrc $ENSTORE_HOME/.bashrc
+	fi
+        if ! -n $ENSTORE_HOME/.bash_profile ]; 
+            echo "installing .bash_profile from $ENSTORE_DIR/etc/enstore.bash_profile" 
+	    cp -p $ENSTORE_DIR/etc/enstore.bash_profile $ENSTORE_HOME/.bash_profile
+	fi
     fi
 
     
