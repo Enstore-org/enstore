@@ -13,6 +13,7 @@
 import web_server
 import enstore_system_html
 import socket
+import enstore_files
 
 
 import sys
@@ -32,8 +33,8 @@ if __name__ == "__main__":
         print "We are in Fermilab", server.get_system_name()
         remote=False
 
-    main_web_page=EnstoreSystemHtml(server.get_system_name(),
-                                    "0.00", remote)
+    main_web_page=enstore_system_html.EnstoreSystemHtml(server.get_system_name(),
+                                                        "0.00", remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):
