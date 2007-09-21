@@ -39,7 +39,7 @@ fi
 
 
 echo "Installing ftt"
-rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/ftt-2.26-1.i386.rpm 
+rpm -U --force ${place}/ftt-2.26-1.i386.rpm 
 echo "Installing tcl"
 yum install tcl
 echo "Installing tk"
