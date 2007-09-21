@@ -17,7 +17,7 @@ echo "$0 [server] [fnal] [url]"
 if [ "${1:-}" = "-h" ];then usage;fi
  
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
-exit
+
 
 echo "Installing enstore rpm and required products from $place"
 echo "This is a fermilab specific installation"
