@@ -11,8 +11,15 @@ if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-}" = "64" ] ; then export x_64="_x64"; shift; else x_64=""; fi
 if [ "${1:-}" = "server" ] ; then export server=1; shift; else server=0; fi
 if [ "${1:-}" = "fnal" ]; then export fnal=$1; shift; else fnal="";fi
+usage() {
+echo "$0 [server] [fnal] [url]"
+} 
+if [ "${1:-}" = "-h" ];then usage;fi
+ 
+place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
+exit
 
-echo "Installing enstore rpm and required products"
+echo "Installing enstore rpm and required products from $place"
 echo "This is a fermilab specific installation"
 if [ "`whoami`" != 'root' ]
 then
@@ -38,17 +45,17 @@ yum install tcl
 echo "Installing tk"
 yum install tk
 echo "Installing python"
-rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/Python-enstore-1.0.0-3.i386.rpm
+rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
 if [ "${fnal:-x}" = "fnal" ]
 then
     echo "installing aci"
-    rpm -U --force ftp://ssasrv1.fnal.gov/en/enstore_related/aci-3.1.2-1.i386.rpm
+    rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
     echo "Installing enstore"
-    rpm -Uvh --force ftp://ssasrv1/en/enstore_related/enstore-1.0.1-8.i386.rpm
+    rpm -Uvh --force ${place}/enstore-1.0.1-8.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
     echo "Installing enstore"
-    rpm -Uvh --force ftp://ssasrv1/en/enstore_related/enstore_sa-1.0.1-8.i386.rpm
+    rpm -Uvh --force ${place}/enstore_sa-1.0.1-8.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 fi
 
