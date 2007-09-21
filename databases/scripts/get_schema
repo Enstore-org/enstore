@@ -20,22 +20,20 @@ then
 	exit
 fi
 
+db_host=stkensrv0.fnal.gov
 case "$1" in
 	enstoredb)
-		db_host=stkensrv0.fnal.gov
 		db_port=8888
 		db_name=enstoredb
 		schema_name=enstoredb.schema
 		;;
 	accounting)
-		db_host=stkensrv6.fnal.gov
-		db_port=5432
-		db_name=enstore
+		db_port=8800
+		db_name=accounting
 		schema_name=accounting.schema
 		;;
 	drivestat)
-		db_host=stkensrv6.fnal.gov
-		db_port=8076
+		db_port=8802
 		db_name=drivestat
 		schema_name=drivestat.schema
 		;;
