@@ -55,6 +55,10 @@ host    all         enstore     131.225.13.2      255.255.255.255   trust
 host    all         enstore     131.225.13.3       255.255.255.255   trust
 host    all         huangch     131.225.215.0      255.255.255.0     trust
 host    all         huangch     131.225.84.10     255.255.255.255   trust
+host    all         huangch     131.225.80.208     255.255.255.255   trust
 host    all         root        131.225.13.88     255.255.255.255   trust
 host    all         root        131.225.13.84     255.255.255.255   trust
 #host    all         huangch     131.225.0.0       255.255.0.0       trust
+host    enstoredb   enstore_reader 131.225.0.0    255.255.0.0       trust
+host    all         huangch     131.225.13.0      225.225.225.0     trust
+
