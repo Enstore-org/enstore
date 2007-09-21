@@ -146,10 +146,15 @@ if [ $fnal -eq 0 ]; then
     read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
-    ff=`$ENSTORE_DIR/ups/chooseConfig file`
-    R=${ENSTORE_HOME}/enstore/etc/${ff}
-    su enstore -c "cd `dirname $R`; cvs update `basename $R`"
-    REPLY="\$ENSTORE_HOME/enstore/etc/${ff}"
+    if [ "${ENSTORE_USER_DEFINED_CONFIG_FILE:-x}" = "x" ]
+    then
+	ff=`$ENSTORE_DIR/ups/chooseConfig file`
+	R=${ENSTORE_HOME}/enstore/etc/${ff}
+	su enstore -c "cd `dirname $R`; cvs update `basename $R`"
+	REPLY="\$ENSTORE_HOME/enstore/etc/${ff}"
+    else
+	REPLY=${ENSTORE_USER_DEFINED_CONFIG_FILE}
+    fi
 fi
 
 echo "export ENSTORE_CONFIG_FILE=${REPLY}"
