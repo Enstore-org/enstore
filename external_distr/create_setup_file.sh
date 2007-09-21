@@ -86,11 +86,11 @@ then
 else
     if [ $fnal -ne 0 ]
     then
-	if ! -n $ENSTORE_HOME/.bashrc ];
+	if ! -f $ENSTORE_HOME/.bashrc ];
 	    echo "installing .bashrc from $ENSTORE_DIR/etc/enstore.bashrc"
 	    cp -p $ENSTORE_DIR/etc/enstore.bashrc $ENSTORE_HOME/.bashrc
 	fi
-        if ! -n $ENSTORE_HOME/.bash_profile ]; 
+        if ! -f $ENSTORE_HOME/.bash_profile ]; 
             echo "installing .bash_profile from $ENSTORE_DIR/etc/enstore.bash_profile" 
 	    cp -p $ENSTORE_DIR/etc/enstore.bash_profile $ENSTORE_HOME/.bash_profile
 	fi
