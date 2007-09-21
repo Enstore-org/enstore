@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id $
+# $Id$
 
 #Dump the volume information for each tape library (robot) for the
 # tape inventory summary.
@@ -46,7 +46,8 @@ while read line; do
     echo Starting to making output file for $tl_name.
 
     #Make sure we know how up-to-date this is.
-    echo -e $tl_name Volume List Report: `date` "\n" >> $temp_file 2>&1
+    echo -e $tl_name Volume List Report: `date` >> $temp_file 2>&1
+    echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
     #Get the volumes!
     enstore media --list-volumes $mc >> $temp_file 2>&1
     echo -e "\n" >> $temp_file 2>&1

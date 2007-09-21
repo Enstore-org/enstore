@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id $
+# $Id$
 
 #Dump the cleaning tape information to the tape inventory cleaning report.
 
@@ -19,7 +19,8 @@ temp_file=$output_file.tmp
 rm -f $temp_file
 
 #Make sure we know how up-to-date this is.
-echo -e Cleaning Report: `date` "\n" >> $temp_file 2>&1
+echo -e Cleaning Report: `date` >> $temp_file 2>&1
+echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
 
 #Loop over all the media changers (remember to delete the header line).
 enstore conf --list-media-changers | sed '1d' |
