@@ -582,6 +582,25 @@ select to_date(to_char($1, 'YYYY-MM-01'), 'YYYY-MM-DD');$_$
 
 ALTER FUNCTION public.year_month(timestamp without time zone) OWNER TO enstore;
 
+SET default_with_oids = false;
+
+--
+-- Name: drive_utilization; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE drive_utilization (
+    "time" timestamp with time zone NOT NULL,
+    "type" character varying NOT NULL,
+    total integer,
+    busy integer,
+    tape_library character varying DEFAULT 'TBA'::character varying NOT NULL
+);
+
+
+ALTER TABLE public.drive_utilization OWNER TO enstore;
+
+SET default_with_oids = true;
+
 --
 -- Name: encp_error; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -802,6 +821,43 @@ CREATE TABLE old_bytes_per_day (
 
 ALTER TABLE public.old_bytes_per_day OWNER TO enstore;
 
+SET default_with_oids = false;
+
+--
+-- Name: rate; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE rate (
+    "time" timestamp with time zone NOT NULL,
+    "read" bigint,
+    "write" bigint,
+    read_null bigint,
+    write_null bigint
+);
+
+
+ALTER TABLE public.rate OWNER TO enstore;
+
+--
+-- Name: tape_library_slots_usage; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE tape_library_slots_usage (
+    "time" timestamp with time zone NOT NULL,
+    tape_library character varying NOT NULL,
+    "location" character varying NOT NULL,
+    media_type character varying,
+    total integer,
+    free integer,
+    used integer,
+    disabled integer
+);
+
+
+ALTER TABLE public.tape_library_slots_usage OWNER TO enstore;
+
+SET default_with_oids = true;
+
 --
 -- Name: tape_mounts; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
@@ -831,6 +887,21 @@ CREATE TABLE tape_mounts_tmp (
 
 
 ALTER TABLE public.tape_mounts_tmp OWNER TO enstore;
+
+SET default_with_oids = false;
+
+--
+-- Name: time; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE "time" (
+    date_part double precision
+);
+
+
+ALTER TABLE public."time" OWNER TO enstore;
+
+SET default_with_oids = true;
 
 --
 -- Name: tmp_xfer_by_day; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
@@ -892,6 +963,14 @@ CREATE TABLE xfer_by_month (
 ALTER TABLE public.xfer_by_month OWNER TO enstore;
 
 --
+-- Name: drive_utilization_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY drive_utilization
+    ADD CONSTRAINT drive_utilization_pkey PRIMARY KEY ("time", "type");
+
+
+--
 -- Name: event_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -908,11 +987,27 @@ ALTER TABLE ONLY mover
 
 
 --
+-- Name: rate_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY rate
+    ADD CONSTRAINT rate_pkey PRIMARY KEY ("time");
+
+
+--
 -- Name: reamin_blanks_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
 --
 
 ALTER TABLE ONLY blanks
     ADD CONSTRAINT reamin_blanks_pkey PRIMARY KEY (date, media_type);
+
+
+--
+-- Name: tape_library_slots_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: enstore; Tablespace: 
+--
+
+ALTER TABLE ONLY tape_library_slots_usage
+    ADD CONSTRAINT tape_library_slots_usage_pkey PRIMARY KEY ("time", tape_library, "location");
 
 
 --
@@ -967,6 +1062,27 @@ CREATE INDEX blanks_date_idx ON blanks USING btree (date);
 --
 
 CREATE INDEX blanks_media_type_idx ON blanks USING btree (media_type);
+
+
+--
+-- Name: drive_utilization_tape_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX drive_utilization_tape_library_idx ON drive_utilization USING btree (tape_library);
+
+
+--
+-- Name: drive_utilization_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX drive_utilization_time_idx ON drive_utilization USING btree ("time");
+
+
+--
+-- Name: drive_utilization_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX drive_utilization_type_idx ON drive_utilization USING btree ("type");
 
 
 --
@@ -1093,6 +1209,34 @@ CREATE INDEX mover_logname_idx ON mover USING btree (logname);
 --
 
 CREATE INDEX mover_media_changer_idx ON mover USING btree (media_changer);
+
+
+--
+-- Name: tape_library_slots_usage_location_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_library_slots_usage_location_idx ON tape_library_slots_usage USING btree ("location");
+
+
+--
+-- Name: tape_library_slots_usage_media_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_library_slots_usage_media_type_idx ON tape_library_slots_usage USING btree (media_type);
+
+
+--
+-- Name: tape_library_slots_usage_tape_library_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_library_slots_usage_tape_library_idx ON tape_library_slots_usage USING btree (tape_library);
+
+
+--
+-- Name: tape_library_slots_usage_time_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE INDEX tape_library_slots_usage_time_idx ON tape_library_slots_usage USING btree ("time");
 
 
 --
