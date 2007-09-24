@@ -140,8 +140,8 @@ su $database_owner -c "psql -p $db_port $db_name -f $db_schema"
 # take care of aux directories for enstoredb
 if [ "$1" == "enstoredb" ]
 then
-	jou_dir = `$extract_config database | grep jou_dir | cut -d: -f 2`
-	db_dir = `$extract_config database | grep db_dir | cut -d: -f 2`
+	jou_dir=`$extract_config database | grep jou_dir | cut -d: -f 2`
+	db_dir=`$extract_config database | grep db_dir | cut -d: -f 2`
 	if [ -d $jou_dir ]
 	then
 		echo $jou_dir exists
