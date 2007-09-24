@@ -5,8 +5,11 @@
 #Obtain a list of tapes with more mounts that the manufacturer's recommened
 # limit for the type of tape.
 
+#Make sure to set a timeout.
+timeout='--timeout 10 --retries 3'
+
 #First obtain the directory to write the output.
-inventory_dir=`enstore conf --show crons html_dir`/tape_inventory
+inventory_dir=`enstore conf $timeout --show crons html_dir`/tape_inventory
 if [ ! -d $inventory_dir ]; then
     echo Inventory directory $inventory_dir not found.
     exit 1
@@ -16,28 +19,28 @@ temp_file=$output_file.tmp
 
 
 #Get the host the Enstore database is running on.
-dbhost=`enstore conf --show database dbhost`
+dbhost=`enstore conf $timeout --show database dbhost`
 if [ $? -ne 0 ]; then
     echo "Unable to obtain database host information."
     exit 1
 fi
 
 #Get the port the Enstore database is running on.
-dbport=`enstore conf --show database dbport`
+dbport=`enstore conf $timeout --show database dbport`
 if [ $? -ne 0 ]; then
     echo "Unable to obtain database port information."
     exit 1
 fi
 
 #Get the name of the Enstore database.
-dbname=`enstore conf --show database dbname`
+dbname=`enstore conf $timeout --show database dbname`
 if [ $? -ne 0 ]; then
     echo "Unable to obtain database name information."
     exit 1
 fi
 
 #Get the owner/user of the Enstore database.
-dbuser=`enstore conf --show database dbuser`
+dbuser=`enstore conf $timeout --show database dbuser`
 if [ $? -ne 0 ]; then
     echo "Unable to obtain database user information."
     exit 1

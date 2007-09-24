@@ -7,8 +7,11 @@
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
+#Make sure to set a timeout.
+timeout='--timeout 10 --retries 3'
+
 #First obtain the directory to write the output.
-inventory_dir=`enstore conf --show crons html_dir`/tape_inventory
+inventory_dir=`enstore conf $timeout --show crons html_dir`/tape_inventory
 if [ ! -d $inventory_dir ]; then
     echo Inventory directory $inventory_dir not found.
     exit 1
@@ -23,7 +26,7 @@ outfile_volumes_temp=${outfile_volumes}.tmp
 #Output the data to the VOLUMES temp file.
 echo -e Volumes Report: `date` > $outfile_volumes_temp 2>&1
 echo -e Brought to You by: `basename $0` "\n" >> $outfile_volumes_temp 2>&1
-enstore info --vols >> $outfile_volumes_temp 2>&1
+enstore info $timeout --vols >> $outfile_volumes_temp 2>&1
 echo >> $outfile_volumes_temp 2>&1
 echo `date` >> $outfile_volumes_temp 2>&1
 

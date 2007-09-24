@@ -5,15 +5,18 @@
 #Dump the volume information for each tape library (robot) for the
 # tape inventory summary.
 
+#Make sure to set a timeout.
+timeout='--timeout 10 --retries 3'
+
 #First obtain the directory to write the output.
-inventory_dir=`enstore conf --show crons html_dir`/tape_inventory
+inventory_dir=`enstore conf $timeout --show crons html_dir`/tape_inventory
 if [ ! -d $inventory_dir ]; then
     echo Inventory directory $inventory_dir not found.
     exit 1
 fi
 
 #Loop over all the media changers (remember to delete the header line).
-enstore conf --list-media-changers | sed '1d' |
+enstore conf $timeout --list-media-changers | sed '1d' |
 while read line; do
     #Skip Manual and RDD (aka null) media changers.
     echo $line | egrep "Manual|RDD" > /dev/null 2> /dev/null
@@ -24,7 +27,7 @@ while read line; do
     mc=`echo $line | awk '{print $1}'`
 
     #Get the name of the tape library.
-    tape_library=`enstore conf --show $mc tape_library 2> /dev/null`
+    tape_library=`enstore conf $timeout --show $mc tape_library 2> /dev/null`
     if [ $? -ne 0 ]; then
         #Use the entire line from the --list-media-changers command if
 	# the tape_library was not found in the media_changer configuration.
@@ -49,7 +52,7 @@ while read line; do
     echo -e $tl_name Volume List Report: `date` >> $temp_file 2>&1
     echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
     #Get the volumes!
-    enstore media --list-volumes $mc >> $temp_file 2>&1
+    enstore media $timeout --list-volumes $mc >> $temp_file 2>&1
     echo -e "\n" >> $temp_file 2>&1
     #Give and end time so we know how long it took.
     echo -e $fname Report Completed: `date` "\n" >> $temp_file 2>&1
