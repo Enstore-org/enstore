@@ -9,6 +9,8 @@ class EnstorePlotterModule:
         self.parameters = {}
     def isActive(self):
         return self.is_active
+    def setActive(self,isActive=True):
+        self.is_active=isActive
     def book(self,frame):
         print "Booking ",self.name
     def fill(self,frame):
