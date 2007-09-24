@@ -4,38 +4,52 @@
 # 1. rename current database area, if exists
 # 2. create directory for database area
 # 3. initialize database area
-# 4. copy appropriate pg_hba.conf from $ENSTORE_DIR/databases/conftol_files
+# 4. copy appropriate pg_hba.conf from $ENSTORE_DIR/databases/control_files
 # 5. start up databse server
-# 6. create user "enstore"
-# 7. create database owned by user "enstore"
+# 6. create users "enstore" and "enstore_reader"
+# 7. create database owned by user $dbowner
 # 8. create schema from $ENSTORE_DIR/databases/schemas/enstoredb.schema
 
+# must be root
+if [ "`whoami`" != "root" ]
+then
+	echo "must run as root"
+fi
+
+# find the host
+host=`uname -n | cut -d. -f1`
+
+# setup enstore
+#. /usr/local/etc/setups.sh
+#setup enstore
 
 enstore_dir=${ENSTORE_DIR}
 database_scripts=$enstore_dir/databases/scripts
-database_owner=products
-db_owner=enstore
+extract_config=$enstore_dir/external_distr/extract_config_parameters.py
 
 case $1 in
 	enstoredb)
-		database_area=/diskb/enstore-db
-		db_name=enstoredb
-		db_port=8888
-		db_startup_script=$database_scripts/enstore-db
+		database_area=`$extract_config database | grep dbarea | cut -d: -f 2`
+		db_name=`$extract_config database | grep dbname | cut -d: -f 2`
+		db_port=`$extract_config database | grep dbport | cut -d: -f 2`
+		database_owner=`$extract_config database | grep dbserverowner | cut -d: -f 2`
+		db_owner=`$extract_config database | grep dbuser | cut -d: -f 2`
 		db_schema=$enstore_dir/databases/schemas/enstoredb.schema
 		;;
 	accounting)
-		database_area=/diska/accounting-db
-		db_name=accounting
-		db_port=8800
-		db_startup_script=$database_scripts/accounting-db
+		database_area=`$extract_config accounting_server | grep dbarea | cut -d: -f 2`
+		db_name=`$extract_config accounting_server | grep dbname | cut -d: -f 2`
+		db_port=`$extract_config accounting_server | grep dbport | cut -d: -f 2`
+		database_owner=`$extract_config accounting_server | grep dbserverowner | cut -d: -f 2`
+		db_owner=`$extract_config accounting_server | grep dbuser | cut -d: -f 2`
 		db_schema=$enstore_dir/databases/schemas/accounting.schema
 		;;
 	drivestat)
-		database_area=/diska/drivestat-db
-		db_name=drivestat
-		db_port=8802
-		db_startup_script=$database_scripts/drivestat-db
+		database_area=`$extract_config drivestat_server | grep dbarea | cut -d: -f 2`
+		db_name=`$extract_config drivestat_server | grep dbname | cut -d: -f 2`
+		db_port=`$extract_config drivestat_server | grep dbport | cut -d: -f 2`
+		database_owner=`$extract_config drivestat_server | grep dbserverowner | cut -d: -f 2`
+		db_owner=`$extract_config drivestat_server | grep dbuser | cut -d: -f 2`
 		db_schema=$enstore_dir/databases/schemas/drivestat.schema
 		;;
 	*)
@@ -43,22 +57,17 @@ case $1 in
 		exit 0
 esac
 
-# find the host
-host=`uname -n | cut -d. -f1`
+# check parameters
 
-# need to setup enstore first
-if [ "$enstore_dir" == "" ]
-then
-	echo "need to set up enstore first"
-	exit
-fi
-
-# must be root
-if [ "`whoami`" != "root" ]
-then
-	echo "must run as root"
-	exit 0
-fi
+echo enstore_dir = $enstore_dir
+echo database_scripts = $database_scripts
+echo extract_config = $extract_config
+echo database_area = $database_area
+echo db_name = $db_name
+echo db_port = $db_port
+echo database_owner = $database_owner
+echo db_owner = $db_owner
+echo db_schema = $db_schema
 
 # check if $database_area exist. If so, rename it
 
@@ -101,8 +110,6 @@ esac
 # bring up database server
 echo su $database_owner -c \"postmaster -D $database_area -p $db_port -i \&\"
 su $database_owner -c "postmaster -D $database_area -p $db_port -i &"
-# echo su $database_owner -c "$db_startup_script start"
-# su $database_owner -c "$db_startup_script start"
 
 # wait for database server startup
 echo waiting for database server to start up
@@ -129,3 +136,29 @@ su $db_owner -c "createdb -p $db_port $db_name"
 # create schemas
 echo su $database_owner psql -p $db_port $db_name -f $db_schema
 su $database_owner -c "psql -p $db_port $db_name -f $db_schema"
+
+# take care of aux directories for enstoredb
+if [ "$1" == "enstoredb" ]
+then
+	jou_dir = `$extract_config database | grep jou_dir | cut -d: -f 2`
+	db_dir = `$extract_config database | grep db_dir | cut -d: -f 2`
+	if [ -d $jou_dir ]
+	then
+		echo $jou_dir exists
+	else
+		echo mkdir -p $jou_dir
+		mkdir -p $jou_dir
+		echo chown $db_owner $jou_dir
+		chown $db_owner $jou_dir
+	fi
+	if [ -d $db_dir ]
+	then
+		echo $db_dir exists
+	else
+		echo mkdir -p $db_dir
+		mkdir -p $db_dir
+		echo chown $db_owner $db_dir
+		chown $db_owner $db_dir
+	fi
+fi
+
