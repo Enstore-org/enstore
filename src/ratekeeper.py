@@ -92,16 +92,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
                                 timeout=15, retry=3)
         
-        ratekeeper_dir  = ratekeep.get('dir', 'MISSING')
+        ratekeeper_dir  = ratekeep.get('dir', None)
         ratekeeper_host = ratekeep.get('hostip',ratekeep.get('host','MISSING'))
         ratekeeper_port = ratekeep.get('port','MISSING')
-        ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
+        #ratekeeper_nodes = ratekeep.get('nodes','MISSING') #Command line info.
         ratekeeper_addr = (ratekeeper_host, ratekeeper_port)
         
-        if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
-            print "Error: Missing ratekeeper configdict directory.",
-            print "  (ratekeeper_dir)"
-            sys.exit(1)
+        #if ratekeeper_dir  == 'MISSING' or not ratekeeper_dir:
+        #    print "Error: Missing ratekeeper configdict directory.",
+        #    print "  (ratekeeper_dir)"
+        #    sys.exit(1)
         if ratekeeper_host == 'MISSING' or not ratekeeper_host:
             print "Error: Missing ratekeeper configdict directory.",
             print "  (ratekeeper_host)"
@@ -110,13 +110,16 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             print "Error: Missing ratekeeper configdict directory.",
             print "  (ratekeeper_port)"
             sys.exit(1)
-        if ratekeeper_nodes == 'MISSING':
-            ratekeeper_nodes = ''
+        #if ratekeeper_nodes == 'MISSING':
+        #    ratekeeper_nodes = ''
 
         dispatching_worker.DispatchingWorker.__init__(self, ratekeeper_addr)
 
         self.filename_base = socket.gethostname()  #filename_base
-        self.output_dir = ratekeeper_dir
+        if ratekeeper_dir and os.path.exists(ratekeeper_dir):
+            self.output_dir = ratekeeper_dir
+        else:
+            self.output_dir = None
         self.outfile = None
         self.ymd = None #Year, month, date
         self.last_ymd = None
@@ -320,10 +323,12 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                         pass
 
             year, month, day = self.ymd
-            outfile_name = os.path.join(self.output_dir, \
+
+            if self.output_dir:
+                outfile_name = os.path.join(self.output_dir, \
                                         "%s.RATES.%04d%02d%02d" %
                                         (self.filename_base, year, month, day))
-            self.outfile=open(outfile_name, 'a')
+                self.outfile=open(outfile_name, 'a')
 
     def count_bytes(self, words, bytes_read_dict, bytes_written_dict, group):
         mover = words[1]
@@ -403,14 +408,15 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
                 # [DEPRICATED] Write the rate data to the rate log file.
                 try:
-                    self.outfile.write( "%s %d %d %d %d\n" %
+                    if self.outfile:
+                        self.outfile.write( "%s %d %d %d %d\n" %
                                         (time.strftime("%m-%d-%Y %H:%M:%S",
                                                        time.localtime(now)),
                                          bytes_read_dict.get("REAL", 0),
                                          bytes_written_dict.get("REAL", 0),
                                          bytes_read_dict.get("NULL", 0),
                                          bytes_written_dict.get("NULL", 0),))
-                    self.outfile.flush()
+                        self.outfile.flush()
                 except:
                     try:
                         sys.stderr.write("Can not write to output file.\n")
