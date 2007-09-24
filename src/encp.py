@@ -6015,16 +6015,21 @@ def set_pnfs_settings(ticket, intf_encp):
                 else:  #is_read() for "get".
                     ticket['infile'] = path
             except (OSError, IOError, AttributeError, ValueError):
+                #Get the exception.
+                exc, msg = sys.exc_info()[:2]
                 ticket['status'] = (e_errors.USERERROR,
                                     "PNFS file %s has been removed." %
                                     ticket['wrapper']['pnfsFilename'])
+                #Log the problem.
                 Trace.log(e_errors.ERROR,
-                          "Trouble with pnfs: %s %s." % ticket['status'])
+                          "Trouble with pnfs: %s %s %s." %
+                          (str(ticket['status']), str(exc), str(msg)))
                 return
         else:
             ticket['status'] = (e_errors.USERERROR,
                                 "PNFS file %s has been removed." %
                                 ticket['wrapper']['pnfsFilename'])
+            #Log the problem.
             Trace.log(e_errors.ERROR,
                       "Trouble with pnfs: %s %s." % ticket['status'])
             return
@@ -6041,17 +6046,18 @@ def set_pnfs_settings(ticket, intf_encp):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             #Get the exception.
-            msg = sys.exc_info()[1]
+            exc, msg = sys.exc_info()[:2]
             #If it is a user access/permitted problem handle accordingly.
             if hasattr(msg, "errno") and \
-                   (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                   msg.errno in [errno.EACCES, errno.EPERM]:
                 ticket['status'] = (e_errors.USERERROR, str(msg))
             #Handle all other errors.
             else:
                 ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
             #Log the problem.
             Trace.log(e_errors.INFO,
-                      "Trouble with pnfs: %s %s." % ticket['status'])
+                      "Trouble with pnfs (Pnfs): %s %s %s." %
+                      (ticket['status'][0], str(exc), str(msg)))
             return
     
     Trace.message(TIME_LEVEL, "Time to veify pnfs file location: %s sec." %
@@ -6072,17 +6078,18 @@ def set_pnfs_settings(ticket, intf_encp):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             #Get the exception.
-            msg = sys.exc_info()[1]
+            exc, msg = sys.exc_info()[:2]
             #If it is a user access/permitted problem handle accordingly.
             if hasattr(msg, "errno") and \
-               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                   msg.errno in [errno.EACCES, errno.EPERM]:
                 ticket['status'] = (e_errors.USERERROR, str(msg))
             #Handle all other errors.
             else:
                 ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
             #Log the problem.
-            Trace.log(e_errors.INFO,
-                      "Trouble with pnfs: %s %s." % ticket['status'])
+            Trace.log(e_errors.ERROR,
+                      "Trouble with pnfs (set_bit_file_id): %s %s %s." %
+                      (ticket['status'][0], str(exc), str(msg)))
             return
 
         Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
@@ -6109,22 +6116,18 @@ def set_pnfs_settings(ticket, intf_encp):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
         #Get the exception.
-        msg = sys.exc_info()[1]
+        exc, msg = sys.exc_info()[:2]
         #If it is a user access/permitted problem handle accordingly.
         if hasattr(msg, "errno") and \
-               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+               msg.errno in [errno.EACCES, errno.EPERM]:
             ticket['status'] = (e_errors.USERERROR, str(msg))
         #Handle all other errors.
         else:
             ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
         #Log the problem.
-        Trace.log(e_errors.INFO,
-                  "Trouble with pnfs: %s %s." % ticket['status'])
-        
-        exc, msg = sys.exc_info()[:2]
-        Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
-                  % (str(exc), str(msg)))
-        ticket['status'] = (str(exc), str(msg))
+        Trace.log(e_errors.ERROR,
+                      "Trouble with pnfs (get_id): %s %s %s." %
+                      (ticket['status'][0], str(exc), str(msg)))
         return
 
     if not ticket.get('copy', None):  #Don't set layer 4 if copy.
@@ -6152,22 +6155,19 @@ def set_pnfs_settings(ticket, intf_encp):
             raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
         except:
             #Get the exception.
-            msg = sys.exc_info()[1]
+            exc, msg = sys.exc_info()[:2]
             #If it is a user access/permitted problem handle accordingly.
             if hasattr(msg, "errno") and \
-               (msg.errno == errno.EACCES or msg.errno == errno.EPERM):
+                   msg.errno in [errno.EACCES, errno.EPERM]:
                 ticket['status'] = (e_errors.USERERROR, str(msg))
             #Handle all other errors.
             else:
                 ticket['status'] = (e_errors.PNFS_ERROR, str(msg))
-            #Log the problem.
-            Trace.log(e_errors.INFO,
-                      "Trouble with pnfs: %s %s." % ticket['status'])
 
-            exc, msg = sys.exc_info()[:2]
-            Trace.log(e_errors.INFO, "Trouble with pnfs.set_xreference %s %s."
-                      % (str(exc), str(msg)))
-            ticket['status'] = (str(exc), str(msg))
+            #Log the problem.
+            Trace.log(e_errors.ERROR,
+                      "Trouble with pnfs (set_xreference): %s %s %s." %
+                      (ticket['status'][0], str(exc), str(msg)))
             return
 
         Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
