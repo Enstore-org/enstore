@@ -227,10 +227,10 @@ then
 fi
     
 chown -R enstore.enstore  $ENSTORE_HOME
-if [ $fnal -ne 0 ]
-then
-    kdestroy
-fi
+#if [ $fnal -ne 0 ]
+#then
+#    kdestroy
+#fi
 echo "
 Please check $ENSTORE_HOME/site_specific/config/setup-enstore.
 In case you are going to use ssh for product distribution, updates and maintenance you need to add the following entries
