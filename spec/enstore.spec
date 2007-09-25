@@ -69,8 +69,8 @@ id enstore
 if [ $? -ne 0 ]; then
 	echo 'Creating user "enstore"'
 	useradd -u 5744 -g enstore enstore
+	chmod 775 ~enstore
 fi
-chmod 775 ~enstore
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_preinstall.sh
 #%post
 #$RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_postinstall.sh
