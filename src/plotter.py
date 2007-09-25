@@ -12,6 +12,8 @@ import option
 import www_server
 import e_errors
 import Trace
+import configuration_client
+import socket
 
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
@@ -304,6 +306,32 @@ if __name__ == "__main__":
     Trace.trace(enstore_constants.PLOTTING,
                 "plotter called with args %s"%(sys.argv,))
 
+    #
+    # a hack
+    #
+    if not intf.total_bytes:
+        config_interface  = configuration_client.ConfigurationClientInterface(user_mode=0)
+        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+        system_name = csc.get_enstore_system(timeout=1,retry=0)        
+        config_dict={}
+
+        if system_name:
+            config_dict = csc.dump(timeout=1, retry=3)
+            config_dict = config_dict['dump']
+        else:
+            try: 
+                configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+                print "Failed to connect to config server, using configuration file %s"%(configfile,)
+                f = open(configfile,'r')
+                code = string.join(f.readlines(),'')
+                configdict={}
+                exec(code)
+                config_dict=configdict
+            except:
+                pass
+        inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
+        intf.output_dir = inq_d["html_file"]
+    
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 
 		      intf.alive_rcv_timeout, intf.alive_retries,
