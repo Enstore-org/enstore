@@ -102,7 +102,7 @@ case $host in
 		# modify pg_hba.conf in place
 		for i in `/sbin/ifconfig | grep "inet addr:" | grep -v 127.0.0.1 | awk '{print $2}' | cut -d":" -f 2`
 		do
-			echo "host $dbname enstore $i/24 trust" >> $database_area/pg_hba.conf
+			echo "host $db_name enstore $i/24 trust" >> $database_area/pg_hba.conf
 		done
 		;;
 esac
