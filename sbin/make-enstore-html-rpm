@@ -82,6 +82,7 @@ cp enstore/src/web_server.py "$package"
 cp enstore/www/conf/httpd.conf "$package"
 cp enstore/sbin/deploy_enstore_html "$package"
 cp enstore/sbin/undeploy_enstore_html "$package"
+cp enstore/src/*cgi*py "$package"
 
 
 #======================================================================

@@ -87,7 +87,7 @@ class EnstoreSystemHtml:
         self.info_table=HTMLgen.TableLite(cellpadding=2,bgcolor=TABLECOLOR,cellspacing=5,border=2)
         self.info_table.width="100%"
 
-        add_row_to_table(self.info_table,"/cgi-bin/enstore/enstore_show_inv_summary_cgi.py",
+        add_row_to_table(self.info_table,"/cgi-bin/enstore_show_inv_summary_cgi.py",
                          "Tape Inventory Summary","Summary of inventory results")
 
         add_row_to_table(self.info_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")

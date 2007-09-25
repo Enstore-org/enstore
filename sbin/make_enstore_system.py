@@ -20,6 +20,38 @@ import sys
 import os
 import string
 
+def rchown(dir, uid, gid):
+  try:
+    if (os.path.isdir(dir)):
+      direntries=os.listdir(os.path.abspath(dir))
+      for direntry in direntries:
+        d=os.path.abspath(os.path.join(dir,direntry))
+        if (os.path.isdir(d)):
+          rchown(d, uid, gid)
+        else:
+          os.chown(d, uid, gid)
+    else:
+      os.chown(dir, uid, gid)
+  except (IOError, os.error), why:
+    print "rchown %s: %s" % (str(dir), str(why))
+
+def rchmod(dir, mode):
+  try:
+    if (os.path.isdir(dir)):
+      direntries=os.listdir(os.path.abspath(dir))
+      for direntry in direntries:
+        d=os.path.abspath(os.path.join(dir,direntry))
+        if  (os.path.isdir(d)):
+          rchmod(d, mode)
+        else:
+          os.chmod(d, mode)
+    else:
+      os.chmod(dir, mode)
+  except (IOError, os.error), why:
+    print "rchmod %s: %s" % (str(dir), str(why))
+
+
+
 if __name__ == "__main__":
     rc=0
     server = web_server.WebServer()
@@ -50,14 +82,28 @@ if __name__ == "__main__":
     os.system("cp *.gif %s"%html_dir);
     os.system("cp *.html %s"%html_dir);
     uid=server.get_server_getpwuid()[2]
+    gid=server.get_server_getpwuid()[3]
     try:
-        os.chown(html_dir,server.get_server_getpwuid()[2],server.get_server_getpwuid()[3])
+      rchown(html_dir,uid,gid)
     except:
-        print "Failed to change ownership of ",html_dir," to ",server.get_server_getpwuid()[2],server.get_server_getpwuid()[3]
+        print "Failed to change ownership of ",html_dir," to ",uid,gid
         pass
-    
-    
-    
+    cgi_dir=server.get_cgi_directory();
+    os.system("cp *cgi*py %s"%cgi_dir)
+    os.system("cp enstore_log_file_search_cgi.py %s/log"%cgi_dir)
+    os.system("cp enstore_utils_cgi.py %s/log"%cgi_dir)
+    try:
+        rchown(cgi_dir,uid,gid)
+    except:
+        print "Failed to change ownership of ",cgi_dir," to ",uid,gid
+        pass
+    try:
+        rchmod(cgi_dir,0755)
+    except:
+        print "Failed to permission  mask of ",cgi_dir," to ",0755
+        pass
+     
+
              
     
     

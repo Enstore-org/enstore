@@ -226,12 +226,19 @@ class WebServer:
     def get_custom_log(self,name):
         if not self.is_ok :
             return None
-        if not self.is_ok :
-            return None
         if self.server_dict.has_key('CustomLog'):
             return self.server_dict['CustomLog'][name]
         else:
             print 'CustomLog is not defined in the configuration'
+            return None
+
+    def get_cgi_directory(self):
+        if not self.is_ok :
+            return None
+        if self.server_dict.has_key('ScriptAlias'):
+            return self.server_dict['ScriptAlias']['real']
+        else:
+            print 'ScriptAlias is not defined in the configuration'
             return None
 
     def generate_top_index_html(self):
@@ -279,6 +286,17 @@ def install():
                 os.makedirs(doc_root)
         else:
             return 1
+        cgi_dir = server.get_cgi_directory()
+        if cgi_dir:
+            if not os.path.exists(cgi_dir):
+                os.makedirs(cgi_dir)
+        else:
+            return 1
+
+        cgi_dir=cgi_dir+"/log"
+        if not os.path.exists(cgi_dir):
+            os.makedirs(cgi_dir)
+        
         pid_file = server.get_pid_file()
         if pid_file:
             if not os.path.exists(os.path.dirname(pid_file)):
