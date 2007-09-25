@@ -15,7 +15,7 @@ db_servers = ['database', 'accounting_server', 'drivestat_server']
 
 # find_pid(cmd, arg) -- find pid based on cmd and argument
 def find_pid(cmd, arg):
-	res = os.popen('ps -axw').readlines()
+	res = os.popen('ps axw').readlines()
 	for i in res:
 		if i.find(cmd) >=0  and i.find(str(arg)) >= 0:
 			return(int(i.split()[0]))
