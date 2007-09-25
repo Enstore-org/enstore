@@ -91,7 +91,9 @@ def parseTapeLogParFile(filename):
     f = open(filename)
     line = f.readline()
     while line:
-        if line.lower().find("tapelog") >= 0:
+	if line[0] == '#':
+            pass 
+        elif line.lower().find("tapelog") >= 0:
             #Split "tapelog" lines containing tuples of the following:
             # (tape, filemark, run, frame, ccd)
             try:
@@ -328,7 +330,7 @@ def parseFile(filename, tapeStyle):
         return parseTapeLogParFile(filename)
     elif tapeStyle == "PtTape":
         return parsePtTapeTapelogFile(filename)
-    
+     
     sys.stderr.write("%s tape style unknown\n" % tapeStyle)
     sys.exit(1)
 
