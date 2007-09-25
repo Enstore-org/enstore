@@ -51,7 +51,7 @@ if [ $fnal -eq 0 ]; then
     fi
 else
     ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
-    kdestroy
+    #kdestroy
     KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
     defaultDomain=".fnal.gov"
 
