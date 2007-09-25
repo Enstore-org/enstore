@@ -62,7 +62,13 @@ else
     else 
        thisHost=${this_host}${defaultDomain};
     fi
-    kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
+    if [ -d "/fnal" ];
+    then
+	prefix="/fnal"
+    else
+	prefix="/local"
+    fi
+    kinit -k -t ${prefix}/ups/kt/enstorekt enstore/cd/${thisHost}
     # change permissions for credentials file
     cred_f=`echo $KRB5CCNAME | cut -f2 -d\:`
     if [ $? -eq 0 ]; then
