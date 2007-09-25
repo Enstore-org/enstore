@@ -19,7 +19,11 @@ ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm \
 ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
 
 echo "installing pnfs"
-/etc/rc.d/init.d/pnfs stop
+if [ -r /etc/rc.d/init.d/pnfs ];
+then
+    chmod 755 /etc/rc.d/init.d/pnfs
+    /etc/rc.d/init.d/pnfs stop
+fi
 rpm -U --force ${place}/pnfs-3.1.10-1f.i386.rpm
 #also need to install here or via cgengine
 # pnfs
