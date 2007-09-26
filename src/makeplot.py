@@ -241,6 +241,8 @@ if __name__ == "__main__":
     
     log_dir, tmp_dir, sys_name, rate_nodes, ps_filename_template, \
           jpg_filename_template, jpg_stamp_filename_template = get_rate_info()
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     #Check the command line arguments.
     #-t stands for Time smoothing, which is the number of points that get
@@ -267,8 +269,6 @@ if __name__ == "__main__":
     jpg_stamp_filename = {}
     plot_filename = {}
 
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
 
     #Replace the *s with text for the filenames.
     for group in groups:
