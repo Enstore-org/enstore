@@ -8,7 +8,7 @@
 
 # system imports
 import os
-import pprint
+#import pprint
 import string
 import sys
 import time
@@ -20,7 +20,7 @@ def cmd(command):
     print command
     p = os.popen(command,'r')
     text = p.read()
-    s = p.close()
+    p.close()
     lines = []
     for line in string.split(text,'\n'):
         line = string.strip(line)
@@ -123,6 +123,22 @@ def print_drv(Drv, fp):
             fp.write("   %-13s %-10s %20s %s\n" % \
                      (error[3],error[4],error[0],error[5]))
 
+def make_failed_page(Vol, Drv, out_file_fp):
+    
+    #Output the header.
+    out_file_fp.write("%s: Failed Transfers Report\n" % (time.ctime(now),))
+    out_file_fp.write("Brought to You by: %s\n" % (os.path.basename(sys.argv[0]),))
+    out_file_fp.write("\n" + "-" * 80 + "\n\n")
+
+    #Output the volume failures.
+    print_vols(Vol, out_file_fp)
+
+    #Output a seperator.
+    out_file_fp.write("\n" + "-" * 80 + "\n\n")
+
+    #Output the drive failures.
+    print_drv(Drv, out_file_fp)
+
 def logname(t):
     t_tup=time.localtime(t)
     return "LOG-%4.4i-%2.2i-%2.2i" %(t_tup[0],t_tup[1],t_tup[2])
@@ -171,16 +187,8 @@ if __name__ == "__main__":
     temp_filename = "%s.temp" % (failed_filename)
     temp_fp = open(temp_filename, "w")
 
-    #Output the header.
-    temp_fp.write("%s: Failed Transfers Report\n" % (time.ctime(now),))
-    temp_fp.write("Brought to You by: %s\n" % (os.path.basename(sys.argv[0]),))
-    temp_fp.write("\n" + "-" * 80 + "\n\n")
+    make_failed_page(Vol, Drv, temp_fp)
 
-    #Output the volume failures.
-    print_vols(Vol, temp_fp)
+    temp_fp.close()
 
-    #Output a seperator.
-    temp_fp.write("\n" + "-" * 80 + "\n\n")
-
-    #Output the drive failures.
-    print_drv(Drv, temp_fp)
+    os.rename(temp_filename, failed_filename)
