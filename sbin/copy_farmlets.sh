@@ -15,7 +15,8 @@ then
     then
 	echo "Copying farmlets from $ENSTORE_CONFIG_HOST"
 	mkdir -p /usr/local/etc/farmlets
-	enrcp $ENSTORE_CONFIG_HOST:/usr/local/etc/farmlets/* /usr/local/etc/farmlets
+	#enrcp $ENSTORE_CONFIG_HOST:/usr/local/etc/farmlets/* /usr/local/etc/farmlets
+	scp $ENSTORE_CONFIG_HOST:/usr/local/etc/farmlets/* /usr/local/etc/farmlets
     fi
 else
     echo "You need to create farmlets in $FARMLETS_DIR"
