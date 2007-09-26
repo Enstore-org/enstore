@@ -267,6 +267,9 @@ if __name__ == "__main__":
     jpg_stamp_filename = {}
     plot_filename = {}
 
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
     #Replace the *s with text for the filenames.
     for group in groups:
         ps_filename[group] = string.replace(ps_filename_template, '*',
