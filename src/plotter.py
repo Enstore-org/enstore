@@ -14,6 +14,7 @@ import e_errors
 import Trace
 import configuration_client
 import socket
+import string
 
 MY_NAME = "Plotter"
 BURN_RATE = "burn-rate"
