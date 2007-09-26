@@ -158,7 +158,6 @@ if __name__ == "__main__":
         html_dir=server.inq_d["html_file"]
     else:
         html_dir = enstore_files.default_dir
-    html_dir=" "
     if not os.path.exists(html_dir):
         os.makedirs(html_dir)
     main_web_page.write_html_page_to_directory(html_dir)
