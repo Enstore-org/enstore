@@ -161,4 +161,4 @@ if __name__ == "__main__":
     html_dir=" "
     if not os.path.exists(html_dir):
         os.makedirs(html_dir)
-    main_web_page.write_html_page_to_directory("")
+    main_web_page.write_html_page_to_directory(html_dir)
