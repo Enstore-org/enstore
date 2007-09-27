@@ -22,6 +22,7 @@ then
     ${place}/postgresql-8.2.4-1PGDG.i686.rpm \
     ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm \
     ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
+fi
 
 echo "installing pnfs"
 if [ -r /etc/rc.d/init.d/pnfs ];
