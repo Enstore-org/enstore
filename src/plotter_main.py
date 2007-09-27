@@ -15,6 +15,9 @@ import ratekeeper_plotter_module
 import mounts_plot
 import getopt
 import sys
+import socket
+
+FNAL_DOMAIN="131.225" 
 
 def usage(cmd):
     print "Usage: %s -s [--sleep=] "%(cmd,)
@@ -39,7 +42,7 @@ if __name__ == "__main__":
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
 
-            if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
+            if socket.gethostbyname(socket.gethostname())[0:7] == FNAL_DOMAIN :
 
                 aModule   = mounts_plot.MountsPlot("mounts")
                 aModule.add_parameter("library","dlt");
