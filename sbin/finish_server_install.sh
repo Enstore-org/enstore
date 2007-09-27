@@ -9,22 +9,45 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
 . /usr/local/etc/setups.sh
 setup enstore
+
 echo "installing enstore_html"
 /sbin/service httpd stop
 rpm -U --force --nodeps ${place}/enstore_html-1.0-0.i386.rpm
-echo "installing postgres"
-rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm \
-${place}/postgresql-8.2.4-1PGDG.i686.rpm \
-${place}/postgresql-server-8.2.4-1PGDG.i686.rpm \
-${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
+
+rpm -q enstore > /dev/null
+if [ $? -ne 0 ]; 
+then
+    echo "installing postgres"
+    rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm \
+    ${place}/postgresql-8.2.4-1PGDG.i686.rpm \
+    ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm \
+    ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
 
 echo "installing pnfs"
 if [ -r /etc/rc.d/init.d/pnfs ];
 then
-    chmod 755 /etc/rc.d/init.d/pnfs
+    # chmod 755 /etc/rc.d/init.d/pnfs
     /etc/rc.d/init.d/pnfs stop
+    #/etc/rc.d/init.d/postgresql stop
 fi
 rpm -U --force ${place}/pnfs-3.1.10-1f.i386.rpm
-#also need to install here or via cgengine
-# pnfs
-# posgtres (may be this gets installed along with 
+# complete after install pnfs configuration
+# copy setup
+
+$ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
+while read f1 f2; do eval pnfs_{$f1}=$f2; done < /tmp/pnfs_conf.tmp
+rm -rf install_database.tmp
+echo pnfs host: ${pnfs_host}
+this_host=`uname -n`
+if [ $this_host = $pnfs_host ];
+then
+    echo "Configuring this host to run postgres"
+    /sbin/chkconfig postgresql on
+    echo "Starting postges"
+    /etc/init.d/postgresql start
+    echo "Configuring this host to run pnfs server"
+    /sbin/chkconfig pnfs add
+    /sbin/chkconfig pnfs on
+    #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
+    #/etc/init.d/pnfs start
+fi
