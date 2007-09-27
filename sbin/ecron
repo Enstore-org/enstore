@@ -38,6 +38,8 @@ if test -w /dev/console -a $quiet -ne 1; then
   echo "$start: $0 $@ ...starting" >/dev/console
 fi
 
+tag=unknown
+
 sendMail() {
   filename=$1
   mode=$2
@@ -56,11 +58,14 @@ sendMail() {
   fi
 }
 
+# pass in logit and tag
 quit() {
   message="$1"
-  code=$2
+  code="$2"
+  logit="$3"
+  tag="$4"
   if [ -n "${message-}" ]; then echo "$1"; fi
-  if [ "${3:-}" != "keepactive" ] ; then rmdir $activeFlag >/dev/null 2>&1; fi
+  if [ "${5:-}" != "keepactive" ] ; then rmdir $activeFlag >/dev/null 2>&1; fi
   done=`date +"%Y-%m-%d:%H:%M:%S"`
   echo "$done $code" >> $histogram
   if test -w /dev/console -a $quiet -ne 1; then
@@ -120,6 +125,9 @@ quit() {
 # now -need-enstore is the default behavior
 # -no-enstore is to supress it
 
+# Sep 27, 2007 Modified again to add -no-log option
+# logit=yes is defaul, -no-log overrides it.
+
 # additional products
 
 products=
@@ -129,7 +137,7 @@ cntlimit=1
 need_enstore="yes"
 logit="yes"
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log"]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log" ]
 do
 	case $1 in
 	-setup)
@@ -197,7 +205,7 @@ genAlarm=${procInfos}GENALARM
 cntFile=${procInfos}.cnt
 errcnt=0
 
-if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3; fi
+if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3 "$logit" "$tag"; fi
 
 #read err count, if any
 if [ -r $cntFile ]
@@ -217,7 +225,7 @@ echo "$start 10" >> $histogram
 mkdir $activeFlag 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then 
    if [ ! -f $noNeg ] ; then 
-      quit "" -2 "keepactive"
+      quit "" -2 "$logit" "$tag" "keepactive"
    else
       if [ "$logit" = "yes" ]
       then
@@ -229,7 +237,7 @@ fi
 
 
 setup=/usr/local/etc/setups.sh
-if [ ! -f $setup ] ; then quit "$setup not found" -4; fi
+if [ ! -f $setup ] ; then quit "$setup not found" -4  "$logit" "$tag"; fi
 . $setup
 # should check that enstore was setup properly as well
 setup enstore
@@ -268,10 +276,10 @@ else
 	problem=$?
 fi
 
-if [ "$logit" = "yes" ]
-then
-	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
-fi
+#if [ "$logit" = "yes" ]
+#then
+#	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
+#fi
 
 # adjust the exit code so that it does not disappear off of the cron job plot
 if [ $problem -gt 5 -o $problem -lt -5 ] ; then
@@ -306,4 +314,4 @@ else
     /bin/rm -rf $cntFile
 fi
 
-quit "" $problem
+quit "" $problem  "$logit" "$tag"
