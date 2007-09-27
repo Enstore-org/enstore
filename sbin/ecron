@@ -70,7 +70,7 @@ quit() {
       echo enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
            enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
   fi   
-  if [ -n "${logit:-}" ]
+  if [ "$logit" = "yes" ]
   then
       $ENSTORE_DIR/src/log_finish_event.py ${tag} $code
   fi
@@ -127,6 +127,7 @@ job=
 cwd=`pwd`
 cntlimit=1
 need_enstore="yes"
+logit="yes"
 
 while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log"]
 do
@@ -165,10 +166,10 @@ do
 		shift
 		;;
 	-l)
-		logit=1
+		logit="yes"
                 ;;
 	-no-log)
-		logit=
+		logit="no"
 		;;
 	esac
 	shift
@@ -205,7 +206,7 @@ then
 fi
 
 # log it?
-if [ -n "${logit:-}" ]
+if [ "$logit" = "yes" ]
 then
 	tag=`$ENSTORE_DIR/src/log_start_event.py ${log_name}`
 fi
@@ -218,7 +219,7 @@ if [ $? -ne 0 ] ; then
    if [ ! -f $noNeg ] ; then 
       quit "" -2 "keepactive"
    else
-      if [ -n "${logit:-}" ]
+      if [ "$logit" = "yes" ]
       then
 	 $ENSTORE_DIR/src/log_finish_event.py ${tag} 0
       fi
@@ -250,7 +251,7 @@ procName=$1
 
 shift
 
-if [ $need_enstore = "yes" ]
+if [ "$need_enstore" = "yes" ]
 then
 	if [ "`enstore inq --is-up enstore`" = "yes" ]
 	then
@@ -267,7 +268,7 @@ else
 	problem=$?
 fi
 
-if [ -n "${logit:-}" ]
+if [ "$logit" = "yes" ]
 then
 	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
 fi
