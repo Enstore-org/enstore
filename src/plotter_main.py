@@ -23,7 +23,7 @@ def usage(cmd):
     
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:", ["help","mounts="])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs", ["help","mounts","rate"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
