@@ -1,0 +1,2 @@
+30 4 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumACC -l vacuumdb -p 8800 -d accounting -v -z > /dev/null 2> /dev/null
+
