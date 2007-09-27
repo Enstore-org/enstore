@@ -18,10 +18,7 @@ rpm -q postgesql > /dev/null
 if [ $? -ne 0 ]; 
 then
     echo "installing postgres"
-    rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm \
-    ${place}/postgresql-8.2.4-1PGDG.i686.rpm \
-    ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm \
-    ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
+rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm ${place}/postgresql-8.2.4-1PGDG.i686.rpm ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
 fi
 
 echo "installing pnfs"
