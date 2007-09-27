@@ -14,7 +14,7 @@ echo "installing enstore_html"
 /sbin/service httpd stop
 rpm -U --force --nodeps ${place}/enstore_html-1.0-0.i386.rpm
 
-rpm -q enstore > /dev/null
+rpm -q postgesql > /dev/null
 if [ $? -ne 0 ]; 
 then
     echo "installing postgres"
