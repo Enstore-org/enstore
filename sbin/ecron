@@ -303,7 +303,9 @@ if [ $problem -ne 0 ] ; then
     echo "  -------------------- end of messages   ---------------------- ">>$procMail
     if [ $errcnt -ge $cntlimit ]
     then
-        sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+        if [ $problem -ne -3 ] ; then
+            sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+        fi
     fi
     # save the error output. we get python and ENSTORE_DIR from the enstore setup
     # the second parameter tells the script how many output files to keep.  the default
