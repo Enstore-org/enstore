@@ -39,21 +39,24 @@ if __name__ == "__main__":
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
 
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","dlt");
-            f.add(aModule)
+            if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
+
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","dlt");
+                f.add(aModule)
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","CD-9940B");
-            f.add(aModule)
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","CD-9940B");
+                f.add(aModule)
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","9940");
-            f.add(aModule)    
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","9940");
+                f.add(aModule)    
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","CD-LTO3");
-            f.add(aModule)
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","CD-LTO3");
+                f.add(aModule)
+                
         if o in ("-r","--rate"):
             aModule   = ratekeeper_plotter_module.RateKeeperPlotterModule("ratekeeper")
             f.add(aModule)
