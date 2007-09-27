@@ -1,0 +1,2 @@
+#The following make the AML2 log web pages.
+18 9 * * * enstore /home/enstore/enstore/sbin/ecron -p aml2mirror mirror /home/enstore/CRON/aml2.mirror > /dev/null 2> /dev/null

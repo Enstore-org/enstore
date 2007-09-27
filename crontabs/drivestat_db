@@ -1,0 +1,2 @@
+30 0 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumDST -l vacuumdb -p 8802 -d drivestat -v -z > /dev/null 2> /dev/null
+

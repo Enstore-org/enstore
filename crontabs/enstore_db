@@ -1,0 +1,2 @@
+30 2 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumdb -l vacuumdb -p 8888 -d enstoredb -v -z > /dev/null 2> /dev/null
+

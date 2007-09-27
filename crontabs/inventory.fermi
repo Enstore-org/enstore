@@ -1,0 +1,1 @@
+14 9,14,19 * * * enstore /home/enstore/enstore/sbin/ecron -p silocheck  /home/enstore/enstore/sbin/silo-check > /dev/null 2> /dev/null
