@@ -1,14 +1,28 @@
 30 1 * * * enstore /home/enstore/enstore/sbin/ecron -p inqPlotUpdate -setup gnuplot python /home/enstore/enstore/src/plotter.py --mount --output_dir=/local/ups/prd/www_pages/enstore > /dev/null 2> /dev/null
 40 1 * * * enstore /home/enstore/enstore/sbin/ecron -p inqPlotUpdate -setup gnuplot python /home/enstore/enstore/src/plotter.py --encp --output_dir=/local/ups/prd/www_pages/enstore > /dev/null 2> /dev/null
+
+
+
 3,13,33,48 * * * * enstore /home/enstore/enstore/sbin/ecron -p makeplot python /home/enstore/enstore/src/makeplot.py -s 100 > /dev/null 2> /dev/null
+
 5 * * * * enstore /home/enstore/enstore/sbin/ecron -p quotas  /home/enstore/enstore/sbin/quotas > /dev/null 2> /dev/null
 16 * * * * enstore /home/enstore/enstore/sbin/ecron -p make_quota_plot_page make_quota_plot_page  > /dev/null 2> /dev/null
+
 05 * * * * enstore /home/enstore/enstore/sbin/ecron -p mounts_plot /home/enstore/enstore/src/mounts_plot.py > /dev/null 2> /dev/null
+
+
+
+
+
+
+
+
+
+
 26 00 * * * enstore /home/enstore/enstore/sbin/ecron -p pnfs_backup_time /home/enstore/enstore/src/pnfs_backup_plot.py > /dev/null 2> /dev/null
+# added by Dmitry
 25 * * * * enstore /home/enstore/enstore/sbin/ecron -p encp_rate_plot_multi "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages; python /home/enstore/enstore/sbin/encp_rate_plot_multi.py'"  > /dev/null 2> /dev/null
 40 17 * * * enstore /home/enstore/enstore/sbin/ecron -p file_family_usage "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages/file_family_usage; python /home/enstore/enstore/sbin/file_family_analysis.py'"  > /dev/null 2> /dev/null
-#
-#
+
 30 2 * * * root /home/enstore/enstore/sbin/ecron -p make_overall_plot python /home/enstore/enstore/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --pts_dir=/local/ups/prd/www_pages/enstore --no-plot-html  > /dev/null 2> /dev/null
 0 3 * * * root /home/enstore/enstore/sbin/ecron -p make_cron_plot_page make_cron_plot_page /diska/www_pages/cron_pics.html /fnal/ups/prd/www_pages/enstore/CRONS  > /dev/null 2> /dev/null
-#4-59/5 * * * * root /home/enstore/enstore/sbin/ecron -p enstore_overall_status python /home/enstore/enstore/src/enstore_overall_status.py  > /dev/null 2> /dev/null

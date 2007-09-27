@@ -1,3 +1,0 @@
-0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p STKDrvBusy  /home/enstore/enstore/sbin/STKDrvBusy  get >/dev/null 2>/dev/null
-0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p ADICDrvBusy /home/enstore/enstore/sbin/ADICDrvBusy get >/dev/null 2>/dev/null
-0-59/5 * * * * enstore /home/enstore/enstore/sbin/ecron -p GCCDrvBusy /home/enstore/enstore/sbin/GCCDrvBusy data >/dev/null 2>/dev/null

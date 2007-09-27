@@ -1,2 +1,0 @@
-0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p noaccess nice -n 20 /home/enstore/enstore/sbin/noaccess-tapes > /dev/null 2> /dev/null
-#30 0 * * * enstore /home/enstore/enstore/sbin/ecron -p cleaning_report '/usr/bin/rsh fntt2 -l acsss "echo query clean all  |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" | tee /fnal/ups/prd/www_pages/enstore/tape_inventory/CLEANING| mail -s "FNTT2 (CDFen) Drive Cleaning Summary" enstore-admin@fnal.gov' >/dev/null 2> /dev/null

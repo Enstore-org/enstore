@@ -1,2 +1,0 @@
-00 5 * * * enstore /home/enstore/enstore/sbin/ecron -p chk_prod_code chk_prod_code  > /dev/null 2> /dev/null
-55 15 * * * enstore /home/enstore/enstore/sbin/ecron -p chk_prod_code chk_prod_code  > /dev/null 2> /dev/null

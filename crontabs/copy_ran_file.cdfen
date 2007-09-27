@@ -1,1 +1,0 @@
-27 * * * * enstore /home/enstore/enstore/sbin/ecron -p copy_ran_file /home/enstore/enstore/sbin/choose_ran_file -C 1 \"test\" \"CDF-9940B\|CDF-LTO3\" alsofirstlast \"full\|readonly\" > /dev/null 2> /dev/null

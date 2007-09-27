@@ -1,4 +1,0 @@
-30 2 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumdb -l vacuumdb -p 8888 -d enstoredb -v -z > /dev/null 2> /dev/null
-30 0 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumDST -l vacuumdb -p 8802 -d drivestat -v -z > /dev/null 2> /dev/null
-30 4 * * * enstore /home/enstore/enstore/sbin/ecron -p vacuumACC -l vacuumdb -p 8800 -d accounting -v -z > /dev/null 2> /dev/null
-

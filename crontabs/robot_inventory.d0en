@@ -1,2 +1,0 @@
-30 1,7,13,19 * * * enstore /home/enstore/enstore/sbin/ecron -p STKrobot_inventory STKVols > /dev/null 2> /dev/null
-35 1,7,13,19 * * * enstore /home/enstore/enstore/sbin/ecron -p AML2robot_inventory AML2Vols > /dev/null 2> /dev/null

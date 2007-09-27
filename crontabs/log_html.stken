@@ -1,7 +1,0 @@
-11,41 * * * * root /home/enstore/enstore/sbin/ecron -p getnodeinfo getnodeinfo  /fnal/ups/prd/www_pages/enstore/nodeinfo.html  1>/dev/null 2>/dev/null
-9,39 * * * * root /home/enstore/enstore/sbin/ecron -p udpclog udp_clog_check /fnal/ups/prd/www_pages/enstore/UDPclog.html  1>/dev/null 2>/dev/null
-31 * * * * enstore /home/enstore/enstore/sbin/ecron -p PNFSRATE PNFSRATE  > /dev/null 2> /dev/null
-7,37 * * * * root /home/enstore/enstore/sbin/ecron -p getcons getcons  1>/dev/null 2>/dev/null
-02,17,32,47 * * * * enstore /home/enstore/enstore/sbin/ecron -p STKlog STKlog /local/ups/prd/www_pages/enstore/log/STK-log.html > /dev/null 2> /dev/null
-04,19,34,49 * * * * enstore /home/enstore/enstore/sbin/ecron -p SL8500log SL8500log /local/ups/prd/www_pages/enstore/log/SL8500-log.html > /dev/null 2> /dev/null
-45 * * * * enstore /home/enstore/enstore/sbin/ecron -p failedX  '/home/enstore/enstore/src/log_trans_fail.py month | tee /diska/enstore-log/transfer_failed.txt' >/dev/null 2> /dev/null
