@@ -34,8 +34,6 @@ abort() { cd $place
 if [ -z "${ENSTORE_DIR-}"  ]; then
    . /usr/local/etc/setups.sh
    setup enstore
-   export ENSTORE_DIR=$HOME/enstore
-   if [ ! -d $ENSTORE_DIR ]; then cvs checkout enstore; fi
 fi
 
 # all the action is here
