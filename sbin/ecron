@@ -213,6 +213,12 @@ then
 	errcnt=`cat $cntFile`
 fi
 
+setup=/usr/local/etc/setups.sh
+if [ ! -f $setup ] ; then quit "$setup not found" -4  "$logit" "$tag"; fi
+. $setup
+# should check that enstore was setup properly as well
+setup enstore
+
 # log it?
 if [ "$logit" = "yes" ]
 then
@@ -235,12 +241,6 @@ if [ $? -ne 0 ] ; then
    fi
 fi
 
-
-setup=/usr/local/etc/setups.sh
-if [ ! -f $setup ] ; then quit "$setup not found" -4  "$logit" "$tag"; fi
-. $setup
-# should check that enstore was setup properly as well
-setup enstore
 
 # setup additional products, if any
 
