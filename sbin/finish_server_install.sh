@@ -62,6 +62,6 @@ case $this_host in
 	    ;;
 esac
 if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
-cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup
-ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh
+if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
+if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
 
