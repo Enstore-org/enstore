@@ -48,8 +48,9 @@ then
     /sbin/chkconfig pnfs on
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
     #/etc/init.d/pnfs start
-    echo "Creating pnfsSetup"
-    case $this_host in
+fi
+echo "Creating pnfsSetup"
+case $this_host in
 	stken*)
 	    pnfsSetup_file=stken-pnfsSetup
 	    ;;
@@ -59,9 +60,8 @@ then
 	cdfen*)
 	    pnfsSetup_file=cdfen-pnfsSetup
 	    ;;
-    esac
-    if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
-    cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup
-    ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh
- 
-fi
+esac
+if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
+cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup
+ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh
+
