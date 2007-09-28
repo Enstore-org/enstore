@@ -33,7 +33,7 @@ rpm -U --force ${place}/pnfs-3.1.10-1f.i386.rpm
 # copy setup
 
 $ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
-while read f1 f2; do eval pnfs_{$f1}=$f2; done < /tmp/pnfs_conf.tmp
+while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
 rm -rf install_database.tmp
 echo pnfs host: ${pnfs_host}
 this_host=`uname -n`
