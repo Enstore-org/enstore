@@ -24,8 +24,9 @@ fi
 echo "installing pnfs"
 if [ -r /etc/rc.d/init.d/pnfs ];
 then
-    # chmod 755 /etc/rc.d/init.d/pnfs
+    chmod 755 /etc/rc.d/init.d/pnfs
     /etc/rc.d/init.d/pnfs stop
+    if [ -x /etc/rc.d/init.d/postgres ]; then /etc/rc.d/init.d/postgres stop; fi
     #/etc/rc.d/init.d/postgresql stop
 fi
 rpm -U --force ${place}/pnfs-3.1.10-1f.i386.rpm

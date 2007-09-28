@@ -104,5 +104,6 @@ fi
     
 sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
 ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
+chown -R enstore.enstore $ENSTORE_HOME
 
 exit 0
