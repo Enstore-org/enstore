@@ -66,3 +66,9 @@ if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
 if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
 if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
 
+echo "Enabling Enstore log directory"
+$ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
+while read f1 f2; do eval ${f1}=$f2; done < /tmp/log_conf.tmp
+rm -rf /tmp/log_conf.tmp
+
+chown -R enstore.enstore `dirname $logfile_path`
