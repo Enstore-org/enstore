@@ -1,26 +1,17 @@
 #!/usr/bin/env python
-######################################################################
-#  $Id$
-#
-#  Make the log "FAILED transfers" page.
-#
-######################################################################
 
-# system imports
 import os
-#import pprint
+import pprint
 import string
 import sys
 import time
-
-# enstore imports
 import configuration_client
 
 def cmd(command):
     print command
     p = os.popen(command,'r')
     text = p.read()
-    p.close()
+    s = p.close()
     lines = []
     for line in string.split(text,'\n'):
         line = string.strip(line)
@@ -28,39 +19,33 @@ def cmd(command):
             lines.append(line)
     return lines
 
-def get_log_dir():
+
+def get_failures(log,grepv='GONE|NUL|DSKMV|disk',grep=""):
+    thisnode = os.uname()[1]
+    if len(thisnode) > 2:
+        gang = thisnode[0:3]
+    else:
+        gang = ' '
+    if gang == 'd0e':
+        grepv_ = " DI|"+" DC|"+grepv
+    elif gang == 'stk':
+        grepv_ = "JDE|"+grepv
+    else:
+        grepv_ = grepv
+
     # get log dir
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
     config_port = os.getenv('ENSTORE_CONFIG_PORT')
     log_dir = None
     if config_host and config_port:
-        csc  = configuration_client.ConfigurationClient((config_host,
-                                                         int(config_port)))
+        csc  = configuration_client.ConfigurationClient((config_host, int(config_port)))
         log_server = csc.get('log_server')
         if log_server:
-            log_dir = log_server.get('log_file_path', None)
-    return log_dir
-
-def verify_log_dir(log_dir):
-    return (not os.path.exists(log_dir))
-
-#def get_failures(log, log_dir, grepv='GONE|NUL|DSKMV|disk', grep=""):
-def get_failures(log, log_dir, grepv="", grep=""):
-    #thisnode = os.uname()[1]
-    #if len(thisnode) > 2:
-    #    gang = thisnode[0:3]
-    #else:
-    #    gang = ' '
-    #if gang == 'd0e':
-    #    grepv_ = " DI|"+" DC|"+grepv
-    #elif gang == 'stk':
-    #    grepv_ = "JDE|"+grepv
-    #else:
-    #    grepv_ = grepv
-    grepv_ = grepv
-
+            log_dir =log_server.get('log_file_path', None)
+    if log_dir == None:
+        log_dir = '/diska/enstore-log'
     # just force the directory.
-    failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' % (log_dir, log, grepv_, grep))
+    failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' %(log_dir, log,grepv_,grep))
     return failed
 
 def parse_failures(failed):
@@ -99,45 +84,25 @@ def parse_failures(failed):
             Drv[drive] = [error,]
     return (Vol,Drv)
 
-def print_vols(Vol, fp):
+def print_vols(Vol):
     keys = Vol.keys()
     keys.sort()
     for v in  keys:
-        fp.write("%s\n" % (str(v),))  #print v
+        print v
         info = Vol[v]
         for err in range(0,len(info)):
             error = info[err]
-            #print "   %-13s %-10s %20s %s" % (error[3],error[2],error[0],error[5])
-            fp.write("   %-13s %-10s %20s %s\n" % \
-                     (error[3],error[2],error[0],error[5]))
+            print "   %-13s %-10s %20s %s" % (error[3],error[2],error[0],error[5])
 
-def print_drv(Drv, fp):
+def print_drv(Drv):
     keys = Drv.keys()
     keys.sort()
     for d in keys:
-        fp.write("%s\n" % (str(d),))  #print d
+        print d
         info = Drv[d]
         for err in range(0,len(info)):
             error = info[err]
-            #print "   %-13s %-10s %20s %s" % (error[3],error[4],error[0],error[5])
-            fp.write("   %-13s %-10s %20s %s\n" % \
-                     (error[3],error[4],error[0],error[5]))
-
-def make_failed_page(Vol, Drv, out_file_fp):
-    
-    #Output the header.
-    out_file_fp.write("%s: Failed Transfers Report\n" % (time.ctime(now),))
-    out_file_fp.write("Brought to You by: %s\n" % (os.path.basename(sys.argv[0]),))
-    out_file_fp.write("\n" + "-" * 80 + "\n\n")
-
-    #Output the volume failures.
-    print_vols(Vol, out_file_fp)
-
-    #Output a seperator.
-    out_file_fp.write("\n" + "-" * 80 + "\n\n")
-
-    #Output the drive failures.
-    print_drv(Drv, out_file_fp)
+            print "   %-13s %-10s %20s %s" % (error[3],error[4],error[0],error[5])
 
 def logname(t):
     t_tup=time.localtime(t)
@@ -169,26 +134,15 @@ if __name__ == "__main__":
 
     print time.ctime(now)
 
-    log_dir = get_log_dir()
-    if log_dir == None:
-        sys.stderr.write("Unable to obtain log directory.\n")
-        sys.exit(1)
-    if verify_log_dir(log_dir):
-        sys.stderr.write("Unable to find log directory.\n")
-        sys.exit(1)
-        
-    failures = get_failures(logfile, log_dir)
-    
-    Vol,Drv = parse_failures(failures)
+    f=get_failures(logfile)
+    Vol,Drv = parse_failures(f)
 
-    #Obtain the output filename.   Use a temporary file to hold the
-    # output.  Then swap it in for the real file at the end.
-    failed_filename = os.path.join(log_dir, "transfer_failed.txt")
-    temp_filename = "%s.temp" % (failed_filename)
-    temp_fp = open(temp_filename, "w")
+    print
+    print '--------------------------------------------------------------------------------------------------'
+    print
+    print_vols(Vol)
 
-    make_failed_page(Vol, Drv, temp_fp)
-
-    temp_fp.close()
-
-    os.rename(temp_filename, failed_filename)
+    print
+    print '--------------------------------------------------------------------------------------------------'
+    print
+    print_drv(Drv)

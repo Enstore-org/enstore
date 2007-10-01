@@ -15,6 +15,9 @@ import ratekeeper_plotter_module
 import mounts_plot
 import getopt
 import sys
+import socket
+
+FNAL_DOMAIN="131.225" 
 
 def usage(cmd):
     print "Usage: %s -s [--sleep=] "%(cmd,)
@@ -23,7 +26,7 @@ def usage(cmd):
     
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:", ["help","mounts="])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs", ["help","mounts","rate"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
@@ -39,21 +42,24 @@ if __name__ == "__main__":
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
 
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","dlt");
-            f.add(aModule)
+            if socket.gethostbyname(socket.gethostname())[0:7] == FNAL_DOMAIN :
+
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","dlt");
+                f.add(aModule)
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","CD-9940B");
-            f.add(aModule)
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","CD-9940B");
+                f.add(aModule)
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","9940");
-            f.add(aModule)    
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","9940");
+                f.add(aModule)    
             
-            aModule   = mounts_plot.MountsPlot("mounts")
-            aModule.add_parameter("library","CD-LTO3");
-            f.add(aModule)
+                aModule   = mounts_plot.MountsPlot("mounts")
+                aModule.add_parameter("library","CD-LTO3");
+                f.add(aModule)
+                
         if o in ("-r","--rate"):
             aModule   = ratekeeper_plotter_module.RateKeeperPlotterModule("ratekeeper")
             f.add(aModule)

@@ -1,5 +1,5 @@
 0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p noaccess  /home/enstore/enstore/sbin/noaccess-tapes > /dev/null 2> /dev/null
 3,18,33,48 * * * * enstore /home/enstore/enstore/sbin/ecron -p quickquota 'quickquota | tee /fnal/ups/prd/www_pages/enstore/tape_inventory/VOLUME_QUOTAS_UPDATE' >/dev/null 2> /dev/null
 40 * * * * enstore /home/enstore/enstore/sbin/ecron -p recent_file_listing_cms /home/enstore/enstore/src/recent_file_listing.py cms 12 /diska/tape-inventory/RECENT_FILES_ > /dev/null 2> /dev/null
-30 8,16 * * * enstore /home/enstore/enstore/sbin/quota_alert > /diska/tape-inventory/QUOTA_ALERT 2> /dev/null
+30 8,16 * * * enstore /home/enstore/enstore/bin/quota_alert > /diska/tape-inventory/QUOTA_ALERT 2> /dev/null
 #30 0 * * * enstore /home/enstore/enstore/sbin/ecron -p cleaning_report '/usr/bin/rsh fntt -l acsss "echo query clean all  |/export/home/ACSSS/bin/cmd_proc 2>> /tmp/garb" | tee /fnal/ups/prd/www_pages/enstore/tape_inventory/CLEANING| mail -s "FNTT (STKen+D0en) Drive Cleaning Summary" enstore-admin@fnal.gov' >/dev/null 2> /dev/null

@@ -4,10 +4,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # sbin/$RCSfile$  $Revision$
 
-# Usage: log-stash 
-
-#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
-#gang=`gang`
+node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+gang=`gang`
 
 here=`pwd`
 thisYear=`date +%Y`
@@ -15,36 +13,22 @@ thisMonth=`date +%m`
 thisDay=`date +%d`
 
 
-LOGS=`enstore conf --show log_server log_file_path`
-if [ $? -ne 0 ]; then
-   echo "Unable to obtain log directory path." > /dev/null 2>&1
-   return 1
+# let's start with the logs that enstore creates
+if [ -z "${1-}" ] ; then
+  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
+    LOGS=/diska/enstore-log
+  else
+    LOGS=/fnal/ups/prd/www_pages/enstore/log
+  fi
+else
+  LOGS=$1
 fi
-#if [ -z "${1-}" ] ; then
-#  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
-#    LOGS=/diska/enstore-log
-#  else
-#    LOGS=/fnal/ups/prd/www_pages/enstore/log
-#  fi
-#else
-#  LOGS=$1
-#fi
 
 cd $LOGS
-if [ $? -eq 1 ]
-then
-  # The specified log directory does not exist.
-  echo "Log directory not accessible."  > /dev/null 2>&1
-  return 1
-fi
 
 HISTORY=history
 if ! [ -d $HISTORY ]; then
-   mkdir -p $HISTORY
-   if [ $? -eq 1 ]; then
-      echo "Log history directory not accessible."  > /dev/null 2>&1
-      return 1 #The directory failed to be created.
-   fi
+   mkdir $HISTORY
 fi
 
 logfiles=`ls -1 LOG-*`
@@ -61,9 +45,9 @@ for log in $logfiles; do
 done
 
 # also get rid of the extra log files.  these are copies
-# of lines (DEBUGLOG is LOG with extra) in the LOG files, so just delete them.
-for prefix in ALARM ENCPS EVRLY LMQADDS MOUNTS DEBUGLOG; do
-    files=`ls -1 $prefix-* 2>/dev/null`
+# of lines in the LOG files, so just delete them.
+for prefix in ALARM ENCPS EVRLY LMQADDS MOUNTS; do
+    files=`ls -1 $prefix-*`
     for log in $files; do
       year=` echo $log | cut -f2 -d-`
       month=`echo $log | cut -f3 -d-`
@@ -75,7 +59,58 @@ for prefix in ALARM ENCPS EVRLY LMQADDS MOUNTS DEBUGLOG; do
 done
 
 cd $HISTORY
-#Make sure the LOG* files end in the date.
-find . -type f -name "LOG-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -exec gzip {} \; 2>/dev/null
+find . -type f -name "LOG*" -exec gzip {} \; 2>/dev/null
+
+
+# now do it again, but this time for the aml2 robot logs
+if [ -z "${2-}" ] ; then
+  if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
+    LOGS=/diska/aml2-log
+    RPTS=/diska/aml2-report
+  else
+    LOGS=/fnal/ups/prd/www_pages/enstore/aml2log
+    RPTS=/fnal/ups/prd/www_pages/enstore/aml2rpt
+  fi
+else
+  LOGS=$2
+  if [ -z "${3-}" ] ; then
+    RPTS=/junk/doesnot/exist
+  else
+    RPTS=$3
+  fi
+fi
+
+cd $LOGS
+
+HISTORY=history
+if ! [ -d $HISTORY ]; then
+   mkdir $HISTORY
+fi
+
+logfiles=`ls -1 log*.ascii`
+for log in $logfiles; do
+  last_line="`tail -n 1 $log`"
+  year=` echo $last_line | cut -f1 -d-`
+  month=`echo $last_line | cut -f2 -d-`
+  day=`  echo $last_line | cut -f3 -d-|cut -f1 -d\ `
+  stash=0
+  if [ $year  -lt $thisYear  ]; then stash=1;fi
+  if [ $month -lt $thisMonth ]; then stash=1;fi
+  if [ $stash -eq 0 ]; then continue; fi
+  mkdir -p $HISTORY/$year/$month
+  # cp the file, don't mv it since another cron job will just go get it again.
+  cp $log $HISTORY/$year/$month
+done
+
+cd $HISTORY
+find . -type f -name "log*.ascii" -exec gzip {} \; 2>/dev/null
+# if the .gz file already exists, we end up with a ascii file laying around 
+#    just delete these files.
+find . -type f -name "log*.ascii" -exec rm {} \; 2>/dev/null
+
+if [ -d $RPTS ]; then
+  cd $RPTS
+  find . -name "*.rpt" -daystart -mtime +14 -exec rm -fr {} \;
+fi
 
 cd $here

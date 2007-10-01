@@ -78,7 +78,7 @@ if __name__ == "__main__":
     main_web_page.write_html_page_to_directory(html_dir)
     os.chmod(os.path.join(html_dir,"enstore_system.html"),0644)
     if not os.path.exists( os.path.join(html_dir,"index.html")):
-        os.symlink(os.path.join(html_dir,main_web_page.HTMLFILE), os.path.join(html_dir,"index.html"));
+        os.symlink(os.path.join(html_dir, enstore_system_html.HTMLFILE), os.path.join(html_dir,"index.html"));
     os.system("cp *.gif %s"%html_dir);
     os.system("cp *.html %s"%html_dir);
     uid=server.get_server_getpwuid()[2]

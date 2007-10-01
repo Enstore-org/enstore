@@ -38,6 +38,8 @@ if test -w /dev/console -a $quiet -ne 1; then
   echo "$start: $0 $@ ...starting" >/dev/console
 fi
 
+tag=unknown
+
 sendMail() {
   filename=$1
   mode=$2
@@ -56,11 +58,14 @@ sendMail() {
   fi
 }
 
+# pass in logit and tag
 quit() {
   message="$1"
-  code=$2
+  code="$2"
+  logit="$3"
+  tag="$4"
   if [ -n "${message-}" ]; then echo "$1"; fi
-  if [ "${3:-}" != "keepactive" ] ; then rmdir $activeFlag >/dev/null 2>&1; fi
+  if [ "${5:-}" != "keepactive" ] ; then rmdir $activeFlag >/dev/null 2>&1; fi
   done=`date +"%Y-%m-%d:%H:%M:%S"`
   echo "$done $code" >> $histogram
   if test -w /dev/console -a $quiet -ne 1; then
@@ -70,6 +75,10 @@ quit() {
       echo enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
            enstore alarm --raise --severity "A" --root-error "$command STAT=$code"
   fi   
+  if [ "$logit" = "yes" ]
+  then
+      $ENSTORE_DIR/src/log_finish_event.py ${tag} $code
+  fi
   exit $code
 }
 
@@ -108,9 +117,16 @@ quit() {
 # of errors happened, as specified by error_count.
 # if -c is omitted, -c 1 is assumed
 
-# Feb 13, 2007 Modifies again to add -need-enstore option
+# Feb 13, 2007 Modified again to add -need-enstore option
 # with -need-enstore option, ecron will not execute if the enstore
 # system is marked down
+
+# Sep 26, 2007 Modified again to add -no-enstore option
+# now -need-enstore is the default behavior
+# -no-enstore is to supress it
+
+# Sep 27, 2007 Modified again to add -no-log option
+# logit=yes is defaul, -no-log overrides it.
 
 # additional products
 
@@ -118,9 +134,10 @@ products=
 job=
 cwd=`pwd`
 cntlimit=1
-need_enstore="no"
+need_enstore="yes"
+logit="yes"
 
-while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ]
+while [ $1 = "-setup" ] || [ $1 = "-D" ] || [ $1 = "-p" ] || [ $1 = "-d" ] || [ $1 = "-l" ] || [ $1 = "-c" ] || [ $1 = "-need-enstore" ] || [ $1 = "-no-enstore" ] || [ $1 = "-no-log" ]
 do
 	case $1 in
 	-setup)
@@ -134,6 +151,9 @@ do
 		;;
 	-need-enstore)
 		need_enstore="yes"
+		;;
+	-no-enstore)
+		need_enstore="no"
 		;;
 	-D)
 		var=`echo $2 | cut -f 1 -d '='`
@@ -154,8 +174,11 @@ do
 		shift
 		;;
 	-l)
-		logit=1
+		logit="yes"
                 ;;
+	-no-log)
+		logit="no"
+		;;
 	esac
 	shift
 done
@@ -182,10 +205,24 @@ genAlarm=${procInfos}GENALARM
 cntFile=${procInfos}.cnt
 errcnt=0
 
+if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3 "$logit" "$tag"; fi
+
 #read err count, if any
 if [ -r $cntFile ]
 then
 	errcnt=`cat $cntFile`
+fi
+
+setup=/usr/local/etc/setups.sh
+if [ ! -f $setup ] ; then quit "$setup not found" -4  "$logit" "$tag"; fi
+. $setup
+# should check that enstore was setup properly as well
+setup enstore
+
+# log it?
+if [ "$logit" = "yes" ]
+then
+	tag=`$ENSTORE_DIR/src/log_start_event.py ${log_name}`
 fi
 
 echo "$start 10" >> $histogram
@@ -194,19 +231,16 @@ echo "$start 10" >> $histogram
 mkdir $activeFlag 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ] ; then 
    if [ ! -f $noNeg ] ; then 
-      quit "" -2 "keepactive"
+      quit "" -2 "$logit" "$tag" "keepactive"
    else
+      if [ "$logit" = "yes" ]
+      then
+	 $ENSTORE_DIR/src/log_finish_event.py ${tag} 0
+      fi
       exit 0
    fi
 fi
 
-if [ $# -eq 0 ] ; then quit "USAGE: $basename <enstoreName> <args ... >" -3; fi
-
-setup=/usr/local/etc/setups.sh
-if [ ! -f $setup ] ; then quit "$setup not found" -4; fi
-. $setup
-# should check that enstore was setup properly as well
-setup enstore
 
 # setup additional products, if any
 
@@ -223,15 +257,9 @@ rm -f $procMail
 # make sure procName is set to $1 again
 procName=$1
 
-# log it?
-if [ -n "${logit:-}" ]
-then
-	tag=`$ENSTORE_DIR/src/log_start_event.py ${log_name}`
-fi
-
 shift
 
-if [ $need_enstore = "yes" ]
+if [ "$need_enstore" = "yes" ]
 then
 	if [ "`enstore inq --is-up enstore`" = "yes" ]
 	then
@@ -248,10 +276,10 @@ else
 	problem=$?
 fi
 
-if [ -n "${logit:-}" ]
-then
-	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
-fi
+#if [ "$logit" = "yes" ]
+#then
+#	$ENSTORE_DIR/src/log_finish_event.py ${tag} ${problem}
+#fi
 
 # adjust the exit code so that it does not disappear off of the cron job plot
 if [ $problem -gt 5 -o $problem -lt -5 ] ; then
@@ -275,7 +303,9 @@ if [ $problem -ne 0 ] ; then
     echo "  -------------------- end of messages   ---------------------- ">>$procMail
     if [ $errcnt -ge $cntlimit ]
     then
-        sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+        if [ $problem -ne -3 ] ; then
+            sendMail $procMail emergency "ecron rc=$problem: $procName $* "
+        fi
     fi
     # save the error output. we get python and ENSTORE_DIR from the enstore setup
     # the second parameter tells the script how many output files to keep.  the default
@@ -286,4 +316,4 @@ else
     /bin/rm -rf $cntFile
 fi
 
-quit "" $problem
+quit "" $problem  "$logit" "$tag"

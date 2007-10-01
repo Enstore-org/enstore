@@ -69,6 +69,14 @@ echo database_owner = $database_owner
 echo db_owner = $db_owner
 echo db_schema = $db_schema
 
+grep ${database_owner} /etc/group
+if [ $? -ne 0 ]; then
+    echo "Creating group ${database_owner}"
+    groupadd -g 4525 ${database_owner}
+fi
+echo "Creating user ${database_owner}"
+useradd -u 1342 -g ${database_owner} ${database_owner}
+
 # check if $database_area exist. If so, rename it
 
 if [ -d $database_area ]
