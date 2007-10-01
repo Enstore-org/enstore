@@ -135,3 +135,5 @@ if __name__ == '__main__':
 	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "modules"))
 	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "etc"))
 	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "ups"))
+	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "bin"))
+	search_directory(os.path.join(os.environ['ENSTORE_DIR'], "sbin"))
