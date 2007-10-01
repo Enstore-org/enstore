@@ -361,14 +361,21 @@ ALTER FUNCTION public.data_transfer_last_7days() OWNER TO enstore;
 CREATE FUNCTION make_daily_xfer_count() RETURNS date
     AS $$
 declare
-    day date;
+	day date;
 begin
-    day = (select max(date) from xfer_count_by_day) + 1;
-    while day < current_date loop
-        insert into xfer_count_by_day select * from daily_count(day);
-        day = day + 1;
-    end loop;
-    return day;
+	day = (select max(date) from xfer_count_by_day);
+	if day is null then
+		day = (select make_first_daily_xfer_count())::date;
+	end if;
+	if day is null then
+		return day;
+	end if;
+	day = day + 1;
+	while day < current_date loop
+		insert into xfer_count_by_day select * from daily_count(day);
+		day = day + 1;
+	end loop;
+	return day;
 end;
 $$
     LANGUAGE plpgsql;
@@ -383,14 +390,21 @@ ALTER FUNCTION public.make_daily_xfer_count() OWNER TO enstore;
 CREATE FUNCTION make_daily_xfer_size() RETURNS date
     AS $$
 declare
-    day date;
+	day date;
 begin
-    day = (select max(date) from xfer_by_day) + 1;
-    while day < current_date loop
-        insert into xfer_by_day select * from daily_size(day);
-        day = day + 1;
-    end loop;
-    return day;
+	day = (select max(date) from xfer_by_day);
+	if day is null then
+		day = (select make_first_daily_xfer_size())::date;
+	end if;
+	if day is null then
+		return day;
+	end if;
+	day = day + 1;
+	while day < current_date loop
+		insert into xfer_by_day select * from daily_size(day);
+		day = day + 1;
+	end loop;
+	return day;
 end;
 $$
     LANGUAGE plpgsql;
@@ -405,14 +419,21 @@ ALTER FUNCTION public.make_daily_xfer_size() OWNER TO enstore;
 CREATE FUNCTION make_daily_xfer_size(date) RETURNS date
     AS $_$
 declare
-    day date;
+	day date;
 begin
-    day = (select max(date) from xfer_by_day) + 1;
-    while day < $1::date loop
-        insert into xfer_by_day select * from daily_size(day);
-        day = day + 1;
-    end loop;
-    return day;
+	day = (select max(date) from xfer_by_day);
+	if day is null then
+		day = (select make_first_daily_xfer_size())::date;
+	end if;
+	if day is null then
+		return day;
+	end if;
+	day = day + 1;
+	while day < $1::date loop
+		insert into xfer_by_day select * from daily_size(day);
+		day = day + 1;
+	end loop;
+	return day;
 end;
 $_$
     LANGUAGE plpgsql;
@@ -427,14 +448,21 @@ ALTER FUNCTION public.make_daily_xfer_size(date) OWNER TO enstore;
 CREATE FUNCTION make_daily_xfer_size_by_mover(date) RETURNS date
     AS $_$
 declare
-    day date;
+	day date;
 begin
-    day = (select max(date) from xfer_by_day_by_mover) + 1;
-    while day < $1::date loop
-        insert into xfer_by_day_by_mover select * from daily_size_by_mover(day);
-        day = day + 1;
-    end loop;
-    return day;
+	day = (select max(date) from xfer_by_day_by_mover);
+	if day is null then
+		day = (select make_first_daily_size_by_mover())::date;
+	end if;
+	if day is null then
+		return day;
+	end if;
+	day = day + 1;
+	while day < $1::date loop
+		insert into xfer_by_day_by_mover select * from daily_size_by_mover(day);
+		day = day + 1;
+	end loop;
+	return day;
 end;
 $_$
     LANGUAGE plpgsql;
@@ -449,14 +477,21 @@ ALTER FUNCTION public.make_daily_xfer_size_by_mover(date) OWNER TO enstore;
 CREATE FUNCTION make_daily_xfer_size_by_mover() RETURNS date
     AS $$
 declare
-    day date;
+	day date;
 begin
-    day = (select max(date) from xfer_by_day_by_mover) + 1;
-    while day < current_date loop
-        insert into xfer_by_day_by_mover select * from daily_size_by_mover(day);
-        day = day + 1;
-    end loop;
-    return day;
+	day = (select max(date) from xfer_by_day_by_mover);
+	if day is null then
+		day = (select make_first_daily_size_by_mover())::date;
+	end if;
+	if day is null then
+		return day;
+	end if;
+	day = day + 1;
+	while day < current_date loop
+		insert into xfer_by_day_by_mover select * from daily_size_by_mover(day);
+		day = day + 1;
+	end loop;
+	return day;
 end;
 $$
     LANGUAGE plpgsql;
@@ -465,20 +500,123 @@ $$
 ALTER FUNCTION public.make_daily_xfer_size_by_mover() OWNER TO enstore;
 
 --
+-- Name: make_first_daily_size_by_mover(); Type: FUNCTION; Schema: public; Owner: huangch
+--
+
+CREATE FUNCTION make_first_daily_size_by_mover() RETURNS date
+    AS $$
+declare
+        first_day date;
+begin
+        first_day = (select min(date)::date from encp_xfer);
+	if first_day = current_date then
+		return null;
+	end if;
+        if not first_day is null then
+                insert into xfer_by_day_by_mover select * from daily_size_by_mover(first_day);
+        end if;
+        return first_day;
+end;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.make_first_daily_size_by_mover() OWNER TO huangch;
+
+--
+-- Name: make_first_daily_xfer_count(); Type: FUNCTION; Schema: public; Owner: huangch
+--
+
+CREATE FUNCTION make_first_daily_xfer_count() RETURNS date
+    AS $$
+declare
+	first_day date;
+begin
+	first_day = (select min(date)::date from encp_xfer);
+	if first_day = current_date then
+		return null;
+	end if;
+	if not first_day is null then
+		insert into xfer_count_by_day select * from daily_count(first_day);
+	end if;
+	return first_day;
+end;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.make_first_daily_xfer_count() OWNER TO huangch;
+
+--
+-- Name: make_first_daily_xfer_size(); Type: FUNCTION; Schema: public; Owner: huangch
+--
+
+CREATE FUNCTION make_first_daily_xfer_size() RETURNS date
+    AS $$
+declare
+	first_day date;
+begin
+	first_day = (select min(date)::date from encp_xfer);
+	if first_day = current_date then
+		return null;
+	end if;
+	if not first_day is null then
+		insert into xfer_by_day select * from daily_size(first_day);
+	end if;
+	return first_day;
+end;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.make_first_daily_xfer_size() OWNER TO huangch;
+
+--
+-- Name: make_first_monthly_xfer_size(); Type: FUNCTION; Schema: public; Owner: huangch
+--
+
+CREATE FUNCTION make_first_monthly_xfer_size() RETURNS date
+    AS $$
+declare
+	first_month date;
+begin
+	first_month = (select year_month((select min(date) from encp_xfer)));
+	if first_month = (select year_month(current_date)) then
+		return null;
+	end if;
+	if not first_month is null then
+		insert into xfer_by_month select * from monthly_size(first_month);
+	end if;
+	return first_month;
+end;
+$$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.make_first_monthly_xfer_size() OWNER TO huangch;
+
+--
 -- Name: make_monthly_xfer_size(date); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION make_monthly_xfer_size(date) RETURNS date
     AS $_$
 declare
-    month date;
+	month date;
 begin
-    month = (select max(date) from xfer_by_month) + '1 mons'::interval;
-    while month < year_month($1::date) loop
-        insert into xfer_by_month select * from monthly_size(month);
-        month = month + '1 mons'::interval;
-    end loop;
-    return month;
+	month = (select max(date) from xfer_by_month);
+	if month is null then
+		month = (select make_first_monthly_xfer_size());
+	end if;
+	if month is null then
+		return month;
+	end if;
+	month = month + '1 mons'::interval;
+	while month < year_month($1::date) loop
+		insert into xfer_by_month select * from monthly_size(month);
+		month = month + '1 mons'::interval;
+	end loop;
+	return month;
 end;
 $_$
     LANGUAGE plpgsql;
@@ -493,14 +631,21 @@ ALTER FUNCTION public.make_monthly_xfer_size(date) OWNER TO enstore;
 CREATE FUNCTION make_monthly_xfer_size() RETURNS date
     AS $$
 declare
-    month date;
+	month date;
 begin
-    month = (select max(date) from xfer_by_month) + '1 mons'::interval;
-    while month < year_month(current_date) loop
-        insert into xfer_by_month select * from monthly_size(month);
-        month = month + '1 mons'::interval;
-    end loop;
-    return month;
+	month = (select max(date) from xfer_by_month);
+	if month is null then
+		month = (select make_first_monthly_xfer_size());
+	end if;
+	if month is null then
+		return month;
+	end if;
+	month = month + '1 mons'::interval;
+	while month < year_month(current_date) loop
+		insert into xfer_by_month select * from monthly_size(month);
+		month = month + '1 mons'::interval;
+	end loop;
+	return month;
 end;
 $$
     LANGUAGE plpgsql;
