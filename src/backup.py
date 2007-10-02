@@ -64,7 +64,8 @@ def archive_backup(hst_bck,hst_local,dir_bck):
             os.system("compress *.tar")
         tarfiles=glob.glob("*.tar*")
         for file in tarfiles:
-            os.rename(file, os.path.join(dir_bck, file))
+            cmd = "cp %s %s"%(file, os.path.join(dir_bck, file))
+            os.system(cmd)
     else :
 	cmd="enrsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
 	logthis(e_errors.INFO,cmd)
