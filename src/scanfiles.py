@@ -1266,9 +1266,12 @@ def check_bit_file(bfid, bfid_info = None):
                                     errors_and_warnings(prefix, err, warn, info)
                                     return
                                 pnfsid_mp = p.get_pnfs_db_directory(pnfs_path)
-                            except (OSError, IOError):
-                                pnfsid_mp = None
+                            except (OSError, IOError), msg:
                                 pnfs_path = afn
+                                if msg.errno in [errno.ENOENT]:
+                                    pnfsid_mp = None
+                                else:
+                                    pnfsid_mp = mp #???
 
                             if pnfsid_mp != None:
                                 #This is just some paranoid checking.
@@ -1290,6 +1293,8 @@ def check_bit_file(bfid, bfid_info = None):
 
                     #pnfs_path and pnfsid_mp needs to be set correctly by
                     # this point.
+                    if pnfsid_mp == None:
+                        continue
                     break
 
             #If we found the right bfid brand, we know the right pnfs system
@@ -1844,11 +1849,18 @@ def check_file(f, file_info):
                                         ".(access)(%s)" % parent_id, fname)
                 try:
                     alt_stats = os.stat(alt_path)
-                except OSError:
-                    alt_stats = None
-                if f_stats != alt_stats:
-                    err.append("parent_id(%s, %s)" % (parent_id, parent_dir_id))
-        
+
+                    if f_stats != alt_stats:
+                        err.append("parent_id(%s, %s)" % (parent_id,
+                                                          parent_dir_id))
+                except OSError, msg:
+                    if msg.args[0] not in [errno.ENOENT]:
+                        #It is quite possible that a user can create
+                        # multiple hardlinks to a file.  It is even
+                        # possible that they could remove the original
+                        # file.
+                        err.append("parent_id(%s, %s)" % (parent_id,
+                                                          parent_dir_id))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted parent id')
 
