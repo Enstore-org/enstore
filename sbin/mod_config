@@ -6,7 +6,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 export place=`pwd`
 
-if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
+#if [ `whoami` = "root" -o `whoami` = "enstore" ]; then
+if [ `whoami` != "enstore" ]; then
     echo "You can not be `whoami` while you modify the enstore config file" >&2
     exit 1
 fi
@@ -17,6 +18,9 @@ case $node in
    stkensrv2|d0ensrv2|cdfensrv2)
           loadit=1
           ;;
+   ${ENSTORE_CONFIG_HOST})
+          loadit=1
+          ;;	  
    *)     loadit=0
           ;;
 esac
@@ -40,10 +44,26 @@ fi
 cd $ENSTORE_DIR/etc
 
 # we need a config file to change
-if [ -z "${1-}"  ]; then abort  "you need to specify a config file"; fi
-config=$1.conf
+if [ -n "${ENSTORE_CONFIG_FILE-}" ]; 
+then 
+ echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
+ d=`dirname $ENSTORE_CONFIG_FILE`
+ #cp -rpf $d .
+ #cp -rpf $ENSTORE_CONFIG_FILE .
+ dir=`basename $d`
+ config=`basename $ENSTORE_CONFIG_FILE`;
+elif 
+    [ -z "${1-}"  ]; then abort  "you need to specify a config file"; 
+else
+    dir=$ENSTORE_DIR/etc
+    config=$1.conf
+fi
+cd $dir
+
+#config=$1.conf
 if [ ! -r $config ]; then abort "can not read $config"; fi
-config2=/tmp/$1.conf-check.py
+#config2=/tmp/$1.conf-check.py
+config2=/tmp/$config.conf-check.py
 
 # if the user wants a specific editor, use it
 # otherwise use vi since it is always there
