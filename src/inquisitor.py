@@ -1009,7 +1009,7 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
 		node = enstore_functions2.strip_node(qelem['wrapper']['machine'][1])	    
 		vc = qelem['vc']
 		mover = self.get_server(qelem[enstore_constants.MOVER])
-		if mover.server_status in MOVER_ERROR_STATES and \
+		if mover and mover.server_status in MOVER_ERROR_STATES and \
 		   node in node_d_keys:
 		    # if this is a read, we will ignore it unless the tape could
 		    # be written to, i.e. not full and not read-only
