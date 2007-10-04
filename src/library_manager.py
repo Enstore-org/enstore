@@ -21,9 +21,11 @@ import fcntl
 #    fcntl.F_GETFL = FCNTL.F_GETFL
 #    fcntl.F_SETFL = FCNTL.F_SETFL
 import re
+import copy
+import threading
 
 # enstore imports
-import copy
+
 
 import volume_clerk_client
 import callback
@@ -185,7 +187,8 @@ class AtMovers:
     def __init__(self):
         self.at_movers = {}
         self.sg_vf = SG_FF()
-            
+        self.check_interval = 30
+        
     def put(self, mover_info):
         # mover_info contains:
         # mover
@@ -247,6 +250,22 @@ class AtMovers:
         Trace.trace(32,"AtMovers delete: at_movers: %s" % (self.at_movers,))
         Trace.trace(31,"AtMovers delete: sg_vf: %s" % (self.sg_vf,))
 
+    # check how long mover did not update its state
+    def check(self):
+        while 1:
+            time.sleep(self.check_interval)
+            Trace.trace(113, "checking at_movers list")
+            now = time.time()
+            movers_to_delete = []
+            if not self.at_movers: return
+            for mover in self.at_movers.keys():
+                if int(now) - int(mover['updated']) > 600:
+                    Trace.alarm(e_errors.ALARM, "The mover %s has not updated its state for % minutes, will remove if from at_movers list"%(mover['mover'],now - mover['updated']))
+                    movers_to_delete.append(mover)
+            if movers_to_delete:
+                for mover in movers_to_delete:
+                    self.delete(mover)
+                
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
         Trace.trace(19,"busy_volumes: family=%s"%(volume_family_name,))
@@ -1748,6 +1767,33 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.set_udp_client()
 
         self.volume_assert_list = []
+
+        # start check movers thread
+        self.run_in_thread('check_at_movers', self.volumes_at_movers.check)
+        
+        
+    def run_in_thread(self, thread_name, function, args=(), after_function=None):
+        thread = getattr(self, thread_name, None)
+        for wait in range(5):
+            if thread and thread.isAlive():
+                Trace.trace(20, "thread %s is already running, waiting %s" % (thread_name, wait))
+                time.sleep(1)
+        if thread and thread.isAlive():
+                Trace.log(e_errors.ERROR, "thread %s is already running" % (thread_name))
+                return -1
+        if after_function:
+            args = args + (after_function,)
+        Trace.trace(20, "create thread: target %s name %s args %s" % (function, thread_name, args))
+        thread = threading.Thread(group=None, target=function,
+                                  name=thread_name, args=args, kwargs={})
+        setattr(self, thread_name, thread)
+        Trace.trace(20, "starting thread %s"%(dir(thread,)))
+        try:
+            thread.start()
+        except:
+            exc, detail, tb = sys.exc_info()
+            Trace.log(e_errors.ERROR, "starting thread %s: %s" % (thread_name, detail))
+        return 0
 
     def accept_request(self, ticket):
         Trace.trace(201,"queue %s max rq %s priority %s"%(self.pending_work.queue_length, self.max_requests, ticket['encp']['adminpri'])) 
