@@ -716,6 +716,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.initial_crc_seed = 1L        # adler 32 default seed
         self.crc_seed = self.initial_crc_seed
         self.memory_error = 0 # to flag memory error
+        self.starting = 1 # to disable changing interval
         
         
     def __setattr__(self, attr, val):
@@ -730,6 +731,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.time_in_state = 0.0
                 self.in_state_to_cnt = 0
                 self.__dict__['state_change_time'] = time.time()
+                if self.starting == 0:
+                    if val in (IDLE, HAVE_BOUND):
+                        # in idle and have_bound update interval for update_lm is as set
+                        interval = self.update_interval
+                    else:
+                        # in all other states it is 3 times +1 more
+                        interval = self.update_interval*3+1
+                    self.reset_interval(self.update_lm, intreval)
+                    
         except:
             pass #don't want any errors here to stop us
         self.__dict__[attr] = val
@@ -1388,9 +1398,6 @@ class Mover(dispatching_worker.DispatchingWorker,
         ##end of __init__
 
     # restart itselfs
-
-
-
     def restart_lockfile_name(self):
         d=os.environ.get("ENSTORE_TMP","/tmp")
         return os.path.join(d, "restart_lock%s"%(self.name,))
@@ -6439,6 +6446,7 @@ if __name__ == '__main__':
 
     mover.handle_generic_commands(intf)
     mover.start()
+    mover.starting = 0
     
     while 1:
         try:
