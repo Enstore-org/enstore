@@ -92,6 +92,10 @@ class DispatchingWorker(udp_server.UDPServer):
     def reset_interval_timer(self, func):
         self.interval_funcs[func][1] = time.time()
 
+    def reset_interval(self, func, interval):
+        self.interval_funcs[func][0] = interval
+        self.interval_funcs[func][1] = time.time()
+
     def set_error_handler(self, handler):
         self.custom_error_handler = handler
 
@@ -280,7 +284,6 @@ class DispatchingWorker(udp_server.UDPServer):
                 rcv_timeout = max(rcv_timeout, 0)
 
             r, w, x, remaining_time = cleanUDP.Select(r, w, r+w, rcv_timeout)
-
             if not r + w:
                 return ('',()) #timeout
 
