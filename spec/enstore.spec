@@ -33,6 +33,10 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
+echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
+echo export SWIG_DIR
+echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
+echo export SWIG_LIB
 rpm -q aci
 if [ $? -eq 0 ]; then
 	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
