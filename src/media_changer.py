@@ -2255,7 +2255,7 @@ def execute_and_set(f, a, e, q):
     e.set()
     return
 
-# mtx robot loader server
+# mtx robot loader server for Overland stackers
 class MTX_MediaLoader(MediaLoaderMethods):
 
     def __init__(self, medch, max_work=1, csc=None):
