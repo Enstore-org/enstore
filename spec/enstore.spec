@@ -43,7 +43,7 @@ if [ $? -eq 0 ]; then
 	echo export ACI_DIR >> /tmp/enstore-setup
 fi
 
-echo PATH="$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 #++++++++++++
 
 %setup -q -c -n %{prefix}
