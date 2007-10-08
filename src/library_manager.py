@@ -257,14 +257,15 @@ class AtMovers:
             Trace.trace(113, "checking at_movers list")
             now = time.time()
             movers_to_delete = []
-            if not self.at_movers: return
-            for mover in self.at_movers.keys():
-                if int(now) - int(mover['updated']) > 600:
-                    Trace.alarm(e_errors.ALARM, "The mover %s has not updated its state for % minutes, will remove if from at_movers list"%(mover['mover'],now - mover['updated']))
-                    movers_to_delete.append(mover)
-            if movers_to_delete:
-                for mover in movers_to_delete:
-                    self.delete(mover)
+            if self.at_movers:
+                for mover in self.at_movers.keys():
+                    Trace.trace(113, "MOVER %s now %s updated %s"%(mover['mover'], int(now), int(mover['updated'])))
+                    if int(now) - int(mover['updated']) > 600:
+                        Trace.alarm(e_errors.ALARM, "The mover %s has not updated its state for % minutes, will remove if from at_movers list"%(mover['mover'],now - mover['updated']))
+                        movers_to_delete.append(mover)
+                if movers_to_delete:
+                    for mover in movers_to_delete:
+                        self.delete(mover)
                 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
@@ -1768,8 +1769,6 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
         self.volume_assert_list = []
 
-        # start check movers thread
-        self.run_in_thread('check_at_movers', self.volumes_at_movers.check)
         
         
     def run_in_thread(self, thread_name, function, args=(), after_function=None):
@@ -3091,6 +3090,8 @@ if __name__ == "__main__":
             #Trace.init(intf.name[0:5]+'.libm')
             Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%(intf.name,))
+            # start check movers thread
+            lm.run_in_thread('check_at_movers', lm.volumes_at_movers.check)
             lm.serve_forever()
         except SystemExit, exit_code:
             sys.exit(exit_code)

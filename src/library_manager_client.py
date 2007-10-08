@@ -533,7 +533,6 @@ def do_work(intf):
         ## print "%-9s  %-17s %-06s %-21s %-19s %-19s %-18s %19s"%(
         ##    "label","mover","tot.time", "status", "system_inhibit",
         ##    "user_inhibit", "updated", "volume family")
-        print ticket
         print "%-9s  %-17s %-06s %-21s %-19s %-16s %-14s %16s"%(
             "label","mover","tot.time", "status", "system_inhibit",
             "rq. host", "updated", "volume family")
