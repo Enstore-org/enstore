@@ -261,7 +261,7 @@ class AtMovers:
                 for mover in self.at_movers.keys():
                     Trace.trace(113, "Check mover %s now %s"%(self.at_movers[mover], now))
                     if int(now) - int(self.at_movers[mover]['updated']) > 600:
-                        Trace.alarm(e_errors.ALARM, "The mover %s has not updated its state for % minutes, will remove if from at_movers list"%(mover['mover'],now - mover['updated']))
+                        Trace.alarm(e_errors.ALARM, "The mover %s has not updated its state for % minutes, will remove if from at_movers list"%(mover,now - mover['updated']))
                         movers_to_delete.append(mover)
                 if movers_to_delete:
                     for mover in movers_to_delete:
