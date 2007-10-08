@@ -27,8 +27,15 @@ class Request:
         encp = ticket.get('encp','')
         # by default priority grows by 1 every 1/2 hour
         if encp:
-            self.delpri = encp.get('delpri',1)
-            self.agetime = encp.get('agetime',30)
+            delpri = encp.get('delpri',1)
+            if delpri == 0:
+                delpri = 1
+            agetime = encp.get('agetime',30)
+            if agetime == 0:
+                agetime = 30
+            
+            self.delpri = delpri
+            self.agetime = agetime
             self.adminpri = encp.get('adminpri',-1)
         else:
             self.delpri = 1
@@ -42,6 +49,9 @@ class Request:
             ticket['times']['job_queued'] = self.queued
             ticket['at_the_top'] = 0
             ticket['encp']['curpri'] = self.pri
+            ticket['encp']['agetime'] = self.agetime
+            ticket['encp']['delpri'] = self.delpri
+            
         self.work = ticket.get('work','')
         wrapper = ticket.get('wrapper','')
         if wrapper:
@@ -71,7 +81,8 @@ class Request:
             old_pri = self.pri
             deltas = int(now-self.queued)/60/self.agetime
             pri = pri + self.delpri*deltas
-        if pri != self.pri and self.pri > 0:
+            #Trace.trace(23 , "update pri deltas %s pri % self.pri %s"%(deltas, pri, self.pri))
+        if pri != self.pri and self.pri > 0 and pri < MAX_PRI:
             self.pri = pri
             self.ticket['encp']['curpri'] = self.pri
         return old_pri, self.pri
@@ -118,10 +129,12 @@ class SortedList:
         if not self.update_flag: return  # no need to update by_location list
         time_now = time.time()
         rescan_list = []
+        #Trace.trace(23, "now %s self.last_aging_time %s self.aging_quantum %s"%(time_now,self.last_aging_time, self.aging_quantum))
         if ((time_now - self.last_aging_time >= self.aging_quantum) or
             now): 
             # it is time to update priorities
             for record in self.sorted_list:
+                #Trace.trace(23, "record %s agetime %s"%(record, record.agetime))
                 if record.agetime > 0:
                     old_pri,new_pri = record.update_pri()
                     if new_pri != old_pri:
