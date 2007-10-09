@@ -1053,7 +1053,6 @@ class LibraryManagerMethods:
             ##        if rq.pri < self.tmp_rq.pri:
             ##            rq = self.tmp_rq
             w = rq.ticket
-            Trace.trace(11,"check volume %s " % (w['fc']['external_label'],))
             if w["status"][0] == e_errors.OK:
                 if self.mover_type(requestor) == 'DiskMover':
                     ret = self.is_vol_available(rq.work,w['fc']['external_label'], requestor)
