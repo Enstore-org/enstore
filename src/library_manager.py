@@ -1001,7 +1001,12 @@ class LibraryManagerMethods:
             if rq:
                 self.postponed_rq = 1 # request comes from postponed requests list
             else:
-                if not saved_rq and self.tmp_rq:
+                if saved_rq:
+                    rq = saved_rq
+                    if rq.ticket.has_key('reject_reason'):
+                        del rq.ticket['reject_reason']
+                    Trace.trace(16,"next_work_any_volume: proceed with rejected %s"%(rq,))
+                elif self.tmp_rq:
                     rq = self.tmp_rq
                     Trace.trace(16,"next_work_any_volume: get from tmp_rq %s"%(rq,))
         # check if this volume is ok to work with
