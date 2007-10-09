@@ -992,14 +992,18 @@ class LibraryManagerMethods:
             rq = self.pending_work.get(next=1)
 
         if not rq or (rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == 'PURSUING'):
+            saved_rq = rq
             # see if there is a temporary stored request
             Trace.trace(11,"next_work_any_volume: using exceeded mover limit request") 
             #rq = self.tmp_rq
             rq, self.postponed_sg = self.postponed_requests.get()
             Trace.trace(16,"next_work_any_volume: get from postponed %s"%(rq,)) 
-
-                            
-            self.postponed_rq = 1 # request comes from postponed requests list
+            if rq:
+                self.postponed_rq = 1 # request comes from postponed requests list
+            else:
+                if not saved_rq and self.tmp_rq:
+                    rq = self.tmp_rq
+                    Trace.trace(16,"next_work_any_volume: get from tmp_rq %s"%(rq,))
         # check if this volume is ok to work with
         if rq:
             ## check if there are any additional restrictions for postponed request
