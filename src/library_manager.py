@@ -897,7 +897,7 @@ class LibraryManagerMethods:
                         # if the number of write requests for a given file family more than the
                         # file family width then let it go.
                         if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
-                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] < rq.ticket["vc"]["file_family_width"]):
+                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
                             Trace.trace(223, " will let this request go to idle mover")
                             break
                     
