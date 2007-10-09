@@ -1067,10 +1067,15 @@ class LibraryManagerMethods:
                     self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                                      server_address=w['vc']['address'])
 
-                    ret = self.vcc.is_vol_available(rq.work,
-                                                    w['fc']['external_label'],
-                                                    w["vc"]["volume_family"],
-                                                    fsize)
+                    
+                    try:
+                        ret = self.vcc.is_vol_available(rq.work,
+                                                        w['fc']['external_label'],
+                                                        w["vc"]["volume_family"],
+                                                        fsize)
+                    except KeyError:
+                        Trace.log(e_errors.ERROR, "Keyerror calling is_vol_available %s"%(w,))
+                        
                 if ret['status'][0] != e_errors.OK:
                     if ret['status'][0] == e_errors.BROKEN:
                         # temporarily save last state:
