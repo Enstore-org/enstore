@@ -872,6 +872,7 @@ class LibraryManagerMethods:
         Trace.trace(222,"Pw3")
         rq=self.pending_work.get()
         while rq:
+            rej_reason = None
             
             if rq.work == "write_to_hsm":
                 # check if there is a potentially available tape at bound movers
