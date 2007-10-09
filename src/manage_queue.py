@@ -591,6 +591,7 @@ class Atomic_Request_Queue:
             else: record = None
             #return record
         else:
+            Trace.trace(21, "TAGS %s"%(self.tags.sorted_list,))
             # label is not specified, get the highest priority from
             # the tags queue
             if next:
