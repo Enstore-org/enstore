@@ -688,7 +688,7 @@ class Request_Queue:
         self.adm_pri_to = adm_pri_to
         self.adm_pri_t0 = 0.
         self.queue_length = 0
-        self.file_families = {}
+        self.families = {}
 
     def start_cycle(self):
         self.process_admin_queue = 1
