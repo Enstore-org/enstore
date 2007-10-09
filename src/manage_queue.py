@@ -688,6 +688,7 @@ class Request_Queue:
         self.adm_pri_to = adm_pri_to
         self.adm_pri_t0 = 0.
         self.queue_length = 0
+        self.file_families = {}
 
     def start_cycle(self):
         self.process_admin_queue = 1
@@ -715,8 +716,15 @@ class Request_Queue:
         ticket['encp']['adminpri'] = adm_pri
         rq, stat = queue.put(basepri, ticket,t_time)
         if rq:
-            self.queue_length = self.queue_length + 1 
+            self.queue_length = self.queue_length + 1
             Trace.trace(201, "PUT %s"%(self.queue_length,))
+            if ticket['work'] == 'write_to_hsm' and ticket['vc'].has_key('file_family'):
+                if self.families.has_key(ticket['vc']['file_family']):
+                   self.families[ticket['vc']['file_family']] = self.families[ticket['vc']['file_family']] + 1
+                else:
+                   self.families[ticket['vc']['file_family']] = 1
+                Trace.trace(201, "PUT. FF %s"%(self.families,))
+                
         return rq, stat
     
     # delete the record
@@ -725,6 +733,12 @@ class Request_Queue:
             queue = self.admin_queue
         else:
             queue = self.regular_queue
+        if record.ticket['work'] == 'write_to_hsm' and record.ticket['vc'].has_key('file_family'):
+            if self.families.has_key(record.ticket['vc']['file_family']):
+                self.families[record.ticket['vc']['file_family']] = self.families[record.ticket['vc']['file_family']] - 1
+                if self.families[record.ticket['vc']['file_family']] <= 0 :
+                    del(self.families[record.ticket['vc']['file_family']])
+                
         queue.delete(record)
         if self.queue_length > 0:
            self.queue_length = self.queue_length - 1 

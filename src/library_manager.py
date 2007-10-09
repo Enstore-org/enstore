@@ -893,8 +893,16 @@ class LibraryManagerMethods:
                                     break
                         if found_mover:
                             break
-                    if found_mover:    
-                        Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+                    if found_mover:
+                        # if the number of write requests for a given file family more than the
+                        # file family width then let it go.
+                        if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
+                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] < rq.ticket["vc"]["file_family_width"]):
+                            Trace.trace(223, " will let this request go to idle mover")
+                            break
+                    
+                        Trace.trace(223, 'will wait with this request go to %s %s'%
+                                    (mover['mover'], mover['external_label']))
                     
                         rq = self.pending_work.get(next=1) # get next request
                         continue
