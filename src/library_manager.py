@@ -1018,6 +1018,7 @@ class LibraryManagerMethods:
                 elif self.tmp_rq:
                     rq = self.tmp_rq
                     Trace.trace(16,"next_work_any_volume: get from tmp_rq %s"%(rq,))
+                    rq, key = self.process_write_request(rq, requestor)
         # check if this volume is ok to work with
         if rq:
             ## check if there are any additional restrictions for postponed request
