@@ -41,17 +41,16 @@ if [ -z "${ENSTORE_DIR-}"  ]; then
 fi
 
 # all the action is here
-cd $ENSTORE_DIR/etc
+#cd $ENSTORE_DIR/etc
 
 # we need a config file to change
 if [ -n "${ENSTORE_CONFIG_FILE-}" ]; 
 then 
  echo "The following configuration file will be modified: `basename $ENSTORE_CONFIG_FILE`";
- d=`dirname $ENSTORE_CONFIG_FILE`
+ dir=`dirname $ENSTORE_CONFIG_FILE`
  #cp -rpf $d .
  #cp -rpf $ENSTORE_CONFIG_FILE .
- dir=`basename $d`
- config=`basename $ENSTORE_CONFIG_FILE`;
+  config=`basename $ENSTORE_CONFIG_FILE`;
 elif 
     [ -z "${1-}"  ]; then abort  "you need to specify a config file"; 
 else
@@ -170,7 +169,7 @@ cvs status $config
 echo
 # update config file on all machines
 echo "syncronizing $config"
-rgang $gang " cd ${dir}; cvs -q update -r production $config"
+rgang $gang 'cd ${dir}; cvs -q update -r production $config"
 
 # check for situations where loading in the config file will not work.
 if [ `echo $config | cut -c1-4` = "auth" ]; then
