@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# $Id$
+
+#Start service ip interfaces.
+
+#A stanza in the configuration should look something like:
+# configdict['service_ips'] = {
+#    'www-gccen'  : "gccensrv1.fnal.gov",
+#    'pnfs-gccen' : "gccensrv2.fnal.gov",
+#    'conf-gccen' : "gccensrv1.fnal.gov",
+#    }
+
+#First, get the list of service IP from the configuration.
+service_ip_map=`enstore conf --show service_ips | grep -v status | tr -d "{\':,}" | awk '{print $1 " " $2}'`
+
+echo "$service_ip_map" |
+while read line; do
+   service_alias=`echo $line | cut -f 1 -d " "`
+   service_hostname=`echo $line | cut -f 2 -d " " | cut -f 1 -d "."`
+
+   hostname=`hostname | cut -f 1 -d "."`
+
+   service_interface=`echo $service_alias | cut -f 1 -d "-"`
+ 
+   if [ $hostname = $service_hostname ]; then
+      if [ _`uname` = _Linux ]; then
+          ifup $service_interface
+      elif [ _`uname` = _SunOS ]; then
+          ifconfig $service_interface up
+      fi
+   else
+      if [ _`uname` = _Linux ]; then
+          ifdown $service_interface
+      elif [ _`uname` = _SunOS ]; then
+          ifconfig $service_interface down
+      fi
+   fi
+done
