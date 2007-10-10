@@ -168,6 +168,9 @@ echo
 
 cvs status $config
 echo
+# update config file on all machines
+echo "syncronizing $config"
+rgang $gang " cd ${dir}; cvs -q update -r production $config"
 
 # check for situations where loading in the config file will not work.
 if [ `echo $config | cut -c1-4` = "auth" ]; then
