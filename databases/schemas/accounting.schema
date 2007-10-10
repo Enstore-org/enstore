@@ -500,7 +500,7 @@ $$
 ALTER FUNCTION public.make_daily_xfer_size_by_mover() OWNER TO enstore;
 
 --
--- Name: make_first_daily_size_by_mover(); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: make_first_daily_size_by_mover(); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION make_first_daily_size_by_mover() RETURNS date
@@ -521,10 +521,10 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.make_first_daily_size_by_mover() OWNER TO huangch;
+ALTER FUNCTION public.make_first_daily_size_by_mover() OWNER TO enstore;
 
 --
--- Name: make_first_daily_xfer_count(); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: make_first_daily_xfer_count(); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION make_first_daily_xfer_count() RETURNS date
@@ -545,10 +545,10 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.make_first_daily_xfer_count() OWNER TO huangch;
+ALTER FUNCTION public.make_first_daily_xfer_count() OWNER TO enstore;
 
 --
--- Name: make_first_daily_xfer_size(); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: make_first_daily_xfer_size(); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION make_first_daily_xfer_size() RETURNS date
@@ -569,10 +569,10 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.make_first_daily_xfer_size() OWNER TO huangch;
+ALTER FUNCTION public.make_first_daily_xfer_size() OWNER TO enstore;
 
 --
--- Name: make_first_monthly_xfer_size(); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: make_first_monthly_xfer_size(); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION make_first_monthly_xfer_size() RETURNS date
@@ -593,7 +593,7 @@ $$
     LANGUAGE plpgsql;
 
 
-ALTER FUNCTION public.make_first_monthly_xfer_size() OWNER TO huangch;
+ALTER FUNCTION public.make_first_monthly_xfer_size() OWNER TO enstore;
 
 --
 -- Name: make_monthly_xfer_size(date); Type: FUNCTION; Schema: public; Owner: enstore
