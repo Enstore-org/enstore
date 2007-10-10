@@ -1020,6 +1020,7 @@ class LibraryManagerMethods:
                     Trace.trace(16,"next_work_any_volume: get from tmp_rq %s"%(rq,))
                     if rq.work == "write_to_hsm":
                         rq, key = self.process_write_request(rq, requestor)
+                        Trace.trace(16, "tmp_rq %s %s"%(rq.ticket, key))
         # check if this volume is ok to work with
         if rq:
             ## check if there are any additional restrictions for postponed request
