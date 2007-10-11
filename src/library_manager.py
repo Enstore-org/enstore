@@ -900,13 +900,11 @@ class LibraryManagerMethods:
                         if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
                            (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
                             Trace.trace(223, " will let this request go to idle mover")
-                            break
-                    
-                        Trace.trace(223, 'will wait with this request go to %s %s'%
-                                    (mover['mover'], mover['external_label']))
-                    
-                        rq = self.pending_work.get(next=1) # get next request
-                        continue
+                        else:
+                            Trace.trace(223, 'will wait with this request go to %s %s'%
+    	                                (mover['mover'], mover['external_label']))
+	                    rq = self.pending_work.get(next=1) # get next request
+                            continue
                 
             Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
