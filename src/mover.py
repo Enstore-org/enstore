@@ -5683,13 +5683,21 @@ class DiskMover(Mover):
                     self.fcc.set_crcs(self.file_info['bfid'], sanity_cookie, self.buffer.complete_crc)
                 else:
                     if self.tr_failed: return  # do not raise alarm if net thead detected a failed transfer
-                    Trace.alarm(e_errors.ERROR, "read_tape CRC error",
-                                {'outfile':self.current_work_ticket['outfile'],
-                                 'infile':self.current_work_ticket['infile'],
-                                 'location_cookie':self.current_work_ticket['fc']['location_cookie'],
-                                 'external_label':self.current_work_ticket['vc']['external_label']})
-                    self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
-                return
+                    crc_error = 1
+                    # try 1 based crc
+                    crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
+                                                                               self.self.file_info['size'])
+                    if crc_1_seeded == complete_crc:
+                        self.buffer.complete_crc = crc_1_seeded
+                        crc_error = 0
+                    if crc_error:
+                        Trace.alarm(e_errors.ERROR, "read_tape CRC error",
+                                    {'outfile':self.current_work_ticket['outfile'],
+                                     'infile':self.current_work_ticket['infile'],
+                                     'location_cookie':self.current_work_ticket['fc']['location_cookie'],
+                                     'external_label':self.current_work_ticket['vc']['external_label']})
+                        self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
+                        return
 
         Trace.trace(8, "read_tape exiting, read %s/%s bytes" %
                     (self.bytes_read, self.bytes_to_read))
@@ -5870,6 +5878,10 @@ class DiskMover(Mover):
         if encp_dict:
             self.crc_seed = long(encp_dict.get("crc_seed", 1L))
 
+        if ticket.has_key('crc_seed'):
+            crc_seed = int(ticket['crc_seed'])
+            if crc_seed == 1 or crc_seed == 0:
+                self.crc_seed = crc_seed
         ##all groveling around in the ticket should be done here
         fc = ticket['fc']
         vc = ticket['vc']
