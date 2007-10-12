@@ -5670,6 +5670,7 @@ class DiskMover(Mover):
         if failed: return
         if do_crc:
             if self.tr_failed: return # do not calculate CRC if net thead detected a failed transfer
+            complete_crc = self.file_info.get('complete_crc',None)
             Trace.trace(22,"read_tape: calculated CRC %s File DB CRC %s"%
                         (self.buffer.complete_crc, self.file_info['complete_crc']))
             if self.buffer.complete_crc != self.file_info['complete_crc']:
