@@ -5232,8 +5232,11 @@ class DiskMover(Mover):
         self.state = IDLE
         # check if device exists
         if not os.path.exists(self.config['device']):
-            Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
-            self.state = OFFLINE
+            try:
+                os.makedirs(self.config['device'])
+            except:
+                Trace.alarm(e_errors.ERROR, "Cannot start. Device %s does not exist"%(self.config['device'],))
+                self.state = OFFLINE
             
         #how often to send an alive heartbeat to the event relay
         self.alive_interval = monitored_server.get_alive_interval(self.csc, name, self.config)
