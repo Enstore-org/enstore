@@ -738,7 +738,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     else:
                         # in all other states it is 3 times +1 more
                         interval = self.update_interval*3+1
-                    self.reset_interval(self.update_lm, intreval)
+                    self.reset_interval(self.update_lm, interval)
                     
         except:
             pass #don't want any errors here to stop us
