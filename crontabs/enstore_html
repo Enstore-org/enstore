@@ -1,0 +1,2 @@
+# generate main enstore html page
+55 * * * * enstore  . /usr/local/etc/setups.sh; setup enstore; python $ENSTORE_DIR/src/enstore_system_html.py > /dev/null 2> /dev/null
