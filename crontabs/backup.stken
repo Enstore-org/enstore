@@ -1,3 +1,0 @@
-10 1 * * * enstore /home/enstore/enstore/sbin/ecron -p acc_backup -l pg_dump -h stkensrv0 -p 8800 -F c -o -f /diska/pgdb-backup/accounting.backup.`date \+\%H` accounting > /dev/null 2> /dev/null
-0 1 * * * enstore /home/enstore/enstore/sbin/ecron -p operationdb_backup -l pg_dump -h stkensrv0 -p 8800 -F c -f /diska/pgdb-backup/operation.backup.`date \+\%H` operation > /dev/null 2> /dev/null
-5 1 * * * enstore /home/enstore/enstore/sbin/ecron -p dst_backup -l pg_dump -h stkensrv0 -p 8802 -o -F c -f /diska/pgdb-backup/drivestat.backup.`date \+\%H` drivestat > /dev/null 2> /dev/null

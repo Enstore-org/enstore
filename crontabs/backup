@@ -1,1 +1,4 @@
-10 * * * * enstore /home/enstore/enstore/sbin/ecron -p backup enstore backup > /dev/null 2> /dev/null
+#These backups are implemented as pulls.  The enstore DB is done as a push.
+# Look in the enstore_db crontab file for that backup.
+10 1 * * * enstore /home/enstore/enstore/sbin/ecron -l -p acc_backup db_backup.py accounting > /dev/null 2>/dev/null
+5 1 * * * enstore /home/enstore/enstore/sbin/ecron -l -p dst_backup db_backup.py drivestat > /dev/null 2>/dev/null
