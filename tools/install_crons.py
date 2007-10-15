@@ -15,10 +15,15 @@ import configuration_client
 import e_errors
 
 def copy_it(src, dst):
-    #Don't a good file.  Make sure that the src is newer before overwriting.
+    crontab=os.path.basename(src)
+
+    #Don't clobber a good file.  Make sure that the src is newer 
+    # before overwriting.
     if os.path.exists(dst) and os.path.getmtime(src) <= os.path.getmtime(dst):
-        sys.stderr.write("%s already exists.\n")
+        sys.stderr.write("%s already exists.\n" % (crontab,) )
         return
+
+    print "Installing crontab:", crontab
 
     try:
         sf = open(src, "r")
@@ -30,6 +35,14 @@ def copy_it(src, dst):
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
+
+def delete_it(target):
+    crontab=os.path.basename(target)
+
+    if os.path.exists(target):
+        print "Uninstalling crontab:", crontab
+        os.remove(target)
+
 
 if __name__ == '__main__':
 
@@ -92,12 +105,8 @@ if __name__ == '__main__':
             for cron in cron_info['cronfiles']:
                 src = os.path.join(CRONJOB_SRC_DIR, cron)
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
-                if not os.path.exists(dst):
-                    print "Installing crontab:", cron
-                    copy_it(src, dst)
+                copy_it(src, dst)
         else:
             for cron in cron_info['cronfiles']:
                 dst = os.path.join(CRONJOB_DST_DIR, cron)
-                if os.path.exists(dst):
-                    print "Uninstalling crontab:", cron
-                    os.remove(dst)
+                delete_it(dst)
