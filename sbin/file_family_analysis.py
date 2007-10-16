@@ -42,17 +42,18 @@ def main():
 
     acc = csc.get("database", {})
 
-    db_server_name = acc.get('db_host')
-    db_name        = acc.get('dbname')
-    db_port        = acc.get('db_port')
+    inq = csc.get(enstore_constants.INQUISITOR, {})
+    web_dir = inq.get('html_file','')
+
 
     print db_server_name, db_name, db_port
   
     storage_groups = []
-    if db_port:
-        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
-    else:
-        db = pg.DB(host=db_server_name, dbname=db_name);
+
+    db = pg.DB(host  = acc.get('db_host', "localhost"),
+               dbname= acc.get('dbname', "enstoredb"),
+               port  = acc.get('db_port', 5432),
+               user  = acc.get('dbuser', "enstore"))
         
     res=db.query("select distinct(storage_group) from volume")
 
@@ -69,6 +70,9 @@ def main():
     str_now_time     = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
 
+    
+    os.chdir(web_dir)
+    
     for sg in storage_groups:
         h1 = histogram.Histogram1D(sg,"%s tape occupancy"%(sg),1000,0,100)
         h1.set_logy(True)

@@ -38,12 +38,12 @@ def main():
     csc.csc = csc
     acc = csc.get(enstore_constants.ACCOUNTING_SERVER, {})
 
-    accounting_db_server_name = acc.get('dbhost')
-    accounting_db_name        = acc.get('dbname')
-    accounding_db_port        = acc.get('dbport', 5432)
+    db = pg.DB(host  = acc.get('dbhost', "localhost"),
+               dbname= acc.get('dbname', "accounting"),
+               port  = acc.get('dbport', 5432),
+               user  = acc.get('dbuser', "enstore"))
 
     zero_time  = 1045689052
-    db = pg.DB(host=accounting_db_server_name, dbname=accounting_db_name, port=accounding_db_port);
     res=db.query(SELECT_LAST_TIME);
     for row in res.getresult():
         if not row:
