@@ -7,5 +7,5 @@
 # storage grpup activity - instead of make_sg_plot
 30 * * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sgPlotUpdate -setup gnuplot python $ENSTORE_DIR/src/plotter.py  --sg --start_time `date --date "48 hours ago" +"%Y-%m-%d:%H"` > /dev/null 2> /dev/null
 59/20 * * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p filler $ENSTORE_DIR/sbin/filler.py > /dev/null 2 >/dev/null
-25 * * * * enstore  . /usr/local/etc/setups.sh; setup enstore; cd /var/www/html/enstore ; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/sbin/encp_rate_plot_multi.py >/dev/null 2> /dev/null
+25 * * * * enstore  . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/sbin/encp_rate_plot_multi.py >/dev/null 2> /dev/null
 50 23 * * * enstore . /usr/local/etc/setups.sh; setup enstore; cd /var/www/html/enstore/file_family_usage;  $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/sbin/file_family_analysis.py > /dev/null 2> /dev/null
