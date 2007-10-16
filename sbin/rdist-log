@@ -47,6 +47,11 @@ doit() { echo "$1"
 	 echo
        }
 
+cmd="$ENSTORE_DIR/sbin/enrsh $backup_node mkdir -p \"$backup_dir\""
+
+doit "$cmd"
+
+
 # cron is scheduled every 15 minutes, so time out after 10
 cmd="/usr/bin/rsync -e $ENSTORE_DIR/sbin/enrsh -rlpgtx --delete \
       --timeout=600 --blocking-io \
