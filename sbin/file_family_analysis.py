@@ -43,7 +43,7 @@ def main():
     acc = csc.get("database", {})
 
     inq = csc.get(enstore_constants.INQUISITOR, {})
-    web_dir = inq.get('html_file','')
+    web_dir = os.path.join(inq.get('html_file','') "file_family_usage")
 
 
     storage_groups = []
@@ -68,7 +68,8 @@ def main():
     str_now_time     = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(now_time))
     str_start_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(start_time))
 
-    
+    if not os.path.exists(web_dir):
+        os.makedirs(web_dir)
     os.chdir(web_dir)
     
     for sg in storage_groups:
