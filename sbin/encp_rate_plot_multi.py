@@ -45,15 +45,16 @@ def main():
     accounting_db_server_name = acc.get('dbhost')
     accounting_db_name        = acc.get('dbname')
     accounting_db_port        = acc.get('dbport', None)
+    accounting_db_user        = acc.get('dbuser', 'enstore')
     if len(sys.argv)<1:
         usage()
         sys.exit(0)
 
     os.chdir(web_dir)
     if accounting_db_port:
-        login_string = "psql  %s -h %s -p %s -t -q -c "%(accounting_db_name, accounting_db_server_name, accounting_db_port)
+        login_string = "psql  %s -h %s -p %s -U %s -t -q -c "%(accounting_db_name, accounting_db_server_name, accounting_db_port, accounting_db_user)
     else:
-        login_string = "psql  %s -h %s -t -q -c "%(accounting_db_name,accounting_db_server_name,)
+        login_string = "psql  %s -h %s -U %s -t -q -c "%(accounting_db_name,accounting_db_server_name,accounting_db_user)
 
 #    start = sys.argv[1]
 #    stop  = sys.argv[2]
