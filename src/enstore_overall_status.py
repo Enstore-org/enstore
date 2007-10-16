@@ -26,6 +26,13 @@ DOWN_L = [enstore_constants.DOWN,
 	  enstore_constants.ENONE,
 	  enstore_constants.ENONE]
 
+DOWN_L2 = [enstore_constants.SEEN_DOWN,
+	  enstore_functions2.format_time(time.time()),
+	  "Can not get status from server",
+	  enstore_constants.ENONE,
+	  enstore_constants.ENONE,
+	  enstore_constants.ENONE]
+
 class HtmlStatusOnlyFile:
 
     # we need to save both the file name passed to us and the one we will
@@ -82,7 +89,7 @@ def setup_for_files():
     os.environ['PYTHONPATH'] = string.join(sys.path, ':')
 
 def mark_enstore_down(status_d, node, last_status_d):
-    status_d[node] = DOWN_L
+    status_d[node] = DOWN_L2
     # send mail about this, only send mail if we have been down continuously and last
     # mail was sent > 1 hour ago. so, 
     #
