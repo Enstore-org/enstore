@@ -46,8 +46,6 @@ def main():
     web_dir = inq.get('html_file','')
 
 
-    print db_server_name, db_name, db_port
-  
     storage_groups = []
 
     db = pg.DB(host  = acc.get('db_host', "localhost"),
