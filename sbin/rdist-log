@@ -18,19 +18,25 @@ if [ -z `echo $ENSTORE_DIR` ]; then
    exit 1
 fi
 #Get the log directory.
-filePath=`enstore conf --show crons log_dir`
+log_dir=`enstore conf --show crons log_dir --timeout 10 --retries 3`
 if [ $? -ne 0 ]; then
    echo "Unable to obtain log directory."
    exit 1
 fi
 #Get the backup node.
-backup_node=`enstore conf --show crons backup_node`
+backup_node=`enstore conf --show crons backup_node --timeout 10 --retries 3`
 if [ $? -ne 0 ]; then
    echo "Unable to obtain backup node."
    exit 1
 fi
+#Get the backup directory.
+backup_dir=`enstore conf --show crons backup_dir --timeout 10 --retries 3`
+if [ $? -ne 0 ]; then
+   echo "Unable to obtain backup dir."
+   exit 1
+fi
 
-filePathBackup=${filePath}-backup
+filePathBackup=$backup_dir/`basename $log_dir`-backup
 
 # function to list command, execute it and list status
 doit() { echo "$1"
@@ -44,6 +50,6 @@ doit() { echo "$1"
 # cron is scheduled every 15 minutes, so time out after 10
 cmd="/usr/bin/rsync -e $ENSTORE_DIR/sbin/enrsh -rlpgtx --delete \
       --timeout=600 --blocking-io \
-      ${filePath}/LOG-* enstore@${backup_node}:${filePathBackup}"
+      ${log_dir}/LOG-* enstore@${backup_node}:${filePathBackup}"
 
 doit "$cmd"
