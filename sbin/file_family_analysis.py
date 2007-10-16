@@ -43,7 +43,7 @@ def main():
     acc = csc.get("database", {})
 
     inq = csc.get(enstore_constants.INQUISITOR, {})
-    web_dir = os.path.join(inq.get('html_file','') "file_family_usage")
+    web_dir = os.path.join(inq.get('html_file',''), "file_family_usage")
 
 
     storage_groups = []
