@@ -7,9 +7,10 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # information specific to Fermilab
-gang=`gang`
-thisNode=${gang}srv2
-rdistNode=${gang}srv3.fnal.gov
+#gang=`gang`
+#thisNode=${gang}srv2
+#rdistNode=${gang}srv3.fnal.gov
+
 
 #Check if ENSTORE_DIR is set.
 if [ -z `echo $ENSTORE_DIR` ]; then
@@ -22,6 +23,13 @@ if [ $? -ne 0 ]; then
    echo "Unable to obtain log directory."
    exit 1
 fi
+#Get the backup node.
+backup_node=`enstore conf --show crons backup_node`
+if [ $? -ne 0 ]; then
+   echo "Unable to obtain backup node."
+   exit 1
+fi
+
 filePathBackup=${filePath}-backup
 
 # function to list command, execute it and list status
@@ -33,18 +41,9 @@ doit() { echo "$1"
 	 echo
        }
 
-if uname -n | grep ${thisNode} > /dev/null; then
-
 # cron is scheduled every 15 minutes, so time out after 10
-
- cmd="/usr/bin/rsync -e $ENSTORE_DIR/sbin/enrsh -rlpgtx --delete \
+cmd="/usr/bin/rsync -e $ENSTORE_DIR/sbin/enrsh -rlpgtx --delete \
       --timeout=600 --blocking-io \
-      ${filePath}/LOG-* enstore@${rdistNode}:${filePathBackup}"
- doit "$cmd"
+      ${filePath}/LOG-* enstore@${backup_node}:${filePathBackup}"
 
-else
-  echo "Do not know about node `uname -n`... fix $ENSTORE_DIR/sbin/rdist-log script"
-  exit 1
-fi
-
-exit 0
+doit "$cmd"
