@@ -5,7 +5,7 @@
 #31 * * * * enstore /home/enstore/enstore/sbin/ecron -p PNFSRATE PNFSRATE  > /dev/null 2> /dev/null
 
 #These are Fermilab specific.
-7,37 * * * * root /home/enstore/enstore/sbin/ecron -p getcons getcons  1>/dev/null 2>/dev/null
+#7,37 * * * * root /home/enstore/enstore/sbin/ecron -p getcons getcons  1>/dev/null 2>/dev/null
 
 #The following make the STK log web pages.
 02,17,32,47 * * * * enstore /home/enstore/enstore/sbin/ecron -p STKlog STKlog > /dev/null 2> /dev/null
