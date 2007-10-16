@@ -18,6 +18,7 @@ import pg
 import enstore_constants
 import configuration_client
 import types
+import traceback
 
 PB=1024.*1024.*1024.*1024.*1024.
 TB=1024.*1024.*1024.*1024.
@@ -51,7 +52,7 @@ def main():
             continue
         zero_time=row[0]
 
-    if type(zero_type) ==  types.NoneType:
+    if type(zero_time) ==  types.NoneType:
         zero_time  = 1045689052
          
 
@@ -96,11 +97,13 @@ def main():
         zero_time = zero_time + delta_time
     db.close()
 
-
 if __name__ == "__main__":
-    try: 
+    try:
         main()
     except:
         print "Failed"
+        exc,msg,tb=sys.exc_info()
+        for l in traceback.format_exception( exc, msg, tb ):
+            print l
         sys.exit(1)
-    sys.exit(0)    
+    sys.exit(0)
