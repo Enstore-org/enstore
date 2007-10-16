@@ -16,7 +16,7 @@ fi
 #If the inventory directory does not exist, create it.
 inventory_dir=$html_dir/tape_inventory
 if [ ! -d $inventory_dir ]; then
-    mkdir -p $$inventory_dir
+    mkdir -p $inventory_dir
 fi
 output_file=$inventory_dir/CLEANING
 temp_file=$output_file.tmp
