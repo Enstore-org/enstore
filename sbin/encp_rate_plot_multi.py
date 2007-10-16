@@ -40,6 +40,8 @@ def main():
     csc.csc = csc
     acc = csc.get(enstore_constants.ACCOUNTING_SERVER, {})
 
+    inq = csc.get(enstore_constants.INQUISITOR, {})
+    web_dir = inq.get('html_file','')
     accounting_db_server_name = acc.get('dbhost')
     accounting_db_name        = acc.get('dbname')
     accounting_db_port        = acc.get('dbport', None)
@@ -47,6 +49,7 @@ def main():
         usage()
         sys.exit(0)
 
+    os.chdir(web_dir)
     if accounting_db_port:
         login_string = "psql  %s -h %s -p %s -t -q -c "%(accounting_db_name, accounting_db_server_name, accounting_db_port)
     else:
