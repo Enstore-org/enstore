@@ -2111,7 +2111,8 @@ class EnAlarmPage(EnBaseHtmlDoc):
     def body(self, alarms, web_host):
 	table = self.table_top()
 	# now the data
-	form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
+	# form = HTMLgen.Form("%s/cgi-bin/enstore/enstore_alarm_cgi.py"%(web_host,))
+	form = HTMLgen.Form("/cgi-bin/enstore_alarm_cgi.py")
 	# get rid of the default submit button, we will add our own below
 	form.submit = ''
         tr = self.addButtons()
@@ -2123,7 +2124,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	form.append(empty_row())
 	form.append(empty_row())
         tr = self.addButtons()
-	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
+	form.append(HTMLgen.TR(HTMLgween.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
 	self.trailer(table)

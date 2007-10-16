@@ -81,7 +81,7 @@ for i in res:
     bfid = fr[1]
     total = total + long(fr[2])
     i = string.strip(i)
-    i = string.replace(i, bfid, '<a href=/cgi-bin/enstore/show_file_cgi.py?bfid='+bfid+'>'+bfid+'</a>')
+    i = string.replace(i, bfid, '<a href=/cgi-bin/show_file_cgi.py?bfid='+bfid+'>'+bfid+'</a>')
     fileout.append(h1+i+'</font>')
 
 print "<font size=5 color=#0000aa><b>"

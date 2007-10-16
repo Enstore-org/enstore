@@ -91,7 +91,7 @@ for i in keys:
 	print '<h2><a name="'+i+'"><font color="#aa0000">'+i+'</font></a></h2>'
 	for j in catalog[i]:
 		# print '<a href="'+os.path.join(inv_dir, j)+'">', j, '</a>&nbsp;&nbsp;'
-		print '<a href=/cgi-bin/enstore/show_volume_cgi.py?volume='+j+'>', j, '</a>&nbsp;&nbsp;'
+		print '<a href=/cgi-bin/show_volume_cgi.py?volume='+j+'>', j, '</a>&nbsp;&nbsp;'
 
 # the end
 print '</body>'
