@@ -17,6 +17,7 @@ import time
 import pg
 import enstore_constants
 import configuration_client
+import types
 
 PB=1024.*1024.*1024.*1024.*1024.
 TB=1024.*1024.*1024.*1024.
@@ -49,6 +50,10 @@ def main():
         if not row:
             continue
         zero_time=row[0]
+
+    if type(zero_type) ==  types.NoneType:
+        zero_time  = 1045689052
+         
 
     delta_time = 60 * 20
     zero_time  = int(zero_time+0.5*delta_time)
