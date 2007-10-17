@@ -2124,7 +2124,7 @@ class EnAlarmPage(EnBaseHtmlDoc):
 	form.append(empty_row())
 	form.append(empty_row())
         tr = self.addButtons()
-	form.append(HTMLgen.TR(HTMLgween.TD(HTMLgen.TableLite(tr, 
+	form.append(HTMLgen.TR(HTMLgen.TD(HTMLgen.TableLite(tr, 
 							    width="100%"))))
 	table.append(form)
 	self.trailer(table)
