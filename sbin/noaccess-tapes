@@ -12,13 +12,13 @@ timeout='--timeout 10 --retries 3'
 
 #First obtain the directory to write the output.
 html_dir=`enstore conf $timeout --show crons html_dir`
-if [ ! -d $html_dir ]; then
+if [ ! -d "$html_dir" ]; then
     echo HTML directory $html_dir not found.
     exit 1
 fi
 #If the inventory directory does not exist, create it.
 inventory_dir=$html_dir/tape_inventory
-if [ ! -d $inventory_dir ]; then
+if [ ! -d "$inventory_dir" ]; then
     mkdir -p $inventory_dir
 fi
 
