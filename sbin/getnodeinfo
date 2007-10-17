@@ -2,9 +2,22 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
-node=`hostname -s`
-gang=`gang`
-gangfile=/usr/local/etc/farmlets/${gang}-alla
+#Make sure to set a timeout.
+timeout='--timeout 10 --retries 3'
+
+#First obtain the directory to write the output.
+html_dir=`enstore conf $timeout --show crons html_dir`
+if [ ! -d "$html_dir" ]; then
+    echo HTML directory $html_dir not found.
+    exit 1
+fi
+#Then obtain the directory to find the enstore farmlets file.
+farmlets_dir=`enstore conf $timeout --show crons farmlets_dir`
+if [ ! -d "$farmlets_dir" ]; then
+    echo Farmlets directory $farmlets_dir not found.
+    exit 1
+fi
+gangfile=$farmlets_dir/enstore
 
 if [ ! -f "$gangfile" ]; then
    echo "Farmlet $gangfile not found." >&2
@@ -14,9 +27,13 @@ elif [ ! -r "$gangfile" ]; then
    exit 1
 fi
 
-output=${1:-/dev/tty}
-if [ `echo $output | grep -c /dev/` -eq 0 ] ; then
-  rm -f $output
+output=$html_dir/nodeinfo.html
+#output=${1:-/dev/tty}
+#if [ `echo $output | grep -c /dev/` -eq 0 ] ; then
+#  rm -f $output
+#fi
+if [ -f "$output" ]; then
+   rm -f $output
 fi
 
 black=#000000
