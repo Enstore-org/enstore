@@ -6,6 +6,7 @@
 #
 ###############################################################################
 
+# system import
 import os
 import sys
 import socket
@@ -16,7 +17,7 @@ import threading
 import types
 import pg
 
-
+# enstore import
 #import configuration_client
 import dispatching_worker
 import generic_server
@@ -36,6 +37,7 @@ import media_changer_client
 MY_NAME = enstore_constants.RATEKEEPER    #"ratekeeper"
 
 rate_lock = threading.Lock()
+acc_db_lock = threading.Lock()
 
 THREE_MINUTES_TTL = 180 #time forked ratekeepers are allowed to live
 
@@ -83,11 +85,13 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         # be done locally in the code to avoid threading/forking releated
         # problems.
         self.acc_conf = self.csc.get(enstore_constants.ACCOUNTING_SERVER)
-        #acc_db   = pg.DB(host   = acc_conf.get('dbhost', "localhost"),
-        #                 port   = acc_conf.get('dbport', 5432),
-        #                 dbname = acc_conf.get('dbname', "accounting"),
-        #                 user   = acc_conf.get('dbuser', "enstore"))
-
+        self.acc_db   = pg.DB(
+            host   = self.acc_conf.get('dbhost', "localhost"),
+            port   = self.acc_conf.get('dbport', 5432),
+            dbname = self.acc_conf.get('dbname', "accounting"),
+            user   = self.acc_conf.get('dbuser', "enstore"),
+            )
+        
         #Get the configuration from the configuration server.
         ratekeep = self.csc.get(enstore_constants.RATEKEEPER,
                                 timeout=15, retry=3)
@@ -142,20 +146,47 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                one_shot=0, align_interval = True)
         self.add_interval_func(self.slots_interval_func, SLOTS_INTERVAL,
                                one_shot=0, align_interval = True)
-		
 
+        
     def reinit(self):
+        Trace.log(e_errors.INFO, "(Re)loading configuration")
+        
         rate_lock.acquire()
 
         # stop the communications with the event relay task
         self.event_relay_unsubscribe()
 
+        #Close the connections with the database.
+        self.close()
+        
         ###We shouldn't need to stop the rk_main thread here.  It will
         ### pick up any relavent configuration changes every 15 seconds.
         
         self.__init__(self.csc)
 
         rate_lock.release()
+
+    # close the database connection
+    def close(self):
+        acc_db_lock.acquire()
+        self.acc_db.close()
+        acc_db_lock.release()
+        return
+
+    # These need confirmation
+    def quit(self, ticket):
+        #Collect children.
+        while self.n_children > 0:
+            self.collect_children()
+            time.sleep(1)
+        # stop the communications with the event relay task
+        self.event_relay_unsubscribe()
+        #Close the connections with the database.
+        acc_db_lock.acquire()
+        self.acc_db.close()
+        acc_db_lock.release()
+        #
+        dispatching_worker.DispatchingWorker.quit(self, ticket)
     
     def subscribe(self):
         self.erc.subscribe()
@@ -176,7 +207,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
 
             #child
             self.update_DRVBusy(mcc)
-            sys.exit(0)
+            os._exit(0)
 
     # Do update the DB every 6 hours.
     def slots_interval_func(self):
@@ -195,7 +226,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             
             #child
             self.update_slots(mcc)
-            sys.exit(0)
+            os._exit(0)
 
     def update_DRVBusy(self, mcc):
         busy_count = {}
@@ -246,26 +277,37 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                 except:
                     busy_count[drive['type']] = 1
 
-            ## Put the information into the accounting DB.
+        try:
             acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
                            port  = self.acc_conf.get('dbport', 5432),
                            dbname= self.acc_conf.get('dbname', "accounting"),
                            user  = self.acc_conf.get('dbuser', "enstore"))
 
-        for drive_type in total_count.keys():
+            ## Put the information into the accounting DB.
+            for drive_type in total_count.keys():
 
-            q="insert into drive_utilization \
-            (time, tape_library, type, total, busy) values \
-            ('%s', '%s', '%s',  %d,  %d)" % \
-            (time.strftime("%m-%d-%Y %H:%M:%S",
-                           time.localtime(now)),
-             tape_library,
-             drive_type,
-             total_count[drive_type],
-             busy_count[drive_type],
-             )
-        
-            acc_db.query(q)
+                q="insert into drive_utilization \
+                (time, tape_library, type, total, busy) values \
+                ('%s', '%s', '%s',  %d,  %d)" % \
+                (time.strftime("%m-%d-%Y %H:%M:%S",
+                               time.localtime(now)),
+                 tape_library,
+                 drive_type,
+                 total_count[drive_type],
+                 busy_count[drive_type],
+                 )
+
+                acc_db.query(q)
+
+            acc_db.close()
+        except:
+            exc, msg, tb = sys.exc_info()
+            try:
+                sys.stderr.write("Can not update DB: (%s, %s)\n" %
+                                 (exc, msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
         return (busy_count, total_count)
 
     def update_slots(self, mcc):
@@ -283,26 +325,38 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         if e_errors.is_ok(slots_dict):
             slots_list = slots_dict['slot_list']
 
-        ## Put the information into the accounting DB.
-        acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
-                       port  = self.acc_conf.get('dbport', 5432),
-                       dbname= self.acc_conf.get('dbname', "accounting"),
-                       user  = self.acc_conf.get('dbuser', "enstore"))
+        try:
 
-        for slot_info in slots_list:
-            q="insert into tape_library_slots_usage (time, tape_library, \
-            location, media_type, total, free, used, disabled) values \
-            ('%s', '%s', '%s', '%s', %d, %d, %d, %d)" % \
-               (time.strftime("%m-%d-%Y %H:%M:%S", time.localtime(now)),
-                tape_library,
-                slot_info['location'],
-                slot_info['media_type'],
-                slot_info['total'],
-                slot_info['free'],
-                slot_info['used'],
-                slot_info['disabled'])
-        
-            acc_db.query(q)
+            ## Put the information into the accounting DB.
+            acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
+                           port  = self.acc_conf.get('dbport', 5432),
+                           dbname= self.acc_conf.get('dbname', "accounting"),
+                           user  = self.acc_conf.get('dbuser', "enstore"))
+
+            for slot_info in slots_list:
+                q="insert into tape_library_slots_usage (time, tape_library, \
+                location, media_type, total, free, used, disabled) values \
+                ('%s', '%s', '%s', '%s', %d, %d, %d, %d)" % \
+                   (time.strftime("%m-%d-%Y %H:%M:%S", time.localtime(now)),
+                    tape_library,
+                    slot_info['location'],
+                    slot_info['media_type'],
+                    slot_info['total'],
+                    slot_info['free'],
+                    slot_info['used'],
+                    slot_info['disabled'])
+
+                acc_db.query(q)
+
+            acc_db.close()
+        except:
+            exc, msg, tb = sys.exc_info()
+            try:
+                sys.stderr.write("Can not update DB: (%s, %s)\n" %
+                                 (exc, msg))
+                sys.stderr.flush()
+            except IOError:
+                pass
         return slots_list
 
     def check_outfile(self, now=None):
@@ -379,16 +433,6 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
         bytes_read_dict = {} # = 0L
         bytes_written_dict = {} #0L
 
-        #Instantiate clients for the servers we need to talk to.
-        #intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-        #csc   = configuration_client.ConfigurationClient((intf.config_host,
-        #                                                  intf.config_port))
-        #acc   = csc.get(enstore_constants.ACCOUNTING_SERVER)
-        acc_db = pg.DB(host  = self.acc_conf.get('dbhost', "localhost"),
-                       port  = self.acc_conf.get('dbport', 5432),
-                       dbname= self.acc_conf.get('dbname', "accounting"),
-                       user  = self.acc_conf.get('dbuser', "enstore"))
-                        
         while 1:
             now = time.time()
 
@@ -424,6 +468,7 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                     except IOError:
                         pass
                 # Insert the rate data into the DB.
+                acc_db_lock.acquire()
                 try:
                     q="insert into rate (time, read, write, read_null, write_null) values \
                        ('%s', %d,  %d,  %d,  %d)"%(time.strftime("%m-%d-%Y %H:%M:%S",
@@ -432,14 +477,17 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
                                                    bytes_written_dict.get("REAL", 0),
                                                    bytes_read_dict.get("NULL", 0),
                                                    bytes_written_dict.get("NULL", 0),)
-                    acc_db.query(q)
+                    self.acc_db.query(q)
                 except:
+                    exc, msg, tb = sys.exc_info()
                     try:
-                        sys.stderr.write("Can not update DB.\n")
+                        sys.stderr.write("Can not update DB: (%s, %s)\n" %
+                                         (exc, msg))
                         sys.stderr.flush()
                     except IOError:
                         pass
 
+                acc_db_lock.release()
                 rate_lock.release()
 
                 for key in bytes_read_dict.keys():
@@ -498,7 +546,6 @@ class Ratekeeper(dispatching_worker.DispatchingWorker,
             else:
                 self.count_bytes(words, bytes_read_dict,
                                  bytes_written_dict,"REAL")
-        acc_db.close()
             
                 
 class RatekeeperInterface(generic_server.GenericServerInterface):
@@ -526,6 +573,7 @@ if __name__ == "__main__":
             Trace.log(e_errors.INFO, "Ratekeeper (re)starting")
             rk.serve_forever()
         except SystemExit, exit_code:
+            rk.acc_db.close()
             sys.exit(exit_code)
         except:
             Trace.handle_error()

@@ -14,7 +14,8 @@ Accounting Module -- record accounting information
 import os
 import sys
 import string
-import pprint
+#import pprint
+import pg
 
 # enstore import
 import dispatching_worker
@@ -29,6 +30,11 @@ import time
 import volume_clerk_client
 
 MY_NAME = enstore_constants.ACCOUNTING_SERVER    #"accounting_server"
+
+ACC_DAILY_SUMMARY_INTERVAL = 86400 # 24 hours
+FILLER_INTERVAL = 1200 # twenty minutes
+
+THREE_MINUTES_TTL = 180 #time forked ratekeepers are allowed to live
 
 vcc = None
 
@@ -77,6 +83,17 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		# start our heartbeat to the event relay process
 		self.erc.start_heartbeat(enstore_constants.ACCOUNTING_SERVER, 
                                  self.alive_interval)
+
+
+		#Run this function, once a day at midnight.
+		self.add_interval_func(self.acc_daily_summary_func,
+				       ACC_DAILY_SUMMARY_INTERVAL,
+				       one_shot=0, align_interval = True)
+		#Run this function, every 20 minutes.
+		self.add_interval_func(self.filler_func,
+				       FILLER_INTERVAL,  
+				       one_shot=0, align_interval = True)
+		
 		return
 
 	# The following are local methods
@@ -86,6 +103,153 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		self.accDB.close()
 		return
 
+	#Run once a day at  midnight.
+	def acc_daily_summary_func(self):
+		if self.fork(THREE_MINUTES_TTL):
+			#Parent
+			return
+
+		#child
+		self.acc_daily_summary()
+		os._exit(0)
+
+	#Run every 20 minutes.
+	def filler_func(self):
+		if self.fork(THREE_MINUTES_TTL):
+			#Parent
+			return
+
+		#child
+		self.filler()
+		os._exit(0)
+
+	###
+	### acc_daily_summary() and filler() don't use self.accDB.  Instead
+	### acc_db is used.  Since, they run in forked processes, we need
+	### to be able to close the connection without closing self.accDB.
+
+	#Update the accounting summary tables.
+	def acc_daily_summary(self):
+		st = time.time()
+		try:
+			## Put the information into the accounting DB.
+			acc_conf = self.csc.get(MY_NAME)
+			acc_db = pg.DB(host  = acc_conf.get('dbhost', "localhost"),
+				       port  = acc_conf.get('dbport', 5432),
+				       dbname= acc_conf.att.get('dbname', "accounting"),
+				       user  = acc_conf.att.get('dbuser', "enstore"))
+			
+			acc_db.query("select * from make_daily_xfer_size();")
+			acc_db.query("select * from make_daily_xfer_size_by_mover();")
+		
+			day = time.localtime(time.time())[2]
+			if day == 1:	# beginning of the month
+				acc_db.query("select * from make_monthly_xfer_size();")
+
+			acc_db.close()
+		except:
+			# e, v = sys.exc_info()[:2]
+			##Doesn't making tb a local cause a cyclic reference
+			## and the memory never gets cleaned up?
+			e, v, tb = sys.exc_info()
+			Trace.handle_error(e, v, tb)
+			Trace.log(e_errors.ERROR, err_msg('acc_daily_summary()', {}, e, v, tb))
+		dt = time.time() - st
+		if self.debug:
+			print time.ctime(st), 'acc_daily_summary\t', dt
+
+	#Update the accounting storage group tables.
+	##As a side note, "filler" is a very non-descript name.
+	def filler(self):
+		#I'm guessing this is a fermi specific "zero" time.  It
+		# should not matter for other sites, because they will
+		# have started after it.
+		zero_time  = 1045689052  #'Wed Feb 19 15:10:52 2003'
+
+		#First obtain the most recent entry in the accounting DB.
+		try:
+			## Put the information into the accounting DB.
+			acc_conf = self.csc.get(MY_NAME)
+			acc_db = pg.DB(host  = acc_conf.get('dbhost', "localhost"),
+				       port  = acc_conf.get('dbport', 5432),
+				       dbname= acc_conf.get('dbname', "accounting"),
+				       user  = acc_conf.get('dbuser', "enstore"))
+			
+			SELECT_LAST_TIME="select max(unix_time) from encp_xfer_average_by_storage_group"
+			res = acc_db.query(SELECT_LAST_TIME);
+			for row in res.getresult():
+				if not row:
+					continue
+				elif row[0] == None:
+					continue
+				zero_time=row[0]
+		except:
+			# e, v = sys.exc_info()[:2]
+			##Doesn't making tb a local cause a cyclic reference
+			## and the memory never gets cleaned up?
+			e, v, tb = sys.exc_info()
+			Trace.handle_error(e, v, tb)
+			Trace.log(e_errors.ERROR, err_msg('filler()', {}, e, v, tb))
+
+		delta_time = 60 * 20
+		zero_time  = int(zero_time+0.5*delta_time)
+		now_time   =  int(time.time())
+
+		#Insert info for each storage group.
+		while zero_time < now_time:
+			stop_time       = zero_time + delta_time;
+			middle_time     = int(zero_time + 0.5*delta_time)
+			str_middle_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(middle_time))
+			str_from_time   = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(zero_time))
+			str_to_time     = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(stop_time))
+			select_stmt = "insert into encp_xfer_average_by_storage_group "
+			select_stmt = select_stmt +  " ( select "
+			select_stmt = select_stmt + str(middle_time)
+			select_stmt = select_stmt + ",'"
+			select_stmt = select_stmt + str_middle_time
+			select_stmt = select_stmt + "','"
+			select_stmt = select_stmt + str_from_time
+			select_stmt = select_stmt + "','"
+			select_stmt = select_stmt + str_to_time
+			select_stmt = select_stmt + "',storage_group, rw,"
+			select_stmt = select_stmt + "avg(overall_rate)/1024./1024,"
+			select_stmt = select_stmt + "avg(network_rate)/1024./1024,"
+			select_stmt = select_stmt + "avg(disk_rate)/1024./1024,"
+			select_stmt = select_stmt + "avg(transfer_rate)/1024./1024,"
+			select_stmt = select_stmt + "avg(drive_rate)/1024./1024,"
+			select_stmt = select_stmt + "avg(size)/1024./1024,"
+			select_stmt = select_stmt + "stddev(overall_rate)/1024./1024,"
+			select_stmt = select_stmt + "stddev(network_rate)/1024./1024,"
+			select_stmt = select_stmt + "stddev(disk_rate)/1024./1024,"
+			select_stmt = select_stmt + "stddev(transfer_rate)/1024./1024,"
+			select_stmt = select_stmt + "stddev(drive_rate)/1024./1024,"
+			select_stmt = select_stmt + "stddev(size)/1024./1024, count(*) from"
+			select_stmt  = select_stmt + " encp_xfer where date between '"
+			select_stmt  = select_stmt + str_from_time
+			select_stmt  = select_stmt + "' and '"
+			select_stmt  = select_stmt + str_to_time
+			select_stmt  = select_stmt + "' group by storage_group, rw)"
+			try:
+				acc_db.query(select_stmt);
+			except:
+				# e, v = sys.exc_info()[:2]
+				##Doesn't making tb a local cause a cyclic reference
+				## and the memory never gets cleaned up?
+				e, v, tb = sys.exc_info()
+				Trace.handle_error(e, v, tb)
+				Trace.log(e_errors.ERROR, err_msg('filler()', {}, e, v, tb))
+			zero_time = zero_time + delta_time
+
+		try:
+			acc_db.close()
+		except:
+			# e, v = sys.exc_info()[:2]
+			##Doesn't making tb a local cause a cyclic reference
+			## and the memory never gets cleaned up?
+			e, v, tb = sys.exc_info()
+			Trace.handle_error(e, v, tb)
+			Trace.log(e_errors.ERROR, err_msg('filler()', {}, e, v, tb))
+			
 	# The following are server methods ...
 	# Most of them do not need confirmation/reply
 
@@ -105,6 +269,11 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 
 	# These need confirmation
 	def quit(self, ticket):
+		#Collect children.
+		while self.n_children > 0:
+			self.collect_children()
+			time.sleep(1)
+
 		self.accDB.close()
 		dispatching_worker.DispatchingWorker.quit(self, ticket)
 		# can't go this far
@@ -116,13 +285,13 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		st = time.time()
 		# Trace.log(e_errors.INFO, `ticket`)
 		try:
-			type = ticket['type']
-			if not type:
-				type = 'unknown'
+			lsm_type = ticket['type']
+			if not lsm_type:
+				lsm_type = 'unknown'
 			self.accDB.log_start_mount(
 				ticket['node'],
 				ticket['volume'],
-				type,
+				lsm_type,
 				ticket['logname'],
 				ticket['start'])
 		except:
