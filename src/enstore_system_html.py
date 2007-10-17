@@ -7,6 +7,7 @@ import string
 import socket
 import pg
 import configuration_client
+import sys
 
 TITLE="ENSTORE SYSTEM INFORMATION"
 LINKCOLOR="#0000EF" 
@@ -127,7 +128,6 @@ if __name__ == "__main__":
             q=q+"'"+l+"',"
         q=q[0:-1]
         q=q+")";
-    print q;
 
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -150,8 +150,7 @@ if __name__ == "__main__":
     except:
         pass
 
-    main_web_page=EnstoreSystemHtml(server.get_system_name(),
-                                    str(bytes), remote)
+    main_web_page=EnstoreSystemHtml(server.get_system_name(),"%8.2f"%(bytes), remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):
