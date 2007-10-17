@@ -91,6 +91,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		return
 
 	def reinit(self):
+		Trace.log(e_errors.INFO, "(Re)loading configuration")
+		
 		# stop the communications with the event relay task
 		self.event_relay_unsubscribe()
 
