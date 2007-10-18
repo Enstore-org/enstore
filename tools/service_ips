@@ -11,25 +11,34 @@
 #    'conf-gccen' : "gccensrv1.fnal.gov",
 #    }
 
+which enstore > /dev/null 2> /dev/null
+if [ $? -ne 0 ]; then
+    echo "The enstore command was not found." 1>&2
+    exit 1
+fi
+
+#Incase information about service ips is longer than the python 
+# pprint.pprint() function will print out. Get just the alias names now
+# and we will extract the rest shortly one at a time.
+service_aliases=`enstore conf --show  service_ips | grep -v status | sed -n "/^[{ ]'/p" | awk '{print $1}' | tr -d "{':"`
+
+
 #First, get the list of service IP from the configuration.
-service_ip_map=`enstore conf --show service_ips | grep -v status | tr -d "{\':,}" | awk '{print $1 " " $2}'`
+service_ip_map=`for alias in \`echo $service_aliases\`; do echo -n alias $alias " "; enstore conf --show service_ips $alias | sed 's/,/,\n/' | tr -d "{},:\'" | tr "\n" " "; echo; done`
 
 #Each line in $service_ip_map looks like:
-#  www-gccen gccensrv1.fnal.gov
+#  alias www-gccen  interface www  host gccensrv1.fnal.gov
 
 echo "$service_ip_map" |
 while read line; do
    #Store into seperate variables the service alias and the shortname
-   # of the node it should be started on.
-   service_alias=`echo $line | cut -f 1 -d " "`
-   service_hostname=`echo $line | cut -f 2 -d " " | cut -f 1 -d "."`
+   # of the node it should be started on and the interface name to use.
+   service_alias=`echo $line | awk '{print $2}'`
+   service_hostname=`echo $line | awk '{print $6}' | cut -f 1 -d "."`
+   service_interface=`echo $line | awk '{print $4}'`
 
    #Get the hostname of the current machine.
    hostname=`hostname | cut -f 1 -d "."`
-
-   #Strip off the second part of the service alias to get the name of the
-   # (hopefully) preconfigured alias interface.
-   service_interface=`echo $service_alias | cut -f 1 -d "-"`
 
    #Start or stop the interface as necessary. 
    if [ $hostname = $service_hostname ]; then
