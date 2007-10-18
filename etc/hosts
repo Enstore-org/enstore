@@ -63,15 +63,6 @@
 131.225.164.120		d0enmvr58a.fnal.gov	d0enmvr58a
 131.225.164.121		d0enmvr59a.fnal.gov	d0enmvr59a
 131.225.164.62		d0enload.fnal.gov	d0enload
-#131.225.164.1		rip1.fnal.gov		rip1
-#131.225.164.2		rip2.fnal.gov		rip2
-#131.225.164.3		rip3.fnal.gov		rip3
-#131.225.164.4		rip4.fnal.gov		rip4
-#131.225.164.5		rip5.fnal.gov		rip5
-#131.225.164.6		rip6.fnal.gov		rip6
-#131.225.164.7		rip7.fnal.gov		rip7
-#131.225.164.8		rip8.fnal.gov		rip8
-#131.225.164.16		ripsgi.fnal.gov		ripsgi
 
 131.225.13.59		stkensrv0.fnal.gov	stkensrv0
 131.225.13.1		stkensrv1.fnal.gov	stkensrv1
@@ -79,7 +70,7 @@
 131.225.13.3		stkensrv3.fnal.gov	stkensrv3
 131.225.13.4		stkensrv4.fnal.gov	stkensrv4
 131.225.13.82		stkensrv5.fnal.gov	stkensrv5
-131.225.13.24		stkensrv6.fnal.gov	stkensrv6
+#131.225.13.24		stkensrv6.fnal.gov	stkensrv6
 131.225.13.30		stkensrv7.fnal.gov	stkensrv7
 131.225.13.101		stkensrv8.fnal.gov	stkensrv8
 131.225.13.10		stkenscan1.fnal.gov	stkenscan1
@@ -116,35 +107,20 @@
 131.225.13.103		stkenmvr40a.fnal.gov	stkenmvr40a
 131.225.13.109		stkenmvr41a.fnal.gov	stkenmvr41a
 
-#131.225.13.130		gccenmvr1a.fnal.gov	gccenmvr1a
 131.225.13.130		cdfenmvr101a.fnal.gov	cdfenmvr101a
-#131.225.13.131		gccenmvr2a.fnal.gov	gccenmvr2a
 131.225.13.131		cdfenmvr102a.fnal.gov	cdfenmvr102a
-#131.225.13.133		gccenmvr3a.fnal.gov	gccenmvr3a
 131.225.13.133		stkenmvr103a.fnal.gov	stkenmvr103a
-#131.225.13.134		gccenmvr4a.fnal.gov	gccenmvr4a
 131.225.13.134		cdfenmvr104a.fnal.gov	cdfenmvr104a
-#131.225.13.135		gccenmvr5a.fnal.gov	gccenmvr5a
 131.225.13.135		cdfenmvr105a.fnal.gov	cdfenmvr105a
-#131.225.13.136		gccenmvr6a.fnal.gov	gccenmvr6a
 131.225.13.136		stkenmvr106a.fnal.gov	stkenmvr106a
-#131.225.13.137		gccenmvr7a.fnal.gov	gccenmvr7a
 131.225.13.137		stkenmvr107a.fnal.gov	stkenmvr107a
-#131.225.13.138		gccenmvr8a.fnal.gov	gccenmvr8a
 131.225.13.138		stkenmvr108a.fnal.gov	stkenmvr108a
-#131.225.13.139		gccenmvr9a.fnal.gov	gccenmvr9a
 131.225.13.139		stkenmvr109a.fnal.gov	stkenmvr109a
-#131.225.13.140		gccenmvr10a.fnal.gov	gccenmvr10a
 131.225.13.140		cdfenmvr110a.fnal.gov	cdfenmvr110a
-#131.225.13.141		gccenmvr11a.fnal.gov	gccenmvr11a
 131.225.13.141		stkenmvr111a.fnal.gov	stkenmvr111a
-#131.225.13.142		gccenmvr12a.fnal.gov	gccenmvr12a
 131.225.13.142		stkenmvr112a.fnal.gov	stkenmvr112a
-#131.225.13.143		gccenmvr13a.fnal.gov	gccenmvr13a
 131.225.13.143		stkenmvr113a.fnal.gov	stkenmvr113a
-#131.225.13.144		gccenmvr14a.fnal.gov	gccenmvr14a
 131.225.13.144		stkenmvr114a.fnal.gov	stkenmvr114a
-#131.225.13.145		gccenmvr15a.fnal.gov	gccenmvr15a
 131.225.13.145		stkenmvr115a.fnal.gov	stkenmvr115a
 131.225.13.146	      	gccenmvr16a.fnal.gov	gccenmvr16a
 131.225.13.147		stkenmvr117a.fnal.gov	stkenmvr117a
@@ -152,11 +128,11 @@
 131.225.13.149		stkenmvr119a.fnal.gov	stkenmvr119a
 131.225.13.150		stkenmvr120a.fnal.gov	stkenmvr120a
 131.225.13.151		stkenmvr121a.fnal.gov	stkenmvr121a
-131.225.13.152		stkenmvr122a.fnal.gov	stkenmvr122a
-131.225.13.153		stkenmvr123a.fnal.gov	stkenmvr123a
-131.225.13.154		stkenmvr124a.fnal.gov	stkenmvr124a
-131.225.13.155		stkenmvr125a.fnal.gov	stkenmvr125a
-131.225.13.156		stkenmvr126a.fnal.gov	stkenmvr126a
+131.225.13.152		cdfenmvr122a.fnal.gov	cdfenmvr122a
+131.225.13.153		cdfenmvr123a.fnal.gov	cdfenmvr123a
+131.225.13.154		cdfenmvr124a.fnal.gov	cdfenmvr124a
+131.225.13.155		cdfenmvr125a.fnal.gov	cdfenmvr125a
+131.225.13.156		cdfenmvr126a.fnal.gov	cdfenmvr126a
 131.225.13.157		cdfenmvr127a.fnal.gov	cdfenmvr127a
 131.225.13.158		cdfenmvr128a.fnal.gov   cdfenmvr128a
 131.225.13.159		cdfenmvr129a.fnal.gov   cdfenmvr129a
@@ -188,9 +164,6 @@
 131.225.13.84		stkendm3a.fnal.gov	stkendm3a
 131.225.13.88		stkendm4a.fnal.gov	stkendm4a
 131.225.13.76		stkenload.fnal.gov	stkenload
-#131.225.13.18		stkentst1.fnal.gov	stkentst1
-#131.225.13.20		rip9.fnal.gov		rip9
-#131.225.13.22		rip10.fnal.gov		rip10
 
 131.225.13.39		eagpnfs1.fnal.gov	eagpnfs1
 
@@ -236,57 +209,43 @@
 #131.225.164.217	d0enmvr17b.fnal.gov	d0enmvr17b
 #131.225.164.43		d0enmvr20b.fnal.gov	d0enmvr20b
 #131.225.164.60		d0enmvr25a.fnal.gov	d0enmvr25a
-#131.225.164.40		d0enmvr60a.fnal.gov	d0enmvr60a
-#131.225.164.15		d0enmvr61a.fnal.gov	d0enmvr61a
-#131.225.164.67		d0enout2a.fnal.gov	d0enout2a
-#131.225.164.30		ripsgi-g0.fnal.gov	ripsgi-g0
-#131.225.164.28		ripsgi-g1.fnal.gov	ripsgi-g1
-#131.225.223.201	ripsgi-g2.fnal.gov	ripsgi-g2
-#131.225.223.205	ripsgi-g3.fnal.gov	ripsgi-g3
-#131.225.13.21		rip9-ge.fnal.gov	rip9-ge
-#131.225.13.23		rip10-ge.fnal.gov	rip10-ge
 #131.225.13.7		stkenmvr2a.fnal.gov	stkenmvr2a
 #131.225.13.8		stkenmvr2b.fnal.gov	stkenmvr2b
-#131.225.13.14		stkenmvr5b.fnal.gov	stkenmvr5b
 #131.225.13.77		stkenmvr12b.fnal.gov	stkenmvr12b
 #131.225.13.79		stkenmvr13b.fnal.gov	stkenmvr13b
 #131.225.13.78		stkenmvr14b.fnal.gov	stkenmvr14b
-#131.225.13.104		stkenmvr38a.fnal.gov	stkenmvr38a
-#131.225.13.50		stkendca4a.fnal.gov	stkendca4a
-#131.225.13.51		stkendca5a.fnal.gov	stkendca5a
-#131.225.13.47		cachen1a.fnal.gov	cachen1a
-#131.225.215.10		cdfenmvr4a.fnal.gov	cdfenmvr4a
-#131.225.215.16		cdfenmvr5a.fnal.gov	cdfenmvr5a
-#131.225.215.15		cdfenmvr6a.fnal.gov	cdfenmvr6a
-#131.225.215.14		cdfenmvr7a.fnal.gov	cdfenmvr7a
-#131.225.215.13		cdfenmvr8a.fnal.gov	cdfenmvr8a
 
 # Control Subnet
 
 # address 0 is reserved
 # control subnet for d0en (STK 9310 and ADIC AML/2)	"The L zone"
 # address range 1-64
+192.168.89.1		d0ensrv0p
+192.168.89.2		d0ensrv1p
 192.168.89.3		d0ensrv2p
 192.168.89.4		d0ensrv3p
 192.168.89.5		d0ensrv4p
-# .6 - .14 are the new d0en stack - SJN
+
+# temporary assignments for SDE development rack
 192.168.89.6		d0ensrv0np
 192.168.89.7		d0ensrv1np
 192.168.89.8		d0ensrv2np
 192.168.89.9		d0ensrv3np
 192.168.89.10		d0ensrv4np
-192.168.89.11		d0ensrv0raid
-192.168.89.12		d0ensrv1raid
-192.168.89.13		d0ensrv2raid
-192.168.89.14		d0ensrv3raid
-192.168.89.22	        d0encons1
-192.168.89.23	        d0encons2
-192.168.89.24	        d0encons3
+
+192.168.89.11		d0enraid0
+192.168.89.12		d0enraid1
+192.168.89.13		d0enraid2
+192.168.89.14		d0enraid3
+192.168.89.21		d0enfsw0	# fibre-channel switch
+192.168.89.26		d0ents0		# terminal server
 # address range 33-48	reserved for future use
 192.168.89.56		adic2.fnal.gov		adic2
 
 # control subnet for stken (STK 9310 and ADIC AML/2)	"The M zone"
 # address range 129-192
+192.168.89.129		stkensrv0p
+192.168.89.130		stkensrv1p
 192.168.89.131		stkensrv2p
 192.168.89.132		stkensrv3p
 192.168.89.133		stkensrv4p
@@ -294,10 +253,8 @@
 192.168.89.140		stkensrv1raid
 192.168.89.141		stkensrv2raid
 192.168.89.142		stkensrv3raid
-192.168.89.150	        stkencons1
-192.168.89.151	        stkencons2
-192.168.89.152	        stkencons3
-192.168.89.153	        stkencons4
+192.168.89.149		stkenfsw0	# fibre-channel switch
+192.168.89.154		stkents0	# terminal server
 # address range 161-176 (see below)
 192.168.89.184		fntt
 
@@ -308,8 +265,10 @@
 192.168.89.174		stkendca19araid
 192.168.89.175		stkendca20araid
 
-# control subnet for cdfen (STK 9310)			"The N zone"
+# control subnet for cdfen (STK 9310 and STK SL8500)	"The N zone"
 # address range 65-128
+192.168.89.65		cdfensrv0p
+192.168.89.66		cdfensrv1p
 192.168.89.67		cdfensrv2p
 192.168.89.68		cdfensrv3p
 192.168.89.69		cdfensrv4p
@@ -317,19 +276,28 @@
 192.168.89.76	  	cdfensrv1raid
 192.168.89.77	  	cdfensrv2raid
 192.168.89.78	  	cdfensrv3raid
-192.168.89.86	        cdfencons1
-192.168.89.87	        cdfencons2
+192.168.89.85		cdfenfsw0	# fibre-channel switch
+192.168.89.90		cdfents0	# terminal server
 # address range 97-112	reserved for future use
 192.168.89.120		fntt2
 
-# control subnet for gccen (STK SL8500)			"The O zone"
+# control subnet for gccen (STK SL8500), etc.		"The O zone"
 # address range 193-254
 192.168.89.194		gccensrv1p
 192.168.89.195		gccensrv2p
+# address range 203-224 (see below)
 # address range 225-240 (see below)
 192.168.89.248		fntt-gcc
-192.168.89.250		gccsla
-192.168.89.251		gccslb
+192.168.89.250		gccsla		# SL8500s at GCC
+192.168.89.251		fccsla		# SL8500s at FCC
+
+# control subnet for SDE test stand
+# address range 203-224
+192.168.89.203		testsrv0p
+192.168.89.204		testsrv1p
+192.168.89.205		testsrv2p
+192.168.89.206		testsrv3p
+192.168.89.207		testsrv4p
 
 # control subnet for other servers		  "The Hole in the O zone"
 # address range 225-240
