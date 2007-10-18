@@ -7,7 +7,9 @@ import pprint
 import socket
 
 http_inv_dir = "/enstore/tape_inventory"	# httpd path
-inv_dir = "/diska/tape-inventory"		# file system path
+# This is a kind of tricky
+# get DOCUMENT_ROOT yet get rid of first "/" in http_inv_dir
+inv_dir = os.path.join(os.environ['DOCUMENT_ROOT'], http_inv_dir[1:])
 
 host = socket.gethostname().split('.')[0]
 if host[:3] == "rip":
