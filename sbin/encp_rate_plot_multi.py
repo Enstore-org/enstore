@@ -56,17 +56,6 @@ def main():
     else:
         login_string = "psql  %s -h %s -U %s -t -q -c "%(accounting_db_name,accounting_db_server_name,accounting_db_user)
 
-#    start = sys.argv[1]
-#    stop  = sys.argv[2]
-#    storage_group = sys.argv[4]
-#    node = sys.argv[3]
-#    rw = sys.argv[5]
-
-#    node          = "cmsstor01.fnal.gov"
-#    storage_group = "cms"
-#    rw            = "w"
-    
-
     now_time   =  int(time.time())
     delta_time =  30*24*60*60
 
