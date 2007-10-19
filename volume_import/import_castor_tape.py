@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 import os
 import copy
 import time
@@ -6,6 +6,11 @@ import file_clerk_client
 import volume_clerk_client
 import e_errors
 import pnfs
+import popen2
+import stat
+import sys
+import getopt
+import traceback
 
 KB=1024
 MB=KB*KB
@@ -69,7 +74,10 @@ class FileEntry:
                 l = f.readline()
                 if not l: return None
                 l=l[:-1]
-            lst = l.split('|')
+            if "|" in l:
+                lst = l.split('|')
+            else:
+                lst = l.split()
             lst1 = []
             for i in lst:
                 if i:
@@ -79,7 +87,7 @@ class FileEntry:
     def create_file_entry(self, src_keys, lst):
         if int(lst[src_keys.index('fsec')]) != 1:
             # file is spread across multiple tapes. Enstore can not read this file
-            self.report.write("%s\n"%(lst,))
+            self.report.write("File is spread across multiple tapes. File %s, position %s, full record %s. Will not be imported \n"%(lst[0], lst[4], lst,))
             return 1
         for src_key in src_keys:
             #if src_key == 'name':
@@ -94,7 +102,7 @@ class FileEntry:
                 #print "FSIZE", src_keys.index('filesize'), lst[src_keys.index('filesize')]
                 self.fd['size'] = long(lst[src_keys.index('filesize')])
             elif src_key == 'fseq':
-                #print "FSEQ", src_keys.index('fseq'),lst[src_keys.index('fseq')] 
+                print "FSEQ", src_keys.index('fseq'),lst[src_keys.index('fseq')] 
                 self.fd['location_cookie'] = location_to_cookie(lst[src_keys.index('fseq')])
             elif src_key == 'vid':
                 #print "VID", src_keys.index('vid'), lst[src_keys.index('vid')]
@@ -120,7 +128,7 @@ class FileEntry:
         ticket = {'fc':self.fd}
         print "Create BFID for %s"%(self.fd['pnfs_name0'],)
         rticket = self.fcc.create_bit_file(ticket['fc'])
-        print 'File clerk returned', rticket
+        #print 'File clerk returned', rticket
         if rticket['status'][0] == e_errors.OK:
             print 'BFID', rticket['fc']['bfid']
 
@@ -203,12 +211,30 @@ class CastorTape:
                     'write_protected': 'n'}
 
     def __init__(self, volume_name, library, volume_size, media, file_entry_path, pnfs_path):
-        print "INIT", volume_name, volume_size, media, file_entry_path, pnfs_path, report_path
+        print "INIT", volume_name, volume_size, media, file_entry_path, pnfs_path, report_path,library
         self.f = os.path.join(file_entry_path,volume_name, volume_name)
         print "F", self.f
         self.path = pnfs_path
-        print "PATH",os.path.join(file_entry_path, volume_name, "report") 
-        self.report = open(os.path.join(file_entry_path, volume_name, "report"), 'w')
+	vol_path = os.path.join(file_entry_path, volume_name)
+	if not os.path.exists(vol_path):
+	       os.makedirs(vol_path)
+        if not os.path.exists(self.f):
+            cmd='mysql -h castorsrv1 --user=enstore --password=enstore -e "select name,owner_uid,gid,filesize,fseq,atime,mtime,ctime,vid,checksum,fsec from Cns_file_metadata f, Cns_seg_metadata s where f.fileid = s.s_fileid and vid='+"'"+volume_name+"';"+'" cns_db>'+ self.f
+            #print "CMD",cmd
+            rstat = os.system(cmd)
+            #print "STAT",rstat
+            if rstat != 0:
+                print "Error. check %s"(self.f,)
+                self.empty=1
+                return
+        #print "STAT", os.stat(self.f)
+        if os.stat(self.f)[stat.ST_SIZE] == 0:
+            print "Castor volume %s is empty"%(self.f,)
+            self.empty = 1
+            return
+        self.empty = 0
+        #print "PATH",os.path.join(vol_path, "report") 
+        self.report = open(os.path.join(vol_path, "report"), 'w')
         csc = (os.environ['ENSTORE_CONFIG_HOST'],
                int(os.environ['ENSTORE_CONFIG_PORT']))
 
@@ -222,7 +248,7 @@ class CastorTape:
            
                     
     def create_volume_entry(self):
-        print "VOL", self.vd
+        #print "VOL", self.vd
         rc = self.vcc.add(self.vd['library'],
                           'castor',           # volume family the media is in
                           'castor',         # storage group for this volume
@@ -232,8 +258,8 @@ class CastorTape:
                           eod_cookie  = "none",  # code for seeking to eod
                           user_inhibit  = ["none","readonly"],# 0:"none" | "readonly" | "NOACCESS"
                           error_inhibit = "none",# "none" | "readonly" | "NOACCESS" | "writing"
-                          last_access = -1,      # last accessed time
-                          first_access = -1,     # first accessed time
+                          last_access = time.time(),      # last accessed time
+                          first_access = time.time(),     # first accessed time
                           declared = -1,         # time volume was declared to system
                           sum_wr_err = 0,        # total number of write errors
                           sum_rd_err = 0,        # total number of read errors
@@ -248,6 +274,7 @@ class CastorTape:
                           )
 
         print "CREATE VOL", rc['status']
+        print rc['status'][0] 
         if rc['status'][0] != e_errors.OK:
             if rc['status'][0] != e_errors.VOLUME_EXISTS:
                 print rc['status'][1], 'can not proceed'
@@ -270,7 +297,7 @@ class CastorTape:
             last_f_entry = f_entry
             f_entry = FileEntry(self.fcc, self.path, self.report)
             rc = f_entry.create_entry(src_keys, f)
-            print "RC",rc
+            #print "RC",rc
             if rc and rc != -1:
                  src_keys = rc
                  #print "SRC_KEYS",src_keys
@@ -307,8 +334,8 @@ def read_volume_entry(f):
                 lst1.append(i.strip())
         return lst1
 
-def create_volume_entry(src_keys, lst, file_entry_path, path, report):
-    print 'SRC_KEYS', src_keys
+def create_volume_entry(src_keys, lst, file_entry_path, path, report, library=None):
+    #print 'SRC_KEYS', src_keys
     for src_key in src_keys:
         if src_key == 'vid':
             vol = lst[src_keys.index('vid')]
@@ -316,40 +343,81 @@ def create_volume_entry(src_keys, lst, file_entry_path, path, report):
             capacity = vsize((lst[src_keys.index('density')]))
         elif src_key == 'model':
             media = lst[src_keys.index('model')]
-    print vol,capacity, media
-    s='-'
-    library = s.join(('castor', media))
-    print "LIBRARY", library
+    work_dir=os.path.join(file_entry_path,vol)
+    if not os.path.exists(work_dir):
+        os.makedirs(work_dir)
+    outf = os.path.join(work_dir, vol+".out")
+    saved_stdout = sys.stdout
+    sys.stdout = open(outf, "w")
+    try:
+        #print vol,capacity, media
+        s='-'
+        if library == None:
+            lib = s.join(('castor', media))
+        else:
+            lib = library
+        print "LIBRARY", lib
 
-    tape = CastorTape(vol, library, capacity, media, file_entry_path, path)
-    print "vol",tape.vd
-    tape.create_volume_entry()
+        tape = CastorTape(vol, lib, capacity, media, file_entry_path, path)
+        if tape.empty:
+            print "tape is empty"
+        else:
+            tape.create_volume_entry()
+            print "tape is done, no errors detected"
+    except:
+        exc, value, tb = sys.exc_info()
+        for l in traceback.format_exception( exc, value, tb ):
+            print l
+    sys.stdout.flush()
+    sys.stdout = saved_stdout
+            
         
-        
-def create_entry(src_keys, f, file_entry_path, path, report):
+def create_entry(src_keys, f, file_entry_path, path, report, library=None):
     lst = read_volume_entry(f)
-    print "LST", lst
+    #print "LST", lst
     if lst:
         if not src_keys:
             return lst
         else:
-            create_volume_entry(src_keys, lst, file_entry_path, path, report)
+            create_volume_entry(src_keys, lst, file_entry_path, path, report, library)
             return []
     else:
         return -1
 
-            
+def usage():
+    print "usage: %s [-h] [-l library] [-p pnfs_path]"%(sys.argv[0],)
 
 if __name__ == "__main__":
+    library = None
+    pnfs_path = None
+    opts, args = getopt.getopt(sys.argv[1:], "l:p:hs",[])
+
+    for opt, arg in opts:
+        if opt == '-h':
+            usage()
+            sys.exit(0)
+        if opt == '-l':
+            library = arg
+        if opt == '-p':
+            pnfs_path = arg
+    print library
+    print pnfs_path
+    
     v='/home/enstore/castor_tapes/castor_volumes'
     file_list_path = "/home/enstore/castor_tapes"
-    pnfs_path = "/pnfs/fs/usr/tape/test/imported_from_castor"
+    if pnfs_path == None:
+        pnfs_path = "/pnfs/fs/usr/tape/test/imported_from_castor"
+        print "will use default pnfs path", pnfs_path
+    if library == None:
+        print "will use default library"
     report_path = "/home/enstore/castor_tapes"
     src_keys = None
     f = open(v, 'r')
     while 1:
-        rc = create_entry(src_keys, f,  file_list_path, pnfs_path, report_path)
-        print "RC",rc
+        stdout = sys.stdout
+        rc = create_entry(src_keys, f,  file_list_path, pnfs_path, report_path, library)
+        sys.stdout = stdout
+        #print "RC",rc
         if rc and rc != -1:
             src_keys = rc
             print "SRC_KEYS",src_keys
