@@ -1,3 +1,0 @@
-00 16 * * * enstore source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p write_tabs_audit $ENSTORE_DIR/bin/write_tabs_audit > /dev/null 2> /dev/null
-10 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch $ENSTORE_DIR/src/tab_flipping_nanny.py /diska/tape-inventory/TAB_FLIPPING_WATCH > /dev/null 2> /dev/null
-20 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR//sbin/ecron -p tab_flipping_watch-samlto2 $ENSTORE_DIR/src/tab_flipping_nanny.py -l samlto,samlto2 -o /diska/tape-inventory/TAB_FLIPPING_WATCH-samlto2 > /dev/null 2> /dev/null
