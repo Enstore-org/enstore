@@ -1,2 +1,0 @@
-# added by Dmitry:
-20 1 * * 1 enstore /home/enstore/enstore/sbin/ecron -p weekly_summary -l /home/enstore/enstore/src/weekly_summary_report.py /tmp/weekly_report > /dev/null 2> /dev/null
