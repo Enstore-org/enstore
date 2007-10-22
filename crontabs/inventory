@@ -2,3 +2,4 @@
 0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p noaccess /home/enstore/enstore/sbin/noaccess-tapes > /dev/null 2> /dev/null
 30 1,7,13,19 * * * enstore /home/enstore/enstore/sbin/ecron -p robot_inventory /home/enstore/enstore/sbin/Vols > /dev/null 2> /dev/null
 30 8,16 * * * enstore  /home/enstore/enstore/sbin/ecron -p quota_alert /home/enstore/enstore/sbin/quota_alert > /dev/null 2> /dev/null
+50 * * * * enstore /home/enstore/enstore/sbin/ecron -p offline_inventory nice -n 20 python /home/enstore/enstore/src/inventory.py > /dev/null 2> /dev/null
