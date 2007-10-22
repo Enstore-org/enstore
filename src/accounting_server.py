@@ -136,8 +136,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 			acc_conf = self.csc.get(MY_NAME)
 			acc_db = pg.DB(host  = acc_conf.get('dbhost', "localhost"),
 				       port  = acc_conf.get('dbport', 5432),
-				       dbname= acc_conf.att.get('dbname', "accounting"),
-				       user  = acc_conf.att.get('dbuser', "enstore"))
+				       dbname= acc_conf.get('dbname', "accounting"),
+				       user  = acc_conf.get('dbuser', "enstore"))
 			
 			acc_db.query("select * from make_daily_xfer_size();")
 			acc_db.query("select * from make_daily_xfer_size_by_mover();")
