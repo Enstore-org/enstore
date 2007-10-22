@@ -66,3 +66,5 @@ if [ $server -eq 1 ]
 then
     $ENSTORE_DIR/sbin/finish_server_install.sh $place
 fi
+# install crons
+$ENSTORE_DIR/tools/install_crons.py
