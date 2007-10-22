@@ -7,3 +7,5 @@
 #0 * * * * root /home/enstore/enstore/sbin/ecron -p STKDrvBusy  /home/enstore/enstore/sbin/STKDrvBusy plot > /dev/null 2> /dev/null
 
 #30 06 14 04 * root /usr/local/bin/drain >/tmp/drainout 2> /tmp/drainout
+
+#0,20,40 * * * * enstore /home/enstore/enstore/sbin/ecron -p filler "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; python /home/enstore/enstore/sbin/filler.py'"  > /dev/null 2> /dev/null
