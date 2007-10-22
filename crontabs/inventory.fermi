@@ -1,1 +1,1 @@
-14 9,14,19 * * * enstore /home/enstore/enstore/sbin/ecron -p silocheck  /home/enstore/enstore/sbin/silo-check > /dev/null 2> /dev/null
+14 9,14,19 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p silocheck  $ENSTORE_DIR/sbin/silo-check > /dev/null 2> /dev/null

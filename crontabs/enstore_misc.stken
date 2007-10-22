@@ -1,5 +1,5 @@
 15 * * * * root sh -c 'chown  -R enstore.enstore /home/enstore/enstore; cd /home/enstore/enstore; chmod g+w etc etc/*.conf etc/CVS etc/CVS/Entries*'
-17 00 * * * root /home/enstore/enstore/sbin/ecron -p cppnfsFastBackupHISTOGRAM enrcp stkensrv1:/root/CRON/pnfsFastBackupHISTOGRAM /tmp >/dev/null 2>/dev/null
+17 00 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p cppnfsFastBackupHISTOGRAM enrcp stkensrv1:/root/CRON/pnfsFastBackupHISTOGRAM /tmp >/dev/null 2>/dev/null
 
 #03 00 * * 1 root /local/ups/prd/apache/v1_3_26/ups/monthlystats
 

@@ -1,2 +1,2 @@
-10,40 * * * * root /home/enstore/enstore/sbin/ecron -p plog -setup pnfs plog >/dev/null 2>/dev/null
-12 * * * * root /home/enstore/enstore/sbin/ecron -p pnfsExports -setup pnfs pnfsExportList >/dev/null 2>/dev/null
+10,40 * * * * root source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p plog -setup pnfs plog >/dev/null 2>/dev/null
+12 * * * * root source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p pnfsExports -setup pnfs pnfsExportList >/dev/null 2>/dev/null

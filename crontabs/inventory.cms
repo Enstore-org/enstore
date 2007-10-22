@@ -1,1 +1,1 @@
-40 * * * * enstore /home/enstore/enstore/sbin/ecron -p recent_file_listing_cms /home/enstore/enstore/src/recent_file_listing.py cms 12 /diska/tape-inventory/RECENT_FILES_ > /dev/null 2> /dev/null
+40 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p recent_file_listing_cms $ENSTORE_DIR/src/recent_file_listing.py cms 12 /diska/tape-inventory/RECENT_FILES_ > /dev/null 2> /dev/null

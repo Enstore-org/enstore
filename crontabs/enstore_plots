@@ -2,41 +2,41 @@
 # not known to be SDE ready.
 
 # make standard plots
-30 1 * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p inqPlotUpdate -setup gnuplot python $ENSTORE_DIR/src/plotter.py --encp --mount > /dev/null 2> /dev/null
+30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p inqPlotUpdate -setup gnuplot python $ENSTORE_DIR/src/plotter.py --encp --mount > /dev/null 2> /dev/null
 # mounts plots
-30 1 * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mounts_plot -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py -m > /dev/null 2> /dev/null
+30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p mounts_plot -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py -m > /dev/null 2> /dev/null
 # ratekeeper plot
-3,13,33,48 * * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p makeplot -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py -r > /dev/null 2> /dev/null
+3,13,33,48 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p makeplot -setup gnuplot python $ENSTORE_DIR/src/plotter_main.py -r > /dev/null 2> /dev/null
 # storage grpup activity - instead of make_sg_plot
-50 * * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sgPlotUpdate -setup gnuplot $ENSTORE_DIR/sbin/make_sg_plot > /dev/null 2> /dev/null
-25 * * * * enstore  . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/sbin/encp_rate_plot_multi.py >/dev/null 2> /dev/null
-50 23 * * * enstore . /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/sbin/file_family_analysis.py > /dev/null 2> /dev/null
+50 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p sgPlotUpdate -setup gnuplot $ENSTORE_DIR/sbin/make_sg_plot > /dev/null 2> /dev/null
+25 * * * * enstore  source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi $ENSTORE_DIR/sbin/encp_rate_plot_multi.py >/dev/null 2> /dev/null
+50 23 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p file_family_usage $ENSTORE_DIR/sbin/file_family_analysis.py > /dev/null 2> /dev/null
 
 
 ##plot the quotas
-5 * * * * enstore /home/enstore/enstore/sbin/ecron -p quotas  /home/enstore/enstore/sbin/quotas > /dev/null 2> /dev/null
+5 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p quotas  $ENSTORE_DIR/sbin/quotas > /dev/null 2> /dev/null
 #Is this a plot or does this belong in enstore_html?
-16 * * * * enstore /home/enstore/enstore/sbin/ecron -p make_quota_plot_page make_quota_plot_page  > /dev/null 2> /dev/null
+16 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_quota_plot_page make_quota_plot_page  > /dev/null 2> /dev/null
 ##plot the pnfs backup time
-26 00 * * * enstore /home/enstore/enstore/sbin/ecron -p pnfs_backup_time /home/enstore/enstore/src/pnfs_backup_plot.py > /dev/null 2> /dev/null
+26 00 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/pnfs_backup_plot.py > /dev/null 2> /dev/null
 
 
 ##
-25 * * * * enstore /home/enstore/enstore/sbin/ecron -p encp_rate_plot_multi "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages; python /home/enstore/enstore/sbin/encp_rate_plot_multi.py'"  > /dev/null 2> /dev/null
+25 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi "sh -c 'cd /home/enstore; source /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages; python $ENSTORE_DIR/sbin/encp_rate_plot_multi.py'"  > /dev/null 2> /dev/null
 ##
-40 17 * * * enstore /home/enstore/enstore/sbin/ecron -p file_family_usage "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages/file_family_usage; python /home/enstore/enstore/sbin/file_family_analysis.py'"  > /dev/null 2> /dev/null
+40 17 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/ecron -p file_family_usage "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages/file_family_usage; python $ENSTORE_DIR/sbin/file_family_analysis.py'"  > /dev/null 2> /dev/null
 ##
-30 2 * * * root /home/enstore/enstore/sbin/ecron -p make_overall_plot python /home/enstore/enstore/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --pts_dir=/local/ups/prd/www_pages/enstore --no-plot-html  > /dev/null 2> /dev/null
+30 2 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --pts_dir=/local/ups/prd/www_pages/enstore --no-plot-html  > /dev/null 2> /dev/null
 
 ##Is this a plot or does this belong in enstore_html?
 0 3 * * * root /home/enstore/enstore/sbin/ecron -p make_cron_plot_page make_cron_plot_page /diska/www_pages/cron_pics.html /fnal/ups/prd/www_pages/enstore/CRONS  > /dev/null 2> /dev/null
 
 ##
-20 1 * * 1 enstore /home/enstore/enstore/sbin/ecron -p weekly_summary -l /home/enstore/enstore/src/weekly_summary_report.py /tmp/weekly_report > /dev/null 2> /dev/null
+20 1 * * 1 enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p weekly_summary -l $ENSTORE_DIR/src/weekly_summary_report.py /tmp/weekly_report > /dev/null 2> /dev/null
 
 ##
-30 1 * * * enstore /home/enstore/enstore/sbin/ecron -p write-tabs "sh -c 'cd /home/enstore/write_tabs; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; /home/enstore/enstore/sbin/write_tabs.py'"  > /dev/null 2> /dev/null
+30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p write-tabs "sh -c 'cd /home/enstore/write_tabs; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/write_tabs.py'"  > /dev/null 2> /dev/null
 
 ##
-30 1 * * * enstore /home/enstore/enstore/sbin/ecron -p xfer-stat-daily "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; /home/enstore/enstore/sbin/xfer_stats_daily.py'"  > /dev/null 2> /dev/null
-00 2 * * * enstore /home/enstore/enstore/sbin/ecron -p xfer-stat-monthly "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; /home/enstore/enstore/sbin/xfer_stats_monthly.py'"  > /dev/null 2> /dev/null
+30 1 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p xfer-stat-daily "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/xfer_stats_daily.py'"  > /dev/null 2> /dev/null
+00 2 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p xfer-stat-monthly "sh -c 'cd /home/enstore/xfer_stat; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; $ENSTORE_DIR/sbin/xfer_stats_monthly.py'"  > /dev/null 2> /dev/null
