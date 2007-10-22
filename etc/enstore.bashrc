@@ -1,9 +1,5 @@
 if [ -z "${PS1-}" ] ; then return; fi
 
-# Source global definitions
-if [ -f /etc/bashrc ]; then
-        . /etc/bashrc
-fi
 
 if [ -r /usr/local/etc/setups.sh ] ; then
    set +u
