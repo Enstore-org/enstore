@@ -96,7 +96,7 @@ if f:
 	# copy it to *srv2
 	cmd = "enrcp %s %s"%(
 		sys.argv[1],
-		os.path.join(inventory['inventory_rcp_dir'], WEEKLY_SUMMARY))
+		os.path.join(inventory['inventory_rcp_dir'], "WEEKLY_SUMMARY"))
 
 	print cmd
 	try:
