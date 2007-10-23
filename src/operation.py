@@ -102,6 +102,7 @@ import smtplib
 # enstore import
 import option
 import configuration_client
+import e_errors
 
 debug = False
 # debug = True
@@ -258,6 +259,15 @@ def get_qualifier(lib_type):
 intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 enstoredb = csc.get('database')
+operation_db = csc.get('operation_db')
+
+if operation_db['status'][0] == e_errors.OK:
+	DATABASENAME = operation_db['dbname']
+	DATABASEPORT = operation_db['dbport']
+	DATABASEHOST = operation_db['dbhost']
+elif enstoredb['dbhost'].find('.fnal.gov') == -1:
+	print "no database host defined for this node"
+	sys.exit(0)
 
 cluster = get_cluster(enstoredb['db_host'])
 script_host = get_script_host(cluster)
