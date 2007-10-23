@@ -24,7 +24,8 @@ for f in dir_list:
         s=''
         module = s.join(a)
         if myname != module and module.find("cgi")==-1 and module.find("label_tape")==-1 and \
-               module.find("set_lm_noread")==-1 and module.find("weekly_summary_report")==-1 :
+               module.find("set_lm_noread")==-1 and module.find("weekly_summary_report")==-1 and \
+               module.find("acc_daily_summary") and module.find("tab_flipping_nanny":
             print "will import", module
             try:
                 __import__(module)
