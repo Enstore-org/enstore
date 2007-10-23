@@ -3,7 +3,7 @@ set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # VOLUME_QUOTAS=${1:-/diska/tape-inventory/VOLUME_QUOTAS}
-VOLUME_QUOTAS=`enstore config --show inventory | grep inventory_rcp_dir | cut -d':' -f 3 | cut -d"'" -f 1`
+VOLUME_QUOTAS=`enstore config --show inventory | grep inventory_rcp_dir | cut -d':' -f 3 | cut -d"'" -f 1`/VOLUME_QUOTAS
 QUOTA_DIR=`dirname $VOLUME_QUOTAS`/quotas
 if [ ! -d $QUOTA_DIR ]; then mkdir -p $QUOTA_DIR;fi
 
