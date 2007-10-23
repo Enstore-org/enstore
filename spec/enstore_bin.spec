@@ -37,12 +37,6 @@ echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /t
 echo export SWIG_DIR
 echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
 echo export SWIG_LIB
-rpm -q aci
-if [ $? -eq 0 ]; then
-	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
-	echo export ACI_DIR >> /tmp/enstore-setup
-fi
-
 echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 #++++++++++++
 
