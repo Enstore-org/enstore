@@ -1308,6 +1308,11 @@ def inventory_dirs():
     if inventory_rcp_dir == "MISSING":
         inventory_rcp_dir = '' #Set this to the empty string.
 
+    # if any of the directory is not there, create it
+    for i in [inventory_dir, inventory_cache_dir]:
+        if not os.access(i, os.F_OK):
+            os.mkdirs(i)
+
     return inventory_dir, inventory_rcp_dir, inventory_cache_dir
 
 
