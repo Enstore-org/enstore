@@ -39,11 +39,11 @@ echo "Installing python"
 rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
 echo "Installing enstore"
 rpm -Uvh --force --nodeps /usr/src/redhat/RPMS/i386/enstore-1.0.1-8.i386.rpm
-    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 
 
-$ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh
-$ENSTORE_DIR/external_distr/finish_demo_server_install.sh
+$ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
+$ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 # install crons
 #$ENSTORE_DIR/tools/install_crons.py

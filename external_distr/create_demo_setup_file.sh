@@ -69,21 +69,22 @@ echo "export ENSTORE_MAIL=${mm}" >> $ENSTORE_HOME/site_specific/config/setup-ens
 
 
 farmlets="/usr/local/etc/farmlets"
-fi
 
 echo "export FARMLETS_DIR=${farmlets}"
 echo "export FARMLETS_DIR=${farmlets}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 if [ ! -d ${farmlets} ]
 then
-    echo "creating ${REPLY}"
+    echo "creating ${farmlets}"
     mkdir -p ${farmlets}
 fi
 
-echo ${this_host} > ${farmltes}/${this_host}
-echo ${this_host} > ${farmltes}/enstore
-echo ${this_host} > ${farmltes}/enstore-down
+echo ${this_host} > ${farmlets}/${this_host}
+echo ${this_host} > ${farmlets}/enstore
+echo ${this_host} > ${farmlets}/enstore-down
 
 
+ENSSH=/usr/bin/ssh
+ENSCP=/usr/bin/scp
 echo "export ENSSH=${ENSSH}"
 echo "export ENSSH=${ENSSH}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 echo "export ENSCP=${ENSCP}"
