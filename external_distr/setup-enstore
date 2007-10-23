@@ -77,19 +77,19 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
 GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
 
-if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.py $ENSTORE_DIR/bin/encp;fi
+if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.pyc $ENSTORE_DIR/bin/encp;fi
 if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi
 
-if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.py   $ENSTORE_DIR/bin/enmv; fi
+if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.pyc   $ENSTORE_DIR/bin/enmv; fi
 if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi
-if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.py $ENSTORE_DIR/sbin/enstore_up_down; fi
-if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.py  $ENSTORE_DIR/sbin/enmonitor; fi
-if [ ! -r $ENSTORE_DIR/bin/pnfs ];             then ln -s $ENSTORE_DIR/src/pnfs.py            $ENSTORE_DIR/bin/pnfs; fi
-if [ ! -r $ENSTORE_DIR/bin/entv ];             then ln -s $ENSTORE_DIR/src/entv.py            $ENSTORE_DIR/bin/entv; fi
-if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volume_assert.py   $ENSTORE_DIR/bin/volume_assert; fi
-if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.py   $ENSTORE_DIR/bin/ensync; fi
-if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.py   $ENSTORE_DIR/bin/get; fi
-if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.py   $ENSTORE_DIR/sbin/quickquota; fi
+if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.pyc $ENSTORE_DIR/sbin/enstore_up_down; fi
+if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.pyc  $ENSTORE_DIR/sbin/enmonitor; fi
+if [ ! -r $ENSTORE_DIR/bin/pnfs ];             then ln -s $ENSTORE_DIR/src/pnfs.pyc            $ENSTORE_DIR/bin/pnfs; fi
+if [ ! -r $ENSTORE_DIR/bin/entv ];             then ln -s $ENSTORE_DIR/src/entv.pyc            $ENSTORE_DIR/bin/entv; fi
+if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volume_assert.pyc   $ENSTORE_DIR/bin/volume_assert; fi
+if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.pyc   $ENSTORE_DIR/bin/ensync; fi
+if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.pyc   $ENSTORE_DIR/bin/get; fi
+if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.pyc   $ENSTORE_DIR/sbin/quickquota; fi
 ###
 ### Enstore server links.
 ###
