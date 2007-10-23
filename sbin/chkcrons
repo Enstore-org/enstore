@@ -39,7 +39,7 @@ then
 fi
 
 if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
-  base=/diska/CRONS
+  base=/root/CRONS
 fi
 
 if [ ! -d $base ]; then
