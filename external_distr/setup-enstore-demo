@@ -36,7 +36,7 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
 
 if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.pyc $ENSTORE_DIR/bin/encp;fi
-if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.py $ENSTORE_DIR/bin/enstore; fi
+if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.pyc $ENSTORE_DIR/bin/enstore; fi
 
 if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.pyc   $ENSTORE_DIR/bin/enmv; fi
 if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi
