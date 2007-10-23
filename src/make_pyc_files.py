@@ -30,7 +30,8 @@ for f in dir_list:
             print "will import", module
             try:
                 __import__(module)
+                
             except:
                 pass
-            
+os.chmod('*.pyc', 755)            
         
