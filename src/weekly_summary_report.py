@@ -29,6 +29,8 @@ database = csc.get('database')
 accounting_server = csc.get('accounting_server')
 # use volume_clerk['host'] to determine the system
 volume_clerk = csc.get('volume_clerk')
+# get inventory rcp directory
+inventory = csc.get('inventory')
 
 # connections to the databases
 enstoredb = pg.DB(host=database['db_host'], port=database['db_port'], dbname=database['dbname'])
@@ -92,8 +94,10 @@ eprint(f, accdb.query("select * from blanks_drawn_last_7days() order by media_ty
 if f:
 	f.close()
 	# copy it to *srv2
-	cmd = "enrcp %s %sensrv2:/diska/tape-inventory/WEEKLY_SUMMARY"%(
-		sys.argv[1], system.lower())
+	cmd = "enrcp %s %s"%(
+		sys.argv[1],
+		os.path.join(inventory['inventory_rcp_dir'], WEEKLY_SUMMARY))
+
 	print cmd
 	try:
 		os.system(cmd)
