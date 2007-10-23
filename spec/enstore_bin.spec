@@ -58,6 +58,7 @@ make
 rm *.c
 cd ../src
 ./make_pyc_files.py
+rm *.py
 
 %install
 
