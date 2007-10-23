@@ -46,7 +46,7 @@ echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
 echo "ENSTORE_HOME=$ENSTORE_HOME" >> /tmp/enstore_header
 
 rm -rf $ENSTORE_HOME/site_specific/config/setup-enstore
-cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOME/site_specific/config/setup-enstore
+cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore-demo > $ENSTORE_HOME/site_specific/config/setup-enstore
 
 echo "Finishing configuration of $ENSTORE_HOME/site_specific/config/setup-enstore"
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
