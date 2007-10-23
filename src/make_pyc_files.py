@@ -23,7 +23,7 @@ for f in dir_list:
         del a[len(a)-1]
         s=''
         module = s.join(a)
-        if myname != module:
+        if myname != module and module.find("cgi")==-1 and module.find("label_tape")==-1:
             print "will import", module
             try:
                 __import__(module)
