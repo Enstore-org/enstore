@@ -30,6 +30,11 @@ else
 fi
 ENSTORE_HOME=`ls -d ~enstore`
 
+if [ ! -d $ENSTORE_HOME/site_specific/config ];
+then
+    mkdir -p $ENSTORE_HOME/site_specific/config
+fi
+
 if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
 then
     # this allows to not run this script on remote nodes.
