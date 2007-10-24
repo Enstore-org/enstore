@@ -33,5 +33,5 @@ for f in dir_list:
                 
             except:
                 pass
-os.chmod('*.pyc', 755)            
+os.system("chmod 755 *.pyc")            
         
