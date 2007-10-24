@@ -17,7 +17,7 @@ defaultDomain=".fnal.gov"
 # if not, just do a normal rsh
 
 
-if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
+if [ -d $krbdir -a -f /local/ups/kt/enstorekt ]; then
    # we are kerberized
 
    # get some values
