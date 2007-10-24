@@ -1,7 +1,7 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
 Version: 1.0.1
-Release: 8
+Release: 9
 Copyright: GPL
 Group: System Environment/Base
 Source: enstore.tgz
