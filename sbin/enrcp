@@ -33,16 +33,10 @@ fi
 krbdir="/usr/krb5/bin"
 defaultDomain=".fnal.gov"
 
-if [ "${ENSCP:-x}" != "x" ];then
-    rc=do_rcp $ENSCP "$@"
-    exit $?
-fi
-
-
 # if we are a kerberized system, we need to do some pre rcp stuff
 # for the root user. if not, just do a normal rcp
 
-if [ -d $krbdir ]; then
+if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
    # we are kerberized
 
    # get some values
@@ -61,7 +55,10 @@ if [ -d $krbdir ]; then
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_root_$$;export KRB5CCNAME
       ${krbdir}/kinit -k host/${thisHost}
-      do_rcp $krbdir/rcp "$@"
+      if [ "${ENSCP:-x}" != "x" ];then
+	rc=do_rcp $ENSCP "$@"
+      else
+	do_rcp $krbdir/rcp "$@"
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
@@ -72,7 +69,10 @@ if [ -d $krbdir ]; then
       OLDKRB5CCNAME=${KRB5CCNAME:-NONE}
       KRB5CCNAME=/tmp/krb5cc_enstore_$$;export KRB5CCNAME
       ${krbdir}/kinit -k -t /local/ups/kt/enstorekt enstore/cd/${thisHost}
-      do_rcp $krbdir/rcp "$@"
+      if [ "${ENSCP:-x}" != "x" ];then
+	rc=do_rcp $ENSCP "$@"
+      else
+	do_rcp $krbdir/rcp "$@"
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
@@ -89,7 +89,10 @@ if [ -d $krbdir ]; then
 	KRB5CCNAME=/tmp/krb5cc_myjob_$$;export KRB5CCNAME
 	${krbdir}/kcron 2> /dev/null
       fi
-      do_rcp $krbdir/rcp "$@"
+      if [ "${ENSCP:-x}" != "x" ];then
+	rc=do_rcp $ENSCP "$@"
+      else
+	do_rcp $krbdir/rcp "$@"
       rc=$?
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
