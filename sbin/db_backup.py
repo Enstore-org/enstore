@@ -49,7 +49,7 @@ if server['status'][0] != e_errors.OK:
 
 # make up the out file
 # do not take more backup in the same hour!
-hour = "%2d"%(time.localtime()[3])
+hour = "%02d"%(time.localtime()[3])
 out_dir = os.path.join(backupinfo['dir'], 'ACC-DST')
 if not os.access(out_dir, os.F_OK):
 	os.makedirs(out_dir)
