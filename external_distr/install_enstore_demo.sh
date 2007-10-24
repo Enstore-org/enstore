@@ -38,7 +38,7 @@ yum install tk
 echo "Installing python"
 rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
 echo "Installing enstore"
-rpm -Uvh --force --nodeps /usr/src/redhat/RPMS/i386/enstore-1.0.1-8.i386.rpm
+rpm -Uvh --force --nodeps /usr/src/redhat/RPMS/i386/enstore-1.0.1-9.i386.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
 
 
