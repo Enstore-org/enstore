@@ -2831,9 +2831,14 @@ def librarysize_check(work_ticket):
     size = work_ticket['file_size']
 
     try:
-        #Determine the max allowable size for the given library.
+        #First determine if the library does exist.
         csc = get_csc()
         lib_info = csc.get(use_lm, {})
+        if not e_errors.is_ok(lib_info):
+            raise EncpError(None, lib_info['status'][1],
+                            lib_info['status'][0], work_ticket)
+
+        #Extract the max allowable size for the given library.
         library_max = lib_info.get('max_file_size', MAX_FILE_SIZE)
     except (OSError, IOError):
         msg = sys.exc_info()[1]
@@ -3040,10 +3045,7 @@ def outputfile_check(inputlist, outputlist, e):
                 if os.path.basename(outputlist[i]) in directory_listing:
                     #If the platform supports EFSCORRUPTED use it.
                     # Otherwise use the generic EIO.
-                    if hasattr(errno, 'EFSCORRUPTED'):
-                        error = errno.EFSCORRUPTED #Not widely supported.
-                    else:
-                        error = errno.EIO
+                    error = getattr(errno, 'EFSCORRUPTED', errno.EIO)
                     raise EncpError(error, "Filesystem is corrupt.",
                                     e_errors.FILESYSTEM_CORRUPT,
                                     {'outfile' : outputlist[i]})
