@@ -59,6 +59,7 @@ if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
 	rc=do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
+      fi
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
@@ -73,6 +74,7 @@ if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
 	rc=do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
+      fi
       rc=$?
       ${krbdir}/kdestroy
       # if we had an old ticket cache, restore it
@@ -93,6 +95,7 @@ if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
 	rc=do_rcp $ENSCP "$@"
       else
 	do_rcp $krbdir/rcp "$@"
+      fi
       rc=$?
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;

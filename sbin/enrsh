@@ -76,6 +76,8 @@ if [ -d $krbdir and -f /local/ups/kt/enstorekt ]; then
       else
 	${krbdir}/rsh -F "$@"
       fi
+      rc=$?
+
       # only destroy the ticket if we obtained one using kcron
       if [ "$OLDKRB5CCNAME" != "" ]; then ${krbdir}/kdestroy; fi;
    fi
