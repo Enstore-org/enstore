@@ -44,7 +44,7 @@ fi
 
 if [ ! -d $base ]; then
   echo $base does not exist
-  exit 1
+  mkdir -p $base
 fi
 
 cd $base
