@@ -50,6 +50,9 @@ if server['status'][0] != e_errors.OK:
 # make up the out file
 # do not take more backup in the same hour!
 hour = "%2d"%(time.localtime()[3])
+out_dir = os.path.join(backupinfo['dir'], 'ACC-DST')
+if not os.access(out_dir, os.F_OK):
+	os.makedirs(out_dir)
 outfile = os.path.join(backupinfo['dir'], 'ACC-DST', sys.argv[1]+'.backup.'+hour)
 
 cmd = "pg_dump -p %d -h %s -F c -f %s %s"%(server['dbport'], server['dbhost'], outfile, server['dbname'])
