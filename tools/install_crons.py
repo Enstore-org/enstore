@@ -32,6 +32,7 @@ def copy_it(src, dst):
         data = sf.readlines()
         df.writelines(data)
         print "Copied %s to %s." % (src, dst)
+        os.system
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
@@ -77,6 +78,12 @@ if __name__ == '__main__':
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
+    res = csc.alive(configuration_client.MY_SERVER, rcv_timeout=10)
+    if res['status'][0] != e_errors.OK:
+        if debug:
+            print "configuration_server %s is not responding ... Get configuration from local file"%(configuration_client.MY_SERVER,)
+        csc = configuration_client.configdict_from_file()
+
     cronjobs_dict = csc.get("crontabs")
     if not e_errors.is_ok(cronjobs_dict):
         sys.stderr.write("Error: %s\n" %
