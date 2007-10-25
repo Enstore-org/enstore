@@ -79,17 +79,20 @@ if __name__ == '__main__':
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     res = csc.alive(configuration_client.MY_SERVER, rcv_timeout=10)
+    frm_file = 0
     if res['status'][0] != e_errors.OK:
         print "configuration_server %s is not responding ... Get configuration from local file"%(configuration_client.MY_SERVER,)
         csc = configuration_client.configdict_from_file()
+        from_file = 1
 
     cronjobs_dict = csc.get("crontabs")
     if not e_errors.is_ok(cronjobs_dict):
-        sys.stderr.write("Error: %s\n"%(cronjobs_dict.get(['status'],str((e_errors.UNKNOWN, None))),))
-        sys.exit(1)
+        if from_file == 0:
+            sys.stderr.write("Error: %s\n"%(cronjobs_dict.get(['status'],str((e_errors.UNKNOWN, None))),))
+            sys.exit(1)
 
     #Reomve the status from the ticket.
-    del cronjobs_dict['status']
+    if cronjobs_dict.has_key('status'): del cronjobs_dict['status']
 
     for (configuration_key, cron_info) in cronjobs_dict.items():
         use_host = None
