@@ -100,9 +100,6 @@ def configure(configuration = None):
 		# to be backward compatible
 		db_path = '/diskc/check-database'
 
-	# always check the existance
-	check_existance(check_dir,0)
-    
 	current_dir = os.getcwd() #Remember the original directory
 
 	print timeofday.tod(), 'Checking Enstore on', csc.get_address()[0], \
@@ -258,6 +255,7 @@ if __name__ == "__main__":
 	# checking for the directories
 	if not os.access(check_dir, os.F_OK):
 		os.makedirs(check_dir)
+	check_existance(check_dir, 0)
 	if not os.access(db_path, os.F_OK):
 		os.makedirs(db_path)
 		# create database area
