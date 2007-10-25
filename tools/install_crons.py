@@ -80,8 +80,7 @@ if __name__ == '__main__':
     csc = configuration_client.ConfigurationClient((config_host,config_port))
     res = csc.alive(configuration_client.MY_SERVER, rcv_timeout=10)
     if res['status'][0] != e_errors.OK:
-        if debug:
-            print "configuration_server %s is not responding ... Get configuration from local file"%(configuration_client.MY_SERVER,)
+        print "configuration_server %s is not responding ... Get configuration from local file"%(configuration_client.MY_SERVER,)
         csc = configuration_client.configdict_from_file()
 
     cronjobs_dict = csc.get("crontabs")
