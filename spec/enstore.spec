@@ -36,7 +36,7 @@ echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
 rpm -q swig-enstore > /dev/null
 if [ $? -eq 0 ]; then
-	swig_dir==`rpm -ql aci | head -1`
+	swig_dir=`rpm -ql aci | head -1`
 	echo SWIG_DIR=%{swig_dir} >> /tmp/enstore-setup
 	echo export SWIG_DIR >> /tmp/enstore-setup
 	echo SWIG_LIB=%{swig_dir}/swig_lib >> /tmp/enstore-setup
