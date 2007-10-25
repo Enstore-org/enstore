@@ -78,26 +78,26 @@ if __name__ == '__main__':
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
-    res = csc.alive(configuration_client.MY_SERVER, rcv_timeout=10)
-    frm_file = 0
-    if res['status'][0] != e_errors.OK:
-        print "configuration_server %s is not responding ... Get configuration from local file"%(configuration_client.MY_SERVER,)
-        csc = configuration_client.configdict_from_file()
-        from_file = 1
+    config_dict = csc.dump_and_save(timeout=10, retry=3)
+    if not e_errors.is_ok(config_dict):
+        print "configuration_server is not responding ... "
+        print "Get configuration from local file: %s" % \
+              (os.environ['ENSTORE_CONFIG_FILE'],)
+        config_dict = configuration_client.configdict_from_file()
 
-    cronjobs_dict = csc.get("crontabs")
-    if not e_errors.is_ok(cronjobs_dict):
-        if from_file == 0:
-            sys.stderr.write("Error: %s\n"%(cronjobs_dict.get(['status'],str((e_errors.UNKNOWN, None))),))
+    cronjobs_dict = config_dict.get("crontabs", None)
+    if cronjobs_dict == None:
+            sys.stderr.write("No crontabs section defined in configuration.\n")
             sys.exit(1)
 
     #Reomve the status from the ticket.
-    if cronjobs_dict.has_key('status'): del cronjobs_dict['status']
+    if cronjobs_dict.has_key('status'):
+        del cronjobs_dict['status']
 
     for (configuration_key, cron_info) in cronjobs_dict.items():
+        #Determine the host the cronjob should run on.
         use_host = None
-
-        config_info = csc.get(configuration_key)
+        config_info = config_dict.get(configuration_key, {})
         if config_info:
             if config_info.has_key('host'):
                 use_host = config_info['host']
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         #The first two if/elifs look at the just obtained confg information.
         #  The following elif looks at the host entry in the crontab section
         #  obtained earlier.
-        elif cron_info.has_key('host'):
+        if use_host == None and cron_info.has_key('host'):
             use_host = cron_info['host']
 
         if enstore_functions2.is_on_host(use_host) :
