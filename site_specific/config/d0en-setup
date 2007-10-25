@@ -9,6 +9,15 @@ export FTT_DIR
 export ENSTORE_HOME
 #. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
+rpm -q swig-enstore > /dev/null
+if [ $? -eq 0 ]; then
+	SWIG_DIR=`rpm -ql swig-enstore | head -1`
+	export SWIG_DIR
+	SWIG_LIB=$SWI_DIR/swig_lib
+	PATH=$SWIG_DIR:$PATH
+fi
+
+
 rpm -q aci > /dev/null
 if [ $? -eq 0 ];
 then

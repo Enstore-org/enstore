@@ -48,6 +48,8 @@ echo "Installing python"
 rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
 if [ "${fnal:-x}" = "fnal" ]
 then
+    echo "installing swig"
+    rpm -U --force ${place}/swig-enstore-1_883-1.i386.rpm 
     echo "installing aci"
     rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
     echo "Installing enstore"

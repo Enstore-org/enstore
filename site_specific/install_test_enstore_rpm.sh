@@ -52,6 +52,8 @@ then
     export ENSTORE_USER_DEFINED_CONFIG_HOST=d0ensrv2n.fnal.gov
     export ENSTORE_USER_DEFINED_CONFIG_FILE=/home/enstore/enstore/etc/d0en_sde_test.conf
     export ENSTORE_USER_DEFINED_MAIL=moibenko@fnal.gov
+    echo "installing swig"
+    rpm -U --force ${place}/swig-enstore-1_883-1.i386.rpm 
     echo "installing aci"
     rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
     echo "Installing enstore"
