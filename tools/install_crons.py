@@ -98,10 +98,11 @@ if __name__ == '__main__':
         use_host = None
 
         config_info = csc.get(configuration_key)
-        if config_info.has_key('host'):
-            use_host = config_info['host']
-        elif config_info.has_key('hostip'):
-            use_host = config_info['hostip']
+        if config_info:
+            if config_info.has_key('host'):
+                use_host = config_info['host']
+            elif config_info.has_key('hostip'):
+                use_host = config_info['hostip']
         #The first two if/elifs look at the just obtained confg information.
         #  The following elif looks at the host entry in the crontab section
         #  obtained earlier.
