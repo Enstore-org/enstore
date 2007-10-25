@@ -74,7 +74,7 @@ then
 fi
 
 echo "Enabling Enstore log directory"
-$ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
+$ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep "log_file_path" | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
 while read f1 f2; do eval $f1=$f2; done < /tmp/log_conf.tmp
 rm -rf /tmp/log_conf.tmp
 
