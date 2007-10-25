@@ -14,7 +14,7 @@ WEB_SERVER = "web_server"
 HTTPD_CONF="/etc/httpd/conf/httpd.conf"
 SUFFIX=".orig"
 SERVER_ROOT="ServerRoot"
-
+FNAL_DOMAIN="131.225"
 import errno
 import configuration_client
 import enstore_constants
@@ -134,7 +134,7 @@ class WebServer:
                                     txt = txt + "<Directory \""+str(self.server_dict[key]['real'])+"\">\n"
                                     txt = txt + "   AllowOverride None\n"
                                     txt = txt + "   Order deny,allow\n"
-                                    if self.domain_name="131.225" :
+                                    if self.domain_name==FNAL_DOMAIN :
                                         txt = txt + "   Allow from .fnal.gov\n"
                                         txt = txt + "   Allow from  137.138\n"
                                         txt = txt + "   Allow from  131.169\n"
