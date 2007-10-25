@@ -85,9 +85,7 @@ if __name__ == '__main__':
 
     cronjobs_dict = csc.get("crontabs")
     if not e_errors.is_ok(cronjobs_dict):
-        sys.stderr.write("Error: %s\n" %
-                         cronjobs_dict.get(['status'],
-                                           str((e_errors.UNKNOWN, None))))
+        sys.stderr.write("Error: %s\n"%(cronjobs_dict.get(['status'],str((e_errors.UNKNOWN, None))),)
         sys.exit(1)
 
     #Reomve the status from the ticket.
