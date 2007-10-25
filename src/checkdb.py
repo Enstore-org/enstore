@@ -16,9 +16,6 @@ import configuration_client
 
 import pg
 
-# path to database
-db_path = "/diskc/check-database"
-
 EXCLUDED_STORAGE_GROUP = ['backups', 'CLEAN', 'null', 'test', 'none']
 
 def print_usage():
@@ -98,6 +95,11 @@ def configure(configuration = None):
 	if not dest_path:
 		print timeofday.tod(), "ERROR rcp directory is not determined"
 
+	db_path = backup.get('check_db_area')
+	if not db_path:
+		# to be backward compatible
+		db_path = '/diskc/check-database'
+
 	# always check the existance
 	check_existance(check_dir,0)
     
@@ -110,7 +112,7 @@ def configure(configuration = None):
 	#Return the directory the backup file is in and the directory the backup
 	# file will be ungzipped and untared to, respectively.  Lastly, return
 	# the current directory.
-	return backup_dir, check_dir, current_dir, backup_node, dest_path
+	return backup_dir, check_dir, current_dir, backup_node, dest_path, db_path
 
 # get the most recent backup file
 def check_backup(backup_dir, backup_node):
@@ -145,7 +147,7 @@ def check_backup(backup_dir, backup_node):
 	return container
 
 # start postmaster
-def start_postmaster():
+def start_postmaster(db_path):
 	cmd = "ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)
 	pid = os.popen(cmd).readline()
 	pid = string.strip(pid)
@@ -164,7 +166,7 @@ def start_postmaster():
 		time.sleep(15)
 
 #stop postmaster
-def stop_postmaster():
+def stop_postmaster(db_path):
 	pid = os.popen("ps -axw| grep postmaster | grep %s | grep -v grep | awk '{print $1}'"%(db_path)).readline()
 	pid = string.strip(pid)
 	if pid:
@@ -252,12 +254,20 @@ if __name__ == "__main__":
 		print_usage()
 		sys.exit(0)
     
-	(backup_dir, check_dir, current_dir, backup_node, dest_path) = configure(1) #non-None argument!
+	(backup_dir, check_dir, current_dir, backup_node, dest_path, db_path) = configure(1) #non-None argument!
+	# checking for the directories
+	if not os.access(check_dir, os.F_OK):
+		os.makedirs(check_dir)
+	if not os.access(db_path, os.F_OK):
+		os.makedirs(db_path)
+		# create database area
+		cmd = "initdb -D %s"%(db_path)
+		os.system(cmd)
 	#starting postmaster
-	start_postmaster()
+	start_postmaster(db_path)
 	extract_backup(check_dir, check_backup(backup_dir, backup_node))
 	check_db(check_dir)
-	stop_postmaster()
+	stop_postmaster(db_path)
 	# moving COMPLETE_FILE_LISTING to dest_path
 	cmd = "enrcp %s %s"%(os.path.join(check_dir, "COMPLETE_FILE_LISTING*"), dest_path)
 	print timeofday.tod(), cmd
