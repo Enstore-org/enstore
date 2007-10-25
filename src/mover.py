@@ -2745,7 +2745,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.bytes_to_write = self.bytes_read # set correct size for bytes to write
         if self.tr_failed:
             self.read_tape_running = 0
-            Trace.trace(27,"read_tape: tr_failed %s"%(self.tr_failed,))
+            Trace.trace(127,"read_tape: tr_failed %s"%(self.tr_failed,))
             return
         if failed:
             self.read_tape_running = 0
@@ -2761,6 +2761,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             if self.buffer.complete_crc != complete_crc:
                 # this is to fix file db
                 if complete_crc == None:
+                   
                     sanity_cookie = (self.buffer.sanity_bytes,self.buffer.sanity_crc)
                     if self.method == 'read_next' and bfid == None:
                         # must be tape ingest case
@@ -2832,11 +2833,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     crc_error = 1
                     # try 1 based crc
                     crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
-                                                                               self.self.file_info['size'])
+                                                                               self.file_info['size'])
                     if crc_1_seeded == complete_crc:
                         self.buffer.complete_crc = crc_1_seeded
                         crc_error = 0
-                        
                     if crc_error:
                         Trace.alarm(e_errors.ERROR, "read_tape CRC error",
                                     {'outfile':self.current_work_ticket['outfile'],
@@ -2848,6 +2848,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.read_tape_running = 0
                         self.transfer_failed(e_errors.CRC_ERROR, error_source=TAPE)
                         return
+
         self.bytes_read_last = self.bytes_read
         # if data is tranferred slowly
         # the false "too long in state.." may be generated
@@ -5687,7 +5688,7 @@ class DiskMover(Mover):
                     crc_error = 1
                     # try 1 based crc
                     crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(self.buffer.complete_crc,
-                                                                               self.self.file_info['size'])
+                                                                               self.file_info['size'])
                     if crc_1_seeded == complete_crc:
                         self.buffer.complete_crc = crc_1_seeded
                         crc_error = 0
