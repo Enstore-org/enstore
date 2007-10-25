@@ -22,6 +22,7 @@ For the postinstallation and configuration instructions please see enstore/READM
 # create a tepmorary setup file
 #+++++++++++
 cd $RPM_BUILD_ROOT
+echo "BUILD ROOT $RPM_BUILD_ROOT " 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}
 rm -rf enstore-setup
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
@@ -33,17 +34,27 @@ echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
-echo export SWIG_DIR
-echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
-echo export SWIG_LIB
-rpm -q aci
+rpm -q swig-enstore > /dev/null
+if [ $? -eq 0 ]; then
+	swig_dir==`rpm -ql aci | head -1`
+	echo SWIG_DIR=%{swig_dir} >> /tmp/enstore-setup
+	echo export SWIG_DIR >> /tmp/enstore-setup
+	echo SWIG_LIB=%{swig_dir}/swig_lib >> /tmp/enstore-setup
+	echo export SWIG_LIB >> /tmp/enstore-setup
+else
+	echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
+	echo export SWIG_DIR
+	echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
+	echo export SWIG_LIB
+fi
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
+rpm -q aci > /dev/null
 if [ $? -eq 0 ]; then
 	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
 	echo export ACI_DIR >> /tmp/enstore-setup
+	echo PATH="$"ACI_DIR:"$"PATH >> /tmp/enstore-setup
 fi
 
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 #++++++++++++
 
 %setup -q -c -n %{prefix}
