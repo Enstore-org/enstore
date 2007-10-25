@@ -32,7 +32,9 @@ def copy_it(src, dst):
         data = sf.readlines()
         df.writelines(data)
         print "Copied %s to %s." % (src, dst)
-        os.system
+
+        sf.close()
+        df.close()
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
