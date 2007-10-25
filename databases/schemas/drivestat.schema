@@ -90,10 +90,10 @@ CREATE INDEX status_product_type_idx ON status USING btree (product_type);
 
 
 --
--- Name: status_stat_type; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
+-- Name: status_stat_type_idx; Type: INDEX; Schema: public; Owner: enstore; Tablespace: 
 --
 
-CREATE INDEX status_stat_type ON status USING btree (stat_type);
+CREATE INDEX status_stat_type_idx ON status USING btree (stat_type);
 
 
 --
