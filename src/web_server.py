@@ -36,6 +36,7 @@ class WebServer:
         self.this_host_name=socket.gethostname()
         self.system_name = csc.get_enstore_system(timeout,retry)        
         self.server_dict={}
+        self.domain_name=socket.gethostbyname(socket.gethostname())[0:7]
         if self.system_name:
             self.server_dict = csc.get(WEB_SERVER, timeout, retry)
             config_dict = csc.dump(timeout, retry)
@@ -130,6 +131,18 @@ class WebServer:
                             elif key == "ScriptAlias":
                                 for k in self.server_dict[key].keys():
                                     txt = key + " " + str(self.server_dict[key]['fake'])+" "+ str(self.server_dict[key]['real']) +"\n"
+                                    txt = txt + "<Directory \""+str(self.server_dict[key]['real'])+"\">\n"
+                                    txt = txt + "   AllowOverride None\n"
+                                    txt = txt + "   Order deny,allow\n"
+                                    if self.domain_name="131.225" :
+                                        txt = txt + "   Allow from .fnal.gov\n"
+                                        txt = txt + "   Allow from  137.138\n"
+                                        txt = txt + "   Allow from  131.169\n"
+                                    else:
+                                        txt = txt + "   Allow from "+self.domain_name+"\n"
+                                    for e in ["PYTHONINC", "PYTHONPATH", "PYTHONLIB", "PATH"]:
+                                        txt = txt + "SetEnv "+e+" "+os.getenv(e)+"\n"
+                                    txt = txt + "</Directory>\n"
                                     break
                             elif key == "ServerHost" :
                                 txt = key + " " + self.this_host_name +"\n";
