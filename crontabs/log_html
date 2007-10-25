@@ -1,5 +1,5 @@
 #These are common.
-11,41 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p getnodeinfo getnodeinfo  /fnal/ups/prd/www_pages/enstore/nodeinfo.html  1>/dev/null 2>/dev/null
+11,41 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p getnodeinfo getnodeinfo  1> /dev/null 2> /dev/null
 45 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/ecron -p failedX $ENSTORE_DIR/src/log_trans_fail.py month > /dev/null 2> /dev/null
 #9,39 * * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p udpclog udp_clog_check /fnal/ups/prd/www_pages/enstore/UDPclog.html  1>/dev/null 2>/dev/null
 #31 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p PNFSRATE PNFSRATE  > /dev/null 2> /dev/null
