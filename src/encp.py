@@ -6762,6 +6762,15 @@ def write_hsm_file(listen_socket, work_ticket, tinfo, e):
     if not e_errors.is_ok(work_ticket):
         return work_ticket
 
+    #Some KeyErrors are occuring because 'file_family' doesn't exist.  Need
+    # to log this for debugging.
+    try:
+        if work_ticket['vc']['file_family']:
+            pass
+    except KeyError:
+        Trace.log(e_errors.INFO,
+                  "IMMIDIATE TRACEBACK EXPECTED: %s" % work_ticket)
+
     Trace.message(TRANSFER_LEVEL,
                "File queued: %s library: %s family: %s bytes: %d elapsed=%s" %
                   (work_ticket['infile'], work_ticket['vc']['library'],
@@ -8248,8 +8257,24 @@ def create_read_request(request, file_number,
                     use_mount_point = e.pnfs_mount_point
                 else:
                     use_mount_point = os.path.dirname(fc_reply['pnfs_name0'])
-                ifullname_list = p.get_path(pnfsid, use_mount_point,
-                                            shortcut = e.shortcut)
+                try:
+                    ifullname_list = p.get_path(pnfsid, use_mount_point,
+                                                shortcut = e.shortcut)
+                except OSError, msg:
+                    ifullname_list = getattr(msg, "filename", [])
+                    if msg.args[0] not in [errno.ENODEV] \
+                           or type(ifullname_list) != types.ListType \
+                           or len(ifullname_list) <= 1:
+                        #We did not find to many matching files to the
+                        # pnfsid.  Pass the error back up.
+                        raise EncpError(msg.args[0],
+                                        msg.args[1],
+                                        e_errors.OSERROR,
+                                        {'infile' : ifullname_list})
+
+                #If we did find to many matching files to the pnfsid,
+                # we need to check the file bfids in layer 1 to determine
+                # which one we are looking for.
                 for cur_fname in ifullname_list:
                     if p.get_bit_file_id(cur_fname) == e.get_bfid:
                         ifullname = cur_fname
@@ -8260,10 +8285,10 @@ def create_read_request(request, file_number,
                         ifullname = cur_fname
                         break
                 else:
-                    EncpError(errno.ENOENT,
-                              "Unable to find correct PNFS file.",
-                              e_errors.PNFS_ERROR,
-                              {'infile' : ifullname_list})
+                    raise EncpError(errno.ENOENT,
+                                    "Unable to find correct PNFS file.",
+                                    e_errors.PNFS_ERROR,
+                                    {'infile' : ifullname_list})
 
             if e.output[0] in ["/dev/null", "/dev/zero",
                                "/dev/random", "/dev/urandom"]:
