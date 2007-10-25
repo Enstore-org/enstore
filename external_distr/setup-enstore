@@ -9,7 +9,7 @@ rpm -q swig-enstore > /dev/null
 if [ $? -eq 0 ]; then
 	SWIG_DIR=`rpm -ql swig-enstore | head -1`
 	export SWIG_DIR
-	export SWIG_LIB=$SWI_DIR/swig_lib
+	export SWIG_LIB=$SWIG_DIR/swig_lib
 	PATH=$SWIG_DIR:$PATH
 fi
 
