@@ -70,6 +70,7 @@ def main():
 
     if not os.path.exists(web_dir):
         os.makedirs(web_dir)
+        os.system("cp ${ENSTORE_DIR}/etc/*.gif .")
     os.chdir(web_dir)
     
     for sg in storage_groups:
