@@ -10,6 +10,7 @@ import HTMLgen
 import types
 import os
 import stat
+import sys
 
 import enstore_functions2
 import e_errors
@@ -189,7 +190,12 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
         intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
         csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
         inq = csc.get(enstore_constants.INQUISITOR, {})
-        self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore/burn-rate')
+        print "getting html_file from  directory",intf.config_host, intf.config_port
+        sys.stdout.flush()
+        self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore')
+        print "got directory",self.web_dir
+        sys.stdout.flush()
+        
         
 
     # generate the three button navigation table for the top of each of the
