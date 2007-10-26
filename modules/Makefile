@@ -25,11 +25,13 @@ LIBDL=`if [ "_OSF1" = _\`uname\` ]; then echo ""; else echo -ldl; fi`
 PIC1=`if [ "_Linux" = _\`uname\` -a "_x86_64" = _\`uname -p\` ]; then echo "-fPIC"; fi`
 PIC2=`if [ "_SunOS" = _\`uname\` -a "_i386" = _\`uname -p\` ]; then echo "-fPIC"; fi`
 PIC=$(PIC1) $(PIC2)
+BITS_FLAG=`if [ "_Linux" = _\`uname\` ]; then which_python=\`which python\`; bits=\`file $$which_python | cut -f 3 -d " " | cut -f 1 -d "-"\`; echo -m$$bits ; fi`
 XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
 XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib64 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm
 FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
 FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
 FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
+CFLAGS=$(BITS_FLAG)
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
@@ -69,53 +71,53 @@ Modules:
 	fi
 
 adler32.a: adler32.c
-	$(CC) -c $(PIC) adler32.c
+	$(CC) $(CFLAGS) -c $(PIC) adler32.c
 	ar cr $@ adler32.o
 
 tape_copy: tape_copy.c
 	if [ "$(FTT_DIR)"x != x ]; then \
-		$(CC) $(FTT_INCLUDES) -o $@ tape_copy.c $(FTTTEST_LIBS); \
+		$(CC) $(CFLAGS) $(FTT_INCLUDES) -o $@ tape_copy.c $(FTTTEST_LIBS); \
 	else \
 		echo "Skipping $@.  FTT_DIR not found."; \
 	fi;
 
 tape_write: tape_write.c
 	if [ "$(FTT_DIR)"x != x ]; then \
-		$(CC) $(FTT_INCLUDES) -o $@ tape_write.c $(FTTTEST_LIBS); \
+		$(CC) $(CFLAGS) $(FTT_INCLUDES) -o $@ tape_write.c $(FTTTEST_LIBS); \
 	else \
 		echo "Skipping $@.  FTT_DIR not found."; \
 	fi;
 
 m2probe: m2probe.c
 	if [ "$(FTT_DIR)"x != x ]; then \
-		$(CC) $(FTT_INCLUDES) -o $@ m2probe.c $(FTT_LIBS); \
+		$(CC) $(CFLAGS) $(FTT_INCLUDES) -o $@ m2probe.c $(FTT_LIBS); \
 		cp m2probe ../sbin; \
 	else \
 		echo "Skipping $@.  FTT_DIR not found."; \
 	fi;
 
 enroute2: enroute2.c
-	$(CC) enroute2.c -o $@ $(LIBSOCKETNSL)
+	$(CC) $(CFLAGS) enroute2.c -o $@ $(LIBSOCKETNSL)
 
 t_rand: t_rand.c
-	$(CC) t_rand.c -o $@
+	$(CC) $(CFLAGS) t_rand.c -o $@
 
 t_read: t_read.c
-	$(CC) t_read.c -o $@
+	$(CC) $(CFLAGS) t_read.c -o $@
 
 ecrc: ecrc.c
-	$(CC) -I. -o $@ ecrc.c adler32.a $(LIBGEN)
+	$(CC) $(CFLAGS) -I. -o $@ ecrc.c adler32.a $(LIBGEN)
 	cp $@ ../sbin
 
 ddencp: EXfer.c
-	$(CC) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT) $(LIBGEN) $(LIBSOCKETNSL)
+	$(CC) $(CFLAGS) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT) $(LIBGEN) $(LIBSOCKETNSL)
 	cp $(@) ../bin
 
 autologinenstore: autologinenstore.c
-	- $(CC) -o $@ autologinenstore.c
+	- $(CC) $(CFLAGS) -o $@ autologinenstore.c
 
 mouse_move: mouse_move.c
-	- $(CC) -o $@ $(XINCLUDES) mouse_move.c $(XLIBS)
+	- $(CC) $(CFLAGS) -o $@ $(XINCLUDES) mouse_move.c $(XLIBS)
 
 installpyc:
 	for m in $(PYMODULES) the-end; do \
