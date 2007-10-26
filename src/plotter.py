@@ -96,6 +96,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	dir = "%s/%s"%(self.html_dir, ENCP_RATE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
+            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -110,6 +111,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	dir = "%s/%s"%(self.html_dir, FILE_FAMILY_USAGE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
+            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp rate plots")
@@ -124,6 +126,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
         dir = "%s/%s"%(self.html_dir, inquisitor_plots.XFER_SIZE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
+            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
             Trace.trace(enstore_constants.PLOTTING,
                     "adding links to encp size plots")
@@ -139,6 +142,7 @@ class Plotter(inquisitor_plots.InquisitorPlots, generic_client.GenericClient):
 	dir = "%s/%s"%(self.html_dir, BURN_RATE)
         if not os.access(dir, os.F_OK):
             os.makedirs(dir)
+            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(dir))
 	if os.path.isdir(dir):
 	    Trace.trace(enstore_constants.PLOTTING,
                         "adding links to burn rate plots")
