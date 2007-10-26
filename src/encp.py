@@ -10157,8 +10157,9 @@ def do_work(intf):
     try:
         exit_status = main(intf)
         delete_at_exit.quit(exit_status)
-    except (SystemExit, KeyboardInterrupt), msg:
-        Trace.log(e_errors.ERROR, "encp aborted from: %s" % str(msg))
+    except (SystemExit, KeyboardInterrupt):
+        exc, msg = sys.exc_info()[:2]
+        Trace.log(e_errors.ERROR, "encp aborted from: %s: %s" % (str(exc),str(msg)))
         delete_at_exit.quit(1)
     except:
         #Get the uncaught exception.
