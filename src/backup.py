@@ -81,7 +81,7 @@ def archive_backup(hst_bck,hst_local,dir_bck):
         ret = os.system(cmd)
         if ret != 0:
             # create it
-            cmd = "enrsh "+" 'mkdir -p "+jou_dir+"'"
+            cmd = "enrsh "+hst_bck+" 'mkdir -p "+jou_dir+"'"
             ret = os.system(cmd)
             if ret != 0:
                 logthis(e_errors.INFO, "Failed: %s"%(cmd,))
