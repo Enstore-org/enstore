@@ -1989,7 +1989,8 @@ class EnLogPage(EnBaseHtmlDoc):
 			    tr.append(HTMLgen.TD(HTMLgen.Bold(mweek[day]), 
 						 bgcolor=YELLOW))
 			else:
-			    td = HTMLgen.TD(HTMLgen.Href("%s/%s"%(web_host, log), 
+#			    td = HTMLgen.TD(HTMLgen.Href("%s/%s"%(web_host, log), 
+			    td = HTMLgen.TD(HTMLgen.Href("enstore-log/%s"%(log), 
 					       HTMLgen.Font(HTMLgen.Bold(mweek[day]),
 							    size="+2")))
 			    td.append(" : %s"%(size,))
