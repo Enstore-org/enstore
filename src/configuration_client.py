@@ -597,6 +597,20 @@ def configdict_from_file(config_file = None):
     f.close()
     return res.configdict
 
+
+def get_config_dict(timeout=5, retry=2):
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = ConfigurationClient((config_host,config_port))
+    config_dict = csc.dump_and_save(timeout, retry)
+    if not e_errors.is_ok(config_dict):
+        print "configuration_server is not responding ... "
+        print "Get configuration from local file: %s" % \
+              (os.environ['ENSTORE_CONFIG_FILE'],)
+        config_dict = configdict_from_file()
+    return config_dict
+
+    
 if __name__ == "__main__":
     Trace.init(MY_NAME)
 
