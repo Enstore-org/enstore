@@ -20,7 +20,7 @@ all: adler32.a Makefile.modules Modules $(ALL_TARGETS)
 POSIX4=`if [ "_SunOS" = _\`uname\` ]; then echo "-lposix4"; else echo ""; fi`
 RT=`if [ "_OSF1" = _\`uname\` ]; then echo "-lrt"; else echo ""; fi`
 LIBSOCKETNSL=`if [ "_SunOS" = _\`uname\` ]; then echo "-lsocket -lnsl"; else echo ""; fi`
-LIBGEN=`if [ "_IRIX" = _\`uname\`) ]; then echo "-lgen"; else echo ""; fi`
+LIBGEN=`if [ "_IRIX" = _\`uname\` ]; then echo "-lgen"; else echo ""; fi`
 LIBDL=`if [ "_OSF1" = _\`uname\` ]; then echo ""; else echo -ldl; fi`
 PIC1=`if [ "_Linux" = _\`uname\` -a "_x86_64" = _\`uname -p\` ]; then echo "-fPIC"; fi`
 PIC2=`if [ "_SunOS" = _\`uname\` -a "_i386" = _\`uname -p\` ]; then echo "-fPIC"; fi`
