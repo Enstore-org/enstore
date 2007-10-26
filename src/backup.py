@@ -76,6 +76,17 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 
         jou_dir = os.path.join(os.path.split(dir_bck)[0], journal_backup)
 
+        # check and create the directory if it is needed
+	cmd = "enrsh "+hst_bck+" 'ls -d "+jou_dir+"'"
+        ret = os.system(cmd)
+        if ret != 0:
+            # create it
+            cmd = "enrsh "+" 'mkdir -p "+jou_dir+"'"
+            ret = os.system(cmd)
+            if ret != 0:
+                logthis(e_errors.INFO, "Failed: %s"%(cmd,))
+                sys.exit(1)
+
         # try to compress the tarred file
         # try gzip first, if it does not exist, try compress
         # never mind if the compression programs are missing
