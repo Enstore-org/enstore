@@ -65,9 +65,9 @@ Modules:
 	cd SWIG && make 
 	@echo "in $$PWD"
 	if [ "`basename $(PYTHON_DIR)`" = "v2_0_E_1" -o "`basename $(PYTHON_DIR)`" = "python" ]; then \
-		make -f Makefile.modules ; \
+		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules ; \
 	else \
-		make -f Makefile.modules oldsharedmods; \
+		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods; \
 	fi
 
 adler32.a: adler32.c
