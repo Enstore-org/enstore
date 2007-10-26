@@ -28,6 +28,10 @@ chmod +x make_enstore_system.py
 
 ./web_server.py --install
 
+cp -f /etc/init.d/httpd /etc/init.d/httpd.orig 
+
+sed -i "/\/etc\/rc.d\/init.d\/functions/a if \[ -f \/usr\/local\/etc\/setups.sh \]; then \n # this check is required by current rpm build process, do not remove!!!! \n ./usr/local/etc/setups.sh \n setup enstore\nfi" /etc/init.d/httpd
+
 if [ $? != 0 ];
 then
 	exit 1 
