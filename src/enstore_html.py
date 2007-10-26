@@ -16,6 +16,7 @@ import e_errors
 import enstore_constants
 import mover_constants
 import volume_family
+import configuration_client
 from en_eval import en_eval
 
 YES = 1
@@ -185,6 +186,11 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.description = None
         self.nav_link = ""
         self.do_nav_table = 1
+        intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+        inq = csc.get(enstore_constants.INQUISITOR, {})
+        self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore/burn-rate')
+        
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
@@ -2929,12 +2935,10 @@ class EnSGIngestPage(EnBaseHtmlDoc):
             
     def body(self):
         plots='burn-rate'
-        www_dir = os.getenv('ENSTORE_WWW_DIR')
-        if www_dir:
-            plots_dir = os.path.join(www_dir, plots)
-        else:
-            plots_dir="/local/ups/prd/www_pages/enstore/burn-rate"
-        
+        plots_dir = os.path.join(self.web_dir,plots)
+        if not os.path.exists(plots_dir):
+            os.makedirs(plots_dir)
+            os.system("cp ${ENSTORE_DIR}/etc/*.gif %s"%(plots_dir))
         stamps=[]
         images=[]
         files=os.listdir(plots_dir)
