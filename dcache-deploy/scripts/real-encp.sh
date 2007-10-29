@@ -81,10 +81,10 @@ trap atrap9 9
 
 sP_bfid=0
 sP_ls=0
-P_nameof() { (cd $pnfs_root >/dev/null 2>&1;  cat ".(nameof)($1)" 2>/dev/null ); }
-P_bfid()   { (cd $pnfs_root >/dev/null 2>&1;  cat ".(access)($1)(1)" ); sP_bfid=$?; }
-P_size()   { (cd $pnfs_root >/dev/null 2>&1; stat ".(access)($1)" 2>/dev/null| grep Size: | awk '{print $2}' ); }
-P_ls ()    { (cd $pnfs_root >/dev/null 2>&1;   ls ".(access)($1)" 2>/dev/null ); sP_ls=$?; }
+P_nameof() { (cd $pnfs_root >/dev/null 2>&1;   cat ".(nameof)($1)" 2>/dev/null ); }
+P_bfid()   { (cd $pnfs_root >/dev/null 2>&1;   cat ".(access)($1)(1)" ); sP_bfid=$?; }
+P_size()   { (cd $pnfs_root >/dev/null 2>&1; ls -l ".(access)($1)" 2>/dev/null | awk '{print $5}' ); }
+P_ls ()    { (cd $pnfs_root >/dev/null 2>&1;    ls ".(access)($1)" 2>/dev/null ); sP_ls=$?; }
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
