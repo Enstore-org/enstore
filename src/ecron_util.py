@@ -93,7 +93,7 @@ class EcronData:
 		self.db = pg.DB(host=acs['dbhost'], port=acs['dbport'], dbname=acs['dbname'])
 		web_server = csc.get('web_server')
 		if web_server['status'][0] == e_errors.OK:
-			self.crons_dir = os.path.join(web_server['DocumentRoot'], 'CRONS')
+			self.crons_dir = os.path.join(web_server['DocumentRoot'], 'enstore', 'CRONS')
 		else:
 			self.crons_dir = OLD_CRONS_DIR
 
