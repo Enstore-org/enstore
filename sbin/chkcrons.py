@@ -5,9 +5,6 @@ import os
 
 edata = ecron_util.EcronData()
 
-# fake it here
-edata.crons_dir = '/home/huangch/ECRON_TEST/CRONS'
-
 # check if ecrons_dir exist
 if not os.access(edata.crons_dir, os.F_OK):
 	os.makedirs(edata.crons_dir)
