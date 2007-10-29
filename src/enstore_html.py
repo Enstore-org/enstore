@@ -187,16 +187,20 @@ class EnBaseHtmlDoc(HTMLgen.SimpleDocument):
 	self.description = None
         self.nav_link = ""
         self.do_nav_table = 1
+        sys.stdout.flush()
         intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-        inq = csc.get(enstore_constants.INQUISITOR, {})
-        print "getting html_file from  directory",intf.config_host, intf.config_port
-        sys.stdout.flush()
-        self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore')
-        print "got directory",self.web_dir
-        sys.stdout.flush()
+        config_dict = configuration_client.get_config_dict(5, 2)
         
-        
+        if config_dict:
+            inq = config_dict.get(enstore_constants.INQUISITOR, {})
+            sys.stdout.flush()
+            if inq:
+                self.web_dir = inq.get('html_file','/local/ups/prd/www_pages/enstore')
+            else:
+               self.web_dir = '/local/ups/prd/www_pages/enstore' 
+        else:
+            self.web_dir = '/local/ups/prd/www_pages/enstore'
+            
 
     # generate the three button navigation table for the top of each of the
     # enstore web pages
@@ -2833,7 +2837,12 @@ class EnStatusOnlyPage(EnSaagPage):
 
     def __init__(self, title="Mass Storage Production System's Status", 
                  gif="en_all.gif"):
+        print "in EnStatusOnlyPage"
+        sys.stdout.flush()
         EnBaseHtmlDoc.__init__(self, refresh=370, background="enstore_background.gif")
+        print "EnBaseHtmlDoc__init__done"
+        sys.stdout.flush()
+        
         self.title = title
         self.script_title_gif = gif
         self.source_server = THE_ENSTORE
