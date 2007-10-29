@@ -604,10 +604,13 @@ def get_config_dict(timeout=5, retry=2):
     csc = ConfigurationClient((config_host,config_port))
     config_dict = csc.dump_and_save(timeout, retry)
     if not e_errors.is_ok(config_dict):
-        print "configuration_server is not responding ... "
-        print "Get configuration from local file: %s" % \
-              (os.environ['ENSTORE_CONFIG_FILE'],)
-        config_dict = configdict_from_file()
+        try:
+            config_dict = configdict_from_file()
+            print "configuration_server is not responding ..."\
+                  "Get configuration from local file: %s" % \
+                  (os.environ['ENSTORE_CONFIG_FILE'],)
+        except KeyError:
+           config_dict ={} 
     return config_dict
 
     
