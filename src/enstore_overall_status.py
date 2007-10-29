@@ -17,7 +17,7 @@ DESTDIR = "/tmp/enstore_overall_status"
 MYNAME = "EN_OVERALL_STAT"
 LAST_STATUS_FILE = "last_status"
 LAST_STATUS = "%s/%s.py"%(DESTDIR, LAST_STATUS_FILE)
-LCL_HTML_DIR = "/export/hppc_home/www/enstore/"
+LCL_HTML_DIR = "/home/wwwsrv/ccf/html/enstore/"
 
 DOWN_L = [enstore_constants.DOWN,
 	  enstore_functions2.format_time(time.time()),
@@ -73,6 +73,7 @@ class HtmlStatusOnlyFile:
     def write(self, status, nodes_d):
         if self.openfile:
             doc = enstore_html.EnStatusOnlyPage()
+            
             doc.body(status, nodes_d)
 	    self.do_write(str(doc))
 
@@ -123,8 +124,11 @@ def do_work():
     # fetch the files from the other nodes.  we will put them
     # in /tmp/enstore_status and import them from there
     # do some setup first
+    ##print "in do_work() ..."
     setup_for_files()
     keys = nodes.keys()
+    ##print "got keys ..."
+
     # we hard code the html_dir because we are no longer running on an enstore system
     html_dir = "/local/ups/prd/www_pages/enstore/"
     aFile = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
@@ -156,7 +160,7 @@ def do_work():
 	    last_status_d[node] = 0
     else:
 	set_last_status(last_status_d)
-            
+
     # now create the web page
     filename = "%s/%s"%(LCL_HTML_DIR, enstore_constants.STATUSONLYHTMLFILE)
     only_file = HtmlStatusOnlyFile(filename)
@@ -164,6 +168,7 @@ def do_work():
     only_file.write(status_d, nodes)
     only_file.close()
     only_file.install()
+
 
 
 if __name__ == "__main__" :
