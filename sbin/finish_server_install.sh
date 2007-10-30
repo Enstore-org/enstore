@@ -12,7 +12,7 @@ setup enstore
 
 echo "installing enstore_html"
 /sbin/service httpd stop
-rpm -U --force --nodeps ${place}/enstore_html-1.0-0.i386.rpm
+rpm -U --force --nodeps ${place}/enstore_html-1.0-1.noarch.rpm
 
 rpm -q postgesql > /dev/null
 if [ $? -ne 0 ]; 
