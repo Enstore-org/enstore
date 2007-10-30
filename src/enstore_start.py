@@ -48,6 +48,7 @@ import configuration_client
 #import volume_clerk_client
 #import ratekeeper_client
 import event_relay_client
+import Interfaces
 
 #Less hidden side effects to call this?  Also, pychecker perfers it.
 ### What does this give us?
@@ -69,39 +70,14 @@ def get_csc():
     return csc
 
 def this_alias(host):
-    name=socket.gethostbyname(host)
-    cmd='grep "'+'%s'%(name,)+'"'+' /etc/sysconfig/network-scripts/*'
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    stat = pipeObj.wait()
-    result=pipeObj.fromchild.readlines()
-    if stat == 0:
-        control_file=result[0].split(':')[0]
-
-    else:
-        return None
-    cmd='grep DEVICE %s'%(control_file,)
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    stat = pipeObj.wait()
-    result=pipeObj.fromchild.readlines()
-    if stat == 0:
-        dev = result[0].split('=')[1][:-1]
-    else:
-        return None
-    cmd='/sbin/ifconfig %s'%(dev,)
-    pipeObj = popen2.Popen3(cmd, 0, 0)
-    stat = pipeObj.wait()
-    result=pipeObj.fromchild.readlines()
-    if stat == 0:
-        match = 0
-        for l in result:
-            if l.find(name) != -1:
-                match = match + 1
-            if l.find("UP") != -1:
-                match = match + 1
-        if match == 2:
-            rc = [host] + [] + [name]
+    ip = socket.gethostbyname(host)
+    interfaces_list = Interfaces.interfacesGet()
+    for interface in interfaces_list:
+        if interface['ip'] == ip:
+            rc = [host] + [] + [ip]
             return rc
-
+    else:
+        return None
 
 def this_host(use_alias=0):
     rtn = socket.gethostbyname_ex(socket.getfqdn())
