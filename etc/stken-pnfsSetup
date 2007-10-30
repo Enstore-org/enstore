@@ -2,7 +2,6 @@ shmkey=1122
 shmclients=12
 shmservers=70
 environment=/0/root/fs/admin/etc/environment
-#pnfs=/local/ups/prd/pnfs/v3_1_10-f7b
 pnfs=/opt/pnfs
 database=/srv1/pnfs/db/info
 database_postgres=/srv1/pnfs/db/psql-data
@@ -16,3 +15,4 @@ pnfsdLevel=6
 pmountdLevel=6
 levelmask=0:-1:-1:-1:-1:0:0:0
 remotebackup=131.225.13.3:/srv3/pnfs-backup
+export dbConnectString="user=enstore"
