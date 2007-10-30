@@ -203,15 +203,17 @@ def view(volume, media_type):
     end = volume
     stat, start, volsers = aci.aci_qvolsrange(start, end, 1, "")
     if volsers == None:
+        stat = aci.cvar.d_errno
         Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
         return stat,None
 
     if len(volsers) != 1:
+        stat = aci.cvar.d_errno
         Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
         return stat,None
 
     volstate = volsers[0]
-    
+
     return stat, volstate
 
 def list_volser():
@@ -228,6 +230,7 @@ def list_volser():
             all_volsers = all_volsers + volsers
 
         if stat != 0 and aci.cvar.d_errno != derrno.EMOREDATA:
+            stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
                       'aci_qvolsrange returned status=%d' % (stat,))
             return stat,None
@@ -237,6 +240,7 @@ def list_volser():
 def drive_state(drive,client=""):
     stat,drives = aci.aci_drivestatus2(client)
     if stat!=0:
+        stat = aci.cvar.d_errno
         Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
         return stat,None
     for d in range(0,len(drives)):
@@ -257,8 +261,9 @@ def drives_states():
     stat, drives = aci.aci_drivestatus3(clientname)
     #stat, drives = aci.aci_drivestatus2(clientname)
     if stat!=0:
-        Trace.log(e_errors.ERROR, 'drivestatus2 returned status=%d'%(stat,))
-        return stat, None
+        stat = aci.cvar.d_errno
+        Trace.log(e_errors.ERROR, 'drivestatus3 returned status=%d'%(stat,))
+        return stat, []
 
     return stat, drives
 
@@ -567,6 +572,7 @@ def list_slots():
     for tower in range(6):
         device = "ST%02d" % tower
         stat, media_info_totals = aci.aci_getcellinfo(device, 0, total)
+
         if stat!=0:
             Trace.log(e_errors.ERROR,
                       'aci_getcellinfo returned status=%d' % (stat,))

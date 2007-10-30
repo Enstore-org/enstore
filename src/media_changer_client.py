@@ -4,7 +4,7 @@
 #
 # $Id$
 #
-################################################################################
+###############################################################################
 #########################################################################
 #                                                                       #
 # Media Changer client.                                                 #
@@ -53,9 +53,10 @@ class MediaChangerClient(generic_client.GenericClient):
         #if name:
         #    self.server_address = self.get_server_address(name)
 
-    ##These functions should really take a named parameter list rather than "vol_ticket".  It's
-    ## not clear what keys need to be present in vol_ticket.  Looks like
-    ## at least external_label and media_type are needed
+    ##These functions should really take a named parameter list rather than
+    ## "vol_ticket".  It's not clear what keys need to be present in
+    ## vol_ticket.  Looks like at least external_label and media_type are
+    ## needed.
     def loadvol(self, vol_ticket, mover, drive):
         ticket = {'work'           : 'loadvol',
                   'vol_ticket'     : vol_ticket,
@@ -93,7 +94,7 @@ class MediaChangerClient(generic_client.GenericClient):
                   }
         rt = self.send(ticket, rcv_timeout, rcv_tries)
         if not e_errors.is_ok(rt):
-            print "ERROR", rt
+            #print "ERROR", rt
             return rt
         
         r, w, x = select.select([listen_socket], [], [], 15)

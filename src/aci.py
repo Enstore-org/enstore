@@ -17,7 +17,12 @@ from aci_shadow import *
 def aci_clientstatus(clientname):
     x = aci_shadow.aci_clientstatus(clientname)
     if type(x)==type([]):
-        return x[0], aci_shadow.aci_client_entry(x[1])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], aci_shadow.aci_client_entry(x[1])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
         
@@ -25,35 +30,60 @@ def aci_clientstatus(clientname):
 def aci_drivestatus(clientname):
     x = aci_shadow.aci_drivestatus(clientname)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
 
 def aci_drivestatus2(clientname):
     x = aci_shadow.aci_drivestatus2(clientname)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_drive_entry, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
 
 def aci_drivestatus3(clientname):
     x = aci_shadow.aci_drivestatus3(clientname)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_ext_drive_entry, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_ext_drive_entry, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
 
 def aci_drivestatus4(clientname, drivename):
     x = aci_shadow.aci_drivestatus4(clientname, drivename)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_ext_drive_entry4, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_ext_drive_entry4, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
 
 def aci_list(clientname):
     x = aci_shadow.aci_list(clientname)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_req_entry, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_req_entry, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []
 
@@ -64,13 +94,23 @@ def aci_view(clientname, type):
 def aci_qvolsrange(start, end, max_count, clientname):
     x = aci_shadow.aci_qvolsrange(start, end, max_count, clientname)
     if type(x)==type([]):
-        return x[0], x[1], map(aci_shadow.aci_volserinfo, x[2:])
+        if type(x[2]) == type(""):
+            #SWIG 1.1
+            return x[0], x[1], map(aci_shadow.aci_volserinfo, x[2:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1], x[2:]
     else:
         return x, "",  []
 
 def aci_getcellinfo(device, media_type, attrib):
     x = aci_shadow.aci_getcellinfo(device, media_type, attrib)
     if type(x)==type([]):
-        return x[0], map(aci_shadow.aci_media_info, x[1:])
+        if type(x[1]) == type(""):
+            #SWIG 1.1
+            return x[0], map(aci_shadow.aci_media_info, x[1:])
+        else:
+            #SWIG 1.3
+            return x[0], x[1:]
     else:
         return x, []

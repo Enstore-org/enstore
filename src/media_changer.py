@@ -731,7 +731,11 @@ class AML2_MediaLoader(MediaLoaderMethods):
         import aml2
         stat, drives = aml2.drives_states()
 	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_drivestatus2 return code"
+	    #ticket['status'] = 'BAD', stat, "aci_drivestatus2 return code"
+	    ticket['status'] = aml2.convert_status(stat)
+	    drives = []  #To avoid TypeErrors.
+	else:
+	    ticket['status'] = (e_errors.OK, 0, "")
 
 	drive_list = []
 	for drive in drives:
@@ -789,18 +793,24 @@ class AML2_MediaLoader(MediaLoaderMethods):
 			       })
 
 	ticket['drive_list'] = drive_list
-	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
 
     def list_volumes(self, ticket):
 
         if not hostaddr.allow(ticket['callback_addr']):
             return
+
+	ticket['status'] = (e_errors.OK, 0, "") #We modify it if not Okay.
 	    
         import aml2
         stat, volumes = aml2.list_volser()
+	print "type(volumes):", type(volumes)
 	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
+	    #ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
+	    ticket['status'] = aml2.convert_status(stat)
+	    volumes = []  #To avoid TypeErrors.
+	else:
+	    ticket['status'] = (e_errors.OK, 0, "")
 
 	volume_list = []
 	for volume in volumes:
@@ -812,7 +822,6 @@ class AML2_MediaLoader(MediaLoaderMethods):
 				'location' : "",
 				})
 
-	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
 	reply=ticket.copy()
 	reply['volume_list'] = volume_list

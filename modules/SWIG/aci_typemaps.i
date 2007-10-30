@@ -69,76 +69,102 @@
 }
 
 %typemap(argout) struct aci_client_entry *client {
-    char ptr[128];
+    /*char ptr[128];*/
+    PyObject *obj;
 
-    SWIG_NewPointerObj(ptr, $1, "_struct_aci_client_entry_p");
-    $result = return_list($result, PyString_FromString(ptr));
+    /*SWIG_MakePtr(ptr, $1, "_struct_aci_client_entry_p");*/
+    /*$result = return_list($result, PyString_FromString(ptr));*/
+    obj = SWIG_NewPointerObj($1, $1_descriptor, SWIG_POINTER_EXCEPTION);
+    $result = return_list($result, obj);
 }
 
 
 /* aci_req_entry */
-%typemap(in, numinputs=0) struct aci_req_entry* [ANY] {
-    static struct aci_req_entry *result[$dim0];
-    $1 = result;
+%typemap(in, numinputs=0) struct aci_req_entry* [ANY] (struct aci_req_entry *temp[ACI_MAX_REQ_ENTRIES]){
+    $1 = temp;
 }
 
 %typemap(argout) struct aci_req_entry* [ANY]{
     int i;
-    char ptr[128];
+    PyObject *obj;
+    struct aci_req_entry* reqinfo_ptr;
     
     for (i=0; i<$dim0 && $1[i]->request_no; ++i){
-	SWIG_NewPointerObj(ptr, $1[i], "_struct_aci_req_entry_p");
-	$result = return_list($result, PyString_FromString(ptr));
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+	reqinfo_ptr = malloc(sizeof(struct aci_req_entry*));	
+	memcpy(reqinfo_ptr, $1[i], sizeof(struct aci_req_entry*));
+
+        obj = SWIG_NewPointerObj(reqinfo_ptr, $*1_descriptor, SWIG_POINTER_EXCEPTION);
+        $result = return_list($result, obj);
     }
 }
 
 /* aci_drive_entry */
-%typemap(in, numinputs=0) struct aci_drive_entry* [ANY] {
-    static struct aci_drive_entry *result[$dim0];
-    $1 = result;
+%typemap(in, numinputs=0) struct aci_drive_entry* [ANY] (struct aci_drive_entry * temp[ACI_MAX_DRIVE_ENTRIES2]){
+    $1 = temp;
 }
 
 %typemap(argout) struct aci_drive_entry* [ANY]{
     int i;
-    char ptr[128];
+    PyObject *obj;
+    struct aci_drive_entry* driveinfo_ptr;
 
     for (i=0; i<$dim0 && $1[i]->drive_name[0]; ++i){
-	SWIG_NewPointerObj(ptr, $1[i], "_struct_aci_drive_entry_p");
-	$result = return_list($result, PyString_FromString(ptr));
-    }
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+	driveinfo_ptr = malloc(sizeof(struct aci_drive_entry));	
+	memcpy(driveinfo_ptr, $1[i], sizeof(struct aci_drive_entry));
 
+        obj = SWIG_NewPointerObj(driveinfo_ptr, $*1_descriptor, SWIG_POINTER_EXCEPTION);
+        $result = return_list($result, obj);
+    }
 }
 
 /* aci_ext_drive_entry */
-%typemap(in, numinputs=0) struct aci_ext_drive_entry* [ANY] {
-    static struct aci_ext_drive_entry *result[$dim0];
-    $1 = result;
+%typemap(in, numinputs=0) struct aci_ext_drive_entry * [ANY] (struct aci_ext_drive_entry * temp[ACI_MAX_DRIVE_ENTRIES2]) {
+    $1 = temp;
 }
 
 %typemap(argout) struct aci_ext_drive_entry* [ANY]{
     int i;
-    char ptr[128];
+    PyObject *obj;
+    struct aci_ext_drive_entry* driveinfo_ptr;
 
     for (i=0; i<$dim0 && $1[i]->drive_name[0]; ++i){
-	SWIG_NewPointerObj(ptr, $1[i], "_struct_aci_ext_drive_entry_p");
-	$result = return_list($result, PyString_FromString(ptr));
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+	driveinfo_ptr = malloc(sizeof(struct aci_ext_drive_entry));	
+	memcpy(driveinfo_ptr, $1[i], sizeof(struct aci_ext_drive_entry));
+        obj = SWIG_NewPointerObj(driveinfo_ptr, $*1_descriptor, SWIG_POINTER_EXCEPTION | 0);
+        $result = return_list($result, obj);
     }
 
 }
 
 /* aci_ext_drive_entry4 */
-%typemap(in, numinputs=0) struct aci_ext_drive_entry4* [ANY] {
-    static struct aci_ext_drive_entry4 *result[$dim0];
+%typemap(in, numinputs=0) struct aci_ext_drive_entry4* [ANY] (struct aci_ext_drive_entry4 * temp[ACI_MAX_DRIVE_ENTRIES4]){
+    /*static struct aci_ext_drive_entry4 *result[$dim0];*/
     $1 = result;
 }
 
 %typemap(argout) struct aci_ext_drive_entry4* [ANY]{
     int i;
-    char ptr[128];
+    PyObject *obj;
+    struct aci_ext_drive_entry4* driveinfo_ptr;
 
     for (i=0; i<$dim0 && $1[i]->drive_name[0]; ++i){
-	SWIG_NewPointerObj(ptr, $1[i], "_struct_aci_ext_drive_entry4_p");
-	$result = return_list($result, PyString_FromString(ptr));
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+	driveinfo_ptr = malloc(sizeof(struct aci_ext_drive_entry4));	
+	memcpy(driveinfo_ptr, $1[i], sizeof(struct aci_ext_drive_entry4));
+
+        obj = SWIG_NewPointerObj(driveinfo_ptr, $*1_descriptor, SWIG_POINTER_EXCEPTION);
+        $result = return_list($result, obj);
     }
 
 }
@@ -151,10 +177,13 @@
 }
 
 %typemap(argout) struct aci_vol_desc *desc {
-    char ptr[128];
+    /*char ptr[128];*/
+    PyObject *obj;
 
-    SWIG_NewPointerObj(ptr, $1, "_struct_aci_vol_desc_p");
-    $result = return_list($result, PyString_FromString(ptr));
+    /*SWIG_MakePtr(ptr, $1, "_struct_aci_vol_desc_p");
+    $result = return_list($result, PyString_FromString(ptr));*/
+    obj = SWIG_NewPointerObj($1, $1_descriptor, SWIG_POINTER_EXCEPTION);
+    $result = return_list($result, obj);
 }
 
 
@@ -196,12 +225,12 @@ typedef int bool_t;
 }
 
 /* aci_volserinfo */
-%typemap(in, numinputs=0) struct aci_volserinfo* volserinfo{
-    /* This situation is different from other lists.  We don't know
-       what the length of the list will be, so we can't use $dim0. */
-    static struct aci_volserinfo result[(ACI_MAX_QUERY_VOLSRANGE)];
-    memset(result, 0, sizeof(result)); /* Insist this is cleared! */
-    $1 = result;
+%typemap(in, numinputs=0) struct aci_volserinfo* volserinfo (struct aci_volserinfo temp[ACI_MAX_QUERY_VOLSRANGE]) {
+    $1 = temp;
+    /* Insist this is cleared!  If we don't then the memory after the
+    * last legit volser returned will still contain garbage memory and
+    * the output will be garbled. */
+    memset($1, 0, sizeof(temp));
 }
 
 %typemap(argout) struct aci_volserinfo* volserinfo{
@@ -209,19 +238,22 @@ typedef int bool_t;
           struct aci_volserinfo* volserinfo
        as an argument. */
     int i;
-    char ptr[128];
-    struct aci_volserinfo* volserinfo_ptr[(ACI_MAX_QUERY_VOLSRANGE)];
+    PyObject *obj;
+    struct aci_volserinfo* volserinfo_ptr;
 
     /* For aci_qvolsrange(), we need to make dynamic copies of elements in
        the static array.  Otherwise, when we return from this function
        the information gets released and a segmentation fault occurs when
        we finally do try and access it. */
     for (i=0; i < ACI_MAX_QUERY_VOLSRANGE && $1[i].volser[0]; ++i){
-        volserinfo_ptr[i] = malloc(sizeof(struct aci_volserinfo));
-        memcpy(volserinfo_ptr[i], &($1[i]),
-               sizeof(struct aci_volserinfo));
-        SWIG_NewPointerObj(ptr, volserinfo_ptr[i], "_struct_aci_volserinfo_p");
-	$result = return_list($result, PyString_FromString(ptr));
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+	volserinfo_ptr = malloc(sizeof(struct aci_volserinfo));	
+	memcpy(volserinfo_ptr, &($1[i]), sizeof(struct aci_volserinfo));
+
+	obj = SWIG_NewPointerObj(volserinfo_ptr, $1_descriptor, SWIG_POINTER_EXCEPTION);
+        $result = return_list($result, obj);
     }
 }
 
@@ -229,28 +261,34 @@ typedef int bool_t;
 /* aci_media_info */
 %typemap(in, numinputs=0) struct aci_media_info* media_info {
     static struct aci_media_info result[(ACI_MAX_MEDIATYPES)];
-    memset(result, 0, sizeof(result)); /* Insist this is cleared! */
+    /* Insist this is cleared!  If we don't then the memory after the
+    * last legit volser returned will still contain garbage memory and
+    * the output will be garbled. */
+    memset(result, 0, sizeof(result));
     $1 = result;
 }
 
 %typemap(argout) struct aci_media_info* media_info {
-    /* Only aci_getcellinfo() in aci_shadow.i should have:
+    /* Only aci_getcellinfo() in aci_shadow should have:
           struct aci_media_info* media_info
        as an argument. */
     int i;
-    char ptr[128];
-    struct aci_media_info* media_info_ptr[(ACI_MAX_MEDIATYPES)];
+    PyObject *obj;
+    struct aci_media_info* media_info_ptr;
 
     /* For aci_getcellinfo(), we need to make dynamic copies of elements in
        the static array.  Otherwise, when we return from this function
-       the information gets released and a segmentation fault occurs when
-       we finally do try and access it. */
+       the information gets released and a segmentation fault occurs
+       when we finally do try and access it. */
     for (i=0; i < ACI_MAX_MEDIATYPES && $1[i].eMediaType; ++i){
-        media_info_ptr[i] = malloc(sizeof(struct aci_media_info));
-        memcpy(media_info_ptr[i], &($1[i]),
-               sizeof(struct aci_media_info));
-        SWIG_NewPointerObj(ptr, media_info_ptr[i], "_struct_aci_media_info_p");
-	$result = return_list($result, PyString_FromString(ptr));
+	/* The return values from aci are stored in global variables that
+        * cause crashes when swig tries to free() them.  Thus, make a copy
+  	* first and use that. */
+        media_info_ptr = malloc(sizeof(struct aci_media_info));
+        memcpy(media_info_ptr, &($1[i]), sizeof(struct aci_media_info));
+
+        obj = SWIG_NewPointerObj(media_info_ptr, $1_descriptor, SWIG_POINTER_EXCEPTION);
+        $result = return_list($result, obj);
     }
 }
 
@@ -489,8 +527,8 @@ typedef int bool_t;
 
     /* For aci_getcellinfo(), we need to make dynamic copies of elements in
        the static array.  Otherwise, when we return from this function
-       the information gets released and a segmentation fault occurs when
-       we finally do try and access it. */
+       the information gets released and a segmentation fault occurs
+       when we finally do try and access it. */
     for (i=0; i < ACI_MAX_MEDIATYPES && $source[i].eMediaType; ++i){
         media_info_ptr[i] = malloc(sizeof(struct aci_media_info));
         memcpy(media_info_ptr[i], &($source[i]),
