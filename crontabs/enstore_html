@@ -3,7 +3,7 @@
 
 # gererate additional enstore web pages.
 16 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_quota_plot_page make_quota_plot_page  > /dev/null 2> /dev/null
-0 3 * * * root /home/enstore/enstore/sbin/ecron -p make_cron_plot_page make_cron_plot_page /diska/www_pages/cron_pics.html /fnal/ups/prd/www_pages/enstore/CRONS  > /dev/null 2> /dev/null
+0 3 * * * root /home/enstore/enstore/sbin/ecron -p make_cron_plot_page make_cron_plot_page `enstore config --show crons | grep html_dir | cut -d"'" -f 4`/cron_pics.html `enstore config --show crons | grep html_dir | cut -d"'" -f 4`/CRONS  > /dev/null 2> /dev/null
 #This last one used to only run on STKen???
 35 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_tape_ingest_page $ENSTORE_DIR/src/make_ingest_rates_html_page.py > /dev/null 2> /dev/null
 
