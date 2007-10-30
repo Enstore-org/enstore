@@ -9,7 +9,8 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
 . /usr/local/etc/setups.sh
 setup enstore
-
+    vert
+yes
 echo "installing enstore_html"
 /sbin/service httpd stop
 rpm -U --force --nodeps ${place}/enstore_html-1.0-1.noarch.rpm
@@ -29,7 +30,7 @@ then
     if [ -x /etc/rc.d/init.d/postgres ]; then /etc/rc.d/init.d/postgres stop; fi
     #/etc/rc.d/init.d/postgresql stop
 fi
-rpm -U --force ${place}/pnfs-3.1.10-1f.i386.rpm
+rpm -U --force ${place}/pnfs-3.1.10-2f.i386.rpm
 # complete after install pnfs configuration
 # copy setup
 
