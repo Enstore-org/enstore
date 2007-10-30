@@ -73,4 +73,6 @@ then
     $ENSTORE_DIR/sbin/finish_server_install.sh -x $place
 fi
 # install crons
+source /usr/local/etc/setups.sh
+setup enstore
 $ENSTORE_DIR/tools/install_crons.py

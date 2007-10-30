@@ -68,5 +68,7 @@ if [ $server -eq 1 ]
 then
     $ENSTORE_DIR/sbin/finish_server_install.sh $place
 fi
+source /usr/local/etc/setups.sh
+setup enstore
 # install crons
 $ENSTORE_DIR/tools/install_crons.py
