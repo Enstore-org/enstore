@@ -131,7 +131,7 @@ class EcronData:
 		# get a gnuplot
 		# need to put convert together here to make sure the files
 		# are ready before the conversion
-		(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate -20 %s.ps %s_stamp.jpg"%(file,file,file,file))
+		(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(file,file,file,file))
 		gp.write(gscript%(file, self.get_duration(name), tomorrow(), name))
 		if not data:
 			gp.write("%s -5\n"%(one_year_ago()))
