@@ -47,6 +47,7 @@ import mover_client
 #import volume_clerk_client
 #import ratekeeper_client
 import event_relay_client
+import enstore_start
 
 #Less hidden side effects to call this?  Also, pychecker perfers it.
 ### What does this give us?
@@ -68,7 +69,7 @@ def get_csc():
         return csc
     
     return None
-
+'''
 def this_host():
     rtn = socket.gethostbyname_ex(socket.getfqdn())
 
@@ -80,7 +81,7 @@ def is_on_host(host):
         return 1
 
     return 0
-
+'''
 def get_temp_file(server_name):
     #Get the pid file information.
     try:
@@ -128,7 +129,7 @@ def find_servers_by_type(csc, type):
     except errno.errorcode[errno.ETIMEDOUT]:
         config_dict = {'status':(e_errors.TIMEDOUT, None)}
     if not e_errors.is_ok(config_dict) and \
-       is_on_host(os.environ.get('ENSTORE_CONFIG_HOST', None)):
+       enstore_start.is_on_host(os.environ.get('ENSTORE_CONFIG_HOST', None)):
         config_dict = enstore_functions.get_config_dict()
         if config_dict:
             config_dict = config_dict.configdict
@@ -199,7 +200,7 @@ def kill_process(pid):
 
 def quit_process(gc):
 
-    if not is_on_host(gc.server_address[0]):
+    if not enstore_start.is_on_host(gc.server_address[0]):
         return None
 
     #Send the quit message.
@@ -372,8 +373,8 @@ def check_event_relay(csc):
         return
     # If the process is running on this host continue, if not running on
     # this host return.
-    if not is_on_host(info.get('host', None)) and \
-       not is_on_host(info.get('hostip', None)):
+    if not enstore_start.is_on_host(info.get('host', None)) and \
+       not enstore_start.is_on_host(info.get('hostip', None)):
         return
 
     erc = event_relay_client.EventRelayClient(event_relay_host=info['hostip'],
@@ -436,8 +437,12 @@ def check_server(csc, name):
         return
     # If the process is running on this host continue, if not running on
     # this host return.
-    if not is_on_host(info.get('host', None)) and \
-       not is_on_host(info.get('hostip', None)):
+    if name == 'configuration_server':
+        use_alias = 1
+    else:
+        use_alias = 0
+    if not enstore_start.is_on_host(info.get('host', None),use_alias) and \
+       not enstore_start.is_on_host(info.get('hostip', None), use_alias):
         return
 
     gc = generic_client.GenericClient(csc, name,

@@ -103,10 +103,10 @@ def this_alias(host):
             return rc
 
 
-def this_host():
+def this_host(use_alias=0):
     rtn = socket.gethostbyname_ex(socket.getfqdn())
 
-    if not os.environ['ENSTORE_CONFIG_HOST'] in rtn:
+    if use_alias and (not os.environ['ENSTORE_CONFIG_HOST'] in rtn):
         # try alias
         rc = this_alias(os.environ['ENSTORE_CONFIG_HOST'])
         if rc:
@@ -117,8 +117,8 @@ def this_host():
     else:
         return [rtn[0]] + rtn[1] + rtn[2]
 
-def is_on_host(host):
-    if host in this_host():
+def is_on_host(host, use_alias=0):
+    if host in this_host(use_alias):
         return 1
 
     return 0
@@ -386,7 +386,7 @@ def check_config_server(intf, name='configuration_server', start_cmd=None):
     config_host_ip = socket.gethostbyname(config_host)
     #Compare the the ip values.  If a match is found continue with starting
     # the config server.  Otherwise return.
-    if not is_on_host(config_host_ip):
+    if not is_on_host(config_host_ip, use_alias=1):
         return
     #chip = config_host_ip.split('.')
     #for host_ip in host_ips:
@@ -605,18 +605,15 @@ def do_work(intf):
     #Get the python binary name.  If necessary, python options could
     # be specified here.
     #python_binary = "python"
-    print "AM START CONFIG SERVER"
     #Start the configuration server.
     if intf.should_start(enstore_constants.CONFIGURATION_SERVER):
-        print "AM SHOULD START"
         check_config_server(intf, name='configuration_server',
                             start_cmd="$ENSTORE_DIR/sbin/configuration_server "\
                             "--config-file $ENSTORE_CONFIG_FILE")
 
     csc = get_csc()
-    print "AM MY_SERVER", configuration_client.MY_SERVER
     rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
-    print "AM rtn", rtn
+    #print "AM rtn", rtn
     if not e_errors.is_ok(rtn):
         #If the configuration server was not specifically specified.
         print "Configuration server not running:", rtn['status']
