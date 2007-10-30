@@ -64,7 +64,6 @@ def get_csc():
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
-    print "AM hst",config_host
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
     return csc
@@ -72,35 +71,26 @@ def get_csc():
 def this_alias(host):
     name=socket.gethostbyname(host)
     cmd='grep "'+'%s'%(name,)+'"'+' /etc/sysconfig/network-scripts/*'
-    print cmd
     pipeObj = popen2.Popen3(cmd, 0, 0)
     stat = pipeObj.wait()
-    print "STAT", stat
     result=pipeObj.fromchild.readlines()
-    print "result", result
     if stat == 0:
         control_file=result[0].split(':')[0]
-        print "control_file",control_file
 
     else:
         return None
     cmd='grep DEVICE %s'%(control_file,)
     pipeObj = popen2.Popen3(cmd, 0, 0)
     stat = pipeObj.wait()
-    print "STAT", stat
     result=pipeObj.fromchild.readlines()
-    print "result", result
     if stat == 0:
         dev = result[0].split('=')[1][:-1]
-        print 'device', dev
     else:
         return None
     cmd='/sbin/ifconfig %s'%(dev,)
     pipeObj = popen2.Popen3(cmd, 0, 0)
     stat = pipeObj.wait()
-    print "STAT", stat
     result=pipeObj.fromchild.readlines()
-    print "result", result
     if stat == 0:
         match = 0
         for l in result:
@@ -115,7 +105,6 @@ def this_alias(host):
 
 def this_host():
     rtn = socket.gethostbyname_ex(socket.getfqdn())
-    print "AM THIS HOST", rtn
 
     if not os.environ['ENSTORE_CONFIG_HOST'] in rtn:
         # try alias
@@ -389,19 +378,16 @@ def check_event_relay(csc, intf, cmd):
 def check_config_server(intf, name='configuration_server', start_cmd=None):
     #host = socket.gethostname()
     config_host = os.environ.get('ENSTORE_CONFIG_HOST')
-    print "AM CONFIG HOST",config_host 
     if not config_host:
         print "ENSTORE_CONFIG_HOST is not set. Exiting"
         sys.exit(1)
     
     #host_ips = socket.gethostbyname_ex(host)[2]
     config_host_ip = socket.gethostbyname(config_host)
-    print "AM 0"
     #Compare the the ip values.  If a match is found continue with starting
     # the config server.  Otherwise return.
     if not is_on_host(config_host_ip):
         return
-    print "AM 1"           
     #chip = config_host_ip.split('.')
     #for host_ip in host_ips:
     #    hip = host_ip.split('.')
