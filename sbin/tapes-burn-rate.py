@@ -6,7 +6,7 @@ import sys
 import popen2
 import time
 import pprint
-
+import configuration_client
 
 import configuration_client
 import enstore_constants
@@ -18,12 +18,13 @@ CAP_9940=60
 CAP_9940B=200
 CAP_LTO=100
 
-systems=['cdfen','d0en','stken']
+systems=[]
+#systems=['cdfen','d0en','stken']
 QUOTAS = {}
 libraries = {}
-for system in systems:
-    libraries[system] = {}
-
+#for system in systems:
+#    libraries[system] = {}
+#
 def sort_the_file(infile):
     fi = open(infile,'r')
     fo = open('%s.tmp'%(infile,),'w')
@@ -65,18 +66,6 @@ def get_capacity(volume, system):
             ret = 0
     return ret
 
-def lib_capacity(g):
-    l, sg = g.split('.')
-    for system in libraries.keys():
-        if libraries[system].has_key(l) and sg in libraries[system][l]['storage_groups']:
-            cap = libraries[system][l]['volume_capacity']
-            break
-    else:
-        cap = 0
-    print "CAPACITY %s"%(cap,)
-    return cap
-
-    
 #&columns=Mb_User_Write%2C%20Tape_Volser%2C%20time_stamp
 #&orders=Tape_Volser%20Asc%0D%0A
 
@@ -101,13 +90,15 @@ for when in 'date --date "4 months ago"  +"%b-%y"','date --date "34 days"  +"%b-
        d2 = string.upper(d2)
 print 'Generating burn-rate plots from', d1, ' to ',d2
 
-hosts = ("d0ensrv6.fnal.gov","stkensrv6.fnal.gov","cdfensrv6.fnal.gov")
 intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
 csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+inq_d = csc.get(enstore_constants.INQUISITOR, {})
+html_dir = inq_d["html_file"]
+this_web_host = csc.get('web_server').get('ServerHost','stkensrv2')
 
 servers=[]
 servers=csc.get('known_config_servers')
-query_cmd='psql -h %s -p %d -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0;" drivestat'
+query_cmd='psql -h %s -p %d -U %s -o "drivestat.%s.txt" -c "select time,tape_volser,mb_user_write from status where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0;" drivestat'
 
 
 for server in servers:
@@ -116,31 +107,59 @@ for server in servers:
     if ( server_port != None ):
         config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
         acc = config_server_client.get(enstore_constants.DRIVESTAT_SERVER)
-        db_server_name = acc.get('dbhost')
-        db_name        = acc.get('dbname')
+        db_server_name = acc.get('dbhost','localhost')
+        db_name        = acc.get('dbname','drivestat')                                
+        db_user        = acc.get('dbuser','enstore')
         db_port        = acc.get('dbport',5432)
         name           = db_server_name.split('.')[0]
-        pipeObj = popen2.Popen3(query_cmd%(db_server_name,db_port,db_server_name,"'", d1, "'", "'", d2, "'"), 0, 0)
+        pipeObj = popen2.Popen3(query_cmd%(db_server_name,db_port,db_user,db_server_name,"'", d1, "'", "'", d2, "'"), 0, 0)
         if pipeObj is None:
             sys.exit(1) 
         stat = pipeObj.wait()
         result = pipeObj.fromchild.readlines()  # result has returned string
         os.system("cat drivestat.%s.txt >> dstat.txt"%(db_server_name,))
+        web_host=config_server_client.get('web_server').get('ServerHost',server_name)
+        systems.append(web_host)
 
-    
-
-for cmd in \
-           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.vol_sizes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O d0en.vol_sizes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O stken.vol_sizes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
-           '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
-    print cmd
+for system in systems:
+    cmd='wget -O %s.volumes "http://%s/enstore/tape_inventory/VOLUMES_DEFINED"'%(system,system)
     os.system(cmd)
+
+    cmd='wget -O  %s.vol_sizes "http://%s/enstore/tape_inventory/VOLUME_SIZE"'%(system,system)
+    os.system(cmd)
+
+    cmd='wget -O  %s.quotas "http://%s/enstore/tape_inventory/VOLUME_QUOTAS"'%(system,system)
+    os.system(cmd)
+
+#for cmd in \
+#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.volumes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.volumes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O stken.volumes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUMES_DEFINED"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.vol_sizes "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.vol_sizes  "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O stken.vol_sizes "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_SIZE"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O cdfen.quotas  "http://cdfensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O d0en.quotas   "http://d0ensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"', \
+#           '$ENSTORE_DIR/bin/Linux/wget -O stken.quotas  "http://stkensrv2.fnal.gov/enstore/tape_inventory/VOLUME_QUOTAS"':
+#    print cmd
+#    os.system(cmd)
+#
+
+for system in systems:
+    libraries[system] = {}
+
+
+def lib_capacity(g):
+    l, sg = g.split('.')
+    for system in libraries.keys():
+        if libraries[system].has_key(l) and sg in libraries[system][l]['storage_groups']:
+            cap = libraries[system][l]['volume_capacity']
+            break
+    else:
+        cap = 0
+    print "CAPACITY %s"%(cap,)
+    return cap
+
 for thefile in systems:
     print 'processing',thefile,'quotas'
     f = open(thefile+".quotas","r")
@@ -186,7 +205,8 @@ print "QUOTAS"
 pprint.pprint(QUOTAS)
 
 TAPES = {}
-for thefile in 'cdfen','d0en','stken':
+#for thefile in 'cdfen','d0en','stken':
+for thefile in systems:
     print 'processing',thefile,'volumes'
     f = open(thefile+".volumes","r")
     f.readline()
@@ -466,7 +486,7 @@ print cmd
 os.system(cmd)
 
 
-cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg stkensrv2:/fnal/ups/prd/www_pages/enstore/burn-rate/'
+cmd = 'source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps *.jpg %s:%s/burn-rate'%(this_web_host,html_dir)
 print cmd
 os.system(cmd)
 
