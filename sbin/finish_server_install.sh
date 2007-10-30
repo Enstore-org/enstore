@@ -9,8 +9,6 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
 . /usr/local/etc/setups.sh
 setup enstore
-    vert
-yes
 echo "installing enstore_html"
 /sbin/service httpd stop
 rpm -U --force --nodeps ${place}/enstore_html-1.0-1.noarch.rpm
