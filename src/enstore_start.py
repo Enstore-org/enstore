@@ -64,14 +64,69 @@ def get_csc():
     # get a configuration server
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
+    print "AM hst",config_host
     csc = configuration_client.ConfigurationClient((config_host,config_port))
 
     return csc
 
+def this_alias(host):
+    name=socket.gethostbyname(host)
+    cmd='grep "'+'%s'%(name,)+'"'+' /etc/sysconfig/network-scripts/*'
+    print cmd
+    pipeObj = popen2.Popen3(cmd, 0, 0)
+    stat = pipeObj.wait()
+    print "STAT", stat
+    result=pipeObj.fromchild.readlines()
+    print "result", result
+    if stat == 0:
+        control_file=result[0].split(':')[0]
+        print "control_file",control_file
+
+    else:
+        return None
+    cmd='grep DEVICE %s'%(control_file,)
+    pipeObj = popen2.Popen3(cmd, 0, 0)
+    stat = pipeObj.wait()
+    print "STAT", stat
+    result=pipeObj.fromchild.readlines()
+    print "result", result
+    if stat == 0:
+        dev = result[0].split('=')[1][:-1]
+        print 'device', dev
+    else:
+        return None
+    cmd='/sbin/ifconfig %s'%(dev,)
+    pipeObj = popen2.Popen3(cmd, 0, 0)
+    stat = pipeObj.wait()
+    print "STAT", stat
+    result=pipeObj.fromchild.readlines()
+    print "result", result
+    if stat == 0:
+        match = 0
+        for l in result:
+            if l.find(name) != -1:
+                match = match + 1
+            if l.find("UP") != -1:
+                match = match + 1
+        if match == 2:
+            rc = [host] + [] + [name]
+            return rc
+
+
 def this_host():
     rtn = socket.gethostbyname_ex(socket.getfqdn())
+    print "AM THIS HOST", rtn
 
-    return [rtn[0]] + rtn[1] + rtn[2]
+    if not os.environ['ENSTORE_CONFIG_HOST'] in rtn:
+        # try alias
+        rc = this_alias(os.environ['ENSTORE_CONFIG_HOST'])
+        if rc:
+            return rc
+        else:
+            return [rtn[0]] + rtn[1] + rtn[2]
+
+    else:
+        return [rtn[0]] + rtn[1] + rtn[2]
 
 def is_on_host(host):
     if host in this_host():
@@ -334,18 +389,19 @@ def check_event_relay(csc, intf, cmd):
 def check_config_server(intf, name='configuration_server', start_cmd=None):
     #host = socket.gethostname()
     config_host = os.environ.get('ENSTORE_CONFIG_HOST')
+    print "AM CONFIG HOST",config_host 
     if not config_host:
         print "ENSTORE_CONFIG_HOST is not set. Exiting"
         sys.exit(1)
     
     #host_ips = socket.gethostbyname_ex(host)[2]
     config_host_ip = socket.gethostbyname(config_host)
-
+    print "AM 0"
     #Compare the the ip values.  If a match is found continue with starting
     # the config server.  Otherwise return.
     if not is_on_host(config_host_ip):
         return
-               
+    print "AM 1"           
     #chip = config_host_ip.split('.')
     #for host_ip in host_ips:
     #    hip = host_ip.split('.')
@@ -563,15 +619,18 @@ def do_work(intf):
     #Get the python binary name.  If necessary, python options could
     # be specified here.
     #python_binary = "python"
-
+    print "AM START CONFIG SERVER"
     #Start the configuration server.
     if intf.should_start(enstore_constants.CONFIGURATION_SERVER):
+        print "AM SHOULD START"
         check_config_server(intf, name='configuration_server',
                             start_cmd="$ENSTORE_DIR/sbin/configuration_server "\
                             "--config-file $ENSTORE_CONFIG_FILE")
 
     csc = get_csc()
+    print "AM MY_SERVER", configuration_client.MY_SERVER
     rtn = csc.alive(configuration_client.MY_SERVER, 3, 3)
+    print "AM rtn", rtn
     if not e_errors.is_ok(rtn):
         #If the configuration server was not specifically specified.
         print "Configuration server not running:", rtn['status']
