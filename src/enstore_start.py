@@ -72,8 +72,9 @@ def get_csc():
 def this_alias(host):
     ip = socket.gethostbyname(host)
     interfaces_list = Interfaces.interfacesGet()
-    for interface in interfaces_list:
-        if interface['ip'] == ip:
+    print interfaces_list
+    for interface in interfaces_list.keys():
+        if interfaces_list[interface]['ip'] == ip:
             rc = [host] + [] + [ip]
             return rc
     else:
