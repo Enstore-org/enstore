@@ -50,8 +50,11 @@ if [ "${fnal:-x}" = "fnal" ]
 then
     echo "installing swig"
     rpm -U --force ${place}/swig-enstore-1_883-1.i386.rpm 
-    echo "installing aci"
-    rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
+    if [ $server -eq 1 ]
+    then
+	echo "installing aci"
+	rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
+    fi
     echo "Installing enstore"
     rpm -Uvh --force ${place}/enstore-1.0.1-9.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore | head -1`
