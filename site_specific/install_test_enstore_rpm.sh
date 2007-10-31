@@ -72,8 +72,10 @@ if [ $server -eq 1 ]
 then
     $ENSTORE_DIR/sbin/finish_server_install.sh -x $place
 fi
-# install crons
 unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
 setup enstore
+# bring up alais intrefaces
+$ENSTORE_DIR/tools/service_ips 
+# install crons
 $ENSTORE_DIR/tools/install_crons.py
