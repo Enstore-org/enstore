@@ -2,7 +2,7 @@
 
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
-if [ "${1:-}" = "" ] ; then html_file="`enstore config --show crons | grep html_dir | cut -d"'" -f 4`/enstore_quota.html";
+if [ "${1:-}" = "" ] ; then html_file="`enstore config --show crons | grep html_dir | cut -d"'" -f 4`/enstore_quotas.html";
 else html_file=$1;shift;fi
 if [ "${1:-}" = "" ] ; then in_dir="`enstore config --show crons | grep html_dir | cut -d"'" -f 4`/tape_inventory/quotas";
 else in_dir=$1;shift;fi
