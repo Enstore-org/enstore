@@ -23,7 +23,7 @@
 ##
 25 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p encp_rate_plot_multi "sh -c 'cd /home/enstore; source /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages; python $ENSTORE_DIR/sbin/encp_rate_plot_multi.py'"  > /dev/null 2> /dev/null
 ##
-40 17 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/ecron -p file_family_usage "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; cd /diska/www_pages/file_family_usage; python $ENSTORE_DIR/sbin/file_family_analysis.py'"  > /dev/null 2> /dev/null
+40 17 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/ecron -p file_family_usage "sh -c 'cd /home/enstore; . /usr/local/etc/setups.sh 1>>/dev/null 2>&1; setup postgres; python $ENSTORE_DIR/sbin/file_family_analysis.py'"  > /dev/null 2> /dev/null
 ##
 30 2 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --pts_dir=/local/ups/prd/www_pages/enstore --no-plot-html  > /dev/null 2> /dev/null
 
