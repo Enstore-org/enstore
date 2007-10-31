@@ -198,9 +198,9 @@ def kill_process(pid):
     #The process is already gone.
     return 0
 
-def quit_process(gc):
-
-    if not enstore_start.is_on_host(gc.server_address[0]):
+def quit_process(gc, use_alias=0):
+    print gc
+    if not enstore_start.is_on_host(gc.server_address[0], use_alias):
         return None
 
     #Send the quit message.
@@ -224,7 +224,12 @@ def stop_server(gc, servername):
     #Get this information for the pid.
     rtn = gc.alive(servername, SEND_TO, SEND_TM)
     #Try to kill the process nicely.
-    if not quit_process(gc):
+    if servername == 'configuration_server':
+        use_alias = 1
+    else:
+        use_alias = 0
+
+    if not quit_process(gc, use_alias):
         #Success, the process is dead.
         remove_pid_file(servername)
         print "Stopped %s." % (servername,)
