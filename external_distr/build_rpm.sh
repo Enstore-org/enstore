@@ -16,6 +16,14 @@ then
     echo You need to run this script as user "root"
     exit 1
 fi
+
+buildroot="/usr/src/redhat/"
+for d in BUILD RPMS SOURCES SPECS SRPMS; do
+    if [ ! -d $buildroot$d ];then
+	mkdir -p $buildroot$d
+    fi
+done
+
 cd /tmp
 mkdir enstore_build
 cd enstore_build
