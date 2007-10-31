@@ -18,6 +18,7 @@ import pg
 import enstore_constants
 import histogram
 import thread
+import socket
 PB=1024.*1024.*1024.*1024.*1024.
 TB=1024.*1024.*1024.*1024.
 GB=1024.*1024.*1024.
@@ -29,9 +30,8 @@ SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date betwee
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_day group by date order by date" # was xferby_month
 
 SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
-SELECT_WRITTEN_BYTES ="select  substr(bfid,5,10), size, deleted  from file where  file.deleted = 'n' and file.volume in (select volume.id from volume where volume.media_type != 'null' and system_inhibit_0 != 'DELETED' ) "
 
-#select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null' and deleted='n'";
+SELECT_WRITTEN_BYTES ="select  substr(bfid,5,10), size, deleted  from file where  file.deleted = 'n' and file.volume in (select volume.id from volume where volume.media_type != 'null' and system_inhibit_0 != 'DELETED' ) "
 
 def bfid2time(bfid):
     if bfid[-1] == "L":
@@ -117,26 +117,23 @@ def fill_histograms(i,server_name,server_port,hlist):
 def fill_tape_histograms(i,server_name,server_port,hlist):
     config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
     acc            = config_server_client.get("database", {})
-    db_server_name = acc.get('db_host')
-    db_name        = acc.get('dbname')
-    db_port        = acc.get('db_port')
-    name           = db_server_name.split('.')[0]
-    name=db_server_name.split('.')[0]
-#    print "we are in thread ",i,db_server_name,db_name,db_port
-    
+    db = pg.DB(host  = acc.get('db_host', "localhost"),
+               dbname= acc.get('dbname', "enstoredb"),
+               port  = acc.get('db_port', 5432),
+               user  = acc.get('dbuser', "enstore"))
     h   = hlist[i]
-    
-    if db_port:
-        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
-    else:
-        db = pg.DB(host=db_server_name, dbname=db_name);    
-#    res=db.query(SELECT_WRITTEN_BYTES)
-#    for row in res.getresult():
-#        if not row:
-#            continue
-#        h.fill(float(row[0]),float(row[1])/TB)
-    db.query("begin");
-    db.query("declare file_cursor cursor for select bfid, size from file where deleted = 'n';")
+    db.query("begin")
+    q="declare file_cursor cursor for select bfid, size from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED'"
+    if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
+        remote=False
+        q=q+" and library in ("
+        for l in "cdf", "CDF-9940B", "CDF-LTO3", "CDF-LTO4","mezsilo", "samlto", "samm2", "sammam", "D0-9940B", "samlto2", "shelf-samlto", "D0-LTO3", "D0-LTO4", "9940",  "CD-9940B", "CD-LTO3", "CD-LTO4":
+            q=q+"'"+l+"',"
+        q=q[0:-1]
+        q=q+")";
+
+    db.query(q)
+#    db.query("declare file_cursor cursor for select bfid, size from file where deleted = 'n';")
     while True:
         res =  db.query("fetch 10000 from file_cursor;").getresult()
         for row in res:
