@@ -487,8 +487,13 @@ if __name__ == "__main__":
     intf = ConfigurationServerInterface()
 
     # get a configuration server
-    cs = ConfigurationServer((intf.config_host, intf.config_port),
-	                     intf.config_file)
+    ## By using "" instead of intf.config_host, we will allow the
+    ## configuration server to respond to any request that arrives on
+    ## any configured interface on the system.  This gives more flexibility
+    ## if the ENSTORE_CONFIG_HOST value resovles to a different IP than the
+    ## pysical IP on the same machine.
+    cs = ConfigurationServer(("", intf.config_port),
+    	                     intf.config_file)
     cs.handle_generic_commands(intf)
     # bomb out if we can't find the file
     statinfo = os.stat(intf.config_file)
