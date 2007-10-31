@@ -50,8 +50,20 @@ saveit() { #  Tapes have to be declared to the volume server and in the correct 
          }
 
 verbose="--verbose=1"
-filePath='/diska'
+
+# filePath='/diska'
+# VAULT=${filePath}/BackupToTape
+# BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
+# PNFS=${filePath}/pnfs-backup*/
+# ENSTORE=${filePath}/enstore-backup
+# ENSTORELOG=${filePath}/enstore-log-backup
+# QUIT=$VAULT/QUIT
+# TIMEONDISK=1  #days
+
+backup_path=`enstore config --show backup| grep "'dir':" | cut -d"'" -f 4`
+filePath=`dirname $backup_path`
 VAULT=${filePath}/BackupToTape
+if [ ! -d $VAULT ]; then mkdir $VAULT; fi
 BACKUP_LOG=${VAULT}/backup_log;     export BACKUP_LOG
 PNFS=${filePath}/pnfs-backup*/
 ENSTORE=${filePath}/enstore-backup
@@ -61,6 +73,10 @@ TIMEONDISK=1  #days
 
 # Fermi specific stuff
 if [ $node = d0ensrv3 ]; then
+  pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
+  ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
+
+elif [ $node = d0ensrv3n ]; then
   pnfspath="/pnfs/eagle/d0en-backups/`date_string_d`"; export pnfspath
   ENSTORE_CONFIG_HOST=stkensrv2.fnal.gov
 
@@ -173,7 +189,7 @@ echo $ENSTORE/JOURNALS/journals.tar >> /tmp/journals
 echo $ENSTORE/JOURNALS/journals.tar >> $ENSTORE_FILES
 rm -f /tmp/journal_files
 # cat /tmp/journals >> $ENSTORE_FILES
-ls /diska/pgdb-backup/*.01 >> $ENSTORE_FILES
+ls $backup_path/ACC-DST/*.01 >> $ENSTORE_FILES
 
 lines=`wc -l $ENSTORE_FILES | awk '{print $1}'`
 list ""
