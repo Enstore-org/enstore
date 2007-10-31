@@ -11,6 +11,11 @@
 #    'conf-gccen' : "gccensrv1.fnal.gov",
 #    }
 
+if [ `id -u` -ne 0 ]; then
+   echo "Must be user root." 1>&2
+   exit 1
+fi
+
 which enstore > /dev/null 2> /dev/null
 if [ $? -ne 0 ]; then
     echo "The enstore command was not found." 1>&2
