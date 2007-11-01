@@ -220,7 +220,7 @@ class ConfigurationClient(generic_client.GenericClient):
                    }
         reply = self.send(request, timeout, retry)
         if not e_errors.is_ok(reply):
-            print "ERROR",reply
+            #print "ERROR",reply
             return reply
         r, w, x = select.select([listen_socket], [], [], 15)
         if not r:
