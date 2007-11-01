@@ -75,7 +75,7 @@ then
 fi
 
 # install compress
-yum install ncompress
+yum -y install ncompress
 #create pnfs directory
 if [ ! -d /pnfs ];
 then
