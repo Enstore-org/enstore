@@ -79,6 +79,9 @@ unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
 setup enstore
 # bring up alais intrefaces
+echo Intializing service IPs
 $ENSTORE_DIR/tools/service_ips 
 # install crons
+echo Installing crons
 $ENSTORE_DIR/tools/install_crons.py
+
