@@ -199,7 +199,6 @@ def kill_process(pid):
     return 0
 
 def quit_process(gc, use_alias=0):
-    print gc
     if not enstore_start.is_on_host(gc.server_address[0], use_alias):
         return None
 
