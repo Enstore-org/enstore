@@ -17,12 +17,15 @@ rpm -q postgesql > /dev/null
 if [ $? -ne 0 ]; 
 then
     echo "installing postgres"
-rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm ${place}/postgresql-8.2.4-1PGDG.i686.rpm ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
-rm -f /tmp/postgresql
-mv /etc/rc.d/init.d/postgresql /tmp/postgresql
-echo "Modifying dbuser name"
-sed -e 's/postgres:postgres/enstore:enstore/' -e 's/l postgres/l enstore/' /tmp/postgresql > /etc/init.d/postgresql 
-chmod a+x /etc/init.d/postgresql
+    rpm -U --force ${place}/postgresql-libs-8.2.4-1PGDG.i686.rpm ${place}/postgresql-8.2.4-1PGDG.i686.rpm ${place}/postgresql-server-8.2.4-1PGDG.i686.rpm ${place}/postgresql-devel-8.2.4-1PGDG.i686.rpm
+    rm -f /tmp/postgresql
+    mv /etc/rc.d/init.d/postgresql /tmp/postgresql
+    echo "Modifying dbuser name"
+    sed -e 's/postgres:postgres/enstore:enstore/' -e 's/l postgres/l enstore/' /tmp/postgresql > /etc/init.d/postgresql 
+    chmod a+x /etc/init.d/postgresql
+    echo "Change shared memory settings"
+    echo "kernel.shmmax=268435456" >> /etc/sysctl.conf
+    echo "kernel.shmall=268435456" >> /etc/sysctl.conf
 fi
 
 echo "installing pnfs"
