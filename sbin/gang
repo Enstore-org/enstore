@@ -5,25 +5,37 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 
 # $Id$
 
-node=`hostname -s`
+node=${1:-`hostname -s`}
+gang=""
 
-case $node in
+farmlets=/usr/local/etc/farmlets
+if [ -d $farmlets ]; then
+  mstr=`grep ^${node}\$ $farmlets/{d0,stk,cdf,gcc}en 2>/dev/null`
+  if [ `echo $mstr | wc -w` -eq 1 ]; then
+    # extract matching filename, up to the first ":"
+    gang=`expr $mstr : '\(.*\):'`
+    gang=`basename $gang`
+  fi
+fi
 
-  stken*|fndca*|cmspnfs1|eagpnfs1)
-	gang=stken
-	;;
-  gccen*)
-	gang=gccen
-	;;
-  d0en*)
-	gang=d0en
-	;;
-  cdfen*)
-	gang=cdfen
-	;;
-  *)
-	gang=UNKNOWN
-	;;
-esac
+if [ -z $gang ]; then
+  case $node in
+    stken*|fndca*|cmspnfs?|eagpnfs?)
+	  gang=stken
+	  ;;
+    cdfen*)
+	  gang=cdfen
+	  ;;
+    d0en*)
+	  gang=d0en
+	  ;;
+    gccen*)
+	  gang=gccen
+	  ;;
+    *)
+	  gang=UNKNOWN
+	  ;;
+  esac
+fi
 
 echo $gang
