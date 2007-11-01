@@ -386,6 +386,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.list_library_managers = 0
         self.list_media_changers = 0
         self.list_movers = 0
+        self.file_fallback = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -398,32 +399,14 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                 self.config_options)
 
     config_options = {
-        option.SHOW:{option.HELP_STRING:"print the current configuration",
-                     option.DEFAULT_TYPE:option.INTEGER,
-                     #Default label is used for switches that take an
-                     # unknown number arguments from intf.args and not
-                     # from the specification in this dictionary.
-                     option.DEFAULT_LABEL:"[value_name [value_name [...]]]",
-                     option.USER_LEVEL:option.ADMIN,
-                     #option.VALUE_LABEL:"[value_name [value_name [...]]]",
-                     #option.EXTRA_VALUES:[{
-                     #    option.VALUE_NAME:"server",
-                     #    option.VALUE_TYPE:option.STRING,
-                     #    option.VALUE_USAGE:option.OPTIONAL,
-                     #    option.DEFAULT_TYPE:None,
-                     #    option.DEFAULT_VALUE:None
-                     #    }]
-                     },
-        option.LOAD:{option.HELP_STRING:"load a new configuration",
-                     option.DEFAULT_TYPE:option.INTEGER,
-		     option.USER_LEVEL:option.ADMIN},
-        option.SUMMARY:{option.HELP_STRING:"summary for saag",
-                        option.DEFAULT_TYPE:option.INTEGER,
-			option.USER_LEVEL:option.ADMIN},
         option.CONFIG_FILE:{option.HELP_STRING:"config file to load",
                             option.VALUE_USAGE:option.REQUIRED,
                             option.DEFAULT_TYPE:option.STRING,
 			    option.USER_LEVEL:option.ADMIN},
+        option.FILE_FALLBACK:{option.HELP_STRING:"return configuration from"
+                              " file if configuration server is down",
+                              option.DEFAULT_TYPE:option.INTEGER,
+                              option.USER_LEVEL:option.ADMIN},
         option.LIST_LIBRARY_MANAGERS:{option.HELP_STRING:
                                       "list all library managers in "
                                       "configuration",
@@ -444,6 +427,28 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                             option.DEFAULT_TYPE:option.INTEGER,
                             option.VALUE_USAGE:option.IGNORED,
                             option.USER_LEVEL:option.ADMIN},
+        option.LOAD:{option.HELP_STRING:"load a new configuration",
+                     option.DEFAULT_TYPE:option.INTEGER,
+		     option.USER_LEVEL:option.ADMIN},
+        option.SHOW:{option.HELP_STRING:"print the current configuration",
+                     option.DEFAULT_TYPE:option.INTEGER,
+                     #Default label is used for switches that take an
+                     # unknown number arguments from intf.args and not
+                     # from the specification in this dictionary.
+                     option.DEFAULT_LABEL:"[value_name [value_name [...]]]",
+                     option.USER_LEVEL:option.ADMIN,
+                     #option.VALUE_LABEL:"[value_name [value_name [...]]]",
+                     #option.EXTRA_VALUES:[{
+                     #    option.VALUE_NAME:"server",
+                     #    option.VALUE_TYPE:option.STRING,
+                     #    option.VALUE_USAGE:option.OPTIONAL,
+                     #    option.DEFAULT_TYPE:None,
+                     #    option.DEFAULT_VALUE:None
+                     #    }]
+                     },
+        option.SUMMARY:{option.HELP_STRING:"summary for saag",
+                        option.DEFAULT_TYPE:option.INTEGER,
+			option.USER_LEVEL:option.ADMIN},
         option.TIMESTAMP:{option.HELP_STRING:
                           "last time configfile was reloaded",
                           option.DEFAULT_TYPE:option.INTEGER,
@@ -455,6 +460,35 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                               option.USER_LEVEL:option.ADMIN},
          }
 
+def print_configuration(config_dict, intf):
+    #If there is an error it is printed out at the end of the function
+    # in csc.check_ticket().  On success, work as normal. 
+    if e_errors.is_ok(config_dict):
+        #Loop through what the user specified (if anything) and return
+        # the desired result(s).
+        use_config = config_dict['dump']
+        for item in intf.args:
+            if type(use_config) == types.DictType:
+                try:
+                    use_config = use_config[item]
+                except KeyError:
+                    config_dict['status'] = (e_errors.KEYERROR,
+                        "Unable to find requested information (1).\n")
+                    break
+            else:
+                config_dict['status'] = (e_errors.CONFLICT,
+                        "Unable to find requested information (2).\n")
+                break
+        else:
+            #If there wasn't a problem finding the information, print it.
+            if type(use_config) == types.StringType:
+                #Suppress the '' that pprint.pprint() wants to surround
+                # native strings.
+                print use_config
+            else:
+                pprint.pprint(use_config)
+
+
 def do_work(intf):
     csc = ConfigurationClient((intf.config_host, intf.config_port))
     csc.csc = csc
@@ -464,7 +498,35 @@ def do_work(intf):
             print "Server configuration found at %s." % (result['address'],)
     if result:
         pass
+    elif intf.show and intf.file_fallback:
+        #Attempt to get the configuration from the configuration server.
+        try:
+            result = csc.dump(3, 3)
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit(1)
+        except (socket.error, select.error), msg:
+            if msg.args[0] == errno.ETIMEDOUT:
+                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+            else:
+                result = {'status' : (e_errors.NET_ERROR, str(msg))}
+
+        #If we didn't get the configuration from the server, attempt
+        # to get it from the local copy of the configuration file.
+        if result['status'][0] in [e_errors.TIMEDOUT, e_errors.NET_ERROR]:
+            result = {}
+            try:
+                result['dump'] = configdict_from_file()
+                result['status'] = (e_errors.OK, None)
+            except IOError, msg:
+                result['status'] = (e_errors.IOERROR, str(msg))
+            except OSError, msg:
+                result['status'] = (e_errors.OSERROR, str(msg))
+
+        #Print the configuration to the terminal/stdout.
+        print_configuration(result, intf)
+        
     elif intf.show:
+        #Attempt to get the configuration from the configuration server.
         try:
             result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
         except (KeyboardInterrupt, SystemExit):
@@ -474,34 +536,9 @@ def do_work(intf):
                 result = {'status' : (e_errors.TIMEDOUT, str(msg))}
             else:
                 result = {'status' : (e_errors.NET_ERROR, str(msg))}
-            
-       
-        #If there is an error it is printed out at the end of the function
-        # in csc.check_ticket().  On success, work as normal. 
-        if e_errors.is_ok(result):
-            #Loop through what the user specified (if anything) and return
-            # the desired result(s).
-            use_result = result['dump']
-            for item in intf.args:
-                if type(use_result) == types.DictType:
-                    try:
-                        use_result = use_result[item]
-                    except KeyError:
-                        result['status'] = (e_errors.KEYERROR,
-                            "Unable to find requested information (1).\n")
-                        break
-                else:
-                    result['status'] = (e_errors.CONFLICT,
-                            "Unable to find requested information (2).\n")
-                    break
-            else:
-                #If there wasn't a problem finding the information, print it.
-                if type(use_result) == types.StringType:
-                    #Suppress the '' that pprint.pprint() wants to surround
-                    # native strings.
-                    print use_result
-                else:
-                    pprint.pprint(use_result)
+
+        #Print the configuration to the terminal/stdout.
+        print_configuration(result, intf)
 
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,

@@ -229,6 +229,7 @@ EXPORT = "export"                            #volume
 EXTERNAL_TRANSITIONS = "external-transitions" #scanfiles
 FIND_SAME_FILE = "find-same-file"            #info
 FILE = "file"                                #info
+FILE_FALLBACK = "file-fallback"              #configuration
 FILE_FAMILY = "file-family"                  #pnfs, encp
 FILE_FAMILY_WIDTH = "file-family-width"      #pnfs, encp
 FILE_FAMILY_WRAPPER = "file-family-wrapper"  #pnfs, encp
@@ -468,7 +469,7 @@ valid_option_list = [
     DOWN, DUMP, DUPLICATE,
     ECHO, ECRC, ENABLE, ENCP, ENSTORE_STATE, EPHEMERAL, ERASE,
     EXPORT, EXTERNAL_TRANSITIONS,
-    FILE,
+    FILE, FILE_FALLBACK,
     FILE_FAMILY, FILE_FAMILY_WIDTH, FILE_FAMILY_WRAPPER, FILESIZE,
     FILE_THREADS, FIND_SAME_FILE, FORCE, FULL,
     FIND_COPIES, FIND_ALL_COPIES, FIND_ORIGINAL, FIND_THE_ORIGINAL,
