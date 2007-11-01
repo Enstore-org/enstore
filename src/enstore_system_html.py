@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import enstore_html
 import enstore_files
 import HTMLgen
@@ -132,15 +133,12 @@ if __name__ == "__main__":
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
     acc            = config_server_client.get("database", {})
-    db_server_name = acc.get('db_host')
-    db_name        = acc.get('dbname')
-    db_port        = acc.get('db_port',5432)
-    name           = db_server_name.split('.')[0]
-    name=db_server_name.split('.')[0]
     bytes=0.
-
     try: 
-        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
+        db = pg.DB(host  = acc.get('db_host', "localhost"),
+                   dbname= acc.get('dbname', "enstoredb"),
+                   port  = acc.get('db_port', 5432),
+                   user  = acc.get('dbuser', "enstore"))
         res=db.query(q)
         for row in res.getresult():
             if not row:

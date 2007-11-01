@@ -93,19 +93,11 @@ tape_exitmutexes=[]
 def fill_histograms(i,server_name,server_port,hlist):
     config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
     acc            = config_server_client.get("database", {})
-    db_server_name = acc.get('db_host')
-    db_name        = acc.get('dbname')
-    db_port        = acc.get('db_port')
-    name           = db_server_name.split('.')[0]
-    name=db_server_name.split('.')[0]
-#    print "we are in thread ",i,db_server_name,db_name,db_port
-    
+    db = pg.DB(host  = acc.get('db_host', "localhost"),
+               dbname= acc.get('dbname', "enstoredb"),
+               port  = acc.get('db_port', 5432),
+               user  = acc.get('dbuser', "enstore"))
     h   = hlist[i]
-    
-    if db_port:
-        db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
-    else:
-        db = pg.DB(host=db_server_name, dbname=db_name);
     res=db.query(SELECT_DELETED_BYTES)
     for row in res.getresult():
         if not row:
@@ -197,11 +189,9 @@ def plot_bpd():
         if ( server_port != None ):
             config_server_client   = configuration_client.ConfigurationClient((server_name, server_port))
             acc = config_server_client.get(enstore_constants.ACCOUNTING_SERVER)
-            db_server_name = acc.get('dbhost')
-            db_name        = acc.get('dbname')
-            db_port        = acc.get('dbport')
+            
+            db_server_name = acc.get('dbhost','localhost')
             name           = db_server_name.split('.')[0]
-            name=db_server_name.split('.')[0]
 
             h  = histogram.Histogram1D("xfers_total_by_month_%s"%(name,),"Total Bytes Transferred per Month By %s"%(server,),nbins,float(start_day),float(now_day))
 
@@ -214,14 +204,11 @@ def plot_bpd():
             h1   = histogram.Histogram1D("writes_by_month_%s"%(server,),"Total Bytes Written by Month By %s"%(server,),nbins,float(start_day),float(now_day))
             decorate(h1,color,"TB/month",server)
             histograms.append(h1)
-            
-            
-
             color=color+1
-            if db_port:
-                db = pg.DB(host=db_server_name, dbname=db_name, port=db_port);
-            else:
-                db = pg.DB(host=db_server_name, dbname=db_name);
+            db = pg.DB(host  = acc.get('dbhost', 'localhost'),
+                       dbname= acc.get('dbname', 'accounting'),
+                       port  = acc.get('dbport', 5432),
+                       user  = acc.get('dbuser', 'enstore'))
             res=db.query(SELECT_STMT1)
             for row in res.getresult():
                 if not row:
