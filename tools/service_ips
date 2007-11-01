@@ -28,11 +28,11 @@ timeout='--timeout 3 --retries 3 --file-fallback'
 #Incase information about service ips is longer than the python 
 # pprint.pprint() function will print out. Get just the alias names now
 # and we will extract the rest shortly one at a time.
-service_aliases=`enstore conf $timeout --show  service_ips | grep -v status | sed -n "/^[{ ]'/p" | awk '{print $1}' | tr -d "{':"`
+service_aliases=`enstore conf $timeout --show  service_ips 2> /dev/null | grep -v status | sed -n "/^[{ ]'/p" | awk '{print $1}' | tr -d "{':"`
 
 
 #First, get the list of service IP from the configuration.
-service_ip_map=`for alias in \`echo $service_aliases\`; do echo -n alias $alias " "; enstore conf $timeout --show service_ips $alias | sed 's/,/,\n/' | tr -d "{},:\'" | tr "\n" " "; echo; done`
+service_ip_map=`for alias in \`echo $service_aliases\`; do echo -n alias $alias " "; enstore conf $timeout --show service_ips $alias 2> /dev/null | sed 's/,/,\n/' | tr -d "{},:\'" | tr "\n" " "; echo; done`
 
 #Each line in $service_ip_map looks like:
 #  alias www-gccen  interface www  host gccensrv1.fnal.gov
