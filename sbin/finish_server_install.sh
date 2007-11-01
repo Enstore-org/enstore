@@ -74,6 +74,8 @@ then
     #/etc/init.d/pnfs start
 fi
 
+# install compress
+yum install ncompress
 #create pnfs directory
 if [ ! -d /pnfs ];
 then
