@@ -23,7 +23,7 @@ if [ $? -ne 0 ]; then
 fi
 
 #Make sure to set a timeout.
-timeout='--timeout 10 --retries 3'
+timeout='--timeout 3 --retries 3 --file-fallback'
 
 #Incase information about service ips is longer than the python 
 # pprint.pprint() function will print out. Get just the alias names now
