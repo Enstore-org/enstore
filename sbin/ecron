@@ -219,6 +219,14 @@ if [ ! -f $setup ] ; then quit "$setup not found" -4  "$logit" "$tag"; fi
 # should check that enstore was setup properly as well
 setup enstore
 
+# check if config server is running. If not, quit immediately
+enstore config --alive --timeout 20
+if [ $? -ne 0 ]
+then
+	echo "Configuration server is not running. Quit!"
+	exit 0
+fi
+
 # log it?
 if [ "$logit" = "yes" ]
 then
