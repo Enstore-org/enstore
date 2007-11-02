@@ -55,6 +55,7 @@ if __name__ == "__main__":
                     aModule = mounts_plot.MountsPlot("mounts")
                     aModule.add_parameter("library","row[0]");
                     f.add(aModule)
+                db.close()
             except:
                 exc,msg,tb=sys.exc_info()
                 for l in traceback.format_exception( exc, msg, tb ):
