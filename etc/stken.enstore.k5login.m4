@@ -19,7 +19,6 @@ enstore/cd/stkensrv1.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv2.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv5.fnal.gov@FNAL.GOV
-enstore/cd/stkensrv6.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv7.fnal.gov@FNAL.GOV
 enstore/cd/stkensrv8.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr5a.fnal.gov@FNAL.GOV
@@ -43,10 +42,6 @@ enstore/cd/stkenmvr24a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr25a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr26a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr27a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr28a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr29a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr30a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr31a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr32a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr33a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr34a.fnal.gov@FNAL.GOV
@@ -65,6 +60,8 @@ enstore/cd/stkenmvr113a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr114a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr115a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr117a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr118a.fnal.gov@FNAL.GOV
+enstore/cd/stkenmvr119a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr120a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr121a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
