@@ -29,6 +29,8 @@ case "$1" in
 
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
+	echo "Configuring service IPs" 2>&1 | tee /dev/console >>$output
+	$ENSTORE_DIR/tools/service_ips 2>&1 | tee /dev/console >>$output
 
 	# if running not on config node
         if [ "$n1" != "$n2" ]; then
