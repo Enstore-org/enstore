@@ -263,13 +263,11 @@ class accClient(generic_client.GenericClient):
 
 		control_socket, address = listen_socket.accept()
 
-		print "accepted"
 		if not hostaddr.allow(address):
 		    control_socket.close()
 		    listen_socket.close()
 		    raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
 
-	        print "11111"
 		ticket = callback.read_tcp_obj_new(control_socket)
 		listen_socket.close()
 
