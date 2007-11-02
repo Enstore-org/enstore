@@ -13,11 +13,16 @@ import pprint
 import pwd
 import socket
 import time
+import errno
+import select
 
 # enstore import
 import generic_client
 import option
 import enstore_constants
+import callback
+import hostaddr
+import e_errors
 
 MY_NAME = enstore_constants.ACCOUNTING_CLIENT    #"accounting_client"
 MY_SERVER = enstore_constants.ACCOUNTING_SERVER  #"accounting_server"
@@ -240,6 +245,64 @@ class accClient(generic_client.GenericClient):
 
 		self.send2(ticket)
 
+	# use for queries
+	def getlist(self, ticket):
+		# get a port to talk on and listen for connections
+		host, port, listen_socket = callback.get_callback()
+		listen_socket.listen(4)
+		ticket["callback_addr"] = (host, port)
+
+		# send the work ticket to the library manager
+		ticket = self.send(ticket, self.rcv_timeout,self.rcv_tries)
+		if ticket['status'][0] != e_errors.OK:
+		    return ticket
+
+		r,w,x = select.select([listen_socket], [], [], 15)
+		if not r:
+		    raise errno.errorcode[errno.ETIMEDOUT], "timeout waiting for server callback"
+
+		control_socket, address = listen_socket.accept()
+
+		print "accepted"
+		if not hostaddr.allow(address):
+		    control_socket.close()
+		    listen_socket.close()
+		    raise errno.errorcode[errno.EPROTO], "address %s not allowed" %(address,)
+
+	        print "11111"
+		ticket = callback.read_tcp_obj_new(control_socket)
+		listen_socket.close()
+
+		if ticket["status"][0] != e_errors.OK:
+		    return ticket
+
+		data_path_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		data_path_socket.connect(ticket['srv_callback_addr'])
+		worklist = callback.read_tcp_obj_new(data_path_socket)
+		data_path_socket.close()
+
+		# Work has been read - wait for final dialog with library manager.
+		done_ticket = callback.read_tcp_obj_new(control_socket)
+		control_socket.close()
+		if done_ticket["status"][0] != e_errors.OK:
+		    return done_ticket
+
+		return worklist
+	
+	# last xfers
+	def last_xfers(self, numEncps):
+		ticket = { 'work': 'last_xfers',
+			   'numEncps' : numEncps
+			   }
+		return self.getlist(ticket)
+	
+	# last bad xfers
+	def last_bad_xfers(self, numEncps):
+		ticket = { 'work': 'last_bad_xfers',
+			   'numEncps' : numEncps
+			   }
+		return self.getlist(ticket)
+
 
 if __name__ == '__main__':
 	intf = option.Interface()
@@ -250,3 +313,9 @@ if __name__ == '__main__':
 		pprint.pprint(ac.quit())
 	elif sys.argv[1] == 'hello2':
 		ac.hello2()
+        elif sys.argv[1] == 'encp':
+                print(ac.last_xfers(10))
+
+        elif sys.argv[1] == 'badencp':
+                print(ac.last_bad_xfers(10))
+
