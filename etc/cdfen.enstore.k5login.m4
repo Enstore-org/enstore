@@ -5,7 +5,6 @@ enstore/cd/cdfensrv2.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv3.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV
 enstore/cd/cdfensrv5.fnal.gov@FNAL.GOV
-enstore/cd/cdfensrv6.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr1a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr2a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr3a.fnal.gov@FNAL.GOV
@@ -33,8 +32,6 @@ enstore/cd/cdfenmvr102a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr104a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr105a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr110a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr118a.fnal.gov@FNAL.GOV
-enstore/cd/stkenmvr119a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr122a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr123a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr124a.fnal.gov@FNAL.GOV
