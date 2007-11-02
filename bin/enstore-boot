@@ -25,15 +25,29 @@ estat=0
 case "$1" in
 
   start)
-        echo Starting enstore 2>&1 | tee /dev/console >>$output
+        echo "`date`: Starting enstore" 2>&1 | tee /dev/console >>$output
 
         n1=`echo $ENSTORE_CONFIG_HOST | sed -e 's/\([^\.]\)\..*/\1/'`
         n2=`uname -n | sed -e 's/\([^\.]\)\..*/\1/'`
-	echo "Configuring service IPs" 2>&1 | tee /dev/console >>$output
+	runs_on=0
+	echo "`date`: Configuring service IPs" 2>&1 | tee /dev/console >>$output
 	$ENSTORE_DIR/tools/service_ips 2>&1 | tee /dev/console >>$output
 
+	validate_host.py $ENSTORE_CONFIG_HOST
+	if [ $? -eq 1 ]; then
+		runs_on=1
+		echo "config server runs on this host"
+	else
+	        if [ "$n1" = "$n2" ]; then
+			runs_on=1
+		else
+			runs_on=0
+		fi
+	fi
+
+
 	# if running not on config node
-        if [ "$n1" != "$n2" ]; then
+        if [ $runs_on -eq 0 ]; then
         #if [ "$n1" == "$n2" ]; then
             for server in config log alarm; do
 	      echo "`date`: checking if $server is alive"  2>&1 | tee /dev/console >>$output
