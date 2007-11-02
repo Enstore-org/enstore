@@ -126,19 +126,16 @@ $RPM_BUILD_ROOT/%{prefix}/external_distr/rpm_uninstall.sh
 %clean
 rm -rf $RPM_BUILD_ROOT/*
 
-%config
-export ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix}
-$ENSTORE_DIR/etc/enstore_configuration
-$ENSTORE_DIR/sam.conf
-$ENSTORE_DIR/stk.conf
-$ENSTORE_DIR/cdf.conf
-$ENSTORE_DIR/d0en_sde_test.conf
-
 
 %files
 %defattr(-,enstore,enstore,-)
 %doc
 /%{prefix}
+%config /%{prefix}/etc/enstore_configuration
+%config /%{prefix}/etc/sam.conf
+%config /%{prefix}/etc/stk.conf
+%config /%{prefix}/etc/d0en_sde_test.conf
+
 #/etc/rc.d/init.d/enstore-boot
 #/etc/sudoers
 #/home/enstore/debugfiles.list
