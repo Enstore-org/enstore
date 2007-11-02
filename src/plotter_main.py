@@ -43,7 +43,7 @@ if __name__ == "__main__":
         if o in ("-m", "--mounts"):
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
-            acc = frame.get_configuration_client().get('database', {})
+            acc = f.get_configuration_client().get('database', {})
             try:
                 db = pg.DB(host  = acc.get('db_host', "localhost"),
                            dbname= acc.get('dbname', "enstoredb"),
