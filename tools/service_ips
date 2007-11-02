@@ -21,6 +21,7 @@ if [ $? -ne 0 ]; then
     echo "The enstore command was not found." 1>&2
     exit 1
 fi
+PATH=/sbin:/usr/sbin:$PATH
 
 #Make sure to set a timeout.
 timeout='--timeout 3 --retries 3 --file-fallback'
@@ -29,6 +30,11 @@ timeout='--timeout 3 --retries 3 --file-fallback'
 # pprint.pprint() function will print out. Get just the alias names now
 # and we will extract the rest shortly one at a time.
 service_aliases=`enstore conf $timeout --show  service_ips 2> /dev/null | grep -v status | sed -n "/^[{ ]'/p" | awk '{print $1}' | tr -d "{':"`
+
+if [ "${service_aliases:-x}" = "x" ]; then
+    echo "No entry for service alaises is found in configuration"
+    exit 0
+fi
 
 
 #First, get the list of service IP from the configuration.
