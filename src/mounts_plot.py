@@ -75,7 +75,7 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 
 		
 		db.query("begin");
-		db.query("declare volume_cursor cursor for select label,sum_mounts,storage_group,file_family,wrapper,library from volume where system_inhibit_0!='DELETED'")
+		db.query("declare volume_cursor cursor for select label,sum_mounts,storage_group,file_family,wrapper,library from volume where system_inhibit_0!='DELETED' and media_type!='null'")
 		while True:
 			res =  db.query("fetch 10000 from volume_cursor").getresult()
 			for row in res:
@@ -137,6 +137,8 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 			count = count + 1
 			outf.write("%d %d\n"%(count, i))
 		outf.close()
+		if count == 0 :
+			return
 
 		outf = open(tmp_gnuplot_cmd, "w")
 		outf.write("set grid\n")

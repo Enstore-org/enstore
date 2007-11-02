@@ -16,6 +16,8 @@ import mounts_plot
 import getopt
 import sys
 import socket
+import pg
+import traceback
 
 FNAL_DOMAIN="131.225" 
 
@@ -41,24 +43,22 @@ if __name__ == "__main__":
         if o in ("-m", "--mounts"):
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
-
-            if socket.gethostbyname(socket.gethostname())[0:7] == FNAL_DOMAIN :
-
-                aModule   = mounts_plot.MountsPlot("mounts")
-                aModule.add_parameter("library","dlt");
-                f.add(aModule)
-            
-                aModule   = mounts_plot.MountsPlot("mounts")
-                aModule.add_parameter("library","CD-9940B");
-                f.add(aModule)
-            
-                aModule   = mounts_plot.MountsPlot("mounts")
-                aModule.add_parameter("library","9940");
-                f.add(aModule)    
-            
-                aModule   = mounts_plot.MountsPlot("mounts")
-                aModule.add_parameter("library","CD-LTO3");
-                f.add(aModule)
+            acc = frame.get_configuration_client().get('database', {})
+            try:
+                db = pg.DB(host  = acc.get('db_host', "localhost"),
+                           dbname= acc.get('dbname', "enstoredb"),
+                           port  = acc.get('db_port', 5432),
+                           user  = acc.get('dbuser', "enstore"))
+                for row in db.query("select distinct library from volume where media_type!='null'").getresult():
+                    if not row:
+                        continue
+                    aModule = mounts_plot.MountsPlot("mounts")
+                    aModule.add_parameter("library","row[0]");
+                    f.add(aModule)
+            except:
+                exc,msg,tb=sys.exc_info()
+                for l in traceback.format_exception( exc, msg, tb ):
+                    print l
                 
         if o in ("-r","--rate"):
             aModule   = ratekeeper_plotter_module.RateKeeperPlotterModule("ratekeeper")
