@@ -98,8 +98,10 @@ if [ ! -d "/usr/local/etc" ];
 then
     mkdir -p /usr/local/etc
 else
-    d=`date +%F.%R`
-    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+    if [ -r "/usr/local/etc/setups.sh" ]; then
+	d=`date +%F.%R`
+	mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+    fi
 fi
     
 sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
