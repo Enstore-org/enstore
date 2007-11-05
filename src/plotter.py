@@ -336,7 +336,8 @@ if __name__ == "__main__":
             pass
     inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
     intf.output_dir = inq_d["html_file"]
-    if intf.pts_dir = intf.output_dir
+    if not intf.pts_dir:
+        intf.pts_dir = intf.output_dir
     
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 
