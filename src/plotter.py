@@ -314,28 +314,29 @@ if __name__ == "__main__":
     #
     # a hack
     #
-    if not intf.total_bytes:
-        config_interface  = configuration_client.ConfigurationClientInterface(user_mode=0)
-        csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-        system_name = csc.get_enstore_system(timeout=1,retry=0)        
-        config_dict={}
+    # if not intf.total_bytes:
+    config_interface  = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    system_name = csc.get_enstore_system(timeout=1,retry=0)        
+    config_dict={}
 
-        if system_name:
-            config_dict = csc.dump(timeout=1, retry=3)
-            config_dict = config_dict['dump']
-        else:
-            try: 
-                configfile = os.environ.get('ENSTORE_CONFIG_FILE')
-                print "Failed to connect to config server, using configuration file %s"%(configfile,)
-                f = open(configfile,'r')
-                code = string.join(f.readlines(),'')
-                configdict={}
-                exec(code)
-                config_dict=configdict
-            except:
-                pass
-        inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
-        intf.output_dir = inq_d["html_file"]
+    if system_name:
+        config_dict = csc.dump(timeout=1, retry=3)
+        config_dict = config_dict['dump']
+    else:
+        try: 
+            configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+            print "Failed to connect to config server, using configuration file %s"%(configfile,)
+            f = open(configfile,'r')
+            code = string.join(f.readlines(),'')
+            configdict={}
+            exec(code)
+            config_dict=configdict
+        except:
+            pass
+    inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
+    intf.output_dir = inq_d["html_file"]
+    if intf.pts_dir = intf.output_dir
     
     # get the plotter
     plotter = Plotter((intf.config_host, intf.config_port), 
