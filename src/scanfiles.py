@@ -1318,7 +1318,17 @@ def check_bit_file(bfid, bfid_info = None):
             # pnfs filesystem.
             
     else:
-        if file_record['deleted'] != 'yes':
+        #We don't have a layer 1.  As a last ditch effort check layer 4.
+        # There probably won't be anything, but every now and then...
+        layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
+        #We through away the (err_l, warn_l, info_l) values becuase we
+        # expect them to not be there if layer 1 is not there.  It does not
+        # make sense to report what we already know.
+        if layer4_dict.get('bfid', None):
+            #If we found a bfid in layer 4, report the error about layer 1.
+            err.append("missing layer 1")
+        #Since the file exists, but has no layers, report the error.
+        elif file_record['deleted'] != 'yes':
             err.append("%s does not exist" % (file_record['pnfsid'],))
 
         if possible_reused_pnfsid > 0:
