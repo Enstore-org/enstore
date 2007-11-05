@@ -1,3 +1,0 @@
-29 7,19 * * * root find /diska/pnfs-backup* -follow ! -perm -666 -exec chmod 666 {} \;  > /dev/null 2> /dev/null
-01 5 * * * root find /diskc/pnfs-backup-cms.xlogs -name '*.Z' -mtime +6 -exec rm {} \; > /dev/null 2> /dev/null
-01 5 * * * root find /diskc/pnfs-backup.xlogs -name '*.Z' -mtime +6 -exec rm {} \; > /dev/null 2> /dev/null
