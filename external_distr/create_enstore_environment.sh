@@ -100,7 +100,7 @@ then
 else
     install=0
     if [ -r "/usr/local/etc/setups.sh" ]; then
-	grep e_dir /usr/local/etc/setups.sh
+	grep e_dir /usr/local/etc/setups.sh > /dev/null 2>&1
 	if [ $? -ne 0 ]; then
 	    # real ups setup file
 	    d=`date +%F.%R`
