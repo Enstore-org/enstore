@@ -99,8 +99,12 @@ then
     mkdir -p /usr/local/etc
 else
     if [ -r "/usr/local/etc/setups.sh" ]; then
-	d=`date +%F.%R`
-	mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+	grep e_dir /usr/local/etc/setups.sh
+	if [ $? -ne 0 ]; then
+	    # real ups setup file
+	    d=`date +%F.%R`
+	    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+	fi
     fi
 fi
     
