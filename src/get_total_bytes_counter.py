@@ -4,7 +4,8 @@
 #
 import string
 import sys
-
+import os
+import configuration_client
 import enstore_constants
 import inventory
 
@@ -55,30 +56,52 @@ def go(system, vq_file_name, vq_output_file, vq_output_file2):
 
 
 if __name__ == "__main__":
-
-    # get the file we need to write
-    argc = len(sys.argv)
-    if argc > 1:
-	vq_output_file = sys.argv[1]
-        vq_output_file2 = "%s2"%(vq_output_file,)
+    intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
+    csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    system_name = csc.get_enstore_system(timeout=1,retry=0)        
+    config_dict={}
+    
+    if system_name:
+        config_dict = csc.dump(timeout=1, retry=3)
+        config_dict = config_dict['dump']
+    else:
+        try: 
+            configfile = os.environ.get('ENSTORE_CONFIG_FILE')
+            print "Failed to connect to config server, using configuration file %s"%(configfile,)
+            f = open(configfile,'r')
+            code = string.join(f.readlines(),'')
+            configdict={}
+            exec(code)
+            config_dict=configdict
+        except:
+            pass
+    inq_d = config_dict.get(enstore_constants.INQUISITOR, {})
+    dir = inq_d["html_file"]
+    vq_output_file = os.path.join(dir,"enstore_system_user_data.html")
+    vq_output_file2 = "%s2"%(vq_output_file,)
+    system=""
+    vq_file_dir = os.path.join(dir,"tape_inventory")
+    vq_file_name = os.path.join(vq_file_dir,"VOLUME_QUOTAS_FORMATED")
+    go(system, vq_file_name, vq_output_file, vq_output_file2)
+    
 
 	# get the system from the args
-	if argc > 2:
-	    system = sys.argv[2]
-	else:
-	    system = ""
-
-	# get the file we need to read
-	if argc > 3:
-	    vq_file_name = sys.argv[3]
-	else:
-	    # we were not passed a name, get the default name from the 
-	    # inventory file
-	    dirs = inventory.inventory_dirs()
-	    vq_file_name = inventory.get_vq_format_file(dirs[0])
-
-	go(system, vq_file_name, vq_output_file, vq_output_file2)
-    else:
-	# this is an error we need to be given the file to write
-	pass
-
+#	if argc > 2:
+#	    system = sys.argv[2]
+#	else:
+#	    system = ""
+#
+#	# get the file we need to read
+#	if argc > 3:
+#	    vq_file_name = sys.argv[3]
+#	else:
+#	    # we were not passed a name, get the default name from the 
+#	    # inventory file
+#	    dirs = inventory.inventory_dirs()
+#	    vq_file_name = inventory.get_vq_format_file(dirs[0])
+#
+#	go(system, vq_file_name, vq_output_file, vq_output_file2)
+#    else:
+#	# this is an error we need to be given the file to write
+#	pass
+#
