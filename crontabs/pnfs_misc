@@ -1,6 +1,3 @@
-#This cronjob comes from pnfs itself.  It rotates the log files.
-10,40 * * * * root source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p plog -setup pnfs plog >/dev/null 2>/dev/null
-
 #This cronjob creates and enstore log web page containing all the nodes
 # that can mount pnfs.
 12 * * * * root source /usr/local/etc/setups.sh; setup enstore $ENSTORE_DIR/sbin/ecron -p pnfsExports -setup pnfs pnfsExportList >/dev/null 2>/dev/null
