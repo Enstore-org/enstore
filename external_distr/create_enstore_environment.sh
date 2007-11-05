@@ -98,18 +98,24 @@ if [ ! -d "/usr/local/etc" ];
 then
     mkdir -p /usr/local/etc
 else
+    install=0
     if [ -r "/usr/local/etc/setups.sh" ]; then
 	grep e_dir /usr/local/etc/setups.sh
 	if [ $? -ne 0 ]; then
 	    # real ups setup file
 	    d=`date +%F.%R`
 	    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
+	    install=1
 	fi
+    else
+	install=1
     fi
 fi
     
-sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
-ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
+if [ $install -eq 1 ]; then 
+    sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
+    ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
+fi
 chown -R enstore.enstore $ENSTORE_HOME
 
 exit 0
