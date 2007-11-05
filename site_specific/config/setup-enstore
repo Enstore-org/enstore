@@ -9,7 +9,6 @@ export ENSTORE_DIR
 export PYTHON_DIR
 export FTT_DIR
 export ENSTORE_HOME
-#. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
 rpm -q swig-enstore > /dev/null
 if [ $? -eq 0 ]; then
