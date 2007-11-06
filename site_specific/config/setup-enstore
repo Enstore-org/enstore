@@ -83,6 +83,6 @@ if [ ! -r $ENSTORE_DIR/sbin/monitor_server ]; then ln -s $ENSTORE_DIR/src/monito
 
 export ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
 export ENSTORE_CONFIG_PORT=7500
-export ENSTORE_CONFIG_FILE=`$ENSTORE_DIR/ups/chooseConfig file`
+export ENSTORE_CONFIG_FILE=$ENSTORE_DIR/etc/`$ENSTORE_DIR/ups/chooseConfig file`
 export ENSTORE_MAIL=`$ENSTORE_DIR/ups/chooseConfig mail`
 export FARMLETS_DIR=/usr/local/etc/farmlets
