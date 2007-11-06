@@ -1,11 +1,16 @@
 enstore/cd/ccfsrv2.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv0.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv0n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv1.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv1n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv2.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv3.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv3n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv5.fnal.gov@FNAL.GOV
-enstore/cd/d0ensrv6.fnal.gov@FNAL.GOV
+enstore/cd/d0ensrv5n.fnal.gov@FNAL.GOV
 enstore/cd/d0ensrv7.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr1a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr2a.fnal.gov@FNAL.GOV
