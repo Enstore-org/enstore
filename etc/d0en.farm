@@ -1,10 +1,10 @@
 REMOVE		d0ensrv*	d0en-all[ab]	d0en-all	ssasrv*
 ssasrv1				d0en-alla	d0en-all
-d0ensrv0	d0ensrv		d0en-alla	d0en-all
-d0ensrv1	d0ensrv		d0en-alla	d0en-all
-d0ensrv2	d0ensrv		d0en-alla	d0en-all
-d0ensrv3	d0ensrv		d0en-alla	d0en-all
-d0ensrv4	d0ensrv		d0en-alla	d0en-all
+d0ensrv0n	d0ensrv		d0en-alla	d0en-all
+d0ensrv1n	d0ensrv		d0en-alla	d0en-all
+d0ensrv2n	d0ensrv		d0en-alla	d0en-all
+d0ensrv3n	d0ensrv		d0en-alla	d0en-all
+d0ensrv4n	d0ensrv		d0en-alla	d0en-all
 d0ensrv5	d0ensrv		d0en-alla	d0en-all
 d0ensrv7	d0ensrv		d0en-alla	d0en-all
 REMOVE		d0enmvr*[ab]					d0en-lto?	d0en-null
