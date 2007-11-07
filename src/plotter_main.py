@@ -53,7 +53,7 @@ if __name__ == "__main__":
                     if not row:
                         continue
                     aModule = mounts_plot.MountsPlot("mounts")
-                    aModule.add_parameter("library","row[0]");
+                    aModule.add_parameter("library",row[0]);
                     f.add(aModule)
                 db.close()
             except:
