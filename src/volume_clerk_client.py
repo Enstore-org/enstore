@@ -14,6 +14,11 @@ import errno
 import socket
 import select
 import pprint
+import rexec
+
+_rexec = rexec.RExec()
+def veval(stuff):
+    return _rexec.r_eval(stuff)
 
 # enstore imports
 #import setpath
@@ -29,7 +34,6 @@ import file_clerk_client
 import cPickle
 import info_client
 import enstore_constants
-from en_eval import en_eval
 
 MY_NAME = enstore_constants.VOLUME_CLERK_CLIENT  #"VOLUME_C_CLIENT"
 MY_SERVER = enstore_constants.VOLUME_CLERK       #"volume_clerk"
@@ -1621,7 +1625,7 @@ def do_work(intf):
         for s in intf.args:
             k,v=string.split(s,'=')
             try:
-                v=en_eval(v) #numeric args
+                v=veval(v) #numeric args
             except:
                 pass #yuk...
             d[k]=v

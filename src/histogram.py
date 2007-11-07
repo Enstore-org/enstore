@@ -17,7 +17,8 @@ import os
 import time
 import types
 
-class Attribute:
+class Ntuple:
+
     def __init__(self, name, title):
         self.name=name
         self.title=title
@@ -34,23 +35,15 @@ class Attribute:
         #
         # atributes
         #
-        self.xlabel=""
         self.ylabel=""
-        self.zlabel=""
+        self.xlabel=""
         self.logy=False
-        self.logz=False
         self.logx=False
         self.time_axis_format="%y-%m-%d"
-        self.opt_stat=False
-        self.profile=False
-        self.delete_data_file=True
 
     #
     # setters 
     #
-
-    def set_delete_data_file(self,yes=True):
-        self.delete_data_file=yes
                 
     def set_title(self,txt):
         self.title=txt
@@ -61,14 +54,15 @@ class Attribute:
     def set_data_file_name(self,txt):   # name of the file with data points
         self.data_file_name=txt
 
+    #
+    # Plotting features
+    #
+
     def set_ylabel(self,txt):
         self.ylabel=txt
 
     def set_xlabel(self,txt):
         self.xlabel=txt
-
-    def set_zlabel(self,txt):
-        self.zlabel=txt
 
     def set_logy(self,yes=True):
         self.logy=yes
@@ -108,9 +102,6 @@ class Attribute:
     # getters
     #
 
-    def is_delete_data_file(self):
-        return self.delete_data_file
-
     def get_text(self):
         return self.additional_text
 
@@ -124,8 +115,7 @@ class Attribute:
         return self.line_color
 
     def get_line_width(self):
-        return self.line_width
-    
+        return self.line_width 
 
     #
     # Statistis
@@ -156,14 +146,11 @@ class Attribute:
     def get_name(self):
         return self.name
 
-    def get_xlabel(self):
-        return self.xlabel
-
     def get_ylabel(self):
         return self.ylabel
 
-    def get_zlabel(self):
-        return self.zlabel
+    def get_xlabel(self):
+        return self.xlabel
 
     def get_data_file_name(self):
         return self.data_file_name;
@@ -171,34 +158,6 @@ class Attribute:
     def get_data_file(self):
         return self.data_file;
 
-class BasicHistogram(Attribute):
-
-     def __init__(self,
-                  name,
-                  title):
-         Attribute.__init__(self, name, title)
-     
-         self.entries=0
-
-     def n_entries(self):
-         return self.entries
-
-     def get_entries(self):
-         return self.entries
-
-     
-     def plot(self,command=""): 
-         print "Plot function is not implemented by BasicHistogram"
-        
-     def fill(self,command=""):
-         print "Fill function is not implemented by BasicHistogram"
-
-
-
-class Ntuple(BasicHistogram):
-
-    def __init__(self, name, title):
-        BasicHistogram.__init__(self, name, title)
     #
     # "plot" is the act of creating an image
     #
@@ -214,7 +173,6 @@ class Ntuple(BasicHistogram):
                      "set grid\n"+ \
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
-        long_string=long_string+" set pm3d; set palette; \n";
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel '%s'\n"%(self.xlabel)+ \
                          "set xdata time\n"+ \
@@ -246,8 +204,8 @@ class Ntuple(BasicHistogram):
 
 
     def __del__(self):
-        if self.is_delete_data_file() == True:
-            os.system("rm -rf %s"%(self.data_file_name,))
+        os.system("rm -rf %s"%(self.data_file_name,))
+
        
     def dump(self):
         print repr(self.__dict__)
@@ -333,14 +291,14 @@ class Plotter:
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
         for hist in self.histogram_list:
             full_file_name=dir+hist.data_file_name
-            if hist.is_delete_data_file() == True:
-                os.system("rm -f %s"%full_file_name) # remove pts file
+            os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
         
-class Histogram1D(BasicHistogram):
+class Histogram1D:
 
     def __init__(self, name, title, nbins, xlow, xhigh):
-        BasicHistogram.__init__(self, name, title)
+        self.name=name
+        self.title=title
         self.nbins=int(nbins)
         self.low=xlow
         self.high=xhigh
@@ -355,9 +313,11 @@ class Histogram1D(BasicHistogram):
         self.rms_error=0
         self.sum=0
         self.sum2=0
+        self.data_file_name="%s_data.pts"%(self.name,)
         self.bw=(self.high-self.low)/float(self.nbins)
         self.maximum=0
         self.minimum=0
+        self.time_axis=False # time axis assumes unix time stamp
         self.opt_stat=False
         self.profile=False
         self.marker_type="boxes"
@@ -674,6 +634,62 @@ class Histogram1D(BasicHistogram):
             if ( count < self.minimum ) :
                 self.minimum=count
     #
+    # setters 
+    #
+                
+    def set_title(self,txt):
+        self.title=txt
+
+    def set_name(self,txt):
+        self.name=txt
+
+    def set_data_file_name(self,txt):   # name of the file with data points
+        self.data_file_name=txt
+
+    #
+    # Plotting features
+    #
+
+    def set_ylabel(self,txt):
+        self.ylabel=txt
+
+    def set_xlabel(self,txt):
+        self.xlabel=txt
+
+    def set_logy(self,yes=True):
+        self.logy=yes
+
+    def set_logx(self,yes=True):
+        self.logx=yes
+
+    def set_time_axis_format(self,txt):
+        self.time_axis_format=txt
+
+    def set_time_axis(self,yes=True):
+        self.time_axis=yes
+
+    def set_opt_stat(self,yes=True):
+        self.opt_stat=yes
+
+    def set_profile(self,yes=True):
+        self.profile=yes
+
+    def add_text(self,txt):
+        self.additional_text=self.additional_text+txt
+
+    def set_marker_type(self,txt):
+        self.marker_type=txt
+
+    def set_marker_text(self,txt):
+        self.marker_text=txt
+
+    def set_line_color(self,color=1):
+        self.line_color=color
+
+    def set_line_width(self,w=1):
+        self.line_width=w
+
+    #
     # getters
     #
 
@@ -755,6 +771,38 @@ class Histogram1D(BasicHistogram):
     def get_minimum(self): # minimum bin content
         return self.minimum
 
+    def get_logy(self):
+        return self.logy
+
+    def get_time_axis(self):
+        return self.time_axis
+
+    def get_time_axis_format(self):
+        return self.time_axis_format
+
+    def get_opt_stat(self):
+        return self.opt_stat
+
+    def get_profile(self):
+        return self.profile
+
+    def get_logx(self):
+        return self.logx
+
+    def get_title(self):
+        return self.title
+
+    def get_name(self):
+        return self.name
+
+    def get_ylabel(self):
+        return self.ylabel
+
+    def get_xlabel(self):
+        return self.xlabel
+
+    def get_data_file_name(self):
+        return self.data_file_name;
 
     #
     # Write data to point file, format x dx y dy
@@ -790,22 +838,6 @@ class Histogram1D(BasicHistogram):
     # "plot" is the act of creating an image
     #
 
-#    def add_opt_stat(self) :
-#        return "set key right top Left samplen 20 title \""+\
-#               "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-#               "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
-#               "\\nEntries : %d"%(self.entries)+\
-#               "\\n Overflow : %d"%(self.overflow)+\
-#               "\\n Underflow : %d"%(self.underflow)+"\" box\n"
-
-    def add_opt_stat(self) :
-        return "set key right top Left samplen 20 title \""+\
-               "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
-               "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
-               "\\n Entries : %d"%(self.entries)+\
-               "\\n Overflow : %d"%(self.overflow)+\
-               "\\n Underflow : %d"%(self.underflow)+"\" box\n"
-
     def plot(self,dir="./"):
         full_file_name=dir+self.data_file_name
         self.save_data(full_file_name)
@@ -820,7 +852,12 @@ class Histogram1D(BasicHistogram):
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
-            long_string=long_string+self.add_opt_stat()
+            long_string=long_string+"set key right top Left samplen 20 title \""+\
+                         "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
+                         "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
+                         "\\nEntries : %d"%(self.entries)+\
+                         "\\n Overflow : %d"%(self.overflow)+\
+                         "\\n Underflow : %d"%(self.underflow)+"\"\n"
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
@@ -848,8 +885,7 @@ class Histogram1D(BasicHistogram):
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        if self.is_delete_data_file() == True:
-            os.system("rm -f %s"%full_file_name) # remove pts file
+        os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
 
     def plot2(self, h,reflect=False,dir="./"):
@@ -869,7 +905,12 @@ class Histogram1D(BasicHistogram):
                      "set ylabel '%s'\n"%(self.ylabel)+ \
                      "set xlabel '%s'\n"%(self.xlabel)
         if ( self.get_opt_stat() ) :
-            long_string=long_string+self.add_opt_stat()
+            long_string=long_string+"set key right top Left samplen 20 title \""+\
+                         "Mean : %.2e"%(self.mean)+"+-%.2e"%(self.mean_error)+\
+                         "\\n RMS : %.2e"%(self.rms)+"+-%.2e"%(self.rms_error)+\
+                         "\\nEntries : %d"%(self.entries)+\
+                         "\\n Overflow : %d"%(self.overflow)+\
+                         "\\n Underflow : %d"%(self.underflow)+"\"\n"
         if (  self.time_axis ) : 
             long_string=long_string+"set xlabel 'Date (year-month-day)'\n"+ \
                          "set xdata time\n"+ \
@@ -911,8 +952,6 @@ class Histogram1D(BasicHistogram):
         os.system("gnuplot %s"%(gnu_file_name))
         os.system("convert -rotate 90 -modulate 80 %s.ps %s.jpg"%(self.name,self.name))
         os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(self.name,self.name))
-        if self.is_delete_data_file() == True:
-            os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%full_file_name1) # remove pts file
         os.system("rm -f %s"%full_file_name) # remove pts file
         os.system("rm -f %s"%gnu_file_name)  # remove gnu file
@@ -1260,15 +1299,12 @@ if __name__ == "__main__":
     ntuple.get_data_file().close()
     ntuple.set_line_color(2)
     ntuple.set_line_width(5)
-#    ntuple.set_marker_type("lines")
-    
-#    ntuple.set_marker_type("points pt 1 ps 10 ") 
+    ntuple.set_marker_type("points pt 1 ps 10 ") 
 #   ntuple.set_marker_type("points pt 5")
 
 
     ntuple.plot("1:2")
     hh.plot()
-#    sys.exit(0)
 #    sys.exit(0)
 #    hh.plot_ascii()
     h1.set_ylabel("Counts / %s"%(h1.get_bin_width(0)))
@@ -1292,7 +1328,7 @@ if __name__ == "__main__":
 
     h1.plot()
     os.system("display %s.jpg&"%(h1.get_name()))
-#    sys.exit(0)
+    sys.exit(0)
 
     h2.set_ylabel("Counts / %s"%(h2.get_bin_width(0)))
     h2.set_xlabel("x variable")

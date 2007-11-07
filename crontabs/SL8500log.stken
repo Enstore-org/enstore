@@ -1,0 +1,1 @@
+0-59/15 * * * * enstore /home/enstore/enstore/sbin/ecron -p SL8500log SL8500log /home/enstore/SL8500-LOG.html >/dev/null 2>/dev/null

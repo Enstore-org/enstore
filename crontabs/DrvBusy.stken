@@ -1,0 +1,3 @@
+5 * * * * enstore /home/enstore/enstore/sbin/ecron -p STKDrvBusy  /home/enstore/enstore/sbin/STKDrvBusy plot > /dev/null 2> /dev/null
+7 * * * * enstore /home/enstore/enstore/sbin/ecron -p GCCDrvBusy  /home/enstore/enstore/sbin/GCCDrvBusy plot > /dev/null 2> /dev/null
+5 * * * * enstore /home/enstore/enstore/sbin/ecron -p ADICDrvBusy  /home/enstore/enstore/sbin/ADICDrvBusy plot > /dev/null 2> /dev/null
