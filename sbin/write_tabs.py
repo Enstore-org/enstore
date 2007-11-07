@@ -134,9 +134,9 @@ def main():
                     tmp = row[0].split(' ')[0]
                     if ( date  != tmp ) :
                         date =  tmp
-                        h_1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
-                        h_2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[3])
-                        h_3.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
+                        h_1.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[2])
+                        h_2.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[3])
+                        h_3.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[4])
 
                 h_1.set_line_color(2)
                 h_1.set_line_width(20)
@@ -217,9 +217,9 @@ def main():
                 tmp = row[0].split(' ')[0]
                 if ( date  != tmp ) :
                     date =  tmp
-                    h.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[2])
-                    h1.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[3])
-                    h2.fill(time.mktime(time.strptime(row[0],'%Y-%m-%d %H:%M:%S')),row[4])
+                    h.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[2])
+                    h1.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[3])
+                    h2.fill(time.mktime(time.strptime(row[0],'%y-%m-%d %H:%M:%S')),row[4])
 
             db.close()
             
