@@ -64,6 +64,5 @@ if __name__ == "__main__":
         if o in ("-r","--rate"):
             aModule   = ratekeeper_plotter_module.RateKeeperPlotterModule("ratekeeper")
             f.add(aModule)
-            aModule.setActive(False)
 
     f.do_work()
