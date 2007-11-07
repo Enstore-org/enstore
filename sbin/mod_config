@@ -12,7 +12,8 @@ if [ `whoami` != "enstore" ]; then
     exit 1
 fi
 
-node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
+node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
 gang=`gang`
 case $node in
    stkensrv2|d0ensrv2|cdfensrv2)
