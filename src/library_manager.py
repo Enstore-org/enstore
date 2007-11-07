@@ -1410,7 +1410,19 @@ class LibraryManagerMethods:
                     rq = self.pending_work.get(vol_family, use_admin_queue=0) 
 
             exc_limit_rq = None
+            rqs = []
             while rq:
+                found = 0
+                for r in rqs:
+                    if r.unique_id == rq.unique_id:
+                        found = 1
+                        Trace.log(e_errors.INFO, "Found the same id. Looks like going in cycles. Will break")
+                        break
+                else:
+                    rqs.append[rq]
+                if found:
+                    rq = None
+                    break
                 # skip over tape read requests they are processed only in the idle state
                 #method = rq.ticket.get("method", None)
                 #if method and method == "read_tape_start":
