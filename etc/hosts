@@ -8,14 +8,20 @@
 # to provide the numeric ip in the host table and not look up any node
 # information for our own nodes.
 #
-131.225.164.46		d0ensrv0.fnal.gov	d0ensrv0
-131.225.164.21		d0ensrv1.fnal.gov	d0ensrv1
-131.225.164.22		d0ensrv2.fnal.gov	d0ensrv2
-131.225.164.23		d0ensrv3.fnal.gov	d0ensrv3
-131.225.164.84		d0ensrv4.fnal.gov	d0ensrv4
+#131.225.164.5		www-d0en.fnal.gov	www-d0en
+#131.225.164.46		d0ensrv0.fnal.gov	d0ensrv0
+#131.225.164.21		pnfs-d0en.fnal.gov	pnfs-d0en	d0ensrv1.fnal.gov	d0ensrv1
+#131.225.164.22		conf-d0en.fnal.gov	conf-d0en	d0ensrv2.fnal.gov	d0ensrv2
+#131.225.164.23		d0ensrv3.fnal.gov	d0ensrv3
+#131.225.164.84		d0ensrv4.fnal.gov	d0ensrv4
 131.225.164.85		d0ensrv5.fnal.gov	d0ensrv5
-#131.225.164.83		d0ensrv6.fnal.gov	d0ensrv6
 131.225.164.49		d0ensrv7.fnal.gov	d0ensrv7
+131.225.164.10		d0ensrv0n.fnal.gov	d0ensrv0n
+131.225.164.13		d0ensrv1n.fnal.gov	d0ensrv1n
+131.225.164.15		d0ensrv2n.fnal.gov	d0ensrv2n
+131.225.164.17		d0ensrv3n.fnal.gov	d0ensrv3n
+131.225.164.18		d0ensrv4n.fnal.gov	d0ensrv4n
+#131.225.164.29		d0ensrv5n.fnal.gov	d0ensrv5n
 131.225.164.24		d0enmvr1a.fnal.gov	d0enmvr1a
 131.225.164.25		d0enmvr2a.fnal.gov	d0enmvr2a
 131.225.164.26		d0enmvr3a.fnal.gov	d0enmvr3a
@@ -64,6 +70,7 @@
 131.225.164.121		d0enmvr59a.fnal.gov	d0enmvr59a
 131.225.164.62		d0enload.fnal.gov	d0enload
 
+131.225.13.47		www-stken.fnal.gov	www-stken
 131.225.13.59		stkensrv0.fnal.gov	stkensrv0
 131.225.13.1		stkensrv1.fnal.gov	stkensrv1
 131.225.13.2		stkensrv2.fnal.gov	stkensrv2
@@ -107,6 +114,7 @@
 131.225.13.103		stkenmvr40a.fnal.gov	stkenmvr40a
 131.225.13.109		stkenmvr41a.fnal.gov	stkenmvr41a
 
+# LTO3 movers for SL8500 at GCC
 131.225.13.130		cdfenmvr101a.fnal.gov	cdfenmvr101a
 131.225.13.131		cdfenmvr102a.fnal.gov	cdfenmvr102a
 131.225.13.133		stkenmvr103a.fnal.gov	stkenmvr103a
@@ -140,6 +148,7 @@
 131.225.13.161		cdfenmvr131a.fnal.gov   cdfenmvr131a
 131.225.13.162		stkenmvr132a.fnal.gov	stkenmvr132a
 
+# public dcache production and test stand
 131.225.13.97		fndca2a.fnal.gov	fndca2a
 131.225.13.64		fndca3a.fnal.gov	fndca3a
 131.225.13.93		stkendca2a.fnal.gov	stkendca2a
@@ -170,13 +179,14 @@
 131.225.206.146		cmspnfs1.fnal.gov	cmspnfs1
 131.225.204.143		cmspnfs2.fnal.gov	cmspnfs2
 
+131.225.215.19		www-cdfen.fnal.gov	www-cdfen
 131.225.215.17		cdfensrv0.fnal.gov	cdfensrv0
 131.225.215.3		cdfensrv1.fnal.gov	cdfensrv1
 131.225.215.4		cdfensrv2.fnal.gov	cdfensrv2
 131.225.215.5		cdfensrv3.fnal.gov	cdfensrv3
 131.225.215.6		cdfensrv4.fnal.gov	cdfensrv4
 131.225.215.40		cdfensrv5.fnal.gov	cdfensrv5
-131.225.215.34		cdfensrv6.fnal.gov	cdfensrv6
+#131.225.215.34		cdfensrv6.fnal.gov	cdfensrv6
 131.225.215.1		cdfenmvr1a.fnal.gov	cdfenmvr1a
 131.225.215.2		cdfenmvr2a.fnal.gov	cdfenmvr2a
 131.225.215.9		cdfenmvr3a.fnal.gov	cdfenmvr3a
@@ -220,18 +230,11 @@
 # address 0 is reserved
 # control subnet for d0en (STK 9310 and ADIC AML/2)	"The L zone"
 # address range 1-64
-192.168.89.1		d0ensrv0p
-192.168.89.2		d0ensrv1p
-192.168.89.3		d0ensrv2p
-192.168.89.4		d0ensrv3p
-192.168.89.5		d0ensrv4p
-
-# temporary assignments for SDE development rack
-192.168.89.6		d0ensrv0np
-192.168.89.7		d0ensrv1np
-192.168.89.8		d0ensrv2np
-192.168.89.9		d0ensrv3np
-192.168.89.10		d0ensrv4np
+192.168.89.1		d0ensrv0p		d0ensrv0np
+192.168.89.2		d0ensrv1p		d0ensrv1np
+192.168.89.3		d0ensrv2p		d0ensrv2np
+192.168.89.4		d0ensrv3p		d0ensrv3np
+192.168.89.5		d0ensrv4p		d0ensrv4np
 
 192.168.89.11		d0enraid0
 192.168.89.12		d0enraid1
@@ -285,14 +288,24 @@
 # address range 193-254
 192.168.89.194		gccensrv1p
 192.168.89.195		gccensrv2p
-# address range 203-224 (see below)
+# address range 203-212 (see below)
+# address range 213-224
+192.168.89.213		gccwc0a		# GCC library 0 webcam a
+192.168.89.214		gccwc0b		# GCC library 0 webcam b
+192.168.89.215		gccwc1a		# GCC library 1 webcam a
+192.168.89.216		gccwc1b		# GCC library 1 webcam b
+192.168.89.219		fccwc0a 	# FCC library 0 webcam a
+192.168.89.220		fccwc0b 	# FCC library 0 webcam b
+192.168.89.221		fccwc1a 	# FCC library 1 webcam a
+192.168.89.222		fccwc1b 	# FCC library 1 webcam b
 # address range 225-240 (see below)
+# address range 241-254
 192.168.89.248		fntt-gcc
 192.168.89.250		gccsla		# SL8500s at GCC
 192.168.89.251		fccsla		# SL8500s at FCC
 
 # control subnet for SDE test stand
-# address range 203-224
+# address range 203-212
 192.168.89.203		testsrv0p
 192.168.89.204		testsrv1p
 192.168.89.205		testsrv2p
