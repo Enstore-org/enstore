@@ -1419,7 +1419,7 @@ class LibraryManagerMethods:
                         Trace.log(e_errors.INFO, "Found the same id. Looks like going in cycles. Will break")
                         break
                 else:
-                    rqs.append[rq]
+                    rqs.append(rq)
                 if found:
                     rq = None
                     break
