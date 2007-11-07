@@ -1,9 +1,18 @@
 #!/usr/bin/env python
+###############################################################################
+#
+# $Id$
+#
+###############################################################################
 
 import sys
 import os
 import string
 import time
+import configuration_client
+import e_errors
+import enstore_functions2
+import enstore_constants
 
 data = '/tmp/pnfsFastBackupHISTOGRAM'
 tmp_gnuplot_cmd = '/tmp/pnfsFastBackup.cmd'
@@ -12,11 +21,53 @@ good_points='/tmp/pnfsFastBackup_good.pts'
 bad_points='/tmp/pnfsFastBackup_bad.pts'
 output_file = 'pnfs_backup_time'
 install_dir = '/fnal/ups/prd/www_pages/enstore'
-postscript_output = os.path.join(install_dir, output_file+'.ps')
-jpeg_output = os.path.join(install_dir, output_file+'.jpg')
-jpeg_output_stamp = os.path.join(install_dir, output_file+'_stamp.jpg')
+#postscript_output = os.path.join(install_dir, output_file+'.ps')
+#jpeg_output = os.path.join(install_dir, output_file+'.jpg')
+#jpeg_output_stamp = os.path.join(install_dir, output_file+'_stamp.jpg')
 
 if __name__ == '__main__':
+   # copy data from pnfs server
+   config_host = enstore_functions2.default_host()
+   config_port = enstore_functions2.default_port()
+   csc = configuration_client.ConfigurationClient((config_host,config_port))
+   config_dict = csc.dump_and_save(10, 2)
+   if not e_errors.is_ok(config_dict):
+      print "configuration_server is not responding: %s"%(config_dict,)
+      print "will use the old data"
+   else:
+         
+      inq = config_dict.get(enstore_constants.INQUISITOR, None)
+
+      if inq:
+         i_d = inq.get("html_file", install_dir)
+         install_dir = i_d
+
+      crons = config_dict.get('crons', None)
+      if crons:
+         alias_key = crons.get('pnfs_alias', None)
+         if alias_key:
+            alias_dict = config_dict['service_ips'].get(alias_key, None)
+            if  alias_dict:
+               pnfs_host = alias_dict.get('host', None)
+            else:
+               pnfs_host = None
+         else:
+            pnfs_host = None
+            
+      else:
+         pnfs_host = None
+      
+   if pnfs_host:
+      # copy data from pnfs host
+      # this is hardcoded so far
+      print "copying data from",  pnfs_host
+      #os.system("enrcp %s:/root/CRON/pnfsFastBackupHISTOGRAM /tmp > /dev/null 2> /dev/null"%(pnfs_host,))
+      os.system("scp %s:/root/CRON/pnfsFastBackupHISTOGRAM /tmp > /dev/null 2> /dev/null"%(pnfs_host,))
+
+   postscript_output = os.path.join(install_dir, output_file+'.ps')
+   jpeg_output = os.path.join(install_dir, output_file+'.jpg')
+   jpeg_output_stamp = os.path.join(install_dir, output_file+'_stamp.jpg')
+   print "making plot", install_dir
    plot_data = []
    d = []
    f = open(data)
@@ -100,4 +151,3 @@ if __name__ == '__main__':
    os.system("gnuplot %s"%(tmp_gnuplot_cmd))
    os.system("convert -rotate 90 -modulate 80 %s %s"%(postscript_output, jpeg_output))
    os.system("convert -rotate 90 -geometry 120x120 -modulate 80 %s %s"%(postscript_output, jpeg_output_stamp))
-
