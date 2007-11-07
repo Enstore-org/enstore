@@ -90,7 +90,7 @@ class EcronData:
 		intf = option.Interface()
 		csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 		acs = csc.get('accounting_server')
-		self.db = pg.DB(host=acs['dbhost'], port=acs['dbport'], dbname=acs['dbname'])#, user=acs['dbuser'])
+		self.db = pg.DB(host=acs['dbhost'], port=acs['dbport'], dbname=acs['dbname'], user=acs['dbuser'])
 		crons = csc.get('crons')
 		if crons['status'][0] == e_errors.OK:
 			self.crons_dir = os.path.join(crons['html_dir'], 'CRONS')
