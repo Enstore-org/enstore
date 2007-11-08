@@ -70,6 +70,14 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 	cmd="enrsh "+hst_bck+" 'mkdir -p "+dir_bck+"'"
 	logthis(e_errors.INFO,cmd)
 	ret=os.system(cmd)
+        # check it
+        cmd2 = "enrsh "+hst_bck+" 'ls -d "+dir_bck+"'"
+        res = os.popen(cmd2).readlines()
+        ret = 1
+        for i in res:
+            if i.strip() == dir_bck:
+                ret = 0
+                break
 	if ret !=0 :
 	   logthis(e_errors.INFO, "Failed: %s"%(cmd,))
 	   sys.exit(1)
@@ -78,11 +86,24 @@ def archive_backup(hst_bck,hst_local,dir_bck):
 
         # check and create the directory if it is needed
 	cmd = "enrsh "+hst_bck+" 'ls -d "+jou_dir+"'"
-        ret = os.system(cmd)
+        res = os.popen(cmd).readlines()
+        ret = 1
+        for i in res:
+            if i.strip() == jou_dir: # found it
+                ret = 0
+                break
         if ret != 0:
             # create it
             cmd = "enrsh "+hst_bck+" 'mkdir -p "+jou_dir+"'"
             ret = os.system(cmd)
+            # check it
+            cmd2= "enrsh "+hst_bck+" 'ls -d "+jou_dir+"'"
+            res = os.popen(cmd2).readlines()
+            ret = 1
+            for i in res:
+                if i.strip() == jou_dir: # found it
+                    ret = 0
+                    break
             if ret != 0:
                 logthis(e_errors.INFO, "Failed: %s"%(cmd,))
                 sys.exit(1)
