@@ -13,7 +13,8 @@
 # must be root
 if [ "`whoami`" != "root" ]
 then
-	echo "must run as root"
+	echo "ERROR: must run as root"
+	exit 1
 fi
 
 # find the host
@@ -69,16 +70,34 @@ echo database_owner = $database_owner
 echo db_owner = $db_owner
 echo db_schema = $db_schema
 
-grep ${database_owner} /etc/group
-if [ $? -ne 0 ]; then
+# check if group ${database_owner} exists. If not, create it.
+g2=`grep ${database_owner} /etc/group`
+if [ "${g2}x" = "x" ]
+then
     echo "Creating group ${database_owner}"
-    groupadd -g 4525 ${database_owner}
+    /usr/sbin/groupadd -g 4525 ${database_owner}
 fi
-echo "Creating user ${database_owner}"
-useradd -u 1342 -g ${database_owner} ${database_owner}
+
+# check if user ${database_owner} exists. If not, create it.
+u2=`grep ${database_owner} /etc/passwd`
+if [ "${u2}x" = "x" ]
+then
+	echo "Creating user ${database_owner}"
+	/usr/sbin/useradd -u 1342 -g ${database_owner} ${database_owner}
+fi
+
+# check if the database server is still running. If so, QUIT now!
+job=`ps -axw| grep postmaster | grep $database_area`
+if [ ! "${job}x" = "x" ]
+then
+	echo "ERROR: database server is still running."
+	echo $job
+	echo "ERROR: database $db_name creation failed!"
+	echo "ERROR: stop above database server first!"
+	exit 1
+fi
 
 # check if $database_area exist. If so, rename it
-
 if [ -d $database_area ]
 then
 	echo $database_area exists, rename it
