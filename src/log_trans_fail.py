@@ -12,6 +12,7 @@ import os
 import string
 import sys
 import time
+import socket
 
 # enstore imports
 import configuration_client
@@ -41,8 +42,44 @@ def get_log_dir():
             log_dir = log_server.get('log_file_path', None)
     return log_dir
 
+def get_html_dir():
+    # get html dir
+    config_host = os.getenv('ENSTORE_CONFIG_HOST')
+    config_port = os.getenv('ENSTORE_CONFIG_PORT')
+    html_dir = None
+    if config_host and config_port:
+        csc  = configuration_client.ConfigurationClient((config_host,
+                                                         int(config_port)))
+        crons = csc.get('crons')
+        if crons:
+            html_dir = crons.get('html_dir', None)
+    return html_dir
+
+def get_web_server():
+    # get web server hostname
+    config_host = os.getenv('ENSTORE_CONFIG_HOST')
+    config_port = os.getenv('ENSTORE_CONFIG_PORT')
+    web_server_host = None
+    if config_host and config_port:
+        csc  = configuration_client.ConfigurationClient((config_host,
+                                                         int(config_port)))
+        web_server = csc.get('web_server')
+        if web_server:
+            web_server_host = web_server.get('ServerHost', None)
+    return web_server_host
+
 def verify_log_dir(log_dir):
     return (not os.path.exists(log_dir))
+
+def copy_it(src, dst):
+    fp_r = open(src, "r")
+    fp_w = open(dst, "w")
+
+    data = fp_r.readlines()
+    fp_w.writelines(data)
+
+    fp_r.close()
+    fp_w.close()
 
 #def get_failures(log, log_dir, grepv='GONE|NUL|DSKMV|disk', grep=""):
 def get_failures(log, log_dir, grepv="", grep=""):
@@ -60,7 +97,8 @@ def get_failures(log, log_dir, grepv="", grep=""):
     grepv_ = grepv
 
     # just force the directory.
-    failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' % (log_dir, log, grepv_, grep))
+    ###failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception |egrep -v "%s" | egrep "%s"' % (log_dir, log, grepv_, grep))
+    failed = cmd('cd %s; egrep "transfer.failed|SYSLOG.Entry" %s /dev/null|grep -v exception' % (log_dir, log))
     return failed
 
 def parse_failures(failed):
@@ -166,9 +204,6 @@ if __name__ == "__main__":
     else:
         logfile = choice
 
-
-    print time.ctime(now)
-
     log_dir = get_log_dir()
     if log_dir == None:
         sys.stderr.write("Unable to obtain log directory.\n")
@@ -176,19 +211,44 @@ if __name__ == "__main__":
     if verify_log_dir(log_dir):
         sys.stderr.write("Unable to find log directory.\n")
         sys.exit(1)
-        
+
+    html_dir = get_html_dir()
+    if not html_dir:
+        sys.stderr.write("Unable to obtain html directory.\n")
+        sys.exit(1)
+
+    web_server = get_web_server()
+    if not html_dir:
+        sys.stderr.write("Unable to obtain web server hostname.\n")
+        sys.exit(1)
+
     failures = get_failures(logfile, log_dir)
     
     Vol,Drv = parse_failures(failures)
 
     #Obtain the output filename.   Use a temporary file to hold the
     # output.  Then swap it in for the real file at the end.
-    failed_filename = os.path.join(log_dir, "transfer_failed.txt")
-    temp_filename = "%s.temp" % (failed_filename)
+    fname="transfer_failed.txt"
+    failed_filename = os.path.join(html_dir, fname)
+    #temp_filename = "%s.temp" % (failed_filename)
+    temp_filename = os.path.join("/tmp/", fname)
     temp_fp = open(temp_filename, "w")
 
     make_failed_page(Vol, Drv, temp_fp)
 
-    temp_fp.close()
+    temp_fp.close()   
 
-    os.rename(temp_filename, failed_filename)
+    if socket.gethostname() == web_server:
+        #Do this if the web server and log server are on the same
+        # machine.
+        try:
+            copy_it(temp_filename, failed_filename)
+        except (OSError, IOError), msg:
+            sys.stderr.write("Unable to copy file from %s to %s: %s\n" % \
+                             (temp_filename, failed_filename, str(msg)))
+            sys.exit(1)
+    else:
+        #Other wise copy it remotely.
+        ##
+        cmd("enrcp %s %s" % (temp_filename, failed_filename))
+        print cmd
