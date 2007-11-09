@@ -12,6 +12,7 @@
 import enstore_plotter_module
 import enstore_plotter_framework
 import ratekeeper_plotter_module
+import drive_utilization_plotter_module
 import mounts_plot
 import getopt
 import sys
@@ -22,13 +23,16 @@ import traceback
 FNAL_DOMAIN="131.225" 
 
 def usage(cmd):
-    print "Usage: %s -s [--sleep=] "%(cmd,)
-    print "\t --sleep : sampling interval in seconds"
+    print "Usage: %s -m [--mounts] -r [--rate] -u [--utilization] "%(cmd,)
+    print "\t -r [--rate]        : plot ratekeeper plots"
+    print "\t -m [--mounts]      : plot mount plots "
+    print "\t -u [--utilization] : plot drive utilization"
+    print "\t -h [--help]        : show this message"
 
     
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs", ["help","mounts","rate"])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs:s", ["help","mounts","rate","utilization"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
@@ -40,6 +44,7 @@ if __name__ == "__main__":
         if o in ("-h", "--help"):
             usage(sys.argv[0])
             sys.exit(1)
+        # mounts plots
         if o in ("-m", "--mounts"):
             aModule   = mounts_plot.MountsPlot("mounts")
             f.add(aModule)
@@ -50,8 +55,7 @@ if __name__ == "__main__":
                            port  = acc.get('db_port', 5432),
                            user  = acc.get('dbuser', "enstore"))
                 for row in db.query("select distinct library from volume where media_type!='null'").getresult():
-                    if not row:
-                        continue
+                    if not row:                        continue
                     aModule = mounts_plot.MountsPlot("mounts")
                     aModule.add_parameter("library",row[0]);
                     f.add(aModule)
@@ -60,9 +64,13 @@ if __name__ == "__main__":
                 exc,msg,tb=sys.exc_info()
                 for l in traceback.format_exception( exc, msg, tb ):
                     print l
-                
+        # ratekeeper plots
         if o in ("-r","--rate"):
             aModule   = ratekeeper_plotter_module.RateKeeperPlotterModule("ratekeeper")
             f.add(aModule)
+        if o in ("-u","--utilization"):
+            aModule   = drive_utilization_plotter_module.DriveUtilizationPlotterModule("utilization")
+            f.add(aModule)
+        
 
     f.do_work()

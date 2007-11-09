@@ -29,7 +29,6 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         h.set_time_axis(True)
         h.set_marker_type("impulses")
         h.set_time_axis_format("%m-%d")
-        h.set_delete_data_file(False)
         self.histograms.append(h)
         return h
     
