@@ -28,8 +28,10 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         h=histogram.Ntuple(name,name)
         h.set_time_axis(True)
         h.set_marker_type("impulses")
+#        h.set_marker_type("points")
         h.set_time_axis_format("%m-%d")
         self.histograms.append(h)
+        h.set_ylabel("Number in Use")
         return h
     
     def book(self,frame):
@@ -46,17 +48,10 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
        #  here we create data points 
         
         acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
-        if False :
-            db = pg.DB(host  = acc.get('dbhost', 'localhost'),
-                       dbname= acc.get('dbname', 'accounting'),
-                       port  = acc.get('dbport', 5432),
-                       user  = acc.get('dbuser', 'enstore'))
-        else:
-            db = pg.DB(host  = 'd0ensrv0n',
-                       dbname= 'accounting',
-                       port  = 8800,
-                       user  = 'enstore_reader')
-                        
+        db = pg.DB(host  = acc.get('dbhost', 'localhost'),
+                   dbname= acc.get('dbname', 'accounting'),
+                   port  = acc.get('dbport', 5432),
+                   user  = acc.get('dbuser', 'enstore'))
 
         now_time  = time.time()
         then_time = now_time - self.days_ago*24*3600
@@ -76,7 +71,18 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             if (l < 10000):
                 break
         db.close()
+        for h in self.histograms:
+            h.get_data_file().close()
         
     def plot(self):
         for h in self.histograms:
-            h.plot("1:3")
+            #
+            # crazy hack to plot only non-empty histograms
+            #
+            total=0.0
+            fd = open(h.get_data_file_name(),"r")
+            for l in fd:
+                d,t,b=string.split(l," ");
+                total=total+float(b)
+            if total>0 :
+                h.plot("1:3")
