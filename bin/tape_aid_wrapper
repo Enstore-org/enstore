@@ -8,10 +8,10 @@ if [ "${1:-}" = "-x" ]; then set -xv; shift; fi
 
 usage() { case $script in
 	    flip_tab | take_out)
-	       echo "Usage: login as enstore to d0ensrv4, stkensrv4, or cdfensrv4"
+	       echo "Usage: login as enstore to d0ensrv4[n], stkensrv4[n], or cdfensrv4[n]"
 	       ;;
 	    adic_flip_tab | adic_take_out)	# deprecated form
-	       echo "Usage: login as enstore to d0ensrv4 or stkensrv4"
+	       echo "Usage: login as enstore to d0ensrv4[n] or stkensrv4[n]"
 	       ;;
 	    tape_aid_wrapper)
 	       echo "Usage: run as flip_tab or take_out"
@@ -58,8 +58,6 @@ EOD
 
 script=`basename $0`
 case $script in
-  flip_tab | take_out)
-     ;;
   adic_flip_tab)      # deprecated form
      script=flip_tab
      location=ADIC
@@ -67,6 +65,8 @@ case $script in
   adic_take_out)      # deprecated form
      script=take_out
      location=ADIC
+     ;;
+  flip_tab | take_out)
      ;;
   *) usage
      exit 1
@@ -77,13 +77,17 @@ esac
 
 node=`hostname -s`
 
-# should use config server to determine media changer host
-if ! echo $node | egrep '^(d0|stk|cdf)ensrv4$' > /dev/null; then
-   usage
-   exit 1
-fi
-
 gang=`gang`
+
+# should use config server to determine media changer host
+case $node in
+  ${gang}srv4 | ${gang}srv4n)
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
 
 until [ -n "${location:-}" ]; do
   echo
@@ -115,12 +119,12 @@ case $location in
 
   FCCM)
      robot="9310"
-     case $node in
-       d0ensrv4)
+     case $gang in
+       d0en)
 	  icap="1,1,0"
 	  ocap="1,0,0"
 	  ;;
-       stkensrv4)
+       stken)
 	  icap="0,1,0"
 	  ocap="0,0,0"
 	  ;;
@@ -129,16 +133,16 @@ case $location in
      ;;
 
   FCC2)
-     case $node in
-       d0ensrv4)
+     case $gang in
+       d0en)
 	  robot="aml2"
 	  type=3480
 	  ;;
-       stkensrv4)
+       stken)
 	  robot="aml2"
 	  type=DECDLT
 	  ;;
-       cdfensrv4)
+       cdfen)
 	  robot="9310"
 	  icap="0,0,0"
 	  ocap="0,1,0"
@@ -147,13 +151,13 @@ case $location in
      esac
      ;;
 
-  ADIC)			# shortcut taken when script called as adic_[flip_tab|take_out]
+  ADIC)			# shortcut taken when script called as adic_{flip_tab|take_out}
      robot="aml2"
-     case $node in
-       d0ensrv4)
+     case $gang in
+       d0en)
 	  type=3480
 	  ;;
-       stkensrv4)
+       stken)
 	  type=DECDLT
 	  ;;
        *) usage
@@ -253,13 +257,22 @@ fi
 output=/tmp/${script}.${action}.${robot}.output
 
 # reload is advertised as a take_out function, but implemented by flip_tab
-[ $action = reload ] && script=flip_tab
+case $action in
+  reload)
+    runScript=flip_tab
+    ;;
+  *)
+    runScript=$script
+    ;;
+esac 
 
 case $robot in
   9310 | 8500)
-     . $ENSTORE_DIR/src/${script}_acsls.sh
-     ;;
+    api=acsls
+    ;;
   aml2)
-     . $ENSTORE_DIR/src/${script}_das.sh
-     ;;
+    api=das
+    ;;
 esac
+
+. $ENSTORE_DIR/src/${script}_${api}.sh
