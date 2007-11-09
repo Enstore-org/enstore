@@ -66,7 +66,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
             for row in res:
                 lib=row[4].replace(" ","_").replace("/","")
                 type=row[1].replace(" ","_").replace("/","")
-                h=self.get_histogram("%s:%s"%(lib,type))
+                h=self.get_histogram("%s-%s"%(lib,type))
                 h.get_data_file().write("%s %d\n"%(row[0],row[3]))
 
             l=len(res)
