@@ -1,6 +1,15 @@
 #!/bin/sh
 
-BASEPATH=/fnal/ups/prd/www_pages/enstore
+set -u
+if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+
+tmp_base=`$ENSTORE_DIR/external_distr/extract_config_parameters.py inquisitor | grep html_file`
+if [ $? -ne 0 ]; then
+    echo can not find web directory in configuration
+    exit 1
+fi
+BASEPATH=`echo $tmp_base | cut -f2 -d\:`
+#BASEPATH=/fnal/ups/prd/www_pages/enstore
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 gang=`gang`
@@ -13,14 +22,19 @@ case $gang in
           ;;
 esac
 
-if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
-  BASE=/diska/aml2Shadow/AMU/LOGS-TRC
-  DECODED=/diska/aml2-log
-# REPORTED=/diska/aml2-report
+t_www=`$ENSTORE_DIR/external_distr/extract_config_parameters.py inquisitor | grep www_host`
+if [ $? -ne 0 ]; then
+    www_host="http://${gang}srv2.fnal.gov"
+else
+    www_host=`echo $t_www | cut -f2,3 -d\:`
 fi
 
-# set -u  # force better programming and ability to use check for not set
-if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+AML2_DIR=/srv2/enstore/aml2
+if [ `uname -n | grep -c ${gang}srv2` -ne 0 ]; then
+  BASE=$AML2_DIR/aml2Shadow/AMU/LOGS-TRC
+  DECODED=$AML2_DIR/aml2-log
+# REPORTED=/srv2/aml2-report
+fi
 
 # if called with no arguments, then assume that we have get the logs first
 # and then pass them along for decoding
@@ -29,9 +43,17 @@ if [ -z "${1-}" ]; then
    if [ -z "${BASE-}" ]; then
       BASE=/rip8a/enstore/aml2Shadow/AMU/LOGS-TRC
    fi
-
+if [ ! -d $BASE ]; then
+    mkdir -p $BASE
+fi
+if [ ! -d $DECODED ]; then
+    mkdir -p $DECODED
+fi
+#echo $BASE
+#echo $www_host
+#exit 0
 #  mirror $ENSTORE_DIR/sbin/aml2.mirror
-   mirror /home/enstore/CRON/aml2.log.mirror
+   mirror $ENSTORE_DIR/sbin/aml2.mirror.d0en 
    find $BASE -type f -name "lo*" -maxdepth 1 -exec $0 {} \;
 
 # make the nice calendar display of log files
@@ -39,7 +61,7 @@ if [ -z "${1-}" ]; then
       set -xv
       python $ENSTORE_DIR/src/enstore_make_log_calendar.py \
              --title="$robot Log Files" \
-             --web_host="http://${gang}srv2.fnal.gov/enstore/aml2log" \
+             --web_host="${www_host}/enstore/aml2log" \
              --logfile_dir="$DECODED" \
              --html_file="$DECODED/aml2_log_file.html" \
              --caption_title="$robot Log Files"
