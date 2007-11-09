@@ -52,6 +52,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                    dbname= acc.get('dbname', 'accounting'),
                    port  = acc.get('dbport', 5432),
                    user  = acc.get('dbuser', 'enstore'))
+        self.install_dir = frame.get_configuration_client().get(enstore_constants.INQUISITOR, {}).get('html_file','./')
 
         now_time  = time.time()
         then_time = now_time - self.days_ago*24*3600
@@ -86,3 +87,6 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
                 total=total+float(b)
             if total>0 :
                 h.plot("1:3")
+                os.system("mv %s.ps %s"%(h.name,self.install_dir))
+                os.system("mv %s_stamp.jpg %s"%(h.name,self.install_dir))
+                os.system("mv %s.jpg %s"%(h.name,self.install_dir))
