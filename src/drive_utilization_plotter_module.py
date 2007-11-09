@@ -32,6 +32,7 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
         h.set_time_axis_format("%m-%d")
         self.histograms.append(h)
         h.set_ylabel("Number in Use")
+        h.set_xlabel("month-day")
         return h
     
     def book(self,frame):
