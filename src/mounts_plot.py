@@ -33,8 +33,8 @@ class MountsPlot(enstore_plotter_module.EnstorePlotterModule):
 		self.library=""
 
 	def book(self,frame):
-		if self.get_parameter("self.low_water_mark"):
-			self.low_water_mark=self.get_parameter("self.low_water_mark")
+		if self.get_parameter("low_water_mark"):
+			self.low_water_mark=self.get_parameter("low_water_mark")
 		if self.get_parameter("high_water_mark"):
 			self.high_water_mark=self.get_parameter("high_water_mark")
 		if self.get_parameter("step"):
