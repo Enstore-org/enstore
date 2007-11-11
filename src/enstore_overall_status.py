@@ -132,6 +132,7 @@ def do_work():
     # we hard code the html_dir because we are no longer running on an enstore system
     html_dir = "/local/ups/prd/www_pages/enstore/"
     aFile = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
+    tmp_file = aFile
     status_d = {}
     # get the last status of the enstore balls
     last_status_d = get_last_status()
@@ -145,6 +146,12 @@ def do_work():
             if node == thisNode:
                 rtn = os.system("cp %s %s"%(aFile, new_file))
             else:
+                # a dirty fox to make it working with d0en
+                if node == 'd0ensrv2':
+                    aFile = '/srv2/enstore/www/web-pages/enstore_status_only.py'
+                else:
+                    aFile = tmp_file
+                print "NODE", node, aFile
                 rtn = enstore_functions2.get_remote_file(node, aFile, new_file)
             if rtn == 0:
                 exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
