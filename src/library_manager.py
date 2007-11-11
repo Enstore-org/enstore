@@ -594,7 +594,27 @@ class LibraryManagerMethods:
         else:
             return {'status': (e_errors.MEDIA_IN_ANOTHER_DEVICE, None)}
 
+    def next_write_volume(self,library, size, volume_family, veto_list, first_found=0, mover={}):
+        SAFETY_FACTOR=1.05
+        MIN_LEFT=long(0)
+        Trace.trace(9, 'write_volumes %s'%(self.write_volumes,))
+        required_bytes = max(long(size*SAFETY_FACTOR), MIN_LEFT)
+        for vol_rec in self.write_volumes:
+            if ((library == vol_rec['library']) and
+                (size < vol_rec['remaining_bytes']) and
+                (volume_family == vol_rec['volume_family']) and
+                (not (vol_rec['external_labe'] in veto_list))):
+                return vol_rec
+        else:
+            v = self.vcc.next_write_volume(library, size, volume_family, veto_list, first_found, mover, timeout=60, retry=5)
+            if v['status'][0] == e_errors.OK:
+                self.write_volumes.append(v)
+            return v
+                    
+
+                    
     def init_request_selection(self):
+        self.write_volumes = []
         self.write_vf_list = {}
         self.tmp_rq = None   # need this to temporarily store selected request
         self.processed_admin_requests = []
@@ -776,13 +796,20 @@ class LibraryManagerMethods:
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=rq.ticket['vc']['address'])
 
-            v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
-                                           rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
-                                           vol_family, 
-                                           vol_veto_list,
-                                           first_found=0,
-                                           mover=requestor,
-                                           timeout=60, retry=5)
+            v = self.next_write_volume(rq.ticket["vc"]["library"],
+                                       rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
+                                       vol_family,
+                                       vol_veto_list,
+                                       first_found=0,
+                                       mover=requestor)
+            
+            #v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
+            #                               rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
+            #                               vol_family, 
+            #                               vol_veto_list,
+            #                               first_found=0,
+            #                               mover=requestor,
+            #                               timeout=60, retry=5)
             Trace.trace(22, "PW_RQ6")
             # volume clerk returned error
             Trace.trace(9,"process_write_request: next write volume returned %s" % (v,))
