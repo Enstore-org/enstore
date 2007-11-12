@@ -1,23 +1,31 @@
+#!/usr/bin/env python
+
+# $Id$
+
 import os
 import sys
 import string
 import time
+import pwd
 
 import enstore_functions2
 import enstore_mail
 import enstore_constants
 import enstore_html
+import configuration_client
+import e_errors
 
-nodes = {'d0ensrv2' : ' d0en mass storage',
-	 'stkensrv2' : ' stken mass storage',
-	 'cdfensrv2' : ' cdfen mass storage',
-	 }
+#These first few constants are for local files just used by this script.
 TMP = ".tmp"
-DESTDIR = "/tmp/enstore_overall_status"
 MYNAME = "EN_OVERALL_STAT"
-LAST_STATUS_FILE = "last_status"
-LAST_STATUS = "%s/%s.py"%(DESTDIR, LAST_STATUS_FILE)
+LAST_STATUS_IMPORT = "last_status"
+LAST_STATUS_FILE = "%s.py" % (LAST_STATUS_IMPORT,)
+# We hard code the html_dir, because we are no longer running on an
+# enstore system.
+###This could go in a crons section of each configuration???
 LCL_HTML_DIR = "/home/wwwsrv/ccf/html/enstore/"
+
+DEBUG = 0  #Make true if debugging to avoid sending e-mails to admins.
 
 DOWN_L = [enstore_constants.DOWN,
 	  enstore_functions2.format_time(time.time()),
@@ -77,97 +85,187 @@ class HtmlStatusOnlyFile:
             doc.body(status, nodes_d)
 	    self.do_write(str(doc))
 
-def setup_for_files():
-    if not os.path.isdir(DESTDIR):
-	# make the directory
-	os.system("mkdir %s\ntouch %s"%(DESTDIR, LAST_STATUS))
-    else:
-	# make the last status file if it does not exist
-	if not os.path.exists(LAST_STATUS):
-	    os.system("touch %s"%(LAST_STATUS,))
+def setup_for_files(last_status_filename):
+    destdir = os.path.dirname(last_status_filename)
+    if not os.path.exists(destdir):
+        #Make the path.
+        os.makedirs(destdir)
+    if not os.path.exists(last_status_filename):
+        #Touch the file.
+        f = open(last_status_filename, "w")
+        f.close()
+
     # add this path to our python search directories
-    sys.path.append(DESTDIR)
+    sys.path.insert(0, destdir)
     os.environ['PYTHONPATH'] = string.join(sys.path, ':')
+
+def copy_it(src, dst):
+    try:
+        fp_r = open(src, "r")
+        fp_w = open(dst, "w")
+        
+        data = fp_r.readlines()
+        fp_w.writelines(data)
+    
+        fp_r.close()
+        fp_w.close()
+    except (OSError, IOError):
+        return 1
+
+    return 0
 
 def mark_enstore_down(status_d, node, last_status_d):
     status_d[node] = DOWN_L2
-    # send mail about this, only send mail if we have been down continuously and last
-    # mail was sent > 1 hour ago. so, 
+    # send mail about this, only send mail if we have been down
+    # continuously and last mail was sent > 1 hour ago. so, 
     #
     #    if last_status was good, then send mail
     send_mail = 0
     ctr = last_status_d.get(node, 0)
     if ctr == 0:
-	# either it was good last time, or it did not exist, in either case send mail
+	# either it was good last time, or it did not exist, in either
+        # case send mail
 	send_mail = 1
     elif ctr == (ctr/20)*20:
-	# only send mail every approx two hours the node is seen down continuously
+	# only send mail every approx two hours the node is seen
+        # down continuously
 	send_mail = 1
-    if send_mail == 1:
-	enstore_mail.send_mail(MYNAME, "%s not reachable to rcp overall status file"%(node,),
-				    "Overall status page has Enstore ball for %s as red"%(node,))
+
+    #Send e-mail.
+    if send_mail == 1 and DEBUG == 0:
+	enstore_mail.send_mail(
+            MYNAME,
+            "%s not reachable to rcp overall status file" % (node,),
+            "Overall status page has Enstore ball for %s as red" % (node,)
+            )
     
 def get_last_status():
     last_s = {}
-    exec("import %s\nlast_s = last_status.__dict__.get('status_d', {})\n"%(LAST_STATUS_FILE,))
+    exec("import %s\nlast_s = last_status.__dict__.get('status_d', {})\n" \
+         % (LAST_STATUS_IMPORT,))
     return last_s
 
-def set_last_status(status_d):
-    fd = open(LAST_STATUS, 'w')
+def set_last_status(last_status_filename, status_d):
+    fd = open(last_status_filename, 'w')
     fd.write("status_d = %s"%(status_d,))
     fd.close()
 
 def do_work():
+    ##print "in do_work() ..."
+
     # where are we running, don't have to rcp to there
     thisNode = enstore_functions2.strip_node(os.uname()[1])
+
+    temp_dir = os.path.join("/tmp/enstore",
+                            pwd.getpwuid(os.geteuid())[0])
+    last_status_file = os.path.join(temp_dir, LAST_STATUS_FILE)
 
     # fetch the files from the other nodes.  we will put them
     # in /tmp/enstore_status and import them from there
     # do some setup first
-    ##print "in do_work() ..."
-    setup_for_files()
-    keys = nodes.keys()
-    ##print "got keys ..."
-
-    # we hard code the html_dir because we are no longer running on an enstore system
-    html_dir = "/local/ups/prd/www_pages/enstore/"
-    aFile = "%s/%s"%(html_dir, enstore_constants.ENSTORESTATUSFILE)
-    tmp_file = aFile
+    setup_for_files(last_status_file)
+    config_host = enstore_functions2.default_host()
+    config_port = enstore_functions2.default_port()
+    csc = configuration_client.ConfigurationClient((config_host,
+                                                    config_port))
+    kcs = csc.get('known_config_servers', timeout = 3, retry = 3)
     status_d = {}
+    nodes = {}
     # get the last status of the enstore balls
     last_status_d = get_last_status()
-    for node in keys:
-	node = enstore_functions2.strip_node(node)
-        # make sure node is up before rcping
-        if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
-            # this must match with the import below
-            NEWFILE = "enstore_status_only_%s"%(node,)
-            new_file = "%s/%s.py"%(DESTDIR, NEWFILE)
-            if node == thisNode:
-                rtn = os.system("cp %s %s"%(aFile, new_file))
+    if e_errors.is_ok(kcs):
+        del kcs['status'] #We need to loop over the other elements.
+
+        # Loop over the contents of the default systems known_config_servers
+        # list of configuration servers.
+        for name, value in kcs.items():
+            ## Get information from the configuration server.  This
+            ## information includes the location of the ENSTORESTATUSFILE
+            ## on each Enstore system's web nodes, and the name of each
+            ## Enstore system's web node.
+            cur_host = enstore_functions2.strip_node(value[0])
+            cur_port = value[1]
+            cur_csc = configuration_client.ConfigurationClient((value[0],
+                                                                cur_port))
+            inquisitor = cur_csc.get('inquisitor',  timeout = 3, retry = 3)
+            if not e_errors.is_ok(inquisitor):
+                # there was an error, mark enstore as down
+                mark_enstore_down(status_d, cur_host, last_status_d)
+                continue
+                
+            html_dir = inquisitor.get('html_file', None)
+            status_filename = "%s/%s"%(html_dir,
+                                       enstore_constants.ENSTORESTATUSFILE)
+
+            crons = cur_csc.get('crons',  timeout = 3, retry = 3)
+            if not e_errors.is_ok(crons):
+                # there was an error, mark enstore as down
+                mark_enstore_down(status_d, cur_host, last_status_d)
+                continue
+                
+            web_node = crons.get('web_node', None)
+
+            # make sure node is up before rcping
+            if enstore_functions2.ping(web_node) != enstore_constants.IS_ALIVE:
+                mark_enstore_down(status_d, cur_host, last_status_d)
+                continue
+
+            #Full emote path to the file we want to copy over.
+            status_filename = os.path.join(html_dir,
+                                           enstore_constants.ENSTORESTATUSFILE)
+            #The name of the modules (python file) we need to use to be
+            # able to import it.  The [:-3] at the end removes the .py.
+            new_import_filename = "%s_%s" % (cur_host,
+                                    enstore_constants.ENSTORESTATUSFILE[:-3])
+            #The full path name of the local file copy once it is copyied over.
+            # Note we need to append the .py back here.
+            new_status_filename = os.path.join(temp_dir,
+                                               "%s%s" % (new_import_filename,
+                                                         ".py"))
+            #The dictionary is the format HtmlStatusOnlyFile.write() expects.
+            nodes[cur_host] = "%s mass storage" % (name,)
+
+            if web_node == thisNode:
+                #Local copy.
+                rtn = copy_it(status_filename, new_status_filename)
             else:
-                # a dirty fox to make it working with d0en
-                if node == 'd0ensrv2':
-                    aFile = '/srv2/enstore/www/web-pages/enstore_status_only.py'
-                else:
-                    aFile = tmp_file
-                print "NODE", node, aFile
-                rtn = enstore_functions2.get_remote_file(node, aFile, new_file)
-            if rtn == 0:
-                exec("import %s\nstatus_d[node] = %s.status\n"%(NEWFILE, NEWFILE))
+                #Remote copy.
+                rtn = enstore_functions2.get_remote_file(web_node,
+                                                         status_filename,
+                                                         new_status_filename)
+            #One last check to make sure we really did copy over the file.
+            if not os.path.exists(new_status_filename):
+                rtn2 = 1
+            else:
+                rtn2 = 0
+
+            #Read in the copied file to the python interpreter.
+            if rtn == 0 and rtn2 == 0:
+                exec("import %s\nstatus_d[cur_host] = %s.status\n" % \
+                     (new_import_filename, new_import_filename))
+                #Cleanup after ourselves.
+                #try:
+                #    os.remove(new_status_filename)
+                #except (OSError, IOError):
+                #    pass
             else:
                 # there was an error, mark enstore as down
-                mark_enstore_down(status_d, node, last_status_d)
-        else:
-            # there was an error, mark enstore as down
-            mark_enstore_down(status_d, node, last_status_d)
-	if status_d[node][0] == enstore_constants.DOWN:
-	    last_status_d[node] = last_status_d.get(node, 0) + 1
-	else:
-	    last_status_d[node] = 0
-    else:
-	set_last_status(last_status_d)
+                mark_enstore_down(status_d, cur_host, last_status_d)
 
+            if status_d[cur_host][0] == enstore_constants.DOWN:
+                last_status_d[cur_host] = last_status_d.get(cur_host, 0) + 1
+            else:
+                last_status_d[cur_host] = 0
+
+
+        #Update persistent information about how long each system has
+        # been down (or hopefully not down).
+        set_last_status(last_status_file, last_status_d)
+            
+    #Create the directory if it does not exist.
+    if not os.path.exists(LCL_HTML_DIR):
+        os.makedirs(LCL_HTML_DIR)
+    
     # now create the web page
     filename = "%s/%s"%(LCL_HTML_DIR, enstore_constants.STATUSONLYHTMLFILE)
     only_file = HtmlStatusOnlyFile(filename)
@@ -175,7 +273,7 @@ def do_work():
     only_file.write(status_d, nodes)
     only_file.close()
     only_file.install()
-
+    
 
 
 if __name__ == "__main__" :
