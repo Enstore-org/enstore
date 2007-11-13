@@ -125,7 +125,7 @@ encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_
 
 pre_enstore:
 	 @ if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
-	 @ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
+	 #@ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENSTORE_BIN
 	mkdir ENSTORE_BIN
@@ -148,13 +148,23 @@ post_enstore:
 SERVER_LIST=configuration_server log_server event_relay library_manager
 SERVER_HTMLGEN_LIST=alarm_server inquisitor ratekeeper monitor_server
 SERVER_SQL_LIST=file_clerk volume_clerk info_server accounting_server drivestat_server
-SERVER_LIB_LIST=media_changer mover
+SERVER_LIB_LIST=mover media_changer
 
 #These are the full lists.
+# need this as media changer does not get built becuase of dummy_threading
+FULL_SERVER_LIST_NO_MC=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) mover
 FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST)
 FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin enmv_admin
 
 $(FULL_SERVER_LIST): $$@.py
+	- rm -rf SERVER_BIN_TEMP 
+	mkdir SERVER_BIN_TEMP
+	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
+	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/sbin/$@
+	rm -rf SERVER_BIN_TEMP
+
+$(FULL_SERVER_LIST_NO_MC): $$@.py
 	- rm -rf SERVER_BIN_TEMP 
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
@@ -171,6 +181,16 @@ $(FULL_CLIENT_LIST): $$@.py
 	rm -rf CLIENT_BIN_TEMP
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
+enstore_no_mc: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST_NO_MC) post_enstore
+
+media_changer:
+	(cd $(ENSTORE_DIR)/modules; make all)
+	- rm -rf GET_TEMP
+	mkdir GET_TEMP
+	- rm -rf GET_BIN
+	mkdir GET_BIN
+	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP media_changer.py
+	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
 
 fileinfo:
 	- rm -rf FILEINFO_TEMP
