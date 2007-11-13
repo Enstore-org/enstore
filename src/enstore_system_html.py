@@ -92,6 +92,9 @@ class EnstoreSystemHtml:
         add_row_to_table(self.info_table,"/cgi-bin/enstore_show_inv_summary_cgi.py",
                          "Tape Inventory Summary","Summary of inventory results")
 
+        add_row_to_table(self.info_table,"/cgi-bin/enstore_show_inventory_cgi.py",
+                         "Tape Inventory ","Detailed list of tapes and their contents")
+
         add_row_to_table(self.info_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")
         if not remote:
             add_row_to_table(self.info_table,"cron_pics.html","Cronjob Status","lots of cronjob exit status for past week")
