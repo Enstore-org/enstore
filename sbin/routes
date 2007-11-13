@@ -46,7 +46,7 @@ case $job in
 ################################################################################
 quickcheck)
     # skip the host node, as well as known down nodes
-    omit="$host $(lsKnownDown)"
+    omit="$host ssasrv1 $(lsKnownDown)"
 
     # test peer hosts (they are testing us, too)
     for g in d0en stken cdfen; do
