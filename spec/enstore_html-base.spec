@@ -6,6 +6,7 @@ Group: Applications/System
 URL: https://plone4.fnal.gov/P0/Enstore_and_Dcache/
 Source: %{name}_%{version}.tar.gz
 BuildRoot: %{_topdir}/BUILD/%{name}-%{version}
+BuildArch: noarch
 Prefix: /opt/%{name}
 Requires: Python-enstore,  enstore_sa, httpd
 %description
