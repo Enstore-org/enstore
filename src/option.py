@@ -183,6 +183,7 @@ CLEAR_SG = "clear-sg"                        #volume
 CLIENT_NAME="client-name"                    # log, alarm
 CONDITION = "condition"                      #alarm_server
 CONFIG_FILE = "config-file"                  #configuration(c&s)
+CONFIG_HOSTS = "config-hosts"                #eos
 CONST = "const"                              #pnfs
 COPIES = "copies"                            #encp
 COPY = "copy"                                #encp
@@ -264,7 +265,7 @@ GET_WORK_SORTED = "get-work-sorted"          #library
 HELP = "help"
 HISTORY = "history"                          #history
 HOST = "host"                                #monitor
-HTML_DIR = "html-dir"                        #monitor(server)
+HTML_DIR = "html-dir"                        #monitor(server), eos
 HTML_FILE = "html-file"                      #inquisitor(server)
 HTML_GEN_HOST = "html-gen-host"              #monitor, system
 ID = "id"                                    #pnfs
@@ -458,7 +459,7 @@ valid_option_list = [
     BYPASS_FILESYSTEM_MAX_FILESIZE_CHECK, BYPASS_LABEL_CHECK,
     CAPTION_TITLE, CAPTURE_TIMEOUT, CAT, CHECK,
     CLEAN_DRIVE, CLEAR, CLEAR_SG, CLIENT_NAME,
-    CONDITION, CONFIG_FILE, CONST, COPIES, COPY,
+    CONDITION, CONFIG_FILE, CONFIG_HOSTS, CONST, COPIES, COPY,
     COUNTERS, COUNTERSN, CP, CURSOR, CREATE,
     DATA_ACCESS_LAYER, DATABASE, DATABASEN, DBHOME,
     DECR_FILE_COUNT, DELAYED_DISMOUNT, DELETE, DELETED, DELETE_WORK, DELPRI,
@@ -605,9 +606,9 @@ class Interface:
         apply(self.compile_options_dict, self.valid_dictionaries())
         
         self.check_option_names()
-        
-        self.parse_options()
 
+        self.parse_options()
+        
         try:
             self.config_host = enstore_functions2.default_host()
             self.config_port = enstore_functions2.default_port()
