@@ -1,6 +1,6 @@
 Summary: Enstore: Mass Storage System
 Name: enstore
-Version: 1.0.1
+Version: 1.b.1
 Release: 8
 Copyright: GPL
 Group: System Environment/Base
@@ -29,15 +29,39 @@ echo PYTHON_DIR=`rpm -ql Python-enstore | head -1`> /tmp/enstore-setup
 echo export PYTHON_DIR >> /tmp/enstore-setup
 echo PYTHONINC=`ls -d $PYTHON_DIR/include/python*`>> /tmp/enstore-setup
 echo export PYTHONINC >> /tmp/enstore-setup
+
+#pm1=`ls -d $PYTHON_DIR/lib/python*`
+#pm2=$RPM_BUILD_ROOT/%{prefix}/modules
+#echo PYTHONLIB=$pm2:$pm1 >> /tmp/enstore-setup
 echo PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*` >> /tmp/enstore-setup
 echo export PYTHONLIB >> /tmp/enstore-setup
+echo PYTHONPATH=$RPM_BUILD_ROOT/%{prefix}/src:$RPM_BUILD_ROOT/%{prefix}/modules:$RPM_BUILD_ROOT/%{prefix}/HTMLgen >> /tmp/enstore-setup
+echo export PYTHONPATH >> /tmp/enstore-setup
 echo FTT_DIR=`rpm -ql ftt | head -1` >> /tmp/enstore-setup
 echo export FTT_DIR >> /tmp/enstore-setup
-echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
-echo export SWIG_DIR
-echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
-echo export SWIG_LIB
-echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
+echo ENSTORE_DIR=$RPM_BUILD_ROOT/%{prefix} >> /tmp/enstore-setup
+echo export ENSTORE_DIR >> /tmp/enstore-setup
+
+rpm -q swig-enstore > /dev/null
+if [ $? -eq 0 ]; then
+	swigdir=`rpm -ql swig-enstore | head -1`
+	echo SWIG_DIR=$swigdir >> /tmp/enstore-setup
+	echo export SWIG_DIR >> /tmp/enstore-setup
+	echo SWIG_LIB=$swigdir/swig_lib >> /tmp/enstore-setup
+	echo export SWIG_LIB >> /tmp/enstore-setup
+else
+	echo SWIG_DIR=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883 >> /tmp/enstore-setup
+	echo export SWIG_DIR
+	echo SWIG_LIB=/home/moibenko/enstore_products/swig/swig1.1-883/SWIG1.1-883/swig_lib >> /tmp/enstore-setup
+	echo export SWIG_LIB
+fi
+echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:$RPM_BUILD_ROOT/%{prefix}/bin:$RPM_BUILD_ROOT/%{prefix}/sbin:"$"PATH >> /tmp/enstore-setup
+rpm -q aci > /dev/null
+if [ $? -eq 0 ]; then
+	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
+	echo export ACI_DIR >> /tmp/enstore-setup
+	echo PATH="$"ACI_DIR:"$"PATH >> /tmp/enstore-setup
+fi
 #++++++++++++
 
 %setup -q -c -n %{prefix}
@@ -46,13 +70,16 @@ echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:"$"PATH >> /tmp/enstore-setup
 %build
 . /tmp/enstore-setup
 echo "BUILD"
-cd $RPM_BUILD_ROOT/%{prefix}/modules
-make clean
-make
-rm *.c
-cd ../src
-./make_pyc_files.py
-rm *.py
+cd $RPM_BUILD_ROOT/%{prefix}/src
+make enstore_no_mc
+make entv
+for f in `ls -1 ENTV_BIN`; do
+	rm $f.py
+done
+for f `ls -1 ENSTORE_BIN`; do 
+	rm $f.py
+done
+
 
 %install
 
@@ -137,11 +164,14 @@ rm -rf $RPM_BUILD_ROOT/*
 %defattr(-,enstore,enstore,-)
 %doc
 /%{prefix}
-#/etc/rc.d/init.d/enstore-boot
-#/etc/sudoers
-#/home/enstore/debugfiles.list
-#/home/enstore/debugsources.list
+%config /%{prefix}/etc/enstore_configuration
+%config /%{prefix}/etc/sam.conf
+%config /%{prefix}/etc/stk.conf
+%config /%{prefix}/etc/d0en_sde_test.conf
+%config /usr/local/etc/setups.sh
 %changelog
+ * Mon Nov 05 2007  <moibenko@fnal.gov> -
+ - added configuration files
 * Fri Aug 17 2007  <moibenko@fnal.gov> -
 - Copy enstore-setup file from config host if it exists there
 - If "server" is specified, install additional rpms
