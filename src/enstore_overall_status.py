@@ -14,16 +14,13 @@ import enstore_constants
 import enstore_html
 import configuration_client
 import e_errors
+import option
 
 #These first few constants are for local files just used by this script.
 TMP = ".tmp"
 MYNAME = "EN_OVERALL_STAT"
 LAST_STATUS_IMPORT = "last_status"
 LAST_STATUS_FILE = "%s.py" % (LAST_STATUS_IMPORT,)
-# We hard code the html_dir, because we are no longer running on an
-# enstore system.
-###This could go in a crons section of each configuration???
-LCL_HTML_DIR = "/home/wwwsrv/ccf/html/enstore/"
 
 DEBUG = 0  #Make true if debugging to avoid sending e-mails to admins.
 
@@ -150,8 +147,14 @@ def set_last_status(last_status_filename, status_d):
     fd.write("status_d = %s"%(status_d,))
     fd.close()
 
-def do_work():
+def main(intf):
     ##print "in do_work() ..."
+
+    #Get the directory to copy the final output to.
+    LCL_HTML_DIR = intf.html_dir
+    if LCL_HTML_DIR == None:
+        sys.stderr.write("Expected target directory as argument.\n")
+        sys.exit(1)
 
     # where are we running, don't have to rcp to there
     thisNode = enstore_functions2.strip_node(os.uname()[1])
@@ -164,103 +167,124 @@ def do_work():
     # in /tmp/enstore_status and import them from there
     # do some setup first
     setup_for_files(last_status_file)
-    config_host = enstore_functions2.default_host()
+
+    #Loop through all configuration servers mentioned on the command line
+    # looking for one that is up.
+    kcs = {}
     config_port = enstore_functions2.default_port()
-    csc = configuration_client.ConfigurationClient((config_host,
-                                                    config_port))
-    kcs = csc.get('known_config_servers', timeout = 3, retry = 3)
+    for config_host in intf.config_hosts:
+        #Hope they use the default port everywhere.
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        kcs = csc.get('known_config_servers', timeout = 3, retry = 3)
+        if e_errors.is_ok(kcs):
+            del kcs['status'] #We need to stop looping over the other elements.
+            break
+    else:
+        # Try the default system, if there is one to find.
+        
+        config_host =  enstore_functions2.default_host()
+        #Hope they use the default port everywhere.
+        csc = configuration_client.ConfigurationClient((config_host,
+                                                        config_port))
+        kcs = csc.get('known_config_servers', timeout = 3, retry = 3)
+        if e_errors.is_ok(kcs):
+            #Found what we are looking for.
+            del kcs['status']
+        else:
+            sys.stderr.write("No suitable Enstore system found.\n")
+            sys.exit(1)
+
     status_d = {}
     nodes = {}
     # get the last status of the enstore balls
     last_status_d = get_last_status()
-    if e_errors.is_ok(kcs):
-        del kcs['status'] #We need to loop over the other elements.
 
-        # Loop over the contents of the default systems known_config_servers
-        # list of configuration servers.
-        for name, value in kcs.items():
-            ## Get information from the configuration server.  This
-            ## information includes the location of the ENSTORESTATUSFILE
-            ## on each Enstore system's web nodes, and the name of each
-            ## Enstore system's web node.
-            cur_host = enstore_functions2.strip_node(value[0])
-            cur_port = value[1]
-            cur_csc = configuration_client.ConfigurationClient((value[0],
-                                                                cur_port))
-            inquisitor = cur_csc.get('inquisitor',  timeout = 3, retry = 3)
-            if not e_errors.is_ok(inquisitor):
-                # there was an error, mark enstore as down
-                mark_enstore_down(status_d, cur_host, last_status_d)
-                continue
-                
-            html_dir = inquisitor.get('html_file', None)
-            status_filename = "%s/%s"%(html_dir,
+    # Loop over the contents of the default systems known_config_servers
+    # list of configuration servers.
+    for name, value in kcs.items():
+        ## Get information from the configuration server.  This
+        ## information includes the location of the ENSTORESTATUSFILE
+        ## on each Enstore system's web nodes, and the name of each
+        ## Enstore system's web node.
+        cur_host = enstore_functions2.strip_node(value[0])
+        cur_port = value[1]
+        cur_csc = configuration_client.ConfigurationClient((value[0],
+                                                            cur_port))
+        inquisitor = cur_csc.get('inquisitor',  timeout = 3, retry = 3)
+        if not e_errors.is_ok(inquisitor):
+            # there was an error, mark enstore as down
+            mark_enstore_down(status_d, cur_host, last_status_d)
+            continue
+
+        html_dir = inquisitor.get('html_file', None)
+        status_filename = "%s/%s"%(html_dir,
+                                   enstore_constants.ENSTORESTATUSFILE)
+
+        crons = cur_csc.get('crons',  timeout = 3, retry = 3)
+        if not e_errors.is_ok(crons):
+            # there was an error, mark enstore as down
+            mark_enstore_down(status_d, cur_host, last_status_d)
+            continue
+
+        web_node = crons.get('web_node', None)
+
+        # make sure node is up before rcping
+        if enstore_functions2.ping(web_node) != enstore_constants.IS_ALIVE:
+            mark_enstore_down(status_d, cur_host, last_status_d)
+            continue
+
+        #Full emote path to the file we want to copy over.
+        status_filename = os.path.join(html_dir,
                                        enstore_constants.ENSTORESTATUSFILE)
+        #The name of the modules (python file) we need to use to be
+        # able to import it.  The [:-3] at the end removes the .py.
+        new_import_filename = "%s_%s" % (cur_host,
+                                enstore_constants.ENSTORESTATUSFILE[:-3])
+        #The full path name of the local file copy once it is copyied over.
+        # Note we need to append the .py back here.
+        new_status_filename = os.path.join(temp_dir,
+                                           "%s%s" % (new_import_filename,
+                                                     ".py"))
+        #The dictionary is the format HtmlStatusOnlyFile.write() expects.
+        nodes[cur_host] = "%s mass storage" % (name,)
 
-            crons = cur_csc.get('crons',  timeout = 3, retry = 3)
-            if not e_errors.is_ok(crons):
-                # there was an error, mark enstore as down
-                mark_enstore_down(status_d, cur_host, last_status_d)
-                continue
-                
-            web_node = crons.get('web_node', None)
+        if web_node == thisNode:
+            #Local copy.
+            rtn = copy_it(status_filename, new_status_filename)
+        else:
+            #Remote copy.
+            rtn = enstore_functions2.get_remote_file(web_node,
+                                                     status_filename,
+                                                     new_status_filename)
+        #One last check to make sure we really did copy over the file.
+        if not os.path.exists(new_status_filename):
+            rtn2 = 1
+        else:
+            rtn2 = 0
 
-            # make sure node is up before rcping
-            if enstore_functions2.ping(web_node) != enstore_constants.IS_ALIVE:
-                mark_enstore_down(status_d, cur_host, last_status_d)
-                continue
+        #Read in the copied file to the python interpreter.
+        if rtn == 0 and rtn2 == 0:
+            exec("import %s\nstatus_d[cur_host] = %s.status\n" % \
+                 (new_import_filename, new_import_filename))
+            #Cleanup after ourselves.
+            #try:
+            #    os.remove(new_status_filename)
+            #except (OSError, IOError):
+            #    pass
+        else:
+            # there was an error, mark enstore as down
+            mark_enstore_down(status_d, cur_host, last_status_d)
 
-            #Full emote path to the file we want to copy over.
-            status_filename = os.path.join(html_dir,
-                                           enstore_constants.ENSTORESTATUSFILE)
-            #The name of the modules (python file) we need to use to be
-            # able to import it.  The [:-3] at the end removes the .py.
-            new_import_filename = "%s_%s" % (cur_host,
-                                    enstore_constants.ENSTORESTATUSFILE[:-3])
-            #The full path name of the local file copy once it is copyied over.
-            # Note we need to append the .py back here.
-            new_status_filename = os.path.join(temp_dir,
-                                               "%s%s" % (new_import_filename,
-                                                         ".py"))
-            #The dictionary is the format HtmlStatusOnlyFile.write() expects.
-            nodes[cur_host] = "%s mass storage" % (name,)
-
-            if web_node == thisNode:
-                #Local copy.
-                rtn = copy_it(status_filename, new_status_filename)
-            else:
-                #Remote copy.
-                rtn = enstore_functions2.get_remote_file(web_node,
-                                                         status_filename,
-                                                         new_status_filename)
-            #One last check to make sure we really did copy over the file.
-            if not os.path.exists(new_status_filename):
-                rtn2 = 1
-            else:
-                rtn2 = 0
-
-            #Read in the copied file to the python interpreter.
-            if rtn == 0 and rtn2 == 0:
-                exec("import %s\nstatus_d[cur_host] = %s.status\n" % \
-                     (new_import_filename, new_import_filename))
-                #Cleanup after ourselves.
-                #try:
-                #    os.remove(new_status_filename)
-                #except (OSError, IOError):
-                #    pass
-            else:
-                # there was an error, mark enstore as down
-                mark_enstore_down(status_d, cur_host, last_status_d)
-
-            if status_d[cur_host][0] == enstore_constants.DOWN:
-                last_status_d[cur_host] = last_status_d.get(cur_host, 0) + 1
-            else:
-                last_status_d[cur_host] = 0
+        if status_d[cur_host][0] == enstore_constants.DOWN:
+            last_status_d[cur_host] = last_status_d.get(cur_host, 0) + 1
+        else:
+            last_status_d[cur_host] = 0
 
 
-        #Update persistent information about how long each system has
-        # been down (or hopefully not down).
-        set_last_status(last_status_file, last_status_d)
+    #Update persistent information about how long each system has
+    # been down (or hopefully not down).
+    set_last_status(last_status_file, last_status_d)
             
     #Create the directory if it does not exist.
     if not os.path.exists(LCL_HTML_DIR):
@@ -273,9 +297,48 @@ def do_work():
     only_file.write(status_d, nodes)
     only_file.close()
     only_file.install()
+
+class EnstoreOverallStatusInterface(option.Interface):
+    def __init__(self, args=sys.argv, user_mode=0):
+
+        #This is flag is accessed via a global variable.
+        self.html_dir = None
+        self.config_hosts = []
+
+        option.Interface.__init__(self, args=args, user_mode=user_mode)
+
+    def valid_dictionaries(self):
+        return (self.help_options, self.eos_options)
     
+    eos_options = {
+        option.CONFIG_HOSTS:{option.HELP_STRING:"The list of configuration"
+                             " server hosts to try and find.",
+                             option.VALUE_USAGE:option.REQUIRED,
+                             option.VALUE_TYPE:option.LIST,
+                             option.USER_LEVEL:option.ADMIN,},
+        option.HTML_DIR:{option.HELP_STRING:"The directory the final output"
+                         " will be copied to.",
+                         option.VALUE_USAGE:option.REQUIRED,
+                         option.VALUE_TYPE:option.STRING,
+                         option.USER_LEVEL:option.ADMIN,},
+        }
 
+def do_work(intf):
 
+    try:
+        exit_status = main(intf)
+    except (SystemExit, KeyboardInterrupt):
+        exit_status = 1
+    except:
+        #Get the uncaught exception.
+        exc, msg, tb = sys.exc_info()
+        sys.stderr.write("%s: %s\n" % (str(exc), str(msg)))
+        sys.exit(1)
+
+    sys.exit(exit_status)
+    
 if __name__ == "__main__" :
 
-    do_work()
+    intf_of_eos = EnstoreOverallStatusInterface(sys.argv, 0) # zero means admin
+
+    do_work(intf_of_eos)
