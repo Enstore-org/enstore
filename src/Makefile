@@ -161,7 +161,7 @@ $(FULL_SERVER_LIST): $$@.py
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/sbin/$@
+	cp SERVER_BIN_TEMP/$@ ENSTORE_BIN/sbin/$@
 	rm -rf SERVER_BIN_TEMP
 
 $(FULL_SERVER_LIST_NO_MC): $$@.py
@@ -169,15 +169,16 @@ $(FULL_SERVER_LIST_NO_MC): $$@.py
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp SERVER_BIN_TEMP/$@      ENSTORE_BIN/sbin/$@
+	cp SERVER_BIN_TEMP/$@ ENSTORE_BIN/sbin/$@
 	rm -rf SERVER_BIN_TEMP
 
+###
 $(FULL_CLIENT_LIST): $$@.py
 	- rm -rf CLIENT_BIN_TEMP
 	mkdir CLIENT_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o CLIENT_BIN_TEMP $@.py
 	(cd CLIENT_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp CLIENT_BIN_TEMP/$@      ENSTORE_BIN/bin/$@
+	cp CLIENT_BIN_TEMP/$@ ENSTORE_BIN/bin/$@
 	rm -rf CLIENT_BIN_TEMP
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
