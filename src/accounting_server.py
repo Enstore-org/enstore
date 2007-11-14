@@ -558,6 +558,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
                     Trace.handle_error()
 		    pass #XXX
+		# exit now
+		os._exit(0)
 	
 	# last bad xfers
 	def last_bad_xfers(self, ticket):
@@ -582,7 +584,8 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		except:
                     Trace.handle_error()			
 		    pass #XXX
-	
+		# exit now
+		os._exit(0)
 
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
@@ -597,9 +600,15 @@ if __name__ == '__main__':
 			Trace.log(e_errors.INFO, "Accounting Server (re)starting")
 			accServer.serve_forever()
 		except SystemExit, exit_code:
-			accServer.accDB.close()
 			sys.exit(exit_code)
 		except:
 			accServer.serve_forever_error(accServer.log_name)
+			try:
+				accServer.accDB.close()
+			except:
+				pass
+			del accServer
+			accServer = Server(csc)
+			accServer.handle_generic_commands(intf)
 			continue
 	
