@@ -37,6 +37,19 @@ MY_NAME = "ASSERT"
 ############################################################################
 ############################################################################
 
+def volume_assert_client_version():
+    ##this gets changed automatically in {enstore,encp}Cut
+    ##You can edit it manually, but do not change the syntax
+    version_string = "CVS $Revision$ "
+    encp_file = globals().get('__file__', "")
+    if encp_file: version_string = version_string + os.path.basename(encp_file)
+    #If we end up longer than the current version length supported by the
+    # accounting server; truncate the string.
+    if len(version_string) > encp.MAX_VERSION_LENGTH:
+	version_string = version_string[:encp.MAX_VERSION_LENGTH]
+    return version_string
+
+
 #Parse the file containing the volumes to be asserted.  It expects the first
 # word on each line to be the volume.  Reamining text on a line is ignored.
 # This is so that a multi-line copy-paste from "enstore vol --vols" doesn't
@@ -91,11 +104,13 @@ def get_vcc_list():
     csc = configuration_client.ConfigurationClient()
     config_server_addr_list = csc.get('known_config_servers', 10, 6)
     if not e_errors.is_ok(config_server_addr_list['status']):
+        message = str(config_server_addr_list['status'])
         try:
-            sys.stderr.write(str(config_server_addr_list['status']) + "\n")
+            sys.stderr.write("%s\n" % (message,))
             sys.stderr.flush()
         except IOError:
             pass
+        Trace.log(e_errors.ERROR, message)
         sys.exit(1)
     #Remove status.
     del config_server_addr_list['status']
@@ -177,11 +192,13 @@ def create_assert_list(vol_list):
             ticket['infile'] = ""
             ticket['outfile'] = ""
             ticket['volume'] = vol
+            #ticket['version'] = #LM will ignore if version isn't encp's.
             ticket['wrapper'] = encp.get_uinfo()
             ticket['wrapper']['size_bytes'] = 0
             ticket['wrapper']['machine'] = os.uname()
             ticket["wrapper"]["pnfsFilename"] = ""
             ticket["wrapper"]["fullname"] = ""
+            ticket['override_ro_mount'] = 1
 
             #Add the assert work ticket to the list of volume asserts.
             assert_list.append(ticket)
@@ -194,6 +211,7 @@ def create_assert_list(vol_list):
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.ERROR, e_msg)
 
     return assert_list, listen_socket
 
@@ -214,13 +232,15 @@ def submit_assert_requests(assert_list):
         responce_ticket = lmc.volume_assert(ticket, 10, 1)
 
         if not e_errors.is_ok(responce_ticket['status']):
+            message = "Submission for %s failed: %s\n" % \
+                      (ticket['vc']['external_label'],
+                       responce_ticket['status'])
             try:
-                sys.stderr.write("Submission for %s failed: %s\n" % \
-                                 (ticket['vc']['external_label'],
-                                  responce_ticket['status']))
+                sys.stderr.write("%s\n" % (message,))
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.ERROR, message)
             continue
 
         unique_id_list.append(ticket['unique_id'])
@@ -273,14 +293,16 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
                     callback_ticket['vc']['external_label'])
 
         if not e_errors.is_ok(callback_ticket['status']):
+            message = "Early error for %s: %s" % \
+                      (callback_ticket['vc']['external_label'],
+                       str(callback_ticket['status']))
             #Output a message.
             try:
-                sys.stderr.write("Early error for %s: %s\n" %
-                                 callback_ticket['vc']['external_label'],
-                                 str(callback_ticket['status']))
+                sys.stderr.write("%s\n" % (message,))
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.ERROR, message)
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -288,11 +310,16 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         #Handle erroneous callbacks.
         if callback_ticket['unique_id'] not in unique_id_list:
             socket.close()
+            message = "Received unique id %s that is not expected." % \
+                      (callback_ticket['unique_id'],)
+            message2 = "Expected unique id list: %s\n" % (unique_id_list,)
             try:
-                sys.stderr.write("Received unique id %s that is not expected.\n")
+                sys.stderr.write("%s\n" % (message,))
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.ERROR, message)
+            Trace.log(e_errors.ERROR, message2)
             continue
 
         try:
@@ -303,12 +330,14 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
         except:
             #Output a message.
             msg = sys.exc_info()[1]
+            message = "Encountered final dialog error for %s: %s\n" % \
+                      (callback_ticket['vc']['external_label'], str(msg))
             try:
-                sys.stderr.write("Encountered final dialog error for %s: %s\n" %
-                                 callback_ticket['vc']['external_label'], str(msg))
+                sys.stderr.write("%s\n" % (message,))
                 sys.stderr.flush()
             except IOError:
                 pass
+            Trace.log(e_errors.ERROR, message)
             #Do not retry from error.
             error_id_list.append(callback_ticket['unique_id'])
             continue
@@ -328,6 +357,7 @@ def handle_assert_requests(unique_id_list, assert_list, listen_socket, intf):
                 sys.stderr.flush()
             except IOError:
                 pass
+        Trace.log(e_errors.ERROR, message)
 
         if done_ticket.get('unique_id', None) != None:
             completed_id_list.append(done_ticket['unique_id'])
@@ -396,13 +426,15 @@ class VolumeAssertInterface(generic_client.GenericClientInterface):
 
 ############################################################################
 ############################################################################
-    
+
+
 def main(intf):
 
     Trace.init(MY_NAME)
     for x in xrange(0, intf.verbose+1):
         Trace.do_print(x)
     Trace.trace(3, 'Volume assert called with args: %s'%(sys.argv,))
+    Trace.log(3, 'Volume assert called with args: %s'%(sys.argv,))
     
     #Read in the list of vols.
     if intf.args:  #read from file.
