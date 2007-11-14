@@ -148,21 +148,11 @@ post_enstore:
 SERVER_LIST=configuration_server log_server event_relay library_manager
 SERVER_HTMLGEN_LIST=alarm_server inquisitor ratekeeper monitor_server
 SERVER_SQL_LIST=file_clerk volume_clerk info_server accounting_server drivestat_server
-#SERVER_LIB_LIST=mover media_changer
+SERVER_LIB_LIST=mover media_changer
 
 #These are the full lists.
-# need this as media changer does not get built becuase of dummy_threading
-SERVER_LIST_NO_MC=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) mover
-FULL_SERVER_LIST=$(SERVER_LIST_NO_MC) media_changer
+FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST)
 FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin enmv_admin
-
-$(SERVER_LIST_NO_MC): $$@.py
-	- rm -rf SERVER_BIN_TEMP 
-	mkdir SERVER_BIN_TEMP
-	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
-	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp SERVER_BIN_TEMP/$@ ENSTORE_BIN/sbin/$@
-	rm -rf SERVER_BIN_TEMP
 
 $(FULL_SERVER_LIST): $$@.py
 	- rm -rf SERVER_BIN_TEMP 
@@ -181,7 +171,6 @@ $(FULL_CLIENT_LIST): $$@.py
 	rm -rf CLIENT_BIN_TEMP
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
-enstore_no_mc: pre_enstore $(FULL_CLIENT_LIST) $(SERVER_LIST_NO_MC) post_enstore
 
 media_changer:
 	(cd $(ENSTORE_DIR)/modules; make all)
