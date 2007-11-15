@@ -17,12 +17,12 @@ thisDay=`date +%d`
 LOGS=`enstore conf --show crons aml2log_dir`
 if [ $? -ne 0 ]; then
    echo "Unable to obtain aml2 log directory path." > /dev/null 2>&1
-   return 1
+   exit 1
 fi
 RPTS=`enstore conf --show crons aml2report_dir`
 if [ $? -ne 0 ]; then
    echo "Unable to obtain aml2 report directory path." > /dev/null 2>&1
-   return 1
+   exit 1
 fi
 
 #if [ -z "${2-}" ] ; then
@@ -47,7 +47,7 @@ if [ $? -eq 1 ]
 then
   # The specified log directory does not exist.
   echo "AML2 log directory not accessible."  > /dev/null 2>&1
-  return 1
+  exit 1
 fi
 
 HISTORY=history
@@ -55,7 +55,7 @@ if ! [ -d $HISTORY ]; then
    mkdir -p $HISTORY
    if [ $? -eq 1 ]; then
       echo "AML2 log history directory not accessible."  > /dev/null 2>&1
-      return 1 #The directory failed to be created.
+      exit 1 #The directory failed to be created.
    fi
 fi
 
