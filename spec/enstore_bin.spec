@@ -86,6 +86,10 @@ done
 
 
 %install
+if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
+	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
+fi
+cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 
 %pre
 PATH=/usr/sbin:$PATH
@@ -172,7 +176,7 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /%{prefix}/etc/sam.conf
 %config /%{prefix}/etc/stk.conf
 %config /%{prefix}/etc/d0en_sde_test.conf
-#%config /usr/local/etc/setups.sh
+%config /usr/local/etc/setups.sh
 #/etc/rc.d/init.d/enstore-boot
 #/etc/sudoers
 #/home/enstore/debugfiles.list
