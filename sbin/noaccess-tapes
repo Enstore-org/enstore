@@ -20,12 +20,16 @@ fi
 inventory_dir=$html_dir/tape_inventory
 if [ ! -d "$inventory_dir" ]; then
     mkdir -p $inventory_dir
+    if [ $? -ne 0 ]; then
+        #Failed to make the directory?
+        exit 1
+    fi
 fi
 
 
 #Get our variables for VOLUMES filenames.
 outfile_volumes=$inventory_dir/VOLUMES
-outfile_volumes_temp=${outfile_volumes}.tmp
+outfile_volumes_temp=${outfile_volumes}.temp
 #rm -f $outfile_volumes
 
 #Output the data to the VOLUMES temp file.
