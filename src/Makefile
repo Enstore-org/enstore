@@ -124,8 +124,8 @@ encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_
 ### The command of interest is "make enstore".
 
 pre_enstore:
-	 @ if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
-	 #@ if [ "$$ACI_DIR"x = x ]; then echo ACI_DIR must be set to build enstore.; exit 1; fi
+	 if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
+	 if [ "$$ACI_DIR"x = x ]; then mv aml2.py aml2.py.sav; cp aml2_dummy.py aml2.py; fi
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf ENSTORE_BIN
 	mkdir ENSTORE_BIN
@@ -143,6 +143,7 @@ post_enstore:
 	cp ../modules/ddencp	ENSTORE_BIN/bin/
 	cp ../modules/ecrc	ENSTORE_BIN/bin/
 	cp ../bin/en_check	ENSTORE_BIN/bin/
+        if [ "$$ACI_DIR"x = x -a -f aml2.py.sav ]; then mv aml2.py.sav aml2.py; fi
 
 #These are the list breakdowns.
 SERVER_LIST=configuration_server log_server event_relay library_manager
@@ -172,7 +173,8 @@ $(FULL_CLIENT_LIST): $$@.py
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
 
-media_changer:
+meadia_changer:
+	pre_enstore
 	(cd $(ENSTORE_DIR)/modules; make all)
 	- rm -rf GET_TEMP
 	mkdir GET_TEMP
@@ -180,6 +182,7 @@ media_changer:
 	mkdir GET_BIN
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o GET_TEMP media_changer.py
 	(cd GET_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	@ if [ "$$ACI_DIR"x = x -a -f aml2.py.sav ]; then mv aml2.py.sav aml2.py; fi
 
 fileinfo:
 	- rm -rf FILEINFO_TEMP
