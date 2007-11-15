@@ -121,4 +121,5 @@ if __name__ == "__main__":
     except:
         print "Failed to execute "
         sys.exit(0);
+    sys.exit(0)
         

@@ -16,6 +16,7 @@ import time
 import popen2
 import os
 import string
+import traceback
 # import getopt, string
 # import math
 import accounting_query
@@ -296,4 +297,12 @@ def main():
     
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        exc,msg,tb=sys.exc_info()
+        for l in traceback.format_exception( exc, msg, tb ):
+            print l
+        sys.exit(0)
+    sys.exit(0)
+        
