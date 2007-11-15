@@ -8,7 +8,7 @@
 
 set -u  # force better programming and ability to use check for not set
 EVersion="${1:-1.0.1}"
-ERelease="${2:-9}"
+ERelease="${2:-10}"
 
 export CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc
 if [ "`whoami`" != 'root' ]
