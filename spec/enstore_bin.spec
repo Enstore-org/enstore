@@ -172,6 +172,10 @@ rm -rf $RPM_BUILD_ROOT/*
 %config /%{prefix}/etc/stk.conf
 %config /%{prefix}/etc/d0en_sde_test.conf
 %config /usr/local/etc/setups.sh
+#/etc/rc.d/init.d/enstore-boot
+#/etc/sudoers
+#/home/enstore/debugfiles.list
+#/home/enstore/debugsources.list
 %changelog
  * Mon Nov 05 2007  <moibenko@fnal.gov> -
  - added configuration files
