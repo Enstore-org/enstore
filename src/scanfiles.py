@@ -1067,7 +1067,11 @@ def check_vol(vol):
     
     tape_ticket = infc.tape_list(vol)
     if not e_errors.is_ok(tape_ticket):
-        errors_and_warnings(vol, ['can not get info'], [], [])
+        errors_and_warnings(vol, ['can not get tape_list info'], [], [])
+        return
+    volume_ticket = infc.inquire_vol(vol)
+    if not e_errors.is_ok(volume_ticket):
+        errors_and_warnings(vol, ['can not get inquire_vol info'], [], [])
         return
     
     tape_list = tape_ticket['tape_list']
@@ -1081,13 +1085,16 @@ def check_vol(vol):
                 #If we get here then we have multiple locations for the
                 # same tape.
                 ### Historical Note: This has been found to have happened
-                ### while importing SDSS DLT data into Enstore.
+                ### while importing SDSS DLT data into Enstore due to a "get" bug.
                 message = 'volume %s has duplicate location %s (%s, %s)' % \
                           (vol, tape_list[i]['location_cookie'],
                            tape_list[i]['bfid'], tape_list[j]['bfid'])
                 if tape_list[i]['deleted'] == "yes" or tape_list[j]['location_cookie'] == "yes":
-                    #IF at least one of the files is marked deleted, consider this a warning.
+                    #If at least one of the files is marked deleted, consider this a warning.
                     warn = [message,]
+                elif volume_ticket['library'].find("shelf") != -1:
+                    #If the volume is no longer available, we need to skip this check.
+                    info = [message,]
                 else:
                     err = [message,]
                 errors_and_warnings(vol, err, warn, info)
