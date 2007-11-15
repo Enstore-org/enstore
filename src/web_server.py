@@ -133,6 +133,7 @@ class WebServer:
                                     txt = key + " " + str(self.server_dict[key]['fake'])+" "+ str(self.server_dict[key]['real']) +"\n"
                                     txt = txt + "<Directory \""+str(self.server_dict[key]['real'])+"\">\n"
                                     txt = txt + "   AllowOverride None\n"
+                                    txt = txt + "   Deny from all\n"
                                     txt = txt + "   Order deny,allow\n"
                                     if self.domain_name==FNAL_DOMAIN :
                                         txt = txt + "   Allow from .fnal.gov\n"
