@@ -113,7 +113,14 @@ else
     
 fi
 
+
+
 echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_HOME/site_specific/config"
+if [ $fnal -ne 0 ];then
+    cp ${ENSTORE_DIR}/site/specific/config/setup-enstore ${ENSTORE_HOME}/site/specific/config/setup-enstore
+    exit 0
+fi
+
 if [ ! -d $ENSTORE_HOME/site_specific/config ]
 then
     su enstore -c "cp -rp $ENSTORE_DIR/site_specific $ENSTORE_HOME"
@@ -227,10 +234,10 @@ then
 fi
     
 chown -R enstore.enstore  $ENSTORE_HOME
-#if [ $fnal -ne 0 ]
-#then
-#    kdestroy
-#fi
+if [ $fnal -ne 0 ]
+then
+    kdestroy
+fi
 echo "
 Please check $ENSTORE_HOME/site_specific/config/setup-enstore.
 In case you are going to use ssh for product distribution, updates and maintenance you need to add the following entries
