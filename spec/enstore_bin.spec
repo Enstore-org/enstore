@@ -74,9 +74,11 @@ cd $RPM_BUILD_ROOT/%{prefix}/src
 make enstore
 make entv
 for f in `ls -1 ENTV_BIN`; do
+	echo "removing $f.py"
 	rm -f $f.py
 done
-for f `ls -1 ENSTORE_BIN`; do 
+for f `ls -1 ENSTORE_BIN`; do
+	echo "removing $f.py"
 	rm -f $f.py
 done
 
