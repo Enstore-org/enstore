@@ -55,8 +55,6 @@ if __name__ == '__main__':
 	# writing the file.
 	out_file = PREFIX+SG.upper()
 	temp_file = out_file + ".temp"
-	if os.access(out_file, os.F_OK):
-		os.rename(out_file, out_file+'.old')
 
 	#Write the output.
 	f = open(temp_file, 'w')
@@ -79,5 +77,9 @@ if __name__ == '__main__':
 		database['dbname'], query, temp_file)
 	print cmd
 	os.system(cmd)
+
+	# update the file
+	if os.access(out_file, os.F_OK):
+		os.rename(out_file, out_file+'.old')
 
 	os.rename(temp_file, out_file)   #Do the temp file swap.
