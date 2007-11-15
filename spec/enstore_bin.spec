@@ -56,12 +56,13 @@ else
 	echo export SWIG_LIB
 fi
 echo PATH="$"SWIG_DIR:"$"PYTHON_DIR/bin:$RPM_BUILD_ROOT/%{prefix}/bin:$RPM_BUILD_ROOT/%{prefix}/sbin:"$"PATH >> /tmp/enstore-setup
-rpm -q aci > /dev/null
-if [ $? -eq 0 ]; then
-	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
-	echo export ACI_DIR >> /tmp/enstore-setup
-	echo PATH="$"ACI_DIR:"$"PATH >> /tmp/enstore-setup
-fi
+
+#rpm -q aci > /dev/null
+#if [ $? -eq 0 ]; then
+#	echo ACI_DIR=`rpm -ql aci | head -1` >> /tmp/enstore-setup
+#	echo export ACI_DIR >> /tmp/enstore-setup
+#	echo PATH="$"ACI_DIR:"$"PATH >> /tmp/enstore-setup
+#fi
 #++++++++++++
 
 %setup -q -c -n %{prefix}
