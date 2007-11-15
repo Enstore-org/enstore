@@ -288,13 +288,6 @@ def main():
        os.system(cmd)
        cmd = "rm -f rate_%s_r.dat"%(sg)
        os.system(cmd)
-        
-
-
-    sys.exit(0)
-
-
-    
 
 if __name__ == "__main__":
     try:
