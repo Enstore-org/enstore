@@ -71,7 +71,7 @@ fi
 . /tmp/enstore-setup
 echo "BUILD"
 cd $RPM_BUILD_ROOT/%{prefix}/src
-make enstore_no_mc
+make enstore
 make entv
 for f in `ls -1 ENTV_BIN`; do
 	rm $f.py
