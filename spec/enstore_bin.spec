@@ -76,13 +76,12 @@ make entv
 for f in `ls -1 ENTV_BIN`; do
 	rm -f $f.py
 done
-for f `ls -1 ENSTORE_BIN/bin`; do
+for f in `ls -1 ENSTORE_BIN/bin`; do
 	rm -f $f.py
 done
-for f `ls -1 ENSTORE_BIN/sbin`; do
+for f in `ls -1 ENSTORE_BIN/sbin`; do
 	rm -f $f.py
 done
-
 
 
 %install
