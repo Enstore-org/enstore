@@ -54,19 +54,20 @@ then
 	e_home=
 	#e_dir=`rpm -ql enstore_sa | head -1`
 	# if ENSTORE_HOME is defined execute setup-enstore in the user area
-	if [ "${ENSTORE_HOME:-x" != "x" -a -f "${ENESTORE_HOME}/site_specific/config/setup-enstore" ]; then
+	if [ "${ENSTORE_HOME:-x}" != "x" -a -f "${ENSTORE_HOME}/site_specific/config/setup-enstore" ]; then
 	    source ${ENSTORE_HOME}/site_specific/config/setup-enstore
 	    return 0
 	fi
 	# otherwise execute a common setup-enstore from enstore area
-	if [ -f "${e_home}/site_specific/config/setup-enstore"  ]; then
-		source ${e_home}/site_specific/config/setup-enstore
-		return 0
+	echo ${e_home}/site_specific/config/setup-enstore
+	if [ -f ${e_home}/site_specific/config/setup-enstore ]; then
+	    source ${e_home}/site_specific/config/setup-enstore
+	    return 0
 	else
-    		echo '****'
-    		echo '**** Unable to initialize the UPSII environment'
-    		echo '****'
-		return 1
+	    echo '****'
+	    echo '**** Unable to initialize the UPSII environment'
+	    echo '****'
+	    return 1
 	fi
 fi
 
