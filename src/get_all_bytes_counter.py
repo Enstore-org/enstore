@@ -6,6 +6,9 @@ import string
 import os
 import time
 import signal
+import configuration_client
+import enstore_constants
+import e_errors
 
 # since this is being run from a cron job on hppc, i do not want to import from
 # enstore.  we would normally use get_remote_file & ping from enstore_functions and
@@ -56,8 +59,10 @@ def get_remote_file(node, file, newfile):
             os.kill(pid, signal.SIGKILL)
             return 1
 
-CTR_FILE = "/fnal/ups/prd/www_pages/enstore/enstore_system_user_data.html2"
+CTR_FILE = "enstore_system_user_data.html2"
+
 NODES = ["d0ensrv2", "cdfensrv2", "stkensrv2"]
+
 TOTAL_FILE = "enstore_all_bytes"
 TOTAL_BYTES_FILE = "enstore_all_bytes.bytes"
 MB = 1024.0 * 1024.0
@@ -76,34 +81,45 @@ if __name__ == "__main__":
     total_bytes = 0.0
     units = ""
     dead_nodes = []
-    for node in NODES:
-        # make sure node is up before rcping
-        if ping(node) == ALIVE:
-	    newfile = "/tmp/%s-%s"%(node, VQFORMATED)
-	    rtn = get_remote_file(node, CTR_FILE, newfile)
-	    if rtn == 0:
-		# read it
-		file = open(newfile)
-		lines = file.readlines()
-		for line in lines:
+
+    cnf_d = configuration_client.get_config_dict()
+    servers=cnf_d.get('known_config_servers',[])
+    
+    for server in servers:
+        if (server == 'status') : continue 
+        server_name,server_port = servers.get(server)
+        if ping(server_name) == ALIVE:
+            csc   = configuration_client.ConfigurationClient((server_name, server_port))
+            config_dict = csc.dump_and_save(5, 2)
+            inq_d = config_dict.get(enstore_constants.INQUISITOR,{})
+            html_dir = inq_d.get("html_file","/fnal/ups/prd/www_pages/enstore")
+            byte_me_file=os.path.join(html_dir,CTR_FILE)
+
+            newfile = "/tmp/%s-%s"%(server, VQFORMATED)
+            rtn = get_remote_file(server_name, byte_me_file, newfile)
+            if rtn == 0:
+                # read it
+                file = open(newfile)
+                lines = file.readlines()
+                for line in lines:
                     # translate total bytes into terabytes
                     bytes = float(string.strip(line))
                     total = total + bytes/TB
                     total_bytes = total_bytes + bytes
-		else:
-		    file.close()
-	    else:
-		# no info from this node
-		dead_nodes.append(node)
-	else:
-	    dead_nodes.append(node)
+                else:
+                    file.close()
+            else:
+                # no info from this node
+                dead_nodes.append(server)
+        else:
+	    dead_nodes.append(server)
     else:
 	# find out if we have any dead nodes
 	if dead_nodes:
 	    str = "(does not include - "
 	    dead_nodes.sort()
-	    for node in dead_nodes:
-		str = "%s, %s"%(str, node)
+	    for server in dead_nodes:
+		str = "%s, %s"%(str, server)
 	else:
 	    str = ""
 	# output the total count
