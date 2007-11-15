@@ -1061,6 +1061,10 @@ def check_dir(d, dir_info):
 # check_vol(vol) -- check whole volume
 
 def check_vol(vol):
+    err = []
+    warn = []
+    info = []
+    
     tape_ticket = infc.tape_list(vol)
     if not e_errors.is_ok(tape_ticket):
         errors_and_warnings(vol, ['can not get info'], [], [])
@@ -1078,10 +1082,15 @@ def check_vol(vol):
                 # same tape.
                 ### Historical Note: This has been found to have happened
                 ### while importing SDSS DLT data into Enstore.
-                err = ['volume %s has duplicate location %s (%s, %s)' %
-                       (vol, tape_list[i]['location_cookie'],
-                        tape_list[i]['bfid'], tape_list[j]['bfid'])]
-                errors_and_warnings(vol, err, [], [])
+                message = 'volume %s has duplicate location %s (%s, %s)' % \
+                          (vol, tape_list[i]['location_cookie'],
+                           tape_list[i]['bfid'], tape_list[j]['bfid'])
+                if tape_list[i]['deleted'] == "yes" or tape_list[j]['location_cookie'] == "yes":
+                    #IF at least one of the files is marked deleted, consider this a warning.
+                    warn = [message,]
+                else:
+                    err = [message,]
+                errors_and_warnings(vol, err, warn, info)
                 break
         else:
             #Continue on with checking the bfid.
