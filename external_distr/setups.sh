@@ -10,10 +10,10 @@
 
 if [ -f /fnal/ups/etc/setups.sh ]
 then
-        . /fnal/ups/etc/setups.sh
+        . /fnal/ups/etc/setups.sh > /dev/null 2>1&
 elif [ -f /local/ups/etc/setups.sh ]
 then
-        . /local/ups/etc/setups.sh
+        . /local/ups/etc/setups.sh > /dev/null 2>1&
 fi
 
 setup() {
