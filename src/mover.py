@@ -2815,6 +2815,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                         if ret['status'][0] != e_errors.OK:
                             self.read_tape_running = 0
                             self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+                            self.set_volume_noaccess(self.current_volume)
+                            Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                        (self.current_volume, self.vol_info['eod_cookie']))
                             return
                         self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
                         self.current_work_ticket['vc'].update(self.vol_info)
@@ -3496,6 +3499,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                    self.vol_info['eod_cookie'])
                 if ret['status'][0] != e_errors.OK:
                     self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+                    Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                (self.current_volume, self.vol_info['eod_cookie']))
                     return 0
                     
 
@@ -3623,6 +3629,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                         ret = self.vcc.set_remaining_bytes(self.current_volume, 0, eod, None)
                         if ret['status'][0] != e_errors.OK:
                             Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
+                            self.set_volume_noaccess(self.current_volume)
+                            Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                        (self.current_volume, self.vol_info['eod_cookie']))
+
                             broken = broken +  "set_remaining_bytes failed"
                                 
                 except:
@@ -3996,6 +4006,9 @@ class Mover(dispatching_worker.DispatchingWorker,
                     Trace.alarm(e_errors.ERROR,"Volume Clerk timeout on the final stage of file writing to %s"%(self.current_volume))
                 else:
                     self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+                    Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                                (self.current_volume, self.vol_info['eod_cookie']))
                     finish_writing = 0
                     return 0
             else:
@@ -6263,6 +6276,9 @@ class DiskMover(Mover):
                                              loc_to_cookie(self.current_location+1), bfid)
         if reply['status'][0] != e_errors.OK:
             self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
+            self.set_volume_noaccess(self.current_volume)
+            Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
+                        (self.current_volume, self.vol_info['eod_cookie']))
             return 0
         self.vol_info.update(reply)
         
