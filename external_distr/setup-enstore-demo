@@ -5,16 +5,6 @@ export FTT_DIR
 export ENSTORE_HOME
 #. $ENSTORE_DIR/sbin/ENSTORE_HOME
 
-rpm -q aci > /dev/null
-if [ $? -eq 0 ];
-then
-    ACI_DIR=`rpm -ql aci | head -1`
-    export ACI_DIR
-    PATH=$ACI_DIR/admin:$PATH
-    export DAS_SERVER="192.168.89.56"
-    export DAS_CLIENT=`hostname -s`p
-fi
-
 
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
 
@@ -34,43 +24,4 @@ PYTHONUNBUFFERED="x"; export PYTHONUNBUFFERED
 
 
 GADFLY_GRAMMAR=$ENSTORE_DIR/gadfly; export GADFLY_GRAMMAR
-
-if [ ! -r $ENSTORE_DIR/bin/encp ]; then ln -s $ENSTORE_DIR/src/encp.pyc $ENSTORE_DIR/bin/encp;fi
-if [ ! -r $ENSTORE_DIR/bin/enstore ]; then ln -s $ENSTORE_DIR/src/enstore_admin.pyc $ENSTORE_DIR/bin/enstore; fi
-
-if [ ! -r $ENSTORE_DIR/bin/enmv ];          then ln -s $ENSTORE_DIR/src/enmv.pyc   $ENSTORE_DIR/bin/enmv; fi
-if [ ! -r $ENSTORE_DIR/sbin/enstoreCut ];      then ln -s $ENSTORE_DIR/sbin/encpCut           $ENSTORE_DIR/sbin/enstoreCut; fi
-if [ ! -r $ENSTORE_DIR/sbin/enstore_up_down ]; then ln -s $ENSTORE_DIR/src/enstore_up_down.pyc $ENSTORE_DIR/sbin/enstore_up_down; fi
-if [ ! -r $ENSTORE_DIR/sbin/enmonitor ];       then ln -s $ENSTORE_DIR/src/monitor_client.pyc  $ENSTORE_DIR/sbin/enmonitor; fi
-if [ ! -r $ENSTORE_DIR/bin/pnfs ];             then ln -s $ENSTORE_DIR/src/pnfs.pyc            $ENSTORE_DIR/bin/pnfs; fi
-if [ ! -r $ENSTORE_DIR/bin/entv ];             then ln -s $ENSTORE_DIR/src/entv.pyc            $ENSTORE_DIR/bin/entv; fi
-if [ ! -r $ENSTORE_DIR/bin/volume_assert ];    then ln -s $ENSTORE_DIR/src/volume_assert.pyc   $ENSTORE_DIR/bin/volume_assert; fi
-if [ ! -r $ENSTORE_DIR/bin/ensync ];	       then ln -s $ENSTORE_DIR/src/ensync.pyc   $ENSTORE_DIR/bin/ensync; fi
-if [ ! -r $ENSTORE_DIR/bin/get ];	       then ln -s $ENSTORE_DIR/src/get.pyc   $ENSTORE_DIR/bin/get; fi
-if [ ! -r $ENSTORE_DIR/sbin/quickquota ];      then ln -s $ENSTORE_DIR/src/quickquota.pyc   $ENSTORE_DIR/sbin/quickquota; fi
-###
-### Enstore server links.
-###
-if [ ! -r $ENSTORE_DIR/sbin/configuration_server ]; then ln -s $ENSTORE_DIR/src/configuration_server.pyc $ENSTORE_DIR/sbin/configuration_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/log_server ];  then ln -s $ENSTORE_DIR/src/log_server.pyc   $ENSTORE_DIR/sbin/log_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/alarm_server ]; then ln -s $ENSTORE_DIR/src/alarm_server.pyc   $ENSTORE_DIR/sbin/alarm_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/inquisitor ]; then ln -s $ENSTORE_DIR/src/inquisitor.pyc   $ENSTORE_DIR/sbin/inquisitor; fi
-if [ ! -r $ENSTORE_DIR/sbin/ratekeeper ]; then ln -s $ENSTORE_DIR/src/ratekeeper.pyc   $ENSTORE_DIR/sbin/ratekeeper; fi
-if [ ! -r $ENSTORE_DIR/sbin/event_relay ]; then ln -s $ENSTORE_DIR/src/event_relay.pyc   $ENSTORE_DIR/sbin/event_relay; fi
-if [ ! -r $ENSTORE_DIR/sbin/info_server ]; then ln -s $ENSTORE_DIR/src/info_server.pyc   $ENSTORE_DIR/sbin/info_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/file_clerk ]; then ln -s $ENSTORE_DIR/src/file_clerk.pyc   $ENSTORE_DIR/sbin/file_clerk; fi
-if [ ! -r $ENSTORE_DIR/sbin/volume_clerk ]; then ln -s $ENSTORE_DIR/src/volume_clerk.pyc   $ENSTORE_DIR/sbin/volume_clerk; fi
-if [ ! -r $ENSTORE_DIR/sbin/accounting_server ]; then ln -s $ENSTORE_DIR/src/accounting_server.pyc   $ENSTORE_DIR/sbin/accounting_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/drivestat_server ]; then ln -s $ENSTORE_DIR/src/drivestat_server.pyc   $ENSTORE_DIR/sbin/drivestat_server; fi
-if [ ! -r $ENSTORE_DIR/sbin/library_manager ];  then ln -s $ENSTORE_DIR/src/library_manager.pyc   $ENSTORE_DIR/sbin/library_manager; fi
-if [ ! -r $ENSTORE_DIR/sbin/media_changer ];      then ln -s $ENSTORE_DIR/src/media_changer.pyc   $ENSTORE_DIR/sbin/media_changer; fi
-if [ ! -r $ENSTORE_DIR/sbin/mover ];      then ln -s $ENSTORE_DIR/src/mover.pyc   $ENSTORE_DIR/sbin/mover; fi
-if [ ! -r $ENSTORE_DIR/sbin/monitor_server ]; then ln -s $ENSTORE_DIR/src/monitor_server.pyc   $ENSTORE_DIR/sbin/monitor_server; fi
-
-
-
-
-
-
-#node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 

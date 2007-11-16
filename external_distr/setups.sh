@@ -59,7 +59,6 @@ then
 	    return 0
 	fi
 	# otherwise execute a common setup-enstore from enstore area
-	echo ${e_home}/site_specific/config/setup-enstore
 	if [ -f ${e_home}/site_specific/config/setup-enstore ]; then
 	    source ${e_home}/site_specific/config/setup-enstore
 	    return 0

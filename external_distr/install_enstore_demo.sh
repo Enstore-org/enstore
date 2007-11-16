@@ -29,19 +29,31 @@ then
 fi
 
 
-#echo "Installing ftt"
-#rpm -U --force ${place}/ftt-2.26-1.i386.rpm 
-echo "Installing tcl"
-yum install tcl
-echo "Installing tk"
-yum install tk
-echo "Installing python"
-rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
+rpm -q ftt > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing ftt"
+    rpm -U --force ${place}/ftt-2.26-1.i386.rpm
+fi
+ 
+rpm -q tcl > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tcl"
+    yum install tcl
+fi
+rpm -q tk > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tk"
+    yum install tk
+fi
+rpm -q Python-enstore > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing python"
+    rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
+fi
 echo "Installing enstore"
-rpm -Uvh --force --nodeps /usr/src/redhat/RPMS/i386/enstore-1.0.1-9.i386.rpm
+
+rpm -Uvh --force --nodeps ${place}/enstore-1.0b.1-10.i386.rpm
 ENSTORE_DIR=`rpm -ql enstore | head -1`
-
-
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
 $ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x

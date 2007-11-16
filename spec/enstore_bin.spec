@@ -86,6 +86,11 @@ done
 
 
 %install
+cp -p $RPM_BUILD_ROOT/%{prefix}/src/ENSTORE_BIN/bin $RPM_BUILD_ROOT/%{prefix}/bin
+cp -p $RPM_BUILD_ROOT/%{prefix}/src/ENSTORE_BIN/sbin $RPM_BUILD_ROOT/%{prefix}/sbin
+cp -p $RPM_BUILD_ROOT/%{prefix}/src/ENTV_BIN/entv $RPM_BUILD_ROOT/%{prefix}/bin
+
+
 if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
 	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
 fi

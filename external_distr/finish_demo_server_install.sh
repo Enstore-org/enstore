@@ -49,7 +49,7 @@ then
     /sbin/service postgresql initdb
     /etc/init.d/postgresql start
     echo "Configuring this host to run pnfs server"
-    /sbin/chkconfig pnfs add
+    /sbin/chkconfig --add pnfs
     /sbin/chkconfig pnfs on
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
     #/etc/init.d/pnfs start
@@ -66,6 +66,13 @@ then
     mkdir /pnfs
     chmod 777 /pnfs
 fi
+# create pnfs db area
+mkdir -p -m 777 `grep "database=" /usr/etc/pnfsSetup | cut -f2 -d"="`
+mkdir -p -m 777 `grep "database_postgres" /usr/etc/pnfsSetup | cut -f2 -d"="`
+mkdir -p -m 777 `grep "trash" /usr/etc/pnfsSetup | cut -f2 -d"="`
+pnfsdLog=`grep dbserverLog /usr/etc/pnfsSetup | cut -f2 -d"="`
+mkdir -p -m 777 `dirname ${pnfsdLog}`
+
 
 echo "Enabling Enstore log directory"
 $ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep log_file_path | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
