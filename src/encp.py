@@ -6381,6 +6381,11 @@ def create_write_requests(callback_addr, udp_callback_addr, e, tinfo):
                 #Store the copy ticket.
                 request_copy_list.append(copy_ticket)
 
+
+                ##We need to update the intent of this original to include
+                ## the number of copies we are going to make.
+                work_ticket['fc']['copies'] = use_copies
+
     return request_list + request_copy_list
 
 def create_write_request(work_ticket, file_number,
