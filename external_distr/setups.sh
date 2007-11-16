@@ -10,10 +10,10 @@
 
 if [ -f /fnal/ups/etc/setups.sh ]
 then
-        . /fnal/ups/etc/setups.sh > /dev/null 2>1&
+        . /fnal/ups/etc/setups.sh > /dev/null 2 > /dev/null
 elif [ -f /local/ups/etc/setups.sh ]
 then
-        . /local/ups/etc/setups.sh > /dev/null 2>1&
+        . /local/ups/etc/setups.sh > /dev/null 2 > /dev/null
 fi
 
 setup() {
@@ -54,7 +54,9 @@ then
 	e_home=
 	#e_dir=`rpm -ql enstore_sa | head -1`
 	# if ENSTORE_HOME is defined execute setup-enstore in the user area
-	if [ "${ENSTORE_HOME:-x}" != "x" -a -f "${ENSTORE_HOME}/site_specific/config/setup-enstore" ]; then
+	user_home="${ENSTORE_HOME:-x}"
+	if [ $user_home != "x" -a -f "${user_home}/site_specific/config/setup-enstore" ]; then
+	#if [ "${ENSTORE_HOME:-x}" != "x" -a -f "${ENSTORE_HOME}/site_specific/config/setup-enstore" ]; then
 	    source ${ENSTORE_HOME}/site_specific/config/setup-enstore
 	    return 0
 	fi
