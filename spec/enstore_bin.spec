@@ -81,7 +81,9 @@ for f in `ls -1 ENSTORE_BIN/bin`; do
 	rm -f $f.py
 done
 for f in `ls -1 ENSTORE_BIN/sbin`; do
-	rm -f $f.py
+	if [ $f != "configuration_server" ]; then
+		rm -f $f.py
+	fi
 done
 
 
