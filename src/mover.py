@@ -3969,6 +3969,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             fc_ticket['sanity_cookie']=(self.buffer.sanity_bytes,0L)
         fc_ticket['gid'] = self.gid
         fc_ticket['uid'] = self.uid
+        #If it is an orginal of multiple copies, pass this along.
         copies = self.file_info.get('copies')
         if copies:
            fc_ticket['copies'] = copies
@@ -6211,6 +6212,13 @@ class DiskMover(Mover):
                        'sanity_cookie': sanity_cookie,
                        'external_label': self.current_volume,
                        'complete_crc': complete_crc}
+        
+        #fc_ticket['gid'] = self.gid
+        #fc_ticket['uid'] = self.uid
+        #If it is an orginal of multiple copies, pass this along.
+        copies = self.file_info.get('copies')
+        if copies:
+           fc_ticket['copies'] = copies
 
         # if it is a copy, make sure that original_bfid is passed along
         if self.current_work_ticket.has_key('copy'):
