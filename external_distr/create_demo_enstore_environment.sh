@@ -56,7 +56,7 @@ else
     mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
 fi
     
-sed -e "s?e_dir=?e_dir=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
+sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
 ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 chown -R enstore.enstore $ENSTORE_HOME
 
