@@ -942,7 +942,13 @@ class Mover(dispatching_worker.DispatchingWorker,
 
 
     def set_volume_noaccess(self, volume):
-        self.vcc.set_system_noaccess(volume)
+        ret = self.vcc.set_system_noaccess(volume)
+        if ret['status'][0] != e_errors.OK:
+            Trace.alarm(e_errors.ALARM, "Serious problem can not set volume %s to NOACCESS. Reason %s. Will offline the mover with tape in it"%
+                        (volume, ret))
+            self.offline()
+            return
+            
         self.vol_info.update(self.vcc.inquire_vol(volume))
 
     # update statistics
@@ -2814,10 +2820,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                            self.vol_info['eod_cookie'])
                         if ret['status'][0] != e_errors.OK:
                             self.read_tape_running = 0
-                            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                             self.set_volume_noaccess(self.current_volume)
                             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                         (self.current_volume, self.vol_info['eod_cookie']))
+                            self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                             return
                         self.vol_info.update(self.vcc.inquire_vol(self.current_volume))
                         self.current_work_ticket['vc'].update(self.vol_info)
@@ -3498,10 +3504,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                                                    self.vol_info['remaining_bytes'],
                                                    self.vol_info['eod_cookie'])
                 if ret['status'][0] != e_errors.OK:
-                    self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                     self.set_volume_noaccess(self.current_volume)
                     Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                 (self.current_volume, self.vol_info['eod_cookie']))
+                    self.transfer_failed(ret['status'][0], ret['status'][1], error_source=TAPE)
                     return 0
                     
 
@@ -4005,10 +4011,10 @@ class Mover(dispatching_worker.DispatchingWorker,
                     # keep trying
                     Trace.alarm(e_errors.ERROR,"Volume Clerk timeout on the final stage of file writing to %s"%(self.current_volume))
                 else:
-                    self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
                     self.set_volume_noaccess(self.current_volume)
                     Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                                 (self.current_volume, self.vol_info['eod_cookie']))
+                    self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
                     finish_writing = 0
                     return 0
             else:
@@ -4486,8 +4492,8 @@ class Mover(dispatching_worker.DispatchingWorker,
     def dismount_volume(self, after_function=None):
         Trace.trace(10, "state %s"%(state_name(self.state),))
         self.just_mounted = 0
-        if self.state == IDLE:
-            Trace.log(e_errors.INFO, "Must be a mistake. No dismount in the state %s"%(state_name(self.state),))
+        if self.state in (IDLE, OFFLINE):
+            Trace.log(e_errors.INFO, "No dismount in the state %s"%(state_name(self.state),))
             return
         broken = ""
         if self.method == 'read_next':
@@ -6275,10 +6281,10 @@ class DiskMover(Mover):
                                              remaining,
                                              loc_to_cookie(self.current_location+1), bfid)
         if reply['status'][0] != e_errors.OK:
-            self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             self.set_volume_noaccess(self.current_volume)
             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
                         (self.current_volume, self.vol_info['eod_cookie']))
+            self.transfer_failed(reply['status'][0], reply['status'][1], error_source=TAPE)
             return 0
         self.vol_info.update(reply)
         
