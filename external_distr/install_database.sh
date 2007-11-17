@@ -119,7 +119,8 @@ then
     exit 1
 fi
 
-if [ -z $POSTGRES_DIR ]
+rpm -q postgresql > /dev/null
+if [ $? - ne 0 ]
 then
     echo "Postgres is not installed on this host. Please istall postgres 
 or modify $ENSTORE_DIR/site_specific/config/setup-enstore"
