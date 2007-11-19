@@ -8,6 +8,7 @@
 # system imports
 import sys
 import os
+import stat
 
 # enstore modules
 import enstore_functions2
@@ -38,6 +39,11 @@ def copy_it(src, dst):
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
+
+    try:
+        os.chmod(dst, stat.S_IREAD | stat.S_IRUSR)
+    except:
+        pass
 
 def delete_it(target):
     crontab=os.path.basename(target)
