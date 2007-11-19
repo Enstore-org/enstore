@@ -351,6 +351,7 @@ PORT = "port"                                # monitor client, server
 POSITION = "position"                        #pnfs
 PREFIX = "prefix"                            #enstore_make_log_plot
 PRIORITY = "priority"                        #library, encp
+PRINT = "print"                              #conf
 PRINT_QUEUE = "print-queue"                  #library
 PROFILE = "profile"                          #entv
 PUT_CACHE = "put-cache"                      #encp
@@ -504,7 +505,7 @@ valid_option_list = [
     OVERRIDE_DELETED, OVERRIDE_NOACCESS, OVERRIDE_PATH, OVERRIDE_RO_MOUNT,
     PARENT, PATH, PLOT,
     PNFS_IS_AUTOMOUNTED, PNFS_MOUNT_POINT, PNFS_STATE, PORT,
-    POSITION, PREFIX, PRIORITY, PRINT_QUEUE,PROFILE, PTS_DIR,
+    POSITION, PREFIX, PRIORITY, PRINT, PRINT_QUEUE,PROFILE, PTS_DIR,
     PTS_NODES, PUT_CACHE, PVOLS,
     QUERY,
     RAISE, READ_ONLY, REASON, RECURSIVE, RECYCLE, REFRESH,

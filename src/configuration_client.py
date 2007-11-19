@@ -378,8 +378,8 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.show = 0
         self.load = 0
         self.server=""
-        self.alive_rcv_timeout = 0
-        self.alive_retries = 0
+        self.alive_rcv_timeout = generic_client.DEFAULT_TIMEOUT
+        self.alive_retries = generic_client.DEFAULT_TRIES
         self.summary = 0
         self.timestamp = 0
         self.threaded_impl = None
@@ -387,6 +387,7 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         self.list_media_changers = 0
         self.list_movers = 0
         self.file_fallback = 0
+        self.print_1 = 0
         
         generic_client.GenericClientInterface.__init__(self, args=args,
                                                        user_mode=user_mode)
@@ -430,7 +431,16 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
         option.LOAD:{option.HELP_STRING:"load a new configuration",
                      option.DEFAULT_TYPE:option.INTEGER,
 		     option.USER_LEVEL:option.ADMIN},
-        option.SHOW:{option.HELP_STRING:"print the current configuration",
+        option.PRINT:{option.HELP_STRING:"print the current configuration",
+                      option.DEFAULT_TYPE:option.INTEGER,
+                      #Default label is used for switches that take an
+                      # unknown number arguments from intf.args and not
+                      # from the specification in this dictionary.
+                      option.DEFAULT_LABEL:"[value_name [value_name [...]]]",
+                      option.USER_LEVEL:option.ADMIN,
+                      option.DEFAULT_NAME:"print_1",
+                      },
+        option.SHOW:{option.HELP_STRING:"print the current configuration in python format",
                      option.DEFAULT_TYPE:option.INTEGER,
                      #Default label is used for switches that take an
                      # unknown number arguments from intf.args and not
@@ -460,33 +470,47 @@ class ConfigurationClientInterface(generic_client.GenericClientInterface):
                               option.USER_LEVEL:option.ADMIN},
          }
 
-def print_configuration(config_dict, intf):
-    #If there is an error it is printed out at the end of the function
-    # in csc.check_ticket().  On success, work as normal. 
-    if e_errors.is_ok(config_dict):
-        #Loop through what the user specified (if anything) and return
-        # the desired result(s).
-        use_config = config_dict['dump']
-        for item in intf.args:
-            if type(use_config) == types.DictType:
-                try:
-                    use_config = use_config[item]
-                except KeyError:
-                    config_dict['status'] = (e_errors.KEYERROR,
-                        "Unable to find requested information (1).\n")
-                    break
+
+#Used for --print.
+def flatten2(prefix, value, flat_dict):
+    if type(value) == type({}):
+        for i in value.keys():
+            if prefix:
+                flatten2(prefix+'.'+str(i), value[i], flat_dict)
             else:
-                config_dict['status'] = (e_errors.CONFLICT,
-                        "Unable to find requested information (2).\n")
-                break
+                flatten2(str(i), value[i], flat_dict) #Avoid . for first char.
+    elif type(value) == type([]) or type(value) == type(()):
+        for i in range(len(value)):
+            if prefix:
+                flatten2(prefix+'.'+str(i), value[i], flat_dict)
+            else:
+                flatten2(str(i), value[i], flat_dict) #Avoid . for first char.
+    else:
+            flat_dict[prefix] = value
+
+def print_configuration(config_dict, intf, prefix = ""):
+    
+    if intf.show:
+        #If there wasn't a problem finding the information, print it.
+        if type(config_dict) == types.StringType:
+            #Suppress the '' that pprint.pprint() wants to surround
+            # native strings.
+            print config_dict
         else:
-            #If there wasn't a problem finding the information, print it.
-            if type(use_config) == types.StringType:
-                #Suppress the '' that pprint.pprint() wants to surround
-                # native strings.
-                print use_config
-            else:
-                pprint.pprint(use_config)
+            pprint.pprint(config_dict)
+
+    elif intf.print_1:
+        #Make a dictionary that only contains the flattened names for the
+        # keys with their values.
+        flat_dict = {}
+        flatten2(prefix, config_dict, flat_dict)
+
+        #Sort the list and print the values out.
+        sorted_list = flat_dict.keys()
+        sorted_list.sort()
+        for key in sorted_list:
+            print "%s:%s"%(key, flat_dict[key])
+
 
 
 def do_work(intf):
@@ -498,10 +522,24 @@ def do_work(intf):
             print "Server configuration found at %s." % (result['address'],)
     if result:
         pass
-    elif intf.show and intf.file_fallback:
+    elif intf.show or intf.print_1:
+        if intf.alive_rcv_timeout != generic_client.DEFAULT_TIMEOUT:
+            use_timeout = intf.alive_rcv_timeout
+        elif intf.file_fallback:
+            use_timeout = 3  #Need to override in this case.
+        else:
+            use_timeout = generic_client.DEFAULT_TIMEOUT
+
+        if intf.alive_retries != generic_client.DEFAULT_TIMEOUT:
+            use_tries = intf.alive_retries
+        elif intf.file_fallback:
+            use_tries = 3    #Need to override in this case.
+        else:
+            use_tries = generic_client.DEFAULT_TRIES
+        
         #Attempt to get the configuration from the configuration server.
         try:
-            result = csc.dump(3, 3)
+            result = csc.dump(use_timeout, use_tries)
         except (KeyboardInterrupt, SystemExit):
             sys.exit(1)
         except (socket.error, select.error), msg:
@@ -513,33 +551,44 @@ def do_work(intf):
         #If we didn't get the configuration from the server, attempt
         # to get it from the local copy of the configuration file.
         if result['status'][0] in [e_errors.TIMEDOUT, e_errors.NET_ERROR]:
-            result = {}
-            try:
-                result['dump'] = configdict_from_file()
-                result['status'] = (e_errors.OK, None)
-            except IOError, msg:
-                result['status'] = (e_errors.IOERROR, str(msg))
-            except OSError, msg:
-                result['status'] = (e_errors.OSERROR, str(msg))
+            if intf.file_fallback:
+                result = {}
+                try:
+                    result['dump'] = configdict_from_file()
+                    result['status'] = (e_errors.OK, None)
+                except IOError, msg:
+                    result['status'] = (e_errors.IOERROR, str(msg))
+                except OSError, msg:
+                    result['status'] = (e_errors.OSERROR, str(msg))
 
-        #Print the configuration to the terminal/stdout.
-        print_configuration(result, intf)
-        
-    elif intf.show:
-        #Attempt to get the configuration from the configuration server.
-        try:
-            result = csc.dump(intf.alive_rcv_timeout,intf.alive_retries)
-        except (KeyboardInterrupt, SystemExit):
-            sys.exit(1)
-        except (socket.error, select.error), msg:
-            if msg.args[0] == errno.ETIMEDOUT:
-                result = {'status' : (e_errors.TIMEDOUT, str(msg))}
+        #If there is an error it is printed out at the end of the function
+        # in csc.check_ticket().  On success, work as normal.
+        if e_errors.is_ok(result):
+            #Loop through what the user specified (if anything) and return
+            # the desired result(s).
+            use_config = result['dump']
+            prefix = ""   #prefix is only used if --print was given.
+            for item in intf.args:
+                if type(use_config) == types.DictType:
+                    try:
+                        use_config = use_config[item]
+                        #prefix is only used if --print was given.
+                        if prefix:
+                            prefix = "%s.%s" % (prefix, item)
+                        else:
+                            prefix = "%s" % (item,)
+                    except KeyError:
+                        result['status'] = (e_errors.KEYERROR,
+                            "Unable to find requested information (1).\n")
+                        break
+                else:
+                    result['status'] = (e_errors.CONFLICT,
+                            "Unable to find requested information (2).\n")
+                    break
             else:
-                result = {'status' : (e_errors.NET_ERROR, str(msg))}
-
-        #Print the configuration to the terminal/stdout.
-        print_configuration(result, intf)
-
+                #Print the configuration to the terminal/stdout.
+                print_configuration(use_config, intf, prefix)
+        
     elif intf.load:
         result= csc.load(intf.config_file, intf.alive_rcv_timeout,
 	                intf.alive_retries)
@@ -617,7 +666,7 @@ def do_work(intf):
                 print msg_spec % (mover_name['mover'], mover_info['host'],
                                   mover_info['mc_device'], mover_info['driver'],
                                   mover_info['library'])
-    
+                
     else:
 	intf.print_help()
         sys.exit(0)

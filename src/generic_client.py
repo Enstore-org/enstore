@@ -23,6 +23,9 @@ import option
 import udp_client
 import enstore_constants
 
+DEFAULT_TIMEOUT = 0
+DEFAULT_TRIES = 0
+
 class GenericClientInterface(option.Interface):
 
     def __init__(self, args=sys.argv, user_mode=1):
@@ -65,7 +68,8 @@ class GenericClientInterface(option.Interface):
 class GenericClient:
 
     def __init__(self, csc, name, server_address=None, flags=0, logc=None,
-                 alarmc=None, rcv_timeout=0, rcv_tries=0, server_name=None):
+                 alarmc=None, rcv_timeout=DEFAULT_TIMEOUT,
+                 rcv_tries=DEFAULT_TRIES, server_name=None):
 
         self.name = name    # Abbreviated client instance name
                             # try to make it capital letters
