@@ -2727,7 +2727,7 @@ def filename_check(filename):
                             e_errors.USERERROR)
 
     #limit the usable characters for a filename.
-    if not charset.is_in_filenamecharset(filename):
+    if len(filename) > 0 and not charset.is_in_filenamecharset(filename):
         st = ""
         for ch in filename: #grab all illegal characters.
             if ch not in charset.filenamecharset:
