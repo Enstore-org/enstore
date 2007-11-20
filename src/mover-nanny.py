@@ -9,6 +9,7 @@ import string
 import time
 import pprint
 from en_eval import en_eval
+import getopt
 
 mail_victims = os.environ.get("ENSTORE_MAIL", "enstore-auto@fnal.gov")
 config = en_eval(os.popen("enstore config --show",'r').read())
@@ -79,10 +80,17 @@ def startswith(a,b):
 def is_mover(s):
     return endswith(s, '.mover')
 
-def get_movers():
+def get_movers(null_mv=0):
     print 'Getting configuration'
     config = en_eval(os.popen("enstore config --show",'r').read())
-    movers = filter(is_mover, config.keys())
+    mv = filter(is_mover, config.keys())
+    if null_mv != 0:
+        movers = mv
+    else:
+        movers = []
+        for m in mv:
+            if m.find("null") == -1:
+                movers.append(m)
     movers.sort()
     print 'Found movers:',pprint.pprint(movers)
     return movers
@@ -286,10 +294,10 @@ def check(mover):
         return 0, None
     
 
-def main(reset_on_error=0):
+def main(reset_on_error=0, check_null=0):
     strikes = {}
     while 1:
-        movers = get_movers()
+        movers = get_movers(check_null)
         print tod()
         scheduled = get_sched()
         known_down = scheduled.get('known',[])
@@ -342,5 +350,20 @@ def main(reset_on_error=0):
                     print "error on", mover, "not resetting (%d)"%n_strikes
         sleep(60)
     
+def usage():
+    print "Usage %s [-h] [--check-null] [--reset-on-error]"%(sys.argv[0],)
+    
 if __name__=='__main__':
-    main(reset_on_error=1)
+    reset_on_error = 0
+    check_null = 0
+    opts, args = getopt.getopt(sys.argv[1:], "h", ["check-null","reset-on-error"])
+    for o,a in opts:
+        if o == "-h":
+            usage()
+        if o == "--check-null":
+            check_null = 1
+        if o == "--reset-on-error":
+           reset_on_error = 1
+        
+    
+    main(reset_on_error, check_null)
