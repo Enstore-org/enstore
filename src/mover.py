@@ -3633,7 +3633,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                                   "heuristic: write error on vol %s, remaining=%s, capacity=%s, marking volume full"%
                                   (self.current_volume, remaining, capacity))
                         ret = self.vcc.set_remaining_bytes(self.current_volume, 0, eod, None)
-                        if ret['status'][0] != e_errors.OK:
+                        if ret['status'][0] != e_errors.OK or ret['eod_cookie'] != eod:
                             Trace.alarm(e_errors.ERROR, "set_remaining_bytes failed", ret)
                             self.set_volume_noaccess(self.current_volume)
                             Trace.alarm(e_errors.ALARM, "Failed to update volume information on %s, EOD %s. May cause a data loss."%
@@ -4007,7 +4007,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.trace(26,"sending set_remaining_bytes")
             reply = self.vcc.set_remaining_bytes(self.current_volume, remaining, eod, bfid)
             Trace.trace(26,"set_remaining_bytes returned %s"%(reply,))
-            if reply['status'][0] != e_errors.OK:
+            if reply['status'][0] != e_errors.OK or reply['eod_cookie'] != eod:
                 if reply['status'][0] == e_errors.TIMEDOUT:
                     # keep trying
                     Trace.alarm(e_errors.ERROR,"Volume Clerk timeout on the final stage of file writing to %s"%(self.current_volume))
