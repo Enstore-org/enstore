@@ -263,8 +263,22 @@ class AtMovers:
                     if int(now) - int(self.at_movers[mover]['updated']) > 600:
                         Trace.alarm(e_errors.ALARM,
                                     "The mover %s has not updated its state for %s minutes, will remove it from at_movers list"%
-                                    (mover, int(now - self.at_movers[mover]['updated'])))
+                                    (mover, int((now - self.at_movers[mover]['updated'])/60)))
                         movers_to_delete.append(mover)
+                    else:
+                        add_to_list = 0
+                        time_in_state = int(mover.get('time_in_state', 0))
+                        state = mover.get('state', 'unknown') 
+                        if time_in_state > self.max_time_in_other:
+                            if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
+                                add_to_list = 1
+                            if time_in_state > self.max_time_in_active and state == 'ACTIVE':
+                                add_to_list = 1
+                            if add_to_list:
+                                movers_to_delete.append(mover)
+                                Trace.alarm(e_errors.ALARM,
+                                            "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%
+                                            (mover, state, int(time_in_state)/60))
                 if movers_to_delete:
                     for mover in movers_to_delete:
                         self.delete(self.at_movers[mover])
@@ -1818,6 +1832,8 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.share_movers = self.keys.get('share_movers', None) # for the federation to fair share
                                                                 # movers across multiple library managers
         self.allow_access = self.keys.get('allow', None) # allow host access on a per storage group
+        self.max_time_in_active = self.keys.get('max_in_active', 7200)
+        self.max_time_in_other = self.keys.get('max_in_other', 1200)
         
         LibraryManagerMethods.__init__(self, self.name,
                                        self.csc,
