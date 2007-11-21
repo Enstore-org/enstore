@@ -2773,6 +2773,13 @@ def filesystem_check(work_ticket):
             raise EncpError(getattr(msg, "errno", None), msg2,
                             e_errors.OSERROR, work_ticket)
 
+    if bits < 0:
+        #On Solaris 10 it is known that /tmp is a swap partition.  The
+        # return from os.pathconf() above is -1 instead of the nuber
+        # of bits supported for filesize length.  Go with 32 here.
+        # if that isn't enough use --bypass-filesystem-max-filesize-check.
+        bits = 32
+        
     #Need to convert the bits into the maximum file size allowed.
     filesystem_max = 2L**(bits - 1) - 1
 
