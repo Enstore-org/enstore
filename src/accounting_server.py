@@ -16,8 +16,6 @@ import sys
 import string
 #import pprint
 import pg
-import socket
-import select
 
 # enstore import
 import dispatching_worker
@@ -30,8 +28,6 @@ import monitored_server
 import event_relay_messages
 import time
 import volume_clerk_client
-import callback
-import hostaddr
 
 MY_NAME = enstore_constants.ACCOUNTING_SERVER    #"accounting_server"
 
@@ -509,84 +505,6 @@ class Server(dispatching_worker.DispatchingWorker, generic_server.GenericServer)
 		if self.debug:
 			print time.ctime(st), 'finish_event\t', dt
 
-
-        # get a port for the data transfer
-        def get_user_sockets(self, ticket):
-            host, port, listen_socket =\
-                  callback.get_callback()
-            listen_socket.listen(4)
-            ticket["srv_callback_addr"] = (host, port)
-            self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            i=self.control_socket.connect(ticket['callback_addr'])
-            callback.write_tcp_obj_new(self.control_socket, ticket)
-            r,w,x = select.select([listen_socket], [], [], 15)
-            if not r:
-                listen_socket.close()
-                self.control_socket.close()
-                return 0
-            data_socket, address = listen_socket.accept()
-            if not hostaddr.allow(address):
-                data_socket.close()
-                listen_socket.close()
-                self.control_socket.close()
-                return 0
-            self.data_socket = data_socket
-            listen_socket.close()
-            return 1
-
-	# last xfers
-	def last_xfers(self, ticket):
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket) # reply now to avoid deadlocks
-		# this could tie things up for awhile - fork and let child
-		# send the work list (at time of fork) back to client
-		if self.fork(THREE_MINUTES_TTL):
-		    return
-		try:
-		    if not self.get_user_sockets(ticket):
-			return
-		    res = self.accDB.db.query("select * from encp_xfer order by date desc limit %s;"%(ticket['numEncps'],))
-		    q_a = []
-		    for row in res.getresult():
-			    q_a.append(row)
-			    
-                    rticket={'status':(e_errors.OK, None), 'result': q_a}
-		    callback.write_tcp_obj_new(self.data_socket,rticket)
-		    self.data_socket.close()
-		    callback.write_tcp_obj_new(self.control_socket,ticket)
-		    self.control_socket.close()
-		except:
-                    Trace.handle_error()
-		    pass #XXX
-		# exit now
-		os._exit(0)
-	
-	# last bad xfers
-	def last_bad_xfers(self, ticket):
-		ticket["status"] = (e_errors.OK, None)
-		self.reply_to_caller(ticket) # reply now to avoid deadlocks
-		# this could tie things up for awhile - fork and let child
-		# send the work list (at time of fork) back to client
-		if self.fork(THREE_MINUTES_TTL):
-		    return
-		try:
-		    if not self.get_user_sockets(ticket):
-			return
-		    res = self.accDB.db.query("select * from encp_error order by date desc limit %s;"%(ticket['numEncps'],))
-                    q_a = []
-		    for row in res.getresult():
-			    q_a.append(row)
-		    rticket={'status':(e_errors.OK, None), 'result': q_a}
-		    callback.write_tcp_obj_new(self.data_socket,rticket)
-		    self.data_socket.close()
-		    callback.write_tcp_obj_new(self.control_socket,ticket)
-		    self.control_socket.close()
-		except:
-                    Trace.handle_error()			
-		    pass #XXX
-		# exit now
-		os._exit(0)
-
 if __name__ == '__main__':
 	Trace.init(string.upper(MY_NAME))
 	intf = Interface()
@@ -600,15 +518,9 @@ if __name__ == '__main__':
 			Trace.log(e_errors.INFO, "Accounting Server (re)starting")
 			accServer.serve_forever()
 		except SystemExit, exit_code:
+			accServer.accDB.close()
 			sys.exit(exit_code)
 		except:
 			accServer.serve_forever_error(accServer.log_name)
-			try:
-				accServer.accDB.close()
-			except:
-				pass
-			del accServer
-			accServer = Server(csc)
-			accServer.handle_generic_commands(intf)
 			continue
 	
