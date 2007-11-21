@@ -5312,19 +5312,7 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
     # Even though for writes there is only one entry in the active request
     # list at a time, submitting like this will still work.
     elif status[0] == e_errors.RESUBMITTING:
-        #Since, we are going to continue, we want to receive future event
-        # relay NEWCONFIGFILE messages.
-        #Note: The duration for receiving event relay messages and waiting
-        # for a mover are both 15 minutes.  If the later were to become
-        # greater than the former, a potential time window of missed messages
-        # could exist.
-        #try:
-        #    csc = get_csc()
-        #    if csc.new_config_obj.is_caching_enabled():
-        #        csc.new_config_obj.erc.subscribe()
-        #except EncpError:
-        #    pass
-        
+
         ###Is the work done here duplicated in the next commented code line???
         # 1-21-2004 MWZ: By testing for a non-empty request_list this code
         # should never get called.  This was duplicating the resubmit
@@ -5342,17 +5330,18 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
         else:
             udp_callback_addr = None
 
-        for req in request_list:
+        for i in range(len(request_list)):
             try:
                 #Increase the resubmit count.
-                req['resend']['resubmits'] = req.get('resubmits', 0) + 1
+                request_list[i]['resend']['resubmits'] = \
+                          request_list[i]['resend'].get('resubmits', 0) + 1
 
                 #Before resubmitting, there are some fields that the library
                 # manager and mover don't expect to receive from encp,
                 # these should be removed.
                 for item in (item_remove_list):
                     try:
-                        del req[item]
+                        del request_list[i][item]
                     except KeyError:
                         pass
 
@@ -5360,14 +5349,15 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 if udp_callback_addr:
                     #The ticket item of 'routing_callback_addr' is a
                     # legacy name.
-                    req['routing_callback_addr'] = udp_callback_addr
+                    request_list[i]['routing_callback_addr'] = udp_callback_addr
 
                 #Send this to log file.
                 Trace.log(e_errors.WARNING, (e_errors.RESUBMITTING,
-                                             req.get('unique_id', None)))
+                                             request_list[i].get('unique_id',
+                                                                 None)))
 
                 #Since a retriable error occured, resubmit the ticket.
-                lm_response = submit_one_request(req, encp_intf)
+                lm_response = submit_one_request(request_list[i], encp_intf)
 
             except (KeyboardInterrupt, SystemExit):
                 raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
@@ -5387,7 +5377,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
                 lm_response = {'status' : (e_errors.OK, None)}
 
             #Now it get checked.  But watch out for the recursion!!!
-            internal_result_dict = internal_handle_retries([req], req,
+            internal_result_dict = internal_handle_retries([request_list[i]],
+                                                           request_list[i],
                                                            lm_response,
                                                            encp_intf)
 
@@ -5410,7 +5401,8 @@ def handle_retries(request_list, request_dictionary, error_dictionary,
             #If no error occured while resubmitting to LM.
             else:
                 result_dict = {'status':(e_errors.RESUBMITTING,
-                                         req.get('unique_id', None)),
+                                         request_list[i].get('unique_id',
+                                                             None)),
                                'retry':request_dictionary.get('retry', 0),
                                'resubmits':request_dictionary.get('resubmits',
                                                                   0),
