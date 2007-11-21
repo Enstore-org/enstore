@@ -275,4 +275,4 @@ case $robot in
     ;;
 esac
 
-. $ENSTORE_DIR/src/${script}_${api}.sh
+. $ENSTORE_DIR/src/${runScript}_${api}.sh
