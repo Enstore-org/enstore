@@ -6621,6 +6621,7 @@ def create_write_request(work_ticket, file_number,
             work_ticket['route_selection'] = 1
         work_ticket['times'] = tinfo.copy() #Only info now in tinfo needed.
         work_ticket['unique_id'] = generate_unique_id()
+        work_ticket['user_level'] = e.user_level
         work_ticket['vc'] = volume_clerk
         work_ticket['version'] = encp_client_version()
         work_ticket['work'] = "write_to_hsm"
@@ -8492,6 +8493,7 @@ def create_read_request(request, file_number,
             request['route_selection'] = 1
         request['times'] = tinfo.copy() #Only info now in tinfo needed.
         request['unique_id'] = generate_unique_id()
+        request['user_level'] = e.user_level
         request['vc'] = vc_reply
         request['version'] = encp_client_version()
         request['volume'] = label
