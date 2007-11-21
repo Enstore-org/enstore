@@ -1597,6 +1597,10 @@ def main(intf):
         #Loop until user says don't.
         master.mainloop()
 
+        #When we exec() a new process due to memory consumed, stop the alarm
+        # because the alarm will still be scheduled for the same process ID.
+        signal.alarm(0) #Stop the alarm clock.
+
         #Tell other thread(s) to stop.
         stop_now = 1
 
