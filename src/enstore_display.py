@@ -468,17 +468,19 @@ def animate_time():
 
 last_process = time.time()
 def process_time():
-    #global pt
     global last_process
 
-    #sum_time = sum(resource.getrusage(resource.RUSAGE_SELF)[:2])
-    #rtn = max(int(1000 * (sum_time - pt)), MESSAGES_TIME)
-    #pt = sum_time
-
     now = time.time()
-    rtn = max(1, int(MESSAGES_TIME - ((now - last_process) * 1000)))
-    last_process = now
 
+    #Find the fractional part of the current time and obtain the current
+    # multiple of MESSAGES_TIME.
+    part, whole = math.modf((math.modf(now)[0] * 1000) / MESSAGES_TIME)
+    #Taking just fractional part, determine how many milliseconds it is
+    # to the next multiple of MESSAGES_TIME.
+    rtn = max(1, int((MESSAGES_TIME - (part * MESSAGES_TIME))))
+    
+    last_process = now
+    
     return rtn
 
 #########################################################################
@@ -2292,6 +2294,9 @@ class Display(Tkinter.Canvas):
     #########################################################################
         
     def action(self, event):
+
+        Trace.trace(6, "Starting action()")
+        
         x, y = self.canvasx(event.x), self.canvasy(event.y)
         overlapping = self.find_overlapping(x-1, y-1, x+1, y+1)
         Trace.trace(1, "%s %s" % (overlapping, (x, y)))
@@ -2315,8 +2320,13 @@ class Display(Tkinter.Canvas):
                                        fill=invert_color(connection.color))
                 else:
                     self.itemconfigure(connection.line, fill=connection.color)
+
+        Trace.trace(6, "Finishing action()")
                                                  
     def resize(self, event):
+
+        Trace.trace(6, "Starting resize()")
+        
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -2360,7 +2370,12 @@ class Display(Tkinter.Canvas):
         except AttributeError:
             pass
 
+        Trace.trace(6, "Finishing resize()")
+
     def reinitialize(self, event=None):
+
+        Trace.trace(6, "Starting reinitialize()")
+        
         ### Keep in mind this function can be called from a Tk callback or
         ### from a SIGALRM signal being recieved.
         
@@ -2379,6 +2394,8 @@ class Display(Tkinter.Canvas):
         # function call would result in a huge memory leak.
         self.destroy()
 
+        Trace.trace(6, "Finishing reinitialize()")
+
     def print_canvas(self, event):
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
@@ -2387,6 +2404,9 @@ class Display(Tkinter.Canvas):
         self.postscript(file="/home/zalokar/entv.ps", pagewidth="8.25i")
 
     def window_killed(self, event):
+
+        Trace.trace(6, "Starting window_killed()")
+        
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
@@ -2420,12 +2440,19 @@ class Display(Tkinter.Canvas):
 
         self.cleanup_display()
 
+        Trace.trace(6, "Finishing window_killed()")
+
     def visibility (self, event):
+
+        Trace.trace(6, "Starting visibility()")
+        
         #This is a callback function that must take as arguments self and
         # event.  Thus, turn off the unused args test in pychecker.
         __pychecker__ = "no-argsused"
 
         self.master_geometry = self.master.geometry()
+
+        Trace.trace(6, "Finishing visibility()")
         
     #########################################################################
 
@@ -2453,6 +2480,9 @@ class Display(Tkinter.Canvas):
         Trace.trace(5, "Finishing reposition_canvas()")
         
     def reposition_movers(self, number_of_movers=None):
+
+        Trace.trace(6, "Starting reposition_movers()")
+        
         items = self.movers.values()
         if number_of_movers:
             N = number_of_movers
@@ -2461,19 +2491,33 @@ class Display(Tkinter.Canvas):
         self.mover_label_width = None
         for mover in items:
             mover.reposition(N)            
+
+        Trace.trace(6, "Finishing reposition_movers()")
          
     def reposition_clients(self):
+
+        Trace.trace(6, "Starting reposition_clients()")
+        
         for client in self.clients.values():
             client.reposition()
 
+        Trace.trace(6, "Finishing reposition_clients()")
+
     def reposition_connections(self):
+
+        Trace.trace(6, "Starting reposition_connections()")
+        
         for connection in self.connections.values():
             connection.reposition()
+
+        Trace.trace(6, "Finish reposition_connections()")
 
     #########################################################################
 
     #Called from smooth_animation().
     def connection_animation(self):
+
+        Trace.trace(6, "Starting connection_animation()")
 
         #If the user turned off animation, don't do it.
         #if not self.animate:
@@ -2489,8 +2533,11 @@ class Display(Tkinter.Canvas):
         for connection in self.connections.values():
             connection.animate(now)
 
+        Trace.trace(6, "Starting connection_animation()")
+
     #Called from process_messages().
     def is_up_to_date(self, command):
+
         words = command.split(" ")
 
         if words and words[0] in ["state"]:
@@ -2514,6 +2561,8 @@ class Display(Tkinter.Canvas):
     # XXX Is this used for anything???
     def _join_thread(self, waitall = None):
         global status_request_threads
+
+        Trace.trace(7, "Starting _join_thread()")
         
         thread_lock.acquire()
 
@@ -2533,6 +2582,8 @@ class Display(Tkinter.Canvas):
         status_request_threads = alive_list
 
         thread_lock.release()
+
+        Trace.trace(7, "Finishing _join_thread()")
 
     #########################################################################
 
@@ -2584,7 +2635,7 @@ class Display(Tkinter.Canvas):
             if self.stopped:
                 return
 
-        #Schedule the next animation.
+        #Schedule the next message processing.
         if not self.stopped:
             self.after_process_messages_id = self.after(process_time(),
                                                         self.process_messages)
@@ -2727,6 +2778,9 @@ class Display(Tkinter.Canvas):
     #########################################################################
     
     def create_movers(self, mover_names):
+
+        Trace.trace(6, "Starting create_movers()")
+        
         #Shorten the number of movers.
         N = len(mover_names)
 
@@ -2739,7 +2793,10 @@ class Display(Tkinter.Canvas):
             self.add_mover_position(mover_name)
             self.movers[mover_name] = Mover(mover_name, self, index=k, N=N)
 
+        Trace.trace(6, "Finishing create_movers()")
+
     def get_mover_color(self, library):
+
         #In the event that that mover belongs to mulitple libraries,
         # pick the first one.
         if type(library) == types.ListType:
