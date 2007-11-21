@@ -1081,20 +1081,32 @@ def check_vol(vol):
             if i == j:
                 #Skip the current file.
                 continue
-            if tape_list[i]['location_cookie'] == tape_list[j]['location_cookie']:
+            if tape_list[i]['location_cookie'] == \
+                   tape_list[j]['location_cookie']:
                 #If we get here then we have multiple locations for the
                 # same tape.
                 ### Historical Note: This has been found to have happened
-                ### while importing SDSS DLT data into Enstore due to a "get" bug.
+                ### while importing SDSS DLT data into Enstore due to a
+                ### "get" bug.
                 message = 'volume %s has duplicate location %s (%s, %s)' % \
                           (vol, tape_list[i]['location_cookie'],
                            tape_list[i]['bfid'], tape_list[j]['bfid'])
-                if tape_list[i]['deleted'] == "yes" or tape_list[j]['location_cookie'] == "yes":
-                    #If at least one of the files is marked deleted, consider this a warning.
-                    warn = [message,]
+                if tape_list[i]['deleted'] == "yes" or \
+                   tape_list[j]['deleted'] == "yes":
+                    #This is a possible situation:
+                    # 1) The file clerk assigns a new bfid.
+                    # 2) The volume clerk fails to update the EOD cookie.
+                    # 3) The error is propagated back to encp, resulting
+                    #    in a failure of the transfer.
+                    # 4) With the EOD cookie not updated the same position
+                    #    on tape is used.  Since the first file was
+                    #    deemed failed and marked deleted, we don't consider
+                    #    reaching this part of the scan a problem.
+                    continue
                 elif volume_ticket['library'].find("shelf") != -1:
-                    #If the volume is no longer available, we need to skip this check.
-                    info = [message,]
+                    #If the volume is no longer available, we need to skip
+                    # this check.
+                    warn = [message,]
                 else:
                     err = [message,]
                 errors_and_warnings(vol, err, warn, info)
@@ -1176,6 +1188,7 @@ def check_bit_file(bfid, bfid_info = None):
 
     #Loop over all found mount points.
     possible_reused_pnfsid = 0
+    afn = ""
     for database_info, (db_num, mp)  in [last_db_tried] + search_list:
 
         #If last_db_tried is still set to its initial value, we need to
@@ -1334,18 +1347,19 @@ def check_bit_file(bfid, bfid_info = None):
             # pnfs filesystem.
             
     else:
-        #We don't have a layer 1.  As a last ditch effort check layer 4.
-        # There probably won't be anything, but every now and then...
-        layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
-        #We through away the (err_l, warn_l, info_l) values becuase we
-        # expect them to not be there if layer 1 is not there.  It does not
-        # make sense to report what we already know.
-        if layer4_dict.get('bfid', None):
-            #If we found a bfid in layer 4, report the error about layer 1.
-            err.append("missing layer 1")
-        #Since the file exists, but has no layers, report the error.
-        elif file_record['deleted'] != 'yes':
-            err.append("%s does not exist" % (file_record['pnfsid'],))
+        if afn:
+            #We don't have a layer 1.  As a last ditch effort check layer 4.
+            # There probably won't be anything, but every now and then...
+            layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
+            #We through away the (err_l, warn_l, info_l) values becuase we
+            # expect them to not be there if layer 1 is not there.  It does not
+            # make sense to report what we already know.
+            if layer4_dict.get('bfid', None):
+                #If we found a bfid in layer 4, report the error about layer 1.
+                err.append("missing layer 1")
+            #Since the file exists, but has no layers, report the error.
+            elif file_record['deleted'] != 'yes':
+                err.append("%s does not exist" % (file_record['pnfsid'],))
 
         if possible_reused_pnfsid > 0:
             err.append("reused pnfsid")
