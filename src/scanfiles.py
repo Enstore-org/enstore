@@ -1083,13 +1083,19 @@ def check_vol(vol):
                 continue
             if tape_list[i]['location_cookie'] == \
                    tape_list[j]['location_cookie']:
+                if tape_list[i]['bfid'] < tape_list[j]['bfid']:
+                    age = "newer"
+                elif tape_list[i]['bfid'] > tape_list[j]['bfid']:
+                    age = "older"
+                else:
+                    age = "" #Is this possible?
                 #If we get here then we have multiple locations for the
                 # same tape.
                 ### Historical Note: This has been found to have happened
                 ### while importing SDSS DLT data into Enstore due to a
                 ### "get" bug.
-                message = 'volume %s has duplicate location %s (%s, %s)' % \
-                          (vol, tape_list[i]['location_cookie'],
+                message = 'volume %s has %s duplicate location %s (%s, %s)' % \
+                          (vol, age, tape_list[i]['location_cookie'],
                            tape_list[i]['bfid'], tape_list[j]['bfid'])
                 if tape_list[i]['deleted'] == "yes" or \
                    tape_list[j]['deleted'] == "yes":
@@ -1348,18 +1354,20 @@ def check_bit_file(bfid, bfid_info = None):
             
     else:
         if afn:
-            #We don't have a layer 1.  As a last ditch effort check layer 4.
-            # There probably won't be anything, but every now and then...
-            layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
-            #We through away the (err_l, warn_l, info_l) values becuase we
-            # expect them to not be there if layer 1 is not there.  It does not
-            # make sense to report what we already know.
-            if layer4_dict.get('bfid', None):
-                #If we found a bfid in layer 4, report the error about layer 1.
-                err.append("missing layer 1")
-            #Since the file exists, but has no layers, report the error.
-            elif file_record['deleted'] != 'yes':
-                err.append("%s does not exist" % (file_record['pnfsid'],))
+            if file_record['deleted'] != 'yes':
+                #We don't have a layer 1.  As a last ditch effort check layer 4.
+                # There probably won't be anything, but every now and then...
+                layer4_dict, (err_l, warn_l, info_l) = get_layer_4(afn)
+                #We through away the (err_l, warn_l, info_l) values becuase we
+                # expect them to not be there if layer 1 is not there.  It does
+                # not make sense to report what we already know.
+                if layer4_dict.get('bfid', None):
+                     #If we found a bfid in layer 4, report the error about
+                     # layer 1.
+                     err.append("missing layer 1")
+                else:
+                    #Since the file exists, but has no layers, report the error.
+                    err.append("%s does not exist" % (file_record['pnfsid'],))
 
         if possible_reused_pnfsid > 0:
             err.append("reused pnfsid")
