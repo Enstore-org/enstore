@@ -156,7 +156,7 @@ def save(server_name):
     of=os.path.join(directory,of)
     #Determine where to redirect the output.
     try:
-        os.system("cp -p %s %s"%(inf,of)) 
+        os.system("mv %s %s"%(inf,of)) 
     except:
         pass
 
