@@ -358,10 +358,10 @@ class InquisitorPlots:
             destination_directory = nodes_and_dirs.get(node)
             pts_file = "%s/%s"%(destination_directory, pts_file_only)
             if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
+                new_file = "/tmp/%s.%s"%(pts_file_only, node)
                 if node == this_node:
                     rtn = os.system("cp %s %s"%(pts_file, new_file))
 		else:
-                    new_file = "/tmp/%s.%s"%(pts_file_only, node)
                     rtn = enstore_functions2.get_remote_file(node, pts_file, new_file)
 		if rtn == 0:
 		    files_l.append((new_file, node))
