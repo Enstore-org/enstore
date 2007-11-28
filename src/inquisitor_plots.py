@@ -1,7 +1,11 @@
+###############################################################################
+# $Id$
+# $Author$ 
 #
 # Routines to create the inquisitor plots.
 #
-##############################################################################
+###############################################################################
+
 # system import
 import threading
 import string
@@ -16,6 +20,7 @@ import enstore_functions
 import enstore_functions2
 import enstore_constants
 import accounting_query
+import configuration_client
 
 LOGFILE_DIR = "logfile_dir"
 XFER_SIZE   = "xfer-size"
@@ -212,7 +217,6 @@ class InquisitorPlots:
         # Dmitry:
         # Kludge: this seems like  the only way I can get storage groups efficiently
         #
-
         res=self.acc_db.query("select distinct(storage_group) from encp_xfer_average_by_storage_group")
         storage_groups = []
         for row in res.getresult():
@@ -332,33 +336,42 @@ class InquisitorPlots:
         self.close_db_connection()
 
     def get_bpd_files(self):
-	nodes_l = string.split(self.pts_nodes, ",")
-	files_l = []
-	this_node = enstore_functions2.strip_node(os.uname()[1])
-	pts_file_only = "%s%s"%(enstore_constants.BPD_FILE, enstore_plots.PTS)
-	pts_file = "%s/%s"%(self.pts_dir, pts_file_only)
-	for node in nodes_l:
-	    node = enstore_functions2.strip_node(node)
-	    # make sure node is up before rcping
-	    if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
-		new_file = "/tmp/%s.%s"%(pts_file_only, node)
-		if node == this_node:
-		    rtn = os.system("cp %s %s"%(pts_file, new_file))
+        #
+        # Dmitry is hacking below, getting info from config server
+        #   *I assume that config server and points are on the same node!!!!*
+        #
+        servers=self.config_d.get('known_config_servers',[])
+        nodes_and_dirs={}
+        for server in servers:
+            if (server == 'status') : continue
+            server_name,server_port = servers.get(server)
+            #
+            # access config server to get locatin of web directory
+            #
+            csc   = configuration_client.ConfigurationClient((server_name, server_port))
+            inq_d = csc.get(enstore_constants.INQUISITOR, {})
+            nodes_and_dirs[server_name.split('.')[0]]=inq_d["html_file"]
+        files_l = []
+        pts_file_only = "%s%s"%(enstore_constants.BPD_FILE, enstore_plots.PTS)
+        this_node = enstore_functions2.strip_node(os.uname()[1])
+        for node in nodes_and_dirs.keys():
+            destination_directory = nodes_and_dirs.get(node)
+            pts_file = "%s/%s"%(destination_directory, pts_file_only)
+            if enstore_functions2.ping(node) == enstore_constants.IS_ALIVE:
+                if node == this_node:
+                    rtn = os.system("cp %s %s"%(pts_file, new_file))
 		else:
-		    rtn = enstore_functions2.get_remote_file(node, pts_file, new_file)
+                    new_file = "/tmp/%s.%s"%(pts_file_only, node)
+                    rtn = enstore_functions2.get_remote_file(node, pts_file, new_file)
 		if rtn == 0:
-		    # the copy was a success
 		    files_l.append((new_file, node))
 		else:
-		    # record the error
 		    Trace.log(e_errors.WARNING,
-			      "could not copy %s from %s for total bytes plot"%(pts_file,
-										node))
-	    else:
+			      "could not copy %s from %s for total bytes plot"%(pts_file,node))
+            else:
 		Trace.log(e_errors.WARNING,
-			  "could not copy %s from %s for total bytes plot"%(pts_file,
-									    node))
-	return files_l
+			  "could not ping,  %s from %s for total bytes plot"%(pts_file,node))
+        return files_l
 
     def fill_in_bpd_d(self, bpdfile, data_d, node):
 	if bpdfile.lines:
