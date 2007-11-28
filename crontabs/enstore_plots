@@ -21,7 +21,7 @@
 ##plot the pnfs backup time
 26 00 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p pnfs_backup_time $ENSTORE_DIR/src/pnfs_backup_plot.py > /dev/null 2> /dev/null
 
-30 2 * * * root source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --no-plot-html  > /dev/null 2> /dev/null
+30 2 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p make_overall_plot python $ENSTORE_DIR/src/plotter.py --total_bytes --pts_nodes=d0ensrv2,stkensrv2,cdfensrv2 --no-plot-html  > /dev/null 2> /dev/null
 
 
 ##
