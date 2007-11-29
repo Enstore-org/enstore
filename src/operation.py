@@ -202,7 +202,7 @@ def get_cluster(host):
 # get_script_host(cluster) -- determine script host
 def get_script_host(cluster):
 	if cluster.upper()[:2] == 'D0':
-		return 'd0ensrv4.fnal.gov'
+		return 'd0ensrv4n.fnal.gov'
 	elif cluster.upper()[:3] == 'STK':
 		return 'stkensrv4.fnal.gov'
 	elif cluster.upper()[:3] == 'CDF':
