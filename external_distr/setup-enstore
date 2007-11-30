@@ -1,3 +1,7 @@
+ENSTORE_DIR=`rpm -ql enstore | head -1`
+PYTHON_DIR=`rpm -ql Python-enstore | head -1`
+FTT_DIR=`rpm -ql ftt | head -1`
+ENSTORE_HOME=/home/enstore
 
 export ENSTORE_DIR
 export PYTHON_DIR
@@ -13,21 +17,10 @@ if [ $? -eq 0 ]; then
 	PATH=$SWIG_DIR:$PATH
 fi
 
-rpm -q aci > /dev/null
-if [ $? -eq 0 ];
-then
-    ACI_DIR=`rpm -ql aci | head -1`
-    export ACI_DIR
-    PATH=$ACI_DIR/admin:$PATH
-    export DAS_SERVER="192.168.89.56"
-    export DAS_CLIENT=`hostname -s`p
-fi
-
-
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
 
-CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
-unset CVS_RSH 2>//dev/null;
+#CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
+#unset CVS_RSH 2>//dev/null;
 
 PYTHONINC=`ls -d $PYTHON_DIR/include/python*`; export PYTHONINC
 PYTHONLIB=`ls -d $PYTHON_DIR/lib/python*`;export PYTHONLIB

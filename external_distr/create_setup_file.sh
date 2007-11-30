@@ -119,7 +119,7 @@ fi
 
 echo "Copying $ENSTORE_DIR/external_distr/setup-enstore to $ENSTORE_HOME/site_specific/config"
 if [ $fnal -ne 0 ];then
-    cp ${ENSTORE_DIR}/site/specific/config/setup-enstore ${ENSTORE_HOME}/site/specific/config/setup-enstore
+    cp ${ENSTORE_DIR}/site_specific/config/setup-enstore ${ENSTORE_HOME}/site_specific/config/setup-enstore
     exit 0
 fi
 
@@ -129,15 +129,16 @@ then
     rm -rf $ENSTORE_HOME/site_specific/config/setup-enstore
 fi
 
-rm -rf /tmp/enstore_header
-echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
-echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
-echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
+#rm -rf /tmp/enstore_header
+#echo "ENSTORE_DIR=$ENSTORE_DIR" > /tmp/enstore_header
+#echo "PYTHON_DIR=$PYTHON_DIR" >> /tmp/enstore_header
+#echo "FTT_DIR=$FTT_DIR" >> /tmp/enstore_header
     
-echo "ENSTORE_HOME=$ENSTORE_HOME" >> /tmp/enstore_header
+#echo "ENSTORE_HOME=$ENSTORE_HOME" >> /tmp/enstore_header
 
 rm -rf $ENSTORE_HOME/site_specific/config/setup-enstore
-cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOME/site_specific/config/setup-enstore
+#cat /tmp/enstore_header $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOME/site_specific/config/setup-enstore
+cp $ENSTORE_DIR/external_distr/setup-enstore > $ENSTORE_HOME/site_specific/config/setup-enstore
 
 echo "Finishing configuration of $ENSTORE_HOME/site_specific/config/setup-enstore"
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
