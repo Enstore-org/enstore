@@ -218,6 +218,11 @@ then
     echo "creating ${REPLY}"
     mkdir -p ${REPLY}
 fi
+if [ $fnal -eq 0 ]; then
+    echo "Assuming that ssh and scp wil be used for remote commands"
+   ENSSH=`which ssh`
+   ENSCP=`which scp`
+fi
 
 if [ "${ENSSH:-x}" != "x" ]
 then

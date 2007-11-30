@@ -117,5 +117,15 @@ if [ $install -eq 1 ]; then
     ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 fi
 chown -R enstore.enstore $ENSTORE_HOME
+if [ $fnal != "fnal" ];
+then
+    this_host=`uname -n`
+    if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
+    then
+	echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
+	echo "it can be replased later"
+	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
+    fi
+fi
 
 exit 0
