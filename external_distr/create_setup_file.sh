@@ -38,16 +38,18 @@ then
 fi
 
 if [ $fnal -eq 0 ]; then
-    echo " 
-    You need to run this script only on the enstore configuration server host."
+    if [ "${ENSTORE_CONFIG_HOST:-x}" = "x" ]; then 
+	echo " 
+	You need to run this script only on the enstore configuration server host."
 
-    read -p "Are you on this host?[y/N]: " REPLY
-    echo $REPLY
-    if [ "$REPLY" = "y" -o "$REPLY" = "Y" ] 
-    then
-    ENSTORE_CONFIG_HOST=`uname -n`
-    else
-    exit 1
+	read -p "Are you on this host?[y/N]: " REPLY
+	echo $REPLY
+	if [ "$REPLY" = "y" -o "$REPLY" = "Y" ] 
+	then
+	ENSTORE_CONFIG_HOST=`uname -n`
+	else
+	exit 1
+	fi
     fi
 else
     ENSTORE_CONFIG_HOST=`$ENSTORE_DIR/ups/chooseConfig`
