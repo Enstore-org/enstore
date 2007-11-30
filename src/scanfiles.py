@@ -1027,11 +1027,11 @@ def check_dir(d, dir_info):
 
     # skip volmap and .bad and .removed and migration directory
     fname = os.path.basename(d)
-    if fname == 'volmap' or \
-           fname[:3] == '.B_' or \
-           fname[:3] == '.A_' or \
-           fname.lower().find("migration") != -1: # or \
-           #fname[:8] == '.removed':
+    if fname.lower().find("migration") != -1: # or \
+        #fname == 'volmap' or \
+        #fname[:3] == '.B_' or \
+        #   fname[:3] == '.A_' or \
+        #fname[:8] == '.removed':
         return err, warn, info
         
     if check_permissions(d_stats, os.R_OK | os.X_OK):
