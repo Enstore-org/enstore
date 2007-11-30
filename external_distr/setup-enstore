@@ -1,4 +1,4 @@
-ENSTORE_DIR=`rpm -ql enstore | head -1`
+ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 PYTHON_DIR=`rpm -ql Python-enstore | head -1`
 FTT_DIR=`rpm -ql ftt | head -1`
 ENSTORE_HOME=/home/enstore
