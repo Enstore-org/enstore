@@ -32,7 +32,8 @@ then
     #/etc/rc.d/init.d/postgresql stop
 fi
 echo "Installing pnfs"
-rpm -U --force --nodeps http://www.dcache.org/downloads/releases/pnfs-postgresql-3.1.10-7.i386.rpm
+#rpm -U --force --nodeps http://www.dcache.org/downloads/releases/pnfs-postgresql-3.1.10-7.i386.rpm
+rpm -U --force ftp://enconfig1/en/lts44/i386/pnfs-3.1.10-2f.i386.rpm
 # complete after install pnfs configuration
 # copy setup
 
