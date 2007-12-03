@@ -67,7 +67,7 @@ then
 fi    
 sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
 ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
-host_name=`hostname`
+host_name=`uname -n | cut -f1 -d\.`
 sed -e "s?the_host=?the_host=\'$host_name\'?" $ENSTORE_CONFIG_FILE > /tmp/enstore_config_file
 rm $ENSTORE_CONFIG_FILE
 mv /tmp/enstore_config_file $ENSTORE_CONFIG_FILE
