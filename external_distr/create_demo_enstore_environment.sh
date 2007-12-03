@@ -55,7 +55,16 @@ else
     d=`date +%F.%R`
     mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
 fi
-    
+if [ "${fnal:-x}" != "fnal" ];
+then
+    this_host=`uname -n`
+    if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
+    then
+	echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
+	echo "it can be replased later"
+	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
+    fi
+fi    
 sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
 ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 host_name=`hostname`
@@ -66,16 +75,6 @@ mv /tmp/enstore_config_file $ENSTORE_CONFIG_FILE
 echo ${host_name} > ${FARMLETS_DIR}/${host_name}
 echo ${host_name} > ${FARMLETS_DIR}/enstore
 echo ${host_name} > ${FARMLETS_DIR}/enstore-down
-if [ "${fnal:-x}" != "fnal" ];
-then
-    this_host=`uname -n`
-    if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
-    then
-	echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
-	echo "it can be replased later"
-	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
-    fi
-fi
 chown -R enstore.enstore $ENSTORE_HOME
 
 exit 0
