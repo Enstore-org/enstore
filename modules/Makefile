@@ -109,7 +109,7 @@ ecrc: ecrc.c
 	$(CC) $(CFLAGS) -I. -o $@ ecrc.c adler32.a $(LIBGEN)
 	cp $@ ../sbin
 
-ddencp: EXfer.c
+ddencp: EXfer.c adler32.a
 	$(CC) $(CFLAGS) -I. -DSTAND_ALONE -DDEBUG_REVERT -o $(@) EXfer.c adler32.a -lpthread $(POSIX4) $(RT) $(LIBGEN) $(LIBSOCKETNSL)
 	cp $(@) ../bin
 
