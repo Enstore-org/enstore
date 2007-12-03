@@ -148,11 +148,14 @@ echo "Finishing configuration of $ENSTORE_HOME/site_specific/config/setup-enstor
 echo "export ENSTORE_CONFIG_HOST=${ENSTORE_CONFIG_HOST}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
 if [ $fnal -eq 0 ]; then
-    read -p "Enter ENSTORE configuration server port [7500]: " REPLY
-    if [ -z "$REPLY" ]
-    then 
+    if [ "${ENSTORE_CONFIG_HOST:-x}" = "x" ]; then
+	read -p "Enter ENSTORE configuration server port [7500]: " REPLY
+	if [ -z "$REPLY" ]
+	then 
 	    REPLY=7500
-    fi
+	fi
+    else
+	REPLY=7500
 else
     REPLY=7500
 fi

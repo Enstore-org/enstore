@@ -52,10 +52,19 @@ if [ $? -ne 0 ]; then
 fi
 echo "Installing enstore"
 
-rpm -Uvh --force --nodeps ${place}/enstore-1.0b.1-10.i386.rpm
-ENSTORE_DIR=`rpm -ql enstore | head -1`
+#rpm -Uvh --force --nodeps ${place}/enstore-1.0b.1-10.i386.rpm
+rpm -Uvh --force --nodeps ${place}/enstore_sa-1.0.1-10.i386.rpm
+rpm -q enstore > /dev/null
+if [ $? -eq 0 ]; 
+then
+    ENSTORE_DIR=`rpm -ql enstore | head -1`
+else
+    ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
+fi
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
 $ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 # install crons
 #$ENSTORE_DIR/tools/install_crons.py
+# create database
+$ENSTORE_DIR/external_distr/install_database.sh
