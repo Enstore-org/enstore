@@ -115,8 +115,13 @@ echo Drivestat Database Name ${ds_dbname}
 
 if [ $this_host != $db_host ]
 then
-    echo You must run this script on ${db_host} only
-    exit 1
+    short_host_name=`uname -n | cut -f1 -d\.`
+    if [ $short_host_name != $db_host ]; then
+	echo You must run this script on ${db_host} only
+	exit 1
+    else $this_host=$short_host_name
+    fi
+	
 fi
 
 rpm -q postgresql > /dev/null

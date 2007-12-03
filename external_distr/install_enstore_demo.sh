@@ -65,6 +65,6 @@ fi
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
 $ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 # install crons
-#$ENSTORE_DIR/tools/install_crons.py
+$ENSTORE_DIR/tools/install_crons.py
 # create database
 $ENSTORE_DIR/external_distr/install_database.sh
