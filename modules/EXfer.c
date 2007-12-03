@@ -1526,7 +1526,7 @@ static int remove_lock(struct transfer *info)
 	 return 1;
       }
    }
-#endif
+#endif /* F_SETLK */
    return 0;
 }
 
@@ -1872,7 +1872,7 @@ static int setup_posix_io(struct transfer *info)
 			      __FILE__, __LINE__);
 	   return 1;
 	}
-#endif
+#endif /* 0 */
      }
      if(info->advisory_locking || info->mandatory_locking)
      {
@@ -1894,7 +1894,7 @@ static int setup_posix_io(struct transfer *info)
 	   return 1;
 	}
      }
-#endif
+#endif /* F_SETLK */ 
      
     /* Get the number of bytes to transfer between fsync() calls. */
     info->fsync_threshold = get_fsync_threshold(info);
