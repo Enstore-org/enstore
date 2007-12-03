@@ -38,7 +38,7 @@ fi
 if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
 then
     # this allows to not run this script on remote nodes.
-    $ENSTORE_DIR/external_distr/create_demo_setup_file.sh
+    $ENSTORE_DIR/external_distr/create_setup_file.sh
 fi
 source $ENSTORE_HOME/site_specific/config/setup-enstore
 
