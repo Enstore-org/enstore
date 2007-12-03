@@ -1084,9 +1084,10 @@ def check_vol(vol):
             if tape_list[i]['location_cookie'] == \
                    tape_list[j]['location_cookie']:
                 if tape_list[i]['bfid'] < tape_list[j]['bfid']:
-                    age = "newer"
+                    age = "another newer"
                 elif tape_list[i]['bfid'] > tape_list[j]['bfid']:
-                    age = "older"
+                    #age = "another older"
+                    continue
                 else:
                     age = "" #Is this possible?
                 #If we get here then we have multiple locations for the
@@ -1109,10 +1110,10 @@ def check_vol(vol):
                     #    deemed failed and marked deleted, we don't consider
                     #    reaching this part of the scan a problem.
                     continue
-                elif volume_ticket['library'].find("shelf") != -1:
-                    #If the volume is no longer available, we need to skip
-                    # this check.
-                    warn = [message,]
+                #elif volume_ticket['library'].find("shelf") != -1:
+                #    #If the volume is no longer available, we need to skip
+                #    # this check.
+                #    warn = [message,]
                 else:
                     err = [message,]
                 errors_and_warnings(vol, err, warn, info)
