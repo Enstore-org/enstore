@@ -66,7 +66,7 @@ mv /tmp/enstore_config_file $ENSTORE_CONFIG_FILE
 echo ${host_name} > ${FARMLETS_DIR}/${host_name}
 echo ${host_name} > ${FARMLETS_DIR}/enstore
 echo ${host_name} > ${FARMLETS_DIR}/enstore-down
-if [ $fnal != "fnal" ];
+if [ "${fnal:-x}" != "fnal" ];
 then
     this_host=`uname -n`
     if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
