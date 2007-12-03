@@ -62,5 +62,20 @@ host_name=`hostname`
 sed -e "s?the_host=?the_host=\'$host_name\'?" $ENSTORE_CONFIG_FILE > /tmp/enstore_config_file
 rm $ENSTORE_CONFIG_FILE
 mv /tmp/enstore_config_file $ENSTORE_CONFIG_FILE
+
+echo ${host_name} > ${FARMLETS_DIR}/${host_name}
+echo ${host_name} > ${FARMLETS_DIR}/enstore
+echo ${host_name} > ${FARMLETS_DIR}/enstore-down
+if [ $fnal != "fnal" ];
+then
+    this_host=`uname -n`
+    if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
+    then
+	echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
+	echo "it can be replased later"
+	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
+    fi
+fi
 chown -R enstore.enstore $ENSTORE_HOME
+
 exit 0
