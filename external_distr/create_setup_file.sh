@@ -156,6 +156,7 @@ if [ $fnal -eq 0 ]; then
 	fi
     else
 	REPLY=7500
+    fi
 else
     REPLY=7500
 fi
