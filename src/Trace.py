@@ -210,7 +210,15 @@ def trace(severity, msg):
         return
     if print_levels.has_key(severity):
         try:
-            print severity, time.ctime(time.time()), msg
+            t=time.time()
+            dp=("%3.2f"%(t-int(t),)).split('.')[1]
+            a=time.ctime(t).split(" ")
+            b="."
+            c=b.join((a[4],dp))
+            a[4]=c
+            b=" "
+            tm=b.join(a)
+            print severity, tm, msg
 	    # the following line will output the memory usage of the process
 	    #os.system("a=`ps -ef |grep '/inq'|grep -v grep|xargs echo|cut -f2 -d' '`;ps -el|grep $a|grep python")
 	    #print "================================="  # a usefull divider
