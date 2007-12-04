@@ -188,6 +188,9 @@ class AtMovers:
         self.at_movers = {}
         self.sg_vf = SG_FF()
         self.check_interval = 30
+        self.max_time_in_active = 7200
+        self.max_time_in_other = 1200
+                        
         
     def put(self, mover_info):
         # mover_info contains:
@@ -266,9 +269,10 @@ class AtMovers:
                                     (mover, int((now - self.at_movers[mover]['updated'])/60)))
                         movers_to_delete.append(mover)
                     else:
+                        Trace.trace(111, "mover %s"%(mover,))
                         add_to_list = 0
-                        time_in_state = int(mover.get('time_in_state', 0))
-                        state = mover.get('state', 'unknown') 
+                        time_in_state = int(self.at_movers[mover].get('time_in_state', 0))
+                        state = self.at_movers[mover].get('state', 'unknown') 
                         if time_in_state > self.max_time_in_other:
                             if state not in ['IDLE', 'ACTIVE', 'OFFLINE','HAVE_BOUND']:
                                 add_to_list = 1
