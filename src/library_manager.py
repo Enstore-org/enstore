@@ -913,7 +913,7 @@ class LibraryManagerMethods:
         return rq, key_to_check
 
     # is there any work for any volume?
-    def next_work_any_volume(self, requestor, bound=None):
+    def next_work_any_volume(self, requestor, bound=None, storage_group=None):
         Trace.trace(11, "next_work_any_volume")
         self.init_request_selection()
         self.process_for_bound_vol = bound
@@ -922,6 +922,12 @@ class LibraryManagerMethods:
         Trace.trace(222,"Pw3")
         rq=self.pending_work.get()
         while rq:
+            if  storage_group and bound:
+                sg = volume_family.extract_storage_group(rq.ticket["vc"])
+                if sg ==storage_group:
+                    rq = self.pending_work.get(next=1)
+                    continue
+            
             rej_reason = None
             
             if rq.work == "write_to_hsm":
@@ -1163,9 +1169,9 @@ class LibraryManagerMethods:
 
 
     # what is next on our list of work?
-    def schedule(self, mover, bound=None):
+    def schedule(self, mover, bound=None, storage_group=None):
         while 1:
-            rq, status = self.next_work_any_volume(mover, bound)
+            rq, status = self.next_work_any_volume(mover, bound,storage_group)
             if (status[0] == e_errors.OK or 
                 status[0] == e_errors.NOWORK):
                 if rq and rq.ticket.has_key('reject_reason') and rq.ticket['reject_reason'][0] == "RESTRICTED_ACCESS":
@@ -1443,7 +1449,7 @@ class LibraryManagerMethods:
             start_t=time.time()
             rq, status = self.schedule(requestor)
             Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
-            Trace.trace(111, "SHEDULE, time in state %s"%(time.time()-start_t, ))
+            Trace.trace(111, "SCHEDULE, time in state %s"%(time.time()-start_t, ))
             if rq and rq.ticket['encp']['curpri'] > 0:
                 # preempt current low priority request
                 # by request with normal priority
@@ -1558,9 +1564,10 @@ class LibraryManagerMethods:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work with online priority
                 start_t=time.time()
-                rq, status = self.schedule(requestor, bound=external_label)
+                sg = volume_family.extract_storage_group(vol_family)
+                rq, status = self.schedule(requestor, bound=external_label, storage_group=sg)
                 Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
-                Trace.trace(111, "SHEDULE2, time in state %s"%(time.time()-start_t, ))
+                Trace.trace(111, "SCHEDULE2, time in state %s"%(time.time()-start_t, ))
                 # no work means: use what we have
                 if status[0] == e_errors.NOWORK:
                     rq = exc_limit_rq
