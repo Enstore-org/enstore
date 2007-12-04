@@ -620,7 +620,10 @@ class LibraryManagerMethods:
                 (not (vol_rec['external_labe'] in veto_list))):
                 return vol_rec
         else:
+            
+            start_t=time.time()
             v = self.vcc.next_write_volume(library, size, volume_family, veto_list, first_found, mover, timeout=60, retry=5)
+            Trace.trace(111, "vcc.next_write_volume, time in state %s"%(time.time()-start_t, ))
             if v['status'][0] == e_errors.OK:
                 self.write_volumes.append(v)
             return v
@@ -810,6 +813,7 @@ class LibraryManagerMethods:
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                          server_address=rq.ticket['vc']['address'])
 
+            start_t=time.time()
             v = self.next_write_volume(rq.ticket["vc"]["library"],
                                        rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
                                        vol_family,
@@ -817,6 +821,7 @@ class LibraryManagerMethods:
                                        first_found=0,
                                        mover=requestor)
             
+            Trace.trace(111, "next_write_volume, time in state %s"%(time.time()-start_t, ))
             #v = self.vcc.next_write_volume(rq.ticket["vc"]["library"],
             #                               rq.ticket["wrapper"]["size_bytes"]+self.min_file_size,
             #                               vol_family, 
@@ -1106,15 +1111,20 @@ class LibraryManagerMethods:
                         # size has a meaning only for general rq
                         fsize = fsize+self.min_file_size
                         
+                    start_t=time.time()
                     self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                                      server_address=w['vc']['address'])
 
+                    Trace.trace(111, "vcc, time in state %s"%(time.time()-start_t, ))
                     
                     try:
+                        start_t=time.time()
                         ret = self.vcc.is_vol_available(rq.work,
                                                         w['fc']['external_label'],
                                                         w["vc"]["volume_family"],
                                                         fsize)
+                        Trace.trace(111, "vcc.is_vol_available, time in state %s"%(time.time()-start_t, ))
+
                     except KeyError:
                         Trace.log(e_errors.ERROR, "Keyerror calling is_vol_available %s"%(w,))
                         
@@ -1201,12 +1211,16 @@ class LibraryManagerMethods:
                 # size has a meaning only for general rq
                 fsize = fsize+self.min_file_size
 
+            start_t=time.time()
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                                      server_address=rq.ticket['vc']['address'])
 
+            Trace.trace(111, "vcc, time in state %s"%(time.time()-start_t, ))
+            start_t=time.time()
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
                                             fsize)
+            Trace.trace(111, "vcc.is_vo_avail, time in state %s"%(time.time()-start_t, ))
         # this work can be done on this volume
         if ret['status'][0] == e_errors.OK:
             rq.ticket['vc']['external_label'] = external_label
@@ -1238,12 +1252,16 @@ class LibraryManagerMethods:
             ret = self.is_vol_available(rq.work,external_label, requestor)
         else:
             fsize = rq.ticket['wrapper'].get('size_bytes', 0L)
+            start_t=time.time()
             self.vcc = volume_clerk_client.VolumeClerkClient(self.csc,
                                                              server_address=rq.ticket['vc']['address'])
 
+            Trace.trace(111, "vcc, time in state %s"%(time.time()-start_t, ))
+            start_t=time.time()
             ret = self.vcc.is_vol_available(rq.work,  external_label,
                                             rq.ticket['vc']['volume_family'],
                                             fsize)
+            Trace.trace(111, "vcc.is_vo_avail, time in state %s"%(time.time()-start_t, ))
         Trace.trace(11,"check_read_request: ret %s" % (ret,))
         if ret['status'][0] != e_errors.OK:
             if ret['status'][0] == e_errors.BROKEN:
@@ -1418,8 +1436,10 @@ class LibraryManagerMethods:
             # this is a lower priority request (usually used for migration)
             # it can be preempted by any normal priority request
             # process request
+            start_t=time.time()
             rq, status = self.schedule(requestor)
             Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+            Trace.trace(111, "SHEDULE, time in state %s"%(time.time()-start_t, ))
             if rq and rq.ticket['encp']['curpri'] > 0:
                 # preempt current low priority request
                 # by request with normal priority
@@ -1533,8 +1553,10 @@ class LibraryManagerMethods:
             if exc_limit_rq:
                 # if storage group limit for this volume has been exceeded
                 # try to get any work with online priority
+                start_t=time.time()
                 rq, status = self.schedule(requestor, bound=external_label)
                 Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+                Trace.trace(111, "SHEDULE2, time in state %s"%(time.time()-start_t, ))
                 # no work means: use what we have
                 if status[0] == e_errors.NOWORK:
                     rq = exc_limit_rq
@@ -2438,8 +2460,11 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
             self.work_at_movers.remove(wt)
             format = "Removing work from work at movers queue for idle mover. Work:%s mover:%s"
             Trace.log(e_errors.INFO, format%(wt,mticket))
+
+        start_t=time.time()
         rq, status = self.schedule(mticket)
         Trace.trace(11,"SCHEDULE RETURNED %s %s"%(rq, status))
+        Trace.trace(111, "SHEDULE, time in state %s"%(time.time()-start_t, ))
 
         # no work means we're done
         if status[0] == e_errors.NOWORK:
