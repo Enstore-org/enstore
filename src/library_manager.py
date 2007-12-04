@@ -621,7 +621,7 @@ class LibraryManagerMethods:
             if ((library == vol_rec['library']) and
                 (size < vol_rec['remaining_bytes']) and
                 (volume_family == vol_rec['volume_family']) and
-                (not (vol_rec['external_labe'] in veto_list))):
+                (not (vol_rec['external_label'] in veto_list))):
                 return vol_rec
         else:
             
