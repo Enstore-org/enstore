@@ -3179,7 +3179,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # overrides GEnericServer reinit when received notification of new configuration file.
     def reinit(self):
         Trace.log(e_errors.INFO, "(Re)loading configuration")
-        self.keys = self.csc.get(libman)
+        self.keys = self.csc.get(self.name)
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
         self.restrictor.read_config()
