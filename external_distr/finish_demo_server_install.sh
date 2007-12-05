@@ -51,6 +51,10 @@ while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
 rm -rf install_database.tmp
 echo pnfs host: ${pnfs_host}
 this_host=`uname -n`
+if [ $this_host != $pnfs_host ];
+then
+this_host=`uname -n | cut -f1 -d\.`
+fi
 if [ $this_host = $pnfs_host ];
 then
     echo "Configuring this host to run postgres"
