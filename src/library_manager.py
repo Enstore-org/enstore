@@ -1846,7 +1846,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.lm_lock = self.get_lock()
         if not self.lm_lock:
             self.lm_lock = 'unlocked'
-            self.set_lock(self.lm_lock)
+        self.set_lock(self.lm_lock)
         Trace.log(e_errors.INFO,"Library manager started in state:%s"%(self.lm_lock,))
 
         # setup a start up delay
@@ -3184,6 +3184,13 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.pri_sel.read_config()
         self.restrictor.read_config()
         self.max_requests = self.keys.get('max_requests', 2000) # maximal number of requests in the queue
+        c_lock = self.lm_lock
+        self.lm_lock = self.get_lock()
+        if not self.lm_lock:
+            self.lm_lock = 'unlocked'
+        if c_lock != self.lm_lock:
+            self.set_lock(self.lm_lock)
+            Trace.log(e_errors.INFO,"Library manager state changed to state:%s"%(self.lm_lock,))
         
         
 class LibraryManagerInterface(generic_server.GenericServerInterface):
