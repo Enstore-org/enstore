@@ -7,7 +7,7 @@
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
-psql_place=/home/moibenko
+#psql_place=/home/moibenko
 . /usr/local/etc/setups.sh
 setup enstore
 
