@@ -1861,7 +1861,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.max_suspect_movers = self.keys.get('max_suspect_movers',3) # maximal number of movers in the suspect volume list
         self.max_suspect_volumes = self.keys.get('max_suspect_volumes', 100) # maximal number of suspected volumes for alarm generation
         self.blank_error_increment = self.keys.get('blank_error_increment', 5) # this + max_suspect_movers shuold not be more than total number of movers
-        self.max_requests = self.keys.get('max_requests', 1000) # maximal number of requests in the queue
+        self.max_requests = self.keys.get('max_requests', 2000) # maximal number of requests in the queue
         self.time_started = time.time()
         self.startup_flag = 1   # this flag means that LM is in the startup state
 
@@ -3179,6 +3179,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
     # overrides GEnericServer reinit when received notification of new configuration file.
     def reinit(self):
         Trace.log(e_errors.INFO, "(Re)loading configuration")
+        self.keys = self.csc.get(libman)
         self.allow_access = self.keys.get('allow', None)
         self.pri_sel.read_config()
         self.restrictor.read_config()
