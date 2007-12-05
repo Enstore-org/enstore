@@ -97,6 +97,3 @@ fi
 
 #create pnfs directory
 
-# create enstore databases
-echo "Creating enstore databases"
-$ENSTORE_DIR/external_distr/install_database.sh
