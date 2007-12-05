@@ -49,7 +49,7 @@ rpm -U --force ftp://enconfig1/en/lts44/i386/pnfs-3.1.10-2f.i386.rpm
 $ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2 -d\: --output-delimiter=" " > /tmp/pnfs_conf.tmp
 while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
 rm -rf install_database.tmp
-echo pnfs host: ${pnfs_host}
+echo "pnfs host: $pnfs_host"
 echo "Creating pnfsSetup"
 pnfsSetup_file=stken-pnfsSetup
 if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
