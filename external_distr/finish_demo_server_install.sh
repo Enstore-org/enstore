@@ -50,17 +50,24 @@ $ENSTORE_DIR/external_distr/extract_config_parameters.py pnfs_server | cut -f1,2
 while read f1 f2; do eval pnfs_${f1}=$f2; done < /tmp/pnfs_conf.tmp
 rm -rf install_database.tmp
 echo pnfs host: ${pnfs_host}
+echo "Creating pnfsSetup"
+pnfsSetup_file=stken-pnfsSetup
+if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
+if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
+if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
+
+. /usr/etc/pnfsSetup.sh
+echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
+
 this_host=`uname -n`
 if [ $this_host != $pnfs_host ];
 then
 this_host=`uname -n | cut -f1 -d\.`
-fi
 if [ $this_host = $pnfs_host ];
 then
     echo "Configuring this host to run postgres"
     /sbin/chkconfig postgresql on
-    echo "Starting postges"
-    /sbin/service postgresql initdb
+    echo "Starting postgres"
     /etc/init.d/postgresql start
     echo "Configuring this host to run pnfs server"
     /sbin/chkconfig --add pnfs
@@ -68,12 +75,6 @@ then
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
     #/etc/init.d/pnfs start
 fi
-echo "Creating pnfsSetup"
-pnfsSetup_file=stken-pnfsSetup
-if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
-if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
-if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSetup.sh; fi
-
 #create pnfs directory
 if [ ! -d /pnfs ];
 then
@@ -86,6 +87,9 @@ mkdir -p -m 777 `grep "database_postgres" /usr/etc/pnfsSetup | cut -f2 -d"="`
 mkdir -p -m 777 `grep "trash" /usr/etc/pnfsSetup | cut -f2 -d"="`
 pnfsdLog=`grep dbserverLog /usr/etc/pnfsSetup | cut -f2 -d"="`
 mkdir -p -m 777 `dirname ${pnfsdLog}`
+
+echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
+/etc/init.d/pnfs start
 
 
 echo "Enabling Enstore log directory"
