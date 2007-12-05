@@ -63,6 +63,7 @@ this_host=`uname -n`
 if [ $this_host != $pnfs_host ];
 then
 this_host=`uname -n | cut -f1 -d\.`
+fi
 if [ $this_host = $pnfs_host ];
 then
     echo "Configuring this host to run postgres"
@@ -102,6 +103,4 @@ if [ -d $log_dir ];
 then
     chown -R enstore.enstore `dirname $log_file_path`
 fi
-
-#create pnfs directory
 
