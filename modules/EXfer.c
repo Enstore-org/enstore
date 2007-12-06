@@ -45,9 +45,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <errno.h>
-#ifndef __MACOSX__
+#ifndef __APPLE__
 #  include <malloc.h>
-#endif /* __MACOSX__ */
+#endif /* __APPLE__ */
 /*#include <alloca.h>*/
 #include <sys/time.h>
 #include <signal.h>
@@ -97,7 +97,17 @@
       #define dqb_curblocks dqb_curspace
    #endif
 #endif
-
+#ifdef __APPLE__
+   #include <sys/quota.h>
+   /* On apple, the quotas are done for bytes, not blocks like on Linux,
+    * SunOS, IRIX, etc. */
+   #define dqb_curblocks dqb_curbytes
+   #define dqb_fhardlimit dqb_ihardlimit
+   #define dqb_fsoftlimit dqb_isoftlimit
+   #define dqb_curfiles dqb_curinodes
+   #define dqb_btimelimit dqb_btime
+   #define dqb_ftimelimit dqb_itime
+#endif
 /***************************************************************************
  * constants and macros
  **************************************************************************/
@@ -745,7 +755,7 @@ static void* page_aligned_malloc(size_t size)
       return NULL;
    }
    return mem_p;
-#elif defined ( __osf__ ) || defined ( __MACOSX__ )
+#elif defined ( __osf__ ) || defined ( __APPLE__ )
    return valloc(size);
 #else
    return memalign((size_t)sysconf(_SC_PAGESIZE), size);
@@ -1152,6 +1162,8 @@ static int print_socket_info(int fd)
 	    (void) fprintf(stderr, "posix_read: socket state: %s\n",
 			   states[state]);
       }
+#else
+   goto skip;
 #endif /* __linux__ */
    }
   skip: /* Jump here if we got an error opening /proc/net/tcp. */
@@ -2964,7 +2976,11 @@ int get_quotas(char *block_device, int type, struct dqblk* my_quota)
    }
 #endif /* QCMD */
 
+#ifdef __APPLE__
+   if(quotactl(block_device, cmd, gen_id, (caddr_t) my_quota) == 0)
+#else
    if(quotactl(cmd, block_device, gen_id, (caddr_t) my_quota) == 0)
+#endif
    {
       return 0;
    }
@@ -4746,6 +4762,11 @@ EXfd_quotas(PyObject *self, PyObject *args)
   (void) memset(&user_quota, 0, sizeof(struct dqblk));
   (void) memset(&group_quota, 0, sizeof(struct dqblk));
 
+#ifdef __APPLE__
+   /* MacOS X has a different quotactl() call.  We don't need to find
+    * the block device file name. */
+   memcpy(correct_block_device, file_target, PATH_MAX + 1);
+#else
   /*
    * Obtain the quotas of the filesystem file_target is on.
    */
@@ -4770,6 +4791,7 @@ EXfd_quotas(PyObject *self, PyObject *args)
 	return(raise_exception(message));
      }
   }
+#endif /* __APPLE__ */
 
   /*
    * Obtain the quotas for the file.  First look for any user quotas.
@@ -5011,7 +5033,7 @@ initEXfer()
 
 static int pages_in_core(char* abspath)
 {
-#if defined ( __linux__ ) || defined ( __sun ) || defined ( __MACOSX__ )
+#if defined ( __linux__ ) || defined ( __sun ) || defined ( __APPLE__ )
    struct stat file_info;
    size_t size;
    void *mmap_ptr;
