@@ -26,12 +26,13 @@ PIC1=`if [ "_Linux" = _\`uname\` -a "_x86_64" = _\`uname -p\` ]; then echo "-fPI
 PIC2=`if [ "_SunOS" = _\`uname\` -a "_i386" = _\`uname -p\` ]; then echo "-fPIC"; fi`
 PIC=$(PIC1) $(PIC2)
 BITS_FLAG=`if [ "_Linux" = _\`uname\` ]; then which_python=\`which python\`; bits=\`file $$which_python | cut -f 3 -d " " | cut -f 1 -d "-"\`; echo -m$$bits ; fi`
+MACOS_FLAGS=`if [ "_Darwin" = _\`uname\` ]; then echo "-arch ppc -arch i386 -isysroot /Developer/SDKs/MacOSX10.4u.sdk"; fi`
 XINCLUDES=-I/usr/X11R6/include/X11 -I/usr/X11R6/include/ -I/usr/include/X11
 XLIBS=-L/usr/X11R6/lib/X11 -L/usr/X11R6/lib64 -L/usr/X11R6/lib -L/usr/lib/X11 -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -lm
 FTT_INCLUDES=-I. -I$(FTT_DIR)/ftt_lib -I$(FTT_DIR)/include
 FTT_LIBS=-L. -L$(FTT_DIR)/lib -L$(FTT_DIR)/ftt_lib -lftt $(LIBDS)
 FTTTEST_LIBS=$(FTT_LIBS) -lftt_test
-CFLAGS=$(BITS_FLAG)
+CFLAGS=$(BITS_FLAG) $(MACOS_FLAGS)
 
 Makefile.modules: Setup 
 	@echo "MAKING MODULE Makefile  ================================"
