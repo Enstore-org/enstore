@@ -1411,7 +1411,7 @@ class LibraryManagerMethods:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
                     if ((rq.ticket['work'] == "read_from_hsm" and rq.ticket["fc"]["external_label"] == external_label) or
-                        (rq.ticket['work'] == "write_to_hsm" and rq.ticket["vc"]["volume_family"] == vol_family):
+                        (rq.ticket['work'] == "write_to_hsm" and rq.ticket["vc"]["volume_family"] == vol_family)):
                         args.append(rq.ticket['work'])
                     Trace.trace(30,'RHA2 %s'%(args,))
                     ret = apply(getattr(self,fun), args)
