@@ -1536,7 +1536,12 @@ class LibraryManagerMethods:
                         else:
                             host_from_ticket = rq.ticket['wrapper']['machine'][1]
                         if requestor['unique_id'] and host_from_ticket == requestor['unique_id'].split('-')[0]:
-                            args[-1]=args[-1]+1
+                            mp=args[-1]
+                            if type(mp) == type(()) and len(mp) == 3:
+                                mp[0] = mp[0]+1
+                            else:
+                                mp=mp+1
+                            args[-1]=mp
                         args.append(host_from_ticket)
                         Trace.trace(30,'RHA3')
                         ret = apply(getattr(self,fun), args)
