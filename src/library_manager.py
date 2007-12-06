@@ -1410,8 +1410,10 @@ class LibraryManagerMethods:
                     if host_from_ticket == requestor['unique_id'].split('-')[0]:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
-                    args.append(rq.ticket['work'])
-                    Trace.trace(30,'RHA2')
+                    if ((rq.ticket['work'] == "read_from_hsm" and rq.ticket["fc"]["external_label"] == external_label) or
+                        (rq.ticket['work'] == "write_to_hsm" and rq.ticket["vc"]["volume_family"] == vol_family):
+                        args.append(rq.ticket['work'])
+                    Trace.trace(30,'RHA2 %s'%(args,))
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
                         if not (rej_reason == "RESTRICTED_ACCESS"):
