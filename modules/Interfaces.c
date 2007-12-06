@@ -336,20 +336,25 @@ static int get_hw_addr(char *intf, char* hw)
    if(ioctl(sock, SIOCGIFHWADDR, &if_info) < 0)
 #elif defined(SIOCGENADDR) /* SunOS, IRIX */
    if(ioctl(sock, SIOCGENADDR, &if_info) < 0)
-#elif defined(SIOCRPHYSADDR)
-   if(ioctl(sock, SIOCRPHYSADDR, &pa_info) < 0) /* OSF1? */
+#elif defined(SIOCRPHYSADDR) /* OSF1? */
+   if(ioctl(sock, SIOCRPHYSADDR, &pa_info) < 0)
+#elif defined(SIOCGIFADDR) /* MacOS X */
+   if(ioctl(sock, SIOCGIFADDR, &if_info) < 0)
 #endif
+   /* If none of the #ifdefs are true, then we close the socket anyway. */
    {
       (void) close(sock);
       return -1;
    }
 
 #ifdef SIOCRPHYSADDR
-   memcpy(&hw_info, &(pa_info.current_pa), INET_ADDRSTRLEN); /* OSF1? */
+   memcpy(&hw_info, &(pa_info.default_pa), INET_ADDRSTRLEN); /* OSF1? */
 #elif defined(SIOCGENADDR)
    memcpy(&hw_info, &(if_info.ifr_enaddr), INET_ADDRSTRLEN);/* SunOS, IRIX */
-#else 
-   memcpy(&hw_info, &(if_info.ifr_hwaddr), INET_ADDRSTRLEN);
+#elif defined(SIOCGIFADDR)
+   memcpy(&hw_info, &(if_info.ifr_addr), INET_ADDRSTRLEN); /* MacOS */
+#elif defined(SIOCGIFHWADDR)
+   memcpy(&hw_info, &(if_info.ifr_hwaddr), INET_ADDRSTRLEN); /* Linux */
 #endif
    sprintf(hw, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX",
 	   ((char*)(&(hw_info.sa_data)))[0],
