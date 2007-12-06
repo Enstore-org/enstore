@@ -1410,6 +1410,7 @@ class LibraryManagerMethods:
                     if host_from_ticket == requestor['unique_id'].split('-')[0]:
                         args[-1]=args[-1]+1
                     args.append(host_from_ticket)
+                    args.append(rq.ticket['work'])
                     Trace.trace(30,'RHA2')
                     ret = apply(getattr(self,fun), args)
                     if ret and (action in (e_errors.LOCKED, 'ignore', 'pause', e_errors.REJECT)):
@@ -1993,7 +1994,15 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
         self.udpc = udp_client.UDPClient()
         self.rcv_timeout = 10 # set receive timeout
 
-    def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None):
+    def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None, work=None):
+        disciplineExceptionMounted = 0
+        if type(max_permitted) == type(()) and len(max_permitted) == 3:
+            # the max_permitted is (maximal_permitted, add_for_reads_for_bound,add_for_writes_for_bound)
+            if work:
+                # calculate the position in the tuple
+                w = (work == "write_to_hsm")+1
+                disciplineExceptionMounted=int(max_permitted[w])
+            
         active = 0
         Trace.trace(30, "restrict_host_access(%s,%s,%s %s)"%
                     (storage_group, host, max_permitted, rq_host))
@@ -2017,7 +2026,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
-        return active >= max_permitted
+        return active >= max_permitted+disciplineExceptionMounted
 
     def restrict_version_access(self, storage_group, legal_version, ticket):
         Trace.trace(30, "restrict_version_access %s %s %s"%(storage_group,
