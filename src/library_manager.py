@@ -1998,8 +1998,10 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
 
     def restrict_host_access(self, storage_group, host, max_permitted, rq_host=None, work=None):
         disciplineExceptionMounted = 0
+        max_perm=max_permitted
         if type(max_permitted) == type(()) and len(max_permitted) == 3:
             # the max_permitted is (maximal_permitted, add_for_reads_for_bound,add_for_writes_for_bound)
+            max_perm=max_permitted[0]
             if work:
                 # calculate the position in the tuple
                 w = (work == "write_to_hsm")+1
@@ -2028,7 +2030,7 @@ class LibraryManager(dispatching_worker.DispatchingWorker,
                 Trace.log(e_errors.ERROR,"restrict_host_access:%s....%s"%(detail, w))
         Trace.trace(30, "restrict_host_access(%s,%s)"%
                     (active, max_permitted))
-        return active >= max_permitted+disciplineExceptionMounted
+        return active >= max_perm+disciplineExceptionMounted
 
     def restrict_version_access(self, storage_group, legal_version, ticket):
         Trace.trace(30, "restrict_version_access %s %s %s"%(storage_group,
