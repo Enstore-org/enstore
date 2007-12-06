@@ -56,6 +56,8 @@ case $this_host in
 	cdfen*)
 	    pnfsSetup_file=cdfen-pnfsSetup
 	    ;;
+	    *)
+	    pnfsSetup_file=stken-pnfsSetup
 esac
 if [ ! -d /usr/etc ];then mkdir /usr/etc;fi
 if [ ! -r /usr/etc/pnfsSetup ]; then cp ${ENSTORE_DIR}/etc/${pnfsSetup_file} /usr/etc/pnfsSetup; fi
@@ -63,7 +65,7 @@ if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSe
 
 . /usr/etc/pnfsSetup.sh
 echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
-
+chown enstore $database_postgres
 if [ $this_host = $pnfs_host ];
 then
     echo "Configuring this host to run postgres"

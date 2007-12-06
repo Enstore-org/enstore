@@ -40,12 +40,22 @@ fi
 
 echo "Installing ftt"
 rpm -U --force ${place}/ftt-2.26-1.i386.rpm 
-echo "Installing tcl"
-yum install tcl
-echo "Installing tk"
-yum install tk
-echo "Installing python"
-rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
+
+rpm -q tcl > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tcl"
+    yum install tcl
+fi
+rpm -q tk > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing tk"
+    yum install tk
+fi
+rpm -q Python-enstore > /dev/null
+if [ $? -ne 0 ]; then
+    echo "Installing python"
+    rpm -U --force ${place}/Python-enstore-1.0.0-3.i386.rpm
+fi
 if [ "${fnal:-x}" = "fnal" ]
 then
     echo "installing swig"
@@ -56,11 +66,11 @@ then
 	rpm -U --force ${place}/aci-3.1.2-1.i386.rpm
     fi
     echo "Installing enstore"
-    rpm -Uvh --force ${place}/enstore-1.0.1-9.i386.rpm
+    rpm -Uvh --force ${place}/enstore-1.0.1-10.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore | head -1`
 else
     echo "Installing enstore"
-    rpm -Uvh --force ${place}/enstore_sa-1.0.1-9.i386.rpm
+    rpm -Uvh --force ${place}/enstore_sa-1.0.1-10.i386.rpm
     ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 fi
 
@@ -80,3 +90,4 @@ $ENSTORE_DIR/tools/service_ips
 # install crons
 echo Installing crons
 $ENSTORE_DIR/tools/install_crons.py
+chmod 644 /etc/cron.d/*

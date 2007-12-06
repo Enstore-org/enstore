@@ -58,7 +58,7 @@ if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSe
 
 . /usr/etc/pnfsSetup.sh
 echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
-
+chown enstore $database_postgres
 this_host=`uname -n`
 if [ $this_host != $pnfs_host ];
 then
