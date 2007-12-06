@@ -73,7 +73,7 @@ Modules:
 adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c
 
-adler32.a: adler32.c
+adler32.a: adler32.o
 	ar cr $@ adler32.o
 	ranlib $@
 
