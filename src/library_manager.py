@@ -936,11 +936,11 @@ class LibraryManagerMethods:
         Trace.trace(222,"Pw3")
         rq=self.pending_work.get()
         while rq:
-            #if  storage_group and bound:
-            #    sg = volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"])
-            #    if sg == storage_group:
-            #        rq = self.pending_work.get(next=1)
-            #        continue
+            if  storage_group and bound:
+                sg = volume_family.extract_storage_group(rq.ticket["vc"]["volume_family"])
+                if sg == storage_group:
+                    rq = self.pending_work.get(next=1)
+                    continue
             
             rej_reason = None
             
