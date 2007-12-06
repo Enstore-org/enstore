@@ -1539,7 +1539,6 @@ class LibraryManagerMethods:
                             mp=args[-1]
                             if type(mp) == type(()) and len(mp) == 3:
                                 mp1=(mp[0]+1, mp[1], mp[2])
-                                mp[0] = mp[0]+1
                             else:
                                 mp1=mp+1
                             args[-1]=mp1
