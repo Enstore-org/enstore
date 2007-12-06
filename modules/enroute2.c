@@ -365,6 +365,12 @@ int do_routing(char *cmd, char *dest, char *gw, char *if_name)
 
 #endif
 
+#ifdef __APPLE__
+static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
+{
+   return(FeatureNotSupported);
+}
+#else
 static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
 {
    struct arpreq arp_msg;
@@ -483,6 +489,7 @@ static int do_arping(char *cmd, char *dest, char *dest_hwaddr)
 
    return(OK);
 }
+#endif /* __APPLE__ */
 
 static int valid_key(key)
 char *key;
