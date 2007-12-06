@@ -70,9 +70,12 @@ Modules:
 		make BITS_FLAG=$(BITS_FLAG) -f Makefile.modules oldsharedmods; \
 	fi
 
-adler32.a: adler32.c
+adler32.o: adler32.c
 	$(CC) $(CFLAGS) -c $(PIC) adler32.c
+
+adler32.a: adler32.c
 	ar cr $@ adler32.o
+	ranlib $@
 
 tape_copy: tape_copy.c
 	if [ "$(FTT_DIR)"x != x ]; then \
@@ -105,7 +108,7 @@ t_rand: t_rand.c
 t_read: t_read.c
 	$(CC) $(CFLAGS) t_read.c -o $@
 
-ecrc: ecrc.c
+ecrc: ecrc.c adler32.a
 	$(CC) $(CFLAGS) -I. -o $@ ecrc.c adler32.a $(LIBGEN)
 	cp $@ ../sbin
 
