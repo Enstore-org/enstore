@@ -190,7 +190,6 @@ class AtMovers:
         self.check_interval = 30
         self.max_time_in_active = 7200
         self.max_time_in_other = 1200
-        self.dont_update = {}
                         
         
     def put(self, mover_info):
@@ -201,18 +200,9 @@ class AtMovers:
         # work (read/write)
         # current location
         Trace.trace(31,"put: %s" % (mover_info,))
-        Trace.trace(31,"dont_udate: %s" % (self.dont_update,))
         if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
-        if self.dont_update:
-            mv = self.dont_update.get(mticket['mover'], None)
-            if mv:
-                if state == self.dont_update[mv]:
-                    return
-                else:
-                    del(self.dont_update[mv])
-
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
         vol_family = mover_info['volume_family']
         mover = mover_info['mover']
@@ -268,7 +258,6 @@ class AtMovers:
         while 1:
             time.sleep(self.check_interval)
             Trace.trace(113, "checking at_movers list")
-            Trace.trace(113, "dont_update_list %s"%(self.dont_update,))
             now = time.time()
             movers_to_delete = []
             if self.at_movers:
@@ -290,7 +279,6 @@ class AtMovers:
                             if time_in_state > self.max_time_in_active and state == 'ACTIVE':
                                 add_to_list = 1
                             if add_to_list:
-                                self.dont_update[mover] = state
                                 movers_to_delete.append(mover)
                                 Trace.alarm(e_errors.ALARM,
                                             "The mover %s is in state %s for %s minutes, will remove it from at_movers list"%

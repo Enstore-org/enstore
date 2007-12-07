@@ -1,5 +1,0 @@
-# 20 0-23/4 * * * enstore /home/enstore/enstore/sbin/ecron -p readDcache -setup kftp /home/enstore/enstore/sbin/readDcache > /dev/null 2> /dev/null
-10 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheDccp -setup dcap /home/enstore/enstore/sbin/pageDcache dccp > /dev/null 2> /dev/null
-15 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheGridftp -setup dcap /home/enstore/enstore/sbin/pageDcache gridftp > /dev/null 2> /dev/null
-##20 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheSRM -setup dcap /home/enstore/enstore/sbin/pageDcache srm > /dev/null 2> /dev/null
-##25 * * * * enstore /home/enstore/enstore/sbin/ecron -p pageDcacheKftp -setup dcap /home/enstore/enstore/sbin/pageDcache kftp > /dev/null 2> /dev/null
