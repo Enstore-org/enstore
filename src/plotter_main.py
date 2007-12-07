@@ -13,6 +13,7 @@ import enstore_plotter_module
 import enstore_plotter_framework
 import ratekeeper_plotter_module
 import drive_utilization_plotter_module
+import slots_usage_plotter_module
 import mounts_plot
 import getopt
 import sys
@@ -27,12 +28,13 @@ def usage(cmd):
     print "\t -r [--rate]        : plot ratekeeper plots"
     print "\t -m [--mounts]      : plot mount plots "
     print "\t -u [--utilization] : plot drive utilization"
+    print "\t -s [--slots]       : slot utilization"
     print "\t -h [--help]        : show this message"
 
     
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs:s", ["help","mounts","rate","utilization"])
+        opts, args = getopt.getopt(sys.argv[1:], "hs:ms:rs:s:ss", ["help","mounts","rate","utilization","slots"])
     except getopt.GetoptError:
         print "Failed to process arguments"
         usage(sys.argv[0])
@@ -70,6 +72,10 @@ if __name__ == "__main__":
             f.add(aModule)
         if o in ("-u","--utilization"):
             aModule   = drive_utilization_plotter_module.DriveUtilizationPlotterModule("utilization")
+            f.add(aModule)
+        # slot utilization
+        if o in ("-s","--slots"):
+            aModule   = slots_usage_plotter_module.SlotUsagePlotterModule("slots")
             f.add(aModule)
         
 
