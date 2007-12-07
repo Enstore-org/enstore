@@ -1,4 +1,0 @@
-#Needs access to the robots.
-0 * * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p closing_tab_flipping_job $ENSTORE_DIR/src/operation.py auto_close_all > /dev/null 2> /dev/null
-#Needs to run on the web server.
-10 08 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p tab_flipping_watch /home/enstore/enstore/src/tab_flipping_nanny.py `enstore config --show inventory | grep inventory_rcp_dir | cut -d':' -f 3 | cut -d"'" -f 1`/TAB_FLIPPING_WATCH > /dev/null 2> /dev/null
