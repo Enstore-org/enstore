@@ -205,18 +205,16 @@ class AtMovers:
         if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
+        mover = mover_info['mover']
         state = mover_info.get('state', None)
         if self.dont_update:
-            mv = self.dont_update.get(mover_info['mover'], None)
-            if mv:
-                if state == self.dont_update[mv]:
+            if state == self.dont_updat[mover]:
                     return
                 else:
-                    del(self.dont_update[mv])
+                    del(self.dont_update[mover])
 
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
         vol_family = mover_info['volume_family']
-        mover = mover_info['mover']
         mover_info['updated'] = time.time()
         if self.at_movers.has_key(mover):
             if self.at_movers[mover]['external_label'] != mover_info['external_label']:
