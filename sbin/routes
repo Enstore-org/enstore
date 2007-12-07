@@ -9,6 +9,8 @@ job=${1:-"route"}
 
 if [ -x /usr/local/bin/netperf ]; then
    netperf=/usr/local/bin/netperf
+elif [ -x /usr/bin/netperf ]; then
+   netperf=/usr/bin/netperf
 elif [ -x /opt/netperf/netperf ]; then
    netperf=/opt/netperf/netperf
 else
@@ -55,8 +57,8 @@ quickcheck)
 	fi
     done
 
-    # test srv4 nodes on the control network from d0ensrv3
-    [ $gang = d0en ] && peers="${peers}d0ensrv4p\nstkensrv4p\ncdfensrv4p\n"
+    # test srv4 nodes on the control network from stkensrv3
+    [ $gang = stken ] && peers="${peers}d0ensrv4p\nstkensrv4p\ncdfensrv4p\n"
 
     # test public dcache and data mover nodes from stkensrv3
     [ $gang = stken ] && extra="/usr/local/etc/farmlets/stkendca /usr/local/etc/farmlets/stkendm"
