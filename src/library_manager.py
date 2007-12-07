@@ -1408,7 +1408,12 @@ class LibraryManagerMethods:
                     else:
                         host_from_ticket = rq.ticket['wrapper']['machine'][1]
                     if host_from_ticket == requestor['unique_id'].split('-')[0]:
-                        args[-1]=args[-1]+1
+                            mp=args[-1]
+                            if type(mp) == type(()) and len(mp) == 3:
+                                mp1=(mp[0]+1, mp[1], mp[2])
+                            else:
+                                mp1=mp+1
+                            args[-1]=mp1
                     args.append(host_from_ticket)
                     if ((rq.ticket['work'] == "read_from_hsm" and rq.ticket["fc"]["external_label"] == external_label) or
                         (rq.ticket['work'] == "write_to_hsm" and rq.ticket["vc"]["volume_family"] == vol_family)):
