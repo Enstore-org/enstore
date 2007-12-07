@@ -208,7 +208,7 @@ class AtMovers:
         mover = mover_info['mover']
         state = mover_info.get('state', None)
         if self.dont_update:
-            if state == self.dont_updat[mover]:
+            if state == self.dont_update[mover]:
                 return
             else:
                 del(self.dont_update[mover])
