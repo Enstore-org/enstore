@@ -1708,10 +1708,39 @@ class STK_MediaLoader(MediaLoaderMethods):
         # got response, parse it and put it into the standard form
         answer = string.strip(response[1])
         if string.find(answer, answer_lookfor,0) != 0:
-            E=13
-            msg = "MOUNT %i: %s => %i,%s" % (E,command,status,answer)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, '', msg)
+            # during cap operations acsls returns an error message containing the information that the volume was actually mounted
+            # if  this is a case, process it
+            compared = 0
+            try:
+                for l in response:
+                    if answer_lookfor in l:
+                        # ok the volume is actually mounted
+                        # but in what drive?
+                        requeseted_drive=drive.split(',')
+                        ar=l.split(' ')
+                        same_drive = 0
+                        for i in range(len(requeseted_drive)):
+                            if "," in ar[-(i+1)]:
+                                de=ar[-(i+1)].split(",")[0]
+                            else:
+                                de=ar[-(i+1)]
+                            if int(requeseted_drive[-(i+1)]) != int(de):
+                                break
+                        else:
+                            same_drive = 1
+                        if same_drive:
+                          compared = 1  
+                          break
+                else:
+                    compared = 0
+            except:
+                Trace.handle_error()
+                
+            if compared == 0:
+                E=13
+                msg = "MOUNT %i: %s => %i,%s" % (E,command,status,answer)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
         msg = "%s => %i,%s" % (command,status,answer)
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0,msg)
@@ -1756,10 +1785,39 @@ class STK_MediaLoader(MediaLoaderMethods):
         # got response, parse it and put it into the standard form
         answer = string.strip(response[1])
         if string.find(answer, answer_lookfor,0) != 0:
-            E=17
-            msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,answer)
-            Trace.log(e_errors.ERROR, msg)
-            return ("ERROR", E, response, '', msg)
+            # during cap operations acsls returns an error message containing the information that the volume was actually mounted
+            # if  this is a case, process it
+            compared = 0
+            try:
+                for l in response:
+                    if answer_lookfor in l:
+                        # ok the volume is actually mounted
+                        # but in what drive?
+                        requeseted_drive=drive.split(',')
+                        ar=l.split(' ')
+                        same_drive = 0
+                        for i in range(len(requeseted_drive)):
+                            if "," in ar[-(i+1)]:
+                                de=ar[-(i+1)].split(",")[0]
+                            else:
+                                de=ar[-(i+1)]
+                            if int(requeseted_drive[-(i+1)]) != int(de):
+                                break
+                        else:
+                            same_drive = 1
+                        if same_drive:
+                          compared = 1  
+                          break
+                else:
+                    compared = 0
+            except:
+                Trace.handle_error()
+                
+            if compared == 0:
+                E=17
+                msg = "DISMOUNT %i: %s => %i,%s" % (E,command,status,answer)
+                Trace.log(e_errors.ERROR, msg)
+                return ("ERROR", E, response, '', msg)
         msg = "%s => %i,%s" % (command,status,answer)
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0,msg)
