@@ -2,7 +2,9 @@
 %{
 /* $Id$ */
 #include "zlib.h"
+#if !defined(__STDC_VERSION__) || ( __STDC_VERSION__ > 199409L )
 #include <stdint.h>
+#endif
 
 unsigned long int adler32_o(unsigned long int crc, char *buf, int offset, int nbytes){
 	return adler32(crc, buf+offset, nbytes);
