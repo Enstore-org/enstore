@@ -207,11 +207,11 @@ class AtMovers:
         if not mover_info['mover']: return
         if self.dont_update:
             mv = self.dont_update.get(mticket['mover'], None)
-        if mv:
-            if state == self.dont_update[mv]:
-                return
-            else:
-                del(self.dont_update[mv])
+            if mv:
+                if state == self.dont_update[mv]:
+                    return
+                else:
+                    del(self.dont_update[mv])
 
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
         vol_family = mover_info['volume_family']
