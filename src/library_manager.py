@@ -209,9 +209,9 @@ class AtMovers:
         state = mover_info.get('state', None)
         if self.dont_update:
             if state == self.dont_updat[mover]:
-                    return
-                else:
-                    del(self.dont_update[mover])
+                return
+            else:
+                del(self.dont_update[mover])
 
         storage_group = volume_family.extract_storage_group(mover_info['volume_family'])
         vol_family = mover_info['volume_family']
