@@ -201,12 +201,13 @@ class AtMovers:
         # work (read/write)
         # current location
         Trace.trace(31,"put: %s" % (mover_info,))
-        Trace.trace(31,"dont_udate: %s" % (self.dont_update,))
+        Trace.trace(31,"dont_update: %s" % (self.dont_update,))
         if not mover_info['external_label']: return
         if not mover_info['volume_family']: return
         if not mover_info['mover']: return
+        state = mover_info.get('state', None)
         if self.dont_update:
-            mv = self.dont_update.get(mticket['mover'], None)
+            mv = self.dont_update.get(mover_info['mover'], None)
             if mv:
                 if state == self.dont_update[mv]:
                     return
