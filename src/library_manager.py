@@ -207,7 +207,7 @@ class AtMovers:
         if not mover_info['mover']: return
         mover = mover_info['mover']
         state = mover_info.get('state', None)
-        if self.dont_update:
+        if self.dont_update and self.dont_update.has_key(mover):
             if state == self.dont_update[mover]:
                 return
             else:
