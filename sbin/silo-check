@@ -2,8 +2,8 @@
 
 # $id: $
 
-#Output the VOLUME_CROSS_CHECK inventory web page.  This script is very
-# Fermilab specific.
+# Generate the VOLUME_CROSS_CHECK inventory web page.
+# This script is very Fermilab specific.
 
 set -u
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
@@ -11,40 +11,38 @@ if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 node=`hostname -s`
 gang=`gang`
 
-date
-
-#Make sure to set a timeout.
+# Make sure to set a timeout.
 timeout='--timeout 10 --retries 3'
 
-#First obtain the directory to write the output.
+# First obtain the directory to write the output.
 inventory_dir=`enstore conf $timeout --show crons html_dir`/tape_inventory
 if [ ! -d $inventory_dir ]; then
     echo Inventory directory $inventory_dir not found.
     exit 1
 fi
 
-#Create the variables that point to the files to output to.
+# Create the variables that point to the files to output to.
 fname=VOLUME_CROSS_CHECK
 output_file=$inventory_dir/$fname
-temp_file=$output_file.temp   #Write to this then swap it into place.
+temp_file=$output_file.temp	# Write to this then swap it into place.
 
-#If we write to a temp file, and swap in it when we are done, there will
-# not any time when the page is empty becuase the scipt is still writing
+# If we write to a temp file, and swap it in when we are done, there will
+# not be any time when the page is empty because the script is still writing
 # the file.
 rm -f $temp_file
 if [ -L $output_file ]; then
-   #Should VOLUME_CROSS_CHECK be a symbolic link to the ecron .output file
-   # we should handle removing it before we write an acutal file there.
+   # Should VOLUME_CROSS_CHECK be a symbolic link to the ecron .output file
+   # we should handle removing it before we write an actual file there.
    rm -f $output_file
 fi
 
 # obtain list of valid libraries
-enstore conf --show | sed -n "s/.*'\([a-zA-Z0-9][-a-zA-Z0-9]*\)\.library_manager'.*/\1/ p" | sort -u >/tmp/valid-library
+enstore conf $timeout --show | sed -n "s/.*'\([a-zA-Z0-9][-a-zA-Z0-9_]*\)\.library_manager'.*/\1/ p" | sort -u >/tmp/valid-library
 
-#This is for easier redirection of all the stdout output.
+# This is for easier redirection of all the stdout output.
 (
 
-#Make sure we know how up-to-date this is.
+# Make sure we know how up-to-date this is.
 echo -e Volume Cross Check Report: `date`
 echo -e Brought to You by: `basename $0` "\n"
 
@@ -68,7 +66,7 @@ if [ $gang = "stken" ]; then
 #   Type is one of data, clean
 #
 # each line in the tower inventory is in this format:
-# volser xxnnnn media DECDLT attrib {Empty|Ejected|Mounted|Occupied}
+#   volser xxnnnn media DECDLT attrib {Empty|Ejected|Mounted|Occupied}
 #
 # all lines of enstore inventory have ten fields, in this format:
 #   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
@@ -78,7 +76,7 @@ if [ $gang = "stken" ]; then
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(PR|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|TST|(PR|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 egrep "8MM|DECDLT" $inventory_dir/AML2-VOLUMES.html | awk '{print $1}' > /tmp/tower-volumes
@@ -164,7 +162,7 @@ elif [ $gang = "d0en" ]; then
 #   Type is one of data, clean
 #
 # each line in the tower inventory is in this format:
-# volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
+#   volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
 #
 # all lines of enstore inventory have ten fields, in this format:
 #   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
@@ -174,7 +172,7 @@ elif [ $gang = "d0en" ]; then
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|TST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 egrep "8MM|3480" $inventory_dir/AML2-VOLUMES.html | awk '{print $1}' > /tmp/tower-volumes
@@ -268,7 +266,7 @@ elif [ $gang = "cdfen" ]; then
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
   egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
-egrep -v "^$|^<|(TEST|(VO|PR)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
+egrep -v "^$|^<|(TEST|TST|(VO|PR)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
@@ -331,4 +329,4 @@ date
 
 ) | tee $temp_file 2>&1
 
-mv $temp_file $output_file  #Do the temp file swap.
+mv $temp_file $output_file	# Do the temp file swap.
