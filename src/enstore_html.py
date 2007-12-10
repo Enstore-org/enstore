@@ -1760,8 +1760,13 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	errors = []
 	num_successes = 0
 	self.encp_files = []
-        for row in list(data_list)[::-1]:  
-
+#        for row in data_list[::-1]:
+# above statement does not work with lint, yetr perfectly legal. Oh well (litvinse@fnal.gov)
+#
+        j=len(data_list)
+        while j>0:
+            j = j-1
+            row=data_list[j]
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
 	    row[1] = enstore_functions2.strip_node(row[1])
