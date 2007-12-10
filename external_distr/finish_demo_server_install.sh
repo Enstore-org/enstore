@@ -6,6 +6,8 @@
 ###############################################################################
 set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
+PATH=$PATH:/sbin
+
 place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
 #psql_place=/home/moibenko
 . /usr/local/etc/setups.sh
@@ -72,9 +74,11 @@ this_host=`uname -n | cut -f1 -d\.`
 fi
 if [ $this_host = $pnfs_host ];
 then
-    echo "Configuring this host to run postgres"
+    echo "Configuring this host to run postgresQL"
     /sbin/chkconfig postgresql on
-    echo "Starting postgres"
+    echo "Initializing postgresQL"
+    service postgresql initdb
+    echo "Starting postgresQL"
     /etc/init.d/postgresql start
     echo "Configuring this host to run pnfs server"
     /sbin/chkconfig --add pnfs
