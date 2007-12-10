@@ -86,16 +86,16 @@ then
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
     #/etc/init.d/pnfs start
 fi
-#create pnfs directory
-if [ ! -d /pnfs ];
-then
-    mkdir /pnfs
-    chmod 777 /pnfs
-fi
 
 echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
 /etc/init.d/pnfs start
-
+#create pnfs directory
+if [ ! -d /pnfs/fs ];
+then
+    mkdir -p /pnfs/fs
+    chmod -R 777 /pnfs/fs
+    mount -o intr,hard,rw localhost:/fs   /pnfs/fs
+fi
 
 echo "Enabling Enstore log directory"
 $ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep log_file_path | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
