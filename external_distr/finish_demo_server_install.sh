@@ -58,6 +58,12 @@ if [ ! -r /usr/etc/pnfsSetup.sh ]; then ln -s /usr/etc/pnfsSetup /usr/etc/pnfsSe
 
 . /usr/etc/pnfsSetup.sh
 echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
+# create pnfs db area
+mkdir -p -m 777 $database
+mkdir -p -m 777 $database_postgres
+mkdir -p -m 777 $trash
+pnfsdLog=dbserverLog
+mkdir -p -m 777 `dirname ${pnfsdLog}`
 chown enstore $database_postgres
 this_host=`uname -n`
 if [ $this_host != $pnfs_host ];
@@ -82,12 +88,6 @@ then
     mkdir /pnfs
     chmod 777 /pnfs
 fi
-# create pnfs db area
-mkdir -p -m 777 $database
-mkdir -p -m 777 $database_postgres
-mkdir -p -m 777 $trash
-pnfsdLog=dbserverLog
-mkdir -p -m 777 `dirname ${pnfsdLog}`
 
 echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
 /etc/init.d/pnfs start
