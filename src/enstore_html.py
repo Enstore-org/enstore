@@ -1760,7 +1760,7 @@ class EnEncpStatusPage(EnBaseHtmlDoc):
 	errors = []
 	num_successes = 0
 	self.encp_files = []
-	for row in data_list:
+        for row in data_list[::-1]:  
 
 	    tr = HTMLgen.TR(HTMLgen.TD(row[0]))
 	    # remove .fnal.gov from the node
