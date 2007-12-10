@@ -83,10 +83,10 @@ then
     chmod 777 /pnfs
 fi
 # create pnfs db area
-mkdir -p -m 777 `grep "database=" /usr/etc/pnfsSetup | cut -f2 -d"="`
-mkdir -p -m 777 `grep "database_postgres" /usr/etc/pnfsSetup | cut -f2 -d"="`
-mkdir -p -m 777 `grep "trash" /usr/etc/pnfsSetup | cut -f2 -d"="`
-pnfsdLog=`grep dbserverLog /usr/etc/pnfsSetup | cut -f2 -d"="`
+mkdir -p -m 777 $database
+mkdir -p -m 777 $database_postgres
+mkdir -p -m 777 $trash
+pnfsdLog=dbserverLog
 mkdir -p -m 777 `dirname ${pnfsdLog}`
 
 echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
