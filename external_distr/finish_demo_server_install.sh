@@ -87,6 +87,9 @@ then
     #/etc/init.d/pnfs start
 fi
 
+echo "Creating pnfs Databases"
+$ENSTORE_DIR/external_distr/create_pnfs_db.sh -x 
+
 echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
 /etc/init.d/pnfs start
 #create pnfs directory
