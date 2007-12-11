@@ -167,20 +167,34 @@ elif [ $gang = "d0en" ]; then
 # each line in the tower inventory is in this format:
 #   volser xxxnnn[L1] media 3480 attrib {Empty|Ejected|Mounted|Occupied}
 #
+# inventory listed by the stk media changer has 4 columns, after squeezing
+# out the blanks in the comma-separated location:
+#   volume type state location
+# where
+#   type is one of STK2P, STK2W
+#   state is one of dismount, eject, enter, mount, home, in drive, move, missing, absent, ejected
+#
+# inventory listed by the AML2 media changer has 4 columns:
+#   volume type state location
+# where
+#   type is one of 3480, DECDLT
+#   state is one of O,M,E
+#   location is empty
+#
 # all lines of enstore inventory have ten fields, in this format:
 #   vol   avail   system_inhibit   user_inhibit   library   wp_status	mounts   volume_family
 # where each inhibit takes two fields (including parentheses)
 #
 # there should be no deleted volumes in VOLUMES_DEFINED
 
-egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  awk 'NF==10 || /         1, [01],/ {print $1}' |\
+egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | sed -e 's/, /,/g' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^1,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/silo-volumes
-egrep -v "^$|^<|(TEST|TST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
-  awk 'NF==10 {print $1}' |\
+egrep -v "^$|^<|(TEST|TST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html | sed -e 's/, /,/g' |\
+  awk '(NF==10 && $1~/^[A-Z][A-Z][0-9A-Z][0-9A-Z][0-9][0-9]$/) || (NF==4 && $4~/^0,[-0-9,]+$/) {print $1}' |\
   sort >/tmp/rail-volumes
-egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
-  awk '{print $2}' |\
+egrep -v "^$|^<" $inventory_dir/AML2-VOLUMES.html |\
+  awk '(NF==6 && $1=="volser") || (NF==3 && $2=="3480" && $3~/[OME]/) {print $1}' |\
   sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
