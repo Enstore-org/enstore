@@ -36,6 +36,7 @@ then
 fi
 this_host=`uname -n`
 ENSTORE_CONFIG_HOST=$this_host
+export ENSTORE_CONFIG_HOST 
 
 if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
 then
