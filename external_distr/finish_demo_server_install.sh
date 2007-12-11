@@ -78,6 +78,11 @@ then
     /sbin/chkconfig postgresql on
     echo "Initializing postgresQL"
     service postgresql initdb
+    "Changing pg_hba.conf"
+    cp $database_postgres/pg_hba.conf $database_postgres/pg_hba.conf.sav
+    cat "local   all         all trust" > $database_postgres/pg_hba.conf
+    cat "host    all         all         127.0.0.1/32 trust" >> $database_postgres/pg_hba.conf
+
     echo "Starting postgresQL"
     /etc/init.d/postgresql start
     echo "Configuring this host to run pnfs server"

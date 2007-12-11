@@ -9,6 +9,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 if [ "${1:-x}" = "fnal" ]; then export fnal=1; shift; else fnal=0;fi
+if [ "${1:-x}" = "demo" ]; then export demo=1; shift; else demo=0;fi
 
 echo "Creating setup-enstore file"
 if [ "`whoami`" != 'root' ]
@@ -167,13 +168,17 @@ echo "export ENSTORE_CONFIG_PORT=${REPLY}"
 echo "export ENSTORE_CONFIG_PORT=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
 if [ $fnal -eq 0 ]; then
-    read -p "Enter ENSTORE configuration file location [${ENSTORE_HOME}/site_specific/config/enstore_system.conf]: " REPLY
-    if [ -z "$REPLY" ]
-    then
+    if [ $demo -ne 0 ];then
 	REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
+    else
+	read -p "Enter ENSTORE configuration file location [${ENSTORE_HOME}/site_specific/config/enstore_system.conf]: " REPLY
+	if [ -z "$REPLY" ]
+	then
+	    REPLY=${ENSTORE_HOME}/site_specific/config/enstore_system.conf
+	fi
+	config_file=$REPLY
+	read -p "Copy config file from another location [path or CR] :" copy_conf
     fi
-    config_file=$REPLY
-    read -p "Copy config file from another location [path or CR] :" copy_conf
     
 else
     if [ "${ENSTORE_USER_DEFINED_CONFIG_FILE:-x}" = "x" ]
@@ -191,7 +196,11 @@ echo "export ENSTORE_CONFIG_FILE=${REPLY}"
 echo "export ENSTORE_CONFIG_FILE=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-enstore
 
 if [ $fnal -eq 0 ]; then
-    read -p "Enter ENSTORE mail address: " REPLY
+    if [ $demo -ne 0 ];then
+	REPLY=root@localhost
+    else
+	read -p "Enter ENSTORE mail address: " REPLY
+    fi
 else
     mm=`$ENSTORE_DIR/ups/chooseConfig mail`
     REPLY="$mm"
@@ -210,10 +219,14 @@ echo "export ENSTORE_MAIL=${REPLY}" >> $ENSTORE_HOME/site_specific/config/setup-
 #fi
 
 if [ $fnal -eq 0 ]; then
-    read -p "Enter ENSTORE farmlets dir [/usr/local/etc/farmlets]: " REPLY
-    if [ -z "$REPLY" ]
-    then
-        REPLY="/usr/local/etc/farmlets"
+    if [ $demo -ne 0 ];then
+	REPLY="/usr/local/etc/farmlets"
+    else
+	read -p "Enter ENSTORE farmlets dir [/usr/local/etc/farmlets]: " REPLY
+	if [ -z "$REPLY" ]
+	then
+	    REPLY="/usr/local/etc/farmlets"
+	fi
     fi
 else
     REPLY="/usr/local/etc/farmlets"
