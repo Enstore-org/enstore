@@ -70,9 +70,13 @@ $ENSTORE_DIR/tools/install_crons.py
 # create database
 $ENSTORE_DIR/external_distr/install_database.sh
 #start enstore
-/etc/init.d/enstore-boot
+/etc/init.d/enstore-boot start
 
 # add null vols
+echo "Adding null volumes"
+enstore vol --add --NUL000 null none none none null 400G
+enstore vol --add --NUL001 null none none none null 400G
+
 
 echo "enstore started on this machine. Login as user enstore and try toransfer files as:
 Writes:
