@@ -70,7 +70,7 @@ $ENSTORE_DIR/tools/install_crons.py
 # create database
 $ENSTORE_DIR/external_distr/install_database.sh
 #start enstore
-su -c enstore "enstore start"
+/etc/init.d/enstore-boot
 
 # add null vols
 
