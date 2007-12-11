@@ -75,11 +75,14 @@ if [ $gang = "stken" ]; then
 # there should be no deleted volumes in VOLUMES_DEFINED
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
+  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|TST|(PR|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
-egrep "8MM|DECDLT" $inventory_dir/AML2-VOLUMES.html | awk '{print $1}' > /tmp/tower-volumes
+egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|DECDLT) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
+  awk '{print $2}' |\
+  sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
@@ -108,7 +111,7 @@ fgrep -f /tmp/tower-not-enstore $inventory_dir/AML2-VOLUMES.html
 #echo
 #echo "--------------------------------------------------------------------------------------------------------------------"
 #echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |grep -v "        0, [01],"
+#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        0, [01],"
 
 # tapes in enstore, but not in the robots
 echo
@@ -171,11 +174,14 @@ elif [ $gang = "d0en" ]; then
 # there should be no deleted volumes in VOLUMES_DEFINED
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
+  awk 'NF==10 || /         1, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|TST|(VO|IA)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
-egrep "8MM|3480" $inventory_dir/AML2-VOLUMES.html | awk '{print $1}' > /tmp/tower-volumes
+egrep -v "^$|^<|volser 0[0-9][0-9][0-9][0-9][0-9] media (8MM|3480) attrib (Empty|Occupied)" $inventory_dir/AML2-VOLUMES.html |\
+  awk '{print $2}' |\
+  sort >/tmp/tower-volumes
 awk 'NR>3 && NF==10 && $7!~/null|disk|shelf/ {print $1}' $inventory_dir/VOLUMES_DEFINED |\
   sort >/tmp/vols-defined
 
@@ -204,7 +210,7 @@ fgrep -f /tmp/tower-not-enstore $inventory_dir/AML2-VOLUMES.html
 #echo
 #echo "--------------------------------------------------------------------------------------------------------------------"
 #echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |grep -v "        1, [01],"
+#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        1, [01],"
 
 # tapes in enstore, but not in the robots
 echo
@@ -265,7 +271,8 @@ elif [ $gang = "cdfen" ]; then
 # there should be no deleted volumes in VOLUMES_DEFINED
 
 egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |\
-  egrep "  1, 0|  1, 1" | awk '{print $1}' > /tmp/silo-volumes
+  awk 'NF==10 || /         0, [01],/ {print $1}' |\
+  sort >/tmp/silo-volumes
 egrep -v "^$|^<|(TEST|TST|(VO|PR)[0-9A-Z][0-9A-Z])[0-9][0-9]" $inventory_dir/SL8500-VOLUMES.html |\
   awk 'NF==10 {print $1}' |\
   sort >/tmp/rail-volumes
@@ -289,7 +296,7 @@ fgrep -f /tmp/rail-not-enstore $inventory_dir/SL8500-VOLUMES.html
 #echo
 #echo "--------------------------------------------------------------------------------------------------------------------"
 #echo "Tapes not in any category"
-#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html |grep -v "        0, [01],"
+#egrep -v "^$|^<|DG [0-9][0-9][0-9]" $inventory_dir/STK-VOLUMES.html | grep -v "        0, [01],"
 
 # tapes in enstore, but not in the robots
 echo
