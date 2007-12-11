@@ -11,7 +11,17 @@ PATH=$PATH:$pnfs/tools
 dbdir=`dirname $database`
 mdb create admin ${dbdir}/admin
 mdb create data1 ${dbdir}/data1
-mkdir -p /pnfs/fs
+
+
+echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
+/etc/init.d/pnfs start
+#create pnfs directory
+if [ ! -d /pnfs/fs ];
+then
+    mkdir -p /pnfs/fs
+    chmod -R 777 /pnfs/fs
+fi
+
 mount -o intr,hard,rw localhost:/fs   /pnfs/fs
 
 echo "Creating enstore tags"

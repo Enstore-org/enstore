@@ -95,15 +95,18 @@ fi
 echo "Creating pnfs Databases"
 $ENSTORE_DIR/external_distr/create_pnfs_db.sh -x 
 
-echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
-/etc/init.d/pnfs start
+
+##### !!!!!! The commented lines were moved to create_pnfs_db.sh
+
+#echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
+#/etc/init.d/pnfs start
 #create pnfs directory
-if [ ! -d /pnfs/fs ];
-then
-    mkdir -p /pnfs/fs
-    chmod -R 777 /pnfs/fs
-    mount -o intr,hard,rw localhost:/fs   /pnfs/fs
-fi
+#if [ ! -d /pnfs/fs ];
+#then
+#    mkdir -p /pnfs/fs
+#    chmod -R 777 /pnfs/fs
+#    mount -o intr,hard,rw localhost:/fs   /pnfs/fs
+#fi
 
 echo "Enabling Enstore log directory"
 $ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep log_file_path | cut -f1,2 -d\: --output-delimiter=" " > /tmp/log_conf.tmp
