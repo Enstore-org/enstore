@@ -23,6 +23,9 @@ then
 fi
 
 mount -o intr,hard,rw localhost:/fs   /pnfs/fs
+sleep 10
+df
+
 
 echo "Creating enstore tags"
 
