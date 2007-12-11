@@ -29,6 +29,7 @@ df
 
 echo "Creating enstore tags"
 
+mkdir /pnfs/fs/usr/data1 
 cd /pnfs/fs/usr/data1
 
 enstore pnfs --file_family=test

@@ -69,3 +69,17 @@ source /usr/local/etc/setups.sh
 $ENSTORE_DIR/tools/install_crons.py
 # create database
 $ENSTORE_DIR/external_distr/install_database.sh
+#start enstore
+enstore start
+
+# add null vols
+
+echo "enstore started on this machine. Login as user enstore and try toransfer files as:
+Writes:
+encp --verbose 4 some_file /pnfs/fs/usr/data1/disk
+encp --verbose 4 some_file /pnfs/fs/usr/data1/NULL
+
+Reads:
+encp --verbose 4 /pnfs/fs/usr/data1/disk/some_file .
+encp --verbose 4 /pnfs/fs/usr/data1/NULL/some_file /dev/null
+"
