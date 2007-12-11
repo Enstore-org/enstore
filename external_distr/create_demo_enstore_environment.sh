@@ -40,7 +40,7 @@ ENSTORE_CONFIG_HOST=$this_host
 if [ ! -r $ENSTORE_HOME/site_specific/config/setup-enstore ];
 then
     # this allows to not run this script on remote nodes.
-    $ENSTORE_DIR/external_distr/create_setup_file.sh
+    $ENSTORE_DIR/external_distr/create_setup_file.sh demo
 fi
 source $ENSTORE_HOME/site_specific/config/setup-enstore
 
