@@ -107,7 +107,7 @@ install=0
 	    d=`date +%F.%R`
 	    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
 	    install=1
-	else:
+	else
 	    # check if e_home is empty and if yes install correct value
 	    s=` grep "e_home=" enstore/external_distr/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
 	    if [ -z $s ]; then
