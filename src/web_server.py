@@ -354,6 +354,11 @@ def install():
             os.makedirs(html_dir)
         if not os.path.exists(os.path.join(server.get_document_root(),"enstore")):
             os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
+        log_dir=server.config_dict.get('crons', {})["log_dir"]
+        print "log directory ",log_dir
+        log_dir_link=os.path.join(html_dir,"log")
+        if not os.path.exists(log_dir_link):
+            os.symlink(log_dir,log_dir_link)
 
     except (KeyboardInterrupt, IOError, OSError):
         exc, msg, tb = sys.exc_info()
