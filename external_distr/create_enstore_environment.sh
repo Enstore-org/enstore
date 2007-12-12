@@ -101,12 +101,18 @@ then
 else
 install=0
     if [ -r "/usr/local/etc/setups.sh" ]; then
-	grep e_dir /usr/local/etc/setups.sh > /dev/null 2>&1
+	grep "e_home=" enstore/external_distr/setups.sh
 	if [ $? -ne 0 ]; then
 	    # real ups setup file
 	    d=`date +%F.%R`
 	    mv -f /usr/local/etc/setups.sh /usr/local/etc/setups.sh.$d
 	    install=1
+	else:
+	    # check if e_home is empty and if yes install correct value
+	    s=` grep "e_home=" enstore/external_distr/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
+	    if [ -z $s ]; then
+		install=1
+	    fi	
 	fi
     else
 	install=1
