@@ -111,6 +111,7 @@ install=0
 	    # check if e_home is empty and if yes install correct value
 	    s=` grep "e_home=" /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
 	    if [ -z $s ]; then
+		rm -rf /usr/local/etc/setups.sh
 		install=1
 	    fi	
 	fi
@@ -121,6 +122,7 @@ fi
     
 if [ $install -eq 1 ]; then 
     sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
+    
     ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 fi
 chown -R enstore.enstore $ENSTORE_HOME
