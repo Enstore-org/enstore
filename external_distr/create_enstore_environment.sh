@@ -109,7 +109,7 @@ install=0
 	    install=1
 	else
 	    # check if e_home is empty and if yes install correct value
-	    s=` grep e_home\= /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
+	    s=` grep 'e_home=' /usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
 	    if [ -z $s ]; then
 		install=1
 	    fi	
