@@ -76,7 +76,6 @@ class EnstoreSystemHtml:
         if not remote:
             add_row_to_table(self.status_table,"http://www-isd.fnal.gov/enstore/enstore_status_only.html",
                                     "Production System's Overall Status","Status for all production Enstore systems")
-            add_row_to_table(self.status_table,"https://ngopcli.fnal.gov/cgi-bin/web_gui/web_gui.fcgi?role=enstore-admin&host=ngopcli&port=3111&Submit=Continue","Ngop Monitoring","Ngop monitoring of all production Enstore systems")
             
                                     
         global_table.append(HTMLgen.TR(self.status_table))
