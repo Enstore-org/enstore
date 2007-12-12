@@ -84,7 +84,7 @@ if [ $this_host != $ENSTORE_CONFIG_HOST ];
 then
     echo "trying to get setup-enstore from enstore configuration host"
     scp -rp enstore\@$ENSTORE_CONFIG_HOST:$ENSTORE_HOME/site_specific/ $ENSTORE_HOME
-    if [ $? - ne 0 ]; then
+    if [ $? -ne 0 ]; then
 	echo "scp failed. Please enable its ssh access to ${ENSTORE_CONFIG_HOST} and rerun this script"
  	exit 1
     fi

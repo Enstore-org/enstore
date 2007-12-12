@@ -65,17 +65,22 @@ fi
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
 $ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 # install crons
+echo "installing crons"
 source /usr/local/etc/setups.sh
 $ENSTORE_DIR/tools/install_crons.py
+
 # create database
+echo "creating enstore databases"
 $ENSTORE_DIR/external_distr/install_database.sh
+
 #start enstore
+echo "Starting enstore"
 /etc/init.d/enstore-boot start
 
 # add null vols
 echo "Adding null volumes"
-enstore vol --add --NUL000 null none none none null 400G
-enstore vol --add --NUL001 null none none none null 400G
+enstore vol --add NUL000 null none none none null 400G
+enstore vol --add NUL001 null none none none null 400G
 
 
 echo "enstore started on this machine. Login as user enstore and try toransfer files as:
