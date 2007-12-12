@@ -72,7 +72,9 @@ make
 if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
 	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
 fi
-cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
+	cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+fi
 
 %pre
 PATH=/usr/sbin:$PATH
