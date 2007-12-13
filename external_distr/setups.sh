@@ -20,16 +20,17 @@ setup() {
         last=${!#}
         if [ $last = "enstore" -o $last = "python" -o $last = "ftt" -o $last = "pnfs" ]
         then
-		if [ $last = "pnfs" ];
+		if [ $last = "pnfs" ]
 		then
 		    rpm -q $last > /dev/null 2 > /dev/null
-		    if [ $? -eq 0 ];
+		    if [ $? -eq 0 ]
 		    then
 			return 0
 		    else
-		    if [ "${UPS_DIR:-x}" != "x" ]
-		    then
-			. `$UPS_DIR/bin/ups setup $last`
+			if [ "${UPS_DIR:-x}" != "x" ]
+			then
+			    . `$UPS_DIR/bin/ups setup $last`
+			fi
 		    fi
 		fi
                 return 0
