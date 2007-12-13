@@ -9,6 +9,7 @@ import socket
 import pg
 import configuration_client
 import sys
+import Trace
 
 TITLE="ENSTORE SYSTEM INFORMATION"
 LINKCOLOR="#0000EF" 
@@ -122,15 +123,7 @@ if __name__ == "__main__":
     rc=0
     server = web_server.WebServer()
     remote=True
-    q="select sum(size)/1024./1024./1024./1024. from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' "
-    if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
-        print "We are in Fermilab", server.get_system_name()
-        remote=False
-        q=q+"and library in ("
-        for l in "cdf", "CDF-9940B", "CDF-LTO3", "CDF-LTO4","mezsilo", "samlto", "samm2", "sammam", "D0-9940B", "samlto2", "shelf-samlto", "D0-LTO3", "D0-LTO4", "9940",  "CD-9940B", "CD-LTO3", "CD-LTO4":
-            q=q+"'"+l+"',"
-        q=q[0:-1]
-        q=q+")";
+    q="select coalesce(sum(size)/1024./1024./1024./1024.,0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
 
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
     config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
@@ -148,6 +141,7 @@ if __name__ == "__main__":
             bytes=row[0]
         db.close()
     except:
+        Trace.handle_error()
         pass
 
     main_web_page=EnstoreSystemHtml(server.get_system_name(),"%8.2f"%(bytes), remote)
