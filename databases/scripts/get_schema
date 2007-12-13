@@ -37,6 +37,11 @@ case "$1" in
 		db_name=drivestat
 		schema_name=drivestat.schema
 		;;
+	operation)
+		db_port=8800
+		db_name=operation
+		schema_name=operation.schema
+		;;
 	*)
 		echo usage: $0 "enstoredb|accounting|drivestat"
 		exit
