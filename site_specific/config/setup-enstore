@@ -31,6 +31,14 @@ fi
 
 PATH=$ENSTORE_DIR/sbin:$ENSTORE_DIR/bin:$PATH
 
+rpm -q pnfs > /dev/null
+if [ $? -eq 0 ]; then
+        p_d=`rpm -ql pnfs | grep bin | head -1`
+        PNFS_DIR=`dirname $p_d`
+        PATH=$PATH:$PNFS_DIR/tools
+        export PNFS_DIR
+fi
+
 CVSROOT=hppccvs@cdcvs.fnal.gov:/cvs/hppc; export CVSROOT
 unset CVS_RSH 2>//dev/null;
 
