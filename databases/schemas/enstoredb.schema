@@ -3,8 +3,10 @@
 --
 
 SET client_encoding = 'UTF8';
+SET standard_conforming_strings = off;
 SET check_function_bodies = false;
 SET client_min_messages = warning;
+SET escape_string_warning = off;
 
 --
 -- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: products
@@ -14,7 +16,7 @@ COMMENT ON SCHEMA public IS 'Standard public namespace';
 
 
 --
--- Name: plpgsql; Type: PROCEDURAL LANGUAGE; Schema: -; Owner: 
+-- Name: plpgsql; Type: PROCEDURAL LANGUAGE; Schema: -; Owner: products
 --
 
 CREATE PROCEDURAL LANGUAGE plpgsql;
@@ -45,6 +47,28 @@ CREATE TYPE trb AS (
 
 
 ALTER TYPE public.trb OWNER TO enstore;
+
+--
+-- Name: all_deleted(integer); Type: FUNCTION; Schema: public; Owner: enstore
+--
+
+CREATE FUNCTION all_deleted(integer) RETURNS integer
+    AS $_$
+begin
+        if (select bfid from file where volume = $1 and deleted = 'n' limit 1) is null and
+           (select bfid from file where volume = $1 and deleted = 'u' limit 1) is null and
+           not (select bfid from file where volume = $1 and deleted = 'y' limit 1) is null
+        then
+                return 1;
+        else
+                return 0;
+        end if;
+end;
+$_$
+    LANGUAGE plpgsql;
+
+
+ALTER FUNCTION public.all_deleted(integer) OWNER TO enstore;
 
 --
 -- Name: bytes_deleted(timestamp without time zone); Type: FUNCTION; Schema: public; Owner: enstore
@@ -488,7 +512,8 @@ SET default_with_oids = false;
 
 CREATE TABLE active_file_copying (
     bfid character varying NOT NULL,
-    remaining integer
+    remaining integer,
+    "time" timestamp with time zone DEFAULT now()
 );
 
 
@@ -507,6 +532,55 @@ CREATE TABLE bad_file (
 
 
 ALTER TABLE public.bad_file OWNER TO enstore;
+
+--
+-- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
+--
+
+CREATE TABLE volume (
+    id integer DEFAULT nextval(('volume_seq'::text)::regclass) NOT NULL,
+    label character varying,
+    block_size integer DEFAULT 0,
+    capacity_bytes bigint DEFAULT 0,
+    declared timestamp without time zone,
+    eod_cookie character varying,
+    first_access timestamp without time zone,
+    last_access timestamp without time zone,
+    library character varying,
+    media_type character varying,
+    non_del_files integer DEFAULT 0,
+    remaining_bytes bigint DEFAULT 0,
+    sum_mounts integer DEFAULT 0,
+    sum_rd_access integer DEFAULT 0,
+    sum_rd_err integer DEFAULT 0,
+    sum_wr_access integer DEFAULT 0,
+    sum_wr_err integer DEFAULT 0,
+    system_inhibit_0 character varying,
+    system_inhibit_1 character varying,
+    si_time_0 timestamp without time zone,
+    si_time_1 timestamp without time zone,
+    user_inhibit_0 character varying,
+    user_inhibit_1 character varying,
+    storage_group character varying,
+    file_family character varying,
+    wrapper character varying,
+    "comment" character varying,
+    write_protected character(1) DEFAULT 'u'::bpchar,
+    CONSTRAINT volume_write_protected_check CHECK ((((write_protected = 'u'::bpchar) OR (write_protected = 'y'::bpchar)) OR (write_protected = 'n'::bpchar)))
+);
+
+
+ALTER TABLE public.volume OWNER TO enstore;
+
+--
+-- Name: cms_volume_with_only_deleted_files; Type: VIEW; Schema: public; Owner: enstore
+--
+
+CREATE VIEW cms_volume_with_only_deleted_files AS
+    SELECT volume.label, volume.storage_group, volume.file_family, volume.system_inhibit_1 AS state, volume.media_type, volume.library FROM volume WHERE ((((volume.storage_group)::text = 'cms'::text) AND ((volume.system_inhibit_0)::text = 'none'::text)) AND (all_deleted(volume.id) = 1));
+
+
+ALTER TABLE public.cms_volume_with_only_deleted_files OWNER TO enstore;
 
 --
 -- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
@@ -563,45 +637,6 @@ CREATE TABLE file_copies_map (
 
 
 ALTER TABLE public.file_copies_map OWNER TO enstore;
-
---
--- Name: volume; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
---
-
-CREATE TABLE volume (
-    id integer DEFAULT nextval(('volume_seq'::text)::regclass) NOT NULL,
-    label character varying,
-    block_size integer DEFAULT 0,
-    capacity_bytes bigint DEFAULT 0,
-    declared timestamp without time zone,
-    eod_cookie character varying,
-    first_access timestamp without time zone,
-    last_access timestamp without time zone,
-    library character varying,
-    media_type character varying,
-    non_del_files integer DEFAULT 0,
-    remaining_bytes bigint DEFAULT 0,
-    sum_mounts integer DEFAULT 0,
-    sum_rd_access integer DEFAULT 0,
-    sum_rd_err integer DEFAULT 0,
-    sum_wr_access integer DEFAULT 0,
-    sum_wr_err integer DEFAULT 0,
-    system_inhibit_0 character varying,
-    system_inhibit_1 character varying,
-    si_time_0 timestamp without time zone,
-    si_time_1 timestamp without time zone,
-    user_inhibit_0 character varying,
-    user_inhibit_1 character varying,
-    storage_group character varying,
-    file_family character varying,
-    wrapper character varying,
-    "comment" character varying,
-    write_protected character(1) DEFAULT 'u'::bpchar,
-    CONSTRAINT volume_write_protected_check CHECK ((((write_protected = 'u'::bpchar) OR (write_protected = 'y'::bpchar)) OR (write_protected = 'n'::bpchar)))
-);
-
-
-ALTER TABLE public.volume OWNER TO enstore;
 
 --
 -- Name: file_info; Type: VIEW; Schema: public; Owner: enstore
