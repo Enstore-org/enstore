@@ -25,7 +25,7 @@ CREATE PROCEDURAL LANGUAGE plpgsql;
 SET search_path = public, pg_catalog;
 
 --
--- Name: plpgsql_call_handler(); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: plpgsql_call_handler(); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION plpgsql_call_handler() RETURNS language_handler
@@ -33,10 +33,10 @@ CREATE FUNCTION plpgsql_call_handler() RETURNS language_handler
     LANGUAGE c;
 
 
-ALTER FUNCTION public.plpgsql_call_handler() OWNER TO huangch;
+ALTER FUNCTION public.plpgsql_call_handler() OWNER TO enstore;
 
 --
--- Name: plpgsql_validator(oid); Type: FUNCTION; Schema: public; Owner: huangch
+-- Name: plpgsql_validator(oid); Type: FUNCTION; Schema: public; Owner: enstore
 --
 
 CREATE FUNCTION plpgsql_validator(oid) RETURNS void
@@ -44,7 +44,7 @@ CREATE FUNCTION plpgsql_validator(oid) RETURNS void
     LANGUAGE c;
 
 
-ALTER FUNCTION public.plpgsql_validator(oid) OWNER TO huangch;
+ALTER FUNCTION public.plpgsql_validator(oid) OWNER TO enstore;
 
 --
 -- Name: reset_job_tasks(); Type: FUNCTION; Schema: public; Owner: enstore
