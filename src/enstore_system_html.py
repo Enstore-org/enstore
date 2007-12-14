@@ -96,8 +96,8 @@ class EnstoreSystemHtml:
                          "Tape Inventory ","Detailed list of tapes and their contents")
 
         add_row_to_table(self.info_table,"enstore_quotas.html","Tape Quotas","Plots of tape quotas")
+        add_row_to_table(self.info_table,"cron_pics.html","Cronjob Status","lots of cronjob exit status for past week")
         if not remote:
-            add_row_to_table(self.info_table,"cron_pics.html","Cronjob Status","lots of cronjob exit status for past week")
             add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore","Mass Storage System Main Page","Storage links for Enstore and dCache")
         add_row_to_table(self.info_table,"http://www-ccf.fnal.gov/enstore/documentation.html","Mass Storage System Documentation Page",
                          "Documentation, reports, talks for Enstore and dCache")
@@ -123,6 +123,11 @@ if __name__ == "__main__":
     rc=0
     server = web_server.WebServer()
     remote=True
+
+    if socket.gethostbyname(socket.gethostname())[0:7] == "131.225" :
+        print "We are in Fermilab", server.get_system_name()
+        remote=False
+        
     q="select coalesce(sum(size)/1024./1024./1024./1024.,0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
 
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
