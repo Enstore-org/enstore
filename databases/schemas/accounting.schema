@@ -793,7 +793,7 @@ CREATE TABLE encp_xfer (
     overall_rate bigint NOT NULL,
     network_rate bigint NOT NULL,
     drive_rate bigint NOT NULL,
-    volume character varying(16) NOT NULL,
+    volume character varying(64) NOT NULL,
     mover character varying(32) NOT NULL,
     drive_id character varying(16) NOT NULL,
     drive_sn character varying(16) NOT NULL,
@@ -1011,7 +1011,7 @@ SET default_with_oids = true;
 
 CREATE TABLE tape_mounts (
     node character varying(32) NOT NULL,
-    volume character varying(16) NOT NULL,
+    volume character varying(64) NOT NULL,
     "type" character varying(32) NOT NULL,
     logname character varying(16) NOT NULL,
     "start" timestamp without time zone NOT NULL,
@@ -1027,7 +1027,7 @@ ALTER TABLE public.tape_mounts OWNER TO enstore;
 --
 
 CREATE TABLE tape_mounts_tmp (
-    volume character varying(16) NOT NULL,
+    volume character varying(64) NOT NULL,
     state character varying(1) NOT NULL,
     id bigint
 );
