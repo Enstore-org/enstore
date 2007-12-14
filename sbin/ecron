@@ -195,6 +195,7 @@ fi
 log_name=${procName}
 
 procInfos=$HOME/CRON/$procName
+if [ ! -d $procInfos ]; then mkdir -p $procInfos; fi
 activeFlag=${procInfos}ACTIVE
 histogram=${procInfos}HISTOGRAM
 procOutput=${procInfos}-output
