@@ -1,7 +1,7 @@
 #!/bin/sh
 ###############################################################################
 #
-# $Id:
+# $Id$
 #
 ###############################################################################
 
@@ -62,14 +62,14 @@ else
     ENSTORE_DIR=`rpm -ql enstore_sa | head -1`
 fi
 
-$ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
+$ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh
 # install crons
 echo "installing crons"
 unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
 $ENSTORE_DIR/tools/install_crons.py
 
-$ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
+$ENSTORE_DIR/external_distr/finish_demo_server_install.sh
 
 # create database
 echo "creating enstore databases"
@@ -78,15 +78,21 @@ $ENSTORE_DIR/external_distr/install_database.sh
 #start enstore
 echo "Starting enstore"
 /etc/init.d/enstore-boot start
+# checking if enstore has started
+enstore conf --timeout 3 --alive
+if [ $? -ne 0 ];
+then
+    echo "Please check the installation output for any possible errors"
+    exit 1
+fi
 
 # add null vols
 #echo "Adding null volumes"
 #source /usr/local/etc/setups.sh
 #enstore vol --add NUL000 null none none none null 400G
 #enstore vol --add NUL001 null none none none null 400G
-
-
 echo "enstore started on this machine.
+
 Please remove all firewalls.
 You should be able to see http://localhost/enstore web page
 from this page the link to 'Enstore Server Status' shows the
@@ -106,3 +112,22 @@ Reads:
 encp --verbose 4 /pnfs/fs/usr/data1/disk/some_file .
 encp --verbose 4 /pnfs/fs/usr/data1/NULL/some_file /dev/null
 "
+"Now I will try to start entv and make enstore transfers"
+
+echo "Starting entv"
+entv&
+
+echo "Making initial transfer. Watch entv"
+echo "Copy ${ENSTORE_DIR}/bin/encp to enstore disk"
+set -xv
+encp --verbose 4 ${ENSTORE_DIR}/bin/encp /pnfs/fs/usr/data1/disk/encp_0
+if [ $? - ne 0 ]; then
+    echo "encp failed. Check the output. Do not forget to remove firewalls"
+    exit 1
+fi
+
+echo "Copy /pnfs/fs/usr/data1/disk/encp_0 from enstore disk to /tmp"
+encp --verbose 4 /pnfs/fs/usr/data1/disk/encp_0 /tmp
+echo "Compare ${ENSTORE_DIR}/bin/encp to /tmp/encp_0"
+diff ${ENSTORE_DIR}/bin/encp /tmp/encp_0"
+ 
