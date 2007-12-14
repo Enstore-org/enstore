@@ -156,7 +156,7 @@ def save(server_name):
     of=os.path.join(directory,of)
     #Determine where to redirect the output.
     try:
-        os.system("mv %s %s > /dev/null"%(inf,of)) 
+        os.system("mv %s %s > /dev/null 2>/dev/null"%(inf,of)) 
     except:
         pass
 
