@@ -8,7 +8,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 PATH=$PATH:/sbin
 
-place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
+place="${1:-ftp://ssasrv1.fnal.gov/en/lts44/i386}"
 #psql_place=/home/moibenko
 . /usr/local/etc/setups.sh
 setup enstore

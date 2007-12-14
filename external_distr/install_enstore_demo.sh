@@ -9,7 +9,7 @@ set -u  # force better programming and ability to use check for not set
 if [ "${1:-}" = "-x" ] ; then set -xv; shift; fi
 if [ "${1:-}" = "-q" ] ; then export quiet=1; shift; else quiet=0; fi
 
-place="${1:-ftp://ssasrv1.fnal.gov/en/enstore_related}"
+place="${1:-ftp://ssasrv1.fnal.gov/en/lts44/i386}"
 
 echo "Installing enstore rpm and required products from $place"
 if [ "`whoami`" != 'root' ]
