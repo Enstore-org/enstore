@@ -38,6 +38,7 @@ enstore pnfs --file_family_width=2
 enstore pnfs --storage_group=NULL
 mkdir /pnfs/fs/usr/data1/disk
 mkdir /pnfs/fs/usr/data1/NULL
+chmod -R 777 /pnfs/fs/usr/
 chmod -R 777 /pnfs/fs/usr/data1/*
 cd /pnfs/fs/usr/data1/NULL
 enstore pnfs --library=null
