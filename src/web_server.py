@@ -8,7 +8,7 @@
 # Apache Configurator
 # Author: Dmitry Litvintsev (litvinse@fnal.gov) 06/08/07
 #
-#############[##################################################################
+###############################################################################
 
 WEB_SERVER = "web_server"
 HTTPD_CONF="/etc/httpd/conf/httpd.conf"
@@ -354,7 +354,7 @@ def install():
             os.makedirs(html_dir)
         if not os.path.exists(os.path.join(server.get_document_root(),"enstore")):
             os.symlink(html_dir,os.path.join(server.get_document_root(),"enstore"))
-        log_dir=server.config_dict.get('crons', {})["log_dir"]
+        log_dir=server.config_dict.get('log_server', {})['log_file_path']
         print "log directory ",log_dir
         log_dir_link=os.path.join(html_dir,"log")
         if not os.path.exists(log_dir_link):
