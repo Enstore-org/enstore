@@ -63,11 +63,13 @@ else
 fi
 
 $ENSTORE_DIR/external_distr/create_demo_enstore_environment.sh -x
-$ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 # install crons
 echo "installing crons"
+unset ENSTORE_DIR
 source /usr/local/etc/setups.sh
 $ENSTORE_DIR/tools/install_crons.py
+
+$ENSTORE_DIR/external_distr/finish_demo_server_install.sh -x
 
 # create database
 echo "creating enstore databases"
@@ -78,15 +80,27 @@ echo "Starting enstore"
 /etc/init.d/enstore-boot start
 
 # add null vols
-echo "Adding null volumes"
-enstore vol --add NUL000 null none none none null 400G
-enstore vol --add NUL001 null none none none null 400G
+#echo "Adding null volumes"
+#source /usr/local/etc/setups.sh
+#enstore vol --add NUL000 null none none none null 400G
+#enstore vol --add NUL001 null none none none null 400G
 
 
-echo "enstore started on this machine. Login as user enstore and try toransfer files as:
+echo "enstore started on this machine.
+Please remove all firewalls.
+You should be able to see http://localhost/enstore web page
+from this page the link to 'Enstore Server Status' shows the
+status of installed system. All components must be 'alive'
+The documentation url is: http://www-ccf.fnal.gov/enstore/documentation.html
+And has a link on http://localhost/enstore called 'Mass Storage System Documentation Page'
+
+Login as user enstore and try toransfer files as:
 Writes:
 encp --verbose 4 some_file /pnfs/fs/usr/data1/disk
-encp --verbose 4 some_file /pnfs/fs/usr/data1/NULL
+encp --verbose 4 some_file /pnfs/fs/usr/data1/NULL 
+Note!!! Transfers to null movers fail if client is on the same node with mover.
+Until this is resolved please use disk movers only!
+
 
 Reads:
 encp --verbose 4 /pnfs/fs/usr/data1/disk/some_file .
