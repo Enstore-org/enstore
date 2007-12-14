@@ -82,15 +82,16 @@ then
     echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
     echo "it can be replased later"
     cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
-fi
-if [ ! -f /usr/local/etc/setups.sh -a $this_host = $ENSTORE_CONFIG_HOST ];
-    rm -rf /usr/local/etc/setups_rpm.sh
-    sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
-    ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
     host_name=`uname -n | cut -f1 -d\.`
     sed -e "s?the_host=?the_host=\'$this_host\'?" $ENSTORE_CONFIG_FILE | sed -e "s?for_map=?for_map=\'$host_name\'?" > /tmp/enstore_config_file
     rm $ENSTORE_CONFIG_FILE
     mv /tmp/enstore_config_file $ENSTORE_CONFIG_FILE
+fi
+if [ ! -f /usr/local/etc/setups.sh -a $this_host = $ENSTORE_CONFIG_HOST ];
+then
+    rm -rf /usr/local/etc/setups_rpm.sh
+    sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $ENSTORE_DIR/external_distr/setups.sh > /usr/local/etc/setups_rpm.sh
+    ln -s /usr/local/etc/setups_rpm.sh /usr/local/etc/setups.sh
 fi
 
 echo ${host_name} > ${FARMLETS_DIR}/${host_name}
