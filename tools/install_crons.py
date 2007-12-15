@@ -86,7 +86,7 @@ if __name__ == '__main__':
     config_host = enstore_functions2.default_host()
     config_port = enstore_functions2.default_port()
     csc = configuration_client.ConfigurationClient((config_host,config_port))
-    config_dict = csc.dump_and_save(timeout=10, retry=3)
+    config_dict = csc.dump_and_save(timeout=5, retry=2)
     if not e_errors.is_ok(config_dict):
         print "configuration_server is not responding ... "
         print "Get configuration from local file: %s" % \
