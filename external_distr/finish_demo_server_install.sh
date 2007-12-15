@@ -78,7 +78,7 @@ then
     /sbin/chkconfig postgresql on
     echo "Initializing postgresQL"
     service postgresql initdb
-    "Changing pg_hba.conf"
+    echo "Changing pg_hba.conf"
     cp $database_postgres/pg_hba.conf $database_postgres/pg_hba.conf.sav
     echo "local   all         all trust" > $database_postgres/pg_hba.conf
     echo "host    all         all         127.0.0.1/32 trust" >> $database_postgres/pg_hba.conf

@@ -121,7 +121,7 @@ echo "Making initial transfer. Watch entv"
 echo "Copy ${ENSTORE_DIR}/bin/encp to enstore disk"
 set -xv
 encp --verbose 4 ${ENSTORE_DIR}/bin/encp /pnfs/fs/usr/data1/disk/encp_0
-if [ $? - ne 0 ]; then
+if [ $? -ne 0 ]; then
     echo "encp failed. Check the output. Do not forget to remove firewalls"
     exit 1
 fi
