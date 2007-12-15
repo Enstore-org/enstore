@@ -51,6 +51,8 @@
 #stkensrv2.fnal.gov        460x973+0+0          #0000dd
 
 water.fnal.gov            652x641+0+0          #dd00dd
+#localhost            652x641+0+0          #dd00dd
+localhost            652x641+0+0          #00dd00
 
 #STK drives
 
