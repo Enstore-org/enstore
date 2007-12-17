@@ -113,7 +113,10 @@ encp --verbose 4 /pnfs/fs/usr/data1/disk/some_file .
 encp --verbose 4 /pnfs/fs/usr/data1/NULL/some_file /dev/null
 "
 "Now I will try to start entv and make enstore transfers"
-
+cd 
+if [ ! -f ".entvrc" ];then
+    echo "$ENSTORE_CONFIG_HOST 471x549+0+0          \#ffcc66    animate" > .entvrc
+fi
 echo "Starting entv"
 entv&
 
@@ -127,7 +130,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Copy /pnfs/fs/usr/data1/disk/encp_0 from enstore disk to /tmp"
+rm -rf /tmp/encp_0
 encp --verbose 4 /pnfs/fs/usr/data1/disk/encp_0 /tmp
+if [ $? -ne 0 ]; then
+    echo "encp failed. Check the output. Do not forget to remove firewalls"
+    exit 1
+fi
+
 echo "Compare ${ENSTORE_DIR}/bin/encp to /tmp/encp_0"
-diff ${ENSTORE_DIR}/bin/encp /tmp/encp_0"
+diff ${ENSTORE_DIR}/bin/encp /tmp/encp_0
  
