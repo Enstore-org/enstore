@@ -135,6 +135,7 @@ class WebServer:
                                     txt = txt + "   AllowOverride None\n"
                                     txt = txt + "   Deny from all\n"
                                     txt = txt + "   Order deny,allow\n"
+                                    txt = txt + "   Allow from 127.0.0.1\n"
                                     if self.domain_name==FNAL_DOMAIN :
                                         txt = txt + "   Allow from .fnal.gov\n"
                                         txt = txt + "   Allow from  137.138\n"
