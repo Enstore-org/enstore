@@ -1729,7 +1729,8 @@ class STK_MediaLoader(MediaLoaderMethods):
                         else:
                             same_drive = 1
                         if same_drive:
-                          compared = 1  
+                          compared = 1
+                          Trace.log(e_errors.INFO, "The error was false: %s"%(response,))
                           break
                 else:
                     compared = 0
@@ -1807,6 +1808,7 @@ class STK_MediaLoader(MediaLoaderMethods):
                             same_drive = 1
                         if same_drive:
                           compared = 1  
+                          Trace.log(e_errors.INFO, "The error was false: %s"%(response,))
                           break
                 else:
                     compared = 0
