@@ -40,7 +40,7 @@ def search_directory(directory):
 			#Remember the directories for later.
 			dirs_list.append(os.path.join(directory, filename))
 			continue
-		elif not os.path.isfile(filename):
+		elif not os.path.isfile(filename) or os.path.islink(filename):
 			continue
 
 	        #Get the versions.
