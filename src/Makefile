@@ -1,5 +1,9 @@
 SHELL=/bin/sh
 
+CP=cp -p
+MV=mv
+RM=rm -rf
+
 # need a robust way of finding freeze, especially for non-kits version of python
 FREEZE=`find $(PYTHON_DIR) -name freeze.py -print`
 #FREEZE=`ls $(PYTHON_DIR)/Python-*/Tools/freeze/freeze.py`
@@ -26,6 +30,11 @@ FREEZE_ENSTORE_OPTIONS=-E $(FREEZE_SKIP_OS) $(FREEZE_SKIP_MISC) $(FREEZE_SKIP_HT
 # No static version for any one any more ... since v3_0
 # LDFLAGS2=`if [ "_SunOS" = _$(MACH_OS) ]; then echo "-dy"; else echo "-static"; fi`
 LDFLAGS2=
+
+ENCP_TOP_DIR=$$ENSTORE_DIR/src/ENCPBIN
+ENCP_BIN_DIR=$(ENCP_TOP_DIR)/opt/encp
+ENSTORE_TOP_DIR=$$ENSTORE_DIR/src/ENSTORE_BIN
+ENSTORE_BIN_DIR=$(ENSTORE_TOP_DIR)/opt/enstore
 
 OSV=`uname -s r`
 
@@ -64,45 +73,60 @@ pre_encp_cmd:
 	- rm -rf ENCPBIN_TEMP
 	mkdir ENCPBIN_TEMP
 	- rm -rf ENCPBIN
-	mkdir ENCPBIN
+	mkdir -p $(ENCP_BIN_DIR)
 	- rm -rf ENSTORE_USER_BIN_TEMP
 	mkdir ENSTORE_USER_BIN_TEMP
 
 encp_cmd:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp_user	ENCPBIN/encp
+	cp ENCPBIN_TEMP/encp_user	$ENCP_BIN_DIR//encp
 
 encp_cmd_for_dcache:
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENCPBIN_TEMP encp_user2.py
 	(cd ENCPBIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENCPBIN_TEMP/encp_user2	ENCPBIN/encp
+	cp ENCPBIN_TEMP/encp_user2	$ENCP_BIN_DIR//encp
 
 post_encp_cmd:
-	rm -rf ENCPBIN_TEMP
-	rm -rf ENSTORE_USER_BIN_TEMP
+	$(RM) ENCPBIN_TEMP
+	$(RM) ENSTORE_USER_BIN_TEMP
 
-	cp ../modules/enroute2	ENCPBIN
-	cp ../modules/ddencp	ENCPBIN
-	cp ../modules/ecrc	ENCPBIN
-	cp ../bin/en_check	ENCPBIN
+	$(CP) $(ENSTORE_DIR)/bin/en_check		$(ENCP_BIN_DIR)/
+	$(CP) $(ENSTORE_DIR)/modules/ddencp		$(ENCP_BIN_DIR)/
+	$(CP) $(ENSTORE_DIR)/modules/ecrc		$(ENCP_BIN_DIR)/
+	$(CP) $(ENSTORE_DIR)/modules/enroute2		$(ENCP_BIN_DIR)/
+# So far, make setuid installation manual
+#	chmod u+s $INSTALLDIR/enroute2
+
+	mkdir -m 755 $(ENCP_BIN_DIR)/volume_import/
+	chmod u+rwx $(ENCP_BIN_DIR)/volume_import/
+	$(CP) $(ENSTORE_DIR)/volume_import/enstore_tape  $(ENCP_BIN_DIR)/volume_import/
+	$(CP) $(ENSTORE_DIR)/volume_import/*.c           $(ENCP_BIN_DIR)/volume_import/
+	$(CP) $(ENSTORE_DIR)/volume_import/*.h           $(ENCP_BIN_DIR)/volume_import/
+	$(CP) $(ENSTORE_DIR)/volume_import/Makefile      $(ENCP_BIN_DIR)/volume_import/
+
+	$(CP) $(ENSTORE_DIR)/sbin/EPS                    $(ENCP_BIN_DIR)/EPS
+	$(CP) $(ENSTORE_DIR)/ups/encp.table              $(ENCP_BIN_DIR)/encp.table
+	$(CP) $(ENSTORE_DIR)/ups/encp_mni_install.sh     $(ENCP_BIN_DIR)/encp_mni_install.sh
+	$(CP) $(ENSTORE_DIR)/ups/chooseConfig            $(ENCP_BIN_DIR)/chooseConfig
+	$(CP) $(ENSTORE_DIR)/src/e_errors.py             $(ENCP_BIN_DIR)/e_errors.py
 
 enstore_cmd:
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSTORE_USER_BIN_TEMP/enstore_user      ENCPBIN/enstore
+	cp ENSTORE_USER_BIN_TEMP/enstore_user      $ENCP_BIN_DIR/enstore
 
 enstore_cmd_for_dcache:
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSTORE_USER_BIN_TEMP enstore_user2.py
 	(cd ENSTORE_USER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSTORE_USER_BIN_TEMP/enstore_user2      ENCPBIN/enstore
+	cp ENSTORE_USER_BIN_TEMP/enstore_user2      $ENCP_BIN_DIR/enstore
 
 ensync_cmd:
 	- rm -rf ENSYNC_BIN_TEMP
 	mkdir ENSYNC_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENCP_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENSYNC_BIN_TEMP ensync_user.py
 	(cd ENSYNC_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENSYNC_BIN_TEMP/ensync_user      ENCPBIN/ensync
+	cp ENSYNC_BIN_TEMP/ensync_user      $ENCP_BIN_DIR/ensync
 	rm -rf ENSYNC_BIN_TEMP
 
 enmv_cmd:
@@ -110,9 +134,8 @@ enmv_cmd:
 	mkdir ENMV_BIN_TEMP
 	python $(FREEZE) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o ENMV_BIN_TEMP enmv_user.py
 	(cd ENMV_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp ENMV_BIN_TEMP/enmv_user      ENCPBIN
+	cp ENMV_BIN_TEMP/enmv_user      $ENCP_BIN_DIR/enmv
 	rm -rf ENMV_BIN_TEMP
-
 
 encp: pre_encp_cmd encp_cmd enstore_cmd ensync_cmd enmv_cmd post_encp_cmd
 
@@ -124,43 +147,82 @@ encp_for_dcache: pre_encp_cmd encp_cmd_for_dcache enstore_cmd_for_dcache ensync_
 ### The command of interest is "make enstore".
 
 pre_enstore:
-	 if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
-	 if [ "$$ACI_DIR"x = x ]; then mv aml2.py aml2.py.sav; cp aml2_dummy.py aml2.py; fi
+	 #if [ "$$FTT_DIR"x = x ]; then echo FTT_DIR must be set to build enstore.; exit 1; fi
+	 #if [ "$$ACI_DIR"x = x ]; then mv aml2.py aml2.py.sav; cp aml2_dummy.py aml2.py; fi
 	(cd $(ENSTORE_DIR)/modules; make all)
-	- rm -rf ENSTORE_BIN
-	mkdir ENSTORE_BIN
-	mkdir ENSTORE_BIN/bin
-	mkdir ENSTORE_BIN/sbin
-	mkdir ENSTORE_BIN/etc
+	- $(RM) ENSTORE_BIN
+	mkdir -p $(ENSTORE_BIN_DIR)
+	mkdir $(ENSTORE_BIN_DIR)/bin
+	mkdir $(ENSTORE_BIN_DIR)/sbin
+	mkdir $(ENSTORE_BIN_DIR)/etc
+	mkdir $(ENSTORE_BIN_DIR)/www
+	mkdir $(ENSTORE_BIN_DIR)/crontabs
 
-post_enstore:
-	mv ENSTORE_BIN/bin/encp_admin ENSTORE_BIN/bin/encp
-	mv ENSTORE_BIN/bin/enstore_admin ENSTORE_BIN/bin/enstore
-	mv ENSTORE_BIN/bin/ensync_admin ENSTORE_BIN/bin/ensync
-	mv  ENSTORE_BIN/bin/enmv_admin ENSTORE_BIN/bin/enmv
+post_enstore: install_enstore
+	$(MV) $(ENSTORE_BIN_DIR)/bin/encp_admin   $(ENSTORE_BIN_DIR)/bin/encp
+	$(MV) $(ENSTORE_BIN_DIR)/bin/enstore_admin $(ENSTORE_BIN_DIR)/bin/enstore
+	$(MV) $(ENSTORE_BIN_DIR)/bin/ensync_admin $(ENSTORE_BIN_DIR)/bin/ensync
+	$(MV) $(ENSTORE_BIN_DIR)/bin/enmv_admin   $(ENSTORE_BIN_DIR)/bin/enmv
 
-	cp ../modules/enroute2	ENSTORE_BIN/bin/
-	cp ../modules/ddencp	ENSTORE_BIN/bin/
-	cp ../modules/ecrc	ENSTORE_BIN/bin/
-	cp ../bin/en_check	ENSTORE_BIN/bin/
-        if [ "$$ACI_DIR"x = x -a -f aml2.py.sav ]; then mv aml2.py.sav aml2.py; fi
+	$(CP) $(ENSTORE_DIR)/modules/enroute2		$(ENSTORE_BIN_DIR)/bin/
+	$(CP) $(ENSTORE_DIR)/modules/ddencp		$(ENSTORE_BIN_DIR)/bin/
+	$(CP) $(ENSTORE_DIR)/modules/ecrc		$(ENSTORE_BIN_DIR)/bin/
+
+install_enstore:
+	$(CP) $(ENSTORE_DIR)/bin/en_check		$(ENSTORE_BIN_DIR)/bin/
+
+	$(CP) $(ENSTORE_DIR)/etc/*.html 		$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.gif 			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.jpg			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.kil			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.fig			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.xpm			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/*.xcf			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.html 		$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.gif 			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.jpg			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.kil			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.fig			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.xpm			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/www/*.xcf			$(ENSTORE_BIN_DIR)/www/
+	$(CP) $(ENSTORE_DIR)/etc/sample.conf		$(ENSTORE_BIN_DIR)/etc/
+	$(CP) `ls -1dp $(ENSTORE_DIR)/crontabs/* | egrep -v "CVS"` 	$(ENSTORE_BIN_DIR)/crontabs/
+
+	$(CP) $(ENSTORE_DIR)/sbin/Vols    		$(ENSTORE_BIN_DIR)/sbin/
+	$(CP) $(ENSTORE_DIR)/sbin/noaccess-tapes	$(ENSTORE_BIN_DIR)/sbin/
+	$(CP) $(ENSTORE_DIR)/sbin/cleaning_report	$(ENSTORE_BIN_DIR)/sbin/
+	$(CP) $(ENSTORE_DIR)/sbin/quota_alert		$(ENSTORE_BIN_DIR)/sbin/
+
+	$(CP) $(ENSTORE_DIR)/sbin/log-stash		$(ENSTORE_BIN_DIR)/sbin/
+	$(CP) $(ENSTORE_DIR)/sbin/check_for_traceback	$(ENSTORE_BIN_DIR)/sbin/
+
+	$(CP) $(ENSTORE_DIR)/sbin/checkPNFS		$(ENSTORE_BIN_DIR)/sbin/
+	$(CP) $(ENSTORE_DIR)/sbin/copy_ran_file		$(ENSTORE_BIN_DIR)/sbin/
+
+#Why are these two in $ENSTORE_DIR/bin?
+	$(CP) $(ENSTORE_DIR)/bin/enstore-boot		$(ENSTORE_BIN_DIR)/bin/
+	$(CP) $(ENSTORE_DIR)/bin/monitor_server-boot	$(ENSTORE_BIN_DIR)/bin/
+
+        #if [ "$$ACI_DIR"x = x -a -f aml2.py.sav ]; then mv aml2.py.sav aml2.py; fi
 
 #These are the list breakdowns.
 SERVER_LIST=configuration_server log_server event_relay library_manager
 SERVER_HTMLGEN_LIST=alarm_server inquisitor ratekeeper monitor_server
 SERVER_SQL_LIST=file_clerk volume_clerk info_server accounting_server drivestat_server
-SERVER_LIB_LIST=mover media_changer
+SERVER_LIB_LIST=
+#mover media_changer
+NON_SERVER_LIST=plotter_main
 
 #These are the full lists.
-FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST)
-FULL_CLIENT_LIST=encp_admin enstore_admin ensync_admin enmv_admin
+FULL_SERVER_LIST=$(SERVER_LIST) $(SERVER_HTMLGEN_LIST) $(SERVER_SQL_LIST) $(SERVER_LIB_LIST) $(NON_SERVER_LIST)
+FULL_CLIENT_LIST=enstore_admin encp_admin ensync_admin enmv_admin
 
 $(FULL_SERVER_LIST): $$@.py
 	- rm -rf SERVER_BIN_TEMP 
 	mkdir SERVER_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP $@.py
 	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp SERVER_BIN_TEMP/$@ ENSTORE_BIN/sbin/$@
+	cp SERVER_BIN_TEMP/$@ $(ENSTORE_BIN_DIR)/sbin/$@
 	rm -rf SERVER_BIN_TEMP
 
 $(FULL_CLIENT_LIST): $$@.py
@@ -168,8 +230,16 @@ $(FULL_CLIENT_LIST): $$@.py
 	mkdir CLIENT_BIN_TEMP
 	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o CLIENT_BIN_TEMP $@.py
 	(cd CLIENT_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
-	cp CLIENT_BIN_TEMP/$@ ENSTORE_BIN/bin/$@
+	cp CLIENT_BIN_TEMP/$@ $(ENSTORE_BIN_DIR)/bin/$@
 	rm -rf CLIENT_BIN_TEMP
+
+make_enstore_system: ../sbin/$$@.py
+	- rm -rf SERVER_BIN_TEMP 
+	mkdir SERVER_BIN_TEMP
+	python $(FREEZE) $(FREEZE_ENSTORE_OPTIONS) -e $(ENSTORE_DIR)/modules -e $(PYMODULES) -o SERVER_BIN_TEMP ../sbin/$@.py
+	(cd SERVER_BIN_TEMP; LDFLAGS=$(LDFLAGS2); export LDFLAGS; make -e;)
+	cp SERVER_BIN_TEMP/$@ $(ENSTORE_BIN_DIR)/sbin/$@
+	rm -rf SERVER_BIN_TEMP
 
 enstore: pre_enstore $(FULL_CLIENT_LIST) $(FULL_SERVER_LIST) post_enstore
 
@@ -233,6 +303,24 @@ entv:
 	sed -e 's/encp/entv/g' $(ENSTORE_DIR)/ups/encp.table > ENTV_BIN/entv.table
 	- rm -rf ENTV_TEMP
 
+source: pre_source install_enstore
+
+pre_source:
+	(cd $(ENSTORE_DIR)/modules; make clean)
+	- $(RM) ENSTORE_BIN
+	mkdir -p $(ENSTORE_BIN_DIR)
+	mkdir $(ENSTORE_BIN_DIR)/bin
+	mkdir $(ENSTORE_BIN_DIR)/sbin
+	mkdir $(ENSTORE_BIN_DIR)/etc
+	mkdir $(ENSTORE_BIN_DIR)/www
+	mkdir $(ENSTORE_BIN_DIR)/crontabs
+	mkdir $(ENSTORE_BIN_DIR)/src
+	mkdir $(ENSTORE_BIN_DIR)/modules
+
+	$(CP) $(ENSTORE_DIR)/src/*.py 		$(ENSTORE_BIN_DIR)/src
+	$(CP) -r $(ENSTORE_DIR)/modules/* 	$(ENSTORE_BIN_DIR)/modules
+
+	ln -s ENSTORE_BIN/opt/enstore/src/mover.py $(ENSTORE_BIN_DIR)/sbin/mover
 
 #	- rm -rf MONITOR_CLIENT_BIN_TEMP
 #	mkdir MONITOR_CLIENT_BIN_TEMP
