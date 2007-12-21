@@ -4464,6 +4464,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             "library": self.current_library,
             "library_list":self.libraries, # this is needed for the federation project
             'current_priority': pri,
+            'ticket': current_work_ticket
             }
         return ticket
 
