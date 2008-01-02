@@ -297,6 +297,7 @@ class AtMovers:
                 if movers_to_delete:
                     for mover in movers_to_delete:
                         self.delete(self.at_movers[mover])
+                return movers_to_delete
                 
    # return a list of busy volumes for a given volume family
     def busy_volumes (self, volume_family_name):
@@ -612,6 +613,19 @@ class LibraryManagerMethods:
                 break
         return rc
 
+    def check(self):
+       movers = self.volumes_at_movers.check()
+       if movers:
+           works_to_delete = []
+           for mv in movers:
+               w = self.get_work_at_movers_m(mv)
+               if w:
+                  works_to_delete.append(w)
+           for w in works_to_delete:
+               self.work_at_movers.remove(w) 
+               
+               
+           
 
     def is_vol_available(self, work, external_label, requestor):
         if work == 'write_to_hsm':
@@ -3274,7 +3288,7 @@ if __name__ == "__main__":
             Trace.init(lm.log_name)
             Trace.log(e_errors.INFO, "Library Manager %s (re)starting"%(intf.name,))
             # start check movers thread
-            lm.run_in_thread('check_at_movers', lm.volumes_at_movers.check)
+            lm.run_in_thread('check_at_movers', lm.check)
             lm.serve_forever()
         except SystemExit, exit_code:
             sys.exit(exit_code)
