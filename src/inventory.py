@@ -856,6 +856,9 @@ def inventory(output_dir, cache_dir):
     rc_file.write("These volumes are full and have only deleted files.\n")
     rc_file.write("They MAY be recycled.\n\n")
 
+    tm_file.write("Date this listing was generated: %s\n\n" % \
+        time.asctime(time.localtime(time.time())))
+
     de_format = "%6d\t%12s\t%12d\t%12d\t%12s\t%12s\t%s\n"
     de_count = 0
 
@@ -1137,9 +1140,6 @@ def inventory(output_dir, cache_dir):
 
         # handle mounts -- need more work
         mnts = "%6d"%(mounts)
-        tm_file.write("Date this listing was generated: %s\n\n" % \
-                  time.asctime(time.localtime(time.time())))
-
         if mount_limit.has_key(vv['media_type']):
             if mounts > mount_limit[vv['media_type']][0]:
                 if mounts <= mount_limit[vv['media_type']][1]:
