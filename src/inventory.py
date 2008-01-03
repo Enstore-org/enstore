@@ -313,7 +313,7 @@ def print_volumes_defind_status(volume_list, output_file):
     vd_file = open(output_file, "w")
 
 
-    vd_file.write("Date this listing was generated: %s\n" % \
+    vd_file.write("Date this listing was generated: %s\n\n" % \
                   time.asctime(time.localtime(time.time())))
     
     vd_file.write("%-10s  %-8s %-17s %17s  %012s %-12s\n" %
@@ -835,7 +835,7 @@ def inventory(output_dir, cache_dir):
     wpa_file.write('\n')
 
     vd_file.write("<html><pre>\n")
-    vd_file.write("Date this listing was generated: %s\n" % \
+    vd_file.write("Date this listing was generated: %s\n\n" % \
         (time.ctime(time.time())))
 
     vd_format = "%-10s %-10s %-25s %-20s %-12s %-3s %6s %-40s\n\n"
@@ -1137,6 +1137,8 @@ def inventory(output_dir, cache_dir):
 
         # handle mounts -- need more work
         mnts = "%6d"%(mounts)
+        tm_file.write("Date this listing was generated: %s\n\n" % \
+                  time.asctime(time.localtime(time.time())))
 
         if mount_limit.has_key(vv['media_type']):
             if mounts > mount_limit[vv['media_type']][0]:
