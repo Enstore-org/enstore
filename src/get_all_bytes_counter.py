@@ -119,7 +119,7 @@ if __name__ == "__main__":
 	    str = "(does not include - "
 	    dead_nodes.sort()
 	    for server in dead_nodes:
-		str = "%s, %s"%(str, server)
+		str = "%s, %s)"%(str, server)
 	else:
 	    str = ""
 	# output the total count
