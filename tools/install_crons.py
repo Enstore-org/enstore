@@ -41,7 +41,7 @@ def copy_it(src, dst):
         return
 
     try:
-        os.chmod(dst, stat.S_IREAD | stat.S_IRUSR)
+        os.chmod(dst, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
     except:
         pass
 
