@@ -28,10 +28,10 @@ def get_default_callback(use_port=0):
 
 # try to get a port from a range of possibilities
 def get_callback(use_host=None, use_port=0):
-    if use_host != None:
-        host = use_host
-    else:
+    if use_host in [None, ""]:
         host = host_config.choose_interface()['ip']
+    else:
+        host = use_host
     sock = cleanUDP.cleanUDP(socket.AF_INET, socket.SOCK_DGRAM)
     sock.socket.bind((host, use_port))
     host, port = sock.socket.getsockname()
