@@ -44,24 +44,15 @@ def get_log_dir():
 
 def get_html_dir():
     # get html dir
-    # the directory for log files is usually in $html_dir/logs
-    # we need to follow some rule this is why html_dir (actually html log dir)
-    # comes from inqusistor
     config_host = os.getenv('ENSTORE_CONFIG_HOST')
     config_port = os.getenv('ENSTORE_CONFIG_PORT')
     html_dir = None
     if config_host and config_port:
         csc  = configuration_client.ConfigurationClient((config_host,
                                                          int(config_port)))
-        #crons = csc.get('crons')
-        #if crons:
-        inq = csc.get('inquisitor','')
-        if inq:
-            html_dir = inq.get('http_log_file_path',None)
-            if not html_dir:
-                crons = csc.get('crons')
-                if crons:
-                    html_dir = crons.get('html_dir', None)
+        crons = csc.get('crons')
+        if crons:
+            html_dir = crons.get('html_dir', None)
     return html_dir
 
 def get_web_server():
