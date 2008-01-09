@@ -407,6 +407,8 @@ def copy_files(files):
 		if f['deleted'] == 'n':
 			try:
 				src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfs_id'])
+				if type(src) == type([]):
+					src = src[0]
 			except:
 				exc_type, exc_value = sys.exc_info()[:2]
 				error_log(MY_TASK, str(exc_type), str(exc_value), "%s %s %s %s is not a valid pnfs file"%(f['label'], f['bfid'], f['location_cookie'], f['pnfs_id']))
@@ -820,6 +822,8 @@ def final_scan_volume(vol):
 			else:
 				# get the real path
 				pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
+				if type(pnfs_path) == type([]):
+					pnfs_path = pnfs_path[0]
 
 				# make sure the path is NOT a migration path
 				if pnfs_path[:22] == f_prefix+'/Migration':
@@ -1024,6 +1028,8 @@ def restore(bfids):
 			continue
 		v = vcc.inquire_vol(f['external_label'])
 		src = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+		if type(src) == type([]):
+			src = src[0]
 		p = pnfs.File(src)
 
 		p.volume = f['external_label']
