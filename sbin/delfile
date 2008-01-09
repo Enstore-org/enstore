@@ -17,7 +17,7 @@ if [ -z "${1-}" ] ; then
   if [ `uname -n | grep -c d0ensrv1` -ne 0 ]; then
     TRASH_CAN=/diska/pnfs/trash/4
   else
-    TRASH_CAN=/rip6a/pnfs/trash/4
+    TRASH_CAN=`grep trash /usr/etc/pnfsSetup | cut -f2 -d\=`
 fi
     export TRASH_CAN
   fi
