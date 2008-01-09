@@ -184,9 +184,12 @@ find $ENSTORE/JOURNALS -type f $find_options -print > /tmp/journals
 # file list without path
 for i in `cat /tmp/journals`; do basename $i; done > /tmp/journal_files
 # do tar-ing in $ENSTORE/JOURNALS
-(cd $ENSTORE/JOURNALS; tar cvf journals.tar `cat /tmp/journal_files`)
-echo $ENSTORE/JOURNALS/journals.tar >> /tmp/journals
-echo $ENSTORE/JOURNALS/journals.tar >> $ENSTORE_FILES
+if [ -s /tmp/journal_files ]
+then
+	(cd $ENSTORE/JOURNALS; tar cvf journals.tar `cat /tmp/journal_files`)
+	echo $ENSTORE/JOURNALS/journals.tar >> /tmp/journals
+	echo $ENSTORE/JOURNALS/journals.tar >> $ENSTORE_FILES
+fi
 rm -f /tmp/journal_files
 # cat /tmp/journals >> $ENSTORE_FILES
 ls $backup_path/ACC-DST/*.01 >> $ENSTORE_FILES
