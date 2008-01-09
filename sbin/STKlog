@@ -39,11 +39,14 @@ get_log()
     echo -e $tape_library Log Report: `date` >> $temp_file 2>&1
     echo -e Brought to You by: `basename $0` "\n" >> $temp_file 2>&1
     #Get the last 1000 lines of the stk log file.
-    #Note: The tac program reverses the order.
     #Note: The "0>-" for the rsh command closes standard input so it
     #      won't munch any lines from the main while loop!!!
-    /usr/bin/rsh $silo_node -l acsss 'tail -1000 log/acsss_event.log' 0>- | awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' | tac >> $temp_file 2>&1
-    tac $temp2_file >> $temp_file 2>&1
+    #Note: Send errors from /usr/bin/rsh (via 2>> $temp_file)
+    #      to the output file so that are not 'lost' to standard out.
+    /usr/bin/rsh $silo_node -l acsss 'tail -1000 log/acsss_event.log' 0>- > $temp2_file 2>> $temp_file
+    #Filter the result.
+    #Note: The tac program reverses the order.
+    awk '/20[0-9][0-9]/ { printf("%s",$0) ; getline ;  getline; printf("\t%s\n",$0)}' $temp2_file | tac >> $temp_file 2>&1
     echo -e "\n" >> $temp_file 2>&1
     #Give an end time so we know how long it took.
     echo -e $fname Report Completed: `date` "\n" >> $temp_file 2>&1
