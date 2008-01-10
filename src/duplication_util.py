@@ -124,8 +124,8 @@ def make_original_as_duplicate(vol):
 	q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid;"%(vol)
 	res = dm.db.query(q).getresult()
 	for i in res:
-		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`)
-		dm.make_duplicate(i[0], i[1])
+		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`),
+		print dm.make_duplicate(i[0], i[1])
 
 
 # make_migrated_as_duplicate(vol) -- make all files on the migrated-to
@@ -140,7 +140,7 @@ def make_migrated_as_duplicate(vol):
 	q = "select src_bfid, dst_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.dst_bfid;"%(vol)
 	res = dm.db.query(q).getresult()
 	for i in res:
-		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`)
-		dm.make_duplicate(i[0], i[1])
+		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`),
+		print dm.make_duplicate(i[0], i[1])
 
 
