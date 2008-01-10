@@ -111,7 +111,7 @@ class DuplicationManager:
 # make_original_as_duplicate(vol) -- make all files on the original volume
 #	as a duplicate(copy) of the migrated files.
 
-def make_orignal_as_duplicate(vol):
+def make_original_as_duplicate(vol):
 	dm = DuplicationManager()
 	v = dm.vcc.inquire_vol(vol)
 	if v['status'][0] != e_errors.OK:
