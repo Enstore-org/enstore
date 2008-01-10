@@ -59,6 +59,11 @@ class DuplicationManager:
 		res = self.db.query(q).getresult()
 		if res:
 			return "(%s, %s) are already copies"%(bfid1, bfid2)
+		# check the other way
+		q = "select * from file_copies_map where bfid = '%s' and alt_bfid = '%s';"%(bfid2, bfid1)
+		res = self.db.query(q).getresult()
+		if res:
+			return "(%s, %s) are already copies"%(bfid1, bfid2)
 
 		# get pnfs entry
 		try:
@@ -79,7 +84,7 @@ class DuplicationManager:
 			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)"%(pf.bfid, f1['bfid'], f2['bfid'])
 		if long(pf.size) != f1['size']:
 			return "wrong size: pnfs(%s), file(%s))"%(pf.size, `f1['size']`)
-		if pf.pnfsid != f1['pnfsid']:
+		if pf.pnfs_id != f1['pnfsid']:
 			return "wrong pnfsids: pnfs(%s), file(%s)"%(pf.pnfsid, f1['pnfsid'])
 
 		# NEED TO CHECK SOMETHING ELSE
