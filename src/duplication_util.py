@@ -136,7 +136,7 @@ def make_original_as_duplicate(volume):
 			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
 			res = dm.make_duplicate(i[0], i[1])
 			if res:
-				print res
+				print res, "ERROR"
 			else:
 				print "OK"
 
@@ -160,7 +160,7 @@ def make_migrated_as_duplicate(volume):
 			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
 			res = dm.make_duplicate(i[0], i[1])
 			if res:
-				print res
+				print res, "ERROR"
 			else:
 				print "OK"
 
