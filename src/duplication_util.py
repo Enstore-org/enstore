@@ -7,7 +7,6 @@ import file_clerk_client
 import volume_clerk_client
 import pg
 import pnfs
-import pprint
 
 class DuplicationManager:
 	def __init__(self, csc = None):
@@ -85,7 +84,7 @@ class DuplicationManager:
 		if long(pf.size) != f1['size']:
 			return "wrong size: pnfs(%s), file(%s))"%(pf.size, `f1['size']`)
 		if pf.pnfs_id != f1['pnfsid']:
-			return "wrong pnfsids: pnfs(%s), file(%s)"%(pf.pnfsid, f1['pnfsid'])
+			return "wrong pnfsids: pnfs(%s), file(%s)"%(pf.pnfs_id, f1['pnfsid'])
 
 		# NEED TO CHECK SOMETHING ELSE
 
