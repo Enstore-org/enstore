@@ -63,6 +63,8 @@ class DuplicationManager:
 		# get pnfs entry
 		try:
 			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f1['pnfsid'])
+			if type(pnfs_path) == type([]):
+				pnfs_path = pnfs_path[0]
 		except:
 			return "not a valid pnfs file: %s"%(f1['pnfsid'])
 
