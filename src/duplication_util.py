@@ -73,7 +73,7 @@ class DuplicationManager:
 		# check for consistency
 		if long(pf.complete_crc) != f1['complete_crc']:
 			return "wrong crc: pnfs(%s), file(%s)"%(`pf.complete_crc`, `f1['complete_crc']`)
-		if pf.path != pnfs.get_local_pnfs_path(f1['pnfs_name0']):
+		if pf.path != pnfs.get_abs_pnfs_path(f1['pnfs_name0']):
 			return "wrong pnfs_path: pnfs(%s), file(%s)"%(pf.path, f1['pnfs_name0'])
 		if pf.bfid != f1['bfid'] and pf.bfid != f2['bfid']:
 			return "wrong bfids: pnfs(%s), f1(%s), f2(%s)"%(pf.bfid, f1['bfid'], f2['bfid'])
