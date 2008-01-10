@@ -130,7 +130,7 @@ def make_original_as_duplicate(volume):
 		if v['system_inhibit'][1] != "migrated":
 			print "ERROR: %s is not a migrated volume."%(vol)
 			return
-		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid;"%(vol)
+		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid and not m.closed is null;"%(vol)
 		res = dm.db.query(q).getresult()
 		for i in res:
 			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
@@ -154,7 +154,7 @@ def make_migrated_as_duplicate(volume):
 		if v['status'][0] != e_errors.OK:
 			print "ERROR: no such volume '%s'"%(vol)
 			return
-		q = "select src_bfid, dst_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.dst_bfid;"%(vol)
+		q = "select src_bfid, dst_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.dst_bfid and not m.closed is null;"%(vol)
 		res = dm.db.query(q).getresult()
 		for i in res:
 			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
