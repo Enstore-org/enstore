@@ -3217,6 +3217,19 @@ def get_local_pnfs_path(p):
                 return p
     return p
 
+# get_abs_pnfs_path(p) -- find absolute pnfs path -- if /pnfs/fs is available
+
+def get_abs_pnfs_path(p):
+    mtab = get_mtab()
+    for i in mtab.keys():
+        if string.find(p, i) == 0:
+            p1 = os.path.join(LOCAL_PNFS_PREFIX, string.replace(p, i, mtab[i][0][1:]))
+            if os.access(p1, os.F_OK):
+                return p1
+            else:
+                return p
+    return p
+
 # get_normal_pnfs_path(p)
 #
 # from /pnfs/fs/usr/XXX to get /pnfs/XXX
