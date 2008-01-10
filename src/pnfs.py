@@ -1041,6 +1041,13 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
             found_db_num = int(self.get_database(search_path).split(":")[1],
                                16)
 
+            #Small hack for the admin path.
+            ## Hope that get_mount_point() always returns "/pnfs/fs"
+            ## for the admin path.  If it were ever to return "/pnfs/fs/usr"
+            ## this "Small hack for the admin path." will break.
+            if found_db_num == 0:
+                search_path = os.path.join(search_path, "usr")
+
             mp_match_list = [search_path]
             pnfs_value_match_list = [pnfs_value]
         except (OSError, IOError), msg:
@@ -1202,11 +1209,7 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                 raise OSError(errno.ENODEV,
                               "%s: %s" % (os.strerror(errno.ENODEV),
                                           "Too many matching mount points",),
-                              mp_match_list)  #, pnfs_value_match_list)
-
-        #Small hack for the admin path.
-        if found_db_num == 0:
-            search_path = os.path.join(search_path, "usr")
+                              mp_match_list)
 
         #The pnfs_value is put into a list becuase originally this
         # function used readlines().  However, for performance reasons,
