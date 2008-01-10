@@ -92,12 +92,12 @@ class DuplicationManager:
 		# undelete if it is necessary
 		if f1['deleted'] == 'yes':
 			res = self.fcc.modify({'bfid':bfid1, 'deleted':'no'})
-		if res['status'][0] != e_errors.OK:
-			return "failed to undelete file %s"%(bfid1)
+			if res['status'][0] != e_errors.OK:
+				return "failed to undelete file %s"%(bfid1)
 		if f2['deleted'] == 'yes':
 			res = self.fcc.modify({'bfid':bfid2, 'deleted':'no'})
-		if res['status'][0] != e_errors.OK:
-			return "failed to undelete file %s"%(bfid2)
+			if res['status'][0] != e_errors.OK:
+				return "failed to undelete file %s"%(bfid2)
 
 		# register
 		q = "insert into file_copies_map (bfid, alt_bfid) values ('%s', '%s');"%(bfid1, bfid2)
