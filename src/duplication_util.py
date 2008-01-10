@@ -109,6 +109,7 @@ class DuplicationManager:
 		# set pnfs entry
 		if pf.bfid != bfid1:
 			pf.bfid = bfid1
+			pf.volume = f1['external_label']
 			pf.update()
 
 		return
@@ -116,36 +117,51 @@ class DuplicationManager:
 # make_original_as_duplicate(vol) -- make all files on the original volume
 #	as a duplicate(copy) of the migrated files.
 
-def make_original_as_duplicate(vol):
+def make_original_as_duplicate(volume):
 	dm = DuplicationManager()
-	v = dm.vcc.inquire_vol(vol)
-	if v['status'][0] != e_errors.OK:
-		print "ERROR: no such volume '%s'"%(vol)
-		return
-	# make sure it is a migrated volume
-	if v['system_inhibit'][1] != "migrated":
-		print "ERROR: %s is not a migrated volume."%(vol)
-		return
-	q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid;"%(vol)
-	res = dm.db.query(q).getresult()
-	for i in res:
-		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`),
-		print dm.make_duplicate(i[0], i[1])
+	if type(volume) == type (""):
+		volume = [volume]
+	for vol in volume:
+		print "making original %s as copy of the migrated files ..."%(vol)
+		v = dm.vcc.inquire_vol(vol)
+		if v['status'][0] != e_errors.OK:
+			print "ERROR: no such volume '%s'"%(vol)
+			return
+		# make sure it is a migrated volume
+		if v['system_inhibit'][1] != "migrated":
+			print "ERROR: %s is not a migrated volume."%(vol)
+			return
+		q = "select dst_bfid, src_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.src_bfid;"%(vol)
+		res = dm.db.query(q).getresult()
+		for i in res:
+			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
+			res = dm.make_duplicate(i[0], i[1])
+			if res:
+				print res
+			else:
+				print "OK"
 
 
 # make_migrated_as_duplicate(vol) -- make all files on the migrated-to
 #	volume as a duplicate(copy) of the original files.
 
-def make_migrated_as_duplicate(vol):
+def make_migrated_as_duplicate(volume):
 	dm = DuplicationManager()
-	v = dm.vcc.inquire_vol(vol)
-	if v['status'][0] != e_errors.OK:
-		print "ERROR: no such volume '%s'"%(vol)
-		return
-	q = "select src_bfid, dst_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.dst_bfid;"%(vol)
-	res = dm.db.query(q).getresult()
-	for i in res:
-		print "dm.make_duplicate(%s, %s)"%(`i[0]`, `i[1]`),
-		print dm.make_duplicate(i[0], i[1])
-
+	if type(volume) == type (""):
+		volume = [volume]
+	for vol in volume:
+		print "making migrated %s as copy of its original files ..."%(vol)
+		v = dm.vcc.inquire_vol(vol)
+		if v['status'][0] != e_errors.OK:
+			print "ERROR: no such volume '%s'"%(vol)
+			return
+		q = "select src_bfid, dst_bfid from migration m, file f, volume v where f.volume = v.id and v.label = '%s' and f.bfid = m.dst_bfid;"%(vol)
+		res = dm.db.query(q).getresult()
+		for i in res:
+			print "make_duplicate(%s, %s) ..."%(`i[0]`, `i[1]`),
+			res = dm.make_duplicate(i[0], i[1])
+			if res:
+				print res
+			else:
+				print "OK"
 
