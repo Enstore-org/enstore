@@ -1712,12 +1712,15 @@ class STK_MediaLoader(MediaLoaderMethods):
             # if  this is a case, process it
             compared = 0
             try:
+	        Trace.log(e_errors.INFO, "Ckecking ASCLS message %s %s"%(response, answer_lookfor)) # remove after debugging AM
+			  
                 for l in response:
                     if answer_lookfor in l:
                         # ok the volume is actually mounted
                         # but in what drive?
                         requeseted_drive=drive.split(',')
                         ar=l.split(' ')
+			Trace.log(e_errors.INFO, "Requested Drive %s. Comparing to %s"%(requeseted_drive, ar)) # remove after debugging AM
                         same_drive = 0
                         for i in range(len(requeseted_drive)):
                             if "," in ar[-(i+1)]:
