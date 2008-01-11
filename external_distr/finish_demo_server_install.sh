@@ -63,7 +63,7 @@ echo "PGDATA=$database_postgres" > /etc/sysconfig/pgsql/postgresql
 # create pnfs db area
 mkdir -p -m 777 $database
 mkdir -p -m 777 $database_postgres
-mkdir -p -m 777 $trash
+mkdir -p -m 777 ${trash}/4
 pnfsdLog=dbserverLog
 mkdir -p -m 777 `dirname ${pnfsdLog}`
 chown enstore $database_postgres
