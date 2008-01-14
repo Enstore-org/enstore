@@ -14,6 +14,7 @@ import pnfs
 import migrate
 import duplication_util
 import sys
+import string
 
 # get a duplication manager
 
