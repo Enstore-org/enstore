@@ -16,6 +16,7 @@ import duplication_util
 import sys
 import os
 import string
+import e_errors
 
 # get a duplication manager
 
