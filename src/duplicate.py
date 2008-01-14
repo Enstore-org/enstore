@@ -33,7 +33,7 @@ migrate.MTO = "->"
 # * to avoid deeply nested "if ... else", it takes early error return
 def duplicate_metadata(bfid1, src, bfid2, dst):
 	# get its own file clerk client
-	fcc = file_clerk_client.FileClient(csc)
+	fcc = file_clerk_client.FileClient(migrate.csc)
 	# get all metadata
 	p1 = pnfs.File(src)
 	f1 = fcc.bfid_info(bfid1)
