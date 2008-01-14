@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
 	# log command line
 	cmd = string.join(sys.argv)
-	if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
+	if len(sys.argv) > 2:
 		migrate.log("COMMAND LINE:", cmd)
 
 	# handle --priority <priority>
