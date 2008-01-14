@@ -1719,15 +1719,12 @@ class STK_MediaLoader(MediaLoaderMethods):
                         # ok the volume is actually mounted
                         # but in what drive?
                         requeseted_drive=drive.split(',')
-                        ar=l.split(' ')
+                        l=l.replace(',',' ')
+                        ar=l.split()
 			Trace.log(e_errors.INFO, "Requested Drive %s. Comparing to %s"%(requeseted_drive, ar)) # remove after debugging AM
                         same_drive = 0
                         for i in range(len(requeseted_drive)):
-                            if "," in ar[-(i+1)]:
-                                de=ar[-(i+1)].split(",")[0]
-                            else:
-                                de=ar[-(i+1)]
-                            if int(requeseted_drive[-(i+1)]) != int(de):
+                            if int(requeseted_drive[-(i+1)]) != int(ar[-(i+1)]):
                                 break
                         else:
                             same_drive = 1
@@ -1798,19 +1795,17 @@ class STK_MediaLoader(MediaLoaderMethods):
                         # ok the volume is actually mounted
                         # but in what drive?
                         requeseted_drive=drive.split(',')
-                        ar=l.split(' ')
+                        l=l.replace(',',' ')
+                        ar=l.split()
+			Trace.log(e_errors.INFO, "Requested Drive %s. Comparing to %s"%(requeseted_drive, ar)) # remove after debugging AM
                         same_drive = 0
                         for i in range(len(requeseted_drive)):
-                            if "," in ar[-(i+1)]:
-                                de=ar[-(i+1)].split(",")[0]
-                            else:
-                                de=ar[-(i+1)]
-                            if int(requeseted_drive[-(i+1)]) != int(de):
+                            if int(requeseted_drive[-(i+1)]) != int(ar[-(i+1)]):
                                 break
                         else:
                             same_drive = 1
                         if same_drive:
-                          compared = 1  
+                          compared = 1
                           Trace.log(e_errors.INFO, "The error was false: %s"%(response,))
                           break
                 else:
