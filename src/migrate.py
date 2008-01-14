@@ -93,6 +93,9 @@ CMS_MIGRATION_DB = 'cms/MIGRATION-9940A-TO-9940B'
 
 DELETED_TMP = 'DELETED'
 
+MFROM = "<="
+MTO = "=>"
+
 MIGRATION_FILE_FAMILY_KEY = "-MIGRATION"
 DELETED_FILE_FAMILY = "DELETED_FILES"
 
@@ -625,7 +628,10 @@ def migrating():
 				job = copy_queue.get(True)
 				continue
 
-			cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+			if DEFAULT_LIBRARY:
+				cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+			else:
+				cmd = "encp --priority %d --ignore-fair-share --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, sg, ff, wrapper, tmp, dst)
 			if debug:
 				log(MY_TASK, 'cmd =', cmd)
 			res = encp.encp(cmd)
@@ -886,11 +892,11 @@ def final_scan_volume(vol):
 			vcc.touch(i)
 			vol_list = vol_list + ' ' + i
 		if vol_list:
-			res = vcc.set_comment(vol, "<="+vol_list)
+			res = vcc.set_comment(vol, MFROM+vol_list)
 			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, 'set comment of %s to "<=%s"'%(vol, vol_list))
+				ok_log(MY_TASK, 'set comment of %s to "%s%s"'%(vol, MFROM, vol_list))
 			else:
-				error_log(MY_TASK, 'failed to set comment of %s to "<=%s"'%(vol, vol_list))
+				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MFROM, vol_list))
 	return local_error
 
 # migrate(file_list): -- migrate a list of files
@@ -1004,11 +1010,11 @@ def migrate_volume(vol, with_deleted = None):
 			# build comment
 			vol_list = vol_list + ' ' + i
 		if vol_list:
-			res = vcc.set_comment(vol, "=>"+vol_list)
+			res = vcc.set_comment(vol, MTO+vol_list)
 			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, 'set comment of %s to "=>%s"'%(vol, vol_list))
+				ok_log(MY_TASK, 'set comment of %s to "%%s"'%(vol, MTO, vol_list))
 			else:
-				error_log(MY_TASK, 'failed to set comment of %s to "=>%s"'%(vol, vol_list))
+				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 	else:
 		error_log(MY_TASK, "do not set %s to migrated due to previous error"%(vol))
 	return res
@@ -1176,7 +1182,7 @@ if __name__ == '__main__':
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for i in sys.argv[2:]:
 			from_list = migrated_from(i, db)
-			print "%s <="%(i),
+			print "%s %s"%(i, MFROM),
 			for j in from_list:
 				print j,
 			print
@@ -1185,7 +1191,7 @@ if __name__ == '__main__':
 		db = pg.DB(host=dbhost, port=dbport, dbname=dbname, user=dbuser)
 		for i in sys.argv[2:]:
 			to_list = migrated_to(i, db)
-			print "%s =>"%(i),
+			print "%s %s"%(i, MTO),
 			for j in to_list:
 				print j,
 			print
