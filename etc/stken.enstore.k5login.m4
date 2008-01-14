@@ -65,16 +65,20 @@ enstore/cd/stkenmvr119a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr120a.fnal.gov@FNAL.GOV
 enstore/cd/stkenmvr121a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
-enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
-enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
-enstore/cd/stkendm4a.fnal.gov@FNAL.GOV))
+enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm8a.fnal.gov@FNAL.GOV))
 ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/fndca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv1',
 enstore/cd/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
-enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV, `dnl')
+enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `stkensrv2',
+enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `stkensrv2',
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -105,6 +109,7 @@ podstvkv@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ptader@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `richt@FNAL.GOV', `dnl')
 stan@FNAL.GOV
+swhicks@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tmesser@FNAL.GOV', `dnl')

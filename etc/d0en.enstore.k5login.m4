@@ -58,13 +58,15 @@ enstore/cd/d0enmvr57a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr58a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr59a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
-enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
-enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
-ifelse(HOSTNAME, `d0ensrv2',
+enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
+ifelse(HOSTNAME, `d0ensrv2n',
 enstore/cd/cdfensrv4.fnal.gov@FNAL.GOV, `dnl')
-ifelse(HOSTNAME, `d0ensrv2',
+ifelse(HOSTNAME, `d0ensrv2n',
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
 baisley@FNAL.GOV
@@ -83,6 +85,7 @@ oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 stan@FNAL.GOV
+swhicks@FNAL.GOV
 timur@FNAL.GOV
 ifelse(HOSTNAME, `d0ensrv4', `vsergeev@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV

@@ -120,6 +120,7 @@ host/stkenmvr118a.fnal.gov@FNAL.GOV
 host/stkenmvr119a.fnal.gov@FNAL.GOV
 host/stkenmvr120a.fnal.gov@FNAL.GOV
 host/stkenmvr121a.fnal.gov@FNAL.GOV
+host/stkenmvr132a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `stkensrv3',
 host/stkendca6a.fnal.gov@FNAL.GOV
 host/stkendca7a.fnal.gov@FNAL.GOV
@@ -180,10 +181,12 @@ host/cdfenmvr129a.fnal.gov@FNAL.GOV
 host/cdfenmvr130a.fnal.gov@FNAL.GOV
 host/cdfenmvr131a.fnal.gov@FNAL.GOV
 host/stkenscan1.fnal.gov@FNAL.GOV
-host/stkendm1a.fnal.gov@FNAL.GOV
-host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV
-host/stkendm4a.fnal.gov@FNAL.GOV))
+host/stkendm4a.fnal.gov@FNAL.GOV
+host/stkendm5a.fnal.gov@FNAL.GOV
+host/stkendm6a.fnal.gov@FNAL.GOV
+host/stkendm7a.fnal.gov@FNAL.GOV
+host/stkendm8a.fnal.gov@FNAL.GOV))
 ifelse(HOSTNAME, `stkensrv1',
 host/fndca3a.fnal.gov@FNAL.GOV
 host/stkendca3a.fnal.gov@FNAL.GOV, `dnl')
@@ -217,6 +220,7 @@ podstvkv@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `ptader@FNAL.GOV', `dnl')
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `richt@FNAL.GOV', `dnl')
 stan@FNAL.GOV
+swhicks@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tdh@FNAL.GOV', `dnl')
 timur@FNAL.GOV
 ifelse(eval(index(HOSTNAME, `cmspnfs') == 0), 1, `tmesser@FNAL.GOV', `dnl')

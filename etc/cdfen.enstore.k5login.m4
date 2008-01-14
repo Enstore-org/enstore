@@ -43,16 +43,20 @@ enstore/cd/cdfenmvr129a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr130a.fnal.gov@FNAL.GOV
 enstore/cd/cdfenmvr131a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
-enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
-enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm6a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm7a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm8a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `cdfensrv1',
 enstore/cd/fcdfdcache1.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `cdfensrv1',
 enstore/cd/fcdfdcache4.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `cdfensrv2',
-enstore/cd/d0ensrv4.fnal.gov@FNAL.GOV, `dnl')
+enstore/cd/d0ensrv2n.fnal.gov@FNAL.GOV, `dnl')
+ifelse(HOSTNAME, `cdfensrv2',
+enstore/cd/d0ensrv4n.fnal.gov@FNAL.GOV, `dnl')
 ifelse(HOSTNAME, `cdfensrv2',
 enstore/cd/stkensrv4.fnal.gov@FNAL.GOV, `dnl')
 aik@FNAL.GOV
@@ -73,6 +77,7 @@ oleynik@FNAL.GOV
 petravic@FNAL.GOV
 podstvkv@FNAL.GOV
 stan@FNAL.GOV
+swhicks@FNAL.GOV
 timur@FNAL.GOV
 ifelse(HOSTNAME, `cdfensrv4', `vsergeev@FNAL.GOV', `dnl')
 zalokar@FNAL.GOV
