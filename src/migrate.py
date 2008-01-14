@@ -1168,7 +1168,7 @@ if __name__ == '__main__':
 		files = []
 		for i in sys.argv[2:]:
 			files.append(i)
-		migrate(sys.argv[2:])
+		migrate(files)
 	elif sys.argv[1] == "--restore":
 		restore(sys.argv[2:])
 	elif sys.argv[1] == "--restore-vol":
