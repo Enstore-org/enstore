@@ -1012,7 +1012,7 @@ def migrate_volume(vol, with_deleted = None):
 		if vol_list:
 			res = vcc.set_comment(vol, MTO+vol_list)
 			if res['status'][0] == e_errors.OK:
-				ok_log(MY_TASK, 'set comment of %s to "%%s"'%(vol, MTO, vol_list))
+				ok_log(MY_TASK, 'set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 			else:
 				error_log(MY_TASK, 'failed to set comment of %s to "%s%s"'%(vol, MTO, vol_list))
 	else:
