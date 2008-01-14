@@ -111,14 +111,14 @@ if __name__ == '__main__':
 
 
 	if sys.argv[1] == "--vol":
-		icheck = False
+		migrate.icheck = False
 		for i in sys.argv[2:]:
 			migrate.migrate_volume(i)
 	elif sys.argv[1] == "--bfids":
 		files = []
 		for i in sys.argv[2:]:
 			files.append(i)
-		migrate.migrate(sys.argv[2:])
+		migrate.migrate(files)
 	else:	# assuming all are files
 		files = []
 		for i in sys.argv[1:]:
