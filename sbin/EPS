@@ -26,7 +26,8 @@ case `uname` in
 	if [ $? != 0 ]; then
 	    x=`ps axuww  $p`
 	else
-	    x=`ps axuwwm $p`
+	    #x=`ps axuwwm $p`
+	    x=`ps -Leo uname,pid,%cpu,%mem,vsz,lwp,nlwp,tname,stat,start_time,cputime,args`
 	fi
 	;;
   OSF1*)
