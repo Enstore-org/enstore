@@ -17,12 +17,16 @@ if __name__ == '__main__':
 	# parse command line arguments
 	library = None
 	output = None
-	opts, args = getopt.getopt(sys.argv[1:], "l:o:", ["library=", "output="])
+	opts, args = getopt.getopt(sys.argv[1:], "l:o:a", ["library=", "output=", "auto"])
 	for o, a in opts:
 		if o in ["-l", "--library"]:
 			library = a
 		elif o in ["-o", "--output"]:
 			output = a
+		elif o in ["-a", "--auto"]:
+			output = os.path.join(
+				operation.csc.get("inventory",{}).get("inventory_rcp_dir").split(':')[1],
+				"TAB_FLIPPING_WATCH")
 
 	stdout_save = sys.stdout
 	if not output and len(args) > 0:
