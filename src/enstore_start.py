@@ -104,9 +104,12 @@ def is_on_host(host, use_alias=0):
 
 def output(server_name):
     #Determine where to redirect the output.
-    tmp_dir = os.environ.get('ENSTORE_HOME',None)
+    
+    tmp_dir = os.environ.get('ENSTORE_OUT',None)
     if tmp_dir == None:
-        tmp_dir = os.environ.get('ENSTORE_DIR','')
+        tmp_dir = os.environ.get('ENSTORE_HOME',None)
+        if tmp_dir == None:
+            tmp_dir = os.environ.get('ENSTORE_DIR','')
         
     try:
         output_dir_base = os.path.join(tmp_dir, "tmp")
