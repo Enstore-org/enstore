@@ -136,5 +136,11 @@ then
 	cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
     fi
 fi
+if [ "${ENSTORE_OUT:-x}" != "x" ]
+then
+    mkdir -p ${ENSTORE_OUT}
+    chown enstore ${ENSTORE_OUT}
+    chmod 777 ${ENSTORE_OUT}
+fi
 
 exit 0
