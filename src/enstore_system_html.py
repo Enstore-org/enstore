@@ -131,8 +131,10 @@ if __name__ == "__main__":
     q="select coalesce(sum(size)/1024./1024./1024./1024.,0) from file, volume where file.volume = volume.id and system_inhibit_0 != 'DELETED' and media_type!='null'"
 
     intf  = configuration_client.ConfigurationClientInterface(user_mode=0)
-    config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-    acc            = config_server_client.get("database", {})
+#    config_server_client  = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
+    config_server_client_dict = configuration_client.get_config_dict()
+    acc            = config_server_client_dict.get("database", {})
+    
     bytes=0.
     try: 
         db = pg.DB(host  = acc.get('db_host', "localhost"),
@@ -149,7 +151,11 @@ if __name__ == "__main__":
         Trace.handle_error()
         pass
 
-    main_web_page=EnstoreSystemHtml(server.get_system_name(),"%8.2f"%(bytes), remote)
+    name=server.get_system_name()
+    if not name:
+        name="unknown"
+        
+    main_web_page=EnstoreSystemHtml(name,"%8.2f"%(bytes), remote)
 
     html_dir=None
     if server.inq_d.has_key("html_file"):
