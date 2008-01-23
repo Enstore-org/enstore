@@ -51,7 +51,7 @@ if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
 	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
 fi
 if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
-	stat -c %N /usr/local/etc/setups.sh | grep setups_rpm.sh
+	stat -c %N $RPM_BUILD_ROOT/usr/local/etc/setups.sh | grep setups_rpm.sh
 	if [ $? -eq 0 ];then
 		cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 	fi
