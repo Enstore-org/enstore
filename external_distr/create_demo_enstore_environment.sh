@@ -80,7 +80,7 @@ fi
 if [ ! -f $ENSTORE_CONFIG_FILE -a $this_host = $ENSTORE_CONFIG_HOST ];
 then
     echo "will install a minimal enstore configuration file: ${ENSTORE_DIR}/etc/minimal_enstore.conf"
-    echo "it can be replased later"
+    echo "it can be replaced later"
     cp -p ${ENSTORE_DIR}/etc/minimal_enstore.conf $ENSTORE_CONFIG_FILE
     host_name=`uname -n | cut -f1 -d\.`
     sed -e "s?the_host=?the_host=\'$this_host\'?" $ENSTORE_CONFIG_FILE | sed -e "s?for_map=?for_map=\'$host_name\'?" > /tmp/enstore_config_file
@@ -98,5 +98,12 @@ echo ${host_name} > ${FARMLETS_DIR}/${host_name}
 echo ${host_name} > ${FARMLETS_DIR}/enstore
 echo ${host_name} > ${FARMLETS_DIR}/enstore-down
 chown -R enstore.enstore $ENSTORE_HOME
+
+if [ "${ENSTORE_OUT:-x}" != "x" ]; then
+    if [ ! -d ${ENSTORE_OUT} ]; then
+	mkdir -p ${ENSTORE_OUT}
+	chmod 777 ${ENSTORE_OUT}
+    fi
+fi
 
 exit 0
