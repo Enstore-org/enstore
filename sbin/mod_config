@@ -22,6 +22,7 @@ case $node in
           ;;
    ${ENSTORE_CONFIG_HOST})
           loadit=1
+	  ;;
    ${short_name})
           loadit=1
           ;;	  
