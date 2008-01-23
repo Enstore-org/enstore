@@ -27,21 +27,17 @@ def copy_it(src, dst):
     print "Installing crontab:", crontab
 
     try:
-        sf = open(src, "r")
-        df = open(dst, "w")
-
-        data = sf.readlines()
-        df.writelines(data)
+        # it is very important that we copy with the mtime of the source
+        os.system('cp --preserve=mode,timestamps %s %s'%(src, dst))
         print "Copied %s to %s." % (src, dst)
 
-        sf.close()
-        df.close()
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
 
     try:
         os.chmod(dst, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+        os.chown(dst, 0,0)
     except:
         pass
 
