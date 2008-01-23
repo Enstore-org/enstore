@@ -47,14 +47,36 @@ make clean
 make
 
 %install
-if [ ! -d $RPM_BUILD_ROOT/usr/local/etc ]; then
-	mkdir -p $RPM_BUILD_ROOT/usr/local/etc
-fi
-if [ ! -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh ];then
-	stat -c %N $RPM_BUILD_ROOT/usr/local/etc/setups.sh | grep setups_rpm.sh
-	if [ $? -eq 0 ];then
-		cp -r $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+if [ ! -d "$RPM_BUILD_ROOT/usr/local/etc" ];
+then
+    mkdir -p /usr/local/etc
+    install=1
+else
+install=0
+    if [ -r "$RPM_BUILD_ROOT/usr/local/etc/setups.sh" ]; then
+	grep "e_home=" $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+	if [ $? -ne 0 ]; then
+	    # real ups setup file
+	    d=`date +%F.%R`
+	    mv -f $RPM_BUILD_ROOT/usr/local/etc/setups.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh.$d
+	    install=1
+	else
+	    # check if e_home is empty and if yes install correct value
+	    s=` grep "e_home=" $RPM_BUILD_ROOT/usr/local/etc/setups.sh | sed -e "s/^ *//" | sed -e "s/^[\t] *//" | cut -f2 -d"="` > /dev/null 2>&1
+	    if [ -z $s ]; then
+		rm -rf $RPM_BUILD_ROOT/usr/local/etc/setups.sh
+		install=1
+	    fi	
 	fi
+    else
+	install=1
+    fi
+fi
+    
+if [ $install -eq 1 ]; then 
+    sed -e "s?e_home=?e_home=$ENSTORE_HOME?" $RPM_BUILD_ROOT/%{prefix}/external_distr/setups.sh > $RPM_BUILD_ROOT/usr/local/etc/setups_rpm.sh
+    
+    ln -s $RPM_BUILD_ROOT/usr/local/etc/setups_rpm.sh $RPM_BUILD_ROOT/usr/local/etc/setups.sh
 fi
 
 %pre
