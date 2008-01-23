@@ -15,11 +15,14 @@ fi
 #node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 node=`$ENSTORE_DIR/sbin/hostname.py | cut -f1 -d\.`
 gang=`gang`
+short_name=`echo $ENSTORE_CONFIG_HOST | cut -f1 -d\.`
 case $node in
    stkensrv2|d0ensrv2|cdfensrv2)
           loadit=1
           ;;
    ${ENSTORE_CONFIG_HOST})
+          loadit=1
+   ${short_name})
           loadit=1
           ;;	  
    *)     loadit=0
