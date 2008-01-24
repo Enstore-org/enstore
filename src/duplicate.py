@@ -76,7 +76,21 @@ def duplicate_metadata(bfid1, src, bfid2, dst):
 	# register duplication
 	return dm.make_duplicate(bfid1, bfid2)
 
+# This is to change the behavior of migrate.log_swapped()
+# log_swapped_and_closed(bfid1, bfid2, db)
+def log_swapped_and_closed(bfid1, bfid2, db):
+	# log_swapped
+	q = "update migration set swapped = now(), checked = now(), closed = now() where \
+		src_bfid = '%s' and dst_bfid = '%s';"%(bfid1, bfid2)
+	try:
+		db.query(q)
+	except:
+		exc_type, exc_value = sys.exc_info()[:2]
+		migrate.error_log("LOG_SWAPPED", str(exc_type), str(exc_value), q)
+	return
+			
 migrate.swap_metadata = duplicate_metadata
+migrate.log_swapped = log_swapped_and_closed
 
 # init() -- initialization
 
@@ -88,6 +102,7 @@ def usage():
 	print "  %s <file list>"%(sys.argv[0])
 	print "  %s --bfids <bfid list>"%(sys.argv[0])
 	print "  %s --vol <volume list>"%(sys.argv[0])
+	print "  %s --vol-with-deleted <volume list>"%(sys.argv[0])
 
 if __name__ == '__main__':
 	if len(sys.argv) < 2 or sys.argv[1] == "--help":
@@ -114,6 +129,10 @@ if __name__ == '__main__':
 		migrate.icheck = False
 		for i in sys.argv[2:]:
 			migrate.migrate_volume(i)
+	elif sys.argv[1] == "--vol-with-deleted":
+		migrate.icheck = False
+		for i in sys.argv[2:]:
+			migrate.migrate_volume(i, with_deleted = True)
 	elif sys.argv[1] == "--bfids":
 		files = []
 		for i in sys.argv[2:]:
