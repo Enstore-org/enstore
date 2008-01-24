@@ -146,6 +146,6 @@ if __name__ == '__main__':
 				files.append(f.bfid)
 			except:
 				# abort on error
-				error_log("can not find bifd of", i)
+				migrate.error_log("can not find bifd of", i)
 				sys.exit(1)
 		migrate.migrate(files)
