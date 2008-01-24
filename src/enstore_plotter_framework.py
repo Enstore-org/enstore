@@ -17,10 +17,7 @@ class EnstorePlotterFramework:
     def __init__(self):
         self.module_list=[]
         intf       = configuration_client.ConfigurationClientInterface(user_mode=0)
-        #self.csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
-        self.csc   = configuration_client.get_config_dict()
-        self.csd_dict = configuration_client
-        
+        self.csc   = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
     def get_configuration_client(self):
         return self.csc
     def add(self,module):
