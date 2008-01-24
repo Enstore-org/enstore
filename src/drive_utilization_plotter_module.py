@@ -47,13 +47,14 @@ class DriveUtilizationPlotterModule(enstore_plotter_module.EnstorePlotterModule)
     def fill(self,frame):
         
        #  here we create data points 
-        
-        acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
+
+        acc = {} 
+        acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, 5, 2)
         db = pg.DB(host  = acc.get('dbhost', 'localhost'),
                    dbname= acc.get('dbname', 'accounting'),
                    port  = acc.get('dbport', 5432),
                    user  = acc.get('dbuser', 'enstore'))
-        self.install_dir = frame.get_configuration_client().get(enstore_constants.INQUISITOR, {}).get('html_file','./')
+        self.install_dir = frame.get_configuration_client().get(enstore_constants.INQUISITOR, 5,2).get('html_file','./')
 
         now_time  = time.time()
         then_time = now_time - self.days_ago*24*3600

@@ -36,11 +36,13 @@ class SlotUsagePlotterModule(enstore_plotter_module.EnstorePlotterModule):
             self.smooth_num=self.get_parameter("smooth_num")
         if self.get_parameter("time_in_days"):
             self.time_in_days=self.get_parameter("time_in_days")
-        inq =  frame.get_configuration_client().get(enstore_constants.INQUISITOR, {})
+        inq = {} 
+        inq =  frame.get_configuration_client().get(enstore_constants.INQUISITOR, 5, 2 )
         self.dest_dir=inq.get('html_file','')
     def fill(self,frame):
         self.data=[]
-        acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, {})
+        acc = {}
+        acc = frame.get_configuration_client().get(enstore_constants.ACCOUNTING_SERVER, 5, 2)
         db = pg.DB(host  = acc.get('dbhost', "localhost"),
                    dbname= acc.get('dbname', "accounting"),
                    port  = acc.get('dbport', 5432),
