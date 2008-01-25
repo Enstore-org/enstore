@@ -207,10 +207,15 @@ def main(intf):
         ## information includes the location of the ENSTORESTATUSFILE
         ## on each Enstore system's web nodes, and the name of each
         ## Enstore system's web node.
+
+
         cur_host = enstore_functions2.strip_node(value[0])
         cur_port = value[1]
         cur_csc = configuration_client.ConfigurationClient((value[0],
                                                             cur_port))
+        #The dictionary is the format HtmlStatusOnlyFile.write() expects.
+        nodes[cur_host] = "%s mass storage" % (name,)
+        
         inquisitor = cur_csc.get('inquisitor',  timeout = 3, retry = 3)
         if not e_errors.is_ok(inquisitor):
             # there was an error, mark enstore as down
@@ -247,7 +252,7 @@ def main(intf):
                                            "%s%s" % (new_import_filename,
                                                      ".py"))
         #The dictionary is the format HtmlStatusOnlyFile.write() expects.
-        nodes[cur_host] = "%s mass storage" % (name,)
+        #nodes[cur_host] = "%s mass storage" % (name,)
 
         if web_node == thisNode:
             #Local copy.
@@ -281,7 +286,6 @@ def main(intf):
         else:
             last_status_d[cur_host] = 0
 
-
     #Update persistent information about how long each system has
     # been down (or hopefully not down).
     set_last_status(last_status_file, last_status_d)
@@ -297,7 +301,6 @@ def main(intf):
     only_file.write(status_d, nodes)
     only_file.close()
     only_file.install()
-
 class EnstoreOverallStatusInterface(option.Interface):
     def __init__(self, args=sys.argv, user_mode=0):
 
