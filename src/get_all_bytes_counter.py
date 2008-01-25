@@ -90,7 +90,17 @@ if __name__ == "__main__":
         server_name,server_port = servers.get(server)
         if ping(server_name) == ALIVE:
             csc   = configuration_client.ConfigurationClient((server_name, server_port))
+            inq_d = {}
+            inq_d = csc.get(enstore_constants.INQUISITOR,3,3)
+            if not e_errors.is_ok(inq_d):
+                dead_nodes.append(server)
+                continue
+           
             config_dict = csc.dump_and_save(5, 2)
+            if not e_errors.is_ok(config_dict):
+                dead_nodes.append(server)
+                continue
+
             inq_d = config_dict.get(enstore_constants.INQUISITOR,{})
             html_dir = inq_d.get("html_file","/fnal/ups/prd/www_pages/enstore")
             byte_me_file=os.path.join(html_dir,CTR_FILE)
@@ -116,15 +126,17 @@ if __name__ == "__main__":
     else:
 	# find out if we have any dead nodes
 	if dead_nodes:
-	    str = "(does not include - "
+	    str = "(does not include "
 	    dead_nodes.sort()
 	    for server in dead_nodes:
-		str = "%s, %s)"%(str, server)
+		str = str + server+","
+            str = str[0:-1] +")"
 	else:
 	    str = ""
+            
 	# output the total count
 	file = open(TOTAL_FILE, 'w')
-	file.write("%.3f %s %s\n"%(total, UNITS, str))
+        file.write("%.3f %s %s\n"%(total, UNITS, str))
 	file.close()
 
         file = open(TOTAL_BYTES_FILE, 'w')
