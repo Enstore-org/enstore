@@ -98,7 +98,8 @@ class ConfigurationDict:
                             if (self.serverlist[configured_key][1] == 
                                 self.configdict[key]['hostip'] and 
                                 self.serverlist[configured_key][2] == 
-                                self.configdict[key]['port']):
+                                self.configdict[key]['port'] and
+                                self.configdict[key]['port'] !=-1):
                                 msg = "Configuration Conflict detected for "\
                                       "hostip "+\
                                       repr(self.configdict[key]['hostip'])+ \
