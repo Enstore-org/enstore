@@ -94,7 +94,7 @@ while read f1 f2; do eval $f1=$f2; done < /tmp/log_conf.tmp
 rm -rf /tmp/log_conf.tmp
 
 #log_dir=`dirname $log_file_path`
-if [ -d $log_dir ];
+if [ -d $log_file_path ];
 then
     chown -R enstore.enstore $log_file_path
 fi
