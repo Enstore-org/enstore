@@ -76,7 +76,7 @@ then
     /sbin/chkconfig --add pnfs
     /sbin/chkconfig pnfs on
     #echo "Starting pnfs"   # do not start pnfs as it will crash if there is no database
-    #/etc/init.d/pnfs start
+	#/etc/init.d/pnfs startnst
 fi
 
 # install compress
@@ -93,9 +93,9 @@ $ENSTORE_DIR/external_distr/extract_config_parameters.py log_server | grep "log_
 while read f1 f2; do eval $f1=$f2; done < /tmp/log_conf.tmp
 rm -rf /tmp/log_conf.tmp
 
-log_dir=`dirname $log_file_path`
+#log_dir=`dirname $log_file_path`
 if [ -d $log_dir ];
 then
-    chown -R enstore.enstore `dirname $log_file_path`
+    chown -R enstore.enstore $log_file_path
 fi
 
