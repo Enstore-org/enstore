@@ -31,7 +31,6 @@
 <li><a href="#pserver">1.1.2 <em>Pnfs</em> Server Installation</a>
 <li><a href="#pclient">1.1.3 <em>Pnfs</em> Client Installation</a>
 <li><a href="#pcmd">1.1.4 pcmd: Enstore related <em>pnfs</em> commands</a>
-<li><a href="#volmaps">1.1.5 <em>Pnfs</em> Volume Maps</a>
 <li><a href="#encp">1.2 <em>Encp</em></a></li>
 <li><a href="#encp_options">1.2.1 <em>Encp</em> command line options</a></li>
 <li><a href="#encp_throttle">1.2.2 Throttling in <em>encp</em></a></li>
@@ -44,32 +43,37 @@
 <li><a href="#volume_clerk">1.3.1 Volume Clerk</a>
 <li><a href="#volume_clerk_cmds">1.3.1.1 Command Line Control of the Volume Clerk</a>
 <li><a href="#file_clerk">1.3.2 File Clerk</a>
-<li><a href="#file_clerk_cmds">1.3.2.1 Command Line Control of the File Clerk</a>
-<li><a href="#library_manager">1.3.3 Library Manager</a>
-<li><a href="#user_request">1.3.3.1 Users' Requests</a>
-<li><a href="#mover_request">1.3.3.2 Movers' Requests</a>
-<li><a href="#lm_commands">1.3.3.3 Library Manager Commands</a>
-<li><a href="#mover">1.3.4 Mover</a>
-<li><a href="#mover_cmds">1.3.4.1 Command Line Control of the Mover</a>
-<li><a href="#mover_config">1.3.4.2 Mover Config File Values</a>
-<li><a href="#config_server">1.3.5 Configuration Server</a>
-<li><a href="#config_server_cmds">1.3.5.1 Command Line Control of the Configuration Server</a>
-<li><a href="#log_server">1.3.6 Log Server</a>
+<li><a href="#file_clerk_cmds">1.3.2.1 Command Line Control of the
+	  File Clerk</a>
+<li><a href="#info_server">1.3.3 Info Server</a>
+
+<li><a href="#library_manager">1.3.4 Library Manager</a>
+<li><a href="#user_request">1.3.4.1 Users' Requests</a>
+<li><a href="#mover_request">1.3.4.2 Movers' Requests</a>
+<li><a href="#lm_commands">1.3.4.3 Library Manager Commands</a>
+<li><a href="#mover">1.3.5 Mover</a>
+<li><a href="#mover_cmds">1.3.5.1 Command Line Control of the Mover</a>
+<li><a href="#mover_config">1.3.5.2 Mover Config File Values</a>
+<li><a href="#config_server">1.3.6 Configuration Server</a>
+<li><a href="#config_server_cmds">1.3.6.1 Command Line Control of the Configuration Server</a>
+<li><a href="#log_server">1.3.7 Log Server</a>
 <li><a href="#media_changer">1.3.7 Media Changer</a>
-<li><a href="#inquisitor">1.3.8 Inquisitor</a>
-<li><a href="#inquisitor_cmds">1.3.8.1 Command Line Control of the Inquisitor</a>
-<li><a href="#inquisitor_config">1.3.8.2 Inquisitor Config File Values</a>
-<li><a href="#inquisitor_outputs">1.3.8.3 Example Inquisitor Reports</a>
-<li><a href="#inquisitor_ascii_status">1.3.8.3.1 Example Ascii Status File</a>
-<li><a href="#inquisitor_html_status">1.3.8.3.2 Example Html Status Snapshot File</a>
-<li><a href="#inquisitor_encp_status">1.3.8.3.3 Example <em>Encp</em> History Snapshot File</a>
-<li><a href="#inquisitor_plot_ita">1.3.8.3.4 Example Individual Transfer Activity Plot</a>
-<li><a href="#inquisitor_plot_btd">1.3.8.3.5 Example Bytes Transferred/Day Plot</a>
-<li><a href="#alarm_server">1.3.9 Alarm Server</a>
-<li><a href="#alarm_server_cmds">1.3.9.1 Command Line Control of the Alarm Server</a>
-<li><a href="#alarm_server">1.3.9.2 Alarm Server Config File Values</a>
-<li><a href="#alarm_server">1.3.9.3 Ascii Alarm File</a>
-<li><a href="#alarm_server">1.3.9.4 Patrol Alarm File</a>
+<li><a href="#inquisitor">1.3.9 Inquisitor</a>
+<li><a href="#inquisitor_cmds">1.3.9.1 Command Line Control of the Inquisitor</a>
+<li><a href="#inquisitor_config">1.3.9.2 Inquisitor Config File Values</a>
+<li><a href="#inquisitor_outputs">1.3.9.3 Example Inquisitor Reports</a>
+<li><a href="#inquisitor_ascii_status">1.3.9.3.1 Example Ascii Status File</a>
+<li><a href="#inquisitor_html_status">1.3.9.3.2 Example Html Status Snapshot File</a>
+<li><a href="#inquisitor_encp_status">1.3.9.3.3 Example <em>Encp</em> History Snapshot File</a>
+<li><a href="#inquisitor_plot_ita">1.3.9.3.4 Example Individual Transfer Activity Plot</a>
+<li><a href="#inquisitor_plot_btd">1.3.9.3.5 Example Bytes Transferred/Day Plot</a>
+<li><a href="#alarm_server">1.3.10 Alarm Server</a>
+<li><a href="#alarm_server_cmds">1.3.10.1 Command Line Control of the Alarm Server</a>
+<li><a href="#alarm_server">1.3.10.2 Alarm Server Config File Values</a>
+<li><a href="#alarm_server">1.3.10.3 Ascii Alarm File</a>
+<li><a href="#alarm_server">1.3.10.4 Patrol Alarm File</a>
+<li><a href="#acc_server">1.3.11 Accounting Server</a>
+<li><a href="#d_s_server">1.3.11 Drivestat Server</a>
 <li><a href="#server_protocols">1.4 Server Protocols</a>
 <li><a href="#trace">1.5 Trace</a>
 <li><a href="#db">2 Databases in Enstore</a>
@@ -284,8 +288,8 @@ true, real, or certain.
      modules will be used where appropriate, for example, to increase
      performance.
 
-<li> Enstore does not yet support a disk cache or buffer in front of the media.
-     However, one is conceivable and planned for a future release.
+<!-- <li> Enstore does not yet support a disk cache or buffer in front of the media.
+     However, one is conceivable and planned for a future release. -->
 <p>
 </menu>
 
@@ -326,12 +330,15 @@ Enstore has four major kinds of software components:
         <li>Configuration Server
         <li>Volume Clerk
         <li>File Clerk
+	<li>Info Server
         <li>Multiple, distributed Library Managers
         <li>Multiple, distributed Movers
         <li>Media Changer (1 per Library Manager)
         <li>Log Server
         <li>Inquisitor
         <li>Alarm Server
+	<li>Accounting Server
+	<li>Drivestat Server
         </ul>
 <li><em>administration tools</em>
 </ul>
@@ -1067,63 +1074,6 @@ Don't use these unless you can interpret the results:
 </TABLE></center>
 <P>
 
-<h3><a name="volmaps">
-1.1.5 <em>Pnfs</em> Volume Maps
-</h3>
-
-In order to request files from a tape in an optimal transversal, it is
-necessary for the user to know the order of the files on a tape.  It is expected that an
-experiment's catalog will keep this information.  As an additional aid for the user,
-<em>encp</em> creates a duplicate file entry in <em>pnfs</em> (in addition to storing
-the filename and its metadata).  This duplicate entry is organized by file
-families and volumes instead of by the user's directory structure.  The naming
-convention for the duplicate entries is such that the file order on the tape
-could be readily known.  For example, for sequential files on tape, the name
-is just the file number; for files on a disk, it is just the byte
-offset. When a user wanted to know what was on a particular tape, he would
-just look in the duplicate tree to get the files - then he would read the
-necessary information about the linked file from one of the <em>pnfs</em> layers (such
-as the bfid, original file name...) to make his transfer request to the mass
-storage.
-
-Let's say a user transferred a file to mass storage and called it
-/pnfs/enstore/airedale/one.  The file was stored on disk floppy named
-"flop301"  with a byte offset=0 and in a file family named "jon".
-
-<pre>
-$ ls -alsFt /pnfs/enstore/airedale/one
-   0 -rw-rw-r--   1 bakken   root           26 Jul 21 12:09 /pnfs/enstore/airedale/one
-</pre>
-
-The duplicate entry is /pnfs/enstore/volmap/jon/flop301/000000000000
-In the general case, "jon" would be replaced by the file family name,
-"flop301" would become the volume name and "000000000000" would be the file
-order on tape.
-
-<pre>
-$ ls -alsFt pnfs/enstore/volmap/jon/flop301/000000000000
-   0 -rw-r--r--   1 root     root           26 Jul 21 12:09 /pnfs/enstore/volmap/jon/flop301/000000000000
-</pre>
-
-The original file and the duplicate file contain cross reference information
-to allow the user to get to the other one and enough information to setup a
-transfer. An example of this was shown in the previous section in "pcmd info file"
-
-Consider a few cases.
-<ul>
-<li> If a user wants dozens of files, she can lookup up the volume name where
-each file is stored and group her requests so files on one tape are grouped
-together.
-<li>If a user wants a dozen files from a certain file family but doesn't care
-which ones, she can look into the volmap area and pick out files on a specific
-volume and set up the request that way.
-</ul>
-
-Finally, since the user will not have delete authority to the duplicate
-volmap file, this mechanism gives us an automatic trash can facility.  If the
-user deletes his entry in <em>pnfs</em>, we still have the duplicate entry and can
-"easily" restore the original.
-
 <hr>
 <h2><a name="encp">
 1.2 <em>Encp</em>
@@ -1734,10 +1684,16 @@ functionality and specific command line interfaces.
  <li>Media Changer - represents a physical device or operator who performs mounts/dismounts of volumes on drives.
  <li>Inquisitor - monitors Enstore system status and activity.
  <li>File Clerk - administers file information (<it>e.g.</it> - location cookies).
- <li>Volume Clerk - administers volume information (<it>e.g.</it> bytes left).
+ <li>Volume Clerk - administers volume information (<it>e.g.</it>
+	      bytes left).
+ <li>Info Server - provides read only functions of File and Volume clerks
  <li>Log Server - formats and records Enstore system log messages.
  <li>Admin Clerk - allows administrative access to the Enstore system.
- <li>Alarm Server - analyzes Enstore system status and activity information to determine system health.
+ <li>Alarm Server - analyzes Enstore system status and activity
+		information to determine system health.
+ <li>Accounting Server - provides accounting of data transfers.
+ <li>Drivestat server - records tapedrives usage statistics
+
 </ul>
 <h3><a name="servers_cmds">
 1.3.0.1 General Command Line Control of Servers
@@ -1745,29 +1701,31 @@ functionality and specific command line interfaces.
 Enstore servers implement a common uniform interface.  Common parsing is used
 to determine command line options.  All servers support a set of general options
 as well as those specific in functionality.  Control of the servers is done via
-<em>ecmd</em>.  This command provides a general way of accessing the individual
+<em>enstore</em> command.  This command provides a general way of accessing the individual
 servers as well as the Enstore system as a whole.  Examples of using this command
-to accomplish this are given following the table of general options. <em>ecmd</em>
+to accomplish this are given following the table of general options. <em>enstore</em>
 recognizes the following server names when sending commands to the individual
 servers:
 <p>
+
 <ul>
- <li>Configuration Server - cc
- <li>Library Manager - lmc
- <li>Mover - mvc
- <li>Media Changer - mcc
- <li>Inquisitor - ic
- <li>File Clerk - fcc
- <li>Volume Clerk - vcc
- <li>Log Server - lc
- <li>Alarm Server - ac
+ <li>Configuration Server - conf[iguration]
+ <li>Library Manager - lib[rary]
+ <li>Mover - mov[er]
+ <li>Media Changer - med[ia]
+ <li>Inquisitor - inq[uisitor]
+ <li>File Clerk - fil[e]
+ <li>Volume Clerk - vol[ume]
+ <li>Info Server - inf[o]
+ <li>Log Server - log
+ <li>Alarm Server - ala[rm]
 </ul>
-For example : <em>ecmd ic --help</em>
+For example : <em>enstore inq --help</em>
 <p>
-When <em>ecmd</em> is used to start/stop servers, the server must be specified by
+When <em>enstore</em> is used to start/stop servers, the server must be specified by
 using the full Ascii name specified in the configuration file. For example:<br>
 <ul>
-<li>config
+<li>configuration_server
 <li>rip6.library_manager
 <li>rip6.mover
 <li>rip6.media_changer
@@ -1791,44 +1749,41 @@ using the full Ascii name specified in the configuration file. For example:<br>
 <td NOSAVE>None</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>specify the time to wait for a response from the server</td>
-<td NOSAVE>--alive_rcv_timeout=value</td>
-<td NOSAVE>10</td>
-</tr>
-<tr NOSAVE>
-<td NOSAVE>specify the number of times to retry sending a message to a server</td>
-<td NOSAVE>--alive_retries=value</td>
+<td NOSAVE>turn on more alarms</td>
+<td NOSAVE>--do-alarm levels</td>
 <td NOSAVE>None</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>specify the hostname where the configuration server is running</td>
-<td NOSAVE>--config_host=value</td>
-<td NOSAVE>environmental variable, ENSTORE_CONFIG_HOST, set by the UPS setup command</td>
+<td NOSAVE>turn on more verbose logging(DEBUGLOG)</td>
+<td NOSAVE>--do-log levels</td>
+<td NOSAVE>None</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>specify the port number that the configuration server responds to</td>
-<td NOSAVE>--config_port=value</td>
-<td NOSAVE>environmental variable, ENSTORE_CONFIG_PORT, set by the UPS setup command</td>
+<td NOSAVE>turn on more verbose output(stdout)</td>
+<td NOSAVE>--do-print levels</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>turn off more alarms</td>
+<td NOSAVE>--dont-alarm levels</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>turn off more verbose logging(DEBUGLOG file)</td>
+<td NOSAVE>--dont-log levels</td>
+<td NOSAVE>None</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>turn off more verbose output(stdout)</td>
+<td NOSAVE>--dont-print levels></td>
+<td NOSAVE>None</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>print a short help message about using the server</td>
 <td NOSAVE>--help</td>
 <td NOSAVE>None</td>
 </tr>
-<tr NOSAVE>
-<td NOSAVE>change the amount of information printed about the transfer (in the server)</td>
-<td NOSAVE>--server_verbose=value</td>
-<td NOSAVE>None</td>
-</tr>
-<tr NOSAVE>
-<td NOSAVE>change the amount of information printed about the transfer (in the client)</td>
-<td NOSAVE>--verbose=value</td>
-<td NOSAVE>0 (no printing)</td>
-</tr>
 </table>
-<p>
-It should be noted that currently the <em>help</em> option produces insufficient 
-and inelegant information.  This will be fixed in the future.
 <p>
 <table BORDER COLS=3 WIDTH="100%" NOSAVE >
 <TH COLSPAN=3 VALIGN=CENTER>Enstore System Command Line Control</TH>
@@ -1838,47 +1793,59 @@ and inelegant information.  This will be fixed in the future.
 </tr>
 <tr NOSAVE>
 <td NOSAVE>start the Enstore system on the current node</td>
-<td NOSAVE>ecmd start</td>
+<td NOSAVE>enstore start</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>start only the file_clerk on the current node</td>
-<td NOSAVE>ecmd start --just file_clerk</td>
+<td NOSAVE>enstore start --just file_clerk</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>start the Enstore system on the whole Enstore cluster</td>
-<td NOSAVE>ecmd Estart</td>
+<td NOSAVE>enstore Estart</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>start only the file_clerk on stkensrv0</td>
+<td NOSAVE>enstore Estart stkensrv0 "--just file_clerk"</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop the Enstore system on the current node</td>
-<td NOSAVE>ecmd stop</td>
+<td NOSAVE>enstore stop</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop only the log_server on the current node</td>
-<td NOSAVE>ecmd stop --just log_server</td>
+<td NOSAVE>enstore stop --just log_server</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop the Enstore system on the whole Enstore cluster</td>
-<td NOSAVE>ecmd Estop</td>
+<td NOSAVE>enstore Estop</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>stop only the file_clerk on stkensrv0</td>
+<td NOSAVE>enstore Estop stkensrv0 "--just file_clerk"</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop and then start the Enstore system</td>
-<td NOSAVE>ecmd restart</td>
+<td NOSAVE>enstore restart</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop and then restart only the Inquisitor on the current node</td>
-<td NOSAVE>ecmd restart --just inq</td>
+<td NOSAVE>enstore restart --just inq</td>
 </tr>
 <tr NOSAVE>
 <td NOSAVE>stop and then start the Enstore system on the whole Enstore cluster</td>
-<td NOSAVE>ecmd Erestart</td>
+<td NOSAVE>enstore Erestart</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>display the mount status on the EMASS robot</td>
-<td NOSAVE>ecmd emass</td>
+<td NOSAVE>stop and then start only the file_clerk on stkensrv0</td>
+<td NOSAVE>enstore Estop stkensrv0 "--just file_clerk"</td>
 </tr>
 <tr NOSAVE>
-<td NOSAVE>display the Enstore-associated processes on the whole Enstore cluster</td>
-<td NOSAVE>ecmd Esys</td>
+<td NOSAVE>Display enstore related processes on the local host</td>
+<td NOSAVE>EPS</td>
+</tr>
+<tr NOSAVE>
+<td NOSAVE>Display enstore related processes for the whole Enstore system</td>
+<td NOSAVE>enstore EPS</td>
 </tr>
 </table>
 <p>
@@ -2008,47 +1975,47 @@ The Volume Clerk does the following operations:
 <h4><a name="volume_clerk_cmds">
 1.3.1.1 Command Line Control of the Volume Clerk
 </h4>
-The user may interact with the Volume Clerk directly through the <em>ecmd vcc</em>
+The user may interact with the Volume Clerk directly through the <em>enstore vcc</em>
 command.<p>
 <center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 <th> Function
 <th> Command
 <tr>
 <td valign=top>show the name of all the volumes
-<td valign=top>ecmd vcc --vols
+<td valign=top>enstore vcc --vols
 <tr>
 <td valign=top>show volume information
-<td valign=top>ecmd vcc --vol volume_name
+<td valign=top>enstore vcc --vol volume_name
 <tr>
 <td valign=top>add a volume
-<td valign=top>ecmd vcc --addvol library file_family media_type volume_name capacity remaining_capacity
+<td valign=top>enstore vcc --addvol library file_family media_type volume_name capacity remaining_capacity
 <tr>
 <td valign=top>delete a volume
-<td valign=top>ecmd vcc --delvol volume_name
+<td valign=top>enstore vcc --delvol volume_name
 <tr>
 <td valign=top>restore a volume (do not restore files)
-<td valign=top>ecmd vcc --restorevol volume_name
+<td valign=top>enstore vcc --restorevol volume_name
 <tr>
 <td valign=top>restore a volume (restore files)
-<td valign=top>ecmd vcc --all --restorevol volume_name
+<td valign=top>enstore vcc --all --restorevol volume_name
 <tr>
 <td valign=top>find an appropriate volume on which to write the file
-<td valign=top>ecmd vcc --nextvol library_name minimal_remaining_bytes file_family
+<td valign=top>enstore vcc --nextvol library_name minimal_remaining_bytes file_family
 <tr>
 <td valign=top>put volume into a new library
-<td valign=top>ecmd vcc --newlib volume_name library_name
+<td valign=top>enstore vcc --newlib volume_name library_name
 <tr>
 <td valign=top>clear system inhibitors to the volume
-<td valign=top>ecmd vcc -clrvol volume_name
+<td valign=top>enstore vcc -clrvol volume_name
 <tr>
 <td valign=top>mark no access to this volume
-<td valign=top>ecmd vcc --noavol volume_name
+<td valign=top>enstore vcc --noavol volume_name
 <tr>
 <td valign=top>set the volume as read only
-<td valign=top>ecmd vcc --rdovol volume_name
+<td valign=top>enstore vcc --rdovol volume_name
 <tr>
 <td valign=top>start/stop backup of volume journals
-<td valign=top>ecmd vcc --backup
+<td valign=top>enstore vcc --backup
 </table></center>
 <p>
 <hr>
@@ -2106,38 +2073,41 @@ The File Clerk supports the following requests:
 <h4><a name="file_clerk_cmds">
 1.3.2.1 Command Line Control of the File Clerk
 </h4>
-Users may interact with File Clerk directly through <em>ecmd fcc</em>
+Users may interact with File Clerk directly through <em>enstore fcc</em>
 command.
 <p><center><TABLE BORDER=1 CELLPADDING=2 CELLSPACING=0>
 <th> Function
 <th> Command
 <tr>
 <td valign=top>show bfid of all the files
-<td valign=top>ecmd fcc --bfids
+<td valign=top>enstore fcc --bfids
 <td valign=top>
 <tr>
 <td valign=top>show file information
-<td valign=top>ecmd fcc --bfid=bit-field-ID
+<td valign=top>enstore fcc --bfid=bit-field-ID
 <tr>
 <td valign=top>start/stop backup of volume journals
-<td valign=top>ecmd fcc --backup
+<td valign=top>enstore fcc --backup
 <tr>
 <td valign=top>declare file deleted/undeleted
-<td valign=top>ecmd fcc --bfid=BFID --deleted={yes/no}
+<td valign=top>enstore fcc --bfid=BFID --deleted={yes/no}
 <tr>
 <td valign=top>restore file by name
-<td valign=top>ecmd fcc --restore="file_name"
+<td valign=top>enstore fcc --restore="file_name"
 <tr>
 <td valign=top>restore file by name and restore a path
-<td valign=top>ecmd fcc --r --restore="file_name"
+<td valign=top>enstore fcc --r --restore="file_name"
 </table></center><p>
 <hr>
 <h3><a name="library_manager">
 1.3.3 Library Manager
 </h3>
 The Library Manager is a server which queues up and dispatches work for
-a virtual library. There is one Library Manager for each virtual library.
-It has two types of clients: 
+a virtual library. There is one Library Manager for each virtual
+	      library.
+The virtual library is the collection of tape volumes of the same
+	      media type in a (robotic) storage and movers that use these tapes.
+The Library Manager has two types of clients: 
 <ol>
 <li><em>Users</em> -- requesting to have their files read or written.
 <li><em>Movers</em> -- seeking to actually read or write files.
@@ -2154,83 +2124,189 @@ Information about Library Managers is contained in the Enstore configuration
 dictionary and is available to clients via the Configuration Server.
 Each Library Manager is specified in the configuration dictionary as follows:
 <pre>
-configdict['rip6.library_manager']   = { 'host':'rip5',
-                                         'port':7506,
-                                          'logname':'RP6LBM' }
-configdict['ait.library_manager']    = { 'host':'rip5',
-                                         'port':7507,
-                                          'logname':'AITLBM' }
-configdict['mam.library_manager']    = { 'host':'rip5',
-                                         'port':7508,
-                                         'logname':'MAMLBM' }
-configdict['dlt.library_manager']    = { 'host':'rip5',
-                                         'port':7509,
-                                         'logname':'DLTLBM' }
-configdict['red50.library_manager'] = { 'host':'rip5',
-                                         'port':7510,
-                                         'logname':'RD5LBM' }
-configdict['red20.library_manager'] = { 'host':'rip5',
-                                         'port':7511,
-                                         'logname':'RD2LBM' }
-where:
+configdict['cdf.library_manager']       = { 'host':'cdfensrv4', 
+                                            'port':7515,
+					    'logname':'CDFLM',
+					    'norestart':'INQ',
+					    'max_encp_retries':3,
+					    'max_suspect_movers':3,
+					    'max_file_size':(60L*GB) - 1,
+					    'min_file_size':300*MB,
+					    'suspect_volume_expiration_time':3600*24,
+					    'legal_encp_version':legal_encp_version,
+					    'CleanTapeVolumeFamily': '9940ACLN.CleanTapeFileFamily.noWrapper',
+					    }
+
+configdict['CDF-9940B.library_manager'] = { 'host':'cdfensrv4', 
+                                            'port':7522,
+					    'logname':'9940BLM',
+					    'norestart':'INQ',
+					    'max_encp_retries':3,
+					    'max_file_size':(200L*GB) - 1,
+					    'min_file_size':300*MB,
+					    'suspect_volume_expiration_time':3600*24,
+					    'legal_encp_version':legal_encp_version,
+					    'CleanTapeVolumeFamily': '9940BCLN.CleanTapeFileFamily.noWrapper',
+					    }
 
 <b>*.library_manager</b> is the name of the Library Manager.
-<b>host</b> is the host name where the Library Manager runs.
-<b>port</b> is the Library Manager's command communication port.
-<b>logname</b> is a name identifying the Library Manager in the log file.
+<p>
+Below is the description of all library manager (LM) keys
+<center><TABLE BORDER COLS=3 WIDTH="100%" NOSAVE >
+<TR>
+<TD NOSAVE><B>KEY</B></TD>
+<TD NOSAVE><B>DESCRIPTION</B></TD>
+<TD NOSAVE><B>DEFAULT</B></TD>
+</TR>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>host</b></TD>
+<TD NOSAVE>host name where the server runs.</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>port</b></TD>
+<TD NOSAVE>command communication port</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>logname</b></TD>
+<TD NOSAVE>name identifying the server in the log file</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>lock</b></TD>
+<TD NOSAVE> if specified LM will start in this state. Allowed
+values:locked, unlocked, ignore, pause, nowrite, noread</TD>
+<TD NOSAVE>unlocked<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>max_suspect_movers</b></TD>
+<TD NOSAVE>if number of suspect movers on which a
+given volume failed >= of max_suspect_movers, this volume will be set
+to NOACCESS state.</TD>
+<TD NOSAVE>3<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>suspect_volume_expiration_time </b></TD>
+<TD NOSAVE>remove entry from suspect volume list after this period of time</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>min_file_size</b></TD>
+<TD NOSAVE>minimal file size.</TD>
+<TD NOSAVE>0<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>max_file_size</b></TD>
+<TD NOSAVE>maximal size of the file allowed by this
+library.</TD>
+<TD NOSAVE>2GB-2kB<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>blank_error_increment</b></TD>
+<TD NOSAVE>do not set volume to NOACCESS in case
+of FTT_EBLANK error until the number of erros exceeds
+max_suspect_movers+blank_error_increment.</TD>
+<TD NOSAVE>5<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>legal_encp_version</b></TD>
+<TD NOSAVE>minimal encp version number allowed to acess enstore</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>CleanTapeVolumeFamily</b></TD>
+<TD NOSAVE>volume family for cleaning tapes</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+<TR VALIGN=LEFT NOSAVE>
+<TD NOSAVE><b>storage_group_limits</b></TD>
+<TD NOSAVE>minimal amount of drives that can be used by a certain storage group (fair share) when different storage groups compete for tape drives.</TD>
+<TD NOSAVE>None<pre>
+</pre></TD>
+
+</TR>
+</TABLE>
+</center>
+
 </pre>
 <p>
-When the Library Manager starts, it requests from the Configuration Server a list
-of Movers associated with it and stores them into an internal Mover List. Each
-Mover has an entry in the configuration dictionary describing the Library
+Each Mover has an entry in the configuration dictionary describing the Library
 Manager(s) associated with it. This entry can be a single name or a list of
 names:
 <pre>
-configdict['DE14DLT.mover'] = { 'host':'rip1',
-                                'port':7527,
-                                'logname':'DE14MV',
-                                'library':'dlt.library_manager',
-                                'device':'/dev/rmt/tps2d2n',
-                                'driver':'FTTDriver', 
-                                'mc_device':'DE14',
-                                'media_changer':'de14.media_changer' }
+#for single LM 
+
+configdict['9940B15.mover'] = { 'host':'stkenmvr15a', 'data_ip':'stkenmvr15a', 'port':7577, 'logname':'DBT15MV',
+				'statistics_path':'/tmp/enstore/enstore/DBT15MV.stat',
+				'norestart':'INQ',
+				'max_consecutive_failures': mvr_max_consecutive_failures,
+				'max_failures': mvr_max_failures,'compression':0,
+				'check_written_file': b_mvr_check_f,
+				'check_first_written_file':b_mvr_check_1st,
+				'max_buffer':1000*MB,
+				'max_rate': s9940b_rate,
+				'mount_delay':15,
+				'update_interval':5,
+				'library':'CD-9940B.library_manager',
+				'device':'/dev/rmt/tps0d0n', 'driver':'FTTDriver',
+				'mc_device':'0,0,10,17', 'media_changer':'stk.media_changer', 'do_cleaning':'No',
+				'syslog_entry':low_level_diag_pattern,
+				'max_time_in_state':1200,
+				'send_stats':1,
+				}
+
+
+# for multiple LMs
+configdict['9940B16.mover'] = { 'host':'stkenmvr16a', 'data_ip':'stkenmvr16a', 'port':7578, 'logname':'DBT16MV',
+				'statistics_path':'/tmp/enstore/enstore/DBT16MV.stat',
+				'norestart':'INQ',
+				'max_consecutive_failures': mvr_max_consecutive_failures,
+				'max_failures': mvr_max_failures,'compression':0,
+				'check_written_file': b_mvr_check_f,
+				'check_first_written_file':b_mvr_check_1st,
+				'max_buffer':1000*MB,
+				'max_rate': s9940b_rate,
+				'mount_delay':15,
+				'update_interval':5,
+				'library':['CD-9940B.library_manager',
+                                           'test.library_manager'],
+				'device':'/dev/rmt/tps0d0n', 'driver':'FTTDriver',
+				'mc_device':'0,0,10,18', 'media_changer':'stk.media_changer', 'do_cleaning':'No',
+				'syslog_entry':low_level_diag_pattern,
+				'max_time_in_state':1200,
+				'send_stats':1,
+				}
+
 </pre>
 
 <p>
-The Mover List is used to select Movers to do work and evenly distribute
-work between all Movers associated with a Library Manager.
-
-<p>
-When the Mover starts, it sends the command("idle_mover") to all Library Managers
-associated with it to declare itself active and available. If the Library Manager
-does not have this Mover in its Mover List, it will be added to the list upon
-receipt of this command. This Mover - Library Manager initial communication
-allows the dynamic configuration of Movers.
+All movers periodically send messages to their library
+		managers, notifying library managers about state of the
+		mover. If mover is in the IDLE or HAVE_BOUND state the
+		library manager can send a work to this mover from the
+		list of its pending requests. The work dispatching
+		will be discucced later.
 
 <h3><a name="user_request">
 1.3.3.1 Users' Requests
 </h3>
+Users' requests to the Library Manager can be divided into 2
+	      categories: data requests and inquiries.
+Data requests are the tape ( or other media) write or read requests.
+Inquiries are the requests about libaray manager internal state and
+	      resources.
+<em>encp</em> is the major client application for data trasferring
+	      data between user and end enstore. encp can issue write
+	      or read request.  
 <dl>
 <dt>Writes into the system
 <dd>Based on the user's <em>encp</em> destination filename, a <em>pnfs</em> tag
 associated with the destination directory, identifies
     the library for a write request allowing the <em>encp</em> program to compose
     a write request and contact the appropriate Library Manager
-    directly.
+    directly.The request is
     The Library Manager queues the work, and acknowledges the request.
-    When a write request is completed the Library Manager will send
-    "unbind volume" message to the mover and it will dismount the corresponding
-     volume.
-    The Library Manager does not know that there is another
-     request for the same volume coming a little bit later. However the User
-     knows. To inform the Library Manager that there may be another request for
-     the same volume, the user supplies a "delayed_dismount" flag in a current
-     request. If this flag is set, the Library Manager will not dismount the
-     volume even if there are no current requests for it. Instead it will
-     postpone the dismount for a certain period of time and, if there are
-     still no requests for this volume after a time out, the Library Manager will
-     communicate with the corresponding Mover to dismount the volume.
-
 <dt>Reads from the system
 <dd>Given the fact that users may mv the <em>pnfs</em> files, on reads from the system,
      <em>pnfs</em> can only provide the bit
@@ -2401,7 +2477,7 @@ for presentation.
      Sample output from these commands:<br><br>
 <b>getwork</b>
 <pre>
-$ ecmd lmc --getwork sphinxdisk.library_manager
+$ enstore lmc --getwork sphinxdisk.library_manager
 [{'callback_addr': ('131.225.81.23', 7600),
   'encp': {'adminpri': -1,
            'agetime': 0,
@@ -2617,7 +2693,7 @@ admin_clerk_client.py',
 </pre>
 <b>getmoverlist</b>
 <pre>
-$ ecmd lmc --getmoverlist sphinxdisk.library_manager
+$ enstore lmc --getmoverlist sphinxdisk.library_manager
 [{'address': ('131.225.81.23', 7508),
   'last_checked': 915731762.917,
   'mover': 'sphinxdisk.mover',
@@ -2627,12 +2703,12 @@ $ ecmd lmc --getmoverlist sphinxdisk.library_manager
 </pre>
 <b>get_suspect_vols</b> 
 <pre>
-$ ecmd lmc --get_suspect_vols sphinxdisk.library_manager
+$ enstore lmc --get_suspect_vols sphinxdisk.library_manager
 [{'external_label': 'flop1', 'movers': ['sphinxdisk.mover']}]
 </pre>
 <b>loadmovers</b>
 <pre>
-$ ecmd lmc --loadmovers happydisk.library_manager
+$ enstore lmc --loadmovers happydisk.library_manager
 {'movers': [{'address': ('131.225.84.122', 7509),movers happdisk.library_manager 
              'external_label': 'flop1',
              'file_family': 'happy.cpio_custom',dmovers sphindisk.library_manager
@@ -2686,7 +2762,7 @@ $ ecmd lmc --loadmovers happydisk.library_manager
 </pre>
 <b>del_work</b>
 <pre>
-$ ecmd lmc --del_work rip6.library_manager rip8.fnal.gov-922223453.580484-30688
+$ enstore lmc --del_work rip6.library_manager rip8.fnal.gov-922223453.580484-30688
 ID rip8.fnal.gov-922223453.580484-30688
 {'status': ('ok', 'Work deleted')}
 </pre>
@@ -2747,10 +2823,10 @@ The "local mover" feature allows the mover process to
 read/write the user data file directly, if the file/directory is accessible
 and on a filesystem local to the computer on which the mover process is
 running. By default, this feature is enabled. It can be controlled via
-the "ecmd" command. For example:
+the "enstore" command. For example:
 <p>
 <center>
-ecmd mvc --local_mover=0 fndaprdisk.mover
+enstore mvc --local_mover=0 fndaprdisk.mover
 </center>
 
 <p>
@@ -2847,13 +2923,13 @@ have_bound_volume to the Library Manager and waits for further instructions.
 </h4>
 
 The Mover is started and controlled through a command line interface using
-ecmd. Option commands for "ecmd mvc [--option_command] <mover>" include the
+enstore. Option commands for "enstore mvc [--option_command] <mover>" include the
 general option commands
 supported by all other servers.
 Additionally the "status" option command
 is supported and produces the following:
 <br><p>
-$ ecmd mvc --status fndaprdisk.mover<br>
+$ enstore mvc --status fndaprdisk.mover<br>
 {'wr_bytes': 6398896, 'rd_bytes': 6398896, 'no_xfers': 11, 'mode': 'w',
 'bytes_to_xfer': 6398896, 'crc_func': '<built-in function ECRC>',
 'state': 'idle', 'status': ('ok', None)}
@@ -3053,7 +3129,7 @@ all the server keywords.
 </h4>
 Configuration Server functionality may be controlled through a command line 
 interface using
-<B>ecmd</B>.  A summary of the supported commands is given below.  In addition
+<B>enstore</B>.  A summary of the supported commands is given below.  In addition
 to the following commands, the Configuration Server command line interface 
 supports the general commands supported by all other servers.
 <P>
@@ -3065,17 +3141,17 @@ supports the general commands supported by all other servers.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>load the specified Enstore config file into the configuration server</TD>
-<TD NOSAVE>ecmd cc --config_file=/path/to/config_file --load</TD>
+<TD NOSAVE>enstore cc --config_file=/path/to/config_file --load</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>output the currently loaded Enstore configuration file</TD>
-<TD NOSAVE>ecmd cc --dict</TD>
+<TD NOSAVE>enstore cc --dict</TD>
 <TD NOSAVE>(same as the example in the previous section)</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>output the keys in the currently loaded Enstore configuration file</TD>
-<TD NOSAVE>ecmd cc --get_keys</TD>
+<TD NOSAVE>enstore cc --get_keys</TD>
 <TD NOSAVE><pre>
 ['DE13DLT.mover',
  'alarm_server',
@@ -3309,7 +3385,7 @@ Inquisitor.
 1.3.8.1 Command Line Control of the Inquisitor 
 </h4>
 Inquisitor functionality may be controlled through a command line interface using
-<B>ecmd</B>.  A summary of the supported commands is given below.  In addition
+<B>enstore</B>.  A summary of the supported commands is given below.  In addition
 to the following commands, the Inquisitor command line interface supports the
 general commands supported by all other servers.  Any particular server name
 mentioned in the table below may be replaced by any legal server name.
@@ -3322,112 +3398,112 @@ mentioned in the table below may be replaced by any legal server name.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the maximum size of the ascii status file</TD>
-<TD NOSAVE>ecmd ic --get_max_ascii_size</TD>
+<TD NOSAVE>enstore ic --get_max_ascii_size</TD>
 <TD NOSAVE>maximum ascii size</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the maximum number of <em>encp</em> status lines displayed</TD>
-<TD NOSAVE>ecmd ic --get_max_encp_lines</TD>
+<TD NOSAVE>enstore ic --get_max_encp_lines</TD>
 <TD NOSAVE>maximum number of <em>encp</em> lines</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the html status file auto refresh rate</TD>
-<TD NOSAVE>ecmd ic --get_refresh</TD>
+<TD NOSAVE>enstore ic --get_refresh</TD>
 <TD NOSAVE>refresh time</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the frequency for monitoring the Volume Clerk</TD>
-<TD NOSAVE>ecmd ic --get_timeout volume_clerk</TD>
+<TD NOSAVE>enstore ic --get_timeout volume_clerk</TD>
 <TD NOSAVE>volume_clerk timeout value</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the frequency for looking for work</TD>
-<TD NOSAVE>ecmd ic --get_timeout</TD>
+<TD NOSAVE>enstore ic --get_timeout</TD>
 <TD NOSAVE>Inquisitor wakeup time</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the maximum size of the ascii status file</TD>
-<TD NOSAVE>ecmd ic --max_ascii_size=40000</TD>
+<TD NOSAVE>enstore ic --max_ascii_size=40000</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the maximum number of <em>encp</em> status lines displayed</TD>
-<TD NOSAVE>ecmd ic --max_encp_lines=13</TD>
+<TD NOSAVE>enstore ic --max_encp_lines=13</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots</TD>
-<TD NOSAVE>ecmd ic --plot</TD>
+<TD NOSAVE>enstore ic --plot</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots, keep the data files and put them in /tmp.</TD>
-<TD NOSAVE>ecmd ic --plot --keep --keep_dir=/tmp</TD>
+<TD NOSAVE>enstore ic --plot --keep --keep_dir=/tmp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and put the plot files in /tmp.</TD>
-<TD NOSAVE>ecmd ic --plot --out_dir=/tmp</TD>
+<TD NOSAVE>enstore ic --plot --out_dir=/tmp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and use the log files located in the specified directory</TD>
-<TD NOSAVE>ecmd ic --plot --logfile_dir=/tmp/logs</TD>
+<TD NOSAVE>enstore ic --plot --logfile_dir=/tmp/logs</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information after the specified start_time</TD>
-<TD NOSAVE>ecmd ic --plot --start_time=1998-12-25</TD>
+<TD NOSAVE>enstore ic --plot --start_time=1998-12-25</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information before the specified stop_time</TD>
-<TD NOSAVE>ecmd ic --plot --stop_time=1998-12-31</TD>
+<TD NOSAVE>enstore ic --plot --stop_time=1998-12-31</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>recreate the Inquisitor plots and only plot information between the specified times</TD>
-<TD NOSAVE>ecmd ic --plot --start_time=1998-12-01 --stop_time=1998-12-31</TD>
+<TD NOSAVE>enstore ic --plot --start_time=1998-12-01 --stop_time=1998-12-31</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the html status file auto refresh rate</TD>
-<TD NOSAVE>ecmd ic --refresh=60</TD>
+<TD NOSAVE>enstore ic --refresh=60</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for monitoring the alarm_server to the value in the config file</TD>
-<TD NOSAVE>ecmd ic --reset_timeout alarm_server</TD>
+<TD NOSAVE>enstore ic --reset_timeout alarm_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for looking for work to the value in the config file</TD>
-<TD NOSAVE>ecmd ic --reset_timeout</TD>
+<TD NOSAVE>enstore ic --reset_timeout</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for monitoring the file_clerk</TD>
-<TD NOSAVE>ecmd ic --timeout=55 file_clerk</TD>
+<TD NOSAVE>enstore ic --timeout=55 file_clerk</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>reset the frequency for looking for work</TD>
-<TD NOSAVE>ecmd ic --timeout=10</TD>
+<TD NOSAVE>enstore ic --timeout=10</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>close the current ascii status file and open a new one</TD>
-<TD NOSAVE>ecmd ic --timestamp</TD>
+<TD NOSAVE>enstore ic --timestamp</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor the Log Server now</TD>
-<TD NOSAVE>ecmd ic --update log_server</TD>
+<TD NOSAVE>enstore ic --update log_server</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>monitor all the servers now</TD>
-<TD NOSAVE>ecmd ic --update</TD>
+<TD NOSAVE>enstore ic --update</TD>
 <TD NOSAVE>&nbsp;</TD>
 </TR>
 </TABLE></center>
@@ -3920,7 +3996,7 @@ Currently it is only possible to cancel an alarm via the command line.
 1.3.9.1 Command Line Control of the Alarm Server
 </h4>
 Alarm Server functionality may be controlled through a command line interface 
-using <B>ecmd</B>.  A summary of the supported commands is given below.  In 
+using <B>enstore</B>.  A summary of the supported commands is given below.  In 
 addition to the following commands, the Alarm Server command line interface 
 supports the general commands supported by all other servers.
 <P>
@@ -3932,27 +4008,27 @@ supports the general commands supported by all other servers.
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>raise an alarm with root error of UNKNOWN and severity of WARNING</TD>
-<TD NOSAVE>ecmd ac --alarm</TD>
+<TD NOSAVE>enstore ac --alarm</TD>
 <TD NOSAVE>None</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>raise an alarm with the specified root error and a severity of WARNING</TD>
-<TD NOSAVE>ecmd ac --alarm --root_error="root_error"</TD>
+<TD NOSAVE>enstore ac --alarm --root_error="root_error"</TD>
 <TD NOSAVE>None</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>raise an alarm with the specified severity and a root error of UNKNOWN</TD>
-<TD NOSAVE>ecmd ac --severity=severity_value</TD>
+<TD NOSAVE>enstore ac --severity=severity_value</TD>
 <TD NOSAVE>None</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>resolve the specified alarm</TD>
-<TD NOSAVE>ecmd ac --resolve=unique_id</TD>
+<TD NOSAVE>enstore ac --resolve=unique_id</TD>
 <TD NOSAVE>None</TD>
 </TR>
 <TR VALIGN=LEFT NOSAVE>
 <TD NOSAVE>get the name of the patrol file</TD>
-<TD NOSAVE>ecmd ac --patrol_file</TD>
+<TD NOSAVE>enstore ac --patrol_file</TD>
 <TD NOSAVE>patrol file name</TD>
 </TR>
 </TABLE></center>
