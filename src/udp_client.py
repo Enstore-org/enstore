@@ -316,27 +316,30 @@ class UDPClient:
             rcvd_txn_id=None
             timeout=rcv_timeout
             while rcvd_txn_id != txn_id: #look for reply while rejecting "stale" responses
-                reply, server, timeout = wait_rsp( tsd.socket, dst, timeout)
+                reply, server_addr, timeout = \
+                       wait_rsp( tsd.socket, dst, timeout)
                 if not reply: # receive timed out
                     break #resend
                 try:
-                    #rcvd_txn_id, out, t = self._eval_reply(reply)
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out
-                except TypeError:
-                    #If a this error occurs, keep retrying.  Most likely it is
+                except (SyntaxError, TypeError):
+                    #If TypeError occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
+                    #If SyntaxError occurs, also keep trying, most likely
+                    # it is from and empty UDP datagram.
                     exc, msg = sys.exc_info()[:2]
                     try:
                         message = "%s: %s: From server %s:%s" % \
-                                  (exc, msg, server, reply[:100])
+                                  (exc, msg, server_addr, reply[:100])
                     except IndexError:
                         message = "%s: %s: From server %s: %s" % \
-                                  (exc, msg, server, reply)
+                                  (exc, msg, server_addr, reply)
+                    Trace.log(10, message)
 
-                    Trace.log(e_errors.INFO, message)
+                    #Set this to something.
                     rcvd_txn_id=None
             else: # we got a good reply
                 ##Trace.log(e_errors.INFO,"done cleanup %s"%(dst,))
@@ -400,26 +403,28 @@ class UDPClient:
                 reply = None
                 r, w, x, timeout = cleanUDP.Select( [tsd.socket], [], [], timeout)
                 if r:
-                    reply, server = tsd.socket.recvfrom(TRANSFER_MAX, timeout)
+                    reply, server_addr = \
+                           tsd.socket.recvfrom(TRANSFER_MAX, timeout)
                 if not reply: # receive or select timed out
                     break
                 try:
-                    #rcvd_txn_id, out, t = self._eval_reply(reply)
                     rcvd_txn_id, out, t = udp_common.r_eval(reply)
                     if type(out) == type({}) and out.has_key('status') \
                        and out['status'][0] == e_errors.MALFORMED:
                         return out
-                except TypeError:
+                except (SyntaxError, TypeError):
                     #If a this error occurs, keep retrying.  Most likely it is
                     # an "expected string without null bytes".
+                    #If SyntaxError occurs, also keep trying, most likely
+                    # it is from and empty UDP datagram.
                     exc, msg = sys.exc_info()[:2]
                     try:
                         message = "%s: %s: From server %s:%s" % \
-                                  (exc, msg, server, reply[:100])
+                                  (exc, msg, server_addr, reply[:100])
                     except IndexError:
                         message = "%s: %s: From server %s: %s" % \
-                                  (exc, msg, server, reply)
-                    Trace.log(e_errors.INFO, message)
+                                  (exc, msg, server_addr, reply)
+                    Trace.log(10, message)
 
                     #Set this to none.  Since it is invalid, don't add it
                     # to the queue and instead skip the following if and

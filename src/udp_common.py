@@ -48,15 +48,33 @@ def r_eval(message_to_decode):
     except (KeyboardInterrupt, SystemExit):
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
     except:
+        """
         exc, msg = sys.exc_info()[:2]
+
+        #Log this only if we are interested in it (--do-log 10).
         logmsg="udp_common.r_reply %s %s"%(exc, msg)
         if exc == exceptions.SyntaxError: #msg size> max datagram size?
             logmsg=logmsg+"Truncated message?"
         elif exc == exceptions.TypeError:
             logmsg = logmsg + ": " + message_to_decode
-        Trace.log(e_errors.ERROR, logmsg)
+        Trace.log(10, logmsg)
+
+        #If TypeError occurs, keep retrying.  Most likely it is
+        # an "expected string without null bytes".
+        #If SyntaxError occurs, also keep trying, most likely
+        # it is from and empty UDP datagram.
+        exc, msg = sys.exc_info()[:2]
+        try:
+            message = "%s: %s: From client %s:%s" % \
+                      (exc, msg, client_addr, request[:100])
+        except IndexError:
+            message = "%s: %s: From client %s: %s" % \
+                      (exc, msg, client_addr, request)
+
+        Trace.log(10, message)
+        """
+
         raise sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
-    #return number, out, t
 
 def r_repr(message_to_encode):
     # We could have done something like "return `message_to_encode`" too.

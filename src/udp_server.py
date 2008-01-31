@@ -12,7 +12,7 @@ import time
 #import os
 #import traceback
 import checksum
-#import sys
+import sys
 import socket
 #import signal
 #import string
@@ -187,10 +187,28 @@ class UDPServer:
         for fd in r:
             if fd == self.server_socket:
 
-                req,addr = self.server_socket.recvfrom(self.max_packet_size,
-						       self.rcv_timeout)
+                req, client_addr = self.server_socket.recvfrom(
+                    self.max_packet_size, self.rcv_timeout)
 
-                request,inCRC = udp_common.r_eval(req)
+                try:
+                    request, inCRC = udp_common.r_eval(req)
+                except (SyntaxError, TypeError):
+                    #If TypeError occurs, keep retrying.  Most likely it is
+                    # an "expected string without null bytes".
+                    #If SyntaxError occurs, also keep trying, most likely
+                    # it is from and empty UDP datagram.
+                    exc, msg = sys.exc_info()[:2]
+                    try:
+                        message = "%s: %s: From client %s:%s" % \
+                                  (exc, msg, client_addr, request[:100])
+                    except IndexError:
+                        message = "%s: %s: From client %s: %s" % \
+                                  (exc, msg, client_addr, request)
+                    Trace.log(10, message)
+
+                    #Set these to something.
+                    request, inCRC = (None, None)
+                    
                 if request == None:
                     return (request, addr)
                 # calculate CRC
@@ -225,7 +243,25 @@ class UDPServer:
         ### udp_server becuase of the pre-existing use of 'ra' between
         ### the media_changer and udp_server.
        
-        idn, number, ticket = udp_common.r_eval(request)
+        try:
+            idn, number, ticket = udp_common.r_eval(request)
+        except (SyntaxError, TypeError):
+            #If TypeError occurs, keep retrying.  Most likely it is
+            # an "expected string without null bytes".
+            #If SyntaxError occurs, also keep trying, most likely
+            # it is from and empty UDP datagram.
+            exc, msg = sys.exc_info()[:2]
+            try:
+                message = "%s: %s: From client %s:%s" % \
+                          (exc, msg, client_address, request[:100])
+            except IndexError:
+                message = "%s: %s: From client %s: %s" % \
+                          (exc, msg, client_address, request)
+            Trace.log(10, message)
+
+            #Set these to something.
+            idn, number, ticket = (None, None, None)
+        
         if idn == None or type(ticket) != type({}):
             Trace.log(e_errors.ERROR,
                       "Malformed request from %s %s" %
