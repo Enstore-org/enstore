@@ -23,13 +23,15 @@ def en_eval(expr, debug=False):
 	if type(expr) != type(""):
 		if debug:
 			sys.stderr.write("en_eval Error: not a string type\n")
-		return None
+		#return None
+		raise TypeError("expected string not %s" % (type(expr),))
 
 	# reject function invocation
 	if re_CallFunc.search(str(compiler.parse(expr).node.nodes)) != None:
 		if debug:
 			sys.stderr.write("en_eval Error: function invocation\n")
-		return None
+		#return None
+		raise SyntaxError("functions not allowed")
 
 	# reject empty UDP datagrams.
 	#
@@ -43,7 +45,8 @@ def en_eval(expr, debug=False):
 	if expr == "":
 		if debug:
 			sys.stderr.write("en_eval Error: empty UDP datagram ignored\n")
-		return None
+		#return None
+		raise SyntaxError("empty string not expected")
  
 
 	# no access to globals nor locals
@@ -52,6 +55,7 @@ def en_eval(expr, debug=False):
 	except SyntaxError, msg:
 		if debug:
 			sys.stderr.write("en_eval Error: %s parsing string: %s\n" % (str(msg), expr))
-		return None
+		#return None
+		raise SyntaxError, msg
 
 	return val
