@@ -1674,7 +1674,10 @@ class InquisitorMethods(dispatching_worker.DispatchingWorker):
                 # we may be here because of an error while quitting, check again
 		if self.exit_now_event.isSet():
                     return
-		self.serve_forever_error(self.log_name+"ERRT")
+                #
+                # Dmitry commented out the lines below so we do not see alarms in alarm page
+                #
+		#self.serve_forever_error(self.log_name+"ERRT")
         
 
 class Inquisitor(InquisitorMethods, generic_server.GenericServer):
