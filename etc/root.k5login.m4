@@ -69,6 +69,10 @@ host/d0enmvr56a.fnal.gov@FNAL.GOV
 host/d0enmvr57a.fnal.gov@FNAL.GOV
 host/d0enmvr58a.fnal.gov@FNAL.GOV
 host/d0enmvr59a.fnal.gov@FNAL.GOV
+host/d0enmvr153a.fnal.gov@FNAL.GOV
+host/d0enmvr154a.fnal.gov@FNAL.GOV
+host/d0enmvr155a.fnal.gov@FNAL.GOV
+host/d0enmvr156a.fnal.gov@FNAL.GOV
 host/eagpnfs1.fnal.gov@FNAL.GOV
 host/stkensrv0.fnal.gov@FNAL.GOV
 host/stkensrv1.fnal.gov@FNAL.GOV
@@ -120,7 +124,19 @@ host/stkenmvr118a.fnal.gov@FNAL.GOV
 host/stkenmvr119a.fnal.gov@FNAL.GOV
 host/stkenmvr120a.fnal.gov@FNAL.GOV
 host/stkenmvr121a.fnal.gov@FNAL.GOV
-host/stkenmvr132a.fnal.gov@FNAL.GOV
+host/stkenmvr140a.fnal.gov@FNAL.GOV
+host/stkenmvr141a.fnal.gov@FNAL.GOV
+host/stkenmvr142a.fnal.gov@FNAL.GOV
+host/stkenmvr143a.fnal.gov@FNAL.GOV
+host/stkenmvr144a.fnal.gov@FNAL.GOV
+host/stkenmvr145a.fnal.gov@FNAL.GOV
+host/stkenmvr146a.fnal.gov@FNAL.GOV
+host/stkenmvr147a.fnal.gov@FNAL.GOV
+host/stkenmvr148a.fnal.gov@FNAL.GOV
+host/stkenmvr149a.fnal.gov@FNAL.GOV
+host/stkenmvr150a.fnal.gov@FNAL.GOV
+host/stkenmvr151a.fnal.gov@FNAL.GOV
+host/stkenmvr152a.fnal.gov@FNAL.GOV
 ifelse(HOSTNAME, `stkensrv3',
 host/stkendca6a.fnal.gov@FNAL.GOV
 host/stkendca7a.fnal.gov@FNAL.GOV
@@ -181,6 +197,8 @@ host/cdfenmvr129a.fnal.gov@FNAL.GOV
 host/cdfenmvr130a.fnal.gov@FNAL.GOV
 host/cdfenmvr131a.fnal.gov@FNAL.GOV
 host/stkenscan1.fnal.gov@FNAL.GOV
+host/stkendm1a.fnal.gov@FNAL.GOV
+host/stkendm2a.fnal.gov@FNAL.GOV
 host/stkendm3a.fnal.gov@FNAL.GOV
 host/stkendm4a.fnal.gov@FNAL.GOV
 host/stkendm5a.fnal.gov@FNAL.GOV

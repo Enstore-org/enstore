@@ -57,7 +57,13 @@ enstore/cd/d0enmvr56a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr57a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr58a.fnal.gov@FNAL.GOV
 enstore/cd/d0enmvr59a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr153a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr154a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr155a.fnal.gov@FNAL.GOV
+enstore/cd/d0enmvr156a.fnal.gov@FNAL.GOV
 enstore/cd/stkenscan1.fnal.gov@FNAL.GOV
+enstore/cd/stkendm1a.fnal.gov@FNAL.GOV
+enstore/cd/stkendm2a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm3a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm4a.fnal.gov@FNAL.GOV
 enstore/cd/stkendm5a.fnal.gov@FNAL.GOV
