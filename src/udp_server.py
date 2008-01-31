@@ -175,7 +175,7 @@ class UDPServer:
         #   read from pipe where there is no crc and no r.a.     
         #   time out where there is no string or r.a.
 
-        request, addr = '',()
+        request, client_addr = '',()
         r = [self.server_socket]
 
         rcv_timeout = self.rcv_timeout
@@ -210,7 +210,7 @@ class UDPServer:
                     request, inCRC = (None, None)
                     
                 if request == None:
-                    return (request, addr)
+                    return (request, client_addr)
                 # calculate CRC
                 crc = checksum.adler32(0L, request, len(request))
                 if (crc != inCRC) :
@@ -222,7 +222,7 @@ class UDPServer:
                               
                     request=None
 
-        return (request, addr)
+        return (request, client_addr)
 
     # Process the  request that was (generally) sent from UDPClient.send
     def process_request(self, request, client_address):
