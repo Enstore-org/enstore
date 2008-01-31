@@ -308,11 +308,20 @@ class DispatchingWorker(udp_server.UDPServer):
                     #Get the 'raw' request and the address from whence it came.
                     (request, addr) = udp_server.UDPServer.get_message(self)
 
+                    #Skip these if there is nothing to do.
+                    if request == None or addr in [None, ()]:
+                        #These conditions could be caught when
+                        # hostaddr.allow() raises an exception.  Since,
+                        # these are obvious conditions, we stop here to avoid
+                        # the Trace.log() that would otherwise fill the
+                        # log file with useless error messages.
+                        return (request, addr)
+
                     #Determine if the address the request came from is
                     # one that we should be responding to.
                     try:
                         is_valid_address = hostaddr.allow(addr)
-                    except IndexError, detail:
+                    except (IndexError, TypeError), detail:
                         Trace.log(e_errors.ERROR,
                                   "hostaddr failed with %s Req.= %s, addr= %s"\
                                   % (detail, request, addr))
