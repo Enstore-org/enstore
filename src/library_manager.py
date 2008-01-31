@@ -738,7 +738,7 @@ class LibraryManagerMethods:
             self.continue_scan = 1
             #return rq, key_to_check
     
-        if self.is_vol_busy(rq.ticket["fc"]["external_label"]):
+        if self.is_vol_busy(rq.ticket["fc"]["external_label"]) and self.mover_type(requestor) != 'DiskMover':
             rq.ticket["reject_reason"] = ("VOL_BUSY",rq.ticket["fc"]["external_label"])
             self.continue_scan = 1
             Trace.trace(12,"process_read_request VOL_BUSY %s"%(rq.ticket["fc"]["external_label"]))
@@ -830,21 +830,25 @@ class LibraryManagerMethods:
                 return None,key_to_check
             else:
                self.processed_admin_requests.append(vol_family) 
-        if not self.write_vf_list.has_key(vol_family):
-            Trace.trace(22, "PW_RQ3")
-            vol_veto_list, wr_en = self.busy_volumes(vol_family)
-            Trace.trace(22, "PW_RQ4")
-            Trace.trace(19,"process_write_request vol veto list:%s, width:%d"%\
-                        (vol_veto_list, wr_en))
-            self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
+        if self.mover_type(requestor) != 'DiskMover':
+            if not self.write_vf_list.has_key(vol_family):
+                Trace.trace(22, "PW_RQ3")
+                vol_veto_list, wr_en = self.busy_volumes(vol_family)
+                Trace.trace(22, "PW_RQ4")
+                Trace.trace(19,"process_write_request vol veto list:%s, width:%d"%\
+                            (vol_veto_list, wr_en))
+                self.write_vf_list[vol_family] = {'vol_veto_list':vol_veto_list, 'wr_en': wr_en}
+            else:
+                vol_veto_list =  self.write_vf_list[vol_family]['vol_veto_list']
+                wr_en = self.write_vf_list[vol_family]['wr_en']
+            # only so many volumes can be written to at one time
+            if wr_en >= rq.ticket["vc"]["file_family_width"]:
+                rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+                self.continue_scan = 1
+                return rq, key_to_check
         else:
-            vol_veto_list =  self.write_vf_list[vol_family]['vol_veto_list']
-            wr_en = self.write_vf_list[vol_family]['wr_en']
-        # only so many volumes can be written to at one time
-        if wr_en >= rq.ticket["vc"]["file_family_width"]:
-            rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-            self.continue_scan = 1
-            return rq, key_to_check
+            vol_veto_list = []
+            
         #Trace.trace(12,"process_write_request: request next write volume for %s" % (vol_family,))
 
         # before assigning volume check if it is bound for the current family
@@ -974,32 +978,33 @@ class LibraryManagerMethods:
                 # and if yes skip request so that it will be picked by bound mover
                 # this is done to aviod a sinle stream bouncing between different tapes
                 # if FF width is more than 1
-                vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
-                Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
-                if wr_en < rq.ticket["vc"]["file_family_width"]:
-                    movers = self.volumes_at_movers.get_active_movers()
-                    found_mover = 0
-                    for vol in vol_veto_list:
+                if self.mover_type(requestor) != 'DiskMover':
+                    vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
+                    Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
+                    if wr_en < rq.ticket["vc"]["file_family_width"]:
+                        movers = self.volumes_at_movers.get_active_movers()
                         found_mover = 0
-                        for mover in movers:
-                            Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
-                            if vol == mover['external_label']:
-                                if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
-                                    found_mover = 1
-                                    break
+                        for vol in vol_veto_list:
+                            found_mover = 0
+                            for mover in movers:
+                                Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
+                                if vol == mover['external_label']:
+                                    if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
+                                        found_mover = 1
+                                        break
+                            if found_mover:
+                                break
                         if found_mover:
-                            break
-                    if found_mover:
-                        # if the number of write requests for a given file family more than the
-                        # file family width then let it go.
-                        if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
-                           (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
-                            Trace.trace(223, " will let this request go to idle mover")
-                        else:
-                            Trace.trace(223, 'will wait with this request go to %s %s'%
-    	                                (mover['mover'], mover['external_label']))
-	                    rq = self.pending_work.get(next=1) # get next request
-                            continue
+                            # if the number of write requests for a given file family more than the
+                            # file family width then let it go.
+                            if (self.pending_work.families.has_key(rq.ticket["vc"]["file_family"])) and \
+                               (self.pending_work.families[rq.ticket["vc"]["file_family"]] > rq.ticket["vc"]["file_family_width"]):
+                                Trace.trace(223, " will let this request go to idle mover")
+                            else:
+                                Trace.trace(223, 'will wait with this request go to %s %s'%
+                                            (mover['mover'], mover['external_label']))
+                                rq = self.pending_work.get(next=1) # get next request
+                                continue
                 
             Trace.trace(222,"PW33")
             Trace.trace(17, "PWAA %s"%(rq,))
@@ -1226,29 +1231,30 @@ class LibraryManagerMethods:
             Trace.trace(11,"schedule: Error detected %s" % (rq.ticket,))
 
     def check_write_request(self, external_label, rq, requestor):
-        vol_veto_list, wr_en = self.busy_volumes(rq.ticket['vc']['volume_family'])
-        Trace.trace(19, "check_write_request: vet_list %s wr_en %s"%(vol_veto_list, wr_en))
-        label = rq.ticket['fc'].get('external_label', external_label)
-        if label != external_label:
-            # this is a case with admin pri
-            # process it carefuly
-            # check if tape is already mounted somewhere
-            if label in vol_veto_list:
-                rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-                Trace.trace(19, "check_write_request: request for volume %s rejected %s Mounted somwhere else"%
+        if self.mover_type(requestor) != 'DiskMover':
+            vol_veto_list, wr_en = self.busy_volumes(rq.ticket['vc']['volume_family'])
+            Trace.trace(19, "check_write_request: vet_list %s wr_en %s"%(vol_veto_list, wr_en))
+            label = rq.ticket['fc'].get('external_label', external_label)
+            if label != external_label:
+                # this is a case with admin pri
+                # process it carefuly
+                # check if tape is already mounted somewhere
+                if label in vol_veto_list:
+                    rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+                    Trace.trace(19, "check_write_request: request for volume %s rejected %s Mounted somwhere else"%
+                                    (external_label, rq.ticket["reject_reason"]))
+                    rq.ticket['status'] = ("VOLS_IN_WORK",None)
+                    return rq, rq.ticket['status']
+            external_label = label
+            Trace.trace(19, "check_write_request %s %s"%(external_label, rq.ticket))
+            if wr_en >= rq.ticket["vc"]["file_family_width"]:
+                if (not external_label in vol_veto_list) and   (wr_en > rq.ticket["vc"]["file_family_width"]):
+                    #if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
+                    rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
+                    Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
                                 (external_label, rq.ticket["reject_reason"]))
-                rq.ticket['status'] = ("VOLS_IN_WORK",None)
-                return rq, rq.ticket['status']
-        external_label = label
-        Trace.trace(19, "check_write_request %s %s"%(external_label, rq.ticket))
-        if wr_en >= rq.ticket["vc"]["file_family_width"]:
-            if (not external_label in vol_veto_list) and   (wr_en > rq.ticket["vc"]["file_family_width"]):
-                #if rq.adminpri < 0: # This allows request with admin pri to go even it exceeds its limit
-                rq.ticket["reject_reason"] = ("VOLS_IN_WORK","")
-                Trace.trace(19, "check_write_request: request for volume %s rejected %s"%
-                            (external_label, rq.ticket["reject_reason"]))
-                rq.ticket['status'] = ("VOLS_IN_WORK",None)
-                return rq, rq.ticket['status']
+                    rq.ticket['status'] = ("VOLS_IN_WORK",None)
+                    return rq, rq.ticket['status']
 
             
         
@@ -1395,27 +1401,28 @@ class LibraryManagerMethods:
                     # and if yes skip request so that it will be picked by bound mover
                     # this is done to aviod a sinle stream bouncing between different tapes
                     # if FF width is more than 1
-                    vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
-                    Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
-                    if wr_en < rq.ticket["vc"]["file_family_width"]:
-                        movers = self.volumes_at_movers.get_active_movers()
-                        found_mover = 0
-                        for vol in vol_veto_list:
+                    if self.mover_type(requestor) != 'DiskMover':
+                        vol_veto_list, wr_en = self.busy_volumes(rq.ticket["vc"]["volume_family"])
+                        Trace.trace(223,'veto %s, wr_en %s'%(vol_veto_list, wr_en))
+                        if wr_en < rq.ticket["vc"]["file_family_width"]:
+                            movers = self.volumes_at_movers.get_active_movers()
                             found_mover = 0
-                            for mover in movers:
-                                Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
-                                if vol == mover['external_label']:
-                                    if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
-                                        found_mover = 1
-                                        break
+                            for vol in vol_veto_list:
+                                found_mover = 0
+                                for mover in movers:
+                                    Trace.trace(223,'vol %s mover %s'%(vol, mover)) 
+                                    if vol == mover['external_label']:
+                                        if mover['state'] == 'HAVE_BOUND' and mover['time_in_state'] < 31:
+                                            found_mover = 1
+                                            break
+                                if found_mover:
+                                    break
                             if found_mover:
-                                break
-                        if found_mover:
-                            if mover != requestor['mover']:
-                                Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
+                                if mover != requestor['mover']:
+                                    Trace.trace(223, 'will wait with this request to go to %s %s'%(mover['mover'], mover['external_label']))
 
-                                rq = self.pending_work.get_admin_request(next=1) # get next request
-                                continue
+                                    rq = self.pending_work.get_admin_request(next=1) # get next request
+                                    continue
                     
                 
             rej_reason = None
