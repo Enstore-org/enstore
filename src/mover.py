@@ -4154,8 +4154,8 @@ class Mover(dispatching_worker.DispatchingWorker,
                 try:
                     self.control_socket.connect(ticket['callback_addr'])
                 except socket.error, detail:
-                    Trace.log(e_errors.ERROR, "%s %s" %
-                              (detail, ticket['callback_addr']))
+                    #Trace.log(e_errors.ERROR, "%s %s" %
+                    #          (detail, ticket['callback_addr']))
                     #We have seen that on IRIX, when the connection succeds, we
                     # get an ISCONN error.
                     if hasattr(errno, 'EISCONN') and detail[0] == errno.EISCONN:
@@ -4165,7 +4165,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                         pass
                     else:
                         Trace.log(e_errors.ERROR, "error connecting to %s (%s)" %
-                                  (ticket['callback_addr'], os.strerror(detail)))
+                                  (ticket['callback_addr'], detail))
                         # just for a case
                         try:
                             self.control_socket.close()
@@ -5140,6 +5140,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
+        Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state.name(self.state),)) 
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
         self.reply_to_caller(out_ticket)
