@@ -20,6 +20,7 @@ fi
 pnfs_location=`egrep "^pnfs=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
 if [ -z "$pnfs_location" ]; then
    echo "Unable to find pnfs installation." 1>&2
+   exit 1
 fi
 pmount=$pnfs_location/tools/pmount
 mdb=$pnfs_location/tools/mdb
