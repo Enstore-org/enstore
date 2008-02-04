@@ -46,7 +46,8 @@ from volume where
     label not like 'CLN%' and 
     label not like '%:%' and
     system_inhibit_0 = 'none' and
-    ( system_inhibit_1 = 'readonly' or system_inhibit_1 = 'full' ) and
+    ( system_inhibit_1 = 'readonly' or system_inhibit_1 = 'full' or
+      last_access < CURRENT_TIMESTAMP - interval '3 months' ) and
     user_inhibit_0 = 'none' and
     last_access <> -1 and
     media_type <> 'null' and
@@ -300,5 +301,9 @@ done
 rm -f $tmp_dir/V_D
 cd $here
 
-echo "The combined exit code for all encps executed is $RC."
+if [ $verbose -eq 1 -a $copyit -eq 1 ]; then
+  echo "The combined exit code for all encps executed is $RC."
+elif [ $verbose -eq 1 ]; then
+  echo "The exit code is $RC."
+fi
 exit $RC
