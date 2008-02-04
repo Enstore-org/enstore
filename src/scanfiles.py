@@ -30,7 +30,7 @@ import volume_family
 import e_errors
 import Trace
 import charset
-import encp
+import enstore_functions3
 import enstore_constants
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
@@ -1335,8 +1335,8 @@ def check_bit_file(bfid, bfid_info = None):
 
             #If we found the right bfid brand, we know the right pnfs system
             # was found.
-            pnfs_brand = encp.extract_brand(layer1_bfid)
-            filedb_brand = encp.extract_brand(file_record['bfid'])
+            pnfs_brand = enstore_functions3.extract_brand(layer1_bfid)
+            filedb_brand = enstore_functions3.extract_brand(file_record['bfid'])
             if pnfs_brand and filedb_brand and pnfs_brand == filedb_brand:
                 if file_record['deleted'] == 'yes':
                     info.append("reused pnfsid")
