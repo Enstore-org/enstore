@@ -94,6 +94,13 @@ def aci_view(clientname, type):
 def aci_qvolsrange(start, end, max_count, clientname):
     x = aci_shadow.aci_qvolsrange(start, end, max_count, clientname)
     if type(x)==type([]):
+        #x[0] should be the exit status.
+        #x[1] should be the "next volume"
+        #x[2:] will be a list of files.
+        
+        #If we did not get a list at the end, just return the error.
+        if len(x) == 2:
+            return x[0], x[1], []
         if type(x[2]) == type(""):
             #SWIG 1.1
             return x[0], x[1], map(aci_shadow.aci_volserinfo, x[2:])
