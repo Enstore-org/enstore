@@ -17,7 +17,7 @@ get_recent_pnfsids()
 
     psql -ae -o $fname $db_name -U enstore -c "$sql_txt" > /dev/null
     if [ $? -ne 0 ]; then
-       echo "psql command failed"
+       echo "psql command failed" 1>&2
        exit 1
     fi
 }
@@ -25,7 +25,19 @@ get_recent_pnfsids()
 
 get_pnfs_dbs()
 {
-    mdb status | sed '1,2d' | awk '{print $2}' | egrep -v 'admin'
+    pnfs_location=`egrep "^pnfs=" /usr/etc/pnfsSetup | cut -f 2 -d "="`
+    if [ -z "$pnfs_location" ]; then
+	echo "Unable to find pnfs installation." 1>&2
+	exit 1
+    fi
+    mdb=$pnfs_location/tools/mdb
+    if [ ! -f $mdb ]; then
+	echo "Unable to find mdb command." 1>&2
+	exit 1
+    fi
+
+
+    $mdb status | sed '1,2d' | awk '{print $2}' | egrep -v 'admin'
 }
 
 parse_id()
