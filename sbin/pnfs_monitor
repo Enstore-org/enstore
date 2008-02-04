@@ -284,7 +284,7 @@ cd /pnfs/fs/usr #So, pathfinder works.
 
 #Specify where the temporary information should go.
 TEMP_OUTUPT_DIR=/var/tmp/pnfs_monitor
-mkdir -p TEMP_OUTUPT_DIR
+mkdir -p $TEMP_OUTUPT_DIR
 TEMP_OUTPUT_FILE=/tmp/pnfs_monitor
 TEMP_OUTPUT_FILE_2=/tmp/pnfs_monitor_2
 rm -f $TEMP_OUTPUT_FILE
