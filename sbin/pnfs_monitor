@@ -283,14 +283,14 @@ TEMP_FILE_OLD=/tmp/pm_temp_old
 TEMP_FILE_NEW=/tmp/pm_temp_new
 
 #Obtain the directory to write the output.
-html_dir=`enstore conf $timeout --show crons html_dir`
+html_dir=`enstore conf $timeout --file-fallback --show crons html_dir`
 if [ -z "$html_dir" ]; then
     echo HTML directory $html_dir not found.
     exit 1
 fi
 
 #Obtain the node to copy the output to.
-web_node=`enstore conf $timeout --show crons web_node`
+web_node=`enstore conf $timeout --file-fallback --show crons web_node`
 if [ -z "$web_node" ]; then
     echo Web hostname $web_node not found.
     exit 1
