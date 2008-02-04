@@ -180,6 +180,12 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
     def getwork(self,ticket):
         result = []
         for i in self.work_list:
+	    try:
+	        if i['vol_ticket']['external_label']:
+			pass
+	    except KeyError, msg:
+		    Trace.log(e_errors.INFO,
+			      "self.work_list item is missing vol_ticket: %s: %s" % (msg, i))
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
         self.reply_to_caller({'status' : (e_errors.OK, 0, None),
                               'max_work':self.max_work,
@@ -571,8 +577,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
         media_type = ticket['media_type']
         stat,volstate = aml2.view(external_label,media_type)
         state='U' # unknown
-        if stat!=0:
-            return 'BAD', stat, 'aci_view return code', state
+        if stat != 0:
+            #return 'BAD', stat, 'aci_view return code', state
+	    return aml2.convert_status(stat)
         if volstate == None:
             return 'BAD', stat, 'volume %s not found'%(external_label,),state
         #Return the correct media type.
@@ -695,7 +702,7 @@ class AML2_MediaLoader(MediaLoaderMethods):
 		Trace.log(e_errors.ERROR, msg)
 		return (status, E, response, '', msg)
 	
-        msg = "%s => %i,%s, %f" % (command, status_code, response, delta)	
+        msg = "%s => %i,%s, %f" % (command, status_code, response, delta)
         Trace.log(e_errors.INFO, msg)
         return (e_errors.OK, 0, msg)
 
@@ -706,7 +713,8 @@ class AML2_MediaLoader(MediaLoaderMethods):
 
         state='N' # unknown
         if stat != 0:
-            return 'BAD', stat, "aci_drivestatus2 return code", state
+            #return 'BAD', stat, "aci_drivestatus2 return code", state
+	    return aml2.convert_status(stat)
         if drivestate == None:
             return 'BAD', stat, "drive %s not found" % (drive,), state
 
@@ -804,11 +812,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	    
         import aml2
         stat, volumes = aml2.list_volser()
-	print "type(volumes):", type(volumes)
 	if stat != 0:
 	    #ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
 	    ticket['status'] = aml2.convert_status(stat)
-	    volumes = []  #To avoid TypeErrors.
 	else:
 	    ticket['status'] = (e_errors.OK, 0, "")
 
@@ -864,11 +870,15 @@ class AML2_MediaLoader(MediaLoaderMethods):
 	import aml2
         stat, slots = aml2.list_slots()
 	if stat != 0:
-	    ticket['status'] = 'BAD', stat, "aci_getcellinfo return code"
+	    #ticket['status'] = 'BAD', stat, aml2.convert_status(stat)
+	    ticket['status'] = aml2.convert_status(stat)
+	else:
+	    ticket['status'] = (e_errors.OK, 0, "")
 
 	slot_list = []
 	for slot_info in slots:
 	    location = slot_info[0]
+
 	    for i in range(len(slot_info[1])):
 	        media_type = slot_info[1][i].eMediaType
 		use_media_type = aml2.media_names.get(media_type,
@@ -896,40 +906,37 @@ class AML2_MediaLoader(MediaLoaderMethods):
 		slot_list.append(slot_dict)
 
 	ticket['slot_list'] = slot_list
-	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
 	sys.exit(0)  #Remember we are the child here.
 
     def list_clean(self, ticket):
+	
+
+	import aml2
+        stat, volumes_list = aml2.list_volser()
+	if stat != 0:
+	    #ticket['status'] = 'BAD', stat, "aci_qvolsrange return code"
+	    ticket['status'] = aml2.convert_status(stat)
+	else:
+	    ticket['status'] = (e_errors.OK, 0, "")
+
 	vcc = volume_clerk_client.VolumeClerkClient(self.csc,
 						    logc = self.logc,
 						    alarmc = self.alarmc,
 						    rcv_timeout=5,
 						    rcv_tries=12)
-	#volume_list = vcc.get_vol_list()
-	volume_info = vcc.get_vol_list()
-	
-	if e_errors.is_ok(volume_info):
-	    volumes_list = volume_info['volumes']
-	else:
-	    volumes_list = []
 
 	clean_list = []
-        for volume in volumes_list:
+        for volume_instance in volumes_list:
+	    volume = volume_instance.volser
+	    use_media_type = aml2.media_names.get(volume_instance.media_type,
+						  "UNKNOWN")
 
 	    if volume[0:2] != "CL":
 	        #############################################
 	        #Assuming cleaning tapes begin with CL is an unfortunate
 		# part of this implimentation.
 		#############################################
-	        continue
-
-	    volume_ticket = {'external_label' : volume,
-			     'media_type' : "",
-			     }
-	    result = self.getVolState(volume_ticket)
-	    if not e_errors.is_ok(result):
-	        #make sure this belongs to this media changers robot.
 	        continue
 
 	    vol_info = vcc.inquire_vol(volume, timeout = 5, retry = 12)
@@ -954,9 +961,9 @@ class AML2_MediaLoader(MediaLoaderMethods):
 			       "current_usage" : current_usage,
 			       "remaining_usage" : remaining_usage,
 			       "status" : status,
-			       "media_type" : media_type,
+			       "type" : media_type,
 			       })
-	
+
 	ticket['status'] = (e_errors.OK, 0, "")
 	self.reply_to_caller(ticket)
 	reply=ticket.copy()
@@ -1070,6 +1077,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             E=4
             msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
             Trace.log(e_errors.ERROR, msg)
+	    ticket['status'] = ("ERROR", E, response, '', msg)
+	    self.reply_to_caller(ticket)
             return ("ERROR", E, response, '', msg)
 
         volume_list = []
@@ -1124,6 +1133,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             E=4
             msg = "QUERY_VOLUME %i: %s => %i,%s" % (E,command,status,response)
             Trace.log(e_errors.ERROR, msg)
+	    ticket['status'] = ("ERROR", E, response, '', msg)
+	    self.reply_to_caller(ticket)
             return ("ERROR", E, response, '', msg)
 
         slot_list = []
@@ -1163,7 +1174,7 @@ class STK_MediaLoader(MediaLoaderMethods):
 		        used = int(line2)
 			slot_list[-1]['used'] = used
 			break
-		    except TypeError:
+		    except (TypeError, ValueError):
 			pass
 
 	    #Obtain specific total cell/slot count.
@@ -1249,6 +1260,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             E=4
             msg = "QUERY_CLEAN %i: %s => %i,%s" % (E,command,status,response)
             Trace.log(e_errors.ERROR, msg)
+	    ticket['status'] = ("ERROR", E, response, '', msg)
+	    self.reply_to_caller(ticket)
             return ("ERROR", E, response, '', msg)
 
         clean_list = []
@@ -1880,6 +1893,8 @@ class STK_MediaLoader(MediaLoaderMethods):
             E=4
             msg = "QUERY_DRIVE %i: %s => %i,%s" % (E,command,status,response)
             Trace.log(e_errors.ERROR, msg)
+	    ticket['status'] = ("ERROR", E, response, '', msg)
+	    self.reply_to_caller(ticket)
             return ("ERROR", E, response, '', msg)
 
         drive_list = []
