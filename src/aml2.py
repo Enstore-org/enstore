@@ -202,6 +202,12 @@ def view(volume, media_type):
     start = volume
     end = volume
     stat, start, volsers = aci.aci_qvolsrange(start, end, 1, "")
+
+    if stat != 0:
+        stat = aci.cvar.d_errno
+        Trace.log(e_errors.ERROR, 'aci_qvolsrange returned status=%d'%(stat,))
+        return stat,None
+    
     if volsers == None:
         stat = aci.cvar.d_errno
         Trace.log(e_errors.ERROR, 'volume %s %s NOT found'%(volume,media_type))
@@ -233,7 +239,7 @@ def list_volser():
             stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
                       'aci_qvolsrange returned status=%d' % (stat,))
-            return stat,None
+            return stat, []
 
     return stat, all_volsers
 
@@ -352,7 +358,10 @@ def robotHome(arm):
 # get status of robot
 def robotStatus(arm):
     #status = aci.aci_robstat("\0","stat")
-    status = aci.aci_robstat(arm, "stat")
+    if arm in ["R1", "R2"]:
+        status = aci.aci_robstat(arm, "stat")
+    else: #both R1 and R2
+        status = aci.aci_robstat("", "stat")
     if status < 0:
         status = aci.cvar.d_errno #Give correct error message
     return status_table[status][0], status, status_table[status][1]
@@ -573,34 +582,42 @@ def list_slots():
         device = "ST%02d" % tower
         stat, media_info_totals = aci.aci_getcellinfo(device, 0, total)
 
-        if stat!=0:
+        if stat != 0:
+            stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
-                      'aci_getcellinfo returned status=%d' % (stat,))
-            return stat,None
+                          'aci_getcellinfo returned status %d: %s' %
+                          (stat, convert_status(stat)))
+            return stat, []
         if len(media_info_totals) == 0:
             continue
-        
+
         stat, media_info_free = aci.aci_getcellinfo(device, 0, free)
-        if stat!=0:
+        if stat != 0:
+            stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
-                      'aci_getcellinfo returned status=%d' % (stat,))
-            return stat,None
+                          'aci_getcellinfo returned status %d: %s' %
+                          (stat, convert_status(stat)))
+            return stat, []
 
         stat, media_info_used = aci.aci_getcellinfo(device, 0, used)
-        if stat!=0:
+        if stat != 0:
+            stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
-                      'aci_getcellinfo returned status=%d' % (stat,))
-            return stat,None
+                          'aci_getcellinfo returned status %d: %s' %
+                          (stat, convert_status(stat)))
+            return stat, []
 
         stat, media_info_disabled = aci.aci_getcellinfo(device, 0, disabled)
-        if stat!=0:
+        if stat != 0:
+            stat = aci.cvar.d_errno
             Trace.log(e_errors.ERROR,
-                      'aci_getcellinfo returned status=%d' % (stat,))
-            return stat,None
+                          'aci_getcellinfo returned status %d: %s' %
+                          (stat, convert_status(stat)))
+            return stat, []
 
         #What does this loop do?  I don't remember anymore...
         for item in range(len(media_info_totals)):
             media_list.append((device, media_info_totals, media_info_free,
                                media_info_used, media_info_disabled))
-                
+
     return stat, media_list
