@@ -59,6 +59,10 @@ fi
 www_alias=`enstore conf $timeout --show crons www_alias` #optional in config
 if [ $? -ne 0 ]; then
    www_alias=`hostname | cut -f 1 -d "."`
+   #If the alias wasn't available, go with the hostname.
+   if [ -z "$www_alias" ]; then
+      www_alias=`hostanme | cut -f 1 -d "."`
+   fi
 fi
 f=/tmp/${www_alias}_pnfsExports.html
 
