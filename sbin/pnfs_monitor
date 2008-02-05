@@ -44,14 +44,31 @@ parse_id()
 {
     pnfsid=$1
 
+    #At this point the pnfsid looks like:
+    #   0100000000000000b0a90000
+    # when it should look like:
+    #   00010000000000000000A9B0
+    # These swaps re-order the bytes:
+    #   01 00    00 00    00 00    00 00    b0 a9 00 00
+    #     
+    #   00 01    00 00    00 00    00 00    00 00 a9 b0
+    # The first four groups are believed to swap the same way as the
+    # database number (a.k.a. the first grouping of four bytes).
+
     #Insert spaces every two characters to aid in the swapping of
     # the chunks of pnfsid.
     pnfsid=`echo $pnfsid | sed 's/../& /g'`
+
     #Swap the db number.
     pnfsid=`echo $pnfsid | awk ' { temp=$2;$2=$1;$1=temp; print $0 } '`
     #Do more swaps.  #Is this entirely correct?
+    pnfsid=`echo $pnfsid | awk ' { temp=$4;$4=$3;$3=temp; print $0 } '`
+    pnfsid=`echo $pnfsid | awk ' { temp=$6;$6=$5;$5=temp; print $0 } '`
+    pnfsid=`echo $pnfsid | awk ' { temp=$8;$8=$7;$7=temp; print $0 } '`
+    #The last two sections are interweaved with each other.
     pnfsid=`echo $pnfsid | awk ' { temp=$9;$9=$12;$12=temp; print $0 } '`
     pnfsid=`echo $pnfsid | awk ' { temp=$10;$10=$11;$11=temp; print $0 } '`
+
     #Remove the spaces added for swapping.
     pnfsid=`echo $pnfsid | tr -d " "`
 
