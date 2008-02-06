@@ -3539,13 +3539,11 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        if self.mode == READ:
-            t = self.tape_driver.tape_transfer_time()
-        else:
-            t = self.media_transfer_time
+        t = self.media_transfer_time
         if t == 0.:
             t = ticket['times'].get('transfer_time', 0.)
         ticket['times']['drive_transfer_time'] = t
+        ticket['times']['drive_call_time'] = self.tape_driver.tape_transfer_time()
         self.log_state()
         if self.tr_failed:
             return          ## this function has been alredy called in the other thread
@@ -3803,13 +3801,14 @@ class Mover(dispatching_worker.DispatchingWorker,
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        if self.mode == READ:
-            t = self.tape_driver.tape_transfer_time()
-        else:
-            t = self.media_transfer_time
+
+        t = self.media_transfer_time
         if t == 0.:
-            t = ticket['times']['transfer_time']
+            t = ticket['times'].get('transfer_time', 0.)
         ticket['times']['drive_transfer_time'] = t
+        ticket['times']['drive_call_time'] = self.tape_driver.tape_transfer_time()
+
+
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, self.current_location))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
@@ -6065,13 +6064,13 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        if self.mode == READ:
-            t = self.tape_driver.tape_transfer_time()
-        else:
-            t = self.media_transfer_time
+
+        t = self.media_transfer_time
         if t == 0.:
-            t = ticket['times']['transfer_time']
+            t = ticket['times'].get('transfer_time', 0.)
         ticket['times']['drive_transfer_time'] = t
+        ticket['times']['drive_call_time'] = self.tape_driver.tape_transfer_time()
+
         self.log_state()
         self.tape_driver.close()
         if self.mode == WRITE:
@@ -6170,13 +6169,14 @@ class DiskMover(Mover):
         ticket = self.current_work_ticket
         if not ticket.has_key('times'):
             ticket['times']={}
-        if self.mode == READ:
-            t = self.tape_driver.tape_transfer_time()
-        else:
-            t = self.media_transfer_time
+
+        t = self.media_transfer_time
         if t == 0.:
-            t = ticket['times']['transfer_time']
+            t = ticket['times'].get('transfer_time', 0.)
         ticket['times']['drive_transfer_time'] = t
+        ticket['times']['drive_call_time'] = self.tape_driver.tape_transfer_time()
+
+
         Trace.log(e_errors.INFO, "transfer complete volume=%s location=%s"%(
             self.current_volume, 0))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
