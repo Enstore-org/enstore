@@ -5139,7 +5139,7 @@ class Mover(dispatching_worker.DispatchingWorker,
             self.state = OFFLINE
         elif self.state is HAVE_BOUND:
             self.state = DRAINING # XXX CGW should dismount here. fix this
-        Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state.name(self.state),)) 
+        Trace.trace(e_errors.INFO, "The mover is set to state %s"%(state_name(self.state),)) 
         self.create_lockfile()
         out_ticket = {'status':(e_errors.OK,None),'state':state_name(self.state), 'pid': os.getpid()}
         self.reply_to_caller(out_ticket)
