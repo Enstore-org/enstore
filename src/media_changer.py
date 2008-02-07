@@ -185,7 +185,7 @@ class MediaLoaderMethods(dispatching_worker.DispatchingWorker,
 			pass
 	    except KeyError, msg:
 		    Trace.log(e_errors.INFO,
-			      "self.work_list item is missing vol_ticket: %s: %s" % (msg, i))
+			      "self.work_list item is missing vol_ticket: %s: %s from work_list: %s" % (msg, i, self.work_list))
             result.append((i['function'], i['vol_ticket']['external_label'], i['drive_id']))
         self.reply_to_caller({'status' : (e_errors.OK, 0, None),
                               'max_work':self.max_work,
