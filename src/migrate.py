@@ -445,9 +445,9 @@ def copy_files(files):
 				os.remove(tmp)
 
 			if f['deleted'] == 'y':
-				cmd = "encp --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(ENCP_PRIORITY, bfid, tmp)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(ENCP_PRIORITY, bfid, tmp)
 			else:
-				cmd = "encp --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(ENCP_PRIORITY, src, tmp)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(ENCP_PRIORITY, src, tmp)
 
 			if debug:
 				log(MY_TASK, "cmd =", cmd)
@@ -629,9 +629,9 @@ def migrating():
 				continue
 
 			if DEFAULT_LIBRARY:
-				cmd = "encp --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
 			else:
-				cmd = "encp --priority %d --ignore-fair-share --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, sg, ff, wrapper, tmp, dst)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, sg, ff, wrapper, tmp, dst)
 			if debug:
 				log(MY_TASK, 'cmd =', cmd)
 			res = encp.encp(cmd)
@@ -729,9 +729,9 @@ def final_scan():
 		ct = is_checked(bfid2, db)
 		if not ct:
 			if deleted == 'y':
-				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid2)
+				cmd = "encp --delayed-dismount 1 --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid2)
 			else:
-				cmd = "encp --priority %d  --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, src)
+				cmd = "encp --delayed-dismount 1 --priority %d  --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, src)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_checked(bfid, bfid2, db)
@@ -824,7 +824,7 @@ def final_scan_volume(vol):
 		ct = is_closed(bfid, db)
 		if not ct:
 			if deleted == 'y':
-				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid)
+				cmd = "encp --delayed-dismount 1 --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share --override-deleted --get-bfid %s /dev/null"%(ENCP_PRIORITY, bfid)
 			else:
 				# get the real path
 				pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(pnfs_id)
@@ -845,7 +845,7 @@ def final_scan_volume(vol):
 					continue
 
 				open_log(MY_TASK, "verifying", bfid, location_cookie, pnfs_path, '...')
-				cmd = "encp --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, pnfs_path)
+				cmd = "encp --delayed-dismount 1 --priority %d --bypass-filesystem-max-filesize-check --ignore-fair-share %s /dev/null"%(ENCP_PRIORITY, pnfs_path)
 			res = encp.encp(cmd)
 			if res == 0:
 				log_closed(src_bfid, bfid, db)
