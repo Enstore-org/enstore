@@ -281,8 +281,6 @@ def drive_volume(drive):
         return drive.volser
 
 def mount(volume, drive, media_type,view_first=1):
-    print 'mount called', volume, drive, media_type, view_first
-
     media_code = aci.__dict__.get("ACI_"+media_type)
     if media_code is None:
         return 'BAD',e_errors.MC_NONE,'Media code is None. media_type= %s'%(media_type,)
@@ -318,8 +316,6 @@ def mount(volume, drive, media_type,view_first=1):
     
 # this is a forced dismount. get rid of whatever has been ejected from the drive   
 def dismount(volume, drive, media_type,view_first=1):
-    print 'dismount called', volume, drive, media_type, view_first
-
     # check if any tape is mounted in this drive
     if view_first:
         stat,drvstate = drive_state(drive,"")
