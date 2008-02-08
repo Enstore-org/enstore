@@ -80,8 +80,10 @@ no_log_command = ['--migrated-from', '--migrated-to']
 # This is the configuration part, which might come from configuration
 # server in the production version
 
-SPOOL_DIR='/diskb/Migration_tmp'
-DEFAULT_LIBRARY='CD-9940B'
+# SPOOL_DIR='/diskb/Migration_tmp'
+SPOOL_DIR='/data/data2/Migration_Spool'
+# DEFAULT_LIBRARY='CD-9940B'
+DEFAULT_LIBRARY=''
 
 f_prefix = '/pnfs/fs/usr'
 f_p = string.split(f_prefix, '/')
@@ -114,7 +116,8 @@ dbname = None
 dbuser = "enstore"
 
 # migration log file
-LOG_DIR = SPOOL_DIR
+# LOG_DIR = SPOOL_DIR
+LOG_DIR = '/var/migration'
 LOG_FILE = "MigrationLog@"+time.strftime("%Y-%m-%d.%H:%M:%S", time.localtime(time.time()))+'#'+`os.getpid()`
 log_f = None
 
@@ -152,6 +155,11 @@ def init():
 	# check for no_log commands
 	if len(sys.argv) > 2 and not sys.argv[1] in no_log_command:
 		log_f = open(os.path.join(LOG_DIR, LOG_FILE), "a")
+		# check for directories
+		if not os.access(SPOOL_DIR, os.W_OK):
+			os.makedirs(SPOOL_DIR)
+		if not os.access(LOG_DIR, os.W_OK):
+			os.makedirs(LOG_DIR)
 	return
 
 # The following three functions query the state of a migrating file
