@@ -637,9 +637,9 @@ def migrating():
 				continue
 
 			if DEFAULT_LIBRARY:
-				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
+				cmd = "encp --delayed-dismount 60 --priority %d --ignore-fair-share --library %s --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, DEFAULT_LIBRARY, sg, ff, wrapper, tmp, dst)
 			else:
-				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, sg, ff, wrapper, tmp, dst)
+				cmd = "encp --delayed-dismount 60 --priority %d --ignore-fair-share --storage-group %s --file-family %s --file-family-wrapper %s %s %s"%(ENCP_PRIORITY, sg, ff, wrapper, tmp, dst)
 			if debug:
 				log(MY_TASK, 'cmd =', cmd)
 			res = encp.encp(cmd)
