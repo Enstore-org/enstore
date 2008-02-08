@@ -574,6 +574,8 @@ def extract_file_number(location_cookie):
         
     return None
 
+############################################################################
+
 def combine_dict(*dictionaries):
     new = {}
     for i in range(0, len(dictionaries)):
@@ -884,8 +886,10 @@ def collect_garbage():
     if uncollectable_count > 0:
         Trace.message(1, "UNCOLLECTABLE COUNT: %s" % uncollectable_count)
 
-    Trace.message(TIME_LEVEL, "Time to collect garbage: %s sec." %
-                  (time.time() - collect_garbage_start_time,))
+    message = "Time to collect garbage: %s sec." % \
+              (time.time() - collect_garbage_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -3661,8 +3665,10 @@ def open_udp_socket(udp_server, unique_id_list, encp_intf):
 
     udp_server.reply_to_caller(udp_ticket)
 
-    Trace.message(TIME_LEVEL, "Time to open udp socket: %s sec." %
-                  (time.time() - time_to_open_udp_socket,))
+    message = "Time to open udp socket: %s sec." % \
+              (time.time() - time_to_open_udp_socket,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     #It will most likely be a while, so this would be a good time to
     # perform this maintenance.
@@ -3744,8 +3750,10 @@ def open_routing_socket(mover_ip, encp_intf):
 	    # to bind to in order for the antispoofing problem to be avoided.
 	    return ip
 
-    Trace.message(TIME_LEVEL, "Time to open routing socket: %s sec." %
-                  (time.time() - time_to_open_routing_socket,))
+    message = "Time to open routing socket: %s sec." % \
+              (time.time() - time_to_open_routing_socket,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     #No route was set.
     return None
@@ -3831,8 +3839,10 @@ def open_control_socket(listen_socket, mover_timeout):
     Trace.message(INFO_LEVEL, message)
     Trace.log(e_errors.INFO, message)
 
-    Trace.message(TIME_LEVEL, "Time to open control socket: %s sec." %
-                  (time.time() - time_to_open_control_socket,))
+    message = "Time to open control socket: %s sec." % \
+              (time.time() - time_to_open_control_socket,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     #Perform one last test of the socket.  This should never fail, but
     # on occasion does...
@@ -3944,8 +3954,10 @@ def open_data_socket(mover_addr, interface_ip = None):
         except IOError:
             pass
 
-    Trace.message(TIME_LEVEL, "Time to open data socket: %s sec." %
-                  (time.time() - time_to_open_data_socket,))
+    message = "Time to open data socket: %s sec." % \
+              (time.time() - time_to_open_data_socket,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     return data_path_socket
 
@@ -4276,9 +4288,11 @@ def submit_one_request(ticket, encp_intf):
             Trace.log(e_errors.ERROR,
                       "submit_one_request: %s: %s" % (e_errors.MALFORMED,
                                                       str(ticket)))
-            
-    Trace.message(TIME_LEVEL, "Time to submit one request: %s sec." %
-                  (time.time() - submit_one_request_start_time,))
+
+    message = "Time to submit one request: %s sec." % \
+              (time.time() - submit_one_request_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     #It will most likely be a while, so this would be a good time to
     # perform this maintenance.
@@ -4360,8 +4374,10 @@ def open_local_file(work_ticket, e):
     done_ticket = {'status':(e_errors.OK, None), 'fd':local_fd}
 
     #Record this.
-    Trace.message(TIME_LEVEL, "Time to open local file: %s sec." %
-                  (time.time() - open_local_file_start_time,))
+    message = "Time to open local file: %s sec." % \
+              (time.time() - open_local_file_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
     
     return done_ticket
 
@@ -4402,8 +4418,10 @@ def receive_final_dialog(control_socket):
     except e_errors.TCP_EXCEPTION, msg:
         done_ticket = {'status':(e_errors.TCP_EXCEPTION, str(msg))}
 
-    Trace.message(TIME_LEVEL, "Time to receive final dialog: %s sec." %
-                  (time.time() - receive_final_dialog_start_time,))
+    message = "Time to receive final dialog: %s sec." % \
+              (time.time() - receive_final_dialog_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
     
     return done_ticket
         
@@ -4558,8 +4576,10 @@ def transfer_file(input_file_obj, output_file_obj, control_socket,
                    time.time() - transfer_start_time))
 
         # Print an additional timming value.
-        Trace.message(TIME_LEVEL, "Time to transfer file: %s sec." %
-                      (transfer_stop_time - transfer_start_time,))
+        message = "Time to transfer file: %s sec." % \
+                  (transfer_stop_time - transfer_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     else:
         Trace.log(e_errors.WARNING,
@@ -4708,8 +4728,10 @@ def check_crc(done_ticket, encp_intf, fd=None):
                     done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
                     return
 
-    Trace.message(TIME_LEVEL, "Time to check CRC: %s sec." %
-                  (time.time() - check_crc_start_time,))
+    message = "Time to check CRC: %s sec." % \
+              (time.time() - check_crc_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -4824,8 +4846,10 @@ def verify_file_size(ticket, encp_intf = None):
               % (full_filesize, pnfs_filesize, ticket['outfile'])
         ticket['status'] = (e_errors.FILE_MODIFIED, msg)
 
-    Trace.message(TIME_LEVEL, "Time to verify file size: %s sec." %
-                  (time.time() - verify_file_size_start_time,))
+    message = "Time to verify file size: %s sec." % \
+              (time.time() - verify_file_size_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 def verify_inode(ticket):
 
@@ -4871,8 +4895,10 @@ def verify_inode(ticket):
                                 "Pnfs inode changed during transfer.")
             return
 
-    Trace.message(TIME_LEVEL, "Time to verify inode: %s sec." %
-                  (time.time() - verify_inode_start_time,))
+    message = "Time to verify inode: %s sec." % \
+              (time.time() - verify_inode_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -4902,8 +4928,10 @@ def set_outfile_permissions(ticket):
                 ticket['status'] = (e_errors.USERERROR,
                                     "Unable to set permissions.")
 
-        Trace.message(TIME_LEVEL, "Time to set_outfile_permissions: %s sec." %
-                      (time.time() - set_outfile_permissions_start_time,))
+        message = "Time to set_outfile_permissions: %s sec." % \
+                      (time.time() - set_outfile_permissions_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
     
 ############################################################################
 
@@ -5763,8 +5791,10 @@ def calculate_rate(done_ticket, tinfo):
                           ff,
                           ffw)
 
-    Trace.message(TIME_LEVEL, "Time to calculate and record rate: %s sec." %
-                  (time.time() - calculate_rate_start_time,))
+    message = "Time to calculate and record rate: %s sec." % \
+              (time.time() - calculate_rate_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
 ############################################################################
 
@@ -5874,8 +5904,10 @@ def calculate_final_statistics(bytes, number_of_files, exit_status, tinfo):
     done_ticket['exit_status'] = exit_status
     done_ticket['status'] = (e_errors.OK, msg)
 
-    Trace.message(TIME_LEVEL, "Time to calculate final statistics: %s sec." %
-                  (time.time() - calculate_final_statistics_start_time,))
+    message = "Time to calculate final statistics: %s sec." % \
+              (time.time() - calculate_final_statistics_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
     
     return done_ticket
 
@@ -6060,10 +6092,12 @@ def set_pnfs_settings(ticket, intf_encp):
                       "Trouble with pnfs (Pnfs): %s %s %s." %
                       (ticket['status'][0], str(exc), str(msg)))
             return
-    
-    Trace.message(TIME_LEVEL, "Time to veify pnfs file location: %s sec." %
-                  (time.time() - location_start_time,))
 
+    message = "Time to veify pnfs file location: %s sec." % \
+              (time.time() - location_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
+    
     if not ticket.get('copy', None):  #Don't set layer 1 if copy.
         layer1_start_time = time.time() # Start time of setting pnfs layer 1.
 
@@ -6093,8 +6127,10 @@ def set_pnfs_settings(ticket, intf_encp):
                       (ticket['status'][0], str(exc), str(msg)))
             return
 
-        Trace.message(TIME_LEVEL, "Time to set pnfs layer 1: %s sec." %
-                      (time.time() - layer1_start_time,))
+        message = "Time to set pnfs layer 1: %s sec." % \
+                  (time.time() - layer1_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     #Format some tape drive output.
     mover_ticket = ticket.get('mover', {})
@@ -6171,8 +6207,10 @@ def set_pnfs_settings(ticket, intf_encp):
                       (ticket['status'][0], str(exc), str(msg)))
             return
 
-        Trace.message(TIME_LEVEL, "Time to set pnfs layer 4: %s sec." %
-                      (time.time() - layer4_start_time,))
+        message = "Time to set pnfs layer 4: %s sec." % \
+                  (time.time() - layer4_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     filedb_start_time = time.time() # Start time of updating file database.
 
@@ -6213,8 +6251,10 @@ def set_pnfs_settings(ticket, intf_encp):
         ticket['status'] = (str(exc), str(msg))
         return
 
-    Trace.message(TIME_LEVEL, "Time to set file database: %s sec." %
-                  (time.time() - filedb_start_time,))
+    message = "Time to set file database: %s sec." % \
+              (time.time() - filedb_start_time,)
+    Trace.message(TIME_LEVEL, message)
+    Trace.log(TIME_LEVEL, message)
 
     if not ticket.get('copy', None):  #Don't set size if copy.
         filesize_start_time = time.time() # Start time of setting the filesize.
@@ -6252,8 +6292,10 @@ def set_pnfs_settings(ticket, intf_encp):
             ticket['status'] = (str(exc), str(msg))
             return
 
-        Trace.message(TIME_LEVEL, "Time to set filesize: %s sec." %
-                  (time.time() - filesize_start_time,))
+        message = "Time to set filesize: %s sec." % \
+                  (time.time() - filesize_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     #This functions write errors/warnings to the log file and put an
     # error status in the ticket.
@@ -10083,8 +10125,9 @@ def main(intf):
     tinfo = {'encp_start_time':encp_start_time,
              't0':int(encp_start_time)}
 
-    #Initialize the Trace module.
-    Trace.init("ENCP")
+    #Initialize the Trace module.  #We need to include the thread name for
+    # the migration/duplication encps sharing a single process ID.
+    Trace.init("ENCP", include_thread_name=1)
     for x in xrange(6, intf.verbose + 1):
         Trace.do_print(x)
     for x in xrange(1, intf.verbose + 1):
