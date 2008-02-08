@@ -23,10 +23,12 @@ import e_errors
 dm = duplication_util.DuplicationManager()
 
 # modifying migrate module
-migrate.DEFAULT_LIBRARY = 'LTO4'
+# migrate.DEFAULT_LIBRARY = 'LTO4'
+migrate.DEFAULT_LIBRARY = 'D0-LTO4G1'
 migrate.MIGRATION_FILE_FAMILY_KEY = "_copy_1"
 migrate.MFROM = "<-"
 migrate.MTO = "->"
+migrate.LOG_DIR = "/var/duplication"
 
 # This is to change the behavior of migrate.swap_metadata.
 # duplicate_metadata(bfid1, src, bfid2, dst) -- duplicate metadata for src and dst
