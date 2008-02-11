@@ -625,6 +625,79 @@ def get_filedb_info(bfid):
 
     return fr, (err, warn, info)
 
+def verify_volumedb_info(vr):
+    err = []
+    warn = []
+    info = []
+
+    if type(vr) != types.DictType:
+        err.append("%s not a dictionary" % (vr,))
+        return (err, warn, info)
+
+    if not vr.has_key("status"):
+        vr['status'] = (e_errors.OK, None)
+
+    if e_errors.is_ok(vr):
+        pass
+    elif vr['status'][0] == e_errors.NOVOLUME:
+        err.append('volume not in db')
+    else:  #elif not e_errors.is_ok(fr):
+        err.append('volume db error (%s)' % (vr['status'],))
+    
+    return (err, warn, info)
+
+def get_volumedb_info(volume):
+
+    err = []
+    warn = []
+    info = []
+
+    if not volume:
+        return None, (err, warn, info)
+    
+    # file_family and library
+    try:
+        #Get the volume specific information.
+        if vol_info.has_key(volume):
+            vr = vol_info[volume]
+
+        else:
+            vr = infc.inquire_vol(volume)
+            (err, warn, info) = verify_volumedb_info(vr)
+
+            if not err:
+                vol_info[volume] = vr
+                vol_info[volume]['storage_group'] = \
+                     volume_family.extract_storage_group(vr['volume_family'])
+                vol_info[volume]['file_family'] = \
+                     volume_family.extract_file_family(vr['volume_family'])
+                vol_info[volume]['wrapper'] = \
+                     volume_family.extract_wrapper(vr['volume_family'])
+
+                try:
+                    #We don't need these at this time.  For the 10,000s of
+                    # volumes we have, we can shrink the memory footprint
+                    # of the running scan.
+                    del vol_info[volume]['comment']
+                    del vol_info[volume]['declared']
+                    del vol_info[volume]['blocksize']
+                    del vol_info[volume]['sum_rd_access']
+                    del vol_info[volume]['sum_mounts']
+                    del vol_info[volume]['capacity_bytes']
+                    del vol_info[volume]['status']
+                    del vol_info[volume]['non_del_files']
+                    del vol_info[volume]['sum_wr_err']
+                    del vol_info[volume]['sum_wr_access']
+                    del vol_info[volume]['sum_rd_err']
+                    del vol_info[volume]['first_access']
+                except KeyError:
+                    pass
+                
+    except (TypeError, ValueError, IndexError, AttributeError):
+        err.append('no or corrupted volume')
+        
+    return vr, (err, warn, info)
+
 def get_stat(f):
     __pychecker__="unusednames=i"
 
@@ -1566,6 +1639,7 @@ def check_file(f, file_info):
     filedb = file_info.get('file_record', None)
     pnfs_id = file_info.get('pnfsid', None)
     is_multiple_copy = file_info.get('is_multiple_copy', None)
+    volumedb = file_info.get('volume_record', None)
 
     err = []
     warn = []
@@ -1741,6 +1815,17 @@ def check_file(f, file_info):
         if err or warn:
             return err, warn, info
 
+    # Get volume database information.
+    if not volumedb:
+        volumedb, (err_v, warn_v, info_v) = get_volumedb_info(
+            filedb['external_label'])
+        # Get file database errors.
+        err = err + err_v
+        warn = warn + warn_v
+        info = info + info_v
+        if err or warn:
+            return err, warn, info
+
     # volume label
     try:
         if not is_multiple_copy:
@@ -1791,29 +1876,21 @@ def check_file(f, file_info):
             err.append('size(%d, %d, %d)' % (long(layer4['size']),
                                              long(real_size),
                                              long(filedb['size'])))
+
+        if layer2.get('size', None) != None:
+            if long(layer2['size']) != long(filedb['size']):
+                # Report if Enstore DB and the dCache CRC in PNFS layer 2
+                # are not the same.
+                err.append('dcache_size(%s, %s)' % (layer2['size'],
+                                                    filedb['size']))
+            
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted size')
         
     # file_family and library
     try:
-        #Get the volume specific information.
-        if vol_info.has_key(filedb['external_label']):
-            file_family = vol_info[filedb['external_label']]['ff']
-            library = vol_info[filedb['external_label']]['lm']
-        else:
-            vol = infc.inquire_vol(filedb['external_label'])
-            if not e_errors.is_ok(vol['status']):  #[0] != e_errors.OK:
-                if vol['status'][0] == e_errors.NO_VOLUME:
-                    err.append('missing vol ' + filedb['external_label'])
-                else:
-                    err.append("error finding vol %s: (%s)" %
-                               (filedb['external_label'], vol['status']))
-                return err, warn, info
-            file_family = volume_family.extract_file_family(vol['volume_family'])
-            library = vol['library']
-            vol_info[filedb['external_label']] = {}
-            vol_info[filedb['external_label']]['ff'] = file_family
-            vol_info[filedb['external_label']]['lm'] = library
+        file_family = volumedb['file_family']
+        library =  volumedb['library']
 
         # File Family check.  Take care of MIGRATION, too.
         if not is_multiple_copy:
@@ -1847,8 +1924,19 @@ def check_file(f, file_info):
     try:
         if layer4.get('crc', "") != "": # some do not have this field
             if long(layer4['crc']) != long(filedb['complete_crc']):
+                # Report if Enstore DB and the Enstore CRC in PNFS layer 4
+                # are not the same.
                 err.append('crc(%s, %s)' % (layer4['crc'],
                                             filedb['complete_crc']))
+        # Comparing the Enstore and dCache CRCs must be skipped if the
+        # volume in question is a null volume.
+        if volumedb['media_type'] != "null" and \
+               layer2.get('crc', None) != None: # some do not have this field
+            if long(layer2['crc']) != long(filedb['complete_crc']):
+                # Report if Enstore DB and the dCache CRC in PNFS layer 2
+                # are not the same.
+                err.append('dcache_crc(%s, %s)' % (layer2['crc'],
+                                                   filedb['complete_crc']))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted CRC')
 
