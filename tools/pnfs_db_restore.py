@@ -18,7 +18,9 @@ sys2host={'cdf': ('cdfensrv1','psql-data'),
           }
 
 version2version={'v8_0_7' : '8.0',
-                 'v8_1_3' : '8.1'
+                 'v8_1_3' : '8.1',
+                 'v8_2_6' : '8.2',
+                 'v8_3_0' : '8.3',
                  }
 def get_command_output(command):
     child = os.popen(command)
@@ -32,7 +34,11 @@ def usage(cmd):
     print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
     print "\t allowed systems: cms|cdf|d0|stk|eag"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
-    print "\t allowed pnfs versions v8_0_7, v8_1_3"
+    versions=""
+    for p in version2version.keys():
+        versions=versions+p+","
+    print "\t allowed pnfs versions: "+versions[:-1]
+    
     
 def get_config(host):
     print "get_config PNFS HOST ",host
