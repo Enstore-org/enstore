@@ -453,9 +453,9 @@ def copy_files(files):
 				os.remove(tmp)
 
 			if f['deleted'] == 'y':
-				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(ENCP_PRIORITY, bfid, tmp)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --bypass-filesystem-max-filesize-check --override-deleted --get-bfid %s %s"%(ENCP_PRIORITY, bfid, tmp)
 			else:
-				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --ecrc --bypass-filesystem-max-filesize-check %s %s"%(ENCP_PRIORITY, src, tmp)
+				cmd = "encp --delayed-dismount 2 --priority %d --ignore-fair-share --bypass-filesystem-max-filesize-check %s %s"%(ENCP_PRIORITY, src, tmp)
 
 			if debug:
 				log(MY_TASK, "cmd =", cmd)
