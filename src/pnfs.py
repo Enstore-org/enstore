@@ -411,12 +411,12 @@ class Pnfs:# pnfs_common.PnfsCommon, pnfs_admin.PnfsAdmin):
                     pnfsFilename = ""
 
         if pnfsFilename:
-            (self.machine, self.filepath, self.directory, self.filename) = \
+            (self.machine, self.filepath, self.dir, self.filename) = \
                            fullpath(pnfsFilename)
 
             if shortcut and self.id:
                 parent_id = self.get_parent(id = self.id, directory = self.dir)
-                self.directory = os.path.join(self.dir,
+                self.dir = os.path.join(self.dir,
                                               ".(access)(%s)" % parent_id)
 
             self.pstatinfo()
@@ -2535,17 +2535,6 @@ class PnfsInterface(option.Interface):
                    option.VALUE_USAGE:option.IGNORED,
                    option.USER_LEVEL:option.ADMIN,
                    },
-        option.VOLUME:{option.HELP_STRING:"lists all the volmap-tape for the" \
-                                     " specified volume",
-                 option.DEFAULT_VALUE:option.DEFAULT,
-                 option.DEFAULT_NAME:"volume",
-                 option.DEFAULT_TYPE:option.INTEGER,
-                 option.VALUE_NAME:"volumename",
-                 option.VALUE_TYPE:option.STRING,
-                 option.VALUE_USAGE:option.REQUIRED,
-                 option.FORCE_SET_DEFAULT:option.FORCE,
-                 option.USER_LEVEL:option.ADMIN,
-                   },
         }
     
     def valid_dictionaries(self):
@@ -2556,7 +2545,7 @@ class PnfsInterface(option.Interface):
     def parse_options(self):
         self.pnfs_id = "" #Assume the command is a dir and/or file.
         self.file = ""
-        self.directory = ""
+        self.dir = ""
         option.Interface.parse_options(self)
 
         if not self.option_list:
@@ -3572,7 +3561,7 @@ def do_work(intf):
             n=N(intf.dbnum)
         else:
             p=None
-            t=Tag(intf.directory)
+            t=Tag(intf.dir)
         n=None
     except OSError, msg:
         print str(msg)
