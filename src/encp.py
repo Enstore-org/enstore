@@ -10127,7 +10127,7 @@ def main(intf):
 
     #Initialize the Trace module.  #We need to include the thread name for
     # the migration/duplication encps sharing a single process ID.
-    Trace.init("ENCP", include_thread_name=1)
+    Trace.init("ENCP", include_thread_name = intf.include_thread_name)
     for x in xrange(6, intf.verbose + 1):
         Trace.do_print(x)
     for x in xrange(1, intf.verbose + 1):

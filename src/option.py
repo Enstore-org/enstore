@@ -603,6 +603,10 @@ class Interface:
         self.args = []           #Contains unprocessed arguments.
         self.some_args = []
         #self.config_options = {} #hack for old code
+
+        #Override this to true for thread names to appear in the log file.
+        # Remember to set the thread names to something meaningful, too.
+        self.include_thread_name = 0
         
         apply(self.compile_options_dict, self.valid_dictionaries())
         
