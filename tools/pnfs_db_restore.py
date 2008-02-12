@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+[#!/usr/bin/env python
 # $Id$
 import os
 import sys
@@ -22,6 +22,9 @@ version2version={'v8_0_7' : '8.0',
                  'v8_2_6' : '8.2',
                  'v8_3_0' : '8.3',
                  }
+
+postgres_version = 'v8_1_3'
+
 def get_command_output(command):
     child = os.popen(command)
     data  = child.read()
@@ -185,7 +188,7 @@ def recover(backup_time=None):
     os.system("rm -f %s/postmaster.pid"%(pgdb))
 
     # start postgres
-    cmd='/etc/init.d/postgres-boot start'
+    cmd='/etc/init.d/postgres-boot start %s'%(postgres_version,)
     print "Starting DB server: %s"% (cmd,)
     time.sleep(360)
     os.system(cmd)
@@ -220,7 +223,6 @@ if __name__ == "__main__" :
     ourhost          = string.split(os.uname()[1],'.')[0]
     
     
-    postgres_version = 'v8_1_3'
     if uname != 'root':
         print "Must be 'root' to run this program"
         sys.exit(1)
