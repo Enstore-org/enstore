@@ -63,7 +63,7 @@ def get_default_callback(use_port=0):
 
 # try to get a port from a range of possibilities
 def get_callback(use_host=None, use_port=0):
-    if use_host not in [None, ""]:
+    if use_host not in [None]:
         host = use_host
     else:
         host = host_config.choose_interface()['ip']
