@@ -134,9 +134,11 @@ def get_enstore_tmp_dir():
         return rtn_dir
 
     #Next, use 'tmp' under ENSTORE_DIR.
-    tmp_dir = os.environ.get('ENSTORE_HOME',None)
+    tmp_dir = os.environ.get('ENSTORE_OUT',None)
     if tmp_dir == None:
-        tmp_dir = os.environ.get('ENSTORE_DIR','')
+        tmp_dir = os.environ.get('ENSTORE_HOME',None)
+        if tmp_dir == None:
+            tmp_dir = os.environ.get('ENSTORE_DIR','')
     
     try:
         rtn_dir = os.path.join(tmp_dir, "tmp")
