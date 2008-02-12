@@ -28,12 +28,22 @@ def copy_it(src, dst):
 
     try:
         # it is very important that we copy with the mtime of the source
-        os.system('cp --preserve=mode,timestamps %s %s'%(src, dst))
+        sf = open(src, "r")
+        df = open(dst, "w")
+ 
+        data = sf.readlines()
+        df.writelines(data)
         print "Copied %s to %s." % (src, dst)
 
     except (OSError, IOError), msg:
         sys.stderr.write("%s\n" % (str(msg),))
         return
+
+    try:
+        src_stat = os.stat(src)
+        os.utime(dst, (src_stat[stat.ST_ATIME], src_stat[stat.ST_MTIME]))
+    except:
+        pass
 
     try:
         os.chmod(dst, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
