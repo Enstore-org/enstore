@@ -10,7 +10,7 @@ if [ "${1:-}" = "-c" ] ; then dont_complain=1; shift; else dont_complain=0; fi
 
 node=`uname -n| sed -e 's/\([^\.]\)\..*/\1/'`
 
-d0en=d0ensrv2.fnal.gov
+d0en=d0ensrv2n.fnal.gov
 #d0en=conf-d0en.fnal.gov
 stken=stkensrv2.fnal.gov
 cdfen=cdfensrv2.fnal.gov
