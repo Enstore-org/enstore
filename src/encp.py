@@ -4663,15 +4663,21 @@ def check_crc(done_ticket, encp_intf, fd=None):
 
     # Check the CRC
     if encp_intf.chk_crc:
+        compare_crc_start_time = time.time()
         if mover_crc != encp_crc and mover_crc != encp_crc_1_seeded:
             msg = "CRC mismatch: %d mover != %d (or %s) encp" % \
                 (mover_crc, encp_crc_1_seeded, encp_crc)
             done_ticket['status'] = (e_errors.CRC_ENCP_ERROR, msg)
             return
+        message = "Time to compare CRC: %s sec." % \
+                  (time.time() - compare_crc_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     #If the user wants a crc readback check of the new output file (reads
     # only) calculate it and compare.
     if encp_intf.ecrc:
+        readback_crc_start_time = time.time()
         #If passed a file descriptor, make sure it is to a regular file.
         if fd and (type(fd) == types.IntType) and \
            stat.S_ISREG(os.fstat(fd)[stat.ST_MODE]):
@@ -4694,9 +4700,14 @@ def check_crc(done_ticket, encp_intf, fd=None):
                       (mover_crc, readback_crc_1_seeded, readback_crc)
                 done_ticket['status'] = (e_errors.CRC_ECRC_ERROR, msg)
                 return
+        message = "Time to check readback CRC: %s sec." % \
+                  (time.time() - readback_crc_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
 
     # Check the CRC in pnfs layer 2 (set by dcache).
     if encp_intf.chk_crc:
+        layer2_crc_start_time = time.time()
         try:
             # Get the pnfs layer 2 for this file.
             p = Pnfs(done_ticket['wrapper']['pnfsFilename'])
@@ -4727,6 +4738,11 @@ def check_crc(done_ticket, encp_intf, fd=None):
                            encp_crc_long, hex(encp_crc_long))
                     done_ticket['status'] = (e_errors.CRC_DCACHE_ERROR, msg)
                     return
+        message = "Time to check dCache CRC: %s sec." % \
+                  (time.time() - layer2_crc_start_time,)
+        Trace.message(TIME_LEVEL, message)
+        Trace.log(TIME_LEVEL, message)
+
 
     message = "Time to check CRC: %s sec." % \
               (time.time() - check_crc_start_time,)
