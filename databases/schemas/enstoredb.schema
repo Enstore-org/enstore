@@ -583,16 +583,6 @@ CREATE VIEW cms_volume_with_only_deleted_files AS
 ALTER TABLE public.cms_volume_with_only_deleted_files OWNER TO enstore;
 
 --
--- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW enstore_tables AS
-    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS "rows", c.relpages AS pages, t.spcname AS "tablespace", c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers > 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
-
-
-ALTER TABLE public.enstore_tables OWNER TO enstore;
-
---
 -- Name: file; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -617,16 +607,6 @@ CREATE TABLE file (
 ALTER TABLE public.file OWNER TO enstore;
 
 --
--- Name: file2; Type: VIEW; Schema: public; Owner: enstore
---
-
-CREATE VIEW file2 AS
-    SELECT file.bfid, file.crc, file.deleted, file.drive, file.volume, file.location_cookie, file.pnfs_path, file.pnfs_id, file.sanity_size, file.sanity_crc, file.size, file.uid, file.gid, CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE 0 END AS n_deleted, CASE WHEN (file.deleted = 'y'::bpchar) THEN file.size ELSE (0)::bigint END AS size_deleted, CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE 0 END AS n_active, CASE WHEN (file.deleted = 'n'::bpchar) THEN file.size ELSE (0)::bigint END AS size_active, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN 1 ELSE 0 END AS n_unknown, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN file.size ELSE (0)::bigint END AS size_unknown FROM file;
-
-
-ALTER TABLE public.file2 OWNER TO enstore;
-
---
 -- Name: file_copies_map; Type: TABLE; Schema: public; Owner: enstore; Tablespace: 
 --
 
@@ -637,6 +617,36 @@ CREATE TABLE file_copies_map (
 
 
 ALTER TABLE public.file_copies_map OWNER TO enstore;
+
+--
+-- Name: duplicates; Type: VIEW; Schema: public; Owner: enstore
+--
+
+CREATE VIEW duplicates AS
+    SELECT m.bfid AS "primary", m.alt_bfid AS "copy", f.deleted, f.pnfs_path FROM file_copies_map m, file f WHERE ((f.bfid)::text = (m.bfid)::text);
+
+
+ALTER TABLE public.duplicates OWNER TO enstore;
+
+--
+-- Name: enstore_tables; Type: VIEW; Schema: public; Owner: enstore
+--
+
+CREATE VIEW enstore_tables AS
+    SELECT n.nspname AS schemaname, c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner, c.reltuples AS "rows", c.relpages AS pages, t.spcname AS "tablespace", c.relhaspkey AS haspkey, c.relhasindex AS hasindexes, c.relhasrules AS hasrules, (c.reltriggers > 0) AS hastriggers FROM ((pg_class c LEFT JOIN pg_namespace n ON ((n.oid = c.relnamespace))) LEFT JOIN pg_tablespace t ON ((t.oid = c.reltablespace))) WHERE ((c.relkind = 'r'::"char") AND (n.nspname = 'public'::name));
+
+
+ALTER TABLE public.enstore_tables OWNER TO enstore;
+
+--
+-- Name: file2; Type: VIEW; Schema: public; Owner: enstore
+--
+
+CREATE VIEW file2 AS
+    SELECT file.bfid, file.crc, file.deleted, file.drive, file.volume, file.location_cookie, file.pnfs_path, file.pnfs_id, file.sanity_size, file.sanity_crc, file.size, file.uid, file.gid, CASE WHEN (file.deleted = 'y'::bpchar) THEN 1 ELSE 0 END AS n_deleted, CASE WHEN (file.deleted = 'y'::bpchar) THEN file.size ELSE (0)::bigint END AS size_deleted, CASE WHEN (file.deleted = 'n'::bpchar) THEN 1 ELSE 0 END AS n_active, CASE WHEN (file.deleted = 'n'::bpchar) THEN file.size ELSE (0)::bigint END AS size_active, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN 1 ELSE 0 END AS n_unknown, CASE WHEN ((file.deleted <> 'y'::bpchar) AND (file.deleted <> 'n'::bpchar)) THEN file.size ELSE (0)::bigint END AS size_unknown FROM file;
+
+
+ALTER TABLE public.file2 OWNER TO enstore;
 
 --
 -- Name: file_info; Type: VIEW; Schema: public; Owner: enstore
