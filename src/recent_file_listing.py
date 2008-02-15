@@ -65,7 +65,7 @@ if __name__ == '__main__':
 	f.write("\n%s\n\n"%(head))
 	f.close()
 	query = "select update as time, label as volume, file_family, \
-			location_cookie, pnfs_path from file, volume \
+			location_cookie, pnfs_id, pnfs_path from file, volume \
 			where \
 				bfid >= '%s' and bfid < '%s' and \
 				file.volume = volume.id and \
