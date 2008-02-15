@@ -233,8 +233,11 @@ def check_db(check_dir):
 		f.write("-- STORAGE GROUP: %s\n--\n"%(sg))
 		f.close()
 		print timeofday.tod(), "Listing %s files ... "%(sg)
-	
-		cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
+
+		if sg == 'cms':
+			cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_id, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
+		else:
+			cmd = "psql -d backup -A -F ' ' -c "+'"'+"select storage_group, file_family, label as volume, location_cookie, bfid, size, crc, pnfs_path as path from file, volume where storage_group = '%s' and file.volume = volume.id and volume.system_inhibit_0 != 'DELETED' and deleted = 'n' order by storage_group, file_family, label, location_cookie;"%(sg)+'"'+" >> "+out_file
 		print cmd
 		os.system(cmd)
 
