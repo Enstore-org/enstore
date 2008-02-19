@@ -16,7 +16,7 @@ def usage():
 def swap_vol(vol):
 	# check if all files are primary
 	q = "select bfid from file, volume where file.volume = volume.id and label = '%s' and deleted = 'n';"%(vol)
-	res = db.db.query(q).getresult()
+	res = dm.db.query(q).getresult()
 	for i in res:
 		bfid = res[i][0]
 		if not dm.is_primary(bfid):
