@@ -113,6 +113,69 @@ class DuplicationManager:
 
 		return
 
+	# swap original with its first copy
+	def swap_original_and_copy(self, bfid):
+		# get file information
+		f = self.fcc.bfid_info(bfid)
+		if f['status'][0] != e_errors.OK:
+			return "no such file %s"%(bfid)
+		# get the copy information
+		q = "select bfid, alt_bfid from file_copies_map where bfid = '%s';"%(bfid)
+		res = self.db.query(q).getresult()
+		if not res:
+			return "%s does not have a copy"%(bfid)
+		copy = res[0][1]
+
+		f2 = self.fcc.bfid_info(copy)
+		if f2['status'][0] != e_errors.OK:
+			return "no such file %s"%(copy)
+
+		# get pnfs entry
+		try:
+			pnfs_path = pnfs.Pnfs(mount_point='/pnfs/fs').get_path(f['pnfsid'])
+			if type(pnfs_path) == type([]):
+				pnfs_path = pnfs_path[0]
+		except:
+			return "not a valid pnfs file: %s"%(f['pnfsid'])
+
+		pf = pnfs.File(pnfs_path)
+
+		# now swap bfid and copy
+		# make it a complete transaction
+		self.db.query('begin transaction;')
+		try:
+			q = "update file_copies_map set bfid = '%s' where bfid = '%s';"%(copy, bfid)
+			self.db.query(q)
+			q = "update file_copies_map set alt_bfid = '%s' where alt_bfid = '%s';"%(bfid, copy)
+			self.db.query(q)
+		except:
+			self.db.query('rollback transaction;')
+			return "failed to swap %s and %s"%(bfid, copy)
+		self.db.query('commit transaction;')
+
+		# set pnfs entry
+		if pf.bfid != copy:
+			pf.bfid = copy
+			pf.volume = f2['external_label']
+			pf.update()
+		return
+
+	# is_primary(bfid) check if bfid is a primary
+	def is_primary(self, bfid):
+		q = "select bfid from file_copies_map where bfid = '%s';"%(bfid)
+		res = self.db.query(q).getresult()
+		if res:
+			return True
+		return False
+
+	# is_copy(bfid) check if bfid is a copy
+	def is_copy(self, bfid):
+		q = "select alt_bfid from file_copies_map where alt_bfid = '%s';"%(bfid)
+		res = self.db.query(q).getresult()
+		if res:
+			return True
+		return False
+			
 # make_original_as_duplicate(vol) -- make all files on the original volume
 #	as a duplicate(copy) of the migrated files.
 
