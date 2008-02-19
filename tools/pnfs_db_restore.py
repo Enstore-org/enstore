@@ -1,4 +1,4 @@
-[#!/usr/bin/env python
+#!/usr/bin/env python
 # $Id$
 import os
 import sys
@@ -18,13 +18,8 @@ sys2host={'cdf': ('cdfensrv1','psql-data'),
           }
 
 version2version={'v8_0_7' : '8.0',
-                 'v8_1_3' : '8.1',
-                 'v8_2_6' : '8.2',
-                 'v8_3_0' : '8.3',
+                 'v8_1_3' : '8.1'
                  }
-
-postgres_version = 'v8_1_3'
-
 def get_command_output(command):
     child = os.popen(command)
     data  = child.read()
@@ -37,11 +32,7 @@ def usage(cmd):
     print "Usage: %s -s [--system=] -t [backup_time=] -p [--pnfs_version=]"%(cmd,)
     print "\t allowed systems: cms|cdf|d0|stk|eag"
     print "\t specify timestamp YYYY-MM-DD to get backup up to certain date" 
-    versions=""
-    for p in version2version.keys():
-        versions=versions+p+","
-    print "\t allowed pnfs versions: "+versions[:-1]
-    
+    print "\t allowed pnfs versions v8_0_7, v8_1_3"
     
 def get_config(host):
     print "get_config PNFS HOST ",host
@@ -188,7 +179,7 @@ def recover(backup_time=None):
     os.system("rm -f %s/postmaster.pid"%(pgdb))
 
     # start postgres
-    cmd='/etc/init.d/postgres-boot start %s'%(postgres_version,)
+    cmd='/etc/init.d/postgres-boot start'
     print "Starting DB server: %s"% (cmd,)
     time.sleep(360)
     os.system(cmd)
@@ -223,6 +214,7 @@ if __name__ == "__main__" :
     ourhost          = string.split(os.uname()[1],'.')[0]
     
     
+    postgres_version = 'v8_1_3'
     if uname != 'root':
         print "Must be 'root' to run this program"
         sys.exit(1)

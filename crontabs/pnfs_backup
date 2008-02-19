@@ -1,0 +1,1 @@
+01 5 * * * enstore find /diskb/pnfs-backup/xlogs -name '*.Z' -mtime +3 -exec rm {} \; > /dev/null 2> /dev/null

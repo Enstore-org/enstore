@@ -1,0 +1,1 @@
+# 45 4 * * * enstore /local/ups/prd/pnfs/v3_1_10-f8/tools/linux/pgsql/bin/vacuumdb -z -a  > /dev/null 2> /dev/null
