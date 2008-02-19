@@ -28,7 +28,6 @@ setup() {
 			if [ -f /usr/etc/pnfsSetup.sh ]
 			then
 			    source /usr/etc/pnfsSetup.sh
-			    echo PNFS $pnfs
 			    PATH=$PATH:$pnfs/bin:$pnfs/tools
 			fi    
 			return 0
