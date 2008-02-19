@@ -22,7 +22,7 @@ setup() {
         then
 		if [ $last = "pnfs" ]
 		then
-		    rpm -q $last > /dev/null 2 > /dev/null
+		    rpm -q $last > /dev/null
 		    if [ $? -eq 0 ]
 		    then
 			return 0
