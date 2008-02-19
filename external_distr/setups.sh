@@ -25,6 +25,12 @@ setup() {
 		    rpm -q $last > /dev/null
 		    if [ $? -eq 0 ]
 		    then
+			if [ -f /usr/etc/pnfsSetup.sh ]
+			then
+			    source /usr/etc/pnfsSetup.sh
+			    echo PNFS $pnfs
+			    PATH=$PATH:$pnfs/bin:$pnfs/tools
+			fi    
 			return 0
 		    else
 			if [ "${UPS_DIR:-x}" != "x" ]
