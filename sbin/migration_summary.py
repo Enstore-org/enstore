@@ -10,8 +10,10 @@ intf = option.Interface()
 csc = configuration_client.ConfigurationClient((intf.config_host, intf.config_port))
 
 dbinfo = csc.get('database')
-outfile = csc.get('crons').get('html_dir')+'/tape_inventory/MIGRATION_SUMMARY'
-sys.stdout = open(outfile, 'w')
+
+if len(sys.argv) > 1 and sys.argv[1] == '--default-log':
+	outfile = csc.get('crons').get('html_dir')+'/tape_inventory/MIGRATION_SUMMARY'
+	sys.stdout = open(outfile, 'w')
 
 db = pg.DB(host=dbinfo['dbhost'], port=dbinfo['dbport'], dbname=dbinfo['dbname'])
 print time.ctime(time.time())
