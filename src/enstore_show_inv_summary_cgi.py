@@ -25,6 +25,7 @@ if cluster == "d0en":
 	special.append('TAB_FLIPPING_WATCH-samlto2')
 	special.append('AML2-VOLUMES.html')
 	special.append('STK-VOLUMES.html')
+	special.append('MIGRATION_SUMMARY')
 elif cluster == "stken":
 	special.append('TAB_FLIPPING_WATCH-CD-LTO3')
 	special.append('SL8500-VOLUMES.html')
