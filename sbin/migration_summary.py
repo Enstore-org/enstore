@@ -28,3 +28,9 @@ print db.query("select count(label) as \"migrated volumes\" from volume where sy
 print
 print db.query("select count(distinct dst) as \"tapes written\" from migration_history where not src like 'PRI%';")
 
+print
+print "================="
+print "Migration History"
+print "================="
+print
+print db.query("select * from migration_history where not src like 'PRI%' order by time;")
