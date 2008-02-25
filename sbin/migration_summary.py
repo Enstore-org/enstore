@@ -19,13 +19,13 @@ outfile = None
 gscript = """
 set term postscript landscape enhanced color solid 'Helvetica' 10
 set output '%s.ps'
-set title "Migration/Duplication per day"
+set title '%s'
 set xlabel 'Date'
 set ylabel 'Volumes'
 set timefmt '%%Y-%%m-%%d'
 set xdata time
 set format x '%%m-%%d'
-set style line 1 lt 3 lw 25
+set style line 1 lt %d lw 25
 set xrange ['%s':'%s']
 set yrange [:%d]
 set mxtics 2
@@ -53,7 +53,7 @@ if outfile:
 		if i[1] > m:
 			m = i[1]
 	(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile, outfile, outfile, outfile))
-	gp.write(gscript%(outfile, day_after(res1[0][0], -1), day_after(res1[-1][0], 1), (m+5)/5*5))
+	gp.write(gscript%(outfile, "Migration/Duplication per day", 3, day_after(res1[0][0], -1), day_after(res1[-1][0], 1), (m+5)/5*5))
 	for i in res1:
 		gp.write("%s %d\n"%(i[0], i[1]))
 	gp.write("e\n")
@@ -62,6 +62,24 @@ if outfile:
 
 	print '<img src="MIGRATION_SUMMARY.jpg">'
 	print '<a href="MIGRATION_SUMMARY.ps">Postscript version</a>'
+	print '<p>'
+
+	(out, gp) = popen2.popen2("gnuplot; convert -rotate 90 %s.ps %s.jpg; convert -rotate 90 -geometry 120x120 -modulate 80 %s.ps %s_stamp.jpg"%(outfile+'_acc', outfile+'_acc', outfile+'_acc', outfile+'_acc'))
+	gp.write('set title "Accumulated Progress"\n')
+	total = 0
+	for i in res1:
+		total = total + i[1]
+	gp.write(gscript%(outfile+'_acc', "Accumulated Progress", 4, day_after(res1[0][0], -1), day_after(res1[-1][0], 1), (total+20)/20*20))
+	total = 0
+	for i in res1:
+		total = total + i[1]
+		gp.write("%s %d\n"%(i[0], total))
+	gp.write("e\n")
+	gp.write("quit\n")
+	gp.close()
+
+	print '<img src="MIGRATION_SUMMARY_acc.jpg">'
+	print '<a href="MIGRATION_SUMMARY_acc.ps">Postscript version</a>'
 	print '<p>'
 
 print
