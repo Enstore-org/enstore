@@ -453,8 +453,18 @@ def plot_bytes():
         tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
+        
+#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#                                                                                             tmp.binarray[i_day_min]+delta,))
+
         tmp.add_text("set label \"Total :  %5d TB  \" at graph .8,.8  font \"Helvetica,13\"\n"%(t_day+0.5,))
-        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .8,.75  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_max))),))
+#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+       
         tmp.set_marker_type("impulses")
         p.plot()
 
@@ -486,6 +496,8 @@ def plot_tape_bytes():
     start_day   = time.mktime((2001, 12, 31, 23, 59, 59, 0, 0, 0))
     now_day     = time.mktime((Y+1, 12, 31, 23, 59, 59, wd, jd, dst))
     nbins       = int((now_day-start_day)/(30.*24.*3600.)+0.5)
+#    Y, M, D, h, m, s, wd, jd, dst = time.localtime(start_time)
+
 
     s1 = histogram.Histogram1D("on_tape_total_by_month","Total bytes on tape per month from Enstore",nbins,float(start_day),float(now_day))
     s1.set_time_axis(True)
@@ -498,7 +510,9 @@ def plot_tape_bytes():
     color=1
     for server in servers:
         server_name,server_port = servers.get(server)
+#        if (server == "stken") : continue
         if ( server_port != None ):
+
             h   = histogram.Histogram1D("on_tape_by_month_%s"%(server,),"Total Bytes On Tape by Month By %s"%(server,),nbins,float(start_day),float(now_day))
             decorate(h,color,"TB/month",server)
             histograms.append(h)
@@ -568,8 +582,18 @@ def plot_tape_bytes():
         tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_max]+0.5,
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
+        
+#        tmp.add_text("set label \"%5d\" at \"%s\",%f right rotate font \"Helvetica,12\"\n"%(tmp.binarray[i_day_min]+0.5,
+#                                                                                             time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_min))),
+#                                                                                             tmp.binarray[i_day_min]+delta,))
+
         tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_day+0.5,))
-        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.95  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.95  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+                                                                                                        time.strftime("%Y-%m",time.localtime(tmp.get_bin_center(i_day_max))),))
+#        tmp.add_text("set label \"Min    :  %5d TB (on %s) \" at graph .8,.70  font \"Helvetica,13\"\n"%(t_day_min+0.5,
+#                                                                                                         time.strftime("%m-%d",time.localtime(tmp.get_bin_center(i_day_min))),))
+#        tmp.add_text("set label \"Mean  :  %5d TB \" at graph .8,.65  font \"Helvetica,13\"\n"%(t_day /  (tmp.n_bins()-1)+0.5,))
+       
         tmp.set_marker_type("impulses")
         p.plot()
 
@@ -587,7 +611,7 @@ def plot_tape_bytes():
 if __name__ == "__main__":
     plot_bpd()
     plot_bytes()
-#    plot_tape_bytes() takes long time need something better
+#    plot_tape_bytes()
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.jpg  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
     os.system(cmd)
     cmd = "source /home/enstore/gettkt; $ENSTORE_DIR/sbin/enrcp *.ps  stkensrv2.fnal.gov:/fnal/ups/prd/www_pages/enstore/bytes_statistics/"
