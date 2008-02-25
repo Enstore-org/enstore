@@ -32,6 +32,7 @@ import Trace
 import charset
 import enstore_functions3
 import enstore_constants
+import checksum
 
 #os.access = e_access   #Hack for effective ids instead of real ids.
 
@@ -1879,7 +1880,7 @@ def check_file(f, file_info):
 
         if layer2.get('size', None) != None:
             if long(layer2['size']) != long(filedb['size']):
-                # Report if Enstore DB and the dCache CRC in PNFS layer 2
+                # Report if Enstore DB and the dCache size in PNFS layer 2
                 # are not the same.
                 err.append('dcache_size(%s, %s)' % (layer2['size'],
                                                     filedb['size']))
@@ -1932,11 +1933,17 @@ def check_file(f, file_info):
         # volume in question is a null volume.
         if volumedb['media_type'] != "null" and \
                layer2.get('crc', None) != None: # some do not have this field
-            if long(layer2['crc']) != long(filedb['complete_crc']):
+            crc_1_seeded = checksum.convert_0_adler32_to_1_adler32(
+                filedb['complete_crc'], filedb['size'])
+            #We need to compare both the unconverted and converted CRC.
+            # There may come a time when we have a mixed 0 and 1 seeded
+            # environment.
+            if long(layer2['crc']) != long(crc_1_seeded) and \
+                   long(layer2['crc']) != long(filedb['complete_crc']):
                 # Report if Enstore DB and the dCache CRC in PNFS layer 2
                 # are not the same.
                 err.append('dcache_crc(%s, %s)' % (layer2['crc'],
-                                                   filedb['complete_crc']))
+                                                   crc_1_seeded))
     except (TypeError, ValueError, IndexError, AttributeError):
         err.append('no or corrupted CRC')
 
