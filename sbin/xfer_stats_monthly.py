@@ -569,7 +569,7 @@ def plot_tape_bytes():
                                                                                              time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(tmp.get_bin_center(i_day_max))),
                                                                                              tmp.binarray[i_day_max]+delta,))
         tmp.add_text("set label \"Total :  %5d TB  \" at graph .05,.9  font \"Helvetica,13\"\n"%(t_day+0.5,))
-        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.95  font \"Helvetica,13\"\n"%(t_day_max+0.5,
+        tmp.add_text("set label \"Max   :  %5d TB (on %s) \" at graph .05,.95  font \"Helvetica,13\"\n"%(t_day_max+0.5,))
         tmp.set_marker_type("impulses")
         p.plot()
 
