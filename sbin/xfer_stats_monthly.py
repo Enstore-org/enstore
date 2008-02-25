@@ -29,7 +29,7 @@ KB=1024.
 SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day where date between %s and %s group by date order by date desc"
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_day group by date order by date" # was xferby_month
 
-SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
+SELECT_DELETED_BYTES ="select to_char(state.time, 'YYYY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
 
 SELECT_WRITTEN_BYTES ="select  substr(bfid,5,10), size, deleted  from file where  file.deleted = 'n' and file.volume in (select volume.id from volume where volume.media_type != 'null' and system_inhibit_0 != 'DELETED' ) "
 
