@@ -18,7 +18,7 @@ do
   fi
 
   i=0
-  while [ $i -le 10 ] 
+  while [ $i -lt 10 ] 
   do
     #name=test_${s}_`date +"%s"`.data
     name=`hostname | cut -f 1 -d \.`_test_${s}_`date +"%s"`_$$.data
