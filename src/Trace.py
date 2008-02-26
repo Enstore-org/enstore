@@ -200,6 +200,7 @@ def alarm(severity, root_error, rest={},
             pass
 
 def trace(severity, msg):
+    global thread_name
     ## there is no need to waste time on creating message
     ## if it will not be sent
     if (print_levels.has_key(severity) or
@@ -218,7 +219,20 @@ def trace(severity, msg):
             a[4]=c
             b=" "
             tm=b.join(a)
-            print severity, tm, msg
+            new_msg = msg
+            if thread_name:
+                thread = threading.currentThread()
+                if thread:
+                    th_name = thread.getName()
+                else:
+                    th_name = ''
+            else:
+                th_name = ''
+                    
+            if th_name:
+               new_msg = "%s Thread %s"%(new_msg, th_name) 
+            
+            print severity, tm, new_msg
 	    # the following line will output the memory usage of the process
 	    #os.system("a=`ps -ef |grep '/inq'|grep -v grep|xargs echo|cut -f2 -d' '`;ps -el|grep $a|grep python")
 	    #print "================================="  # a usefull divider
