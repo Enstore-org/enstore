@@ -61,10 +61,14 @@ IOERROR = "IO ERROR"                    #Used for many things...
 ENSTOREBALLRED = "ENSTORE BALL IS RED"
 MALFORMED = "MALFORMED REQUEST"
 VERSION_MISMATCH="VERSION MISMATCH"     #Tells user to update encp.
+# LM states
 LOCKED="locked"
+UNLOCKED="unlocked"
 NOREAD="noread"
 NOWRITE="nowrite"
 REJECT='reject'
+PAUSE='pause'
+IGNORE='ignore'
 OSERROR = "OS ERROR"                    #Blanket error for caught OSError.
 PNFS_ERROR = "PNFS ERROR"               #Encp to Pnfs specific error.
 ENCP_STUCK = "ENCP STUCK"               #Mover detected no encp progress.
