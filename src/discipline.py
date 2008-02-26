@@ -4,16 +4,11 @@
 # $Id$
 #
 # system imports
-import sys
 import os
-import stat
-import errno
 import string
 import re
 #import pcre deprecated
 import copy
-import traceback
-import pprint
 import threading
 
 
@@ -29,12 +24,12 @@ class Restrictor:
         self.exists = 0
         disc_dict=self.csc.get('discipline',{})
         if disc_dict['status'][0] == e_errors.OK:
-            dict =  disc_dict.get(self.library_manager, {})
+            ldict =  disc_dict.get(self.library_manager, {})
         else:
-            dict = {}
+            ldict = {}
         if dict:
             self.exists = 1
-        self.storage_groups = dict
+        self.storage_groups = ldict
         return (e_errors.OK, None)
 
     def __init__(self, csc, library_manager):
