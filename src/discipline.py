@@ -14,6 +14,7 @@ import re
 import copy
 import traceback
 import pprint
+import threading
 
 
 # enstore imports
@@ -39,6 +40,7 @@ class Restrictor:
     def __init__(self, csc, library_manager):
         self.csc = csc
         self.library_manager = library_manager
+        self._lock = threading.Lock()
         self.read_config()
 
 
@@ -63,8 +65,10 @@ class Restrictor:
         if not self.exists:  # no discipline configuration info
             return 0, None, None, None
         # make a "flat" copy of ticket
-        # use deepcopy 
+        # use deepcopy
+        self._lock.acquire()
         flat_ticket=copy.deepcopy(ticket)
+        self._lock.release()
         if flat_ticket['vc'].has_key('wrapper'): del(flat_ticket['vc']['wrapper'])
         callback = flat_ticket.get('callback_addr', None)
         if callback:

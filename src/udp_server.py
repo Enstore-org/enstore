@@ -24,6 +24,7 @@ import fcntl
 import copy
 import types
 #import rexec
+import threading
 
 # enstore imports
 #import hostaddr
@@ -44,6 +45,7 @@ class UDPServer:
         self.max_packet_size = 16384
         self.rcv_timeout = receive_timeout   # timeout for get_request in sec.
         self.address_family = socket.AF_INET
+        self._lock = threading.Lock()
 
         try:
             #If we already have a server_socket...
@@ -357,7 +359,9 @@ class UDPServer:
     def reply_with_list(self, list, reply_address, current_id,
                         interface_ip = None):
 
+        self._lock.acquire()
         list_copy = copy.deepcopy(list)
+        self._lock.release()
         self.request_dict[current_id] = list_copy
 
         if interface_ip != None:
