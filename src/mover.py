@@ -717,6 +717,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.crc_seed = self.initial_crc_seed
         self.memory_error = 0 # to flag memory error
         self.starting = 1 # to disable changing interval
+        self._error = None
+        self._error_source = None
         
         
     def __setattr__(self, attr, val):
@@ -1928,6 +1930,9 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.current_volume = None
         self.current_library = None
         self.method = None
+        self._error = None
+        self._error_source = None
+        
         if hasattr(self,'too_long_in_state_sent'):
             del(self.too_long_in_state_sent)
 
@@ -2329,15 +2334,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         if self.bytes_written == self.bytes_to_write:
             try:
-                if self.single_filemark:
-                    self.tape_driver.writefm()
-                else:
-                    self.tape_driver.writefm()
-                    self.tape_driver.writefm()
-                    self.tape_driver.skipfm(-1)
                 ##We don't ever want to let ftt handle the filemarks for us, because its
                 ##default behavior is to write 2 filemarks and backspace over both
                 ##of them.
+                self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
+                if self.single_filemark or self.eof_labels:
+                    Trace.trace(23, "single fm %s eof labels %s"%(self.single_filemark, self.eof_labels))
+                    Trace.trace(23, "write fm")
+                    self.tape_driver.writefm()
+                else:
+                    Trace.trace(23, "write fm")
+                    self.tape_driver.writefm()
+                    Trace.trace(23, "write fm")
+                    self.tape_driver.writefm()
+                    Trace.trace(23, "skip fm -1")
+                    self.tape_driver.skipfm(-1)
+                    Trace.trace(23, "fm done")
                 Trace.trace(10, "complete CRC %s"%(self.buffer.complete_crc,))
                 self.eof_labels = self.wrapper.eof_labels(self.buffer.complete_crc)
                 if self.eof_labels:
@@ -2347,7 +2359,15 @@ class Mover(dispatching_worker.DispatchingWorker,
                         self.transfer_failed(e_errors.WRITE_ERROR, "short write %s != %s" %
                                              (bytes_written, len(self.eof_labels)), error_source=TAPE)
                         return
+                    Trace.trace(23, "write fm")
                     self.tape_driver.writefm()
+                    if not self.single_filemark:
+                        Trace.trace(5, "single fm %s"%(self.single_filemark,))
+                        Trace.trace(23, "write fm")
+                        self.tape_driver.writefm()
+                        Trace.trace(23, "skip fm -1")
+                        self.tape_driver.skipfm(-1)
+                        Trace.trace(23, "fm done")
                 # get location info before calling tape_driver.flush() as it will clear stats    
                 self.last_blocks_written = nblocks
                 new_bloc_loc = 0L
@@ -3049,6 +3069,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         
         #self.log_state(logit=1)
         
+        self._error = None
+        self._error_source = None
         self.lock_state()
         self.save_state = self.state
         self.udp_cm_sent = 0
@@ -3084,7 +3106,21 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "Not idle %s" %(state_name(self.state),))
             self.return_work_to_lm(ticket)
             self.unlock_state()
-            return 
+            return
+
+        if self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE:
+            # switching from write to read write additional fm
+            Trace.log(e_errors.INFO,"writing a tape mark before switching to READ")
+            try:
+              self.tape_driver.writefm()
+            except:
+                Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                Trace.handle_error()
+                self.vcc.set_system_readonly(self.current_volume)
+                self.return_work_to_lm(ticket)
+                self.unlock_state()
+                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
+                return
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
@@ -3562,6 +3598,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         Trace.log(e_errors.ERROR, "transfer failed %s %s %s volume=%s location=%s thread %s" % (
             exc, msg, error_source,self.current_volume, self.current_location, thread_name))
         Trace.notify("disconnect %s %s" % (self.shortname, self.client_ip))
+        self._error = exc
+        self._error_source = error_source
         if exc == e_errors.WRITE_ERROR or exc == e_errors.READ_ERROR or exc == e_errors.POSITIONING_ERROR:
             if (msg.find("FTT_") != -1):
                 # log low level diagnostics
@@ -4513,7 +4551,16 @@ class Mover(dispatching_worker.DispatchingWorker,
             # I do not know what kind of exception this can be 
             exc, msg = sys.exc_info()[:2]
             Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
-
+        if self.single_filemark and self.mode == WRITE and self._error != e_errors.WRITE_ERROR and (self._error_source != TAPE or self._error_source != DRIVE):
+            Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
+            try:
+              self.tape_driver.writefm()
+            except:
+                Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                Trace.handle_error()
+                self.vcc.set_system_readonly(self.current_volume)
+                
+                
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
             ### Do not eject if specified
@@ -4524,6 +4571,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                 self.offline()
                 self.nowork({})
             return
+
 
         self.state = DISMOUNT_WAIT
         Trace.log(e_errors.INFO, "Ejecting tape")
