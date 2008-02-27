@@ -1,2 +1,2 @@
 #The following make the AML2 log web pages.
-18 9 * * * enstore source /usr/local/etc/setups.sh; setup enstore; $ENSTORE_DIR/sbin/ecron -p aml2mirror mirror $ENSTORE_HOME/CRON/aml2.mirror > /dev/null 2> /dev/null
+18 9 * * * enstore source /usr/local/etc/setups.sh; setup enstore; setup perl; $ENSTORE_DIR/sbin/ecron -p aml2mirror mirror $ENSTORE_HOME/CRON/aml2.mirror > /dev/null 2> /dev/null
