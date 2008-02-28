@@ -27,7 +27,7 @@ KB=1024.
 SELECT_STMT="select date,sum(read),sum(write) from xfer_by_day group by date order by date"
 SELECT_STMT1="select date,sum(read),sum(write) from xfer_by_month group by date order by date"
 
-SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
+SELECT_DELETED_BYTES ="select to_char(state.time, 'YYYY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' group by state.time"
 SELECT_WRITTEN_BYTES ="select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null'";
 
 def showError(msg):

@@ -264,7 +264,7 @@ def plot_bytes():
     iplotter=histogram.Plotter("integrated_writes_total_by_day","Integrated Total TBytes written per day by Enstore")
     iplotter1=histogram.Plotter("integrated_deletes_total_by_day","Integrated Total TBytes deleted per day from Enstore")
 
-    SELECT_DELETED_BYTES ="select to_char(state.time, 'YY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' and state.time between '%s' and '%s' group by state.time order by state.time desc"%(time.strftime("%Y-%m-%d",time.localtime(start_time)), time.strftime("%Y-%m-%d",time.localtime(now_time)))
+    SELECT_DELETED_BYTES ="select to_char(state.time, 'YYYY-MM-DD HH:MM:SS'), sum(file.size)::bigint from file, state where state.volume=file.volume and state.value='DELETED' and state.time between '%s' and '%s' group by state.time order by state.time desc"%(time.strftime("%Y-%m-%d",time.localtime(start_time)), time.strftime("%Y-%m-%d",time.localtime(now_time)))
     
     SELECT_WRITTEN_BYTES ="select substr(bfid,5,10), size from file, volume  where file.volume = volume.id and not label like '%.deleted' and media_type != 'null' and substr(bfid,5,10)::bigint between "+str(start_time)+" and "+str(now_time)
 
