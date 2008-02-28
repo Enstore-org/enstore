@@ -18,9 +18,9 @@ import pg
 import enstore_constants
 import histogram
 
-SELECT_STMT="select  to_char(date, 'YY-MM-DD HH:MM:SS'), total, should, not_yet, done from write_protect_summary order by date desc"
+SELECT_STMT="select  to_char(date, 'YYYY-MM-DD HH:MM:SS'), total, should, not_yet, done from write_protect_summary order by date desc"
 SELECT_STMT1="select date,total, should, not_yet, done from write_protect_summary where date(time) between date(%s%s%s) and date(%s%s%s) and mb_user_write != 0 order by date desc"
-SELECT_STMT3="select to_char(date, 'YY-MM-DD HH:MM:SS'), total, should, not_yet, done  from write_protect_summary_by_library  where library='%s' order by date desc"
+SELECT_STMT3="select to_char(date, 'YYYY-MM-DD HH:MM:SS'), total, should, not_yet, done  from write_protect_summary_by_library  where library='%s' order by date desc"
 SELECT_STMT4="select distinct library from write_protect_summary_by_library"
 
 def showError(msg):
