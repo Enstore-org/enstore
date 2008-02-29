@@ -57,11 +57,24 @@ rm -f $temp_fname
 cp $LOGS/log_trans_fail_vol $temp_vol_fname 2> /dev/null
 cp $LOGS/log_trans_fail_drv $temp_drv_fname 2> /dev/null
 
+#If these don't exist yet, create them.
+remake_cached_info=0
+if [ ! -f $temp_vol_fname ]; then
+  touch $temp_vol_fname
+  remake_cached_info=1
+fi
+if [ ! -f $temp_drv_fname ]; then
+  touch $temp_drv_fname
+  remake_cached_info=1
+fi
+
 logfiles=`ls -1 LOG-*`
 for log in $logfiles; do
 
   skip=0
-  if [ $fname -ot $log ]; then skip=1; fi
+  ls -l $fname $log
+  if [ $fname -nt $log ]; then skip=1; fi
+  if [ $remake_cached_info -eq 1 ]; then skip=0; fi
   if [ $skip -eq 1 ]; then continue; fi
 
   egrep "transfer.failed|SYSLOG.Entry" $log |
@@ -100,7 +113,7 @@ for log in $logfiles; do
         continue
      elif [ $year -eq $last_year -a $thisMonth -ge 2 ]; then
 	continue
-     elif [ $year -eq $thisYear -a $thisMonth -gt $last_month ]; then
+     elif [ $year -eq $thisYear -a $thisMonth -gt $month ]; then
 	continue
      fi
      
