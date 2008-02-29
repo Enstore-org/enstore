@@ -72,7 +72,6 @@ logfiles=`ls -1 LOG-*`
 for log in $logfiles; do
 
   skip=0
-  ls -l $fname $log
   if [ $fname -nt $log ]; then skip=1; fi
   if [ $remake_cached_info -eq 1 ]; then skip=0; fi
   if [ $skip -eq 1 ]; then continue; fi
