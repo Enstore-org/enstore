@@ -3156,23 +3156,23 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except  (self.ftt.FTTError, TypeError), detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
                     return
-            if bloc_loc != self.last_absolute_location:
-                    self.transfer_failed(e_errors.WRITE_ERROR,
-                                         "Wrong position for %s: last %s, current %s"%
-                                         (self.last_absolute_location,
-                                          bloc_loc,),error_source=TAPE)
-                    self.set_volume_noaccess(self.current_volume)
+                if bloc_loc != self.last_absolute_location:
+                        self.transfer_failed(e_errors.WRITE_ERROR,
+                                             "Wrong position for %s: last %s, current %s"%
+                                             (self.last_absolute_location,
+                                              bloc_loc,),error_source=TAPE)
+                        self.set_volume_noaccess(self.current_volume)
+                        return
+                try:
+                  self.tape_driver.writefm()
+                except:
+                    Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                    Trace.handle_error()
+                    self.vcc.set_system_readonly(self.current_volume)
+                    self.return_work_to_lm(ticket)
+                    self.unlock_state()
+                    self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
                     return
-            try:
-              self.tape_driver.writefm()
-            except:
-                Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
-                Trace.handle_error()
-                self.vcc.set_system_readonly(self.current_volume)
-                self.return_work_to_lm(ticket)
-                self.unlock_state()
-                self.transfer_failed(e_errors.WRITE_ERROR, detail, error_source=TAPE)
-                return
 
         self.state = SETUP
         # the following settings are needed by LM to update it's queues
@@ -4614,19 +4614,19 @@ class Mover(dispatching_worker.DispatchingWorker,
                 except  (self.ftt.FTTError, TypeError), detail:
                     self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
                     return
-            if bloc_loc != self.last_absolute_location:
-                    self.transfer_failed(e_errors.WRITE_ERROR,
-                                         "Wrong position for %s: last %s, current %s"%
-                                         (self.last_absolute_location,
-                                          bloc_loc,),error_source=TAPE)
-                    self.set_volume_noaccess(self.current_volume)
-            else:
-                try:
-                    self.tape_driver.writefm()
-                except:
-                    Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
-                    Trace.handle_error()
-                    self.vcc.set_system_readonly(self.current_volume)
+                if bloc_loc != self.last_absolute_location:
+                        self.transfer_failed(e_errors.WRITE_ERROR,
+                                             "Wrong position for %s: last %s, current %s"%
+                                             (self.last_absolute_location,
+                                              bloc_loc,),error_source=TAPE)
+                        self.set_volume_noaccess(self.current_volume)
+                else:
+                    try:
+                        self.tape_driver.writefm()
+                    except:
+                        Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                        Trace.handle_error()
+                        self.vcc.set_system_readonly(self.current_volume)
                 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
