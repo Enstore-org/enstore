@@ -719,6 +719,7 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.starting = 1 # to disable changing interval
         self._error = None
         self._error_source = None
+        self.memory_debug = 0
         
         
     def __setattr__(self, attr, val):
@@ -752,10 +753,19 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.reply_to_caller(out_ticket)
         self.dump_vars()
 
-    def dump_vars(self):
-        d=os.environ.get("ENSTORE_TMP","/tmp")
-        f = open("%s/mover_dump-%s"%(d,time.time(),), "w")
+    def dump_vars(self, header=None):
+        d=os.environ.get("ENSTORE_OUT","/tmp")
+        pid = os.getpid() 
+        f = open("%s/mover_dump-%s"%(d,pid,), "a")
+        if header:
+            f.write('%s\n'%(header,))
         f.write("%s\n"%(time.ctime(),))
+        f.write("Dumping /proc/%d/status\n" % (pid,))
+        stat_f = open("/proc/%d/status" % (pid,), "r")
+        proc_info = stat_f.readlines()
+        stat_f.close()
+        f.writelines(proc_info)
+        f.write("=========================================\n")
         if self.buffer:
             f.write("dumping Buffer\n")
             self.buffer.dump(f)
@@ -772,6 +782,7 @@ class Mover(dispatching_worker.DispatchingWorker,
                     v = ">100"
                 
             f.write("%s = %s, len = %s\n"%(name, v, l))
+        f.write("=========================================\n")
         f.close()
         
         
@@ -824,6 +835,22 @@ class Mover(dispatching_worker.DispatchingWorker,
                 else:
                     Trace.log(e_errors.INFO,"LOG(%s): Thread is dead"%(thread_name,))
             
+    # from entv
+    def memory_in_use(self):
+        if os.uname()[0] == "Linux":
+            f = open("/proc/%d/status" % (os.getpid(),), "r")
+            proc_info = f.readlines()
+            f.close()
+
+            for item in proc_info:
+                words = item.split()
+                if words[0] == "VmSize:":
+                    return int(words[1])
+
+            return None #Should never happen.
+        else:
+            return None
+
     def memory_usage(self):
         self.on_start = 0
         if self.on_start:
@@ -856,11 +883,16 @@ class Mover(dispatching_worker.DispatchingWorker,
                     i = i + 1
                 else:
                     break
+        #print "MEM", mem_u
+
+        #mm = self.memory_in_use()
+        #print "MMM", mm
+        
         if mem_u > self.max_idle_mem:
             Trace.log(e_errors.WARNING, "Memory usage %s approaches a limit %s. %s. Will restart the mover"%(mem_u, self.max_idle_mem, result,))
             #self.transfer_failed(e_errors.NOSPACE,"No memory. Mover will restart",error_source=MOVER, dismount_allowed=0)
             self.log_state(logit=1)
-            self.dump_vars()
+            self.dump_vars("High Memory")
             self.restart()
             return 1
         return 0
@@ -1256,12 +1288,13 @@ class Mover(dispatching_worker.DispatchingWorker,
         #how often to send a message to the library manager
         self.update_interval = self.config.get('update_interval', 15)
 
-        self.single_filemark=self.config.get('single_filemark', 0)
         ##Setting this attempts to optimize filemark writing by writing only
         ## a single filemark after each file, instead of using ftt's policy of always
         ## writing two and backspacing over one.  However this results in only
         ## a single filemark at the end of the volume;  causing some drives
         ## (e.g. Mammoth-1) to have trouble spacing to end-of-media.
+        self.single_filemark=self.config.get('single_filemark', 0)
+        self.memory_debug = self.config.get('memory_debug', 0)
             
         self.check_written_file_period = self.config.get('check_written_file', 0)
         self.files_written_cnt = 0
@@ -1403,6 +1436,8 @@ class Mover(dispatching_worker.DispatchingWorker,
         self.erc.start([event_relay_messages.NEWCONFIGFILE])
         ##start our heartbeat to the event relay process
         self.erc.start_heartbeat(self.name, self.alive_interval, self.return_state)
+        if self.memory_debug:
+            self.dump_vars("At the start")
         ##end of __init__
 
     # restart itselfs
@@ -3111,6 +3146,22 @@ class Mover(dispatching_worker.DispatchingWorker,
         if self.save_state == HAVE_BOUND and self.single_filemark and self.mode == WRITE:
             # switching from write to read write additional fm
             Trace.log(e_errors.INFO,"writing a tape mark before switching to READ")
+            if self.driver_type == 'FTTDriver':
+                stats = self.tape_driver.get_stats()
+            bloc_loc = 0L
+            if self.driver_type == 'FTTDriver':
+                try:
+                    bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                except  (self.ftt.FTTError, TypeError), detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                    return
+            if bloc_loc != self.last_absolute_location:
+                    self.transfer_failed(e_errors.WRITE_ERROR,
+                                         "Wrong position for %s: last %s, current %s"%
+                                         (self.last_absolute_location,
+                                          bloc_loc,),error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+                    return
             try:
               self.tape_driver.writefm()
             except:
@@ -4553,13 +4604,28 @@ class Mover(dispatching_worker.DispatchingWorker,
             Trace.log(e_errors.ERROR, "in update_stat2: %s %s" % (exc, msg))
         if self.single_filemark and self.mode == WRITE and self._error != e_errors.WRITE_ERROR and (self._error_source != TAPE or self._error_source != DRIVE):
             Trace.log(e_errors.INFO,"writing a tape mark before dismount") 
-            try:
-              self.tape_driver.writefm()
-            except:
-                Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
-                Trace.handle_error()
-                self.vcc.set_system_readonly(self.current_volume)
-                
+            if self.driver_type == 'FTTDriver':
+                stats = self.tape_driver.get_stats()
+            bloc_loc = 0L
+            if self.driver_type == 'FTTDriver':
+                try:
+                    bloc_loc = long(stats[self.ftt.BLOC_LOC])
+                except  (self.ftt.FTTError, TypeError), detail:
+                    self.transfer_failed(e_errors.WRITE_ERROR, "error getting stats before write %s %s"%(detail, stats[self.ftt.BLOC_LOC]), error_source=DRIVE)
+                    return
+            if bloc_loc != self.last_absolute_location:
+                    self.transfer_failed(e_errors.WRITE_ERROR,
+                                         "Wrong position for %s: last %s, current %s"%
+                                         (self.last_absolute_location,
+                                          bloc_loc,),error_source=TAPE)
+                    self.set_volume_noaccess(self.current_volume)
+            else:
+                try:
+                    self.tape_driver.writefm()
+                except:
+                    Trace.log(e_errors.ERROR,"error writing file mark, will set volume readonly")
+                    Trace.handle_error()
+                    self.vcc.set_system_readonly(self.current_volume)
                 
         if not self.do_eject:
             ### AM I do not know if this is correct but it does what it supposed to
